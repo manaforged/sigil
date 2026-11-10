@@ -71,3 +71,18 @@ fn nearest_snap_within_threshold() {
     assert_eq!(nearest_snap(&[200.0], 210.0, 8.0), None);
     assert_eq!(nearest_snap(&[200.0, 400.0], 395.0, 8.0), Some(400.0));
 }
+
+#[test]
+fn redistribute_leaves_panes_alone_when_they_are_already_below_their_minimums() {
+    let next = redistribute(
+        &[1.0, 3.0],
+        0,
+        700.0,
+        &PaneBounds {
+            mins: &[100.0, 100.0],
+            maxs: &[f32::INFINITY; 2],
+            grows: &[0.0, 0.0],
+        },
+    );
+    assert_eq!(next, vec![1.0, 3.0]);
+}

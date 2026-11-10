@@ -6,28 +6,26 @@ Sigil is a Rust UI library. One widget tree runs in a window, in a terminal, or 
 
 ## Add the dependency
 
-Sigil is not on crates.io yet.
-
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil" }
+sigil-ui = "0.2"
 ```
 
 For a terminal-only program:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
+sigil-ui = { version = "0.2", default-features = false, features = ["terminal"] }
 ```
 
 For tests:
 
 ```toml
 [dev-dependencies]
-sigil-kittest = { git = "https://github.com/manaforged/sigil" }
+sigil-kittest = "0.2"
 ```
 
-Rust 1.90 or newer. The window host on Linux needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages.
+Rust 1.95 or newer. The window host on Linux needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages.
 
 ## Find the API
 
@@ -35,9 +33,8 @@ Read these before you write a helper. Most jobs already have a function.
 
 | File | Use it to |
 | --- | --- |
-| [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) | Look up every item at the crate root and in the prelude, with its signature, purpose, and an example that compiles. The "Jobs to symbols" section maps a job to the call. |
-| [api.txt](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/api.txt) | Search every public item by path, one per line. |
-| [API reference index](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/index.md) | Index of the per-module reference pages and the examples. |
+| [docs.rs/sigil-ui](https://docs.rs/sigil-ui) | Look up every public item, with its signature and a compiled example on each main type. |
+| `cargo doc -p sigil-ui --open` | Browse every public item, generated from the source. |
 | [Recipes](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, host hooks, and screen readers. |
 | [GUI and TUI](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hosts.md) | Build for the window, the terminal, or both. |
 | [Testing](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/testing.md) | Drive the UI from a test with `sigil_kittest::Harness`. |
@@ -70,6 +67,22 @@ fn app() -> impl IntoNode {
 - Async work uses `task` (reruns and cancels) or `spawn` (runs once). Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
 - Write signals on the UI thread. From another thread, use `signal_writer`, or `tasks::on_message` for a channel.
 - Public event, command, error, and config types are `#[non_exhaustive]`. Match them with a `_` arm, and build `AppConfig` with its builder methods.
+
+## Follow the design rules
+
+Sigil holds the design rules in its types and in its test harness. Use the named steps. A bare pixel value does not compile where a step is expected.
+
+- Spacing: `.gap(Space::Md)` and `.padding(Space::Lg)` take a step of the scale: `None`, `Xxs`, `Xs`, `Sm`, `Md`, `Lg`, `Xl`, `Xxl`, `Xxxl`.
+- Type: `.text_role(TextRole::Title)` sets size, line height, and weight together. `.font_size(px, "reason")` needs a reason.
+- Depth: `.layer(Layer::Raised)` sets fill, border, corners, and shadow together. `card` is `Raised`, and popups are `Overlay`. Do not add shadows by hand.
+- Controls: a field and a button in one `row()` are the same height and are centred. Use `ControlSize` to change the height of both.
+- A `Harness` checks the laid-out tree when it is dropped. A flaw fails the test, and the message names the node and the fix: clipped text, uneven controls, overlap, overflow, contrast, a small target, a broken column, or an uneven inset. Debug builds also log each flaw through `tracing` target `sigil::design`.
+
+Fix the flaw. When a design needs the exception, say why with `.allow_flaw(FlawKind::Overflow, "reason")` on the node. Call `.unaudited()` only on a test fixture that breaks a rule on purpose. With the `inspect` feature, the query `layout::audit` lists the flaws of a running app.
+
+## Iterate on a screen without a rebuild
+
+Put the shape of a screen in a `.sigil` file and load it with `sigil::view!("src/screen.sigil")`. In a debug build the running app shows each save within 200 ms. Bind state with `.signal`, `.flag`, and `.action`. Put a widget that the file cannot name in a `.slot`. The widgets and properties are in [Hot reload](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hot-reload.md).
 
 ## Test the app
 

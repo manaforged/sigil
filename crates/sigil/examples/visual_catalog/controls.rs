@@ -41,33 +41,31 @@ fn icon_button_row(state: State) -> NodeBuilder {
 }
 
 fn checkbox_row(state: State) -> NodeBuilder {
-    node(crate::widget_controls::checkbox_demo().disabled(off(state)))
+    node(crate::widget_controls::checkbox_demo(off(state)))
 }
 
 fn checkbox_unchecked(state: State) -> NodeBuilder {
-    node(crate::widget_controls::checkbox_unchecked_demo().disabled(off(state)))
+    node(crate::widget_controls::checkbox_unchecked_demo(off(state)))
 }
 
 fn toggle_row(state: State) -> NodeBuilder {
-    node(crate::widget_controls::toggle_demo().disabled(off(state)))
+    node(crate::widget_controls::toggle_demo(off(state)))
 }
 
 fn toggle_off(state: State) -> NodeBuilder {
-    node(crate::widget_controls::toggle_off_demo().disabled(off(state)))
+    node(crate::widget_controls::toggle_off_demo(off(state)))
 }
 
 fn radio_row(state: State) -> NodeBuilder {
-    node(crate::widget_controls::radio_group_demo().disabled(off(state)))
+    node(crate::widget_controls::radio_group_demo(off(state)))
 }
 
 fn slider_row(state: State) -> NodeBuilder {
-    node(crate::widget_controls::slider_demo().disabled(off(state)))
+    node(crate::widget_controls::slider_demo(off(state)))
 }
 
 fn interactive_row(state: State) -> NodeBuilder {
-    crate::widget_plumbing::interactive_demo()
-        .disabled(off(state))
-        .into_node_builder()
+    crate::widget_plumbing::interactive_demo(off(state))
 }
 
 fn progress_row(_state: State) -> NodeBuilder {

@@ -1,4 +1,5 @@
 mod builder;
 mod popup;
 
-pub use builder::{DropdownBuilder, dropdown};
+pub(crate) use builder::DropdownBuilder;
+pub use builder::dropdown;

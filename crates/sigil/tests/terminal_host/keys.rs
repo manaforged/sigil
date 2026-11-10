@@ -1,4 +1,5 @@
 use super::*;
+use sigil::kernel::HostMode;
 
 #[test]
 fn map_enter_is_the_shell_enter_key() {
@@ -8,19 +9,19 @@ fn map_enter_is_the_shell_enter_key() {
         crossterm::event::KeyModifiers::NONE,
     );
     let mapped = map_key(&event).expect("enter maps");
-    assert_eq!(mapped, key_down(Key::Enter));
+    assert_eq!(mapped, Event::key_down(Key::Enter));
 }
 
 #[test]
 fn map_backtab_is_shift_tab() {
-    use sigil::events::{Key, LogicalKey, ModifiersState, ShellEvent};
+    use sigil::events::{Event, Key, LogicalKey, ModifiersState};
     use sigil::terminal::map_key;
 
     let event = crossterm::event::KeyEvent::new(
         crossterm::event::KeyCode::BackTab,
         crossterm::event::KeyModifiers::NONE,
     );
-    let Some(ShellEvent::Key(mapped)) = map_key(&event) else {
+    let Some(Event::Key(mapped)) = map_key(&event) else {
         panic!("backtab did not map");
     };
     assert_eq!(mapped.key, LogicalKey::Named(Key::Tab));
@@ -29,21 +30,21 @@ fn map_backtab_is_shift_tab() {
 #[test]
 fn a_focus_change_reaches_the_terminal() {
     use sigil::Host;
-    use sigil::events::{EventRouter, Key};
+    use sigil::events::Key;
 
-    sigil::reactive::Runtime::scope("tui-animate", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    sigil::reactive::Owner::scope("tui-animate", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .child(button("One").primary())
                 .child(button("Two").primary())
         });
         host.layout((320.0, 64.0)).expect("layout");
-        router.focus_next(host.cx());
-        let first = step(&mut host, &mut router, [], 40, 8);
-        let moved = step(&mut host, &mut router, [key_down(Key::Tab)], 40, 8);
-        let settled = (0..12).fold(moved, |_, _| step(&mut host, &mut router, [], 40, 8));
+        let (cx, layout, router) = host.parts();
+        router.focus_next(cx, layout);
+        let first = step(&mut host, [], 40, 8);
+        let moved = step(&mut host, [Event::key_down(Key::Tab)], 40, 8);
+        let settled = (0..12).fold(moved, |_, _| step(&mut host, [], 40, 8));
         assert_ne!(
             first,
             settled,
@@ -56,24 +57,23 @@ fn a_focus_change_reaches_the_terminal() {
 #[test]
 fn typing_reaches_a_text_field() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::reactive::signal;
     use sigil::terminal::map_key;
     use sigil::widgets::text_field;
 
-    sigil::reactive::Runtime::scope("tui-typing", || {
+    sigil::reactive::Owner::scope("tui-typing", || {
         let value = signal(String::new());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || text_field(value));
-        drop(step(&mut host, &mut router, [], 40, 6));
-        router.focus_next(host.cx());
+        drop(step(&mut host, [], 40, 6));
+        let (cx, layout, router) = host.parts();
+        router.focus_next(cx, layout);
         let typed = map_key(&crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char('x'),
             crossterm::event::KeyModifiers::NONE,
         ))
         .expect("char maps");
-        let grid = step(&mut host, &mut router, [typed], 40, 6);
+        let grid = step(&mut host, [typed], 40, 6);
         assert!(
             grid.text().contains('x'),
             "expected typed x in:\n{}",
@@ -86,24 +86,23 @@ fn typing_reaches_a_text_field() {
 #[test]
 fn a_control_chord_inserts_nothing() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::reactive::signal;
     use sigil::terminal::map_key;
     use sigil::widgets::text_field;
 
-    sigil::reactive::Runtime::scope("tui-chord", || {
+    sigil::reactive::Owner::scope("tui-chord", || {
         let value = signal(String::new());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || text_field(value));
-        drop(step(&mut host, &mut router, [], 40, 6));
-        router.focus_next(host.cx());
+        drop(step(&mut host, [], 40, 6));
+        let (cx, layout, router) = host.parts();
+        router.focus_next(cx, layout);
         let chord = map_key(&crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char('x'),
             crossterm::event::KeyModifiers::CONTROL,
         ))
         .expect("char maps");
-        drop(step(&mut host, &mut router, [chord], 40, 6));
+        drop(step(&mut host, [chord], 40, 6));
         assert_eq!(value.peek(), "");
     });
 }
@@ -111,19 +110,17 @@ fn a_control_chord_inserts_nothing() {
 #[test]
 fn paste_inserts_whole() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::reactive::signal;
-    use sigil::terminal::paste;
     use sigil::widgets::text_field;
 
-    sigil::reactive::Runtime::scope("tui-paste", || {
+    sigil::reactive::Owner::scope("tui-paste", || {
         let value = signal(String::new());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || text_field(value));
-        drop(step(&mut host, &mut router, [], 40, 6));
-        router.focus_next(host.cx());
-        drop(step(&mut host, &mut router, [paste("hello world")], 40, 6));
+        drop(step(&mut host, [], 40, 6));
+        let (cx, layout, router) = host.parts();
+        router.focus_next(cx, layout);
+        drop(step(&mut host, [Event::paste("hello world")], 40, 6));
         assert_eq!(value.peek(), "hello world");
     });
 }
@@ -134,24 +131,23 @@ fn a_paste_reaches_the_focused_node_as_one_event() {
     use std::rc::Rc;
 
     use sigil::Host;
-    use sigil::events::{EventRouter, PasteEvent};
-    use sigil::prelude::NodeEventsExt;
-    use sigil::terminal::paste;
+    use sigil::prelude::Widget;
 
-    sigil::reactive::Runtime::scope("tui-paste-event", || {
+    sigil::reactive::Owner::scope("tui-paste-event", || {
         let seen = Rc::new(RefCell::new(Vec::new()));
         let record = Rc::clone(&seen);
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             let record = Rc::clone(&record);
-            button("Target").on_paste(move |event: &mut PasteEvent| {
-                record.borrow_mut().push(event.text.clone());
+            button("Target").on_paste(move |text| {
+                record.borrow_mut().push(text.to_owned());
+                true
             })
         });
-        drop(step(&mut host, &mut router, [], 40, 6));
-        router.focus_next(host.cx());
-        drop(step(&mut host, &mut router, [paste("one\ntwo")], 40, 6));
+        drop(step(&mut host, [], 40, 6));
+        let (cx, layout, router) = host.parts();
+        router.focus_next(cx, layout);
+        drop(step(&mut host, [Event::paste("one\ntwo")], 40, 6));
         assert_eq!(*seen.borrow(), vec!["one\ntwo".to_owned()]);
     });
 }
@@ -159,15 +155,13 @@ fn a_paste_reaches_the_focused_node_as_one_event() {
 #[test]
 fn an_autofocus_field_in_a_modal_takes_keys_when_the_modal_opens() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::reactive::signal;
     use sigil::widgets::{modal, text_field};
 
-    sigil::reactive::Runtime::scope("tui-modal-autofocus", || {
+    sigil::reactive::Owner::scope("tui-modal-autofocus", || {
         let open = signal(false);
         let query = signal(String::new());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container().child(
                 modal(open)
@@ -175,15 +169,15 @@ fn an_autofocus_field_in_a_modal_takes_keys_when_the_modal_opens() {
                     .child(text_field(query).autofocus()),
             )
         });
-        drop(step(&mut host, &mut router, [], 40, 12));
+        drop(step(&mut host, [], 40, 12));
         open.set(true);
-        drop(step(&mut host, &mut router, [], 40, 12));
+        drop(step(&mut host, [], 40, 12));
         let typed = sigil::terminal::map_key(&crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char('d'),
             crossterm::event::KeyModifiers::NONE,
         ))
         .expect("char maps");
-        drop(step(&mut host, &mut router, [typed], 40, 12));
+        drop(step(&mut host, [typed], 40, 12));
         assert_eq!(query.peek(), "d");
     });
 }

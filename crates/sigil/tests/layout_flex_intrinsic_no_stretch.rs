@@ -8,6 +8,8 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
+use sigil::widgets::Widget;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;
@@ -25,8 +27,8 @@ fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(600.0, 80.0)
-                    .padding(LengthPercentage::Px(8.0))
-                    .gap(LengthPercentage::Px(4.0)),
+                    .padding(Space::Sm)
+                    .gap(Space::Xs),
             )
             .child(text("first".to_string()))
             .child(row_child),
@@ -71,8 +73,8 @@ fn column_with_container_then_text_does_not_collapse_text() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(600.0, 80.0)
-                    .padding(LengthPercentage::Px(8.0))
-                    .gap(LengthPercentage::Px(4.0)),
+                    .padding(Space::Sm)
+                    .gap(Space::Xs),
             )
             .child(row_child)
             .child(text("second".to_string())),
@@ -102,8 +104,8 @@ fn column_with_text_and_empty_container_child_does_not_collapse_text() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(600.0, 80.0)
-                    .padding(LengthPercentage::Px(8.0))
-                    .gap(LengthPercentage::Px(4.0)),
+                    .padding(Space::Sm)
+                    .gap(Space::Xs),
             )
             .child(text("first".to_string()))
             .child(row_child),

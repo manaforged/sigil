@@ -9,11 +9,11 @@ mod render;
 
 pub(crate) use buffer::TextEdit;
 pub use builder::{SubmitKey, TextEditBuilder, text_edit};
-pub use handlers::{FocusCaret, TextEditState};
+pub use handlers::TextEditState;
 pub(in crate::widgets) use handlers::{
     KeyProfile, LineStep, TextEditRuntime, attach_a11y_edit, clipboard_keys, edit_keys, edit_value,
     history_keys, move_caret, noop_change, submit_text, word_keys,
 };
 pub(in crate::widgets) use ime::attach_ime_handlers;
-pub(in crate::widgets) use render::overlay_rect;
 pub(crate) use render::splice_preedit;
+pub(in crate::widgets) use render::{blink, overlay_rect};

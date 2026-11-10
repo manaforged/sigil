@@ -6,14 +6,14 @@ use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
-use crate::text::glyph::{GlyphPos, GlyphRun};
-use crate::text::shaper::{Font, Style, TextSegment};
+use crate::text::glyph::{GlyphPos, ShapedRun};
+use crate::text::shaper::{FaceStyle, Font, TextSegment};
 
 const SIMPLE: &[u8] = b"0123456789 .,-+%$:/()";
 const MAX_ENTRIES: usize = 4_096;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-struct Key {
+struct NumericKey {
     font: u64,
     index: u32,
     size: u32,
@@ -23,13 +23,13 @@ struct Key {
 }
 
 #[derive(Clone, Copy)]
-struct Entry {
+struct GlyphEntry {
     glyph: GlyphPos,
     ascent: f32,
 }
 
 thread_local! {
-    static CACHE: RefCell<AHashMap<Key, Option<Entry>>> = RefCell::new(AHashMap::new());
+    static CACHE: RefCell<AHashMap<NumericKey, Option<GlyphEntry>>> = RefCell::new(AHashMap::new());
 }
 
 pub(crate) fn is_simple(text: &str) -> bool {
@@ -38,10 +38,10 @@ pub(crate) fn is_simple(text: &str) -> bool {
 
 pub(crate) fn shape(
     segment: &TextSegment<'_>,
-    style: &Style,
+    style: &FaceStyle,
     font: &Font,
-    full: impl Fn(&TextSegment<'_>, &Style, &Font) -> Option<GlyphRun>,
-) -> Option<GlyphRun> {
+    full: impl Fn(&TextSegment<'_>, &FaceStyle, &Font) -> Option<ShapedRun>,
+) -> Option<ShapedRun> {
     if segment.level & 1 == 1 || !is_simple(segment.text) {
         return None;
     }
@@ -49,7 +49,7 @@ pub(crate) fn shape(
     for tag in &style.features {
         tag.0.hash(&mut features);
     }
-    let base = Key {
+    let base = NumericKey {
         font: font.id(),
         index: font.face_index(),
         size: style.size_px.to_bits(),
@@ -61,7 +61,7 @@ pub(crate) fn shape(
     let mut pen = 0.0_f32;
     let mut ascent = 0.0_f32;
     for (offset, ch) in segment.text.bytes().enumerate() {
-        let key = Key { ch, ..base };
+        let key = NumericKey { ch, ..base };
         let entry = CACHE.with(|cache| {
             if let Some(hit) = cache.borrow().get(&key) {
                 return *hit;
@@ -80,7 +80,7 @@ pub(crate) fn shape(
         glyphs.push(glyph);
         ascent = entry.ascent;
     }
-    Some(GlyphRun {
+    Some(ShapedRun {
         glyphs,
         baseline: ascent,
         width: pen,
@@ -90,10 +90,10 @@ pub(crate) fn shape(
 fn shape_char(
     ch: u8,
     level: u8,
-    style: &Style,
+    style: &FaceStyle,
     font: &Font,
-    full: &impl Fn(&TextSegment<'_>, &Style, &Font) -> Option<GlyphRun>,
-) -> Option<Entry> {
+    full: &impl Fn(&TextSegment<'_>, &FaceStyle, &Font) -> Option<ShapedRun>,
+) -> Option<GlyphEntry> {
     let text = [ch];
     let text = core::str::from_utf8(&text).ok()?;
     let run = full(&TextSegment::at_level(text, level), style, font)?;
@@ -106,7 +106,7 @@ fn shape_char(
         Size::new(style.size_px.max(1.0)),
         LocationRef::new(location.coords()),
     );
-    Some(Entry {
+    Some(GlyphEntry {
         glyph: *glyph,
         ascent: metrics.ascent,
     })

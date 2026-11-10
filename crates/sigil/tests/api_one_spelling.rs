@@ -6,17 +6,16 @@
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::EventRouter;
 use sigil::layout::LayoutResult;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::ButtonBuilder;
 
 const VIEW: (f32, f32) = (480.0, 320.0);
 
-fn settle(host: &mut Host, router: &mut EventRouter) {
+fn settle(host: &mut Host) {
     for _ in 0..3 {
-        let _ = host.frame(router, VIEW, 1.0 / 60.0, FrameHooks::default());
+        let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
     }
 }
 
@@ -26,16 +25,15 @@ fn drawn(host: &mut Host, label: &str) -> bool {
 
 #[test]
 fn diff_redraws_when_its_patch_signal_changes() {
-    Runtime::scope("api_one_spelling::diff", || {
+    Owner::scope("api_one_spelling::diff", || {
         let patch = signal(String::from("@@ -1 +1 @@\n-before\n+first\n"));
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(diff(patch)));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "first"));
 
         patch.set(String::from("@@ -1 +1 @@\n-before\n+second\n"));
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(drawn(&mut host, "second"));
         assert!(!drawn(&mut host, "first"));
@@ -44,16 +42,15 @@ fn diff_redraws_when_its_patch_signal_changes() {
 
 #[test]
 fn sparkline_redraws_when_its_values_change() {
-    Runtime::scope("api_one_spelling::sparkline", || {
+    Owner::scope("api_one_spelling::sparkline", || {
         let values = signal(vec![1.0_f32, 1.0, 1.0, 1.0]);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(sparkline(values).range(0.0, 8.0)));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         let before = host.emit(VIEW);
 
         values.set(vec![8.0, 1.0, 8.0, 1.0]);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert_ne!(host.emit(VIEW), before);
     });
@@ -61,16 +58,15 @@ fn sparkline_redraws_when_its_values_change() {
 
 #[test]
 fn visible_when_follows_a_plain_closure() {
-    Runtime::scope("api_one_spelling::visible_when", || {
+    Owner::scope("api_one_spelling::visible_when", || {
         let shown = signal(true);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(text("Toggled").visible_when(move || shown.get())));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "Toggled"));
 
         shown.set(false);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(!drawn(&mut host, "Toggled"));
     });
@@ -78,10 +74,9 @@ fn visible_when_follows_a_plain_closure() {
 
 #[test]
 fn virtual_list_rows_can_be_any_node_and_invalid_when_takes_a_closure() {
-    Runtime::scope("api_one_spelling::rows_and_invalid", || {
+    Owner::scope("api_one_spelling::rows_and_invalid", || {
         let email = signal(String::new());
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column()
                 .child(virtual_list(
@@ -93,7 +88,7 @@ fn virtual_list_rows_can_be_any_node_and_invalid_when_takes_a_closure() {
                     text_field(email).invalid_when(move || !email.get().contains('@')),
                 )),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(drawn(&mut host, "Row text"));
     });
@@ -101,11 +96,10 @@ fn virtual_list_rows_can_be_any_node_and_invalid_when_takes_a_closure() {
 
 #[test]
 fn button_width_takes_text_relative_units() {
-    Runtime::scope("api_one_spelling::button_width", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    Owner::scope("api_one_spelling::button_width", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(|| column().child(button("Go").width(cols(12.0))));
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         let root = host.root().expect("mounted");
         let cx = host.cx();
@@ -124,10 +118,9 @@ fn button_width_takes_text_relative_units() {
 
 #[test]
 fn chip_tone_follows_a_closure() {
-    Runtime::scope("api_one_spelling::chip_tone", || {
+    Owner::scope("api_one_spelling::chip_tone", || {
         let alert = signal(false);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(
             chip("State", Tone::Info).tone(
                 move || {
@@ -135,11 +128,11 @@ fn chip_tone_follows_a_closure() {
                 },
             ),
         ));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         let calm = host.emit(VIEW);
 
         alert.set(true);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert_ne!(host.emit(VIEW), calm);
     });
@@ -147,12 +140,11 @@ fn chip_tone_follows_a_closure() {
 
 #[test]
 fn button_tone_and_fill_do_not_depend_on_call_order() {
-    Runtime::scope("api_one_spelling::button_order", || {
+    Owner::scope("api_one_spelling::button_order", || {
         let scene = |make: fn() -> ButtonBuilder| {
-            let mut host = Host::new();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Pixel);
             host.mount(move || column().child(make()));
-            settle(&mut host, &mut router);
+            settle(&mut host);
             host.emit(VIEW)
         };
         assert_eq!(

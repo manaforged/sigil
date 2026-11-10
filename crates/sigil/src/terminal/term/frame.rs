@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::Write;
 
 use crossterm::queue;
 use crossterm::style::Print;
@@ -12,7 +12,7 @@ pub(crate) fn paint_frame(
     screen: &mut Screen,
     redraw: bool,
     inline: bool,
-) -> io::Result<()> {
+) -> Result<(), crate::Error> {
     let painted = write_frame(out, screen, redraw, inline);
     if painted.is_err() {
         screen.keep_pending();
@@ -25,7 +25,7 @@ fn write_frame(
     screen: &mut Screen,
     redraw: bool,
     inline: bool,
-) -> io::Result<()> {
+) -> Result<(), crate::Error> {
     if !redraw && !screen.needs_flush() {
         return Ok(());
     }
@@ -48,5 +48,5 @@ fn write_frame(
     if sync {
         queue!(out, Print("\x1b[?2026l"))?;
     }
-    out.flush()
+    out.flush().map_err(Into::into)
 }

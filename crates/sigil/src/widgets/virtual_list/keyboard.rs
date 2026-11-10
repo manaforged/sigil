@@ -1,8 +1,10 @@
-use crate::events::{Key, KeyEvent, NodeEventsExt};
+use crate::events::KeyEvent;
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
-use crate::style::NodeStyleExt;
+use crate::widgets::Widget;
+
 use crate::widgets::interaction::InteractionState;
+use crate::widgets::listbox::{LIST, Move, RowSource};
 
 use super::BuildAxes;
 use super::scroll::viewport_px;
@@ -23,9 +25,10 @@ impl KeyboardRuntime {
         self.rows.peek()
     }
 
-    fn step(self, event: &mut KeyEvent, next: impl FnOnce(Self, usize) -> usize) {
+    fn step(self, event: &mut KeyEvent, step: Move) {
         event.stop_propagation();
-        let index = next(self, self.axes.focused_row.peek());
+        let from = self.axes.focused_row.peek();
+        let index = LIST.target(&self, from, step).unwrap_or(from);
         let focused = index.min(self.count().saturating_sub(1));
         self.axes.focused_row.set(focused);
         self.scroll_into_view(focused);
@@ -40,7 +43,7 @@ impl KeyboardRuntime {
         clippy::cast_sign_loss,
         reason = "values are bounded to the target range before the cast"
     )]
-    fn page(self, from: usize, forward: bool) -> usize {
+    fn paged(self, from: usize, forward: bool) -> usize {
         let viewport = self.viewport();
         if let Some(tops) = self.axes.tops {
             let tops = tops.peek();
@@ -81,26 +84,21 @@ impl KeyboardRuntime {
     }
 }
 
+impl RowSource for KeyboardRuntime {
+    fn len(&self) -> usize {
+        self.count()
+    }
+
+    fn page(&self, from: usize, forward: bool) -> Option<usize> {
+        Some(self.paged(from, forward))
+    }
+}
+
 pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: KeyboardRuntime) -> NodeBuilder {
     let interaction = InteractionState::new(true);
-    let node = node
-        .focusable(true)
-        .focus_ring(interaction.focus_ring())
-        .key(Key::ArrowDown, move |event| {
-            runtime.step(event, |_, row| row.saturating_add(1));
-        })
-        .key(Key::ArrowUp, move |event| {
-            runtime.step(event, |_, row| row.saturating_sub(1));
-        })
-        .key(Key::PageDown, move |event| {
-            runtime.step(event, |list, row| list.page(row, true));
-        })
-        .key(Key::PageUp, move |event| {
-            runtime.step(event, |list, row| list.page(row, false));
-        })
-        .key(Key::Home, move |event| runtime.step(event, |_, _| 0))
-        .key(Key::End, move |event| {
-            runtime.step(event, |list, _| list.count().saturating_sub(1));
-        });
+    let mut node = node.focusable(true).focus_ring(interaction.focus_ring());
+    for (key, step) in LIST.bindings() {
+        node = node.key(key, move |event| runtime.step(event, step));
+    }
     interaction.observe_style(node)
 }

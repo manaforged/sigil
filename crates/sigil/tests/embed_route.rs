@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
 #[test]
@@ -32,8 +32,8 @@ fn routed_click_reaches_button_activate() {
 
 #[test]
 fn painted_and_surfaces_use_prelude_types() {
-    Runtime::scope("embed_painted", || {
-        let mut host = Host::new();
+    Owner::scope("embed_painted", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(80.0, 24.0))

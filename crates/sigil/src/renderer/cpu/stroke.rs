@@ -11,7 +11,7 @@ use tiny_skia::{FillRule, Mask, Path, PathBuilder, Pixmap, Point as TsPoint};
 use crate::renderer::scene_command::{Stroke, StrokeBand, StrokeDash};
 use crate::scene::corner_radii::CornerRadii;
 
-use super::bound::{Bound, expand, rounded_rect};
+use super::bound::{CpuBound, expand, rounded_rect};
 use super::shapes::{Brush, solid};
 
 pub(super) fn stroke(
@@ -53,7 +53,7 @@ fn ring(
     brush: &Brush<'_>,
 ) -> Option<Path> {
     let base = radii.normalized_for(rect.width, rect.height);
-    let bound = Bound::of(target, brush.transform);
+    let bound = CpuBound::of(target, brush.transform);
     let outer = rounded_rect(
         expand(rect, band.outside),
         CornerRadii(base.map(|r| r + band.outside)),

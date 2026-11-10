@@ -2,11 +2,16 @@ use core::panic::Location;
 
 use crate::reactive::runtime::RuntimeState;
 
+/// Phase of the frame that the runtime is in.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum DrawPhase {
+    /// The idle draw phase.
     Idle,
+    /// The effect draw phase.
     Effect,
+    /// The layout draw phase.
     Layout,
+    /// The paint draw phase.
     Paint,
 }
 

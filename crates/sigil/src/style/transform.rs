@@ -4,9 +4,23 @@ use crate::geometry::{Point, Rect};
 
 use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding};
 
+const SHIFT_UNITS: f32 = 2_048.0;
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the fraction is clamped to the i16 range of 1/2048 steps before the cast"
+)]
+fn shift_units(fraction: f32) -> i16 {
+    (fraction * SHIFT_UNITS)
+        .round()
+        .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
+}
+
+/// Holds a 2D translation, scale, and rotation for a node.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform2D {
     translation: [f32; 2],
+    shift: [i16; 2],
     scale: [f32; 2],
     rotation: f32,
     origin: [u16; 2],
@@ -24,6 +38,7 @@ impl Hash for Transform2D {
         {
             (if value == 0.0 { 0 } else { value.to_bits() }).hash(state);
         }
+        self.shift.hash(state);
         self.origin.hash(state);
     }
 }
@@ -35,13 +50,16 @@ impl Default for Transform2D {
 }
 
 impl Transform2D {
+    /// The transform that changes nothing.
     pub const IDENTITY: Self = Self {
         translation: [0.0, 0.0],
+        shift: [0, 0],
         scale: [1.0, 1.0],
         rotation: 0.0,
         origin: [5_000, 5_000],
     };
 
+    /// Adds a translation.
     #[must_use]
     pub fn translate(mut self, x: f32, y: f32) -> Self {
         assert!(x.is_finite() && y.is_finite());
@@ -49,6 +67,7 @@ impl Transform2D {
         self
     }
 
+    /// Adds a scale.
     #[must_use]
     pub fn scale(mut self, x: f32, y: f32) -> Self {
         assert!(x.is_finite() && y.is_finite());
@@ -56,6 +75,7 @@ impl Transform2D {
         self
     }
 
+    /// Adds a rotation.
     #[must_use]
     pub fn rotate(mut self, radians: f32) -> Self {
         assert!(radians.is_finite());
@@ -63,6 +83,7 @@ impl Transform2D {
         self
     }
 
+    /// Sets the point the transform turns around.
     #[must_use]
     #[expect(
         clippy::cast_possible_truncation,
@@ -75,53 +96,53 @@ impl Transform2D {
         self
     }
 
-    pub(crate) const fn value(self, kind: NumericAtomKind) -> Option<f32> {
+    pub(crate) fn value(self, kind: NumericAtomKind) -> Option<f32> {
         match kind {
             NumericAtomKind::TranslateX => Some(self.translation[0]),
             NumericAtomKind::TranslateY => Some(self.translation[1]),
             NumericAtomKind::ScaleX => Some(self.scale[0]),
             NumericAtomKind::ScaleY => Some(self.scale[1]),
             NumericAtomKind::Rotation => Some(self.rotation),
+            NumericAtomKind::TranslateXFraction => Some(f32::from(self.shift[0]) / SHIFT_UNITS),
+            NumericAtomKind::TranslateYFraction => Some(f32::from(self.shift[1]) / SHIFT_UNITS),
             _ => None,
         }
     }
 
     pub(crate) fn overlay(self, overlay: &dyn AnimatorOverlay) -> Self {
-        self.translate(
-            overlay
-                .value_for(NumericAtomKind::TranslateX)
-                .unwrap_or(self.translation[0]),
-            overlay
-                .value_for(NumericAtomKind::TranslateY)
-                .unwrap_or(self.translation[1]),
+        let value = |kind| overlay.value_for(kind).or_else(|| self.value(kind));
+        let get = |kind| value(kind).unwrap_or_default();
+        Self {
+            shift: [
+                shift_units(get(NumericAtomKind::TranslateXFraction)),
+                shift_units(get(NumericAtomKind::TranslateYFraction)),
+            ],
+            ..self
+        }
+        .translate(
+            get(NumericAtomKind::TranslateX),
+            get(NumericAtomKind::TranslateY),
         )
-        .scale(
-            overlay
-                .value_for(NumericAtomKind::ScaleX)
-                .unwrap_or(self.scale[0]),
-            overlay
-                .value_for(NumericAtomKind::ScaleY)
-                .unwrap_or(self.scale[1]),
-        )
-        .rotate(
-            overlay
-                .value_for(NumericAtomKind::Rotation)
-                .unwrap_or(self.rotation),
-        )
+        .scale(get(NumericAtomKind::ScaleX), get(NumericAtomKind::ScaleY))
+        .rotate(get(NumericAtomKind::Rotation))
     }
 
     pub(crate) fn is_identity(self) -> bool {
         self.translation == [0.0, 0.0]
+            && self.shift == [0, 0]
             && self.scale.map(f32::to_bits) == [1.0_f32.to_bits(); 2]
             && self.rotation == 0.0
     }
 
     pub(crate) fn matrix(self, rect: Rect) -> [[f32; 3]; 2] {
-        let [tx, ty] = self.translation;
+        let [width_share, height_share] = self.shift.map(|units| f32::from(units) / SHIFT_UNITS);
+        let tx = width_share.mul_add(rect.width, self.translation[0]);
+        let ty = height_share.mul_add(rect.height, self.translation[1]);
         let [sx, sy] = self.scale;
-        let [ox, oy] = self.origin.map(|value| f32::from(value) / 10_000.0);
-        let pivot_x = ox.mul_add(rect.width, rect.origin.x);
-        let pivot_y = oy.mul_add(rect.height, rect.origin.y);
+        let Point {
+            x: pivot_x,
+            y: pivot_y,
+        } = self.pivot(rect);
         let (sin, cos) = self.rotation.sin_cos();
         let (xx, xy, yx, yy) = (cos * sx, -sin * sy, sin * sx, cos * sy);
         [
@@ -138,31 +159,12 @@ impl Transform2D {
         ]
     }
 
-    pub(crate) fn apply(self, point: Point, rect: Rect) -> Point {
-        if self.is_identity() {
-            return point;
-        }
-        let [[xx, xy, tx], [yx, yy, ty]] = self.matrix(rect);
+    pub(crate) fn pivot(self, rect: Rect) -> Point {
+        let [ox, oy] = self.origin.map(|value| f32::from(value) / 10_000.0);
         Point::new(
-            xx.mul_add(point.x, xy.mul_add(point.y, tx)),
-            yx.mul_add(point.x, yy.mul_add(point.y, ty)),
+            ox.mul_add(rect.width, rect.origin.x),
+            oy.mul_add(rect.height, rect.origin.y),
         )
-    }
-
-    pub(crate) fn inverse(self, point: Point, rect: Rect) -> Option<Point> {
-        if self.is_identity() {
-            return Some(point);
-        }
-        let [[xx, xy, tx], [yx, yy, ty]] = self.matrix(rect);
-        let determinant = xx.mul_add(yy, -xy * yx);
-        if determinant == 0.0 || !determinant.is_finite() {
-            return None;
-        }
-        let (local_x, local_y) = (point.x - tx, point.y - ty);
-        Some(Point::new(
-            yy.mul_add(local_x, -xy * local_y) / determinant,
-            xx.mul_add(local_y, -yx * local_x) / determinant,
-        ))
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {

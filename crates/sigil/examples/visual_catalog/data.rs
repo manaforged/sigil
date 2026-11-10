@@ -16,7 +16,10 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
 ];
 
 fn table_row(state: State) -> NodeBuilder {
-    node(crate::widget_data::table_demo(state == State::Selected).disabled(off(state)))
+    node(crate::widget_data::table_demo(
+        state == State::Selected,
+        off(state),
+    ))
 }
 
 fn tree_rows(state: State) -> NodeBuilder {

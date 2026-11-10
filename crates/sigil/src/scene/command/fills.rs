@@ -1,29 +1,47 @@
+use crate::animation_runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::style::Rgba8;
 use smallvec::SmallVec;
 
+#[cfg(any(test, feature = "kittest"))]
+/// The fill of a painted area: solid color, gradient, or pattern.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PaintFill {
+    /// The solid paint fill.
     Solid(Rgba8),
+    /// The linear gradient paint fill.
     LinearGradient(LinearGradient),
+    /// The pattern paint fill.
     Pattern(PatternKind),
 }
 
+/// The shape of a pattern fill.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PatternKind {
+    /// The slash pattern kind.
     Slash {
+        /// The color.
         color: Rgba8,
+        /// The period.
         period: f32,
+        /// The line width.
         line_width: f32,
     },
+    /// The checker pattern kind.
     Checker {
+        /// The color a.
         color_a: Rgba8,
+        /// The color b.
         color_b: Rgba8,
+        /// The cell.
         cell: f32,
     },
+    /// The watercolour wash pattern kind.
+    Wash(super::wash::Wash),
 }
 
 impl PatternKind {
+    /// Returns this pattern with its values in range.
     #[must_use]
     pub const fn normalized(self) -> Self {
         match self {
@@ -53,17 +71,22 @@ impl PatternKind {
                 color_b,
                 cell: pattern_length(cell),
             },
+            Self::Wash(wash) => Self::Wash(wash.normalized()),
         }
     }
 
+    /// Returns the tile extent.
     #[must_use]
     pub const fn tile_extent(self) -> f32 {
         match self.normalized() {
             Self::Slash { period, .. } => period,
             Self::Checker { cell, .. } => cell * 2.0,
+            Self::Wash(_) => WASH_EXTENT,
         }
     }
 }
+
+const WASH_EXTENT: f32 = 1.0e6;
 
 pub(crate) const TRANSPARENT: Rgba8 = Rgba8 {
     r: 0,
@@ -83,14 +106,19 @@ const fn pattern_length(length: f32) -> f32 {
     }
 }
 
+/// A gradient along a straight axis.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinearGradient {
+    /// The start.
     pub start: Point,
+    /// The end.
     pub end: Point,
+    /// The stops.
     pub stops: SmallVec<[GradientStop; 4]>,
 }
 
 impl LinearGradient {
+    /// Creates a linear gradient.
     #[must_use]
     pub fn new(start: Point, end: Point, stops: impl Into<SmallVec<[GradientStop; 4]>>) -> Self {
         Self {
@@ -100,28 +128,39 @@ impl LinearGradient {
         }
     }
 
+    /// Returns the normalized.
     #[must_use]
     pub fn normalized(&self) -> Self {
-        let mut sorted: SmallVec<[GradientStop; 4]> = self
-            .stops
-            .iter()
-            .copied()
-            .filter(|stop| stop.offset.is_finite())
-            .collect();
-        sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
-        let stops = match sorted.last() {
-            None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
-            Some(last) if self.is_degenerate() => {
-                smallvec::smallvec![GradientStop::new(0.0, last.color)]
-            }
-            Some(_) => clamp_stops(&sorted),
-        };
-        Self::new(self.start, self.end, stops)
+        Self::new(
+            self.start,
+            self.end,
+            normalize_stops(&self.stops, self.is_degenerate()),
+        )
     }
 
-    fn is_degenerate(&self) -> bool {
+    pub(super) fn is_degenerate(&self) -> bool {
         let length = (self.end.x - self.start.x).hypot(self.end.y - self.start.y);
         length.is_nan() || length < DEGENERATE_LENGTH
+    }
+}
+
+pub(super) fn normalize_stops(
+    stops: &[GradientStop],
+    degenerate: bool,
+) -> SmallVec<[GradientStop; 4]> {
+    let mut floor = f32::NEG_INFINITY;
+    let placed: SmallVec<[GradientStop; 4]> = stops
+        .iter()
+        .filter(|stop| stop.offset.is_finite())
+        .map(|stop| {
+            floor = floor.max(stop.offset);
+            GradientStop::new(floor, stop.color)
+        })
+        .collect();
+    match placed.last() {
+        None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
+        Some(last) if degenerate => smallvec::smallvec![GradientStop::new(0.0, last.color)],
+        Some(_) => clamp_stops(&placed),
     }
 }
 
@@ -144,69 +183,109 @@ fn clamp_stops(sorted: &[GradientStop]) -> SmallVec<[GradientStop; 4]> {
     out
 }
 
-fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
+/// The color at offset `t` of stops in offset order, mixed in premultiplied gamma-encoded sRGB.
+pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
     let span = sorted.windows(2).find_map(|pair| match pair {
         [a, b] if a.offset <= t && t < b.offset => Some((*a, *b)),
         _ => None,
     });
     match (span, sorted.first(), sorted.last()) {
-        (Some((a, b)), _, _) => {
-            lerp_color(a.color, b.color, (t - a.offset) / (b.offset - a.offset))
-        }
+        (Some((a, b)), _, _) => mix(a.color, b.color, (t - a.offset) / (b.offset - a.offset)),
         (None, Some(first), _) if t < first.offset => first.color,
         (None, _, Some(last)) => last.color,
         (None, _, None) => TRANSPARENT,
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the channel is rounded and clamped to 0..=255 before the cast"
-)]
-fn lerp_color(a: Rgba8, b: Rgba8, amount: f32) -> Rgba8 {
-    let channel = |x: u8, y: u8| {
-        let value = (f32::from(y) - f32::from(x)).mul_add(amount, f32::from(x));
-        value.round().clamp(0.0, 255.0) as u8
-    };
-    Rgba8 {
-        r: channel(a.r, b.r),
-        g: channel(a.g, b.g),
-        b: channel(a.b, b.b),
-        a: channel(a.a, b.a),
-    }
-}
-
+/// A color at one offset of a gradient.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GradientStop {
+    /// The offset.
     pub offset: f32,
+    /// The color.
     pub color: Rgba8,
 }
 
 impl GradientStop {
+    /// Creates a gradient stop.
     #[must_use]
     pub const fn new(offset: f32, color: Rgba8) -> Self {
         Self { offset, color }
     }
 }
 
+/// The dash style of a stroke.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StrokeStyle {
+    /// The solid stroke style.
     Solid,
+    /// The dashed stroke style.
     Dashed(f32),
 }
 
+/// Where a stroke sits relative to a shape's edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StrokeAlign {
+    /// The centered stroke align.
     Centered,
+    /// The inside stroke align.
     Inside,
+    /// The outside stroke align.
     Outside,
 }
 
+/// The width, color, and style of an outline.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stroke {
+    /// The color.
     pub color: Rgba8,
+    /// The width.
     pub width: f32,
+    /// The style.
     pub style: StrokeStyle,
+    /// The align.
     pub align: StrokeAlign,
+}
+
+/// The shape at the open ends of a stroked path.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum StrokeCap {
+    /// Ends flat at the end point.
+    #[default]
+    Butt,
+    /// Ends in a half circle around the end point.
+    Round,
+    /// Ends in a half square past the end point.
+    Square,
+}
+
+/// The shape where two stroked segments meet.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum StrokeJoin {
+    /// Extends the outer edges to a point.
+    #[default]
+    Miter,
+    /// Rounds the corner with a circle.
+    Round,
+    /// Cuts the corner straight across.
+    Bevel,
+}
+
+/// Which areas of a self-crossing path count as inside.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum FillRule {
+    /// Inside where the winding number is not zero.
+    #[default]
+    NonZero,
+    /// Inside where the winding number is odd.
+    EvenOdd,
+}
+
+/// The paint of a path's fill or stroke, in path units.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PathPaint {
+    /// One color.
+    Solid(Rgba8),
+    /// A linear, radial, or conic gradient.
+    Gradient(super::gradient::Gradient),
 }

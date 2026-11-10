@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
-use crate::events::NodeEventsExt;
-use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::PopupSide;
+use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::CellForm;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position, rows};
+use crate::layout::{IntoPx, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::{ControlSize, Metrics, StyleAtom, Token};
+use crate::style::{StyleAtom, Token};
+use crate::widgets::Widget;
 
-use super::super::listbox::{ListModel, scrolled};
-use super::super::popup::{self, ItemSlots, POPUP_GAP, item_row};
+use super::super::combobox::list_popup;
+use super::super::listbox::ListModel;
+use super::super::popup::{ItemSlots, POPUP_GAP, item_row};
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
 
@@ -17,7 +17,7 @@ const TRIGGER_HEIGHT: f32 = 32.0;
 const TRIGGER_ROWS: f32 = 3.0;
 
 pub(super) fn trigger_height() -> f32 {
-    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).px()).pick()
+    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).into_px()).pick()
 }
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
@@ -31,6 +31,17 @@ pub(super) struct OptionCtx {
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) width: Option<f32>,
     pub(super) trigger_height: f32,
+}
+
+impl OptionCtx {
+    fn commit(self, index: usize, on_change: &IndexChange) {
+        if disabled_now(self.disabled) {
+            return;
+        }
+        self.selected.set(index);
+        on_change(index);
+        self.open.set(false);
+    }
 }
 
 pub(super) struct DropdownModel {
@@ -65,12 +76,7 @@ impl ListModel for DropdownModel {
     }
 
     fn commit(&self, index: usize) {
-        if disabled_now(self.ctx.disabled) {
-            return;
-        }
-        self.ctx.selected.set(index);
-        (self.on_change)(index);
-        self.ctx.open.set(false);
+        self.ctx.commit(index, &self.on_change);
     }
 
     fn close(&self) {
@@ -78,57 +84,20 @@ impl ListModel for DropdownModel {
     }
 }
 
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "option counts are small; sub-unit precision is irrelevant at render scale"
-)]
-fn rows_height(count: usize) -> f32 {
-    count as f32 * Metrics::current().control_height(ControlSize::Default)
-}
-
 pub(super) fn build_popup(
     ctx: OptionCtx,
     options: &Rc<Vec<String>>,
     on_change: &IndexChange,
 ) -> NodeBuilder {
-    let count = options.len();
-    let view_h = rows_height(count.min(POPUP_MAX_VISIBLE));
-    let extent = rows_height(count);
-    let inner_w = ctx
-        .width
-        .map(|width| 2.0f32.mul_add(-popup::inset(), width).max(0.0));
-    let base = LayoutStyle::flex_column()
-        .position(Position::Absolute)
-        .inset_top(ctx.trigger_height + POPUP_GAP)
-        .inset_left(0.0)
-        .height(2.0f32.mul_add(popup::inset(), view_h))
-        .padding(Metrics::current().overlay_padding());
-    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(match ctx.width {
-        Some(width) => base.width(width),
-        None => base.fill_width(),
-    });
-    let list = options.iter().enumerate().fold(
-        container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
-        |list, (index, label)| {
-            list.child(build_option(
-                index,
-                label.clone(),
-                ctx,
-                Rc::clone(on_change),
-            ))
-        },
-    );
-    if count > POPUP_MAX_VISIBLE {
-        frame.child(scrolled(
-            list,
-            ctx.cursor,
-            rows_height(1),
-            extent,
-            (inner_w, view_h),
-        ))
-    } else {
-        frame.child(list)
-    }
+    list_popup(
+        (ctx.trigger_height + POPUP_GAP, ctx.width),
+        (options.len(), POPUP_MAX_VISIBLE),
+        ctx.cursor,
+        options
+            .iter()
+            .enumerate()
+            .map(|(index, label)| build_option(index, label.clone(), ctx, Rc::clone(on_change))),
+    )
 }
 
 fn build_option(
@@ -150,9 +119,7 @@ fn build_option(
             if event.is_captured() || disabled_now(ctx.disabled) {
                 return;
             }
-            ctx.selected.set(index);
-            ctx.open.set(false);
-            on_change(index);
+            ctx.commit(index, &on_change);
             event.stop_propagation();
         })
         .pointer_enter(move |_| ctx.cursor.set(index))

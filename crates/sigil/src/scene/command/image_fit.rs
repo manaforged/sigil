@@ -3,11 +3,38 @@
     reason = "image dimensions are far below the f32 mantissa limit"
 )]
 
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 use crate::geometry::{Point, Rect};
-use crate::kernel::{ImageCrop, ImageSource, ObjectFit};
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
+use crate::kernel::ImageSource;
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
+use crate::kernel::{ImageCrop, ObjectFit};
 
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 use super::payloads::DrawImage;
 
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 impl ImageCrop {
     pub(crate) fn rows(self, height: u32) -> Option<(u32, u32)> {
         let top = self.top.min(height);
@@ -16,6 +43,10 @@ impl ImageCrop {
     }
 }
 
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 impl DrawImage {
     pub(crate) fn placement_at(&self, scale: f32) -> Option<(ImageSource, Rect, Rect)> {
         let (source, dest) = self.source_at(scale);
@@ -30,6 +61,12 @@ impl DrawImage {
     }
 }
 
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 pub(crate) fn fit(mode: ObjectFit, source: Rect, dest: Rect) -> (Rect, Rect) {
     let (iw, ih) = (source.width, source.height);
     if iw <= 0.0 || ih <= 0.0 || dest.width <= 0.0 || dest.height <= 0.0 {

@@ -60,6 +60,15 @@ impl WinitShell {
                 use winit::platform::macos::WindowAttributesExtMacOS;
                 attrs = attrs.with_has_shadow(false);
             }
+        } else if spec.opts.inset_title_bar.is_some() {
+            #[cfg(target_os = "macos")]
+            {
+                use winit::platform::macos::WindowAttributesExtMacOS;
+                attrs = attrs
+                    .with_titlebar_transparent(true)
+                    .with_fullsize_content_view(true)
+                    .with_title_hidden(true);
+            }
         } else if spec.opts.frameless {
             attrs = attrs.with_decorations(false);
             #[cfg(target_os = "macos")]
@@ -123,6 +132,10 @@ impl WinitShell {
                     ));
                     window.request_redraw();
                     self.windows.push((spec.handle, Arc::new(window)));
+                    if let Some(bar) = spec.opts.inset_title_bar {
+                        self.title_bars.push((spec.handle, bar));
+                        self.centre_controls(spec.handle);
+                    }
                 }
                 Err(err) => self.failed.push((spec.handle, err.to_string())),
             }

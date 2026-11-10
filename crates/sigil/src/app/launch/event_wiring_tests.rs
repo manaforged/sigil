@@ -2,22 +2,12 @@ use super::*;
 use crate::kernel::FocusScopeKind;
 use crate::kernel::*;
 use crate::prelude::button;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 use accesskit::Action::{Click, Decrement, Increment};
 
-struct StubMeasure;
-impl crate::layout::TextMeasure for StubMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: crate::geometry::Size,
-    ) -> crate::geometry::LogicalSize {
-        crate::geometry::LogicalSize::new(40.0, 16.0)
-    }
-}
-
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout =
+        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(40.0, 16.0)));
     layout
         .compute(cx, root, crate::geometry::Size::fixed(200.0, 100.0))
         .expect("layout computes");
@@ -46,7 +36,7 @@ fn act(
 
 #[test]
 fn increment_adjusts_value_by_step_and_clamps() {
-    Runtime::scope("a11y-increment-step", || {
+    Owner::scope("a11y-increment-step", || {
         let value = signal(0.5_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -71,7 +61,7 @@ fn increment_adjusts_value_by_step_and_clamps() {
 
 #[test]
 fn increment_rejects_non_focus_target() {
-    Runtime::scope("a11y-increment-gated", || {
+    Owner::scope("a11y-increment-gated", || {
         let value = signal(0.5_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(container().value(value, 0.0, 1.0).value_step(0.25));
@@ -87,7 +77,7 @@ fn increment_rejects_non_focus_target() {
 
 #[test]
 fn click_activates_a_button_once() {
-    Runtime::scope("a11y-button", || {
+    Owner::scope("a11y-button", || {
         let clicks = signal(0);
         let mut cx = Cx::new_root();
         let root = cx.add(button("Save").activate(move || clicks.update(|value| *value += 1)));
@@ -103,7 +93,7 @@ fn click_activates_a_button_once() {
 
 #[test]
 fn click_can_remove_its_own_controls() {
-    Runtime::scope("a11y-close", || {
+    Owner::scope("a11y-close", || {
         let visible = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(container().children_reactive(move || {
@@ -125,7 +115,7 @@ fn click_can_remove_its_own_controls() {
 
 #[test]
 fn click_rechecks_the_focus_scope_after_a_dialog_closes() {
-    Runtime::scope("a11y-dialog-reopen", || {
+    Owner::scope("a11y-dialog-reopen", || {
         let visible = signal(true);
         let clicks = signal(0);
         let mut cx = Cx::new_root();

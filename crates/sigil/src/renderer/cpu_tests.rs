@@ -9,7 +9,7 @@ use crate::style::Color;
 use crate::style::Rgba8;
 
 use super::*;
-use crate::scene::{DrawRect, SceneCommand, SceneRectStyle};
+use crate::scene::{DrawRect, SceneCommand};
 
 const RED: Rgba8 = Rgba8 {
     r: 255,
@@ -44,7 +44,7 @@ fn draw(
 }
 
 fn solid(rect: Rect) -> SceneCommand {
-    SceneCommand::Rect(DrawRect::new(rect, SceneRectStyle::solid(RED)))
+    SceneCommand::Rect(DrawRect::new(rect, RED))
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn rect_lands_at_physical_scale() {
 #[test]
 fn clip_limits_a_rect_to_the_pushed_bounds() {
     let commands = vec![
-        SceneCommand::PushClip(rect(0.0, 0.0, 2.0, 4.0)),
+        SceneCommand::PushClip(rect(0.0, 0.0, 2.0, 4.0).into()),
         solid(rect(0.0, 0.0, 4.0, 4.0)),
         SceneCommand::PopClip,
     ];
@@ -111,9 +111,7 @@ fn glyph_run_paints_ink_inside_its_rect() {
         TextStyle::default(),
         10_000,
     );
-    let commands = vec![SceneCommand::GlyphRun(
-        crate::renderer::scene_command::DrawGlyphRun::new(run),
-    )];
+    let commands = vec![SceneCommand::GlyphRun(run)];
     let (out, renderer) = draw(commands, WHITE, (64.0, 34.0), (128, 68));
     let ink = out
         .pixels()

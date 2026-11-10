@@ -1,12 +1,15 @@
-use crate::events::{MouseButton, NodeEventsExt};
+use crate::events::MouseButton;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent};
 use crate::reactive::signal;
+use crate::widgets::Widget;
 
-use super::super::patterns::{ListRowSlots, list_row_with};
+use super::super::patterns::{ListRowSlots, list_row};
 use super::keys::{activate, select, toggle};
-use super::{TreeKey, TreeRow, TreeState};
+use core::hash::Hash;
 
-pub(super) fn render<K: TreeKey>(
+use super::{TreeRow, TreeState};
+
+pub(super) fn render<K: Clone + Eq + Hash + 'static>(
     state: &TreeState<K>,
     index: usize,
     row: &TreeRow<K>,
@@ -28,7 +31,7 @@ pub(super) fn render<K: TreeKey>(
     let level = usize::from(row.depth).saturating_add(1);
     let click_state = state.clone();
     let click_row = row.clone();
-    list_row_with(row.selected, node.label.clone(), slots)
+    list_row(row.selected, node.label.clone(), slots)
         .role(Role::TreeItem)
         .label(accessible_name(&node.label))
         .selected(signal(row.selected))

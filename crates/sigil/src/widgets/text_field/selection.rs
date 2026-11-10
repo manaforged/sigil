@@ -1,15 +1,16 @@
-use crate::events::{NodeEventsExt, PointerEvent};
+use crate::events::PointerEvent;
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::with_text_geometry;
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
+use crate::layout::{LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, TextStyle, Token};
+use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, Token};
+use crate::widgets::Widget;
 
-use crate::widgets::interaction::InteractionState;
+use crate::widgets::interaction::{InteractionState, is_primary};
 
-use super::super::text_edit::overlay_rect;
+use super::super::text_edit::{blink, overlay_rect};
 use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
@@ -21,7 +22,7 @@ static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
 static FIELD_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurface.text()];
 static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
-const FALLBACK_LINE_H: f32 = 16.0;
+const LINE_BOX: &str = "\u{200b}";
 
 pub(super) fn text_region(
     runtime: TextFieldRuntime,
@@ -33,10 +34,9 @@ pub(super) fn text_region(
             LayoutStyle::block()
                 .position(Position::Relative)
                 .fill_width()
-                .height(line_height())
-                .overflow_x(Overflow::Hidden)
-                .overflow_y(Overflow::Hidden),
+                .overflow_x(Overflow::Hidden),
         )
+        .child(line_box())
         .child(track(runtime.clone(), interaction, displayed));
     let moved = runtime.clone();
     region
@@ -47,6 +47,10 @@ pub(super) fn text_region(
                 let _ = interaction.release_pointer(event);
             }
         })
+}
+
+fn line_box() -> TextBuilder {
+    text(LINE_BOX).hittable(false).layout(LayoutStyle::block())
 }
 
 fn track(
@@ -67,22 +71,25 @@ fn track(
             let runtime = runtime.clone();
             overlay_layer().children_reactive(move || selection_rects(&runtime))
         })
-        .child(overlay_layer().children_reactive(move || caret_rects(&runtime, interaction)))
+        .child({
+            let (value, caret) = (runtime.input.value, runtime.input.caret);
+            let lit = blink(interaction, move || {
+                value.with(|_| ());
+                caret.with(|_| ());
+            });
+            overlay_layer().children_reactive(move || {
+                if lit.get() {
+                    caret_rects(&runtime, interaction)
+                } else {
+                    Vec::new()
+                }
+            })
+        })
         .child(field_text(displayed, placeholder_visible))
 }
 
 pub(super) fn column_width(width: Option<f32>) -> f32 {
     width.map_or(156.0, |w| (w - 26.0).max(0.0))
-}
-
-pub(super) fn line_height() -> f32 {
-    with_text_geometry(|engine| {
-        engine
-            .caret("", &TextStyle::default(), None, downstream(0))
-            .height
-    })
-    .filter(|height| *height > 0.0)
-    .unwrap_or(FALLBACK_LINE_H)
 }
 
 fn field_text(displayed: Signal<String>, placeholder_visible: Signal<bool>) -> TextBuilder {
@@ -126,7 +133,7 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
 }
 
 fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec<NodeBuilder> {
-    if !interaction.focus_visible().get() || !runtime.input.caret_visible.get() {
+    if !interaction.focused().get() || !runtime.input.caret_visible.get() {
         return Vec::new();
     }
     let (composed, cursor) = runtime
@@ -150,7 +157,7 @@ const fn downstream(byte: usize) -> HitPosition {
 }
 
 fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if runtime.input.disabled() {
+    if runtime.input.disabled() || !is_primary(event) {
         return;
     }
     let byte = runtime.hit(event.position.x);

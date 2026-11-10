@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::print_stdout)]
@@ -140,7 +141,7 @@ fn build_scene(content: &str) -> (CommandScene, usize) {
         style,
         10_000,
     );
-    let glyph_count = run.positioned_glyphs().len();
+    let glyph_count = run.glyph_count();
     let mut builder = SceneBuilder::new();
     builder.draw_glyph_run(run);
     (builder.finish(), glyph_count)

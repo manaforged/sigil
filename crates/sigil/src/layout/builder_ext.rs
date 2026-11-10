@@ -1,56 +1,44 @@
-use crate::kernel::{Node, NodeBuilder, TextBuilder, container};
+use crate::kernel::{Node, NodeBuilder, container};
+use crate::widgets::Widget;
 
-use crate::layout::LayoutStyle;
-use crate::layout::align::Asymmetric;
+use crate::layout::{LayoutStyle, Space};
 use crate::style::{Metrics, StyleBinding};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Asymmetric(pub &'static str);
+
+/// A container that places its children left to right, centred across the row, with the theme gap: 8 px in a window, one cell in a terminal.
 #[must_use]
 pub fn row() -> NodeBuilder {
-    container().layout(LayoutStyle::flex_row().gap(default_gap()))
+    container().layout(
+        LayoutStyle::flex_row()
+            .stretch_width()
+            .gap(Space::px(default_gap()))
+            .align_items(crate::layout::AlignItems::Center),
+    )
 }
 
+/// A container that places its children top to bottom with the theme gap.
 #[must_use]
 pub fn column() -> NodeBuilder {
-    container().layout(LayoutStyle::flex_column().gap(default_gap()))
+    container().layout(
+        LayoutStyle::flex_column()
+            .stretch_width()
+            .gap(Space::px(default_gap())),
+    )
 }
 
 fn default_gap() -> f32 {
     Metrics::current().gap(crate::style::ControlSize::Default)
 }
 
-pub trait LayoutBuilderExt {
-    #[must_use]
-    fn layout(self, style: LayoutStyle) -> Self;
-
-    #[must_use]
-    fn asymmetric(self, reason: &'static str) -> Self;
+pub(crate) fn asymmetric(node: NodeBuilder, reason: &'static str) -> NodeBuilder {
+    node.mutate(move |node| {
+        let _previous = node.attach(Asymmetric(reason));
+    })
 }
 
-impl LayoutBuilderExt for NodeBuilder {
-    fn layout(self, style: LayoutStyle) -> Self {
-        self.mutate(move |node| install_layout(node, &style))
-    }
-
-    fn asymmetric(self, reason: &'static str) -> Self {
-        self.mutate(move |node| {
-            let _previous = node.attach(Asymmetric(reason));
-        })
-    }
-}
-
-impl LayoutBuilderExt for TextBuilder {
-    fn layout(self, style: LayoutStyle) -> Self {
-        self.mutate(move |node| install_layout(node, &style))
-    }
-
-    fn asymmetric(self, reason: &'static str) -> Self {
-        self.mutate(move |node| {
-            let _previous = node.attach(Asymmetric(reason));
-        })
-    }
-}
-
-fn install_layout(node: &mut Node, style: &LayoutStyle) {
+pub(crate) fn install_layout(node: &mut Node, style: &LayoutStyle) {
     let slots = style.slots();
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
         binding.strip(slots);

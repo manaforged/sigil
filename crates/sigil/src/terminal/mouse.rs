@@ -1,7 +1,5 @@
-use crate::events::PointerEvent;
 use crate::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
-    ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
+    Event, ModifiersState, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase,
 };
 use crate::geometry::Point;
 use crossterm::event::{MouseButton as TermButton, MouseEvent, MouseEventKind};
@@ -10,12 +8,17 @@ const NOTCH: f32 = 3.0;
 
 pub(crate) const MOUSE_OFF: &str = "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l";
 
+/// Terminal mouse reports, all in SGR form (1006).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MouseTracking {
+    /// The off mouse tracking.
     Off,
+    /// The clicks mouse tracking.
     Clicks,
+    /// The drags mouse tracking.
     #[default]
     Drags,
+    /// The motion mouse tracking.
     Motion,
 }
 
@@ -30,6 +33,8 @@ impl MouseTracking {
     }
 }
 
+/// Returns the layout point of a cell.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {
     centre(col, row, crate::Host::CELL)
@@ -39,39 +44,9 @@ fn centre(col: u16, row: u16, cell: f32) -> Point {
     Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
 }
 
+/// Converts a crossterm mouse event to a Sigil event.
 #[must_use]
-pub fn pointer(phase: PointerPhase, col: u16, row: u16) -> ShellEvent {
-    let at = cell_point(col, row);
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: at,
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: if matches!(phase, PointerPhase::Up) {
-            MouseButtons::empty()
-        } else {
-            MouseButtons::LEFT
-        },
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
-}
-
-#[must_use]
-pub fn click(col: u16, row: u16) -> [ShellEvent; 2] {
-    [
-        pointer(PointerPhase::Down, col, row),
-        pointer(PointerPhase::Up, col, row),
-    ]
-}
-
-#[must_use]
-pub fn wheel(col: u16, row: u16, lines: f32) -> ShellEvent {
-    scroll(cell_point(col, row), 0.0, lines, ModifiersState::empty())
-}
-
-#[must_use]
-pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<ShellEvent> {
+pub fn map_mouse(event: MouseEvent, cell: f32, last: &mut Point) -> Event {
     let at = centre(event.column, event.row, cell);
     let delta = Point::new(at.x - last.x, at.y - last.y);
     *last = at;
@@ -81,34 +56,25 @@ pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<Shel
         MouseEventKind::Up(button) => (PointerPhase::Up, Some(button)),
         MouseEventKind::Drag(button) => (PointerPhase::Move, Some(button)),
         MouseEventKind::Moved => (PointerPhase::Move, None),
-        MouseEventKind::ScrollUp => return Some(scroll(at, 0.0, NOTCH, modifiers)),
-        MouseEventKind::ScrollDown => return Some(scroll(at, 0.0, -NOTCH, modifiers)),
-        MouseEventKind::ScrollLeft => return Some(scroll(at, NOTCH, 0.0, modifiers)),
-        MouseEventKind::ScrollRight => return Some(scroll(at, -NOTCH, 0.0, modifiers)),
+        MouseEventKind::ScrollUp => return scroll(at, 0.0, NOTCH, modifiers),
+        MouseEventKind::ScrollDown => return scroll(at, 0.0, -NOTCH, modifiers),
+        MouseEventKind::ScrollLeft => return scroll(at, NOTCH, 0.0, modifiers),
+        MouseEventKind::ScrollRight => return scroll(at, -NOTCH, 0.0, modifiers),
     };
     let button = button.map(press);
     let held = match phase {
         PointerPhase::Up => MouseButtons::empty(),
         _ => button.map_or_else(MouseButtons::empty, bit),
     };
-    Some(ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: at,
-        delta,
-        kind: PointerKind::Mouse,
-        button,
-        buttons: held,
-        modifiers,
-        phase,
-    })))
+    Event::pointer(phase, at)
+        .delta(delta)
+        .button(button)
+        .buttons(held)
+        .modifiers(modifiers)
 }
 
-const fn scroll(at: Point, x: f32, y: f32, modifiers: ModifiersState) -> ShellEvent {
-    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-        position: at,
-        delta: ScrollDelta::Lines(Point::new(x, y)),
-        modifiers,
-        phase: ScrollPhase::Moved,
-    }))
+const fn scroll(at: Point, x: f32, y: f32, modifiers: ModifiersState) -> Event {
+    Event::scroll(at, ScrollDelta::Lines(Point::new(x, y)), ScrollPhase::Moved).modifiers(modifiers)
 }
 
 const fn press(button: TermButton) -> MouseButton {
@@ -129,7 +95,3 @@ const fn bit(button: MouseButton) -> MouseButtons {
         MouseButton::Other(_) => MouseButtons::EMPTY,
     }
 }
-
-#[cfg(test)]
-#[path = "mouse_tests.rs"]
-mod tests;

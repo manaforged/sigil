@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::print_stdout)]

@@ -14,7 +14,6 @@ mod state;
 mod tree;
 
 use sigil::prelude::*;
-use sigil::style::space;
 
 use state::Workspace;
 
@@ -70,7 +69,7 @@ fn workbench(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill()
                 .min_size(0.0, 0.0)
-                .gap(space(2)),
+                .gap(Space::Sm),
         )
         .child(tree::activity_strip(ws))
         .child(

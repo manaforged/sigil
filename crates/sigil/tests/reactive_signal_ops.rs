@@ -6,11 +6,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Runtime, effect, signal};
+use sigil::reactive::{Owner, effect, signal};
 
 #[test]
 fn add_assign_mutates_and_fires_effects() {
-    Runtime::scope("add_assign_mutates_and_fires_effects", || {
+    Owner::scope("add_assign_mutates_and_fires_effects", || {
         let count = signal(0_i32);
         let seen = Rc::new(Cell::new(0_i32));
 
@@ -30,7 +30,7 @@ fn add_assign_mutates_and_fires_effects() {
 
 #[test]
 fn sub_assign_mutates() {
-    Runtime::scope("sub_assign_mutates", || {
+    Owner::scope("sub_assign_mutates", || {
         let mut n = signal(10_i32);
         n -= 3;
         assert_eq!(n.peek(), 7);
@@ -41,7 +41,7 @@ fn sub_assign_mutates() {
 
 #[test]
 fn mul_div_rem_assign() {
-    Runtime::scope("mul_div_rem_assign", || {
+    Owner::scope("mul_div_rem_assign", || {
         let mut n = signal(6_i32);
         n *= 7;
         assert_eq!(n.peek(), 42);
@@ -54,7 +54,7 @@ fn mul_div_rem_assign() {
 
 #[test]
 fn bitops_assign() {
-    Runtime::scope("bitops_assign", || {
+    Owner::scope("bitops_assign", || {
         let mut bits = signal(0b1010_u8);
         bits |= 0b0001;
         assert_eq!(bits.peek(), 0b1011);
@@ -67,7 +67,7 @@ fn bitops_assign() {
 
 #[test]
 fn shift_assign() {
-    Runtime::scope("shift_assign", || {
+    Owner::scope("shift_assign", || {
         let mut n = signal(1_u32);
         n <<= 4;
         assert_eq!(n.peek(), 16);
@@ -78,7 +78,7 @@ fn shift_assign() {
 
 #[test]
 fn shift_assign_with_different_rhs_type() {
-    Runtime::scope("shift_assign_with_different_rhs_type", || {
+    Owner::scope("shift_assign_with_different_rhs_type", || {
         let mut n = signal(1_u32);
         n <<= 4_u8;
         assert_eq!(n.peek(), 16);
@@ -91,7 +91,7 @@ fn shift_assign_with_different_rhs_type() {
 
 #[test]
 fn assign_ops_work_inside_move_closure() {
-    Runtime::scope("assign_ops_work_inside_move_closure", || {
+    Owner::scope("assign_ops_work_inside_move_closure", || {
         let count = signal(0_i32);
         let increment = move |amount: i32| {
             let mut c = count;
@@ -105,7 +105,7 @@ fn assign_ops_work_inside_move_closure() {
 
 #[test]
 fn display_reads_inner_value() {
-    Runtime::scope("display_reads_inner_value", || {
+    Owner::scope("display_reads_inner_value", || {
         let n = signal(42_i32);
         assert_eq!(format!("{n}"), "42");
         assert_eq!(format!("Count: {n}"), "Count: 42");
@@ -117,7 +117,7 @@ fn display_reads_inner_value() {
 
 #[test]
 fn display_inside_effect_subscribes() {
-    Runtime::scope("display_inside_effect_subscribes", || {
+    Owner::scope("display_inside_effect_subscribes", || {
         let count = signal(0_i32);
         let rendered = Rc::new(Cell::new(String::new()));
 
@@ -137,7 +137,7 @@ fn display_inside_effect_subscribes() {
 
 #[test]
 fn set_equal_does_not_rerun_effects() {
-    Runtime::scope("set-equal-skips", || {
+    Owner::scope("set-equal-skips", || {
         let n = signal(1_i32);
         let runs = Rc::new(Cell::new(0_u32));
         let runs_c = Rc::clone(&runs);
@@ -157,7 +157,7 @@ fn set_equal_does_not_rerun_effects() {
 fn assign_op_respects_recursion_guard() {
     use std::panic::{AssertUnwindSafe, catch_unwind};
 
-    Runtime::scope("assign_op_respects_recursion_guard", || {
+    Owner::scope("assign_op_respects_recursion_guard", || {
         let mut n = signal(0_i32);
 
         n += 1;

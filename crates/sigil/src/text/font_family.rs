@@ -1,7 +1,7 @@
 use crate::text::shaper::Font;
 
 #[derive(Clone)]
-pub(crate) struct FontFamily {
+pub(crate) struct FontFaces {
     faces: Vec<WeightedFace>,
 }
 
@@ -11,7 +11,7 @@ struct WeightedFace {
     font: Font,
 }
 
-impl FontFamily {
+impl FontFaces {
     pub(crate) fn new(font: Font) -> Self {
         Self {
             faces: vec![WeightedFace { weight: 400, font }],
@@ -37,6 +37,7 @@ impl FontFamily {
             .expect("FontFamily always contains at least one face")
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn replace(&mut self, font: Font) {
         self.faces.clear();
         self.faces.push(WeightedFace { weight: 400, font });

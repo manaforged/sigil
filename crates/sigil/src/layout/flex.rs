@@ -4,7 +4,7 @@ use std::cell::{Cell, RefCell};
 
 use ahash::AHashMap;
 
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
 use crate::layout::forest::{
     ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef, SpaceConstraint,
@@ -58,13 +58,17 @@ impl<'a> FlexSolver<'a> {
         fills
     }
 
-    pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
+    pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), Error> {
         let avail = self.scope.available();
         let cb = CbSize {
             w: definite(avail.w),
             h: definite(avail.h),
         };
-        self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (None, None))
+        let style = subtree.style();
+        let stretched = style.stretch_width && style.size.width == Dimension::Auto;
+        let assigned_w =
+            (stretched && matches!(avail.w, SpaceConstraint::Definite(_))).then_some(cb.w);
+        self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (assigned_w, None))
     }
 
     pub(crate) fn solve_at(
@@ -72,7 +76,7 @@ impl<'a> FlexSolver<'a> {
         subtree: NodeRef<'_>,
         cb: CbSize,
         origin: Position2,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         self.solve_with(subtree, cb, origin, (None, None))
     }
 
@@ -81,7 +85,7 @@ impl<'a> FlexSolver<'a> {
         subtree: NodeRef<'_>,
         cb: CbSize,
         origin: Position2,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let assigned = (Some(cb.w), (cb.h > 0.0).then_some(cb.h));
         self.solve_with(subtree, cb, origin, assigned)
     }
@@ -92,12 +96,13 @@ impl<'a> FlexSolver<'a> {
         cb: CbSize,
         origin: Position2,
         (assigned_w, assigned_h): (Option<f32>, Option<f32>),
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let ctx = FlexCtx {
             solver: self,
             axes: Axis2::for_direction(subtree.style().flex_direction),
             cb,
             suppress_stretch: false,
+            measures_height: false,
             assigned_w,
             assigned_h,
         };

@@ -1,11 +1,12 @@
 use super::*;
+use sigil::layout::Space;
 use sigil::prelude::Radius;
 
 fn boxed(rounded: bool) -> String {
     present(
         move || {
             let frame = container()
-                .layout(sigil::layout::LayoutStyle::block().padding_x(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
                 .border_w(1)
                 .child(text("inside"));
             if rounded {
@@ -76,8 +77,8 @@ fn an_absolute_backdrop_stretches_to_an_auto_height_parent() {
 }
 
 fn inset_plate(fills: sigil::terminal::Fills) -> String {
-    sigil::reactive::Runtime::scope("terminal-fills", || {
-        let mut host = sigil::Host::cells();
+    sigil::reactive::Owner::scope("terminal-fills", || {
+        let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(|| {
             sigil::widgets::canvas(|scene, area| {
                 let rect = sigil::geometry::Rect::new(
@@ -85,15 +86,15 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
                     120.0,
                     76.0,
                 );
-                scene.draw_rect(
+                scene.draw_rect(sigil::scene::DrawRect::new(
                     rect,
-                    sigil::scene::SceneRectStyle::solid(sigil::prelude::Rgba8 {
+                    sigil::prelude::Rgba8 {
                         r: 105,
                         g: 140,
                         b: 210,
                         a: 255,
-                    }),
-                );
+                    },
+                ));
             })
             .layout(
                 sigil::layout::LayoutStyle::block()
@@ -106,14 +107,8 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
             ..sigil::terminal::Caps::default()
         };
         let mut screen = sigil::terminal::Screen::with_caps(30, 12, caps);
-        let mut router = sigil::events::EventRouter::new();
-        screen
-            .frame(&mut host, &mut router, [], (30, 12))
-            .expect("frame");
-        screen
-            .frame(&mut host, &mut router, [], (30, 12))
-            .expect("frame")
-            .text()
+        screen.frame(&mut host, [], (30, 12)).expect("frame");
+        screen.frame(&mut host, [], (30, 12)).expect("frame").text()
     })
 }
 
@@ -134,7 +129,7 @@ fn a_thick_rounded_border_stays_heavy() {
     let grid = present(
         || {
             container()
-                .layout(sigil::layout::LayoutStyle::block().padding_x(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
                 .border_w(8)
                 .rounded(Radius::Md)
                 .child(text("inside"))
@@ -150,7 +145,7 @@ fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
     let grid = painted(
         move || {
             container()
-                .layout(sigil::layout::LayoutStyle::block().padding(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding(Space::Sm))
                 .child(
                     container()
                         .layout(backdrop.clone())

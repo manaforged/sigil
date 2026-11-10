@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use std::hash::{Hash as _, Hasher as _};
 
+use crate::fnv::mix;
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
 use crate::style::text_identity::DiscreteTextStyle;
@@ -11,11 +12,12 @@ use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;
 
 use crate::scene::builder::SceneBuilder;
-use crate::scene::command::SceneCommand;
+use crate::scene::command::{LayerEffect, LayerScope, SceneCommand};
+use crate::scene::shadow::Shadow;
 
 const CAP: usize = 4_096;
 
-struct Entry {
+struct EmitEntry {
     version: u32,
     slot: u8,
     rect: [u32; 4],
@@ -30,7 +32,7 @@ struct Layered {
 }
 
 thread_local! {
-    static CACHE: RefCell<HashMap<(u64, NodeId), Entry>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<HashMap<(u64, NodeId), EmitEntry>> = RefCell::new(HashMap::new());
     static LAYERED: RefCell<HashMap<u64, Layered>> = RefCell::new(HashMap::new());
     static THEME_EPOCH: Cell<u64> = const { Cell::new(0) };
 }
@@ -133,7 +135,7 @@ pub(crate) fn store(
         }
         cache.insert(
             key,
-            Entry {
+            EmitEntry {
                 version: node.version(),
                 slot: slot_tag(node),
                 rect: rect_key(rect),
@@ -186,6 +188,26 @@ pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: 
     theme_p ^ color.rotate_left(7) ^ size.rotate_left(17) ^ weight.rotate_left(27)
 }
 
+/// A key that changes when any inherited text shadow changes.
+pub(crate) fn shadow_key(shadows: &[Shadow]) -> u64 {
+    shadows.iter().fold(0, |key, shadow| {
+        let Shadow {
+            color,
+            offset,
+            blur,
+            spread,
+            ..
+        } = *shadow;
+        color
+            .into_iter()
+            .chain(offset)
+            .chain([blur, spread])
+            .fold(key.rotate_left(5), |key, value| {
+                mix(key, u64::from(value.to_bits()))
+            })
+    })
+}
+
 pub(crate) fn slot_tag(node: &Node) -> u8 {
     node.get_extension::<StyleBinding>()
         .map_or(0, |binding| match binding.interaction_slot() {
@@ -214,31 +236,46 @@ fn shift_rect(rect: Rect, dx: f32, dy: f32) -> Rect {
     )
 }
 
-fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
+pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
     match command {
-        SceneCommand::PushClip(rect) => *rect = shift_rect(*rect, dx, dy),
+        SceneCommand::PushClip(clip) => clip.shift(dx, dy),
         SceneCommand::Rect(draw) => {
             draw.rect = shift_rect(draw.rect, dx, dy);
             if let Some(border) = draw.border.as_mut() {
                 border.rect = shift_rect(border.rect, dx, dy);
             }
         }
-        SceneCommand::Gradient(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
+        SceneCommand::Gradient(draw) => {
+            draw.rect = shift_rect(draw.rect, dx, dy);
+            draw.gradient.shift(dx, dy);
+        }
         SceneCommand::Pattern(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
-        SceneCommand::GlyphRun(draw) => draw.run.rect = shift_rect(draw.run.rect, dx, dy),
+        SceneCommand::GlyphRun(draw) => draw.shift(dx, dy),
         SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),
+        SceneCommand::Path(draw) => draw.shift(dx, dy),
         SceneCommand::DrawShadow { rect, .. } => {
             rect[0] += dx;
             rect[1] += dy;
         }
-        SceneCommand::PushLayer(scope) => scope.clip = shift_rect(scope.clip, dx, dy),
+        SceneCommand::PushLayer(scope) => shift_layer(scope, dx, dy),
         SceneCommand::PopClip
         | SceneCommand::PushTransform(_)
         | SceneCommand::PopTransform
         | SceneCommand::SaveLayer { .. }
         | SceneCommand::RestoreLayer
         | SceneCommand::PopLayer => {}
+    }
+}
+
+fn shift_layer(scope: &mut LayerScope, dx: f32, dy: f32) {
+    scope.clip = shift_rect(scope.clip, dx, dy);
+    if let LayerEffect::Mask(mask) = &mut scope.effect {
+        let mut commands = mask.commands.to_vec();
+        for command in &mut commands {
+            shift_command(command, dx, dy);
+        }
+        mask.commands = commands.into();
     }
 }

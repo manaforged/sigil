@@ -5,16 +5,21 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
 #[test]
 fn nowrap_text_shrunk_by_flex_paints_on_one_line() {
-    Runtime::scope("text-nowrap-shrunk", || {
+    Owner::scope("text-nowrap-shrunk", || {
         let mut ui = Harness::new(|| {
             column().child(
                 container()
-                    .layout(LayoutStyle::flex_row().width(220.0).height(20.0).gap(6.0))
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .width(220.0)
+                            .height(20.0)
+                            .gap(Space::raw(6.0, "test fixture")),
+                    )
                     .child(text("8e34241").nowrap())
                     .child(
                         text("guard word graph against lane overflow")

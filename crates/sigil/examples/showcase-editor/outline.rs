@@ -1,11 +1,10 @@
 use sigil::prelude::*;
-use sigil::style::space;
 
 use super::facts::{SYMBOLS, Symbol};
 use super::state::Workspace;
 
 fn symbol_row(ws: Workspace, symbol: Symbol, selected: bool) -> NodeBuilder {
-    list_row_with(
+    list_row(
         selected,
         symbol.name,
         ListRowSlots {
@@ -52,7 +51,7 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill()
                 .min_size(0.0, 0.0)
-                .padding_y(space(1)),
+                .padding_y(Space::Xs),
         )
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)

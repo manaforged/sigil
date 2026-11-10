@@ -9,17 +9,16 @@
 use crate::geometry::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{
-    Color as TsColor, ColorSpace, FillRule, FilterQuality, GradientStop as TsStop, IntSize,
-    LinearGradient as TsGradient, Mask, Paint, Path, PathBuilder, Pattern, Pixmap,
-    Point as TsPoint, Shader, SpreadMode, Stroke as TsStroke, Transform as TsTransform,
+    BlendMode, Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
+    PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke, Transform as TsTransform,
 };
 
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::scene_command::{
-    DecorationGeometry, DecorationKind, DrawDecoration, LinearGradient, Transform,
+    DecorationGeometry, DecorationKind, DrawDecoration, Transform,
 };
 
-use super::bound::Bound;
+use super::bound::CpuBound;
 
 const WAVE_STEP: f32 = 1.0;
 const WAVE_STEPS_PER_PERIOD: f32 = 16.0;
@@ -63,10 +62,10 @@ pub(super) fn color(color: crate::style::Color) -> TsColor {
     .unwrap_or(TsColor::TRANSPARENT)
 }
 
-pub(super) use crate::style::srgb::{decode, encode};
+pub(super) use crate::style::srgb::{decode, encode, encode_byte};
 
 pub(super) fn stored(linear: f32, alpha: f32) -> u8 {
-    (encode(linear * alpha) * 255.0).round() as u8
+    encode_byte(linear * alpha)
 }
 
 pub(super) fn coverage_table(linear: [f32; 3], alpha: f32) -> [[u8; 4]; 256] {
@@ -95,13 +94,18 @@ pub(super) fn ts_color(color: Rgba8, opacity: f32) -> TsColor {
     .unwrap_or(TsColor::TRANSPARENT)
 }
 
-pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::FullSRGBGamma;
+pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::Gamma2;
 
 pub(super) fn solid(color: Rgba8, opacity: f32) -> Paint<'static> {
     let mut paint = Paint::default();
-    paint.set_color(ts_color(color, opacity));
+    let color = ts_color(color, opacity);
+    paint.set_color(color);
     paint.anti_alias = true;
-    paint.colorspace = BLEND_SPACE;
+    paint.colorspace = if color.is_opaque() {
+        ColorSpace::Linear
+    } else {
+        BLEND_SPACE
+    };
     paint
 }
 
@@ -120,28 +124,62 @@ pub(super) fn cover(covers: &mut Vec<Mask>, width: u32, height: u32) -> Option<&
     covers.get(found.unwrap_or(covers.len() - 1))
 }
 
-pub(super) fn blit(target: &mut Pixmap, source: &Pixmap, transform: TsTransform, mask: &Mask) {
+pub(super) fn blit(
+    target: &mut Pixmap,
+    source: &Pixmap,
+    transform: TsTransform,
+    mask: &Mask,
+    blend_mode: BlendMode,
+) {
+    let space = match blend_mode {
+        BlendMode::SourceOver => BLEND_SPACE,
+        _ => ColorSpace::Linear,
+    };
+    blit_in(
+        target,
+        source,
+        transform,
+        Some(mask),
+        (blend_mode, space, 1.0),
+    );
+}
+
+pub(super) fn blit_in(
+    target: &mut Pixmap,
+    source: &Pixmap,
+    transform: TsTransform,
+    mask: Option<&Mask>,
+    (blend_mode, colorspace, opacity): (BlendMode, ColorSpace, f32),
+) {
     let whole = Rect::new(
         Point::new(0.0, 0.0),
         source.width() as f32,
         source.height() as f32,
     );
-    let Some(rect) = Bound::of(target, transform).clip_rect(whole) else {
+    let Some(rect) = CpuBound::of(target, transform).clip_rect(whole) else {
         return;
     };
+    let encoded = colorspace == ColorSpace::Linear;
+    if encoded {
+        super::encoding::convert_under(target, transform, rect, super::encoding::to_srgb);
+    }
     let paint = Paint {
         shader: Pattern::new(
             source.as_ref(),
             SpreadMode::Pad,
             FilterQuality::Nearest,
-            1.0,
+            opacity,
             TsTransform::identity(),
         ),
         anti_alias: false,
-        colorspace: BLEND_SPACE,
+        blend_mode,
+        colorspace,
         ..Paint::default()
     };
-    target.fill_rect(rect, &paint, transform, Some(mask));
+    target.fill_rect(rect, &paint, transform, mask);
+    if encoded {
+        super::encoding::convert_under(target, transform, rect, super::encoding::to_stored);
+    }
 }
 
 pub(super) fn opacity_of(opacity: u16, layer: f32) -> f32 {
@@ -158,31 +196,12 @@ pub(super) fn fill(target: &mut Pixmap, path: &Path, paint: &Paint<'_>, brush: &
     );
 }
 
-pub(super) fn gradient(gradient: &LinearGradient, opacity: f32) -> Option<Shader<'static>> {
-    let gradient = gradient.normalized();
-    if let [only] = gradient.stops.as_slice() {
-        return Some(Shader::SolidColor(ts_color(only.color, opacity)));
-    }
-    let stops = gradient
-        .stops
-        .iter()
-        .map(|stop| TsStop::new(stop.offset.clamp(0.0, 1.0), ts_color(stop.color, opacity)))
-        .collect();
-    TsGradient::new(
-        TsPoint::from_xy(gradient.start.x, gradient.start.y),
-        TsPoint::from_xy(gradient.end.x, gradient.end.y),
-        stops,
-        SpreadMode::Pad,
-        TsTransform::identity(),
-    )
-}
-
 pub(super) fn decoration(target: &mut Pixmap, draw: &DrawDecoration, brush: &Brush<'_>) {
     let Some(geometry) = draw.geometry() else {
         return;
     };
     let paint = solid(draw.color, opacity_of(draw.opacity, brush.opacity));
-    let bound = Bound::of(target, brush.transform);
+    let bound = CpuBound::of(target, brush.transform);
     match draw.kind {
         DecorationKind::Underline | DecorationKind::Strikethrough => {
             let Some(rect) = bound.clip_rect(geometry.line()) else {
@@ -213,7 +232,7 @@ fn band_mask(
     brush: &Brush<'_>,
     paint: &Paint<'_>,
 ) -> Option<Mask> {
-    let bound = Bound::of(target, brush.transform).padded(geometry.reach());
+    let bound = CpuBound::of(target, brush.transform).padded(geometry.reach());
     let band = geometry.band;
     let columns = Rect::new(
         Point::new(band.origin.x, band.origin.y - geometry.reach()),
@@ -232,7 +251,7 @@ fn band_mask(
     Some(mask)
 }
 
-fn wave(geometry: &DecorationGeometry, bound: Bound) -> Option<Path> {
+fn wave(geometry: &DecorationGeometry, bound: CpuBound) -> Option<Path> {
     let band = geometry.band;
     let reach = geometry.reach();
     let span = Rect::new(

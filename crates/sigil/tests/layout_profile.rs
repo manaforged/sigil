@@ -6,14 +6,16 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use stub::stub_engine;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
+use sigil::prelude::Widget;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
-use sigil::reactive::{Runtime, derived, signal};
-use sigil::style::{NodeStyleExt, Paint};
+use sigil::reactive::{Owner, derived, signal};
+use sigil::style::Paint;
 
 static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -114,7 +116,7 @@ fn hidden_subtree_is_not_measured() {
         }
     }
 
-    Runtime::scope("layout-hide-measure", || {
+    Owner::scope("layout-hide-measure", || {
         let show = signal(true);
         let hits = Rc::new(Cell::new(0));
         let mut cx = Cx::new_root();
@@ -163,7 +165,7 @@ fn second_engine_does_not_inherit_text_memo() {
         }
     }
 
-    Runtime::scope("layout-memo-isolation", || {
+    Owner::scope("layout-memo-isolation", || {
         let hits = Rc::new(Cell::new(0));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -204,7 +206,7 @@ fn dirty_parent_reuses_text_memo() {
         }
     }
 
-    Runtime::scope("layout-memo-reuse", || {
+    Owner::scope("layout-memo-reuse", || {
         let hits = Rc::new(Cell::new(0));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -227,7 +229,7 @@ fn dirty_parent_reuses_text_memo() {
 
 #[test]
 fn nowrap_fixed_reactive_text_is_layout_hit() {
-    Runtime::scope("layout-nowrap-tick", || {
+    Owner::scope("layout-nowrap-tick", || {
         let label = signal(String::from("alpha"));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -256,14 +258,18 @@ fn nowrap_fixed_reactive_text_is_layout_hit() {
 #[test]
 fn derived_text_increment_records_layout_path() {
     let _recorder = alone();
-    Runtime::scope("hello-counter-increment", || {
+    Owner::scope("hello-counter-increment", || {
         enable();
         reset();
         let count = signal(0_i32);
         let label = derived(move || format!("Count: {}", count.get()));
         let mut cx = Cx::new_root();
         let mut col = container()
-            .layout(LayoutStyle::flex_column().fixed_size(480.0, 800.0).gap(4.0))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fixed_size(480.0, 800.0)
+                    .gap(Space::Xs),
+            )
             .child(text(label))
             .child(text("Increment"));
         for i in 0..40 {
@@ -299,7 +305,7 @@ fn derived_text_increment_records_layout_path() {
 
 #[test]
 fn paint_only_tick_on_wide_tree_is_hit() {
-    Runtime::scope("layout-wide-tick", || {
+    Owner::scope("layout-wide-tick", || {
         let label = signal(String::from("alpha"));
         let mut cx = Cx::new_root();
         let mut tree = container().layout(LayoutStyle::flex_column().fixed_size(200.0, 4000.0));
@@ -343,7 +349,7 @@ fn letter_spacing_change_remeasures_text() {
         }
     }
 
-    Runtime::scope("layout-memo-letter-spacing", || {
+    Owner::scope("layout-memo-letter-spacing", || {
         let loose = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(

@@ -11,10 +11,11 @@ use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use sigil::geometry::{Scale, Size};
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container, text};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::CharMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 1000.0;
@@ -29,10 +30,7 @@ enum BenchCommand {
     Stop,
 }
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 8.0,
-    line_height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 
 fn stub_engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
@@ -254,7 +252,7 @@ fn bench_scale_change_reflow_1000_nodes(c: &mut Criterion) {
                 (cx, root, engine)
             },
             |(mut cx, root, mut engine)| {
-                cx.set_scale(Scale::new(2.0));
+                cx.set_scale(2.0);
                 engine
                     .compute(&mut cx, root, Size::fixed(1280.0, 720.0))
                     .expect("scale-change layout compute succeeds");

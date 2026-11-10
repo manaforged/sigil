@@ -2,20 +2,20 @@
 
 use sigil::Host;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::scene::SceneCommand;
 
 fn main() {
-    Runtime::scope("hello-host", || {
+    Owner::scope("hello-host", || {
         let count = signal(0_i32);
         let label_text = derived(move || format!("Count: {}", count.get()));
-        let mut host = Host::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(480.0, 240.0)
-                        .gap(16.0),
+                        .gap(Space::Lg),
                 )
                 .child(text(label_text))
                 .child(button("Increment").primary().activate(move || {
@@ -33,10 +33,10 @@ fn main() {
         };
         for command in &scene.commands {
             if let SceneCommand::GlyphRun(draw) = command {
-                let rect = draw.run.rect;
+                let rect = draw.rect;
                 println!(
                     "{} @ ({:.0},{:.0}) {}x{}",
-                    draw.run.text, rect.origin.x, rect.origin.y, rect.width, rect.height
+                    draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
                 );
             }
         }

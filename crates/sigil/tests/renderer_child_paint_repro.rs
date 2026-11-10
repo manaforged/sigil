@@ -6,7 +6,9 @@
 #![allow(clippy::cast_precision_loss)]
 
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil::layout::Space;
+use sigil::layout::{LayoutStyle, Overflow, Position};
+use sigil::prelude::Widget;
 use sigil::style::{Paint, Radius, Theme, Token};
 
 #[path = "renderer_child_paint_repro/support.rs"]
@@ -113,7 +115,11 @@ fn build_rounded_overflow_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
         .child(child);
     cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(80.0, 80.0).padding(8.0))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(80.0, 80.0)
+                    .padding(Space::Sm),
+            )
             .child(clipped),
     )
 }
@@ -148,7 +154,11 @@ fn build_partially_clipped_round_rect(cx: &mut Cx) -> sigil::kernel::NodeId {
         .child(child);
     cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(32.0, 32.0)
+                    .padding(Space::Sm),
+            )
             .child(clipped),
     )
 }
@@ -203,7 +213,7 @@ fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(ROOT_W, ROOT_H)
-                .padding(WIN_X),
+                .padding(Space::raw(WIN_X, "test fixture")),
         )
         .bg(Token::Surface)
         .child(wrapper);

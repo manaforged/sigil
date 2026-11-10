@@ -9,6 +9,7 @@ use crate::reactive::runtime::{
 };
 use crate::reactive::signal_write::{UpdateGuard, live_slot, take_value};
 
+#[doc = include_str!("../../docs/signal.md")]
 pub struct Signal<T: 'static> {
     pub(crate) key: SignalKey,
     _not_send: PhantomData<*const T>,
@@ -104,6 +105,7 @@ impl<T: 'static> core::fmt::Debug for Signal<T> {
     }
 }
 
+/// Creates a signal that holds `value`.
 #[must_use]
 #[track_caller]
 pub fn signal<T: 'static>(initial: T) -> Signal<T> {
@@ -154,6 +156,7 @@ impl<T: Clone + 'static> Signal<T> {
         })
     }
 
+    /// Returns the get.
     #[inline]
     #[track_caller]
     #[must_use]
@@ -161,6 +164,7 @@ impl<T: Clone + 'static> Signal<T> {
         self.read("get", true)
     }
 
+    /// Returns the peek.
     #[inline]
     #[track_caller]
     #[must_use]
@@ -168,9 +172,10 @@ impl<T: Clone + 'static> Signal<T> {
         self.read("peek", false)
     }
 
+    /// Reads the value without tracking, or `None` once its owner is disposed.
     #[inline]
     #[must_use]
-    pub(crate) fn try_peek(self) -> Option<T> {
+    pub fn try_peek(self) -> Option<T> {
         with_rt(|rt| {
             let value = &rt.signals.get(self.key)?.value;
             value.downcast_ref::<T>().cloned()
@@ -220,6 +225,7 @@ impl<T: 'static> Signal<T> {
         })
     }
 
+    /// Calls `f` with a reference to the value and subscribes the caller.
     #[track_caller]
     pub fn with<R>(self, f: impl FnOnce(&T) -> R) -> R {
         let caller = Location::caller();

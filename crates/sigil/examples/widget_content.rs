@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::kernel::TextBuilder;
+use sigil::prelude::TextBuilder;
 use sigil::prelude::*;
 use sigil::widgets::{ChartBuilder, IconBuilder};
 
@@ -38,9 +38,9 @@ pub(crate) fn image_rgba_demo() -> NodeBuilder {
         })
         .collect();
     let frame = container().layout(LayoutStyle::flex_column().fill_width());
-    match image_rgba(32, 32, pixels) {
-        Some(picture) => frame.child(picture),
-        None => frame.child(text("image_rgba rejected").nowrap()),
+    match ImageSource::from_rgba8(32, 32, pixels) {
+        Some(source) => frame.child(image(source).layout(LayoutStyle::block())),
+        None => frame.child(text("pixels rejected").nowrap()),
     }
 }
 

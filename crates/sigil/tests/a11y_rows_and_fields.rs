@@ -10,7 +10,7 @@ use std::rc::Rc;
 use accesskit::Role as AkRole;
 use sigil::events::{Key, LogicalKey};
 use sigil::prelude::*;
-use sigil::widgets::{ListRowSlots, list_row_with, virtual_list_bind};
+use sigil::widgets::{ListRowSlots, list_row, virtual_list};
 use sigil_kittest::Harness;
 
 #[test]
@@ -37,7 +37,7 @@ fn an_activatable_list_row_takes_focus_and_runs_on_enter() {
     let count = Rc::clone(&opened);
     let mut ui = Harness::new(move || {
         let count = Rc::clone(&count);
-        list_row_with(
+        list_row(
             false,
             "# design",
             ListRowSlots {
@@ -58,7 +58,7 @@ fn an_activatable_list_row_takes_focus_and_runs_on_enter() {
 fn virtual_list_rows_report_their_position_in_the_set() {
     let mut ui = Harness::new(|| {
         let items = signal((0..50).map(|at| format!("item {at}")).collect::<Vec<_>>());
-        virtual_list_bind(items, |_, item: &String| text(item.clone())).row_height(16.0)
+        virtual_list(items, |_, item: &String| text(item.clone())).row_height(16.0)
     })
     .size(40, 10);
     let mut positions: Vec<(usize, usize)> = ui

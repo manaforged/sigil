@@ -1,7 +1,7 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
 use crate::scene::builder::SceneBuilder;
-use crate::scene::command::{CellRect, SceneRectStyle};
+use crate::scene::command::{CellRect, DrawRect};
 use crate::style::{SELECTION_FILL, TextStyle};
 
 pub(super) struct SelectedText<'a> {
@@ -27,7 +27,7 @@ pub(super) fn push_selection(scene: &mut SceneBuilder, id: NodeId, selected: &Se
         )
     })
     .unwrap_or_default();
-    let style = SceneRectStyle::solid(SELECTION_FILL);
+    let style = |area: crate::geometry::Rect| DrawRect::new(area, SELECTION_FILL);
     for local in rects {
         let band = Rect::new(
             Point::new(
@@ -38,7 +38,7 @@ pub(super) fn push_selection(scene: &mut SceneBuilder, id: NodeId, selected: &Se
             local.height,
         );
         if let Some(band) = band.intersection(rect) {
-            scene.draw_rect_for_node(id, band, style, CellRect::default());
+            scene.draw_rect_for_node(id, style(band), CellRect::default());
         }
     }
 }

@@ -41,7 +41,7 @@ fn matches_static_label(name: &AccessibleName, expected: &str) -> bool {
 
 #[test]
 fn every_tab_stays_mounted_and_only_the_active_one_shows() {
-    sigil::reactive::Runtime::scope("sigil-tabs-kept-panels", || {
+    sigil::reactive::Owner::scope("sigil-tabs-kept-panels", || {
         let active = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(

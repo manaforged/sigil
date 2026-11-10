@@ -1,154 +1,102 @@
-use super::{ColorKey, Transform2D};
+use super::Transform2D;
+use crate::layout::{AlignItems, Display, FlexWrap, JustifyContent, Overflow};
 
-pub const SPACING_STEP: f32 = 4.0;
+/// Sets the pixel size of one spacing step in style atoms.
+pub(crate) const SPACING_STEP: f32 = 4.0;
 
 pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Px(pub i16);
+pub(crate) struct Px(pub i16);
 
+mod clip;
+mod color;
+mod filter;
+mod gradient;
+mod mask;
+mod space;
+pub use clip::ClipShape;
+pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
+pub use filter::FilterAtom;
+pub(crate) use filter::{
+    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
+    shadow_color,
+};
+pub use gradient::{
+    BorderStyle, Conic, GradientShape, PaintAtom, PaintStyle, Radial, RadialExtent, StopSlot,
+};
+pub use mask::{MaskAtom, MaskImage, MaskSize};
+pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
+pub use space::{Backface, SpaceAtom, SpaceStyle};
+
+/// Identifies a transition preset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Dimension {
-    Px(Px),
-    Full,
-    Fraction(u16),
-    Auto,
-}
+pub struct TransitionId(
+    /// The preset number.
+    pub u16,
+);
 
+/// A duration in whole milliseconds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Rgba8 {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
-}
+pub struct MillisU16(
+    /// The milliseconds.
+    pub u16,
+);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ColorAtom {
-    Rgba8(Rgba8),
-    ThemeRef(ColorKey),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GradientAxis {
-    TopToBottom,
-    BottomToTop,
-    LeftToRight,
-    RightToLeft,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GradientStopKey {
-    pub offset: u16,
-    pub color: ColorAtom,
-}
-
-impl GradientStopKey {
-    #[must_use]
-    pub const fn new(offset: u16, color: ColorAtom) -> Self {
-        Self { offset, color }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BgGradient {
-    pub axis: GradientAxis,
-    pub stops: &'static [GradientStopKey],
-}
-
-impl BgGradient {
-    #[must_use]
-    pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
-        Self { axis, stops }
-    }
-
-    #[must_use]
-    pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
-        Self::new(axis, super::intern::intern(stops))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DisplayKind {
-    Flex,
-    Block,
-    Grid,
-    None,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FlexDir {
-    Row,
-    Column,
-    RowReverse,
-    ColumnReverse,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AlignKind {
-    Start,
-    Center,
-    End,
-    Stretch,
-    Between,
-    Around,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum JustifyKind {
-    Start,
-    Center,
-    End,
-    Stretch,
-    Between,
-    Around,
-    Evenly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FlexWrapKind {
-    NoWrap,
-    Wrap,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum OverflowKind {
-    Visible,
-    Hidden,
-    Scroll,
-    Auto,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TransitionId(pub u16);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MillisU16(pub u16);
-
+/// Selects a shadow depth from the theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Elevation {
+    /// The sm elevation.
     Sm,
+    /// The base elevation.
     Base,
+    /// The md elevation.
     Md,
+    /// The lg elevation.
     Lg,
+    /// The xl elevation.
     Xl,
 }
 
+/// Holds the resolved paint properties of one node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderStyle {
+    /// The background color, if any.
     pub background_color: Option<Rgba8>,
+    /// The background gradient, if any.
     pub background_gradient: Option<BgGradient>,
+    /// The text color, if any.
     pub text_color: Option<Rgba8>,
-    pub border_radius: Option<Px>,
-    pub border_width: Option<Px>,
-    pub border_top: Option<Px>,
-    pub border_right: Option<Px>,
-    pub border_bottom: Option<Px>,
-    pub border_left: Option<Px>,
+    /// The border radius, if any.
+    pub border_radius: Option<i16>,
+    /// The border width, if any.
+    pub border_width: Option<i16>,
+    /// The border top, if any.
+    pub border_top: Option<i16>,
+    /// The border right, if any.
+    pub border_right: Option<i16>,
+    /// The border bottom, if any.
+    pub border_bottom: Option<i16>,
+    /// The border left, if any.
+    pub border_left: Option<i16>,
+    /// The border color, if any.
     pub border_color: Option<Rgba8>,
+    /// The shadow, if any.
     pub shadow: Option<Elevation>,
+    /// The opacity.
     pub opacity: u16,
+    /// The transform.
     pub transform: Transform2D,
+    /// The gradient, image, clip, and border style paint.
+    pub paint: PaintStyle,
+    /// The clip path, if any.
+    pub clip_path: Option<ClipShape>,
+    /// The 3D turn, depth, perspective, and backface.
+    pub space: SpaceStyle,
+    pub(crate) mask: MaskStyle,
+    /// The CSS mix-blend-mode.
+    pub blend: crate::scene::BlendMode,
+    pub(crate) filter: FilterStyle,
 }
 
 impl Default for RenderStyle {
@@ -167,89 +115,190 @@ impl Default for RenderStyle {
             shadow: None,
             opacity: 10_000,
             transform: Transform2D::IDENTITY,
+            paint: PaintStyle {
+                gradient: None,
+                stops: [None; 3],
+                positions: [None; 3],
+                clip_text: false,
+                image: None,
+                border: BorderStyle::Solid,
+            },
+            clip_path: None,
+            space: SpaceStyle::FLAT,
+            mask: MaskStyle::NONE,
+            blend: crate::scene::BlendMode::Normal,
+            filter: FilterStyle::NONE,
         }
     }
 }
 
+/// Selects the line drawn with text.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextDecoration {
+    /// The none text decoration.
     #[default]
     None,
+    /// The underline text decoration.
     Underline,
+    /// The line through text decoration.
     LineThrough,
 }
 
+/// One style property with its value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StyleAtom {
-    PaddingAll(Px),
-    PaddingX(Px),
-    PaddingY(Px),
-    PaddingTop(Px),
-    PaddingRight(Px),
-    PaddingBottom(Px),
-    PaddingLeft(Px),
-    MarginAll(Px),
-    MarginX(Px),
-    MarginY(Px),
-    MarginTop(Px),
-    MarginRight(Px),
-    MarginBottom(Px),
-    MarginLeft(Px),
-    Gap(Px),
-    GapX(Px),
-    GapY(Px),
-    Width(Dimension),
-    Height(Dimension),
-    MinWidth(Dimension),
-    MaxWidth(Dimension),
-    MinHeight(Dimension),
-    MaxHeight(Dimension),
-    Display(DisplayKind),
-    FlexDirection(FlexDir),
-    FlexWrap(FlexWrapKind),
-    AlignItems(AlignKind),
-    JustifyContent(JustifyKind),
+    /// The padding all style atom.
+    PaddingAll(i16),
+    /// The padding x style atom.
+    PaddingX(i16),
+    /// The padding y style atom.
+    PaddingY(i16),
+    /// The padding top style atom.
+    PaddingTop(i16),
+    /// The padding right style atom.
+    PaddingRight(i16),
+    /// The padding bottom style atom.
+    PaddingBottom(i16),
+    /// The padding left style atom.
+    PaddingLeft(i16),
+    /// The margin all style atom.
+    MarginAll(i16),
+    /// The margin x style atom.
+    MarginX(i16),
+    /// The margin y style atom.
+    MarginY(i16),
+    /// The margin top style atom.
+    MarginTop(i16),
+    /// The margin right style atom.
+    MarginRight(i16),
+    /// The margin bottom style atom.
+    MarginBottom(i16),
+    /// The margin left style atom.
+    MarginLeft(i16),
+    /// The gap style atom.
+    Gap(i16),
+    /// The gap x style atom.
+    GapX(i16),
+    /// The gap y style atom.
+    GapY(i16),
+    /// The width style atom.
+    Width(u8, i16),
+    /// The height style atom.
+    Height(u8, i16),
+    /// The min width style atom.
+    MinWidth(u8, i16),
+    /// The max width style atom.
+    MaxWidth(u8, i16),
+    /// The min height style atom.
+    MinHeight(u8, i16),
+    /// The max height style atom.
+    MaxHeight(u8, i16),
+    /// The display style atom.
+    Display(Display),
+    /// The flex direction style atom.
+    FlexDirection(crate::layout::FlexDirection),
+    /// The flex wrap style atom.
+    FlexWrap(FlexWrap),
+    /// The align items style atom.
+    AlignItems(AlignItems),
+    /// The justify content style atom.
+    JustifyContent(JustifyContent),
+    /// The flex grow style atom.
     FlexGrow(u16),
+    /// The flex shrink style atom.
     FlexShrink(u16),
+    /// The grid columns style atom.
     GridColumns(u16),
+    /// The grid rows style atom.
     GridRows(u16),
+    /// The background color style atom.
     BackgroundColor(ColorAtom),
-    BackgroundThemeRef(ColorKey),
+    /// The background gradient style atom.
     BackgroundGradient(BgGradient),
+    /// The text color style atom.
     TextColor(ColorAtom),
-    TextThemeRef(ColorKey),
+    /// The bg tone step style atom.
     BgToneStep(u8),
+    /// The fg tone step style atom.
     FgToneStep(u8),
+    /// The fg on solid style atom.
     FgOnSolid,
-    BorderRadius(Px),
+    /// The border radius style atom.
+    BorderRadius(i16),
+    /// The radius style atom.
     Radius(super::Radius),
-    BorderWidth(Px),
-    BorderTop(Px),
-    BorderRight(Px),
-    BorderBottom(Px),
-    BorderLeft(Px),
+    /// The border width style atom.
+    BorderWidth(i16),
+    /// The border top style atom.
+    BorderTop(i16),
+    /// The border right style atom.
+    BorderRight(i16),
+    /// The border bottom style atom.
+    BorderBottom(i16),
+    /// The border left style atom.
+    BorderLeft(i16),
+    /// The border color style atom.
     BorderColor(ColorAtom),
-    BorderThemeRef(ColorKey),
+    /// The border tone step style atom.
     BorderToneStep(u8),
+    /// The shadow style atom.
     Shadow(Elevation),
+    /// The opacity style atom.
     Opacity(u16),
+    /// The transform style atom.
     Transform(Transform2D),
-    FontSize(Px),
+    /// The font size style atom.
+    FontSize(i16),
+    /// The font weight style atom.
     FontWeight(u16),
+    /// The font italic style atom.
     FontItalic(bool),
+    /// The font family style atom.
     FontFamily(&'static str),
-    LineHeight(Px),
+    /// The line height style atom.
+    LineHeight(i16),
+    /// The letter spacing style atom.
     LetterSpacing(i16),
+    /// The tabular nums style atom.
     TabularNums(bool),
+    /// The text decoration style atom.
     TextDecoration(TextDecoration),
-    OverflowX(OverflowKind),
-    OverflowY(OverflowKind),
+    /// The overflow x style atom.
+    OverflowX(Overflow),
+    /// The overflow y style atom.
+    OverflowY(Overflow),
+    /// The transition style atom.
     Transition(TransitionId),
+    /// The transition duration style atom.
     TransitionDuration(MillisU16),
+    /// The transition easing style atom.
+    TransitionEase(crate::animation::Easing),
+    /// The transition delay style atom.
+    TransitionDelay(MillisU16),
+    /// The keyframe animation style atom.
+    Animation(crate::animation::KeyframesId),
+    /// The unknown theme ref style atom.
     UnknownThemeRef(&'static str),
+    /// The gradient, image, clip, and border style atom.
+    Paint(PaintAtom),
+    /// The clip path style atom.
+    ClipPath(ClipShape),
+    /// The 3D transform style atom.
+    Space(SpaceAtom),
+    /// The mask style atom.
+    Mask(MaskAtom),
+    /// The mix-blend-mode style atom.
+    MixBlend(crate::scene::BlendMode),
+    /// The filter and text shadow style atom.
+    Filter(FilterAtom),
+    /// The drop shadow color style atom.
+    DropShadowColor(ColorAtom),
+    /// The text shadow color style atom.
+    TextShadowColor(ColorAtom),
 }
 
 impl StyleAtom {
+    /// Returns the affects layout.
     #[must_use]
     pub const fn affects_layout(self) -> bool {
         matches!(
@@ -271,12 +320,12 @@ impl StyleAtom {
                 | Self::Gap(_)
                 | Self::GapX(_)
                 | Self::GapY(_)
-                | Self::Width(_)
-                | Self::Height(_)
-                | Self::MinWidth(_)
-                | Self::MinHeight(_)
-                | Self::MaxWidth(_)
-                | Self::MaxHeight(_)
+                | Self::Width(_, _)
+                | Self::Height(_, _)
+                | Self::MinWidth(_, _)
+                | Self::MinHeight(_, _)
+                | Self::MaxWidth(_, _)
+                | Self::MaxHeight(_, _)
                 | Self::Display(_)
                 | Self::FlexDirection(_)
                 | Self::FlexWrap(_)
@@ -302,4 +351,42 @@ impl StyleAtom {
                 | Self::OverflowY(_)
         )
     }
+}
+
+pub(crate) const ATOM_PX: u8 = 0;
+pub(crate) const ATOM_FULL: u8 = 1;
+pub(crate) const ATOM_FRACTION: u8 = 2;
+pub(crate) const ATOM_AUTO: u8 = 3;
+
+pub(crate) const fn decode_atom(kind: u8, value: i16) -> crate::layout::Dimension {
+    match kind {
+        ATOM_FULL => crate::layout::Dimension::Percent(1.0),
+        ATOM_FRACTION => crate::layout::Dimension::Percent(value as f32 / 10_000.0),
+        ATOM_AUTO => crate::layout::Dimension::Auto,
+        _ => crate::layout::Dimension::Px(value as f32),
+    }
+}
+
+pub(crate) const fn width_px(px: i16) -> StyleAtom {
+    StyleAtom::Width(ATOM_PX, px)
+}
+
+pub(crate) const fn height_px(px: i16) -> StyleAtom {
+    StyleAtom::Height(ATOM_PX, px)
+}
+
+pub(crate) const fn min_width_px(px: i16) -> StyleAtom {
+    StyleAtom::MinWidth(ATOM_PX, px)
+}
+
+pub(crate) const fn max_width_px(px: i16) -> StyleAtom {
+    StyleAtom::MaxWidth(ATOM_PX, px)
+}
+
+pub(crate) const fn min_height_px(px: i16) -> StyleAtom {
+    StyleAtom::MinHeight(ATOM_PX, px)
+}
+
+pub(crate) const fn max_height_px(px: i16) -> StyleAtom {
+    StyleAtom::MaxHeight(ATOM_PX, px)
 }

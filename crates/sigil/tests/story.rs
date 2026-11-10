@@ -30,10 +30,9 @@ use std::time::{Duration, Instant};
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::EventRouter;
 use sigil::kernel::NodeId;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 use sigil_kittest::{Harness, Query};
 
@@ -141,13 +140,12 @@ fn load_shows_loading_then_the_result_on_both_hosts() {
 
 #[test]
 fn load_runs_inside_an_embedded_host() {
-    Runtime::scope("embedded-load", || {
+    Owner::scope("embedded-load", || {
         let mut tasks = AsyncRuntime::new().expect("task runtime");
         tasks.install_current();
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(loading::loader);
-        let load = shown(&mut host, &mut router, "Load")
+        let load = shown(&mut host, "Load")
             .into_iter()
             .find(|(_, clickable)| *clickable)
             .map(|(id, _)| id)
@@ -158,10 +156,10 @@ fn load_runs_inside_an_embedded_host() {
             target_node: load,
             data: None,
         };
-        host.perform(&mut router, NodeId::from_accesskit(load), &click);
-        assert!(!shown(&mut host, &mut router, "Loading…").is_empty());
+        host.perform(NodeId::from_accesskit(load), &click);
+        assert!(!shown(&mut host, "Loading…").is_empty());
         let deadline = Instant::now() + Duration::from_secs(5);
-        while shown(&mut host, &mut router, "42 items").is_empty() {
+        while shown(&mut host, "42 items").is_empty() {
             assert!(
                 Instant::now() < deadline,
                 "the result never reached the host"
@@ -172,9 +170,9 @@ fn load_runs_inside_an_embedded_host() {
     });
 }
 
-fn shown(host: &mut Host, router: &mut EventRouter, text: &str) -> Vec<(accesskit::NodeId, bool)> {
-    drop(host.frame(router, (480.0, 320.0), 1.0 / 60.0, FrameHooks::default()));
-    let tree = host.accessibility_tree(router);
+fn shown(host: &mut Host, text: &str) -> Vec<(accesskit::NodeId, bool)> {
+    drop(host.frame((480.0, 320.0), 1.0 / 60.0, FrameHooks::default()));
+    let tree = host.accessibility_tree();
     tree.nodes
         .iter()
         .filter(|(_, node)| node.label() == Some(text) || node.value() == Some(text))

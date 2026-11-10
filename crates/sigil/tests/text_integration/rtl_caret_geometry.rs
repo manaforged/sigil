@@ -1,12 +1,16 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sigil::hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
+use sigil::text::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
 
 const RTL_WORD: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 fn caret_x(p: &sigil::text::Paragraph, byte: usize, affinity: TextAffinity) -> f32 {

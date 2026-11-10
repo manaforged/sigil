@@ -1,21 +1,20 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::{
-    ControlSize, Metrics, NodeStyleExt, Style, StyleAtom, StyleOverlay, Token, Tone, space,
-};
+use crate::style::{ControlSize, Metrics, Style, StyleAtom, StyleOverlay, Token, Tone};
+use crate::widgets::Widget;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
+use super::listbox::{Move, RADIO_GROUP};
 use super::shared::{control_surface, disabled_a11y, disabled_now};
-use crate::kernel::IntoNode;
-use crate::style::{PaintTarget, StyleSlot};
 use crate::widgets::interaction::InteractionState;
 
+/// Builder of a radio group.
 pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<(String, String)>,
@@ -27,12 +26,14 @@ pub struct RadioGroupBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A set of radio options; `.label()` and `.labelled_by()` name the group.
 #[must_use]
 pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
     RadioGroupBuilder::new(selected)
 }
 
 impl RadioGroupBuilder {
+    /// Creates a radio group builder.
     #[must_use]
     pub fn new(selected: Signal<String>) -> Self {
         Self {
@@ -47,37 +48,42 @@ impl RadioGroupBuilder {
         }
     }
 
+    /// Sets the option.
     #[must_use]
     pub fn option(mut self, key: impl Into<String>, label: impl Into<String>) -> Self {
         self.options.push((key.into(), label.into()));
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
         self
     }
 
+    /// Sets the labelled by.
     #[must_use]
     pub const fn labelled_by(mut self, node: NodeId) -> Self {
         self.labelled_by = Some(node);
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let selected = self.selected;
         let disabled = self.disabled;
         let keys: Rc<[String]> = self.options.iter().map(|(key, _)| key.clone()).collect();
@@ -87,7 +93,7 @@ impl RadioGroupBuilder {
             .focusable(true)
             .with(
                 self.layout_overrides
-                    .apply(LayoutStyle::flex_column().gap(space(1))),
+                    .apply(LayoutStyle::flex_column().gap(Space::Xs)),
             )
             .focus_in(move || group_focus.set(true))
             .focus_out(move || group_focus.set(false))
@@ -108,11 +114,11 @@ impl RadioGroupBuilder {
             group = group.style(self.style_accumulator);
         }
         let mut group = disabled_a11y(group, disabled);
-        for nav in [Key::ArrowDown, Key::ArrowUp, Key::Home, Key::End] {
+        for (key, step) in RADIO_GROUP.bindings() {
             let keys = Rc::clone(&keys);
-            group = group.key(nav, move |event| {
+            group = group.key(key, move |event| {
                 if !disabled_now(disabled) {
-                    select(selected, &keys, nav);
+                    select(selected, &keys, step);
                 }
                 event.stop_propagation();
             });
@@ -121,26 +127,11 @@ impl RadioGroupBuilder {
     }
 }
 
-fn select(selected: Signal<String>, keys: &[String], nav: Key) {
-    let target = match nav {
-        Key::Home => keys.first(),
-        Key::End => keys.last(),
-        _ if keys.is_empty() => None,
-        _ => {
-            let current = selected.get();
-            let index = keys
-                .iter()
-                .position(|key| key == &current)
-                .map_or(0, usize::cast_signed);
-            let delta = if nav == Key::ArrowDown { 1 } else { -1 };
-            keys.get(
-                (index + delta)
-                    .rem_euclid(keys.len().cast_signed())
-                    .cast_unsigned(),
-            )
-        }
-    };
-    if let Some(key) = target {
+fn select(selected: Signal<String>, keys: &[String], step: Move) {
+    let current = selected.get();
+    let from = keys.iter().position(|key| key == &current).unwrap_or(0);
+    let target = RADIO_GROUP.target(&keys.len(), from, step);
+    if let Some(key) = target.and_then(|index| keys.get(index)) {
         selected.set(key.clone());
     }
 }
@@ -160,8 +151,8 @@ fn option_row(
         container().layout(
             LayoutStyle::flex_row()
                 .height(Metrics::current().control_height(ControlSize::Default))
-                .padding_x(space(1))
-                .gap(space(2))
+                .padding_x(Space::Xs)
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         ),
     );
@@ -170,8 +161,8 @@ fn option_row(
         .role(Role::RadioButton)
         .label(label.to_owned())
         .checked(checked)
-        .tone(tone)
-        .focus_ring(crate::style::FocusRing::new(ring_visible))
+        .tone_scope(tone)
+        .focus_ring(ring_visible)
         .child(CellForm::<fn(Signal<bool>, Tone) -> NodeBuilder>::new(
             option_mark,
             cell_mark,
@@ -207,7 +198,7 @@ const MARK_INNER: f32 = 8.0;
 fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
     let mark_inner = container()
         .layout(LayoutStyle::flex_row().fixed_size(MARK_INNER, MARK_INNER))
-        .tone(tone)
+        .tone_scope(tone)
         .style(Style::new().radius(4))
         .style_reactive(move || selected_atoms(checked));
     let mark_core = container()
@@ -219,7 +210,7 @@ fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
         .role(Role::GenericContainer)
         .layout(centered_square(MARK_OUTER))
         .style(Style::new().radius(8))
-        .tone(tone)
+        .tone_scope(tone)
         .class(Token::Gray7.bg())
         .style_reactive(move || selected_atoms(checked))
         .child(mark_core)
@@ -228,7 +219,7 @@ fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
 fn cell_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().width(cols(1.0)).height(rows(1.0)))
-        .tone(tone)
+        .tone_scope(tone)
         .class(CELL_MARK)
         .child(text(derived(move || {
             if checked.get() { "●" } else { "○" }.to_owned()
@@ -239,26 +230,7 @@ static CELL_MARK: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
 static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
-impl PaintTarget for RadioGroupBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for RadioGroupBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for RadioGroupBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] RadioGroupBuilder: paint(style_accumulator), widget, node);
 
 #[cfg(test)]
 #[path = "radio_group_tests.rs"]

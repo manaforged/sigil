@@ -6,36 +6,41 @@ use crate::hal::Renderer;
 use crate::style::Color;
 use tiny_skia::Pixmap;
 
-use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
+use crate::renderer::plan::build_tree;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
+use crate::{Error, ErrorKind};
 
 mod bound;
+mod clip;
 mod draws;
+mod encoding;
+mod filter;
 mod glyph_outline;
-mod glyphs;
+mod layer_cache;
 mod layers;
 mod paint;
+mod path;
 mod pattern;
-mod raster;
+mod projected;
+mod quad;
 mod shadow;
 mod shadow_field;
 mod shapes;
 mod sprite_tint;
 mod stroke;
 
-use glyphs::GlyphCache;
-use paint::Painter;
-use raster::RasterCache;
+use paint::CpuPainter;
+use quad::QuadCache;
 
 type Shared = Arc<Box<dyn DisplayAndWindow>>;
 
 #[derive(Default)]
 pub struct CpuRenderer {
-    glyphs: GlyphCache,
-    raster: RasterCache,
+    quads: QuadCache,
+    cached: layer_cache::LayerCache,
     layers: Vec<Pixmap>,
     covers: Vec<tiny_skia::Mask>,
     transparent: bool,
@@ -49,8 +54,9 @@ pub struct CpuSurface {
 }
 
 impl CpuSurface {
+    #[cfg(feature = "inspect")]
     #[must_use]
-    pub const fn size(&self) -> PhysicalSize {
+    pub(crate) const fn size(&self) -> PhysicalSize {
         self.size
     }
 }
@@ -82,31 +88,62 @@ impl CpuRenderer {
         clear: Color,
         viewport: (f32, f32),
         size: PhysicalSize,
-    ) -> Result<Pixmap, RendererError> {
-        let mut target =
-            Pixmap::new(size.width, size.height).ok_or(RendererError::InvalidViewport)?;
+    ) -> Result<Pixmap, Error> {
+        let mut target = Pixmap::new(size.width, size.height).ok_or(Error::fixed(
+            ErrorKind::InvalidViewport,
+            "viewport dimensions must be strictly positive (width > 0, height > 0)",
+        ))?;
         target.fill(shapes::color(clear));
-        let scale = physical_scale(size, viewport);
+        self.paint(&mut target, scene, viewport);
+        Ok(target)
+    }
+
+    /// Paints `scene` over the pixels already in `target`.
+    fn paint(&mut self, target: &mut Pixmap, scene: &CommandScene, viewport: (f32, f32)) {
+        let size = PhysicalSize::new(target.width(), target.height());
+        self.walk(
+            target,
+            scene,
+            physical_scale(size, viewport),
+            Point::new(0.0, 0.0),
+        );
+    }
+
+    #[cfg(feature = "terminal")]
+    /// Repaints the `[x, y, w, h]` pixel region of `canvas` from `scene`, with masks sized to the region.
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_wrap,
+        reason = "pixel coordinates of a frame fit f32 and i32"
+    )]
+    pub(crate) fn render_region(
+        &mut self,
+        scene: &CommandScene,
+        (viewport, clear): ((f32, f32), Color),
+        size: PhysicalSize,
+        [x, y, w, h]: [u32; 4],
+    ) -> Option<Pixmap> {
+        let mut region = Pixmap::new(w, h)?;
+        region.fill(shapes::color(clear));
+        let origin = Point::new(x as f32, y as f32);
+        self.walk(&mut region, scene, physical_scale(size, viewport), origin);
+        Some(region)
+    }
+
+    fn walk(&mut self, target: &mut Pixmap, scene: &CommandScene, scale: f32, origin: Point) {
         self.stats = FrameStats::default();
-        self.raster.begin_frame();
-        self.glyphs.begin_frame();
+        self.quads.begin_frame();
+        self.cached.begin_frame();
         self.stats.scene_commands = scene.commands.len();
-        let scratch = paint::Scratch {
-            glyphs: &mut self.glyphs,
-            raster: &mut self.raster,
+        let scratch = paint::PaintScratch {
+            quads: &mut self.quads,
+            cached: &mut self.cached,
             stats: &mut self.stats,
             pool: &mut self.layers,
             covers: &mut self.covers,
         };
-        Painter::new(
-            &mut target,
-            scale,
-            Point::new(0.0, 0.0),
-            SceneState::default(),
-            scratch,
-        )
-        .walk(&scene.commands);
-        Ok(target)
+        CpuPainter::new(target, scale, origin, SceneState::default(), scratch)
+            .walk(&build_tree(&scene.commands));
     }
 
     pub fn render_command_scene(
@@ -115,7 +152,7 @@ impl CpuRenderer {
         scene: &CommandScene,
         clear: Color,
         viewport: (f32, f32),
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let pixmap = self.render(scene, clear, viewport, surface.size)?;
         let mut buffer = surface.surface.buffer_mut().map_err(|err| software(&err))?;
         for (out, px) in buffer.iter_mut().zip(pixmap.pixels()) {
@@ -127,7 +164,7 @@ impl CpuRenderer {
 }
 
 impl Renderer for CpuRenderer {
-    type Error = RendererError;
+    type Error = Error;
     type Surface = CpuSurface;
     type WindowHandle = WindowHandle;
 
@@ -162,15 +199,6 @@ impl Renderer for CpuRenderer {
         surface.size = PhysicalSize::new(width.get(), height.get());
         Ok(())
     }
-
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "surface dimensions are far below the f32 mantissa limit"
-    )]
-    fn clear(&mut self, surface: &mut Self::Surface, color: Color) -> Result<(), Self::Error> {
-        let viewport = (surface.size.width as f32, surface.size.height as f32);
-        self.render_command_scene(surface, &CommandScene::default(), color, viewport)
-    }
 }
 
 fn nonzero(value: u32) -> NonZeroU32 {
@@ -185,8 +213,11 @@ fn physical_scale(size: PhysicalSize, viewport: (f32, f32)) -> f32 {
     size.width as f32 / viewport.0.max(1.0)
 }
 
-fn software(err: &softbuffer::SoftBufferError) -> RendererError {
-    RendererError::Software(err.to_string())
+fn software(err: &softbuffer::SoftBufferError) -> Error {
+    Error::message(
+        ErrorKind::Software,
+        format_args!("software renderer failed: {err}"),
+    )
 }
 
 #[cfg(test)]

@@ -6,11 +6,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, batch, effect, on_cleanup, signal};
 
 #[test]
 fn signal_get_and_set_roundtrip() {
-    Runtime::scope("signal_get_and_set_roundtrip", || {
+    Owner::scope("signal_get_and_set_roundtrip", || {
         let n = signal(0_i32);
         assert_eq!(n.get(), 0);
         n.set(7);
@@ -20,7 +20,7 @@ fn signal_get_and_set_roundtrip() {
 
 #[test]
 fn effect_runs_once_on_register_and_again_on_write() {
-    Runtime::scope("effect_fires_on_write", || {
+    Owner::scope("effect_fires_on_write", || {
         let n = signal(0_i32);
         let seen = Rc::new(Cell::new(-1));
         {
@@ -37,7 +37,7 @@ fn effect_runs_once_on_register_and_again_on_write() {
 
 #[test]
 fn peek_does_not_subscribe() {
-    Runtime::scope("peek_does_not_subscribe", || {
+    Owner::scope("peek_does_not_subscribe", || {
         let n = signal(1_i32);
         let fires = Rc::new(Cell::new(0_u32));
         {
@@ -55,7 +55,7 @@ fn peek_does_not_subscribe() {
 
 #[test]
 fn batch_coalesces_dependent_effect_to_one_run() {
-    Runtime::scope("batch_coalesces", || {
+    Owner::scope("batch_coalesces", || {
         let a = signal(0_i32);
         let b = signal(0_i32);
         let runs = Rc::new(Cell::new(0_u32));
@@ -86,7 +86,7 @@ fn on_cleanup_runs_in_lifo_order_on_owner_disposal() {
     let log: Rc<std::cell::RefCell<Vec<&'static str>>> =
         Rc::new(std::cell::RefCell::new(Vec::new()));
     let log_for_scope = Rc::clone(&log);
-    Runtime::scope("lifo_cleanup_outer", move || {
+    Owner::scope("lifo_cleanup_outer", move || {
         let parent = Owner::new("parent", Owner::current());
         parent.with(|| {
             let log_a = Rc::clone(&log_for_scope);
@@ -101,7 +101,7 @@ fn on_cleanup_runs_in_lifo_order_on_owner_disposal() {
 
 #[test]
 fn child_owners_dispose_before_parent_cleanups_run() {
-    Runtime::scope("child_then_parent_cleanups", || {
+    Owner::scope("child_then_parent_cleanups", || {
         let log: Rc<std::cell::RefCell<Vec<&'static str>>> = Rc::default();
 
         let parent = Owner::new("parent", Owner::current());
@@ -129,7 +129,7 @@ fn child_owners_dispose_before_parent_cleanups_run() {
 #[test]
 fn signal_read_after_owner_dispose_panics() {
     let result = std::panic::catch_unwind(|| {
-        let captured = Runtime::scope("stale_signal_outer", || {
+        let captured = Owner::scope("stale_signal_outer", || {
             let parent = Owner::new("parent", Owner::current());
             let n = parent.with(|| signal(99_i32));
             parent.dispose();
@@ -144,7 +144,7 @@ fn signal_read_after_owner_dispose_panics() {
 #[test]
 fn cycle_detection_panics_on_self_reentry() {
     let result = std::panic::catch_unwind(|| {
-        Runtime::scope("cycle", || {
+        Owner::scope("cycle", || {
             let n = signal(0_i32);
             effect(move || {
                 let current = n.get();
@@ -160,7 +160,7 @@ fn cycle_detection_panics_on_self_reentry() {
 #[cfg(not(debug_assertions))]
 #[test]
 fn cycle_detection_warns_and_skips_self_reentry_in_release() {
-    Runtime::scope("cycle", || {
+    Owner::scope("cycle", || {
         let n = signal(0_i32);
         effect(move || {
             let current = n.get();
@@ -177,7 +177,7 @@ fn disposed_effect_stops_re_running() {
     let runs = Rc::new(Cell::new(0_u32));
     {
         let runs = Rc::clone(&runs);
-        Runtime::scope("dispose_effect", move || {
+        Owner::scope("dispose_effect", move || {
             let n = signal(0_i32);
             let child = Owner::new("effect_scope", Owner::current());
             child.with(|| {

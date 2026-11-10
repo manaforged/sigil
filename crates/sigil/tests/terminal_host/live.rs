@@ -1,17 +1,20 @@
 use proptest::prelude::*;
 use sigil::Host;
-use sigil::events::{EventRouter, ShellEvent};
+use sigil::events::Event;
+use sigil::geometry::Point;
+use sigil::kernel::HostMode;
 use sigil::kernel::{IntoNode, container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::{LayoutBuilderExt, Paint, Signal, WidgetLayoutExt};
-use sigil::reactive::{Runtime, signal};
+use sigil::layout::Space;
+use sigil::prelude::Widget;
+use sigil::prelude::{Paint, Signal};
+use sigil::reactive::{Owner, signal};
 use sigil::style::{StateVariants, Token};
 use std::fmt::Write as _;
 use std::time::Duration;
 
-use sigil::terminal::{Access, ColorDepth, Grid, Screen, render};
+use sigil::terminal::{Access, ColorDepth, Grid, Screen};
 use sigil::widgets::{button, modal, text_edit, virtual_list};
-use sigil_kittest::input::{pointer_move, scroll_lines, tab, type_char};
 
 const CELL: f32 = Host::CELL;
 
@@ -61,7 +64,7 @@ fn tree(state: State) -> impl IntoNode {
         .child(text(state.status))
         .child(
             container()
-                .layout(LayoutStyle::flex_row().gap(CELL))
+                .layout(LayoutStyle::flex_row().gap(Space::raw(CELL, "test fixture")))
                 .child(button("first"))
                 .child(button("second"))
                 .child(
@@ -82,15 +85,15 @@ fn tree(state: State) -> impl IntoNode {
         .child(modal(state.shown).title("Saved"))
 }
 
-fn events(step: &Step) -> Vec<ShellEvent> {
+fn events(step: &Step) -> Vec<Event> {
     match step {
-        Step::Scroll(lines) => vec![scroll_lines(CELL * 4.0, CELL * 6.0, *lines)],
-        Step::Tab => vec![tab(false)],
-        Step::Type(ch) => vec![type_char(
-            &ch.to_string(),
-            sigil::events::PhysicalKey::Unidentified,
-        )],
-        Step::Hover(x, y) => vec![pointer_move(f32::from(*x) * CELL, f32::from(*y) * CELL)],
+        Step::Scroll(lines) => vec![Event::wheel(Point::new(CELL * 4.0, CELL * 6.0), *lines)],
+        Step::Tab => vec![Event::tab(false)],
+        Step::Type(ch) => vec![Event::typed(&ch.to_string())],
+        Step::Hover(x, y) => vec![Event::pointer_move(Point::new(
+            f32::from(*x) * CELL,
+            f32::from(*y) * CELL,
+        ))],
         _ => Vec::new(),
     }
 }
@@ -116,20 +119,19 @@ fn apply(state: State, step: &Step, size: &mut (u16, u16)) {
 
 fn ansi(grid: &Grid) -> String {
     let mut out = Vec::new();
-    render(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
+    Host::ansi(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
     String::from_utf8_lossy(&out).into_owned()
 }
 
 pub(super) struct Side {
     host: Host,
-    router: EventRouter,
     screen: Screen,
     term: vt100::Parser,
 }
 
 impl Side {
     fn new(state: State, size: (u16, u16), status: Duration) -> Self {
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         Self::mounted(host, size, status)
     }
@@ -142,25 +144,19 @@ impl Side {
         });
         Self {
             host,
-            router: EventRouter::new(),
             screen,
             term: vt100::Parser::new(size.1, size.0, 0),
         }
     }
 
-    pub(super) fn frame(
-        &mut self,
-        events: Vec<ShellEvent>,
-        size: (u16, u16),
-        full: bool,
-    ) -> String {
+    pub(super) fn frame(&mut self, events: Vec<Event>, size: (u16, u16), full: bool) -> String {
         if full {
             self.host.reset_emit();
             self.screen.invalidate();
         }
         let grid = self
             .screen
-            .frame(&mut self.host, &mut self.router, events, size)
+            .frame(&mut self.host, events, size)
             .expect("frame");
         let (cells, cursor) = (ansi(grid), grid.cursor());
         let mut bytes = Vec::new();
@@ -213,7 +209,7 @@ fn state() -> State {
 }
 
 fn frames(steps: &[Step], full: bool) -> Vec<String> {
-    Runtime::scope("live-oracle", || {
+    Owner::scope("live-oracle", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
         let mut host = Side::new(shared, size, Access::default().status);
@@ -259,7 +255,7 @@ proptest! {
 }
 
 fn expiring(full: bool) -> Vec<String> {
-    Runtime::scope("live-status", || {
+    Owner::scope("live-status", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
         let status = Duration::from_millis(20);
@@ -309,15 +305,11 @@ fn settled(state: State, size: (u16, u16)) -> String {
     for _ in 0..SETTLE {
         host.frame(Vec::new(), size, false);
     }
-    ansi(
-        host.screen
-            .frame(&mut host.host, &mut host.router, [], size)
-            .expect("frame"),
-    )
+    ansi(host.screen.frame(&mut host.host, [], size).expect("frame"))
 }
 
 fn edited(steps: &[Step]) -> (String, String) {
-    let incremental = Runtime::scope("live-edited", || {
+    let incremental = Owner::scope("live-edited", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
         let mut host = Side::new(shared, size, Duration::ZERO);
@@ -331,14 +323,11 @@ fn edited(steps: &[Step]) -> (String, String) {
         for _ in 0..SETTLE {
             host.frame(Vec::new(), size, false);
         }
-        let grid = host
-            .screen
-            .frame(&mut host.host, &mut host.router, [], size)
-            .expect("frame");
+        let grid = host.screen.frame(&mut host.host, [], size).expect("frame");
         (ansi(grid), size)
     });
     let (shown, size) = incremental;
-    let fresh = Runtime::scope("live-mounted", || {
+    let fresh = Owner::scope("live-mounted", || {
         let shared = state();
         let mut ignored = (48_u16, 16_u16);
         for step in steps {

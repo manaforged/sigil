@@ -4,9 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{
-    ButtonBuilder, CheckboxBuilder, RadioGroupBuilder, SliderBuilder, ToggleBuilder,
-};
+use sigil::widgets::ButtonBuilder;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - controls").size(480, 360), build)
@@ -32,30 +30,33 @@ pub(crate) fn icon_button_demo() -> ButtonBuilder {
     icon_button("×", || {}).accessible("Reset")
 }
 
-pub(crate) fn checkbox_demo() -> CheckboxBuilder {
-    checkbox(signal(true)).label("Enabled")
+pub(crate) fn checkbox_demo(disabled: Signal<bool>) -> impl IntoNode {
+    checkbox(signal(true)).label("Enabled").disabled(disabled)
 }
 
-pub(crate) fn checkbox_unchecked_demo() -> CheckboxBuilder {
-    checkbox(signal(false)).label("Enabled")
+pub(crate) fn checkbox_unchecked_demo(disabled: Signal<bool>) -> impl IntoNode {
+    checkbox(signal(false)).label("Enabled").disabled(disabled)
 }
 
-pub(crate) fn toggle_demo() -> ToggleBuilder {
-    toggle(signal(true)).label("Locked")
+pub(crate) fn toggle_demo(disabled: Signal<bool>) -> impl IntoNode {
+    toggle(signal(true)).label("Locked").disabled(disabled)
 }
 
-pub(crate) fn toggle_off_demo() -> ToggleBuilder {
-    toggle(signal(false)).label("Locked")
+pub(crate) fn toggle_off_demo(disabled: Signal<bool>) -> impl IntoNode {
+    toggle(signal(false)).label("Locked").disabled(disabled)
 }
 
-pub(crate) fn radio_group_demo() -> RadioGroupBuilder {
+pub(crate) fn radio_group_demo(disabled: Signal<bool>) -> impl IntoNode {
     radio_group(signal(String::from("auto")))
         .option("auto", "Automatic")
         .option("manual", "Manual")
+        .disabled(disabled)
 }
 
-pub(crate) fn slider_demo() -> SliderBuilder {
-    slider(signal(40.0), 0.0..=100.0).step(5.0)
+pub(crate) fn slider_demo(disabled: Signal<bool>) -> impl IntoNode {
+    slider(signal(40.0), 0.0..=100.0)
+        .step(5.0)
+        .disabled(disabled)
 }
 
 fn build() -> impl IntoNode {
@@ -71,10 +72,10 @@ fn build() -> impl IntoNode {
                 .child(button_pending_demo()),
         )
         .child(icon_button_demo())
-        .child(checkbox_demo())
-        .child(checkbox_unchecked_demo())
-        .child(toggle_demo())
-        .child(toggle_off_demo())
-        .child(radio_group_demo())
-        .child(slider_demo())
+        .child(checkbox_demo(signal(false)))
+        .child(checkbox_unchecked_demo(signal(false)))
+        .child(toggle_demo(signal(false)))
+        .child(toggle_off_demo(signal(false)))
+        .child(radio_group_demo(signal(false)))
+        .child(slider_demo(signal(false)))
 }

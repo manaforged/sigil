@@ -1,60 +1,68 @@
-use smallvec::SmallVec;
-
 use super::StateStyleBuilder;
-use crate::style::{PaintTarget, StateHost, Style, StyleAtom};
+use crate::style::StateSlot;
+use crate::widgets::{StateTarget, Widget};
 
-type Setter = fn(&mut Style, SmallVec<[StyleAtom; 16]>);
-
-fn set_state<T, F>(mut target: T, set: Setter, configure: F) -> T
-where
-    T: PaintTarget,
-    F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
-{
-    let built = configure(StateStyleBuilder::new());
-    set(target.style_slot().0, built.into_atoms());
-    target
-}
-
-pub trait StateVariants: PaintTarget + StateHost {
+/// Paint per interaction state, on builders that track hover, focus, press, and disabled.
+pub trait StateVariants: Widget + StateTarget {
+    /// Sets the style for the rest state.
     #[must_use]
     fn rest<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_rest, configure)
+        self.set_state(
+            StateSlot::Rest,
+            configure(StateStyleBuilder::new()).into_atoms(),
+        )
     }
 
+    /// Sets the style while the pointer is over the node.
     #[must_use]
     fn hover<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_hover, configure)
+        self.set_state(
+            StateSlot::Hovered,
+            configure(StateStyleBuilder::new()).into_atoms(),
+        )
     }
 
+    /// Sets the style while the node has focus.
     #[must_use]
     fn focus<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_focus, configure)
+        self.set_state(
+            StateSlot::Focused,
+            configure(StateStyleBuilder::new()).into_atoms(),
+        )
     }
 
+    /// Sets the style while the node is pressed.
     #[must_use]
     fn pressed<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_pressed, configure)
+        self.set_state(
+            StateSlot::Pressed,
+            configure(StateStyleBuilder::new()).into_atoms(),
+        )
     }
 
+    /// Sets the style while the node is disabled.
     #[must_use]
     fn disabled_style<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_disabled, configure)
+        self.set_state(
+            StateSlot::Disabled,
+            configure(StateStyleBuilder::new()).into_atoms(),
+        )
     }
 }
 
-impl<T: PaintTarget + StateHost> StateVariants for T {}
+impl<T: Widget + StateTarget> StateVariants for T {}

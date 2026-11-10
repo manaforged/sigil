@@ -4,7 +4,7 @@ Lists and grids that present collections. `virtual_list` is the virtualized prim
 
 ## virtual_list
 
-`virtual_list(items, render) -> VirtualListBuilder<T, R>` where `render` is `Fn(usize, &T) -> NodeBuilder` and `items` is anything implementing `IntoList`: a `Vec<T>`, or a `Signal<S>` whose target is `AsRef<[T]>` (`Signal<Vec<T>>`, `Signal<Arc<Vec<T>>>`, …). When a bound signal changes, the list rebuilds the rows in its window. With `.key_by` or `.identified()`, only rows with a new key rebuild.
+`virtual_list(items, render) -> VirtualListBuilder<T, R>` where `render` is `Fn(usize, &T) -> NodeBuilder` and `items` is a `Vec<T>`, or a `Signal<S>` whose target is `AsRef<[T]>` (`Signal<Vec<T>>`, `Signal<Arc<Vec<T>>>`, …). When a bound signal changes, the list rebuilds the rows in its window. With `.key_by` or `.identified()`, only rows with a new key rebuild.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -12,7 +12,7 @@ Lists and grids that present collections. `virtual_list` is the virtualized prim
 # let rows = vec![Row { name: "a.txt".into(), detail: "4 KB".into() }];
 # let _ = {
 virtual_list(rows, |index, row| {
-    list_row(index == 3, row.name.clone(), row.detail.clone())
+    list_row(index == 3, row.name.clone(), ListRowSlots { status: Some(row.detail.clone().into()), ..ListRowSlots::default() })
 })
 .selection(SelectionMode::Single)
 .viewport_height(400.0);
@@ -40,7 +40,7 @@ Key options:
 
 ## table
 
-`table(TableState<Row>) -> TableBuilder<Row>`. The body is a virtual list, so large row sets stay cheap; the header is rendered once.
+`table(TableState<Row>)`. The body is a virtual list, so large row sets stay cheap; the header is rendered once.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -75,10 +75,10 @@ table(state).striped().viewport_fill();
 - `TableState::identified(rows, columns)`: selection tracks `Identifiable::id` (`Clone + Eq + Hash`; implemented for `Arc<Row>` too), so `replace_rows` keeps the same logical rows selected.
 - `replace_rows(Into<Arc<Vec<Row>>>)`, `columns()`, `visible() -> Signal<Rc<Vec<u32>>>` (the sorted+filtered index list), `selected_index()`, `selected_row()`, `selection() -> Signal<Rc<HashSet<u32>>>`.
 - Selection writes: `select_only(row)`, `toggle_selected(row)`, `select_range_to(row)`, `clear_selection()`.
-- `sort_key() -> Signal<Option<SortKey>>`, `toggle_sort(id)`, `sort(id, SortDir)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
-- Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`, `column_layout() -> Signal<Rc<ColumnLayout>>`.
+- `sort_key() -> Signal<Option<SortKey>>`, `toggle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
+- Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 
-`TableBuilder` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.viewport_fill()`, `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
+`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.viewport_fill()`, `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
 
 The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
 
@@ -90,7 +90,7 @@ The header uses `surface-inset`, a strong bottom border, and extra-small medium-
 
 The row helpers live in [Chrome](chrome.md#small-composites) and fill a data view:
 
-- `list_row(selected, title, detail)` and `list_row_with(selected, title, ListRowSlots)` are the usual `virtual_list` rows.
+- `list_row(selected, title, ListRowSlots)` is the usual `virtual_list` row.
 - `kv_row(label, value)` and `kv_grid([(key, value)])` show fixed key-value facts.
 
 ## States, keys, and accessibility

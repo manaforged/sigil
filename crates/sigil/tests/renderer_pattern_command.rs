@@ -10,8 +10,8 @@ mod scene_support;
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
 use sigil::scene::{
-    CommandScene, CornerRadii, PaintFill, PatternKind, SceneBuilder, SceneCommand,
-    ScenePatternStyle, Stroke, StrokeAlign, StrokeStyle,
+    CommandScene, CornerRadii, DrawPattern, PaintFill, PatternKind, SceneBuilder, SceneCommand,
+    Stroke, StrokeAlign, StrokeStyle,
 };
 use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::{Capture, render_capture};
@@ -84,17 +84,15 @@ fn assert_pattern_command_shape(scene: &CommandScene) {
 fn pattern_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.draw_pattern(
-        rect(0.0, 0.0),
-        ScenePatternStyle::new(slash(), CornerRadii::uniform(8.0), 10_000),
+        DrawPattern::new(rect(0.0, 0.0), slash()).border_radius(CornerRadii::uniform(8.0)),
     );
     builder.draw_pattern(
-        rect(56.0, 0.0),
-        ScenePatternStyle::new(checker(), CornerRadii::uniform(8.0), 10_000),
+        DrawPattern::new(rect(56.0, 0.0), checker()).border_radius(CornerRadii::uniform(8.0)),
     );
     builder.draw_pattern(
-        rect(112.0, 0.0),
-        ScenePatternStyle::new(slash(), CornerRadii::uniform(8.0), 10_000)
-            .with_stroke(outside_stroke()),
+        DrawPattern::new(rect(112.0, 0.0), slash())
+            .border_radius(CornerRadii::uniform(8.0))
+            .stroke(outside_stroke()),
     );
     builder.finish()
 }

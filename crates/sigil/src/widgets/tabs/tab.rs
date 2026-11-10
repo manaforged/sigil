@@ -1,26 +1,28 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::prelude::PointerEvent;
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    ClassSource, ColorAtom, DISABLED_OPACITY, Px, Radius, Rgba8, StateSlot, StateStyle, StyleAtom,
+    ClassSource, ColorAtom, DISABLED_OPACITY, Radius, Rgba8, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, Token, space,
 };
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{Activate, activate_key, activate_pointer};
+use crate::widgets::shared::{Activate, Press, RELEASE, RELEASE_ENTER, press};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
-use super::drag::{DragState, install_label_drag_hooks};
+use super::drag::{TabDrag, install_label_drag_hooks};
 use crate::layout::snap::CellForm;
 
 const CLOSE_AFFORDANCE_WIDTH: f32 = space(4);
 const TAB_PADDING_X: f32 = space(3);
 const LINE_STRIP: CellForm<f32> = CellForm::new(STRIP_HEIGHT, space(4));
+const BARE_TAB: CellForm<f32> = CellForm::new(TAB_HEIGHT, crate::Host::CELL);
 const CLOSE_GAP: CellForm<f32> = CellForm::new(space(1), 0.0);
 
 pub(super) fn line_strip_height() -> f32 {
@@ -31,7 +33,7 @@ pub(super) fn tab_height(chrome: StripChrome) -> f32 {
     if matches!(chrome, StripChrome::Line) {
         line_strip_height()
     } else {
-        TAB_HEIGHT
+        BARE_TAB.pick()
     }
 }
 
@@ -45,9 +47,10 @@ static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
 static LINE_ACTIVE_HOVER: &[StyleAtom] = &[Token::Accent.border(), Token::SurfaceHover.bg()];
 static LABEL_MUTED: &[StyleAtom] = &[Token::Gray11.text(), StyleAtom::FontWeight(500)];
 static LABEL_ACTIVE: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(600)];
+static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(700)];
 static LINE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(presets::SMOOTH),
-    StyleAtom::BorderBottom(Px(2)),
+    StyleAtom::BorderBottom(2),
     StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
         r: 0,
         g: 0,
@@ -94,25 +97,19 @@ static LINE_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
 );
 
 fn tab_label(label: String, selected: Signal<bool>) -> TextBuilder {
-    let node = if CellForm::new(false, true).pick() {
-        text(derived(move || {
-            if selected.get() {
-                format!("[{label}]")
-            } else {
-                format!(" {label} ")
-            }
-        }))
+    let cell = CellForm::new(false, true).pick();
+    let node = if cell {
+        text(format!(" {label} "))
     } else {
         text(label)
     };
+    let active = if cell {
+        LABEL_ACTIVE_CELL
+    } else {
+        LABEL_ACTIVE
+    };
     node.layout(LayoutStyle::block())
-        .style_reactive(move || {
-            if selected.get() {
-                LABEL_ACTIVE
-            } else {
-                LABEL_MUTED
-            }
-        })
+        .style_reactive(move || if selected.get() { active } else { LABEL_MUTED })
         .hittable(false)
 }
 
@@ -123,7 +120,6 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
             cb(index);
         }
     });
-    let pointer_activate = Rc::clone(&activate);
     let node = interaction.install(
         container()
             .role(Role::Button)
@@ -136,11 +132,14 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
                     .class(Token::OnSurface.text()),
             ),
     );
-    node.pointer_down(PointerEvent::stop_propagation)
-        .pointer_up(move |event| {
-            event.stop_propagation();
-            activate_pointer(event, interaction, &pointer_activate);
-        })
+    press(
+        node.pointer_down(PointerEvent::stop_propagation),
+        interaction,
+        None,
+        Press::Activate(activate),
+        RELEASE,
+    )
+    .pointer_up(PointerEvent::stop_propagation)
 }
 
 fn tab_frame(
@@ -156,8 +155,8 @@ fn tab_frame(
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(chrome))
-                .padding_x(TAB_PADDING_X)
-                .gap(CLOSE_GAP.pick())
+                .padding_x(Space::px(TAB_PADDING_X))
+                .gap(Space::px(CLOSE_GAP.pick()))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
@@ -194,7 +193,7 @@ pub(super) fn build_tab(
     label: String,
     active: Signal<usize>,
     disabled: &Rc<Vec<usize>>,
-    drag: Option<DragState>,
+    drag: Option<TabDrag>,
     closeable: bool,
     close_handler: Option<CloseHandler>,
     user_overlay: StyleOverlay,
@@ -205,20 +204,20 @@ pub(super) fn build_tab(
     let selected = derived(move || active.get() == index);
 
     let activate: Activate = Rc::new(move || {
-        if !is_disabled && !drag.is_some_and(DragState::consume_just_dragged) {
+        if !is_disabled && !drag.is_some_and(TabDrag::consume_just_dragged) {
             active.set(index);
         }
     });
-    let pointer_activate = Rc::clone(&activate);
-
-    let mut node = tab_frame(chrome, interaction, selected, user_overlay)
-        .role(Role::Tab)
-        .label(label.clone())
-        .selected(selected)
-        .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
-        .key(Key::Enter, move |event| {
-            activate_key(event, interaction, &activate);
-        });
+    let mut node = press(
+        tab_frame(chrome, interaction, selected, user_overlay)
+            .role(Role::Tab)
+            .label(label.clone())
+            .selected(selected),
+        interaction,
+        None,
+        Press::Activate(activate),
+        RELEASE_ENTER,
+    );
     if let Some(drag_state) = drag {
         node = install_label_drag_hooks(node, drag_state, visual_index);
     }

@@ -1,185 +1,102 @@
-use super::parse::Span;
+use super::parse::Inline;
 use crate::app::HostCaps;
 use crate::style::{TextFace, TextRun, Token};
-use crate::widgets::text_search::NextMatch;
 
-fn find_from(next: &mut NextMatch, source: &str, from: usize) -> Option<usize> {
-    next.find(source.get(from..)?).map(|at| at + from)
-}
-
-struct Inlines<'a> {
-    source: &'a str,
-    tick: NextMatch,
-    star: NextMatch,
-    double: NextMatch,
-    bracket: NextMatch,
-    paren: NextMatch,
-}
-
-impl Inlines<'_> {
-    fn span_at(&mut self, i: usize) -> Option<(Span, usize)> {
-        let source = self.source;
-        let rest = source.get(i..)?;
-        if rest.starts_with('`')
-            && let Some(end) = find_from(&mut self.tick, source, i + 1)
-        {
-            return Some((Span::Code(source[i + 1..end].to_string()), end + 1));
-        }
-        if rest.starts_with('[')
-            && let Some((label, href, next)) = self.link_at(i)
-        {
-            return Some((Span::Link { text: label, href }, next));
-        }
-        if let Some(url) = rest
-            .strip_prefix('<')
-            .and_then(|tail| tail.split_once('>'))
-            .map(|(url, _)| url)
-            .filter(|url| url.contains("://") && !url.contains(char::is_whitespace))
-        {
-            let span = Span::Link {
-                text: url.to_string(),
-                href: url.to_string(),
-            };
-            return Some((span, i + url.len() + 2));
-        }
-        if rest.starts_with("**")
-            && opens(source, i + 2)
-            && let Some(end) = find_from(&mut self.double, source, i + 2)
-                .filter(|&end| end > i + 2 && closes(source, end))
-        {
-            return Some((Span::Bold(source[i + 2..end].to_string()), end + 2));
-        }
-        if rest.starts_with('*')
-            && opens(source, i + 1)
-            && let Some(end) = find_from(&mut self.star, source, i + 1)
-                .filter(|&end| end > i + 1 && closes(source, end))
-        {
-            return Some((Span::Italic(source[i + 1..end].to_string()), end + 1));
-        }
-        None
-    }
-
-    fn link_at(&mut self, i: usize) -> Option<(String, String, usize)> {
-        let source = self.source;
-        let close = find_from(&mut self.bracket, source, i + 1)?;
-        let label = source[i + 1..close].to_string();
-        source.get(close + 1..)?.strip_prefix('(')?;
-        let end = find_from(&mut self.paren, source, close + 2)?;
-        let url = source[close + 2..end].to_string();
-        Some((label, url, end + 1))
-    }
-}
-
-pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
-    let mut scan = Inlines {
-        source,
-        tick: NextMatch::new("`", false),
-        star: NextMatch::new("*", false),
-        double: NextMatch::new("**", false),
-        bracket: NextMatch::new("]", false),
-        paren: NextMatch::new(")", false),
-    };
-    let mut out = Vec::new();
-    let mut i = 0;
-    let mut text = String::new();
-    while i < source.len() {
-        if let Some((span, next)) = scan.span_at(i) {
-            flush_text(&mut out, &mut text);
-            out.push(span);
-            i = next;
-            continue;
-        }
-        let ch = source[i..].chars().next().unwrap_or(' ');
-        text.push(ch);
-        i += ch.len_utf8();
-    }
-    flush_text(&mut out, &mut text);
-    if out.is_empty() {
-        out.push(Span::Text(String::new()));
-    }
-    out
-}
-
-fn opens(source: &str, at: usize) -> bool {
-    source
-        .get(at..)
-        .and_then(|rest| rest.chars().next())
-        .is_some_and(|ch| !ch.is_whitespace())
-}
-
-fn closes(source: &str, end: usize) -> bool {
-    source
-        .get(..end)
-        .and_then(|head| head.chars().next_back())
-        .is_some_and(|ch| !ch.is_whitespace())
-}
-
-fn flush_text(out: &mut Vec<Span>, text: &mut String) {
-    if !text.is_empty() {
-        out.push(Span::Text(std::mem::take(text)));
-    }
-}
-
-#[derive(Default)]
-pub(super) struct Styled {
+#[derive(Clone, Default)]
+pub(super) struct StyledText {
     pub(super) text: String,
     pub(super) runs: Vec<TextRun>,
 }
 
-pub(super) fn styled(source: &str) -> Styled {
-    let mut out = Styled::default();
-    push_spans(&mut out, source, &TextFace::default());
+pub(super) fn styled(body: &[Inline]) -> StyledText {
+    let mut out = StyledText::default();
+    push_spans(&mut out, body, &TextFace::default());
     out
 }
 
-fn push_spans(out: &mut Styled, source: &str, face: &TextFace) {
-    for span in parse_inlines(source) {
+fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
+    for span in spans {
         match span {
-            Span::Text(body) => push_run(out, &body, face),
-            Span::Bold(body) => push_spans(
-                out,
-                &body,
-                &TextFace {
-                    bold: true,
-                    ..face.clone()
-                },
-            ),
-            Span::Italic(body) => {
-                push_spans(
-                    out,
-                    &body,
-                    &TextFace {
-                        italic: true,
-                        ..face.clone()
-                    },
-                );
-            }
-            Span::Code(body) => {
+            Inline::Text(body) => push_run(out, body, face),
+            Inline::Strong(body) => push_marked(out, body, face, |inner| inner.bold = true),
+            Inline::Em(body) => push_marked(out, body, face, |inner| inner.italic = true),
+            Inline::Strike(body) => push_marked(out, body, face, |inner| inner.strike = true),
+            Inline::Code(body) => {
                 let code = TextFace {
                     mono: true,
                     color: Some(Token::OnSurface),
                     background: Some(Token::SurfaceSubtle),
                     ..face.clone()
                 };
-                push_run(out, &unbreakable(&body), &code);
+                push_run(out, &unbreakable(body), &code);
             }
-            Span::Link { text, href } => push_link(out, face, &text, &href),
+            Inline::Math(body) => push_run(out, &crate::widgets::math::unicode(body), face),
+            Inline::Note(label) => push_note(out, label, face),
+            Inline::Image { alt, .. } => {
+                let muted = TextFace {
+                    color: Some(Token::OnSurfaceMuted),
+                    ..face.clone()
+                };
+                push_run(out, &format!("[{alt}]"), &muted);
+            }
+            Inline::Link {
+                href,
+                body,
+                label_is_href,
+            } => {
+                push_link(out, face, (body, *label_is_href), href);
+            }
         }
     }
 }
 
-fn push_link(out: &mut Styled, face: &TextFace, text: &str, href: &str) {
+fn push_marked(
+    out: &mut StyledText,
+    spans: &[Inline],
+    face: &TextFace,
+    mark: impl FnOnce(&mut TextFace),
+) {
+    let mut inner = face.clone();
+    mark(&mut inner);
+    push_spans(out, spans, &inner);
+}
+
+pub(super) fn note_mark(label: &str) -> String {
+    const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    if label.bytes().all(|byte| byte.is_ascii_digit()) {
+        label
+            .bytes()
+            .filter_map(|byte| DIGITS.get(usize::from(byte - b'0')))
+            .collect()
+    } else {
+        format!("[{label}]")
+    }
+}
+
+fn push_note(out: &mut StyledText, label: &str, face: &TextFace) {
+    let mark = TextFace {
+        color: Some(Token::Accent11),
+        ..face.clone()
+    };
+    push_run(out, &note_mark(label), &mark);
+}
+
+fn push_link(
+    out: &mut StyledText,
+    face: &TextFace,
+    (body, label_is_href): (&[Inline], bool),
+    href: &str,
+) {
     let link = TextFace {
         color: Some(Token::Accent11),
         link: Some(href.into()),
         ..face.clone()
     };
-    if text.contains("://") {
-        push_run(out, &url_breaks(text), &link);
-    } else {
-        push_spans(out, text, &link);
+    match body {
+        [Inline::Text(url)] if url.contains("://") => push_run(out, &url_breaks(url), &link),
+        _ => push_spans(out, body, &link),
     }
-    if !HostCaps::current().hyperlinks && text != href {
+    if !HostCaps::current().hyperlinks && !label_is_href {
         push_run(out, " (", face);
         let url = TextFace {
             color: Some(Token::OnSurfaceMuted),
@@ -239,7 +156,7 @@ fn unbreakable(body: &str) -> String {
 #[path = "inline_tests.rs"]
 mod tests;
 
-fn push_run(out: &mut Styled, body: &str, face: &TextFace) {
+fn push_run(out: &mut StyledText, body: &str, face: &TextFace) {
     let start = out.text.len();
     out.text.push_str(body);
     if *face != TextFace::default() && !body.is_empty() {

@@ -1,12 +1,12 @@
-use crate::events::{PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
+use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
+#[cfg(any(test, feature = "kittest"))]
 use accesskit::TreeUpdate;
 use smallvec::SmallVec;
 
 use crate::events::focus::{FocusIntent, FocusManager};
-use crate::events::handlers::dispatch;
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
@@ -21,50 +21,61 @@ mod paste;
 pub(crate) use gesture::GestureHandlers;
 pub(crate) use paste::PasteHandlers;
 
-#[derive(Debug, Default)]
-pub struct EventRouter {
-    focus: FocusManager,
-    pub(crate) ime_session: crate::events::ime_handlers::ImeSession,
-    pointer_capture: Option<NodeId>,
-    hover_targets: PointerTargets,
-    last_pointer: Option<PointerEvent>,
-    shortcuts: ShortcutIndex,
-    hit_cache: HitTestCache,
-    hover_seen: Option<(u64, u64, (u32, u32))>,
-    link_press: Option<std::sync::Arc<str>>,
+kittest_pub! {
+    #[derive(Debug, Default)]
+    pub struct EventRouter {
+        pub(crate) focus: FocusManager,
+        pointer_capture: Option<NodeId>,
+        hover_targets: PointerTargets,
+        last_pointer: Option<PointerEvent>,
+        shortcuts: ShortcutIndex,
+        hit_cache: HitTestCache,
+        hover_seen: Option<(u64, u64, (u32, u32))>,
+        link_press: Option<std::sync::Arc<str>>,
+    }
 }
 
 impl EventRouter {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+    kittest_pub! {
+        #[must_use]
+        pub fn new() -> Self {
+            Self::default()
+        }
     }
 
     pub(crate) const fn set_visual_transforms(&mut self, enabled: bool) {
         self.hit_cache.visual_transforms = enabled;
     }
 
-    pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
-        self.focus.sync_scopes(cx, Some(layout));
-        match event {
-            ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
-            ShellEvent::Key(event) => self.route_key(cx, layout, event),
-            ShellEvent::Window(crate::events::WindowEvent::Focused(false)) => {
-                self.focus_lost(cx, layout);
+    kittest_pub! {
+        pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: Event) {
+            self.focus.sync_scopes(cx, Some(layout));
+            match event {
+                Event::Pointer(event) => self.route_pointer(cx, layout, event),
+                Event::Key(event) => self.route_key(cx, layout, event),
+                Event::Window(crate::events::WindowEvent::Focused(false)) => {
+                    self.focus_lost(cx, layout);
+                }
+                Event::Scroll(event) => self.route_scroll(cx, layout, event),
+                Event::Gesture(event) => self.route_gesture(cx, layout, event),
+                Event::Ime(event) => self.route_ime(cx, layout, &event),
+                Event::FileDrop(event) => self.route_file_drop(cx, layout, &event),
+                Event::Paste(text) => self.route_paste(cx, layout, &text),
+                Event::Window(_) => {}
             }
-            ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
-            ShellEvent::Gesture(event) => self.route_gesture(cx, layout, event),
-            ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
-            ShellEvent::FileDrop(event) => self.route_file_drop(cx, layout, &event),
-            ShellEvent::Paste(text) => self.route_paste(cx, layout, text),
-            ShellEvent::Window(_) => {}
         }
     }
 
     fn route_scroll(&mut self, cx: &Cx, layout: &LayoutEngine, mut event: ScrollEvent) {
         self.bubble(cx, layout, event.position, |id, local| {
             event.position = local;
-            let _ = dispatch(cx, id, |handlers| handlers.invoke_scroll(&mut event));
+            let _ = crate::events::handlers::fire(
+                cx,
+                id,
+                crate::events::handlers::EventKind::Scroll,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Scroll(&mut event),
+            );
             event.propagation_stopped()
         });
     }
@@ -87,33 +98,36 @@ impl EventRouter {
         }
     }
 
-    #[must_use]
-    pub const fn focus(&self) -> Option<NodeId> {
-        self.focus.focus()
+    kittest_pub! {
+        #[must_use]
+        pub const fn focus(&self) -> Option<NodeId> {
+            self.focus.focus()
+        }
     }
 
-    pub fn set_focus(&mut self, cx: &mut Cx, target: Option<NodeId>) {
-        crate::events::note_focus_source(true);
-        self.focus.set_focus(cx, target);
+    kittest_pub! {
+        pub fn set_focus(&mut self, cx: &mut Cx, target: Option<NodeId>) {
+            crate::events::note_focus_source(true);
+            self.focus.set_focus(cx, target);
+        }
     }
 
-    pub fn flush_focus_requests(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
-        for id in crate::events::focus::take_reveal_requests() {
-            crate::events::focus::reveal_focus(cx, layout, id);
-        }
-        let pending = crate::events::focus::take_focus_requests();
-        if pending.is_empty() {
-            return;
-        }
-        crate::events::note_focus_source(true);
-        self.focus.sync_scopes(cx, Some(layout));
-        for id in pending {
-            if self.focus.is_focusable_target(cx, layout, id) {
-                self.focus.set_focus(cx, Some(id));
+    kittest_pub! {
+        pub fn flush_focus_requests(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+            let pending = crate::events::focus::take_focus_requests();
+            if pending.is_empty() {
+                return;
             }
-        }
-        if let Some(id) = self.focus.focus() {
-            crate::events::focus::reveal_focus(cx, layout, id);
+            crate::events::note_focus_source(true);
+            self.focus.sync_scopes(cx, Some(layout));
+            for id in pending {
+                if self.focus.is_focusable_target(cx, layout, id) {
+                    self.focus.set_focus(cx, Some(id));
+                }
+            }
+            if let Some(id) = self.focus.focus() {
+                crate::events::focus::reveal_focus(cx, layout, id);
+            }
         }
     }
 
@@ -122,43 +136,61 @@ impl EventRouter {
         self.focus.tab_edges(cx)
     }
 
-    pub fn focus_next(&mut self, cx: &mut Cx) {
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn focus_next(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
         crate::events::note_focus_source(true);
-        self.focus.focus_next(cx, None);
+        self.focus.focus_next(cx, Some(layout));
     }
 
-    pub fn focus_prev(&mut self, cx: &mut Cx) {
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn focus_prev(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
         crate::events::note_focus_source(true);
-        self.focus.focus_prev(cx, None);
+        self.focus.focus_prev(cx, Some(layout));
     }
 
-    pub fn focus_if_needed(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
-        self.focus.sync_scopes(cx, Some(layout));
-        if self.focus.holds_live_focus(cx) {
-            return;
+    kittest_pub! {
+        pub fn focus_if_needed(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+            self.focus.sync_scopes(cx, Some(layout));
+            if self.focus.holds_live_focus(cx) {
+                return;
+            }
+            crate::events::note_focus_source(crate::style::cell_size().is_some());
+            self.focus.focus_first(cx, layout);
         }
-        crate::events::note_focus_source(crate::style::cell_size().is_some());
-        self.focus.focus_first(cx, layout);
     }
 
-    pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
-        crate::events::note_focus_source(true);
-        self.focus.focus_intent(cx, layout, intent);
+    kittest_pub! {
+        pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+            crate::events::note_focus_source(true);
+            self.focus.focus_intent(cx, layout, intent);
+        }
     }
 
     #[must_use]
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub fn a11y_focus_update(&self) -> TreeUpdate {
         self.focus.a11y_focus_update()
     }
 
-    #[must_use]
-    pub fn is_focus_target(&mut self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
-        self.focus.is_focusable_target(cx, layout, target)
+    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
+        self.focus.a11y_focus_update()
     }
 
-    #[must_use]
-    pub fn is_click_target(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
-        self.focus.is_hittable_target(cx, layout, target)
+    kittest_pub! {
+        #[must_use]
+        pub fn is_focus_target(&mut self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
+            self.focus.is_focusable_target(cx, layout, target)
+        }
+    }
+
+    kittest_pub! {
+        #[must_use]
+        pub fn is_click_target(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
+            self.focus.is_hittable_target(cx, layout, target)
+        }
     }
 
     #[cfg(test)]
@@ -181,9 +213,17 @@ impl EventRouter {
         if self.route_captured_pointer(cx, layout, &mut event, global_position) {
             return;
         }
-        let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
+        let path = self.hit_cache.hit_path(cx, layout, event.position);
+        if event.phase == PointerPhase::Down
+            && !path.as_ref().is_some_and(|path| in_popup(cx, path))
+            && crate::widgets::popup_close_light()
+        {
+            self.end_press(event.phase);
+            return;
+        }
+        let Some(path) = path else {
             self.clear_hover(cx, &event);
-            self.release_capture_on_terminal_phase(event.phase);
+            self.end_press(event.phase);
             return;
         };
         if event.phase == PointerPhase::Down {
@@ -198,7 +238,7 @@ impl EventRouter {
         if event.capture_requested() {
             self.pointer_capture = capture_requester.or_else(|| path.last().copied());
         }
-        self.release_capture_on_terminal_phase(event.phase);
+        self.end_press(event.phase);
     }
 
     fn follow_link(&mut self, cx: &Cx, path: &NodePath, event: &PointerEvent, at: Point) {
@@ -231,7 +271,10 @@ impl EventRouter {
             self.pointer_capture = None;
             return false;
         };
-        if !matches!(event.phase, PointerPhase::Move | PointerPhase::Up) {
+        if !matches!(
+            event.phase,
+            PointerPhase::Move | PointerPhase::Up | PointerPhase::Cancel
+        ) {
             return false;
         }
         event.set_captured(true);
@@ -241,11 +284,16 @@ impl EventRouter {
             event,
             global_position,
         );
-        self.release_capture_on_terminal_phase(event.phase);
+        self.end_press(event.phase);
         true
     }
 
-    pub fn reconcile_hover(&mut self, cx: &Cx, layout: &LayoutEngine) {
+    pub(crate) fn invoke_node(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) {
+        let hovered = self.hover_targets.iter().any(|hover| hover.id == target);
+        crate::events::pointer_dispatch::invoke_node(cx, layout, target, hovered);
+    }
+
+    pub(crate) fn reconcile_hover(&mut self, cx: &Cx, layout: &LayoutEngine) {
         if self.pointer_capture.is_some() {
             return;
         }
@@ -302,6 +350,7 @@ impl EventRouter {
                 pointer_target_for_node(cx, layout, captured, self.hit_cache.visual_transforms);
             dispatch_synthetic_target(cx, target, &source, PointerPhase::Cancel);
         }
+        self.link_press = None;
         crate::events::selection::end_drag();
         self.clear_hover(cx, &source);
     }
@@ -313,12 +362,10 @@ impl EventRouter {
         self.hover_targets.clear();
     }
 
-    const fn release_capture_on_terminal_phase(&mut self, phase: PointerPhase) {
-        if matches!(
-            phase,
-            PointerPhase::Up | PointerPhase::Leave | PointerPhase::Cancel
-        ) {
+    fn end_press(&mut self, phase: PointerPhase) {
+        if matches!(phase, PointerPhase::Up | PointerPhase::Cancel) {
             self.pointer_capture = None;
+            self.link_press = None;
         }
     }
 
@@ -342,4 +389,11 @@ impl EventRouter {
 struct ShortcutIndex {
     generation: u64,
     entries: SmallVec<[(Shortcut, NodeId); 8]>,
+}
+
+fn in_popup(cx: &Cx, path: &NodePath) -> bool {
+    path.iter().any(|id| {
+        cx.get(*id)
+            .is_some_and(|node| node.a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Popup))
+    })
 }

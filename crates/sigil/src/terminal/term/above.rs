@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::fmt;
 use std::io::{self, Write};
 use std::iter::Peekable;
 use std::str::Chars;
@@ -10,41 +9,36 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 use unicode_segmentation::UnicodeSegmentation;
 
-use super::{INLINE, LIVE, LIVE_ROWS, REDRAW, current_caps};
+use super::{INLINE, LIVE, LIVE_ROWS, REDRAW, RESTORED, current_caps};
 use crate::app::cell_width;
+use crate::{Error, ErrorKind};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PrintAboveError {
-    NotLive,
-    FullScreen,
+const fn unsupported(kind: ErrorKind, message: &'static str) -> crate::Error {
+    Error::fixed(kind, message)
 }
 
-impl fmt::Display for PrintAboveError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::NotLive => "print_above: no live terminal on this thread",
-            Self::FullScreen => "print_above: the terminal host is not inline",
-        })
-    }
-}
-
-impl std::error::Error for PrintAboveError {}
-
-impl From<PrintAboveError> for io::Error {
-    fn from(error: PrintAboveError) -> Self {
-        Self::new(io::ErrorKind::Unsupported, error)
-    }
-}
-
-pub fn print_above(text: &str) -> io::Result<()> {
+/// Write lines above the inline live region, into scrollback.
+pub fn print_above(text: &str) -> Result<(), crate::Error> {
     if text.is_empty() {
         return Ok(());
     }
     if !LIVE.with(Cell::get) {
-        return Err(PrintAboveError::NotLive.into());
+        return Err(unsupported(
+            ErrorKind::NotLive,
+            "print_above: no live terminal on this thread",
+        ));
+    }
+    if RESTORED.load(Ordering::Relaxed) {
+        return Err(unsupported(
+            ErrorKind::NotLive,
+            "print_above: the terminal is released",
+        ));
     }
     if !INLINE.load(Ordering::Relaxed) {
-        return Err(PrintAboveError::FullScreen.into());
+        return Err(unsupported(
+            ErrorKind::NotInline,
+            "print_above: the terminal host is not inline",
+        ));
     }
     let cols = crossterm::terminal::size().map_or(usize::MAX, |(cols, _)| usize::from(cols));
     let mut out = io::stdout().lock();

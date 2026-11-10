@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
+use crate::Error;
 use crate::geometry::{Point, Rect};
-use crate::renderer::damage::{self, FrameKey, FullReason, Plan, Retained};
+use crate::renderer::damage::{self, FullReason};
+use crate::renderer::damage::{FrameKey, Plan, Retained};
 use crate::renderer::device_state::ReadyState;
-use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::offscreen::OffscreenTarget;
@@ -36,7 +37,7 @@ impl ReadyState {
         request: &SurfaceFrame<'_>,
         stats: &mut FrameStats,
         retained: &mut Option<Retained>,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let Some((frame, view)) = acquire_frame(self, surface)? else {
             return Ok(());
         };
@@ -106,7 +107,7 @@ impl ReadyState {
         back: &wgpu::Texture,
         screen: &wgpu::Texture,
         request: &SurfaceFrame<'_>,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let view = back.create_view(&wgpu::TextureViewDescriptor::default());
         let key = FrameKey {
             target: back.clone(),
@@ -132,7 +133,7 @@ impl ReadyState {
         view: &wgpu::TextureView,
         request: &SurfaceFrame<'_>,
         plan: &Plan,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let scale = recording.scale;
         damage::note_plan(plan);
         let (scene, redrawn) = match plan {

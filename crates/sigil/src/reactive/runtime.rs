@@ -79,18 +79,11 @@ pub(crate) fn runtime_id() -> u64 {
     })
 }
 
+/// Run code inside a reactive runtime.
 #[derive(Debug)]
 pub struct Runtime;
 
 impl Runtime {
-    #[track_caller]
-    pub fn scope<R>(name: &'static str, f: impl FnOnce() -> R) -> R {
-        let owner = crate::reactive::owner::Owner::new(name, None);
-        let result = owner.with(f);
-        owner.dispose();
-        result
-    }
-
     #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn current_phase() -> DrawPhase {

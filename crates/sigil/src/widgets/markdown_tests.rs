@@ -1,11 +1,11 @@
 use crate::kernel::Cx;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 use super::{markdown, markdown_edit};
 
 #[test]
 fn markdown_builds() {
-    Runtime::scope("markdown-builds", || {
+    Owner::scope("markdown-builds", || {
         let source = signal(String::from("# Hi\n\nthere"));
         let mut cx = Cx::new_root();
         let id = cx.add(markdown(source));
@@ -22,8 +22,8 @@ fn oversized_markdown_source_is_rejected() {
     assert!(
         matches!(
             blocks.as_slice(),
-            [crate::widgets::markdown::parse::Block::Paragraph(text)]
-                if text.contains("1 MiB")
+            [crate::widgets::markdown::parse::Block::Paragraph(body)]
+                if crate::widgets::markdown::parse::Inline::plain(body).contains("1 MiB")
         ),
         "oversized input must return the limit message",
     );
@@ -31,7 +31,7 @@ fn oversized_markdown_source_is_rejected() {
 
 #[test]
 fn markdown_edit_builds() {
-    Runtime::scope("markdown-edit-builds", || {
+    Owner::scope("markdown-edit-builds", || {
         let source = signal(String::from("# Hi"));
         let mut cx = Cx::new_root();
         let id = cx.add(markdown_edit(source));

@@ -1,8 +1,12 @@
 use crate::geometry::{Point, Rect};
-use crate::kernel::{Cx, NodeId, TopLayer};
+use crate::kernel::{Cx, Node, NodeId, TopLayer};
 use crate::layout::{LayoutEngine, LayoutResult};
-use crate::style::{StyleBinding, Transform2D};
+use crate::style::StyleBinding;
 use smallvec::SmallVec;
+
+#[path = "hit_test/projection.rs"]
+mod projection;
+use projection::{node_transform, to_local};
 
 #[cfg(test)]
 #[path = "hit_test_tests.rs"]
@@ -153,8 +157,7 @@ impl HitTestCache {
                     .get(item.id)
                     .and_then(|node| node.get_extension::<StyleBinding>())
             {
-                local =
-                    local.and_then(|point| Transform2D::for_binding(binding).inverse(point, rect));
+                local = local.and_then(|point| to_local(cx, item.id, binding, rect, point));
             }
             transform.query = self.query;
             transform.position = local;
@@ -163,22 +166,35 @@ impl HitTestCache {
     }
 }
 
+pub(crate) fn walk_order<'a, F>(
+    cx: &'a Cx,
+    roots: &[NodeId],
+    enter: F,
+) -> impl Iterator<Item = (NodeId, &'a crate::kernel::Node)> + use<'a, F>
+where
+    F: Fn(NodeId, &crate::kernel::Node) -> bool + 'a,
+{
+    let mut stack: Vec<NodeId> = roots.iter().rev().copied().collect();
+    std::iter::from_fn(move || {
+        while let Some(id) = stack.pop() {
+            let Some(node) = cx.get(id) else { continue };
+            if !enter(id, node) {
+                continue;
+            }
+            stack.extend(node.children().iter().rev().copied());
+            return Some((id, node));
+        }
+        None
+    })
+}
+
 pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
     let mut current = Some(target);
     while let Some(id) = current {
         let Some(node) = cx.get(id) else {
             return false;
         };
-        if node
-            .get_extension::<crate::style::presence::Presence>()
-            .is_some_and(|presence| !presence.interactive())
-        {
-            return false;
-        }
-        if node
-            .get_extension::<StyleBinding>()
-            .is_some_and(StyleBinding::hides)
-        {
+        if conceals(node) {
             return false;
         }
         current = cx.parent(id);
@@ -186,9 +202,21 @@ pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
     true
 }
 
+/// Whether this node hides itself and its subtree from input and assistive tech.
+pub(crate) fn conceals(node: &Node) -> bool {
+    node.get_extension::<crate::style::presence::Presence>()
+        .is_some_and(|presence| !presence.interactive())
+        || node
+            .get_extension::<StyleBinding>()
+            .is_some_and(StyleBinding::hides)
+}
+
 fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
     let mut current = target;
     while let Some(node) = cx.get(current) {
+        if !projection::inside_clip_path(cx, current, node, position) {
+            return false;
+        }
         if node.get_extension::<TopLayer>().is_some() {
             break;
         }
@@ -278,12 +306,12 @@ fn transform_chain(cx: &Cx, target: NodeId) -> NodePath {
 pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
     let right = rect.origin.x + rect.width;
     let bottom = rect.origin.y + rect.height;
-    let mut corners = [
+    let mut corners: SmallVec<[Point; 8]> = SmallVec::from_slice(&[
         rect.origin,
         Point::new(right, rect.origin.y),
-        Point::new(rect.origin.x, bottom),
         Point::new(right, bottom),
-    ];
+        Point::new(rect.origin.x, bottom),
+    ]);
     for id in transform_chain(cx, target) {
         let Some(node) = cx.get(id) else {
             continue;
@@ -291,19 +319,20 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
         if let Some(binding) = node.get_extension::<StyleBinding>()
             && (binding.may_transform() || binding.animator_overlay().is_some())
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
+            && let Some(transform) = node_transform(cx, id, binding, result.rect())
         {
-            let transform = Transform2D::for_binding(binding);
-            for corner in &mut corners {
-                *corner = transform.apply(*corner, result.rect());
-            }
+            corners = transform.polygon(&corners);
         }
     }
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
-    for corner in corners {
+    for corner in &corners {
         x0 = x0.min(corner.x);
         y0 = y0.min(corner.y);
         x1 = x1.max(corner.x);
         y1 = y1.max(corner.y);
+    }
+    if corners.is_empty() {
+        return Rect::new(rect.origin, 0.0, 0.0);
     }
     Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0)
 }
@@ -315,7 +344,7 @@ pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Optio
         if let Some(binding) = node.get_extension::<StyleBinding>()
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
         {
-            point = Transform2D::for_binding(binding).inverse(point, result.rect())?;
+            point = to_local(cx, id, binding, result.rect(), point)?;
         }
     }
     Some(point)

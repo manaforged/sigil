@@ -1,3 +1,4 @@
+use crate::clipboard::Delivery;
 use crate::events::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::owner_by_id;
@@ -14,15 +15,8 @@ pub(crate) fn dispatch<T>(
     result
 }
 
-pub(crate) type Handler<E> = Box<dyn Fn(&mut E) + 'static>;
-type PointerHandler = Handler<PointerEvent>;
-type KeyHandler = Handler<KeyEvent>;
-type ScrollHandler = Handler<ScrollEvent>;
-type FocusHandler = Box<dyn Fn() + 'static>;
-type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
-type LinkHandler = Box<dyn Fn(&str) + 'static>;
-type SelectionCopyHandler =
-    Box<dyn Fn(&str, &crate::AppResult<crate::clipboard::Delivery>) + 'static>;
+pub(crate) type Callback<E> = Box<dyn Fn(&mut E) + 'static>;
+type FocusCallback = Box<dyn Fn() + 'static>;
 type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
 type A11yEditHandler = Box<dyn Fn(&A11yEdit) -> bool + 'static>;
 
@@ -33,41 +27,164 @@ pub(crate) enum A11yEdit {
     Select { anchor: usize, focus: usize },
 }
 
-pub(crate) struct KeyBinding {
-    pub(crate) shortcut: Shortcut,
-    pub(crate) handler: KeyHandler,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum EventKind {
+    PointerDown,
+    PointerUp,
+    PointerMove,
+    PointerEnter,
+    PointerLeave,
+    Scroll,
+    Key,
+    Shortcut,
+    FocusIn,
+    FocusOut,
+    FileDrop,
+    Link,
+    SelectionCopy,
+}
+
+impl EventKind {
+    pub(crate) const fn pointer(phase: PointerPhase) -> Self {
+        match phase {
+            PointerPhase::Down => Self::PointerDown,
+            PointerPhase::Up | PointerPhase::Cancel => Self::PointerUp,
+            PointerPhase::Move => Self::PointerMove,
+            PointerPhase::Enter => Self::PointerEnter,
+            PointerPhase::Leave => Self::PointerLeave,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Phase {
+    Capture,
+    Bubble,
+}
+
+impl Phase {
+    pub(crate) const fn of(capture: bool) -> Self {
+        if capture { Self::Capture } else { Self::Bubble }
+    }
+}
+
+pub(crate) enum Handler {
+    Pointer(Callback<PointerEvent>),
+    Key(Option<Shortcut>, Callback<KeyEvent>),
+    Scroll(Callback<ScrollEvent>),
+    Focus(FocusCallback),
+    FileDrop(FileDropCallback),
+    Link(LinkCallback),
+    SelectionCopy(CopyCallback),
+}
+
+type FileDropCallback = Box<dyn Fn(&FileDropEvent) + 'static>;
+type LinkCallback = Box<dyn Fn(&str) + 'static>;
+type CopyCallback = Box<dyn Fn(&str, &crate::AppResult<Delivery>) + 'static>;
+
+pub(crate) enum EventArg<'a> {
+    Pointer(&'a mut PointerEvent),
+    Key(&'a mut KeyEvent),
+    Scroll(&'a mut ScrollEvent),
+    Focus,
+    FileDrop(&'a FileDropEvent),
+    Link(&'a str),
+    SelectionCopy(&'a str, &'a crate::AppResult<Delivery>),
+}
+
+impl EventArg<'_> {
+    const fn stopped(&self) -> bool {
+        match self {
+            Self::Pointer(event) => event.propagation_stopped(),
+            Self::Key(event) => event.propagation_stopped(),
+            Self::Scroll(event) => event.propagation_stopped(),
+            Self::Focus | Self::FileDrop(_) | Self::Link(_) | Self::SelectionCopy(..) => false,
+        }
+    }
+}
+
+impl Handler {
+    const fn shortcut(&self) -> Option<&Shortcut> {
+        match self {
+            Self::Key(shortcut, _) => shortcut.as_ref(),
+            _ => None,
+        }
+    }
+
+    fn call(&self, arg: &mut EventArg<'_>) -> bool {
+        match (self, arg) {
+            (Self::Pointer(h), EventArg::Pointer(event)) => h(event),
+            (Self::Key(shortcut, h), EventArg::Key(event)) => {
+                if shortcut.as_ref().is_some_and(|s| !s.matches(event)) {
+                    return false;
+                }
+                h(event);
+            }
+            (Self::Scroll(h), EventArg::Scroll(event)) => h(event),
+            (Self::Focus(h), EventArg::Focus) => h(),
+            (Self::FileDrop(h), EventArg::FileDrop(event)) => h(event),
+            (Self::Link(h), EventArg::Link(href)) => h(href),
+            (Self::SelectionCopy(h), EventArg::SelectionCopy(text, result)) => h(text, result),
+            _ => return false,
+        }
+        true
+    }
+}
+
+struct HandlerEntry {
+    kind: EventKind,
+    phase: Phase,
+    handler: Handler,
 }
 
 #[derive(Default)]
-pub struct EventHandlers {
-    pub(crate) pointer_down_capture: Vec<PointerHandler>,
-    pub(crate) pointer_down: Vec<PointerHandler>,
-    pub(crate) pointer_up_capture: Vec<PointerHandler>,
-    pub(crate) pointer_up: Vec<PointerHandler>,
-    pub(crate) pointer_move_capture: Vec<PointerHandler>,
-    pub(crate) pointer_move: Vec<PointerHandler>,
-    pub(crate) pointer_enter: Vec<PointerHandler>,
-    pub(crate) pointer_leave: Vec<PointerHandler>,
-    pub(crate) scroll: Vec<ScrollHandler>,
-    pub(crate) key_capture: Vec<KeyBinding>,
-    pub(crate) key_capture_any: Vec<KeyHandler>,
-    pub(crate) key: Vec<KeyBinding>,
-    pub(crate) key_any: Vec<KeyHandler>,
-    pub(crate) shortcut: Vec<KeyBinding>,
-    pub(crate) focus_in: Vec<FocusHandler>,
-    pub(crate) focus_out: Vec<FocusHandler>,
-    pub(crate) file_drop: Vec<FileDropHandler>,
-    pub(crate) link: Vec<LinkHandler>,
-    pub(crate) selection_copy: Vec<SelectionCopyHandler>,
+pub(crate) struct EventHandlers {
+    entries: Vec<HandlerEntry>,
     value_adjustment: Option<ValueAdjustment>,
     a11y_edit: Option<A11yEditHandler>,
 }
 
 impl EventHandlers {
+    pub(crate) fn push(&mut self, kind: EventKind, phase: Phase, handler: Handler) {
+        self.entries.push(HandlerEntry {
+            kind,
+            phase,
+            handler,
+        });
+    }
+
+    pub(crate) fn dispatch(&self, kind: EventKind, phase: Phase, arg: &mut EventArg<'_>) -> bool {
+        let selected = |keyed: bool| {
+            self.entries.iter().filter(move |entry| {
+                entry.kind == kind
+                    && entry.phase == phase
+                    && entry.handler.shortcut().is_some() == keyed
+            })
+        };
+        let mut invoked = false;
+        for entry in selected(true).chain(selected(false)) {
+            invoked |= entry.handler.call(arg);
+            if arg.stopped() {
+                break;
+            }
+        }
+        invoked
+    }
+
     pub(crate) fn owns_pointer_drag(&self) -> bool {
-        !self.pointer_down_capture.is_empty()
-            || !self.pointer_move_capture.is_empty()
-            || !self.pointer_move.is_empty()
+        self.entries.iter().any(|entry| {
+            matches!(
+                (entry.kind, entry.phase),
+                (EventKind::PointerDown, Phase::Capture) | (EventKind::PointerMove, _)
+            )
+        })
+    }
+
+    pub(crate) fn shortcuts(&self) -> impl Iterator<Item = &Shortcut> {
+        self.entries
+            .iter()
+            .filter(|entry| entry.kind == EventKind::Shortcut)
+            .filter_map(|entry| entry.handler.shortcut())
     }
 
     pub(crate) fn set_value_adjustment(&mut self, handler: ValueAdjustment) {
@@ -90,100 +207,25 @@ impl EventHandlers {
         true
     }
 
-    pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: KeyHandler) {
-        self.key.push(KeyBinding { shortcut, handler });
+    pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: Callback<KeyEvent>) {
+        self.push(
+            EventKind::Key,
+            Phase::Bubble,
+            Handler::Key(Some(shortcut), handler),
+        );
     }
 
-    pub(crate) fn add_focus_in(&mut self, handler: FocusHandler) {
-        self.focus_in.push(handler);
+    pub(crate) fn add_focus_in(&mut self, handler: FocusCallback) {
+        self.push(EventKind::FocusIn, Phase::Bubble, Handler::Focus(handler));
     }
 
-    pub(crate) fn add_focus_out(&mut self, handler: FocusHandler) {
-        self.focus_out.push(handler);
-    }
-
-    pub(crate) fn invoke_selection_copy(
-        &self,
-        text: &str,
-        result: &crate::AppResult<crate::clipboard::Delivery>,
-    ) -> bool {
-        self.selection_copy
-            .iter()
-            .for_each(|handler| handler(text, result));
-        !self.selection_copy.is_empty()
-    }
-
-    pub(crate) fn invoke_link(&self, href: &str) -> bool {
-        self.link.iter().for_each(|handler| handler(href));
-        !self.link.is_empty()
-    }
-
-    pub(crate) fn invoke_file_drop(&self, event: &FileDropEvent) -> bool {
-        self.file_drop.iter().for_each(|handler| handler(event));
-        !self.file_drop.is_empty()
-    }
-
-    pub(crate) fn invoke_scroll(&self, event: &mut ScrollEvent) -> bool {
-        until_stopped(&self.scroll, event, ScrollEvent::propagation_stopped)
-    }
-
-    pub(crate) fn shortcuts(&self) -> impl Iterator<Item = &Shortcut> {
-        self.shortcut.iter().map(|binding| &binding.shortcut)
-    }
-
-    pub(crate) fn invoke_shortcut(&self, event: &mut KeyEvent) -> bool {
-        invoke_bindings(&self.shortcut, event)
-    }
-
-    pub(crate) fn invoke_pointer(
-        &self,
-        phase: PointerPhase,
-        capture: bool,
-        event: &mut PointerEvent,
-    ) {
-        if let Some(handlers) = self.pointer_handlers(phase, capture) {
-            until_stopped(handlers, event, PointerEvent::propagation_stopped);
-        }
-    }
-
-    pub(crate) fn invoke_key(&self, event: &mut KeyEvent, capture: bool) -> bool {
-        let (bindings, any) = if capture {
-            (&self.key_capture, &self.key_capture_any)
-        } else {
-            (&self.key, &self.key_any)
-        };
-        let invoked = invoke_bindings(bindings, event);
-        if event.propagation_stopped() {
-            return invoked;
-        }
-        until_stopped(any, event, KeyEvent::propagation_stopped) || invoked
-    }
-
-    pub(crate) fn invoke_focus_in(&self) {
-        self.focus_in.iter().for_each(|handler| handler());
-    }
-
-    pub(crate) fn invoke_focus_out(&self) {
-        self.focus_out.iter().for_each(|handler| handler());
-    }
-
-    fn pointer_handlers(&self, phase: PointerPhase, capture: bool) -> Option<&[PointerHandler]> {
-        match (phase, capture) {
-            (PointerPhase::Down, true) => Some(&self.pointer_down_capture),
-            (PointerPhase::Down, false) => Some(&self.pointer_down),
-            (PointerPhase::Up | PointerPhase::Cancel, true) => Some(&self.pointer_up_capture),
-            (PointerPhase::Up | PointerPhase::Cancel, false) => Some(&self.pointer_up),
-            (PointerPhase::Move, true) => Some(&self.pointer_move_capture),
-            (PointerPhase::Move, false) => Some(&self.pointer_move),
-            (PointerPhase::Enter, false) => Some(&self.pointer_enter),
-            (PointerPhase::Leave, false) => Some(&self.pointer_leave),
-            _ => None,
-        }
+    pub(crate) fn add_focus_out(&mut self, handler: FocusCallback) {
+        self.push(EventKind::FocusOut, Phase::Bubble, Handler::Focus(handler));
     }
 }
 
 pub(crate) fn until_stopped<E>(
-    handlers: &[Handler<E>],
+    handlers: &[Callback<E>],
     event: &mut E,
     stopped: impl Fn(&E) -> bool,
 ) -> bool {
@@ -196,23 +238,18 @@ pub(crate) fn until_stopped<E>(
     !handlers.is_empty()
 }
 
-fn invoke_bindings(bindings: &[KeyBinding], event: &mut KeyEvent) -> bool {
-    let mut invoked = false;
-    for binding in bindings {
-        if !binding.shortcut.matches(event) {
-            continue;
-        }
-        (binding.handler)(event);
-        invoked = true;
-        if event.propagation_stopped() {
-            break;
-        }
-    }
-    invoked
-}
-
 impl core::fmt::Debug for EventHandlers {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("EventHandlers").finish_non_exhaustive()
     }
+}
+
+pub(crate) fn fire(
+    cx: &Cx,
+    id: NodeId,
+    kind: EventKind,
+    phase: Phase,
+    mut arg: EventArg<'_>,
+) -> Option<bool> {
+    dispatch(cx, id, |handlers| handlers.dispatch(kind, phase, &mut arg))
 }

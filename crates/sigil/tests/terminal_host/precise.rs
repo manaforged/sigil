@@ -1,33 +1,29 @@
 use sigil::Host;
-use sigil::events::EventRouter;
+use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::{LayoutBuilderExt, Paint};
-use sigil::reactive::{Runtime, signal};
+use sigil::prelude::Paint;
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 use sigil::terminal::{Caps, Glyphs, Screen};
 
 use super::oracle::{COLS, Model, ROWS, tree};
 
 #[test]
 fn an_unchanged_frame_writes_nothing() {
-    Runtime::scope("precise-idle", || {
+    Owner::scope("precise-idle", || {
         let state = signal(Model {
             lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
             ..Model::default()
         });
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..3 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         assert!(!screen.needs_flush(), "an idle frame asked to be written");
         let mut written = Vec::new();
         screen.flush(&mut written).expect("flush");
@@ -37,10 +33,9 @@ fn an_unchanged_frame_writes_nothing() {
 
 #[test]
 fn ascii_glyphs_hold_on_full_and_region_frames() {
-    Runtime::scope("precise-ascii", || {
+    Owner::scope("precise-ascii", || {
         let bullet = signal(String::from("• one"));
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width().fill_height())
@@ -52,22 +47,19 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
             ..Caps::default()
         };
         let mut screen = Screen::with_caps(COLS, ROWS, caps);
-        let shown = |view: &mut Screen, embed: &mut Host, route: &mut EventRouter| {
-            let text = view
-                .frame(embed, route, [], (COLS, ROWS))
-                .expect("frame")
-                .text();
+        let shown = |view: &mut Screen, embed: &mut Host| {
+            let text = view.frame(embed, [], (COLS, ROWS)).expect("frame").text();
             view.flush(&mut std::io::sink()).expect("flush");
             text
         };
-        let first = shown(&mut screen, &mut host, &mut router);
+        let first = shown(&mut screen, &mut host);
         assert!(
             first.contains("* one") && first.contains("steady . line"),
             "{first}"
         );
-        shown(&mut screen, &mut host, &mut router);
+        shown(&mut screen, &mut host);
         bullet.set(String::from("• two"));
-        let second = shown(&mut screen, &mut host, &mut router);
+        let second = shown(&mut screen, &mut host);
         assert!(second.contains("* two"), "{second}");
         assert!(!second.contains('•') && !second.contains('…'), "{second}");
     });
@@ -76,7 +68,8 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
 #[test]
 fn a_change_hidden_behind_a_cover_writes_nothing() {
     use sigil::layout::Position;
-    use sigil::style::{NodeStyleExt, Rgba8};
+    use sigil::prelude::Widget;
+    use sigil::style::Rgba8;
 
     let cell = Host::CELL;
     let place = || {
@@ -93,10 +86,9 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
         b: 60,
         a: 255,
     };
-    Runtime::scope("precise-hidden", || {
+    Owner::scope("precise-hidden", || {
         let warm = signal(false);
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::block().fill_width().fill_height())
@@ -110,15 +102,11 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
         });
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..3 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
         warm.set(true);
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         assert!(
             !screen.needs_flush(),
             "a change no cell shows asked to be written"
@@ -127,7 +115,7 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
 }
 
 fn linked(url: sigil::prelude::Signal<String>, tick: sigil::prelude::Signal<u32>) -> Host {
-    let mut host = Host::cells();
+    let mut host = Host::new(HostMode::Cell);
     host.mount(move || {
         container().children_reactive(move || {
             vec![
@@ -142,19 +130,16 @@ fn linked(url: sigil::prelude::Signal<String>, tick: sigil::prelude::Signal<u32>
 #[test]
 fn a_changed_link_target_reaches_the_terminal() {
     for other in [false, true] {
-        Runtime::scope("precise-link", || {
+        Owner::scope("precise-link", || {
             let (url, tick) = (signal(String::from("https://a.test")), signal(0_u32));
             let mut host = linked(url, tick);
-            let mut router = EventRouter::new();
             let caps = Caps {
                 hyperlinks: true,
                 ..Caps::default()
             };
             let mut screen = Screen::with_caps(COLS, ROWS, caps);
             for _ in 0..3 {
-                screen
-                    .frame(&mut host, &mut router, [], (COLS, ROWS))
-                    .expect("frame");
+                screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
                 screen.flush(&mut std::io::sink()).expect("flush");
             }
             url.set(String::from("https://b.test"));
@@ -162,9 +147,7 @@ fn a_changed_link_target_reaches_the_terminal() {
                 tick.set(1);
             }
             let mut written = Vec::new();
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut written).expect("flush");
             let written = String::from_utf8_lossy(&written);
             assert!(
@@ -177,26 +160,21 @@ fn a_changed_link_target_reaches_the_terminal() {
 
 #[test]
 fn a_status_spoken_on_a_quiet_frame_is_written() {
-    Runtime::scope("precise-status", || {
-        let mut host = Host::cells();
+    Owner::scope("precise-status", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(|| container().child(text("steady")));
-        let mut router = EventRouter::new();
         let mut screen = Screen::new(COLS, ROWS);
         screen.set_access(sigil::terminal::Access {
             status: std::time::Duration::from_secs(60),
             ..sigil::terminal::Access::default()
         });
         for _ in 0..3 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
-        sigil::kernel::announce("saved");
+        sigil::kernel::announce("saved", sigil::kernel::Live::Polite);
         let mut written = Vec::new();
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         screen.flush(&mut written).expect("flush");
         let written = String::from_utf8_lossy(&written);
         assert!(written.contains("saved"), "{written:?}");

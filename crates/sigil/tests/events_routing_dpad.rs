@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -12,6 +13,7 @@ mod routing_helpers;
 use sigil::events::*;
 use sigil::kernel::*;
 use sigil::layout::*;
+use sigil::widgets::Widget;
 
 use routing_helpers::{abs_rect, compute_layout};
 

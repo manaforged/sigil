@@ -8,7 +8,7 @@ pub struct ReactivePosition {
 
 impl ReactivePosition {
     #[must_use]
-    pub fn get(&self) -> (f32, f32) {
+    pub fn get(self) -> (f32, f32) {
         self.pos.try_peek().unwrap_or_default()
     }
 }
@@ -38,45 +38,32 @@ pub struct BoundsReactive {
 }
 
 impl BoundsReactive {
-    pub fn publish(&self, bounds: (f32, f32, f32, f32)) -> bool {
+    pub fn publish(self, bounds: (f32, f32, f32, f32)) -> bool {
         publish_changed(self.bounds, bounds)
     }
 }
 
-pub trait LayoutReactiveExt {
-    #[must_use]
-    fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self;
-
-    #[must_use]
-    fn size_reactive(self, size: Signal<(f32, f32)>) -> Self;
-
-    #[must_use]
-    fn bounds_reactive(self, bounds: Signal<(f32, f32, f32, f32)>) -> Self;
+pub(crate) fn position(node: NodeBuilder, pos: Signal<(f32, f32)>) -> NodeBuilder {
+    node.mutate(move |node| {
+        let _ = node.attach(ReactivePosition { pos });
+        let tag = node.tag();
+        crate::reactive::effect_named("sigil-layout::position_delta", move || {
+            let _ = pos.get();
+            if let Some(tag) = tag {
+                tag.record(DeltaKind::Layout);
+            }
+        });
+    })
 }
 
-impl LayoutReactiveExt for NodeBuilder {
-    fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self {
-        self.mutate(move |node| {
-            let _ = node.attach(ReactivePosition { pos });
-            let tag = node.tag();
-            crate::reactive::effect_named("sigil-layout::position_delta", move || {
-                let _ = pos.get();
-                if let Some(tag) = tag {
-                    tag.record(DeltaKind::Layout);
-                }
-            });
-        })
-    }
+pub(crate) fn size(node: NodeBuilder, size: Signal<(f32, f32)>) -> NodeBuilder {
+    node.mutate(move |node| {
+        let _ = node.attach(SizeReactive { size });
+    })
+}
 
-    fn size_reactive(self, size: Signal<(f32, f32)>) -> Self {
-        self.mutate(move |node| {
-            let _ = node.attach(SizeReactive { size });
-        })
-    }
-
-    fn bounds_reactive(self, bounds: Signal<(f32, f32, f32, f32)>) -> Self {
-        self.mutate(move |node| {
-            let _ = node.attach(BoundsReactive { bounds });
-        })
-    }
+pub(crate) fn bounds(node: NodeBuilder, bounds: Signal<(f32, f32, f32, f32)>) -> NodeBuilder {
+    node.mutate(move |node| {
+        let _ = node.attach(BoundsReactive { bounds });
+    })
 }

@@ -5,7 +5,7 @@ use crate::style::class_parse::intern_atoms;
 use crate::style::{BORDER_WIDTH, StyleAtom, Tone};
 
 mod builder;
-pub use builder::ChipBuilder;
+pub(crate) use builder::ChipBuilder;
 
 pub(crate) fn chip_class(tone: Tone) -> &'static [StyleAtom] {
     intern_atoms(smallvec![
@@ -16,6 +16,7 @@ pub(crate) fn chip_class(tone: Tone) -> &'static [StyleAtom] {
     ])
 }
 
+/// A small tag.
 #[must_use]
 pub fn chip(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
     ChipBuilder::new(label, tone)

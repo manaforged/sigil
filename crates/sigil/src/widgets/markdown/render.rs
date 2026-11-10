@@ -1,25 +1,32 @@
 use crate::kernel::{NodeBuilder, Role, TextBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
-use crate::style::{Px, Radius, StyleAtom, Token, space};
+use crate::style::{Radius, StyleAtom, Token, space};
+use crate::widgets::Widget;
+use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::{highlight, text_runs};
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
-use super::containers::{List, Task};
+use super::containers::{List, TaskMark};
 use super::inline::styled;
-use super::parse::Block;
+use super::parse::{Block, Inline};
 
 #[derive(Clone, Copy)]
-pub(super) struct Tone(pub(super) Token);
+pub(super) struct TokenTone(pub(super) Token);
 
-pub(super) fn tinted(node: TextBuilder, tone: Tone) -> TextBuilder {
+pub(super) fn tinted(node: TextBuilder, tone: TokenTone) -> TextBuilder {
     node.class(tone.0.text())
 }
 
-pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) -> NodeBuilder {
+pub(super) fn rich(
+    source: &[Inline],
+    class: &'static str,
+    tone: TokenTone,
+    role: Role,
+) -> NodeBuilder {
     let body = styled(source);
     container()
         .role(role)
@@ -27,18 +34,24 @@ pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) ->
         .child(tinted(text(body.text).runs(body.runs).class(class), tone))
 }
 
-pub(super) fn heading(level: u8, body: &str) -> NodeBuilder {
+pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
     let class = match level {
         1 => CellForm::new("text-xl font-bold", "font-bold underline").pick(),
         2 => "text-lg font-bold",
-        _ => "text-base font-bold",
+        3 => "text-base font-bold",
+        _ => "text-sm font-bold",
     };
     let grid = match level {
         1 | 2 => Token::Accent11,
         3 => Token::OnSurface,
         _ => Token::OnSurfaceMuted,
     };
-    let tone = Tone(CellForm::new(Token::OnSurface, grid).pick());
+    let window = if level > 4 {
+        Token::OnSurfaceMuted
+    } else {
+        Token::OnSurface
+    };
+    let tone = TokenTone(CellForm::new(window, grid).pick());
     let level = usize::from(level);
     rich(body, class, tone, Role::Heading).mutate(move |node| node.a11y.level = Some(level))
 }
@@ -51,15 +64,15 @@ pub(super) fn rule() -> NodeBuilder {
 
 pub(super) fn stack(
     blocks: Vec<Block>,
-    (tone, gap): (Tone, f32),
-    node: impl Fn(Block, Tone) -> NodeBuilder,
+    (tone, gap): (TokenTone, f32),
+    node: impl Fn(Block, TokenTone) -> NodeBuilder,
 ) -> NodeBuilder {
     let mut column = container().layout(
         LayoutStyle::flex_column()
             .grow(1.0)
             .shrink(1.0)
             .min_width(0.0)
-            .gap(gap),
+            .gap(Space::px(gap)),
     );
     for block in blocks {
         column = column.child(node(block, tone));
@@ -67,12 +80,19 @@ pub(super) fn stack(
     column
 }
 
-pub(super) fn quote(blocks: Vec<Block>, node: impl Fn(Block, Tone) -> NodeBuilder) -> NodeBuilder {
+pub(super) fn quote(
+    blocks: Vec<Block>,
+    node: impl Fn(Block, TokenTone) -> NodeBuilder,
+) -> NodeBuilder {
     container()
         .role(Role::Blockquote)
         .layout(LayoutStyle::flex_row().fill_width().padding_left(cols(1.0)))
-        .class([StyleAtom::BorderLeft(Px(2)), Token::BorderStrong.border()])
-        .child(stack(blocks, (Tone(Token::OnSurfaceMuted), space(2)), node))
+        .class([StyleAtom::BorderLeft(2), Token::BorderStrong.border()])
+        .child(stack(
+            blocks,
+            (TokenTone(Token::OnSurfaceMuted), space(2)),
+            node,
+        ))
 }
 
 fn marker(start: Option<u64>, index: usize) -> String {
@@ -88,8 +108,8 @@ fn marker(start: Option<u64>, index: usize) -> String {
 )]
 pub(super) fn list(
     list: List,
-    tone: Tone,
-    node: impl Fn(Block, Tone) -> NodeBuilder + Copy,
+    tone: TokenTone,
+    node: impl Fn(Block, TokenTone) -> NodeBuilder + Copy,
 ) -> NodeBuilder {
     let start = list.start;
     let width = (0..list.items.len())
@@ -99,7 +119,7 @@ pub(super) fn list(
         + 1;
     let mut column = container()
         .role(Role::List)
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(1)));
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
     for (index, item) in list.items.into_iter().enumerate() {
         let row = container().role(Role::ListItem).layout(
             LayoutStyle::flex_row()
@@ -118,8 +138,8 @@ pub(super) fn list(
     column
 }
 
-fn task_mark(task: Task) -> NodeBuilder {
-    let checked = signal(task == Task::Done);
+fn task_mark(task: TaskMark) -> NodeBuilder {
+    let checked = signal(task == TaskMark::Done);
     container()
         .role(Role::CheckBox)
         .checked(checked)
@@ -135,6 +155,56 @@ fn task_mark(task: Task) -> NodeBuilder {
         ))
 }
 
+const SHOWN_LINES: usize = 500;
+const SHOWN_COLUMNS: usize = 2_000;
+
+fn clip(body: &str) -> (String, usize) {
+    let mut shown = String::new();
+    for (index, line) in body.split('\n').take(SHOWN_LINES).enumerate() {
+        if index > 0 {
+            shown.push('\n');
+        }
+        match line.char_indices().nth(SHOWN_COLUMNS) {
+            Some((cut, _)) => {
+                shown.push_str(&line[..cut]);
+                shown.push('…');
+            }
+            None => shown.push_str(line),
+        }
+    }
+    (shown, body.split('\n').skip(SHOWN_LINES).count())
+}
+
+fn hidden_note(hidden: usize) -> NodeBuilder {
+    let noun = if hidden == 1 { "line" } else { "lines" };
+    container()
+        .layout(LayoutStyle::block().fill_width())
+        .child(tinted(
+            text(format!("{hidden} more {noun} not shown")),
+            TokenTone(Token::OnSurfaceMuted),
+        ))
+}
+
+fn code_line(line: &str, marks: &[Highlight]) -> NodeBuilder {
+    let rest = line.trim_start();
+    let lead = &line[..line.len() - rest.len()];
+    let mut row = container().layout(LayoutStyle::flex_row().fill_width());
+    if !lead.is_empty() {
+        row = row.child(
+            text(lead.to_string())
+                .nowrap()
+                .layout(LayoutStyle::block().shrink(0.0)),
+        );
+    }
+    let rest = if rest.is_empty() { " " } else { rest };
+    row.child(
+        text(rest.to_string())
+            .runs(text_runs(marks, lead.len()..usize::MAX))
+            .class(Token::OnSurface.text())
+            .layout(LayoutStyle::block().grow(1.0).shrink(1.0).min_width(0.0)),
+    )
+}
+
 pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
     let pad = CellForm::new(space(2), 0.0).pick();
     let mut block = container()
@@ -144,28 +214,15 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding_x(space(2))
-                .padding_y(pad),
+                .padding_x(Space::Sm)
+                .padding_y(Space::px(pad)),
         );
-    for (line, marks) in body.split('\n').zip(highlight(lang, body)) {
-        let rest = line.trim_start();
-        let lead = &line[..line.len() - rest.len()];
-        let mut row = container().layout(LayoutStyle::flex_row().fill_width());
-        if !lead.is_empty() {
-            row = row.child(
-                text(lead.to_string())
-                    .nowrap()
-                    .layout(LayoutStyle::block().shrink(0.0)),
-            );
-        }
-        let rest = if rest.is_empty() { " " } else { rest };
-        row = row.child(
-            text(rest.to_string())
-                .runs(text_runs(&marks, lead.len()..usize::MAX))
-                .class(Token::OnSurface.text())
-                .layout(LayoutStyle::block().grow(1.0).shrink(1.0).min_width(0.0)),
-        );
-        block = block.child(row);
+    let (shown, hidden) = clip(body);
+    for (line, marks) in shown.split('\n').zip(byte_marks(lang, &shown)) {
+        block = block.child(code_line(line, &marks));
+    }
+    if hidden > 0 {
+        block = block.child(hidden_note(hidden));
     }
     block
 }

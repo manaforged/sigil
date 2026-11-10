@@ -1,17 +1,19 @@
+use crate::layout::Space;
 use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, Dimension, LayoutStyle, Overflow};
 use crate::style::{BORDER_WIDTH, Paint, Token, space};
-use crate::widgets::highlight::{highlight, text_runs};
+use crate::widgets::Widget;
+use crate::widgets::highlight::{byte_marks, text_runs};
 
-use super::model::{Cell, DiffRow};
+use super::model::{DiffCell, DiffRow};
 use super::patch::LineKind;
-use super::selection::Picker;
+use super::selection::HunkPicker;
 
 #[derive(Clone, Copy)]
 pub(super) struct Draw {
-    pub(super) picker: Option<Picker>,
+    pub(super) picker: Option<HunkPicker>,
     pub(super) wrap: bool,
 }
 
@@ -20,8 +22,8 @@ pub(super) const ROW_INSET: f32 = space(2);
 
 const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
-        LineKind::Removed => (Some(Token::Error3), Token::Error11, "removed", '-'),
-        LineKind::Added => (Some(Token::Success3), Token::Success11, "added", '+'),
+        LineKind::Removed => (Some(Token::Error3), Token::Error12, "removed", '-'),
+        LineKind::Added => (Some(Token::Success3), Token::Success12, "added", '+'),
         LineKind::Context | LineKind::Note => (None, Token::Gray11, "unchanged", ' '),
     }
 }
@@ -29,31 +31,31 @@ const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
 pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
     let picker = draw.picker;
     match row {
-        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray10),
+        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray11),
         DiffRow::Hunk { hunk, header } => {
-            let line = text_row(header.clone(), "text-xs font-mono", Token::Info11);
+            let line = text_row(header.clone(), "text-xs font-mono", Token::Info12);
             match picker {
                 Some(picker) => picker.hunk(line, *hunk),
                 None => line,
             }
         }
-        DiffRow::Split {
-            left,
-            right,
-            weights,
-        } => split_row(left.as_ref(), right.as_ref(), *weights, draw),
+        DiffRow::Split { left, right } => split_row(left.as_ref(), right.as_ref(), draw),
         DiffRow::Unified(cell) => source_row(cell, draw),
         DiffRow::Overflow => text_row(
             "… expand tool output to see the remaining changes".to_string(),
             "text-xs",
-            Token::Gray10,
+            Token::Gray11,
         ),
     }
 }
 
 pub(super) fn text_row(body: String, class: &'static str, tone: Token) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().fill_width().padding_x(ROW_INSET))
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .padding_x(Space::px(ROW_INSET)),
+        )
         .child(
             text(body)
                 .nowrap()
@@ -63,10 +65,10 @@ pub(super) fn text_row(body: String, class: &'static str, tone: Token) -> NodeBu
         )
 }
 
-fn segments(cell: &Cell, fg: Token, wrap: bool) -> Vec<NodeBuilder> {
+fn segments(cell: &DiffCell, fg: Token, wrap: bool) -> Vec<NodeBuilder> {
     let marks = cell
         .language
-        .and_then(|language| highlight(language, &cell.body).into_iter().next())
+        .and_then(|language| byte_marks(language, &cell.body).into_iter().next())
         .unwrap_or_default();
     let len = cell.body.len();
     if wrap {
@@ -112,15 +114,15 @@ fn segments(cell: &Cell, fg: Token, wrap: bool) -> Vec<NodeBuilder> {
         .collect()
 }
 
-pub(super) fn source_row(cell: &Cell, draw: Draw) -> NodeBuilder {
+pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
     let (bg, fg, state, mark) = look(cell.kind);
     let row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
             .min_size(0.0, 0.0)
-            .padding_x(ROW_INSET)
+            .padding_x(Space::px(ROW_INSET))
             .align_items(AlignItems::Center)
-            .gap(0.0),
+            .gap(Space::None),
     );
     let row = match bg {
         Some(bg) => row.class(bg.bg()),
@@ -131,7 +133,7 @@ pub(super) fn source_row(cell: &Cell, draw: Draw) -> NodeBuilder {
             .nowrap()
             .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
             .class("text-xs font-mono")
-            .class(Token::Gray9.text()),
+            .class(Token::Gray11.text()),
     );
     let row = segments(cell, fg, draw.wrap)
         .into_iter()
@@ -142,40 +144,35 @@ pub(super) fn source_row(cell: &Cell, draw: Draw) -> NodeBuilder {
     }
 }
 
-fn half(cell: Option<&Cell>, draw: Draw, ruled: bool, grow: f32) -> NodeBuilder {
+fn half(cell: Option<&DiffCell>, draw: Draw, ruled: bool) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
-            .grow(grow)
+            .grow(1.0)
             .flex_basis(Dimension::Px(0.0))
             .min_size(0.0, 0.0)
             .overflow_x(Overflow::Hidden),
     );
     let column = if ruled {
         column
-            .border_right(BORDER_WIDTH.0)
+            .border_right(BORDER_WIDTH)
             .border_color(Token::Border)
     } else {
         column
     };
     column.child(cell.map_or_else(
-        || container().layout(LayoutStyle::flex_row().fill_width().gap(0.0)),
+        || container().layout(LayoutStyle::flex_row().fill_width().gap(Space::None)),
         |cell| source_row(cell, draw),
     ))
 }
 
-fn split_row(
-    left: Option<&Cell>,
-    right: Option<&Cell>,
-    (lw, rw): (f32, f32),
-    draw: Draw,
-) -> NodeBuilder {
+fn split_row(left: Option<&DiffCell>, right: Option<&DiffCell>, draw: Draw) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_size(0.0, 0.0)
-                .gap(0.0),
+                .gap(Space::None),
         )
-        .child(half(left, draw, true, lw))
-        .child(half(right, draw, false, rw))
+        .child(half(left, draw, true))
+        .child(half(right, draw, false))
 }

@@ -1,15 +1,16 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::events::{MouseButton, MouseButtons, NodeEventsExt, PointerEvent};
+use crate::events::{MouseButtons, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::LayoutReactiveExt;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
+use crate::widgets::Widget;
+use crate::widgets::interaction::{is_cancel, is_primary};
 
-pub const DRAG_THRESHOLD_PX: f32 = 4.0;
+const DRAG_THRESHOLD_PX: f32 = 4.0;
 
-pub const DROP_TARGET_CLASS: &str = "bg-accent-4";
+const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
 const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
 
@@ -17,15 +18,15 @@ type Armed<T> = Rc<RefCell<Option<((f32, f32), T)>>>;
 type Accepts<T> = Rc<dyn Fn(&T) -> bool>;
 type OnDrop<T> = Rc<dyn Fn(T)>;
 
+/// Shared state of one drag interaction.
 pub struct DragState<T: 'static> {
-    active: Signal<bool>,
     position: Signal<(f32, f32)>,
     payload: Signal<Option<T>>,
-    targets: Rc<RefCell<Registry<T>>>,
+    targets: Rc<RefCell<DropRegistry<T>>>,
     armed: Armed<T>,
 }
 
-struct Registry<T: 'static> {
+struct DropRegistry<T: 'static> {
     targets: Vec<DropTarget<T>>,
     next_id: usize,
 }
@@ -39,7 +40,7 @@ struct DropTarget<T: 'static> {
 }
 
 struct TargetGuard<T: 'static> {
-    registry: Rc<RefCell<Registry<T>>>,
+    registry: Rc<RefCell<DropRegistry<T>>>,
     id: usize,
 }
 
@@ -54,7 +55,6 @@ impl<T: 'static> Drop for TargetGuard<T> {
 impl<T: 'static> Clone for DragState<T> {
     fn clone(&self) -> Self {
         Self {
-            active: self.active,
             position: self.position,
             payload: self.payload,
             targets: Rc::clone(&self.targets),
@@ -64,13 +64,13 @@ impl<T: 'static> Clone for DragState<T> {
 }
 
 impl<T: Clone + 'static> DragState<T> {
+    /// Creates a drag state.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            active: signal(false),
             position: signal((0.0, 0.0)),
             payload: signal(None),
-            targets: Rc::new(RefCell::new(Registry {
+            targets: Rc::new(RefCell::new(DropRegistry {
                 targets: Vec::new(),
                 next_id: 0,
             })),
@@ -78,21 +78,25 @@ impl<T: Clone + 'static> DragState<T> {
         }
     }
 
+    /// Returns whether this drag state is active.
     #[must_use]
     pub fn is_active(&self) -> bool {
-        self.active.try_peek().unwrap_or(false)
+        self.payload.try_peek().flatten().is_some()
     }
 
+    /// Returns the position.
     #[must_use]
     pub fn position(&self) -> (f32, f32) {
         self.position.try_peek().unwrap_or_default()
     }
 
+    /// Returns the payload.
     #[must_use]
     pub fn payload(&self) -> Option<T> {
         self.payload.try_peek().flatten()
     }
 
+    /// Cancels the current drag.
     pub fn cancel(&self) {
         self.end();
     }
@@ -100,7 +104,6 @@ impl<T: Clone + 'static> DragState<T> {
     fn begin(&self, payload: T, at: (f32, f32)) {
         self.payload.set_always(Some(payload));
         self.position.set(at);
-        self.active.set(true);
         self.update_hover(at);
     }
 
@@ -121,7 +124,6 @@ impl<T: Clone + 'static> DragState<T> {
     }
 
     fn end(&self) {
-        self.active.set(false);
         self.payload.set_always(None);
         self.update_hover((0.0, 0.0));
     }
@@ -170,46 +172,35 @@ impl<T: Clone + 'static> Default for DragState<T> {
     }
 }
 
-pub trait DragDropExt<T: Clone + 'static> {
-    #[must_use]
-    fn drag_source(self, state: DragState<T>, payload: T) -> Self;
-
-    #[must_use]
-    fn drop_target(
-        self,
-        state: DragState<T>,
-        accepts: impl Fn(&T) -> bool + 'static,
-        on_drop: impl Fn(T) + 'static,
-    ) -> Self;
+pub(crate) fn source<T: Clone + 'static>(
+    node: NodeBuilder,
+    state: DragState<T>,
+    payload: T,
+) -> NodeBuilder {
+    node.pointer_down(arm(state.clone(), payload))
+        .pointer_move(drive(state.clone()))
+        .pointer_up(release(state))
 }
 
-impl<T: Clone + 'static> DragDropExt<T> for NodeBuilder {
-    fn drag_source(self, state: DragState<T>, payload: T) -> Self {
-        self.pointer_down(arm(state.clone(), payload))
-            .pointer_move(drive(state.clone()))
-            .pointer_up(release(state.clone()))
-            .pointer_leave(leave(state))
-    }
-
-    fn drop_target(
-        self,
-        state: DragState<T>,
-        accepts: impl Fn(&T) -> bool + 'static,
-        on_drop: impl Fn(T) + 'static,
-    ) -> Self {
-        let bounds = signal((0.0, 0.0, 0.0, 0.0));
-        let highlight = signal(false);
-        let guard = state.register(bounds, highlight, Rc::new(accepts), Rc::new(on_drop));
-        self.pointer_move(drive(state.clone()))
-            .pointer_up(release(state))
-            .bounds_reactive(bounds)
-            .class_when(highlight, DROP_TARGET_CLASS)
-            .mutate(move |node| {
-                let _ = node.attach(guard);
-            })
-    }
+pub(crate) fn target<T: Clone + 'static>(
+    node: NodeBuilder,
+    state: DragState<T>,
+    accepts: impl Fn(&T) -> bool + 'static,
+    on_drop: impl Fn(T) + 'static,
+) -> NodeBuilder {
+    let bounds = signal((0.0, 0.0, 0.0, 0.0));
+    let highlight = signal(false);
+    let guard = state.register(bounds, highlight, Rc::new(accepts), Rc::new(on_drop));
+    node.pointer_move(drive(state.clone()))
+        .pointer_up(release(state))
+        .bounds_reactive(bounds)
+        .class_when(highlight, DROP_TARGET_CLASS)
+        .mutate(move |node| {
+            let _ = node.attach(guard);
+        })
 }
 
+/// The node that follows the pointer.
 #[must_use]
 pub fn drag_ghost<T, N>(state: DragState<T>, render: impl Fn(&T) -> N + 'static) -> NodeBuilder
 where
@@ -232,9 +223,6 @@ where
     T: Clone + 'static,
     N: crate::kernel::IntoNode + 'static,
 {
-    if !state.active.get() {
-        return Vec::new();
-    }
     let Some(payload) = state.payload.get() else {
         return Vec::new();
     };
@@ -257,9 +245,10 @@ fn arm<T: Clone + 'static>(
     payload: T,
 ) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
-        if event.button == Some(MouseButton::Left) {
+        if is_primary(event) {
             let at = (event.window_position.x, event.window_position.y);
             state.armed.replace(Some((at, payload.clone())));
+            event.capture_pointer();
         }
     }
 }
@@ -268,11 +257,11 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
     move |event| {
         let at = (event.window_position.x, event.window_position.y);
         if state.is_active() {
-            if !event.buttons.contains(MouseButtons::LEFT) {
-                state.cancel();
-                return;
-            }
             if !event.is_captured() {
+                if !event.buttons.contains(MouseButtons::LEFT) {
+                    state.cancel();
+                    return;
+                }
                 event.capture_pointer();
             }
             state.position.set(at);
@@ -280,8 +269,7 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
             event.stop_propagation();
             return;
         }
-        if !event.buttons.contains(MouseButtons::LEFT) {
-            state.armed.replace(None);
+        if !event.is_captured() {
             return;
         }
         let ready = state
@@ -293,31 +281,27 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
         if let Some(payload) = ready {
             state.armed.replace(None);
             state.begin(payload, at);
-            event.capture_pointer();
             event.stop_propagation();
-        }
-    }
-}
-
-fn leave<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) + 'static {
-    move |event| {
-        if state.is_active() || !event.buttons.contains(MouseButtons::LEFT) {
-            return;
-        }
-        let pending = state.armed.borrow_mut().take();
-        if let Some((_, payload)) = pending {
-            state.begin(payload, (event.window_position.x, event.window_position.y));
         }
     }
 }
 
 fn release<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
-        state.armed.replace(None);
-        if state.is_active() {
-            state.settle((event.window_position.x, event.window_position.y));
-            event.stop_propagation();
+        let cancelled = is_cancel(event);
+        if !cancelled && !is_primary(event) {
+            return;
         }
+        state.armed.replace(None);
+        if !state.is_active() {
+            return;
+        }
+        if cancelled {
+            state.end();
+        } else {
+            state.settle((event.window_position.x, event.window_position.y));
+        }
+        event.stop_propagation();
     }
 }
 

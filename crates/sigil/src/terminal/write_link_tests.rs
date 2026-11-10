@@ -1,4 +1,4 @@
-use super::super::{Cell, Grid, Pen, row_bytes};
+use super::super::{AnsiPen, Cell, Grid, row_bytes};
 use crate::terminal::caps::Caps;
 
 #[test]
@@ -21,7 +21,7 @@ fn a_link_with_a_control_character_never_reaches_the_terminal() {
         ],
     );
     let mut out: Vec<u8> = Vec::new();
-    row_bytes(&mut out, &grid, 0, &mut Pen::default(), &caps).expect("write");
+    row_bytes(&mut out, &grid, 0, &mut AnsiPen::default(), &caps).expect("write");
     let out = String::from_utf8(out).expect("utf8");
     assert!(!out.contains("]52"), "clipboard write escaped: {out:?}");
     assert!(!out.contains("a.test"), "unsafe link written: {out:?}");

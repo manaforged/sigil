@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(unreachable_pub)]
 
 use std::hint::black_box;
@@ -7,8 +8,8 @@ use std::time::{Duration, Instant};
 
 use criterion::Criterion;
 use sigil::hal::Scheduler;
-use sigil::reactive::{Runtime, signal};
-use sigil::tasks::{AsyncRuntime, OwnerHandle, signal_writer, spawn};
+use sigil::reactive::{Owner, signal};
+use sigil::tasks::{AsyncRuntime, signal_writer, spawn};
 
 use super::spin_until;
 
@@ -21,7 +22,7 @@ pub fn bench_sustained_cross_thread_writes_1k_per_sec(c: &mut Criterion) {
         b.iter_custom(|iters| {
             let mut total = Duration::ZERO;
             for _ in 0..iters {
-                let elapsed = Runtime::scope("bench_sustained_writes", run_one_sustained_iteration);
+                let elapsed = Owner::scope("bench_sustained_writes", run_one_sustained_iteration);
                 total += elapsed;
             }
             total
@@ -60,7 +61,7 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
 fn run_one_sustained_iteration() -> Duration {
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
     scheduler.install_current();
-    let handle = OwnerHandle::current().expect("inside a reactive scope");
+    let handle = Owner::current().expect("inside a reactive scope");
     let tick = signal_writer(signal(0_u64));
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -99,7 +100,7 @@ fn run_one_sustained_iteration() -> Duration {
 
 pub fn bench_spawn_smoke_latency(c: &mut Criterion) {
     c.bench_function("spawn_smoke_latency", |b| {
-        Runtime::scope("bench_spawn", || {
+        Owner::scope("bench_spawn", || {
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
             let woke = Arc::new(AtomicBool::new(false));
             {

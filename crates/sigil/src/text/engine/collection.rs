@@ -1,6 +1,4 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
-use crate::text::error::TextError;
-use crate::text::font_family::FontFamily;
+use crate::text::font_family::FontFaces;
 use crate::text::fonts::DefaultFontSource;
 use crate::text::shaper::{Font, Script};
 use smallvec::SmallVec;
@@ -8,10 +6,10 @@ use smallvec::SmallVec;
 const OBLIQUE_SKEW: f32 = 0.2;
 
 pub struct FontCollection {
-    sans: FontFamily,
-    mono: FontFamily,
-    serif: Option<FontFamily>,
-    display: Option<FontFamily>,
+    sans: FontFaces,
+    mono: FontFaces,
+    serif: Option<FontFaces>,
+    display: Option<FontFaces>,
     icon: Option<Font>,
     pub(crate) fallbacks: Vec<Font>,
     emoji: Font,
@@ -22,12 +20,16 @@ impl FontCollection {
     #[must_use]
     pub fn with_default() -> Self {
         let source = crate::text::fonts::default_font_source();
+        #[cfg(feature = "desktop")]
         if matches!(source, DefaultFontSource::System) {
             return Self::from_system();
         }
         let over = match source {
+            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
             DefaultFontSource::Custom(fonts) => Some(fonts),
-            DefaultFontSource::Bundled | DefaultFontSource::System => None,
+            DefaultFontSource::Bundled => None,
+            #[cfg(feature = "desktop")]
+            DefaultFontSource::System => None,
         };
         let face = |slot: Option<&(std::sync::Arc<Vec<u8>>, u32)>| -> Option<Font> {
             let (bytes, index) = slot?;
@@ -35,7 +37,7 @@ impl FontCollection {
         };
         Self {
             sans: sans_family(over.as_ref()),
-            mono: FontFamily::new(
+            mono: FontFaces::new(
                 over.as_ref()
                     .and_then(|f| face(f.mono.as_ref()))
                     .unwrap_or_else(load_mono_font),
@@ -44,34 +46,24 @@ impl FontCollection {
             display: over
                 .as_ref()
                 .and_then(|f| face(f.display.as_ref()))
-                .map(FontFamily::new),
+                .map(FontFaces::new),
             icon: over.as_ref().and_then(|f| face(f.icon.as_ref())),
-            fallbacks: over
-                .as_ref()
-                .map(|f| {
-                    f.fallbacks
-                        .iter()
-                        .filter_map(|slot| face(Some(slot)))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-                .into_iter()
-                .chain(crate::text::fonts::added_fallback_fonts())
-                .collect(),
+            fallbacks: crate::text::fonts::added_fallback_fonts(),
             emoji: load_emoji_font(),
             symbols: load_symbols_font(),
         }
     }
 
+    #[cfg(feature = "desktop")]
     fn from_system() -> Self {
         let system = crate::text::system_fonts::load();
         Self {
             sans: system
                 .sans
-                .unwrap_or_else(|| FontFamily::new(load_sans_font())),
+                .unwrap_or_else(|| FontFaces::new(load_sans_font())),
             mono: system
                 .mono
-                .unwrap_or_else(|| FontFamily::new(load_mono_font())),
+                .unwrap_or_else(|| FontFaces::new(load_mono_font())),
             serif: system.serif,
             display: None,
             icon: None,
@@ -117,19 +109,21 @@ impl FontCollection {
         (font, if italic { OBLIQUE_SKEW } else { 0.0 })
     }
 
-    pub fn register(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
-        let font = Font::from_bytes(bytes, face_index).map_err(|_| TextError::InvalidFont)?;
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn register(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), crate::Error> {
+        let font = Font::from_bytes(bytes, face_index)?;
         self.sans.replace(font);
         Ok(())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn register_family(
         &mut self,
         family: &str,
         bytes: Vec<u8>,
         face_index: u32,
-    ) -> Result<(), TextError> {
-        let font = Font::from_bytes(bytes, face_index).map_err(|_| TextError::InvalidFont)?;
+    ) -> Result<(), crate::Error> {
+        let font = Font::from_bytes(bytes, face_index)?;
         let name = family.trim();
         if name.eq_ignore_ascii_case("sans")
             || name.eq_ignore_ascii_case("sans-serif")
@@ -139,18 +133,21 @@ impl FontCollection {
         } else if name.eq_ignore_ascii_case("mono") || name.eq_ignore_ascii_case("monospace") {
             self.mono.replace(font);
         } else if name.eq_ignore_ascii_case("serif") {
-            self.serif = Some(FontFamily::new(font));
+            self.serif = Some(FontFaces::new(font));
         } else if name.eq_ignore_ascii_case("icon") {
             self.icon = Some(font);
         } else if name.eq_ignore_ascii_case("display") {
-            self.display = Some(FontFamily::new(font));
+            self.display = Some(FontFaces::new(font));
         } else {
-            return Err(TextError::InvalidFont);
+            return Err(crate::Error::fixed(
+                crate::ErrorKind::Font,
+                "invalid font data",
+            ));
         }
         Ok(())
     }
 
-    #[cfg(any(test, debug_assertions))]
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16, text: &str) -> Vec<Font> {
         self.chain_for(primary, weight, &chain_scripts(text))
@@ -175,8 +172,8 @@ impl FontCollection {
             .flatten()
             .chain(&self.fallbacks)
             .chain(self.symbols.as_ref())
-            .chain(&system)
-            .chain(std::iter::once(&self.emoji));
+            .chain(std::iter::once(&self.emoji))
+            .chain(&system);
         for candidate in candidates {
             if chain.iter().all(|f| f.id() != candidate.id()) {
                 chain.push(candidate.clone());
@@ -188,9 +185,24 @@ impl FontCollection {
 
 pub(crate) type ChainScripts = SmallVec<[Script; 4]>;
 
+fn chain_script(ch: char) -> Script {
+    let symbol = matches!(
+        ch,
+        '\u{2300}'..='\u{23ff}'
+            | '\u{2600}'..='\u{27bf}'
+            | '\u{2b00}'..='\u{2bff}'
+            | '\u{1fb00}'..='\u{1fbff}'
+    );
+    if symbol {
+        Script::Other
+    } else {
+        super::char_script(ch)
+    }
+}
+
 pub(crate) fn chain_scripts(text: &str) -> ChainScripts {
     let mut scripts = ChainScripts::new();
-    for script in text.chars().map(super::char_script) {
+    for script in text.chars().map(chain_script) {
         if !crate::text::script_fonts::candidates(script).is_empty() && !scripts.contains(&script) {
             scripts.push(script);
         }
@@ -231,7 +243,7 @@ fn load_mono_font() -> Font {
     Font::from_bytes(BYTES.to_vec(), 0).expect("bundled CascadiaMono-Regular.ttf must parse")
 }
 
-fn sans_family(over: Option<&crate::text::fonts::DefaultFonts>) -> FontFamily {
+fn sans_family(over: Option<&crate::text::fonts::DefaultFonts>) -> FontFaces {
     let mut faces: Vec<(u16, Font)> = Vec::new();
     if let Some(font) = over
         .and_then(|f| f.sans.as_ref())
@@ -250,5 +262,5 @@ fn sans_family(over: Option<&crate::text::fonts::DefaultFonts>) -> FontFamily {
             }
         }
     }
-    FontFamily::from_weighted(faces).unwrap_or_else(|| FontFamily::new(load_sans_font()))
+    FontFaces::from_weighted(faces).unwrap_or_else(|| FontFaces::new(load_sans_font()))
 }

@@ -63,8 +63,14 @@ fn widget_layout_ext_overrides_reach_root_node() {
             .get_extension::<LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
-        assert_eq!(style.data().size.width, Dimension::Px(200.0));
-        assert_eq!(style.data().size.height, Dimension::Px(150.0));
+        assert_eq!(
+            sigil::testing::style_data(&style).size.width,
+            Dimension::Px(200.0)
+        );
+        assert_eq!(
+            sigil::testing::style_data(&style).size.height,
+            Dimension::Px(150.0)
+        );
     });
 }
 

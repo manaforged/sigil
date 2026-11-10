@@ -9,57 +9,51 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{EventRouter, KeyEventInit, PhysicalKey, ShellEvent};
+use sigil::events::{Event, PhysicalKey};
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::DiffBuilder;
+use sigil::widgets::SubmitKey;
 
 const VIEW: (f32, f32) = (480.0, 320.0);
 
-fn settle(host: &mut Host, router: &mut EventRouter) {
+fn settle(host: &mut Host) {
     for _ in 0..3 {
-        let _ = host.frame(router, VIEW, 1.0 / 60.0, FrameHooks::default());
+        let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
     }
 }
 
-fn press(key: Key, modifiers: ModifiersState) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::Named(key),
-        physical: PhysicalKey::Enter,
-        modifiers,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn press(key: Key, modifiers: ModifiersState) -> Event {
+    Event::key(LogicalKey::Named(key), KeyPhase::Down)
+        .physical(PhysicalKey::Enter)
+        .modifiers(modifiers)
 }
 
-fn send(host: &mut Host, router: &mut EventRouter, keys: Vec<ShellEvent>) {
+fn send(host: &mut Host, keys: Vec<Event>) {
     let queue = RefCell::new(Some(keys));
     let _ = host.frame(
-        router,
         VIEW,
         1.0 / 60.0,
         FrameHooks {
-            input: Some(Box::new(move |target, events| {
+            input: Some(Box::new(move |target| {
                 for event in queue.borrow_mut().take().unwrap_or_default() {
-                    target.route(events, event);
+                    target.route(event);
                 }
                 None
             })),
             ..FrameHooks::default()
         },
     );
-    settle(host, router);
+    settle(host);
 }
 
 #[test]
 fn focus_when_focuses_any_widget_each_time_its_signal_changes() {
-    Runtime::scope("api_fixes::focus_when", || {
+    Owner::scope("api_fixes::focus_when", || {
         let trigger = signal(0_u64);
         let focused = Rc::new(Cell::new(0_u32));
         let count = Rc::clone(&focused);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(button("First").autofocus()).child(
                 button("Target")
@@ -67,11 +61,11 @@ fn focus_when_focuses_any_widget_each_time_its_signal_changes() {
                     .focus_in(move || count.set(count.get() + 1)),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert_eq!(focused.get(), 0);
 
         trigger.set(1);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert_eq!(focused.get(), 1);
     });
@@ -79,12 +73,11 @@ fn focus_when_focuses_any_widget_each_time_its_signal_changes() {
 
 #[test]
 fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
-    Runtime::scope("api_fixes::submit_on", || {
+    Owner::scope("api_fixes::submit_on", || {
         let draft = signal(String::from("Hi"));
         let sent = Rc::new(RefCell::new(Vec::<String>::new()));
         let log = Rc::clone(&sent);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
                 text_edit(draft)
@@ -93,29 +86,20 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
                     .autofocus(),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
-        send(
-            &mut host,
-            &mut router,
-            vec![press(Key::Enter, ModifiersState::SHIFT)],
-        );
+        send(&mut host, vec![press(Key::Enter, ModifiersState::SHIFT)]);
         assert!(sent.borrow().is_empty());
         assert!(draft.get().contains('\n'), "{:?}", draft.get());
 
         for key in [
             press(Key::Enter, ModifiersState::ALT),
-            ShellEvent::Key(KeyEvent::new(KeyEventInit {
-                key: LogicalKey::character("j"),
-                physical: PhysicalKey::KeyJ,
-                modifiers: ModifiersState::CONTROL,
-                repeat: false,
-                phase: KeyPhase::Down,
-                text: None,
-            })),
+            Event::key(LogicalKey::character("j"), KeyPhase::Down)
+                .physical(PhysicalKey::KeyJ)
+                .modifiers(ModifiersState::CONTROL),
         ] {
             let lines = draft.get().matches('\n').count();
-            send(&mut host, &mut router, vec![key]);
+            send(&mut host, vec![key]);
             assert!(sent.borrow().is_empty());
             assert_eq!(
                 draft.get().matches('\n').count(),
@@ -125,23 +109,18 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
             );
         }
 
-        send(
-            &mut host,
-            &mut router,
-            vec![press(Key::Enter, ModifiersState::empty())],
-        );
+        send(&mut host, vec![press(Key::Enter, ModifiersState::empty())]);
         assert_eq!(sent.borrow().len(), 1);
     });
 }
 
 #[test]
 fn a_cursor_row_moved_off_screen_scrolls_into_view() {
-    Runtime::scope("api_fixes::cursor", || {
+    Owner::scope("api_fixes::cursor", || {
         let cursor = signal(0_usize);
         let scroll = signal(0.0_f32);
         let rows: Vec<String> = (0..50).map(|n| format!("Row {n}")).collect();
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
                 virtual_list(rows, |_, row: &String| text(row.clone()))
@@ -151,11 +130,11 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
                     .cursor(cursor),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert_eq!(scroll.get(), 0.0);
 
         cursor.set(30);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(scroll.get() > 0.0);
         assert!(host.emit(VIEW).find_text("Row 30").is_some());
@@ -164,16 +143,15 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
 
 #[test]
 fn a_chart_redraws_when_its_values_change() {
-    Runtime::scope("api_fixes::chart", || {
+    Owner::scope("api_fixes::chart", || {
         let values = signal(vec![1.0_f32, 1.0, 1.0]);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(chart(values)));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         let before = host.emit(VIEW);
 
         values.set(vec![1.0, 9.0, 1.0]);
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert_ne!(host.emit(VIEW), before);
     });
@@ -193,13 +171,12 @@ fn checkboxes(host: &mut Host) -> Vec<bool> {
 
 #[test]
 fn markdown_task_items_render_as_check_boxes() {
-    Runtime::scope("api_fixes::tasklist", || {
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+    Owner::scope("api_fixes::tasklist", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(markdown(signal(String::from(
             "- [ ] todo\n- [x] done\n- plain\n",
         )))));
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert_eq!(checkboxes(&mut host), vec![false, true]);
         assert!(host.emit(VIEW).find_text("todo").is_some());
@@ -209,9 +186,8 @@ fn markdown_task_items_render_as_check_boxes() {
 
 #[test]
 fn a_focused_empty_editor_keeps_its_placeholder() {
-    Runtime::scope("api_fixes::placeholder", || {
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+    Owner::scope("api_fixes::placeholder", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
                 text_edit(signal(String::new()))
@@ -219,7 +195,7 @@ fn a_focused_empty_editor_keeps_its_placeholder() {
                     .autofocus(),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(host.emit(VIEW).find_text("Message").is_some());
     });
@@ -227,15 +203,13 @@ fn a_focused_empty_editor_keeps_its_placeholder() {
 
 #[test]
 fn the_prelude_names_what_its_functions_return() {
-    Runtime::scope("api_fixes::prelude", || {
+    Owner::scope("api_fixes::prelude", || {
         let open = signal(false);
         let _: ModalBuilder = modal(open);
         let _: DiffBuilder = diff("--- a\n+++ b\n").view(DiffView::Unified);
         let _: Option<SortKey> = Some(SortKey {
             column: "name",
-            dir: SortDir::Ascending,
+            dir: SortDirection::Ascending,
         });
-        let status = signal(Status::<u32, String>::Idle);
-        let _ = match_status(status).pending(|| text("Loading"));
     });
 }

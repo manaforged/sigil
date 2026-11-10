@@ -3,7 +3,7 @@
 use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
-mod builder_ext;
+pub(crate) mod builder_ext;
 pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
@@ -16,33 +16,41 @@ mod selection_walk;
 #[cfg(feature = "desktop")]
 mod window_command;
 
-pub use builder_ext::NodeEventsExt;
-pub(crate) use builder_ext::{mutate_handlers, with_handlers};
+pub(crate) use builder_ext::{event_methods, handler_methods, mutate_handlers, with_handlers};
 pub(crate) use focus::ScrollReveal;
+pub(crate) use focus::focus_from_keyboard;
 pub(crate) use focus::note_focus_source;
-pub use focus::{FocusIntent, focus_from_keyboard, request_focus, request_reveal};
-pub use handlers::EventHandlers;
+pub use focus::{FocusIntent, request_focus};
+pub(crate) use handlers::EventHandlers;
 pub(crate) use handlers::{A11yEdit, dispatch};
+#[cfg(not(feature = "kittest"))]
+pub(crate) use router::EventRouter;
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
 pub use router::EventRouter;
-pub use selection::SelectableText;
+
 #[cfg(feature = "desktop")]
 pub use window_command::request_window_command;
 #[cfg(feature = "desktop")]
 pub(crate) use window_command::take_window_commands;
 
 #[cfg(any(test, feature = "kittest"))]
+#[doc(hidden)]
 pub fn invoke_node(
     cx: &crate::kernel::Cx,
     layout: &crate::layout::LayoutEngine,
     target: crate::kernel::NodeId,
 ) {
-    pointer_dispatch::invoke_node(cx, layout, target);
+    pointer_dispatch::invoke_node(cx, layout, target, false);
 }
 
+pub(crate) use crate::hal::events::ClickConfig;
 pub use crate::hal::events::{
-    ClickConfig, FileDropEvent, FileDropPhase, GestureEvent, GestureEventInit, GestureKind,
-    ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
-    MouseButtons, PRIMARY, PasteEvent, PhysicalKey, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, PointerTilt, ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
-    Shortcut, ShortcutParseError, WindowEvent,
+    Event, FileDropPhase, GestureEvent, GestureKind, ImeEvent, Key, KeyEvent, KeyPhase, LogicalKey,
+    ModifiersState, MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerKind,
+    PointerPhase, ScrollDelta, ScrollEvent, ScrollPhase, Shortcut, WindowEvent,
 };
+kittest_pub! {
+    #[doc(hidden)]
+    pub use crate::hal::events::FileDropEvent;
+}

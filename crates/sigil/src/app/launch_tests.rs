@@ -1,16 +1,19 @@
 #![allow(clippy::unwrap_used, clippy::shadow_unrelated)]
 
+use crate::kernel::HostMode;
+use crate::reactive::Owner;
 use std::fmt;
 use std::time::{Duration, Instant};
 
 use crate::animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
-use crate::events::ShellEvent;
+use crate::events::Event;
 use crate::geometry::{LogicalSize, PhysicalSize};
 use crate::hal::Shell;
 use crate::kernel::container;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Runtime, signal};
 use crate::tasks::{AsyncRuntime, signal_writer};
+use crate::widgets::Widget;
 
 use crate::Host;
 use crate::app::config::AppConfig;
@@ -18,9 +21,9 @@ use crate::app::launch::{AnimationClock, create_initial_window};
 
 #[test]
 fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
-    Runtime::scope("completion-rebuild", || {
+    Owner::scope("completion-rebuild", || {
         let revision = signal(0);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container().children_reactive(move || {
                 let value = signal(format!("Profile {}", revision.get()));
@@ -28,9 +31,8 @@ fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
             })
         });
         host.layout((200.0, 100.0)).unwrap();
-        let router = crate::events::EventRouter::new();
         let shows = |host: &Host, text: &str| {
-            host.accessibility_tree(&router)
+            host.accessibility_tree()
                 .nodes
                 .iter()
                 .any(|(_, node)| node.value() == Some(text))
@@ -123,7 +125,7 @@ impl Shell for MockShell {
         Ok(self.calls.len() - 1)
     }
 
-    fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
+    fn drain_events(&mut self) -> std::vec::IntoIter<Event> {
         Vec::new().into_iter()
     }
 
@@ -169,16 +171,12 @@ fn initial_window_threads_config_into_logical_size_and_opts() {
     ];
     for (config, expected) in cases {
         let mut shell = MockShell::default();
-        let logical = super::logical_size_from_config(config.window_size());
+        let logical = super::logical_size_from_config(config.size);
         let handle = create_initial_window(&mut shell, &config, logical).unwrap();
         assert_eq!(handle, 0);
         assert_eq!(
             shell.calls,
-            vec![CreateCall::With(
-                config.title().to_owned(),
-                logical,
-                expected
-            )]
+            vec![CreateCall::With(config.title.clone(), logical, expected)]
         );
     }
 }
@@ -197,11 +195,11 @@ fn native_initial_window_ignores_web_canvas() {
 
 #[test]
 fn host_layout_keeps_the_logical_viewport() {
-    Runtime::scope("host-layout", || {
-        let mut host = crate::Host::new();
+    Owner::scope("host-layout", || {
+        let mut host = crate::Host::new(crate::kernel::HostMode::Pixel);
         host.mount(move || container().layout(LayoutStyle::block().fixed_size(720.0, 480.0)));
         let root = host.layout((720.0, 480.0)).unwrap().unwrap();
-        let (_, engine, _) = host.tree().unwrap();
+        let (_, engine, _, _) = host.tree().unwrap();
         let rect = engine.result(root).unwrap().rect();
         assert_eq!(rect.width.to_bits(), 720.0_f32.to_bits());
         assert_eq!(rect.height.to_bits(), 480.0_f32.to_bits());
@@ -210,7 +208,7 @@ fn host_layout_keeps_the_logical_viewport() {
 
 #[test]
 fn animation_clock_advances_until_idle_and_rearms() {
-    Runtime::scope("animation_clock_advances_until_idle_and_rearms", || {
+    Owner::scope("animation_clock_advances_until_idle_and_rearms", || {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
         let config = config(presets::DEFAULT).expect("default animation preset");

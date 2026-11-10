@@ -1,21 +1,24 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{Key, LogicalKey, MouseButton, NodeEventsExt, PointerEvent, Shortcut};
+use crate::events::{Key, LogicalKey, MouseButton, PointerEvent, Shortcut};
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position, snap};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
 use crate::reactive::{Signal, derived};
-use crate::style::{NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{StyleAtom, Token, space};
+use crate::widgets::Widget;
 
-use super::super::drag::{Axis, axis_drag};
+use super::super::drag::axis_drag;
 use super::super::interaction::InteractionState;
+use super::super::orientation::Orientation;
 use super::super::patterns::row_states;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{ColAlign, TableColumn};
 use super::hscroll::HScroll;
 use super::select;
 use super::sort_mark::sort_mark;
-use super::state::{SortDir, TableState};
+use super::state::TableState;
 
 const RESIZE_HANDLE: f32 = space(2);
 const RING_INSET: f32 = -space(1);
@@ -67,7 +70,7 @@ pub(super) fn header_row<Row: 'static>(
                 .height(snap::ruled(spec.height))
                 .shrink(0.0)
                 .align_items(AlignItems::Center)
-                .padding_x(spec.pad_x),
+                .padding_x(Space::px(spec.pad_x)),
         )
         .class("border-b")
         .class([Token::TableHeader.bg(), Token::Border.border()])
@@ -105,7 +108,8 @@ fn header_cell<Row: 'static>(
     let interaction = InteractionState::new(true);
     let cell = interaction
         .observe_style(row_states(cell, spec.disabled))
-        .focus_ring(interaction.focus_ring().offset(RING_INSET));
+        .focus_ring(interaction.focus_ring())
+        .focus_ring_offset(RING_INSET);
     if column.is_sortable() {
         sortable_cell(state, id, visual, cell, chrome.clone())
     } else {
@@ -132,7 +136,7 @@ fn resize_handle<Row: 'static>(
     let widths = state.clone();
     axis_drag(
         handle,
-        Axis::X,
+        Orientation::Horizontal,
         move || widths.column_width(column).unwrap_or(160.0),
         move |base, delta| state.pin_column_width(column, base + delta),
         || {},
@@ -153,7 +157,7 @@ fn header_title<Row: 'static>(
         .layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
-                .padding_x(pad_x)
+                .padding_x(Space::px(pad_x))
                 .align_items(AlignItems::Center)
                 .justify_content(justify),
         )
@@ -273,10 +277,7 @@ impl<Row: 'static> TableState<Row> {
         derived(move || {
             sort.get()
                 .filter(|key| key.column == column)
-                .map(|key| match key.dir {
-                    SortDir::Ascending => SortDirection::Ascending,
-                    SortDir::Descending => SortDirection::Descending,
-                })
+                .map(|key| key.dir)
         })
     }
 }

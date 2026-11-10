@@ -1,6 +1,6 @@
 use crate::style::Tone;
 
-use super::{Layer, SparkFill, SparkMark};
+use super::{SparkFill, SparkLayer, SparkMark};
 
 pub(super) const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 const BLOCK_LEVELS: usize = 8;
@@ -114,7 +114,7 @@ pub(super) fn cell_tones(
     }
 }
 
-pub(super) fn cell_layers(graph: &[String], fill: SparkFill) -> Vec<Vec<Layer>> {
+pub(super) fn cell_layers(graph: &[String], fill: SparkFill) -> Vec<Vec<SparkLayer>> {
     let rows: Vec<Vec<char>> = graph.iter().map(|row| row.chars().collect()).collect();
     let width = rows.iter().map(Vec::len).max().unwrap_or(0);
     let edge: Vec<Option<usize>> = (0..width)
@@ -128,8 +128,8 @@ pub(super) fn cell_layers(graph: &[String], fill: SparkFill) -> Vec<Vec<Layer>> 
         .map(|(index, row)| {
             (0..row.len())
                 .map(|col| match (fill, edge.get(col).copied().flatten()) {
-                    (SparkFill::Shade, Some(top)) if index > top => Layer::Body,
-                    _ => Layer::Edge,
+                    (SparkFill::Shade, Some(top)) if index > top => SparkLayer::Body,
+                    _ => SparkLayer::Edge,
                 })
                 .collect()
         })
@@ -139,13 +139,13 @@ pub(super) fn cell_layers(graph: &[String], fill: SparkFill) -> Vec<Vec<Layer>> 
 pub(super) fn tone_runs(
     row: &str,
     tones: &[Tone],
-    layers: &[Layer],
+    layers: &[SparkLayer],
     base: Tone,
-) -> Vec<(Tone, Layer, String)> {
-    let mut runs: Vec<(Tone, Layer, String)> = Vec::new();
+) -> Vec<(Tone, SparkLayer, String)> {
+    let mut runs: Vec<(Tone, SparkLayer, String)> = Vec::new();
     for (index, glyph) in row.chars().enumerate() {
         let tone = tones.get(index).copied().unwrap_or(base);
-        let layer = layers.get(index).copied().unwrap_or(Layer::Edge);
+        let layer = layers.get(index).copied().unwrap_or(SparkLayer::Edge);
         match runs.last_mut() {
             Some((last, kind, text)) if *last == tone && *kind == layer => text.push(glyph),
             _ => runs.push((tone, layer, glyph.to_string())),

@@ -7,7 +7,7 @@
 #[path = "events_support/input.rs"]
 mod input;
 
-use input::key_down;
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::kernel::Cx;
@@ -26,7 +26,7 @@ fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key)
         Key::End => PhysicalKey::End,
         _ => PhysicalKey::Unidentified,
     };
-    router.route(cx, layout, key_down(key, physical));
+    router.route(cx, layout, Event::key_down(key).physical(physical));
 }
 
 fn assert_px_eq(actual: f32, expected: f32) {
@@ -38,7 +38,7 @@ fn assert_px_eq(actual: f32, expected: f32) {
 
 #[test]
 fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-keyboard", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-keyboard", || {
         let focused_row = signal(0_usize);
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();

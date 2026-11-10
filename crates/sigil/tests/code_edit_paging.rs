@@ -4,46 +4,30 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey, PointerEventInit};
+use sigil::events::PhysicalKey;
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 80.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(80.0, 16.0);
 
-const fn click(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
+const fn click(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Down, Point::new(x, y))
+        .button(Some(MouseButton::Left))
+        .buttons(MouseButtons::LEFT)
 }
 
-fn page_down() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::Named(Key::PageDown),
-        physical: PhysicalKey::PageDown,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn page_down() -> Event {
+    Event::key(LogicalKey::Named(Key::PageDown), KeyPhase::Down).physical(PhysicalKey::PageDown)
 }
 
 #[test]
 fn page_down_moves_one_viewport_of_rows() {
-    sigil::reactive::Runtime::scope("code-edit-page", || {
+    sigil::reactive::Owner::scope("code-edit-page", || {
         const ROW_H: f32 = 20.0;
         const PANE_H: f32 = 300.0;
         let lines = signal((0..200).map(|i| format!("line {i}")).collect::<Vec<_>>());

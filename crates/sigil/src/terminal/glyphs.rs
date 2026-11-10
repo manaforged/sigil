@@ -1,23 +1,31 @@
 use std::borrow::Cow;
 
+#[cfg(any(test, feature = "kittest"))]
 use crate::terminal::caps::Caps;
 
+/// The character set the terminal can show.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Glyphs {
+    /// The unicode glyphs.
     #[default]
     Unicode,
+    /// The console glyphs.
     Console,
+    /// The ascii glyphs.
     Ascii,
 }
 
 const BRAILLE: std::ops::RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 
+/// Returns the current character set.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn glyphs() -> Glyphs {
     Caps::detect(|key: &str| std::env::var(key).ok()).glyphs
 }
 
 impl Glyphs {
+    /// Returns `glyph`, or its fallback in this character set.
     #[must_use]
     pub fn glyph(self, glyph: char) -> char {
         match self {
@@ -27,6 +35,7 @@ impl Glyphs {
         }
     }
 
+    /// Replaces the characters of `text` that this set cannot show.
     #[must_use]
     pub fn text(self, text: &str) -> Cow<'_, str> {
         if self == Self::Unicode || text.is_ascii() {

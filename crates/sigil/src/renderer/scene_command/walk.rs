@@ -1,14 +1,20 @@
 use crate::geometry::{Point, Rect};
 
-use crate::renderer::blur_paint::BlurPipeline;
-use crate::renderer::decoration_paint::{DecorationInstance, DecorationPipeline};
-use crate::renderer::error::RendererError;
+use crate::Error;
+use crate::renderer::decoration_paint::DecorationInstance;
+use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::fill_paint::FillPipeline;
+use crate::renderer::filter::FilterPipeline;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::{FrameUploads, UploadCapacities};
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
-use crate::renderer::raster_paint::{RasterGroup, RasterInstance, RasterTextPipeline};
+use crate::renderer::plan::{self};
+use crate::renderer::plan::{Batch, Flush, PlanStep};
+use crate::renderer::projected::ProjectedPipeline;
+use crate::renderer::quad_paint::QuadInstance;
+use crate::renderer::quad_paint::{AtlasPipeline, QuadGroup};
+use crate::renderer::scene_command::KeptLayers;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::renderer::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
@@ -16,7 +22,8 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
-use crate::renderer::sprite_paint::SpritePipeline;
+use crate::renderer::vector_pass::VectorPass;
+use crate::renderer::wash_cache::WashCache;
 pub(crate) use crate::scene::command::effects::transform_rect;
 pub(crate) use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
 
@@ -33,13 +40,16 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) fill_pipelines: &'a mut Vec<FillPipeline>,
     pub(crate) shadow_pipelines: &'a mut Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: &'a mut Vec<SlugTextPipeline>,
-    pub(crate) raster_pipelines: &'a mut Vec<RasterTextPipeline>,
-    pub(crate) sprite_pipelines: &'a mut Vec<SpritePipeline>,
+    pub(crate) quad_pipelines: &'a mut Vec<AtlasPipeline>,
     pub(crate) decoration_pipelines: &'a mut Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
-    pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
+    pub(crate) filter_pipelines: &'a mut Vec<FilterPipeline>,
+    pub(crate) projected_pipelines: &'a mut Vec<ProjectedPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
+    pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
+    pub(crate) vector: &'a mut VectorPass,
+    pub(crate) kept: &'a mut KeptLayers,
     pub(crate) stats: &'a mut FrameStats,
 }
 
@@ -52,8 +62,8 @@ pub(crate) struct WalkPending {
     pub(super) decorations: Vec<DecorationInstance>,
     pub(super) glyphs: Vec<QueuedGlyphs>,
     pub(super) runs: Vec<QueuedRun>,
-    pub(super) raster: Vec<RasterInstance>,
-    pub(super) raster_groups: Vec<RasterGroup>,
+    pub(super) raster: Vec<QuadInstance>,
+    pub(super) raster_groups: Vec<QuadGroup>,
 }
 
 impl WalkPending {
@@ -70,55 +80,44 @@ impl WalkPending {
     }
 }
 
-pub(crate) fn walk_command_scene(
-    ctx: WalkCtx<'_>,
-    scene: &CommandScene,
-) -> Result<(), RendererError> {
+pub(crate) fn walk_command_scene(ctx: WalkCtx<'_>, scene: &CommandScene) -> Result<(), Error> {
     ctx.encoder.reserve_draws(&scene.commands);
+    ctx.vector.begin_frame();
+    ctx.kept.begin_frame();
     *ctx.stats = FrameStats {
         scene_commands: scene.commands.len(),
         ..FrameStats::default()
     };
     if let Some(pool) = ctx.layer_pool.as_mut() {
         pool.prepare(ctx.view.texture());
+        let (washes, vector) = (&*ctx.wash_cache, &*ctx.vector);
         for pipeline in &mut *ctx.layer_pipelines {
-            pipeline.retain(pool);
+            pipeline.retain(|view| {
+                pool.contains(view) || washes.contains(view) || vector.contains(view)
+            });
         }
     }
-    if scene
-        .commands
-        .iter()
-        .any(|cmd| matches!(cmd, SceneCommand::PushLayer(_)))
-        || SceneState::has_composited_group(&scene.commands)
-    {
+    if plan::needs_layers(&scene.commands) {
         return super::layer_walk::walk_layer_command_scene(ctx, scene);
     }
     let capacity = UploadCapacities::from_commands(scene.commands.iter());
-    Walk::new(ctx, capacity).walk(scene);
+    SceneWalk::new(ctx, capacity).walk(scene);
     Ok(())
 }
 
-pub(super) struct Walk<'a> {
+pub(super) struct SceneWalk<'a> {
     pub(super) ctx: WalkCtx<'a>,
     pub(super) state: SceneState,
     pub(super) uploads: FrameUploads,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Shape {
-    Rect,
-    Fill,
-    Shadow,
-    Decoration,
-}
-
 pub(crate) struct QueuedGlyphs {
     pub(super) run: QueuedRun,
-    pub(super) raster: Vec<RasterInstance>,
+    pub(super) raster: Vec<QuadInstance>,
     pub(super) bounds: Rect,
 }
 
-impl<'a> Walk<'a> {
+impl<'a> SceneWalk<'a> {
     pub(super) fn new(ctx: WalkCtx<'a>, capacity: UploadCapacities) -> Self {
         ctx.pending.clear();
         let uploads = FrameUploads::new(ctx.encoder, ctx.viewport, capacity, &mut *ctx.stats);
@@ -137,63 +136,40 @@ impl<'a> Walk<'a> {
     }
 
     pub(super) fn handle(&mut self, command: &SceneCommand) {
-        if self.state.clipped_out() && SceneState::draws(command) {
-            return;
-        }
-        if self.queue_batchable(command) {
-            return;
-        }
-        match command {
-            SceneCommand::PushClip(_) | SceneCommand::PopClip => self.flush_shapes(),
-            _ => self.finish(),
+        match plan::step(&self.state, command, |rect| self.glyphs_under(rect)) {
+            PlanStep::Skip => return,
+            PlanStep::Queue {
+                batch,
+                flush_glyphs,
+            } => {
+                if flush_glyphs {
+                    self.flush_glyphs();
+                }
+                self.queue(batch, command);
+                return;
+            }
+            PlanStep::Dispatch(Flush::Shapes) => self.flush_shapes(),
+            PlanStep::Dispatch(Flush::All) => self.finish(),
         }
         if self.state.apply(command) || self.state.clipped_out() {
             return;
         }
         match command {
-            SceneCommand::PushLayer(_)
-            | SceneCommand::PopLayer
-            | SceneCommand::PushClip(_)
-            | SceneCommand::PopClip
-            | SceneCommand::PushTransform(_)
-            | SceneCommand::PopTransform
-            | SceneCommand::SaveLayer { .. }
-            | SceneCommand::RestoreLayer => {}
-            SceneCommand::Rect(_)
-            | SceneCommand::Gradient(_)
-            | SceneCommand::Pattern(_)
-            | SceneCommand::DrawShadow { .. }
-            | SceneCommand::Decoration(_) => {
-                unreachable!("batchable commands return before dispatch")
-            }
-            SceneCommand::GlyphRun(_) => unreachable!("glyph runs are queued before dispatch"),
             SceneCommand::Sprite(draw) => self.draw_sprite(draw),
             SceneCommand::Image(draw) => self.draw_image(draw),
+            _ => {}
         }
     }
 
-    fn queue_batchable(&mut self, command: &SceneCommand) -> bool {
-        let keep = match command {
-            SceneCommand::GlyphRun(draw) => {
-                self.queue_glyph_run(draw);
-                return true;
-            }
-            SceneCommand::Rect(draw) => {
-                if self.glyphs_under(transform_rect(self.state.current_transform(), draw.rect)) {
-                    self.flush_glyphs();
-                }
-                Shape::Rect
-            }
-            SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => Shape::Fill,
-            SceneCommand::DrawShadow { .. } => Shape::Shadow,
-            SceneCommand::Decoration(_) => Shape::Decoration,
-            _ => return false,
-        };
-        if keep != Shape::Rect {
-            self.flush_glyphs();
+    fn queue(&mut self, batch: Batch, command: &SceneCommand) {
+        if batch != Batch::Glyphs {
+            self.flush_shapes_except(batch);
         }
-        self.flush_shapes_except(keep);
         match command {
+            SceneCommand::GlyphRun(draw) => match draw.fill() {
+                Some(fill) => self.queue_path(fill),
+                None => self.queue_glyph_run(draw),
+            },
             SceneCommand::Rect(draw) => self.queue_rect(draw),
             SceneCommand::Gradient(draw) => self.queue_gradient(draw),
             SceneCommand::Pattern(draw) => self.queue_pattern(draw),
@@ -203,23 +179,26 @@ impl<'a> Walk<'a> {
                 shadow,
             } => self.queue_shadow(*rect, *radii, *shadow),
             SceneCommand::Decoration(draw) => self.queue_decoration(draw),
+            SceneCommand::Path(draw) => self.queue_path(draw),
             _ => {}
         }
-        true
     }
 
-    fn flush_shapes_except(&mut self, keep: Shape) {
-        if keep != Shape::Rect {
+    fn flush_shapes_except(&mut self, keep: Batch) {
+        if keep != Batch::Rect {
             self.flush_rects();
         }
-        if keep != Shape::Fill {
+        if keep != Batch::Fill {
             self.flush_fills();
         }
-        if keep != Shape::Shadow {
+        if keep != Batch::Shadow {
             self.flush_shadows();
         }
-        if keep != Shape::Decoration {
+        if keep != Batch::Decoration {
             self.flush_decorations();
+        }
+        if keep != Batch::Path {
+            self.flush_paths();
         }
     }
 
@@ -233,6 +212,7 @@ impl<'a> Walk<'a> {
         self.flush_fills();
         self.flush_shadows();
         self.flush_decorations();
+        self.flush_paths();
     }
 
     fn glyphs_under(&self, rect: Rect) -> bool {

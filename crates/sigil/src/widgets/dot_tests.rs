@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::Runtime;
+use crate::kernel::IntoNode;
+use crate::reactive::Owner;
 
 #[test]
 fn dot_is_a_generic_ring_around_one_fill() {
-    Runtime::scope("dot-ring-and-fill", || {
+    Owner::scope("dot-ring-and-fill", || {
         let mut cx = Cx::new_root();
         let id = dot(Tone::Warn).build(&mut cx);
         let node = cx.get(id).expect("dot node exists");

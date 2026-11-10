@@ -1,10 +1,13 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::Space;
+use crate::layout::{JustifyContent, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{DisplayKind, StyleAtom, Token, space};
+use crate::style::{Token, space};
+use crate::widgets::Widget;
 
-use super::popup::SURFACE;
+use super::popup::{SURFACE, shown_when};
 
+/// One transient message.
 #[must_use]
 pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
     let body = derived(move || message.get().unwrap_or_default());
@@ -18,16 +21,10 @@ pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
                 .inset_left(space(4))
                 .inset_right(space(4))
                 .justify_content(JustifyContent::Center)
-                .padding(space(3)),
+                .padding(Space::Md),
         )
         .class(SURFACE)
-        .style_reactive(move || {
-            if message.get().is_some() {
-                &[]
-            } else {
-                &[StyleAtom::Display(DisplayKind::None)]
-            }
-        })
+        .style_reactive(move || shown_when(message.get().is_some()))
         .child(text(body).class(Token::OnSurface.text()))
 }
 

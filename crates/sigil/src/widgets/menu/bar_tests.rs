@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::kernel::{Cx, IntoNode};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 #[test]
 #[allow(
@@ -17,7 +17,7 @@ fn trigger_width_is_pad_plus_count_times_em() {
 
 #[test]
 fn bar_builds_one_child_per_menu() {
-    Runtime::scope("menu-bar-slots", || {
+    Owner::scope("menu-bar-slots", || {
         let mut cx = Cx::new_root();
         let root = menu_bar()
             .bg(Token::SurfaceHover)

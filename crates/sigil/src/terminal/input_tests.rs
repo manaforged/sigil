@@ -15,7 +15,7 @@ fn a_hang_up_during_the_wait_ends_it() -> std::io::Result<()> {
     signal_hook::flag::register(signal_hook::consts::SIGHUP, std::sync::Arc::clone(&hup))?;
     let (rx, _tx) = std::os::unix::net::UnixStream::pair()?;
     rx.set_nonblocking(true)?;
-    let wake = super::Wake { rx: Some(rx) };
+    let wake = super::InputWake { rx: Some(rx) };
     let (ours, theirs) = std::os::unix::net::UnixStream::pair()?;
     let closer = std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(100));
@@ -35,7 +35,7 @@ fn a_hang_up_while_not_listening_ends_the_wait_without_the_event_reader() -> std
     use std::time::{Duration, Instant};
     let hup = std::sync::Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGHUP, std::sync::Arc::clone(&hup))?;
-    let wake = super::Wake { rx: None };
+    let wake = super::InputWake { rx: None };
     let (ours, theirs) = std::os::unix::net::UnixStream::pair()?;
     let closer = std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(100));

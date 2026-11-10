@@ -2,55 +2,55 @@ use super::*;
 
 #[test]
 fn panel_default() {
-    let img = render_widget_to_png_stub(
-        || panel().title("Settings"),
-        InteractionMode::Default,
-        [340, 92],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("panel_default"), DELTA_PCT);
+    let img = Harness::render(|| panel().title("Settings"))
+        .stub()
+        .mode(InteractionMode::Default)
+        .size([340, 92])
+        .hit((1.0, 1.0))
+        .image();
+    Golden::new("panel_default").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn progress_empty() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(0.0_f32);
-            progress(v, 100.0).height(24.0)
-        },
-        InteractionMode::Default,
-        [244, 32],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("progress_empty"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(0.0_f32);
+        progress(v, 100.0).height(24.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([244, 32])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("progress_empty").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn progress_half() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(50.0_f32);
-            progress(v, 100.0).height(24.0)
-        },
-        InteractionMode::Default,
-        [244, 32],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("progress_half"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(50.0_f32);
+        progress(v, 100.0).height(24.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([244, 32])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("progress_half").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn progress_full() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(100.0_f32);
-            progress(v, 100.0).height(24.0)
-        },
-        InteractionMode::Default,
-        [244, 32],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("progress_full"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(100.0_f32);
+        progress(v, 100.0).height(24.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([244, 32])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("progress_full").delta(DELTA_PCT).assert(img);
 }
 
 fn dropdown_options() -> Vec<String> {
@@ -59,175 +59,185 @@ fn dropdown_options() -> Vec<String> {
 
 #[test]
 fn dropdown_open() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            dropdown(sel, dropdown_options())
-        },
-        InteractionMode::Clicked,
-        [212, 160],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_open"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        dropdown(sel, dropdown_options())
+    })
+    .stub()
+    .mode(InteractionMode::Clicked)
+    .size([212, 160])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_open").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn dropdown_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            dropdown(sel, dropdown_options())
-        },
-        InteractionMode::Default,
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        dropdown(sel, dropdown_options())
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([212, 52])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_default").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn dropdown_hover() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            dropdown(sel, dropdown_options())
-        },
-        InteractionMode::Hover,
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        dropdown(sel, dropdown_options())
+    })
+    .stub()
+    .mode(InteractionMode::Hover)
+    .size([212, 52])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_hover").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn dropdown_pressed() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            dropdown(sel, dropdown_options())
-        },
-        InteractionMode::Pressed,
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_pressed"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        dropdown(sel, dropdown_options())
+    })
+    .stub()
+    .mode(InteractionMode::Pressed)
+    .size([212, 52])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_pressed").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn dropdown_focused() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            dropdown(sel, dropdown_options())
-        },
-        InteractionMode::Focused,
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_focused"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        dropdown(sel, dropdown_options())
+    })
+    .stub()
+    .mode(InteractionMode::Focused)
+    .size([212, 52])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_focused").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn dropdown_disabled() {
-    let img = render_widget_to_png_stub(
-        || {
-            let sel = signal(0_usize);
-            let dis = signal(true);
-            dropdown(sel, dropdown_options()).disabled(dis)
-        },
-        InteractionMode::Disabled,
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_disabled"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let sel = signal(0_usize);
+        let dis = signal(true);
+        dropdown(sel, dropdown_options()).disabled(dis)
+    })
+    .stub()
+    .mode(InteractionMode::Disabled)
+    .size([212, 52])
+    .hit((90.0, 22.0))
+    .image();
+    Golden::new("dropdown_disabled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn scroll_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let body = container()
-                .bg(Token::Accent)
-                .rounded(Radius::Sm)
-                .layout(LayoutStyle::block().fixed_size(312.0, 400.0));
-            scroll(body).extent(400.0).rounded(Radius::Sm)
-        },
-        InteractionMode::Default,
-        [330, 252],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("scroll_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let body = container()
+            .bg(Token::Accent)
+            .rounded(Radius::Sm)
+            .layout(LayoutStyle::block().fixed_size(312.0, 400.0));
+        scroll(body).extent(400.0).rounded(Radius::Sm)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([330, 252])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("scroll_default").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn text_field_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(String::from("Hello"));
-            text_field(v)
-        },
-        InteractionMode::Default,
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(String::from("Hello"));
+        text_field(v)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([192, 44])
+    .hit((40.0, 22.0))
+    .image();
+    Golden::new("text_field_default")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn text_field_hover() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(String::from("Hello"));
-            text_field(v)
-        },
-        InteractionMode::Hover,
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_hover"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(String::from("Hello"));
+        text_field(v)
+    })
+    .stub()
+    .mode(InteractionMode::Hover)
+    .size([192, 44])
+    .hit((40.0, 22.0))
+    .image();
+    Golden::new("text_field_hover").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn text_field_pressed() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(String::from("Hello"));
-            text_field(v)
-        },
-        InteractionMode::Pressed,
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_pressed"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(String::from("Hello"));
+        text_field(v)
+    })
+    .stub()
+    .mode(InteractionMode::Pressed)
+    .size([192, 44])
+    .hit((40.0, 22.0))
+    .image();
+    Golden::new("text_field_pressed")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn text_field_focused() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(String::from("Hello"));
-            text_field(v)
-        },
-        InteractionMode::Focused,
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_focused"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(String::from("Hello"));
+        text_field(v)
+    })
+    .stub()
+    .mode(InteractionMode::Focused)
+    .size([192, 44])
+    .hit((40.0, 22.0))
+    .image();
+    Golden::new("text_field_focused")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn text_field_disabled() {
-    let img = render_widget_to_png_stub(
-        || {
-            let v = signal(String::from("Hello"));
-            let dis = signal(true);
-            text_field(v).disabled(dis)
-        },
-        InteractionMode::Disabled,
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_disabled"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let v = signal(String::from("Hello"));
+        let dis = signal(true);
+        text_field(v).disabled(dis)
+    })
+    .stub()
+    .mode(InteractionMode::Disabled)
+    .size([192, 44])
+    .hit((40.0, 22.0))
+    .image();
+    Golden::new("text_field_disabled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn tab_labels() -> Vec<String> {
@@ -236,76 +246,76 @@ fn tab_labels() -> Vec<String> {
 
 #[test]
 fn tabs_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let active = signal(0_usize);
-            tabs().active(active).labels(tab_labels())
-        },
-        InteractionMode::Default,
-        [260, 56],
-        (40.0, 17.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("tabs_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let active = signal(0_usize);
+        tabs().active(active).labels(tab_labels())
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([260, 56])
+    .hit((40.0, 17.0))
+    .image();
+    Golden::new("tabs_default").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn tabs_hover_tab2() {
-    let img = render_widget_to_png_stub(
-        || {
-            let active = signal(0_usize);
-            tabs().active(active).labels(tab_labels())
-        },
-        InteractionMode::Hover,
-        [260, 56],
-        (120.0, 17.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("tabs_hover_tab2"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let active = signal(0_usize);
+        tabs().active(active).labels(tab_labels())
+    })
+    .stub()
+    .mode(InteractionMode::Hover)
+    .size([260, 56])
+    .hit((120.0, 17.0))
+    .image();
+    Golden::new("tabs_hover_tab2").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn tabs_active_tab2() {
-    let img = render_widget_to_png_stub(
-        || {
-            let active = signal(1_usize);
-            tabs().active(active).labels(tab_labels())
-        },
-        InteractionMode::Default,
-        [260, 56],
-        (120.0, 17.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("tabs_active_tab2"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let active = signal(1_usize);
+        tabs().active(active).labels(tab_labels())
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([260, 56])
+    .hit((120.0, 17.0))
+    .image();
+    Golden::new("tabs_active_tab2").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn tabs_focused() {
-    let img = render_widget_to_png_focus_descendant(
-        || {
-            let active = signal(0_usize);
-            tabs().active(active).labels(tab_labels())
-        },
-        InteractionMode::Focused,
-        [260, 56],
-        (40.0, 17.0),
-        sigil_kittest::stub_text_measure(),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("tabs_focused"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let active = signal(0_usize);
+        tabs().active(active).labels(tab_labels())
+    })
+    .stub()
+    .focus_first()
+    .mode(InteractionMode::Focused)
+    .size([260, 56])
+    .hit((40.0, 17.0))
+    .image();
+    Golden::new("tabs_focused").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn tabs_focused_differs_from_default() {
-    assert_goldens_differ!("tabs_focused", "tabs_default");
+    Golden::new("tabs_focused").assert_differs(&Golden::new("tabs_default"));
 }
 
 #[test]
 fn tabs_disabled() {
-    let img = render_widget_to_png_stub(
-        || {
-            let active = signal(0_usize);
-            tabs().active(active).labels(tab_labels()).disabled(&[1])
-        },
-        InteractionMode::Default,
-        [260, 56],
-        (40.0, 17.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("tabs_disabled"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let active = signal(0_usize);
+        tabs().active(active).labels(tab_labels()).disabled(&[1])
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([260, 56])
+    .hit((40.0, 17.0))
+    .image();
+    Golden::new("tabs_disabled").delta(DELTA_PCT).assert(img);
 }

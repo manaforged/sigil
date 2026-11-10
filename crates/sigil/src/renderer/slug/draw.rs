@@ -11,7 +11,7 @@ use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
 #[cfg(any(test, feature = "kittest"))]
-use crate::renderer::error::RendererError;
+use crate::Error;
 use crate::renderer::fill_paint::setup::begin_pass;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::FrameUploads;
@@ -23,19 +23,23 @@ use crate::renderer::slug::{
 };
 use crate::renderer::split_encoder::SplitEncoder;
 
-#[cfg_attr(not(any(test, feature = "kittest")), allow(dead_code))]
 pub struct DrawParams<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
+    #[cfg(any(test, feature = "kittest"))]
     pub view: &'a wgpu::TextureView,
+    #[cfg(any(test, feature = "kittest"))]
     pub surface_width: f32,
+    #[cfg(any(test, feature = "kittest"))]
     pub surface_height: f32,
     pub scale: f32,
     pub paragraph: &'a Paragraph,
+    #[cfg(any(test, feature = "kittest"))]
     pub glyphs: Option<&'a [RenderedGlyph]>,
     pub origin: (f32, f32),
     pub transform: [[f32; 3]; 2],
     pub color: Option<Color>,
+    #[cfg(any(test, feature = "kittest"))]
     pub clip: Option<Rect>,
 }
 
@@ -113,7 +117,7 @@ impl SlugTextPipeline {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         params: &DrawParams<'_>,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let real = std::mem::replace(
             encoder,
             params

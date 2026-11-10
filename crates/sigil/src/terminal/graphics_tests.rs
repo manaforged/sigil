@@ -5,8 +5,8 @@ use std::io::Cursor;
 use crate::kernel::ImageSource;
 
 use super::{
-    Frame, Mux, Painter, Placement, Protocol, base64, blocks, blocks_window, detect, detect_mux,
-    png, png_window,
+    ImageFrame, ImagePainter, Mux, Placement, Protocol, base64, blocks, blocks_window, detect,
+    detect_mux, png, png_window,
 };
 
 fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
@@ -34,14 +34,14 @@ fn source(width: u32, height: u32) -> ImageSource {
 }
 
 fn emit(
-    painter: &mut Painter,
+    painter: &mut ImagePainter,
     protocol: Protocol,
     next: &[Placement],
     rewritten: &[bool],
     redraw: bool,
 ) -> String {
     let mut out = Cursor::new(Vec::new());
-    let frame = Frame {
+    let frame = ImageFrame {
         next,
         rewritten,
         redraw,
@@ -125,6 +125,10 @@ fn placed(
         row: at.1,
         cols: size.0,
         rows: size.1,
+        mark_col: 0,
+        mark_row: 0,
+        span_cols: size.0,
+        span_rows: size.1,
         source,
         crop,
     }
@@ -134,7 +138,7 @@ fn placed(
 fn kitty_transmits_once_and_places_at_the_cell() {
     let place = placed((3, 4), (10, 5), source(2, 2), None);
     let quiet = [false; 20];
-    let mut painter = Painter::default();
+    let mut painter = ImagePainter::default();
     let first = emit(
         &mut painter,
         Protocol::Kitty,
@@ -143,10 +147,11 @@ fn kitty_transmits_once_and_places_at_the_cell() {
         false,
     );
     assert!(first.contains("\x1b_Ga=t,f=32,s=2,v=2,i="), "{first:?}");
-    assert!(first.contains(",c=10,r=5,C=1,q=2\x1b\\"), "{first:?}");
+    assert!(first.contains("U=1"), "{first:?}");
+    assert!(first.contains(",c=10,r=5,q=2\x1b\\"), "{first:?}");
     assert!(
-        first.contains("\x1b[5;4H"),
-        "cursor moves to row 4 col 3: {first:?}"
+        !first.contains("\x1b[5;4H"),
+        "a virtual placement is not a cursor overlay: {first:?}"
     );
     let unchanged = emit(
         &mut painter,
@@ -159,10 +164,10 @@ fn kitty_transmits_once_and_places_at_the_cell() {
 }
 
 #[test]
-fn kitty_replaces_after_a_touched_row_and_deletes_when_gone() {
+fn kitty_keeps_a_virtual_placement_when_its_row_is_rewritten() {
     let place = placed((3, 4), (10, 5), source(2, 2), None);
     let quiet = [false; 20];
-    let mut painter = Painter::default();
+    let mut painter = ImagePainter::default();
     drop(emit(
         &mut painter,
         Protocol::Kitty,
@@ -183,17 +188,85 @@ fn kitty_replaces_after_a_touched_row_and_deletes_when_gone() {
         "data is transmitted once: {again:?}"
     );
     assert!(
-        again.contains("a=p,"),
-        "a touched row places again: {again:?}"
+        !again.contains("a=p,"),
+        "placeholder cells carry the image, so a rewritten row does not re-place: {again:?}"
     );
     let gone = emit(&mut painter, Protocol::Kitty, &[], &quiet, false);
     assert!(gone.contains("\x1b_Ga=d,d=I,i="), "{gone:?}");
 }
 
 #[test]
+fn kitty_scroll_keeps_the_full_placement_size() {
+    let image = source(20, 16);
+    let full = placed((0, 2), (10, 8), image.clone(), None);
+    let mut painter = ImagePainter::default();
+    let first = emit(
+        &mut painter,
+        Protocol::Kitty,
+        std::slice::from_ref(&full),
+        &[false; 12],
+        true,
+    );
+    assert!(first.contains(",c=10,r=8"), "{first:?}");
+    let mut scrolled = full.clone();
+    scrolled.row = 0;
+    scrolled.rows = 3;
+    scrolled.mark_row = 5;
+    let again = emit(
+        &mut painter,
+        Protocol::Kitty,
+        std::slice::from_ref(&scrolled),
+        &[false; 12],
+        false,
+    );
+    assert!(
+        !again.contains("a=p,"),
+        "scrolling must not refit the image to the visible slice: {again:?}"
+    );
+    assert!(
+        !again.contains("a=d,"),
+        "the full placement stays while the image is partly off screen: {again:?}"
+    );
+    let mut grid = crate::terminal::paint::Grid::new(12, 8);
+    grid.push_image(scrolled);
+    grid.stamp_placeholders();
+    let cell = grid.cell(0, 0).expect("visible origin");
+    let extra = (super::kitty_id(&image) >> 24) as u8;
+    let expected = crate::terminal::placeholder::grapheme(5, 0, extra).expect("mark");
+    assert_eq!(
+        cell.text.as_str(),
+        expected,
+        "a scrolled cell keeps its place in the full image"
+    );
+}
+
+#[test]
+fn kitty_placeholder_cells_carry_the_image() {
+    let place = placed((1, 2), (2, 2), source(2, 2), None);
+    let mut grid = crate::terminal::paint::Grid::new(8, 8);
+    grid.push_image(place);
+    grid.stamp_placeholders();
+    let cell = grid.cell(1, 2).expect("origin");
+    assert!(
+        cell.text.starts_with('\u{10EEEE}'),
+        "the image is a cell in the transcript, not an overlay: {:?}",
+        cell.text
+    );
+    let image = grid.images().first().expect("placement");
+    let id = super::kitty_id(&image.source);
+    let crate::terminal::paint::Ink::Exact(colour) = cell.fg else {
+        unreachable!("placeholder foreground is the image id");
+    };
+    assert_eq!(
+        u32::from(colour.r) << 16 | u32::from(colour.g) << 8 | u32::from(colour.b),
+        id & 0x00FF_FFFF
+    );
+}
+
+#[test]
 fn iterm_places_an_inline_png_sized_in_cells() {
     let place = placed((0, 1), (8, 4), source(3, 2), None);
-    let mut painter = Painter::default();
+    let mut painter = ImagePainter::default();
     let text = emit(
         &mut painter,
         Protocol::Iterm2,
@@ -224,7 +297,7 @@ fn blocks_sample_top_and_bottom_pixels_per_cell() {
 #[test]
 fn a_crop_selects_source_rows_for_every_protocol() {
     let place = placed((0, 0), (4, 1), source(4, 4), Some((2, 2)));
-    let mut painter = Painter::default();
+    let mut painter = ImagePainter::default();
     let kitty = emit(
         &mut painter,
         Protocol::Kitty,
@@ -254,4 +327,13 @@ fn sigil_graphics_off_beats_a_named_terminal() {
         _ => None,
     };
     assert_eq!(detect(env), None);
+}
+
+#[test]
+fn sixel_draws_at_the_measured_cell_size() {
+    let source = ImageSource::from_rgba8(4, 4, vec![255; 64]).expect("image");
+    let sized = super::sixel::encode(&source, (0, 4), (2, 1), Some([10, 20]));
+    assert!(sized.starts_with("\x1bPq\"1;1;20;20"), "{sized:?}");
+    let default = super::sixel::encode(&source, (0, 4), (2, 1), None);
+    assert!(default.starts_with("\x1bPq\"1;1;16;16"), "{default:?}");
 }

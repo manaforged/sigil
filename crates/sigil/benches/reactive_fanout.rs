@@ -8,7 +8,7 @@ use std::hint::black_box;
 use std::rc::Rc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::reactive::{Runtime, derived, effect, signal};
+use sigil::reactive::{Owner, derived, effect, signal};
 
 fn install_subscribers(sig: sigil::reactive::Signal<i32>, count: usize) -> Vec<Rc<Cell<i32>>> {
     let mut sinks = Vec::with_capacity(count);
@@ -23,7 +23,7 @@ fn install_subscribers(sig: sigil::reactive::Signal<i32>, count: usize) -> Vec<R
 
 fn bench_set_100_subscribers(c: &mut Criterion) {
     c.bench_function("signal_set_100_subscribers", |b| {
-        Runtime::scope("bench_fanout_100", || {
+        Owner::scope("bench_fanout_100", || {
             let n = signal(0_i32);
             let _sinks = install_subscribers(n, 100);
             let mut i = 0_i32;
@@ -37,7 +37,7 @@ fn bench_set_100_subscribers(c: &mut Criterion) {
 
 fn bench_set_1000_subscribers(c: &mut Criterion) {
     c.bench_function("signal_set_1000_subscribers", |b| {
-        Runtime::scope("bench_fanout_1000", || {
+        Owner::scope("bench_fanout_1000", || {
             let n = signal(0_i32);
             let _sinks = install_subscribers(n, 1000);
             let mut i = 0_i32;
@@ -51,7 +51,7 @@ fn bench_set_1000_subscribers(c: &mut Criterion) {
 
 fn bench_set_10000_subscribers(c: &mut Criterion) {
     c.bench_function("signal_set_10000_subscribers", |b| {
-        Runtime::scope("bench_fanout_10000", || {
+        Owner::scope("bench_fanout_10000", || {
             let n = signal(0_i32);
             let _sinks = install_subscribers(n, 10_000);
             let mut i = 0_i32;
@@ -80,7 +80,7 @@ fn bench_derived_chain_depth_10(c: &mut Criterion) {
         b.iter_batched(
             || (),
             |()| {
-                Runtime::scope("bench_chain10", || {
+                Owner::scope("bench_chain10", || {
                     let root = signal(0_i32);
                     let tail = build_derived_chain(root, 10);
                     let sink = Rc::new(Cell::new(0_i32));
@@ -100,7 +100,7 @@ fn bench_derived_chain_depth_100(c: &mut Criterion) {
         b.iter_batched(
             || (),
             |()| {
-                Runtime::scope("bench_chain100", || {
+                Owner::scope("bench_chain100", || {
                     let root = signal(0_i32);
                     let tail = build_derived_chain(root, 100);
                     let sink = Rc::new(Cell::new(0_i32));
@@ -117,7 +117,7 @@ fn bench_derived_chain_depth_100(c: &mut Criterion) {
 
 fn bench_diamond_fanout_100_signals_one_effect(c: &mut Criterion) {
     c.bench_function("diamond_fanout_100_signals_one_effect", |b| {
-        Runtime::scope("bench_diamond_100", || {
+        Owner::scope("bench_diamond_100", || {
             let mut signals = Vec::with_capacity(100);
             for _ in 0..100 {
                 signals.push(signal(0_i32));

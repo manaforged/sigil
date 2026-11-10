@@ -1,29 +1,40 @@
 use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeId, Role, TextContent, container, node, text,
+    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, node, text,
 };
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::Display;
+use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
-use crate::style::{DisplayKind, StyleAtom, Token, space};
+use crate::style::{StateSlot, StyleAtom, Token, space};
+use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use smallvec::SmallVec;
 
 use super::color_field::ColorFieldBuilder;
 use super::number_field::{NumberFieldBuilder, NumericKind};
 use super::text_field::TextFieldBuilder;
 
+mod parsed;
+
+pub(crate) use parsed::{FieldParser, ParsedField};
+
 const FIELD_GAP: f32 = space(1);
 fn shown(visible: bool) -> &'static [StyleAtom] {
-    static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
+    static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(Display::None)];
     if visible { &[] } else { HIDDEN }
 }
 
+/// A labelled control; layout and `map_node` change the field root, and style, state, and focus setters change the control.
 pub struct FieldBuilder<C> {
     label: TextContent,
     control: C,
     error: Option<Signal<Option<String>>>,
     required: Option<Signal<bool>>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A label above a control.
 #[must_use]
 pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -> FieldBuilder<C> {
     FieldBuilder {
@@ -31,10 +42,13 @@ pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -
         control,
         error: None,
         required: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
+/// A control that can paint an invalid state: `text_field`, `number_field`, `color_field`.
 pub trait FieldControl: IntoNode + Sized + 'static {
+    /// Marks the control invalid while the value is true.
     #[must_use]
     fn invalid_when(self, invalid: impl Reactive<bool>) -> Self;
 }
@@ -58,6 +72,7 @@ impl FieldControl for ColorFieldBuilder {
 }
 
 impl<C: FieldControl> FieldBuilder<C> {
+    /// Sets the error.
     #[must_use]
     pub fn error(mut self, error: impl Reactive<Option<String>>) -> Self {
         let error = error.into_signal();
@@ -70,6 +85,7 @@ impl<C: FieldControl> FieldBuilder<C> {
 }
 
 impl<C> FieldBuilder<C> {
+    /// Sets the required.
     #[must_use]
     pub fn required(mut self, required: impl Reactive<bool>) -> Self {
         self.required = Some(required.into_signal());
@@ -85,7 +101,11 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
         let required = self.required;
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fill_width()
+                    .gap(Space::px(FIELD_GAP)),
+            )
             .child(label_row(self.label, required))
             .child(self.control)
             .on_added(move |tree, id| {
@@ -114,7 +134,36 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
         if let Some(error) = self.error {
             root = root.child(error_line(error));
         }
-        cx.add(root)
+        cx.add(self.layout_overrides.finish(root))
+    }
+}
+
+impl<C: Widget> Sealed for FieldBuilder<C> {
+    fn edit(mut self, edit: Edit) -> Self {
+        match edit {
+            Edit::Layout(edit) => self.layout_overrides.edit(edit),
+            focus => self.control = self.control.edit(focus),
+        }
+        self
+    }
+
+    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.control = self.control.map_target(f);
+        self
+    }
+}
+
+impl<C: Widget + StateTarget> StateTarget for FieldBuilder<C> {
+    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
+        self.control = self.control.set_state(slot, atoms);
+        self
+    }
+}
+
+impl<C: Widget> Widget for FieldBuilder<C> {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.layout_overrides.node_hook(f);
+        self
     }
 }
 
@@ -124,7 +173,7 @@ fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn Into
         Some(required) => node(
             container()
                 .role(Role::GenericContainer)
-                .layout(LayoutStyle::flex_row().gap(FIELD_GAP))
+                .layout(LayoutStyle::flex_row().gap(Space::px(FIELD_GAP)))
                 .child(label)
                 .child(
                     text(theme_text(StringKey::RequiredMark))

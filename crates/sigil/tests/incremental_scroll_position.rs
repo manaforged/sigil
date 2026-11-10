@@ -32,7 +32,7 @@ impl TextMeasure for StubMeasure {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn deep_reactive_scroll_switch_stays_positioned() {
-    sigil::reactive::Runtime::scope("incremental-scroll-position", || {
+    sigil::reactive::Owner::scope("incremental-scroll-position", || {
         let tall = signal(false);
         let pane = container()
             .layout(LayoutStyle::flex_column().grow(1.0))
@@ -44,7 +44,11 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .join("\n");
                 let extent = (lines as f32).mul_add(16.8, 20.0);
                 let code = container()
-                    .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .padding(Space::raw(10.0, "test fixture"))
+                            .width(2000.0),
+                    )
                     .child(text(body));
                 vec![scroll(code).extent(extent).width(580.0).height(720.0)]
             });

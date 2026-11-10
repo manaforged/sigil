@@ -1,85 +1,154 @@
-use crate::style::strings::StringKey;
-use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_text};
+use crate::layout::audit::FlawKind;
+use crate::style::theme::ambient::ActiveTheme;
+use crate::widgets::widget::Widget as _;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{AccessibleName, NodeBuilder};
 use crate::reactive::{Reactive, Signal, derived};
-use crate::style::{
-    BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone, space,
-};
+use crate::style::{Style, Tone};
+use crate::widgets::LayoutEdit;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::text;
+use super::layout_ext::LayoutOverrides;
+use palette::Hue;
+
 mod axis;
+mod bars;
+mod clock;
 mod decimate;
+mod figure;
 mod interact;
+mod layers;
 mod marks;
+mod palette;
+mod pie;
 mod plot;
+mod readout;
+mod scales;
+mod scatter;
+mod span;
+mod summary;
+mod ticks;
+mod tips;
+mod vega;
+
+#[cfg(feature = "scene")]
+pub(crate) use palette::series_tokens;
+pub(crate) use vega::vega_lite;
 
 const DEFAULT_HEIGHT: f32 = 180.0;
 const MIN_HEIGHT: f32 = 48.0;
 const MIN_WIDTH: f32 = 80.0;
-const SUMMARY_VALUES: usize = 64;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ChartMark {
+enum ChartMark {
     #[default]
     Bar,
     Line,
+    Area,
+    Scatter,
+    Pie,
+    Donut,
     Candle,
+}
+
+impl ChartMark {
+    const fn stride(self) -> usize {
+        match self {
+            Self::Candle => 4,
+            Self::Scatter => 2,
+            Self::Bar | Self::Line | Self::Area | Self::Pie | Self::Donut => 1,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum Stack {
+    #[default]
+    Grouped,
+    Stacked,
 }
 
 #[derive(Clone, PartialEq)]
 pub(super) struct ChartSeries {
     name: String,
     values: Vec<f32>,
-    tone: Tone,
+    hue: Hue,
 }
 
 pub(super) struct ChartView<'a> {
     name: &'a str,
+    legend: String,
     values: &'a [f32],
-    tone: Tone,
+    hue: Hue,
 }
 
 struct SeriesSource {
     name: String,
     values: Rc<dyn Reactive<Vec<f32>>>,
-    tone: Tone,
+    hue: Hue,
 }
 
+/// Builder of a chart.
 pub struct ChartBuilder {
     series: Vec<SeriesSource>,
     labels: Vec<String>,
     mark: ChartMark,
+    stack: Stack,
     x_range: Option<Signal<Range<f32>>>,
     crosshair: bool,
+    tooltip: bool,
     whole: bool,
+    positions: Option<Rc<[f32]>>,
+    scales: scales::Scales,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
 
+/// A bar, line, area, scatter, pie, or candle chart.
 #[must_use]
 pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
-    ChartBuilder {
-        series: vec![SeriesSource {
-            name: String::new(),
-            values: Rc::new(values),
-            tone: Tone::Primary,
-        }],
-        labels: Vec::new(),
-        mark: ChartMark::Bar,
-        x_range: None,
-        crosshair: false,
-        whole: false,
-        layout_overrides: LayoutOverrides::new(),
-        style_accumulator: Style::new(),
+    ChartBuilder::blank().push(String::new(), Rc::new(values), Hue::of(Tone::Primary))
+}
+
+fn flat_pairs(rows: impl Reactive<Vec<(f32, f32)>>) -> impl Reactive<Vec<f32>> {
+    move || {
+        rows.read()
+            .into_iter()
+            .flat_map(<[f32; 2]>::from)
+            .collect::<Vec<f32>>()
     }
 }
 
 impl ChartBuilder {
+    fn blank() -> Self {
+        Self {
+            series: Vec::new(),
+            labels: Vec::new(),
+            mark: ChartMark::Bar,
+            stack: Stack::Grouped,
+            x_range: None,
+            crosshair: false,
+            tooltip: false,
+            whole: false,
+            positions: None,
+            scales: scales::Scales::default(),
+            layout_overrides: LayoutOverrides::new(),
+            style_accumulator: Style::new(),
+        }
+    }
+
+    fn push(mut self, name: String, values: Rc<dyn Reactive<Vec<f32>>>, hue: Hue) -> Self {
+        self.series.push(SeriesSource { name, values, hue });
+        self
+    }
+
+    const fn mark(mut self, mark: ChartMark) -> Self {
+        self.mark = mark;
+        self
+    }
+
+    /// Creates a candlestick chart from open, high, low, and close rows.
     #[must_use]
     pub fn candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>) -> Self {
         let flat = move || {
@@ -88,71 +157,143 @@ impl ChartBuilder {
                 .flat_map(<[f32; 4]>::from)
                 .collect::<Vec<f32>>()
         };
-        let mut builder = chart(flat);
-        builder.mark = ChartMark::Candle;
-        builder
+        chart(flat).mark(ChartMark::Candle)
     }
 
+    /// Creates a scatter chart from x and y rows.
+    #[must_use]
+    pub fn scatter(rows: impl Reactive<Vec<(f32, f32)>>) -> Self {
+        chart(flat_pairs(rows)).mark(ChartMark::Scatter)
+    }
+
+    /// Adds a named series of x and y rows to a scatter chart.
+    #[must_use]
+    pub fn points(
+        self,
+        name: impl Into<String>,
+        rows: impl Reactive<Vec<(f32, f32)>>,
+        tone: Tone,
+    ) -> Self {
+        self.push(name.into(), Rc::new(flat_pairs(rows)), Hue::of(tone))
+    }
+
+    /// Sets the x range.
     #[must_use]
     pub const fn x_range(mut self, range: Signal<Range<f32>>) -> Self {
         self.x_range = Some(range);
         self
     }
 
+    /// Applies the crosshair option.
     #[must_use]
     pub const fn crosshair(mut self) -> Self {
         self.crosshair = true;
         self
     }
 
+    /// Shows the values under the pointer in a card.
+    #[must_use]
+    pub const fn tooltip(mut self) -> Self {
+        self.tooltip = true;
+        self
+    }
+
+    /// Applies the whole numbers option.
     #[must_use]
     pub const fn whole_numbers(mut self) -> Self {
         self.whole = true;
         self
     }
 
+    /// Applies the bar option.
     #[must_use]
-    pub const fn bar(mut self) -> Self {
-        self.mark = ChartMark::Bar;
-        self
+    pub const fn bar(self) -> Self {
+        self.mark(ChartMark::Bar)
     }
 
+    /// Stacks the bars of each series on one column.
     #[must_use]
-    pub const fn line(mut self) -> Self {
-        self.mark = ChartMark::Line;
-        self
+    pub const fn stacked(mut self) -> Self {
+        self.stack = Stack::Stacked;
+        self.mark(ChartMark::Bar)
     }
 
+    /// Lays the bars along rows, with values on the x axis.
+    #[must_use]
+    pub const fn horizontal(mut self) -> Self {
+        self.scales.orient = scales::Orient::Horizontal;
+        self.mark(ChartMark::Bar)
+    }
+
+    /// Applies the line option.
+    #[must_use]
+    pub const fn line(self) -> Self {
+        self.mark(ChartMark::Line)
+    }
+
+    /// Fills the area under each line.
+    #[must_use]
+    pub const fn area(self) -> Self {
+        self.mark(ChartMark::Area)
+    }
+
+    /// Draws the first series as pie slices named by the labels.
+    #[must_use]
+    pub const fn pie(self) -> Self {
+        self.mark(ChartMark::Pie)
+    }
+
+    /// Draws the first series as a ring of slices named by the labels.
+    #[must_use]
+    pub const fn donut(self) -> Self {
+        self.mark(ChartMark::Donut)
+    }
+
+    /// Sets the tone.
     #[must_use]
     pub fn tone(mut self, tone: Tone) -> Self {
         if let Some(series) = self.series.first_mut() {
-            series.tone = tone;
+            series.hue = Hue::of(tone);
         }
         self
     }
 
+    /// Sets the labels.
     #[must_use]
     pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.labels = labels.into_iter().map(Into::into).collect();
         self
     }
 
+    /// Sets the series.
     #[must_use]
     pub fn series(
-        mut self,
+        self,
         name: impl Into<String>,
         values: impl Reactive<Vec<f32>>,
         tone: Tone,
     ) -> Self {
-        self.series.push(SeriesSource {
-            name: name.into(),
-            values: Rc::new(values),
-            tone,
-        });
-        self
+        self.push(name.into(), Rc::new(values), Hue::of(tone))
     }
 
-    fn frame(&mut self) -> plot::Frame {
+    fn titles(&self) -> u8 {
+        u8::from(self.scales.x_title.is_some()) + u8::from(self.scales.y_title.is_some())
+    }
+
+    fn natural_height(&self) -> f32 {
+        let Some(plot) = self.scales.plot_height else {
+            return DEFAULT_HEIGHT;
+        };
+        let legend = self.series.len() > 1 || self.series.iter().any(|item| !item.name.is_empty());
+        let chrome = if matches!(self.mark, ChartMark::Pie | ChartMark::Donut) {
+            0.0
+        } else {
+            plot::PlotFrame::chrome(self.titles(), legend)
+        };
+        plot + chrome
+    }
+
+    fn frame(&mut self) -> plot::PlotFrame {
         let width = self
             .layout_overrides
             .width_hint()
@@ -160,20 +301,38 @@ impl ChartBuilder {
         let height = self
             .layout_overrides
             .height_hint()
-            .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
+            .unwrap_or_else(|| self.natural_height())
+            .max(MIN_HEIGHT);
         if let Some(px) = width {
-            self.layout_overrides.width(px);
+            self.layout_overrides.edit(LayoutEdit::Width(px));
         }
-        self.layout_overrides.height(height);
-        plot::Frame {
+        self.layout_overrides.edit(LayoutEdit::Height(height));
+        plot::PlotFrame {
             width,
             height,
             whole: self.whole,
+            titles: self.titles(),
         }
     }
 
-    fn into_node_builder(mut self) -> NodeBuilder {
-        let frame = self.frame();
+    fn root(self) -> NodeBuilder {
+        const REASON: &str = "marks and axis labels sit where the data puts them";
+        self.plot()
+            .allow_flaw(FlawKind::Inset, REASON)
+            .allow_flaw(FlawKind::Column, REASON)
+            .allow_flaw(FlawKind::Overflow, REASON)
+            .allow_flaw(FlawKind::Overlap, REASON)
+    }
+
+    fn plot(mut self) -> NodeBuilder {
+        let theme = ActiveTheme::capture();
+        let look = figure::Look {
+            mark: self.mark,
+            stack: self.stack,
+            frame: self.frame(),
+            theme,
+            scales: std::mem::take(&mut self.scales),
+        };
         let sources = std::mem::take(&mut self.series);
         let series = derived(move || {
             sources
@@ -181,158 +340,32 @@ impl ChartBuilder {
                 .map(|source| ChartSeries {
                     name: source.name.clone(),
                     values: source.values.read(),
-                    tone: source.tone,
+                    hue: source.hue,
                 })
                 .collect::<Vec<_>>()
         });
         let labels = Rc::new(std::mem::take(&mut self.labels));
+        let positions = self.positions.take();
         let label_names = Rc::clone(&labels);
-        let theme = ActiveTheme::capture();
         let description =
-            derived(move || series.with(|series| summary(series, &label_names, theme)));
-        let mark = self.mark;
-        let interact = interact::Interact::new(self.x_range, self.crosshair);
+            derived(move || series.with(|series| summary::summary(series, &label_names, theme)));
+        let interact = interact::Interact::new(self.x_range, self.crosshair, self.tooltip);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
-        let mut root = container()
-            .role(Role::Figure)
-            .label(theme_label(StringKey::Chart))
-            .mutate(move |target| {
-                target.a11y.description = Some(AccessibleName::Derived(description));
-            })
-            .class([
-                Radius::Md.atom(),
-                StyleAtom::BorderWidth(BORDER_WIDTH),
-                Token::Gray6.border(),
-                Token::Surface.bg(),
-            ])
-            .with(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_column()
-                        .fill_width()
-                        .min_width(0.0)
-                        .height(frame.height)
-                        .padding(frame.padding())
-                        .gap(space(2)),
-                ),
-            );
+        let mut root = figure::frame(look.frame).mutate(move |target| {
+            target.a11y.description = Some(AccessibleName::Derived(description));
+        });
         if !paint.is_empty() {
             root = root.style(paint);
         }
         root.children_reactive(move || {
-            series.with(|series| content(series, &labels, mark, frame, &interact))
-        })
-    }
-}
-
-fn content(
-    series: &[ChartSeries],
-    labels: &[String],
-    mark: ChartMark,
-    frame: plot::Frame,
-    interact: &interact::Interact,
-) -> Vec<NodeBuilder> {
-    let stride = if mark == ChartMark::Candle { 4 } else { 1 };
-    let total = series
-        .iter()
-        .map(|series| series.values.len() / stride)
-        .max()
-        .unwrap_or(0);
-    if total == 0 {
-        return vec![empty()];
-    }
-    let window = interact.window(total);
-    let visible = series
-        .iter()
-        .map(|item| ChartView {
-            name: &item.name,
-            values: clip(&item.values, window.start * stride, window.end * stride),
-            tone: item.tone,
-        })
-        .collect::<Vec<_>>();
-    let shown = clip(labels, window.start, window.end);
-    plot::draw(
-        &plot::Plot {
-            series: &visible,
-            labels: shown,
-            mark,
-            count: window.len(),
-            total,
-            frame,
-        },
-        interact,
-    )
-}
-
-fn clip<T>(items: &[T], start: usize, end: usize) -> &[T] {
-    let end = end.min(items.len());
-    items.get(start.min(end)..end).unwrap_or_default()
-}
-
-fn empty() -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .grow(1.0)
-                .align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Center),
-        )
-        .child(
-            text(theme_text(StringKey::NoData))
-                .nowrap()
-                .class("text-sm")
-                .class(Token::OnSurfaceMuted.text()),
-        )
-}
-
-fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> String {
-    let mut parts = Vec::with_capacity(series.len());
-    for (index, item) in series.iter().enumerate() {
-        let name = if item.name.is_empty() {
-            theme.fill(StringKey::Series, &[&(index + 1)])
-        } else {
-            item.name.clone()
-        };
-        if item.values.len() > SUMMARY_VALUES {
-            parts.push(span_summary(&name, &item.values, theme));
-            continue;
-        }
-        let values = item
-            .values
-            .iter()
-            .enumerate()
-            .map(|(at, value)| {
-                labels
-                    .get(at)
-                    .map_or_else(|| format!("{value}"), |label| format!("{label} {value}"))
+            series.with(|series| {
+                figure::content(series, &labels, positions.as_deref(), &look, &interact)
             })
-            .collect::<Vec<_>>()
-            .join(", ");
-        parts.push(format!("{name}: {values}"));
-    }
-    parts.join("; ")
-}
-
-impl IntoNode for ChartBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
+        })
     }
 }
 
-impl PaintTarget for ChartBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ChartBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ChartBuilder: paint(style_accumulator), widget, node);
 
 pub(crate) fn nice_max(max: f32) -> f32 {
     if !max.is_finite() || max <= 0.0 {
@@ -347,17 +380,3 @@ pub(crate) fn nice_max(max: f32) -> f32 {
 #[cfg(test)]
 #[path = "chart_tests.rs"]
 mod tests;
-
-fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
-    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
-    for &value in values {
-        if value.is_finite() {
-            low = low.min(value);
-            high = high.max(value);
-        }
-    }
-    theme.fill(
-        StringKey::ChartSummary,
-        &[&name, &values.len(), &low, &high],
-    )
-}

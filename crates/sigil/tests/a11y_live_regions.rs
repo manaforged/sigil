@@ -9,7 +9,7 @@ use sigil::a11y::tree;
 use sigil::kernel::{Cx, container};
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 fn find_live_node(update: &TreeUpdate) -> Option<(AkNodeId, &AkNode)> {
     update
@@ -29,7 +29,7 @@ fn count_live_nodes(update: &TreeUpdate) -> usize {
 
 #[test]
 fn modal_open_announces_polite_in_accesskit_tree() {
-    Runtime::scope("phase-1-3c::modal-polite-accesskit", || {
+    Owner::scope("phase-1-3c::modal-polite-accesskit", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
         let _ = cx.add(modal(visible).title("File saved"));
@@ -57,9 +57,9 @@ fn modal_open_announces_polite_in_accesskit_tree() {
 #[test]
 fn multiple_announces_overwrite_label_polite() {
     let mut cx = Cx::new_root();
-    sigil::kernel::announce("foo");
+    sigil::kernel::announce("foo", sigil::kernel::Live::Polite);
     cx.flush_announcements();
-    sigil::kernel::announce("bar");
+    sigil::kernel::announce("bar", sigil::kernel::Live::Polite);
     cx.flush_announcements();
 
     let update = tree(&cx, None, &|_| None);
@@ -102,12 +102,12 @@ fn no_announce_no_live_region_node() {
 #[test]
 fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
     let mut cx = Cx::new_root();
-    sigil::kernel::announce_assertive("Connection lost");
+    sigil::kernel::announce("Connection lost", sigil::kernel::Live::Assertive);
     cx.flush_announcements();
 
     let update = tree(&cx, None, &|_| None);
     let (_, live_node) = find_live_node(&update)
-        .expect("announce_assertive must create a live-region node visible in projection");
+        .expect("an assertive announcement must create a live-region node visible in projection");
     assert_eq!(
         live_node.live(),
         Some(Live::Assertive),
@@ -124,7 +124,7 @@ fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
 fn announcement_tree_is_accepted_by_platform_consumer() {
     let mut cx = Cx::new_root();
     let _ = cx.add(button("Save"));
-    sigil::kernel::announce("saved");
+    sigil::kernel::announce("saved", sigil::kernel::Live::Polite);
     cx.flush_announcements();
     cx.flush_announcements();
     let consumed = accesskit_consumer::Tree::new(tree(&cx, None, &|_| None), false);
@@ -133,7 +133,7 @@ fn announcement_tree_is_accepted_by_platform_consumer() {
 
 #[test]
 fn open_modal_tree_is_accepted_by_platform_consumer() {
-    Runtime::scope("a11y-modal-consumer", || {
+    Owner::scope("a11y-modal-consumer", || {
         let mut cx = Cx::new_root();
         let _ = cx.add(button("Save"));
         let visible = signal(false);

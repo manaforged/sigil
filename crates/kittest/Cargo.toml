@@ -16,7 +16,7 @@ categories = ["development-tools::testing"]
 name = "sigil_kittest"
 
 [dependencies]
-sigil-ui = { path = "../sigil", version = "0.1.0", default-features = false, features = [
+sigil-ui = { path = "../sigil", version = "0.2.0", default-features = false, features = [
     "scene",
     "kittest",
     "terminal",

@@ -2,11 +2,11 @@
 
 use super::*;
 use crate::kernel::{Cx, IntoNode};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 #[test]
 fn dividers_are_decorative_not_focusable_splitters() {
-    Runtime::scope("divider-build", || {
+    Owner::scope("divider-build", || {
         let mut cx = Cx::new_root();
         for (id, kind) in [
             (horizontal().build(&mut cx), "horizontal"),

@@ -6,7 +6,7 @@ use crate::layout::flex_algorithm::{
 };
 use crate::layout::forest::{LocalId, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp};
-use crate::layout::style_data::{AlignSelf, FlexWrap, StyleData};
+use crate::layout::style_data::{AlignItems, FlexWrap, StyleData};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct FlexItem {
@@ -26,7 +26,8 @@ pub(crate) struct FlexItem {
     pub(crate) margin_main_end: f32,
     pub(crate) margin_cross_start: f32,
     pub(crate) margin_cross_end: f32,
-    pub(crate) align_self: Option<AlignSelf>,
+    pub(crate) align_self: Option<AlignItems>,
+    pub(crate) content_min: bool,
 }
 
 impl FlexItem {
@@ -47,6 +48,13 @@ impl FlexItem {
             item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges);
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
         let (min_cross, max_cross) = item_min_max_main(style, ctx.axes.cross(), cb_cross, &edges);
+        let content_min = ctx.axes.row
+            && min_main.is_none()
+            && !matches!(
+                style.size.width,
+                crate::layout::style_data::Dimension::Px(_)
+            )
+            && style.overflow.width == crate::layout::style_data::Overflow::Visible;
         let min_main = min_main.or_else(|| {
             let ellipsizes = node.text().is_some_and(|text| text.ellipsis);
             ((node.children().is_empty() || !ctx.axes.row) && !ellipsizes)
@@ -73,6 +81,7 @@ impl FlexItem {
             margin_cross_start: ctx.axes.pick(m.top, m.left),
             margin_cross_end: ctx.axes.pick(m.bottom, m.right),
             align_self: style.align_self,
+            content_min,
         }
     }
 

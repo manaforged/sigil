@@ -1,12 +1,13 @@
 use proptest::prelude::*;
 use sigil::Host;
-use sigil::events::EventRouter;
+use sigil::kernel::HostMode;
 use sigil::kernel::{IntoNode, container, text};
 use sigil::layout::{LayoutStyle, Position};
-use sigil::prelude::{LayoutBuilderExt, Paint, Signal};
-use sigil::reactive::{Runtime, derived, signal};
-use sigil::style::{NodeStyleExt, Rgba8, Token};
-use sigil::terminal::{ColorDepth, Grid, Screen, render};
+use sigil::prelude::Widget;
+use sigil::prelude::{Paint, Signal};
+use sigil::reactive::{Owner, derived, signal};
+use sigil::style::{Rgba8, Token};
+use sigil::terminal::{ColorDepth, Grid, Screen};
 
 pub(super) const COLS: u16 = 40;
 pub(super) const ROWS: u16 = 12;
@@ -169,20 +170,17 @@ pub(super) fn tree(model: Signal<Model>) -> impl IntoNode {
 
 pub(super) fn ansi(grid: &Grid) -> Vec<u8> {
     let mut out = Vec::new();
-    render(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
+    Host::ansi(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
     out
 }
 
 pub(super) fn truth(model: &Model) -> Vec<u8> {
-    Runtime::scope("oracle-truth", || {
+    Owner::scope("oracle-truth", || {
         let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
-        let grid = screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        let grid = screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         ansi(grid)
     })
 }
@@ -200,22 +198,19 @@ proptest! {
 }
 
 fn diverged(edits: Vec<Edit>) -> Option<String> {
-    Runtime::scope("oracle-incremental", || {
+    Owner::scope("oracle-incremental", || {
         let mut model = Model {
             lines: vec!["top".to_string()],
             ..Model::default()
         };
         let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         for (step, edit) in edits.into_iter().enumerate() {
             apply(&mut model, edit);
             state.set(model.clone());
-            let grid = screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            let grid = screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             let incremental = String::from_utf8_lossy(&ansi(grid)).into_owned();
             screen.flush(&mut std::io::sink()).expect("flush");
             let fresh = String::from_utf8_lossy(&truth(&model)).into_owned();
@@ -230,10 +225,9 @@ fn diverged(edits: Vec<Edit>) -> Option<String> {
 }
 
 fn frames(steps: &[&[&str]]) -> Vec<String> {
-    Runtime::scope("oracle-lines", || {
+    Owner::scope("oracle-lines", || {
         let lines = signal(steps[0].iter().map(ToString::to_string).collect::<Vec<_>>());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
@@ -252,7 +246,7 @@ fn frames(steps: &[&[&str]]) -> Vec<String> {
             .map(|step| {
                 lines.set(step.iter().map(ToString::to_string).collect());
                 screen
-                    .frame(&mut host, &mut router, [], (COLS, ROWS))
+                    .frame(&mut host, [], (COLS, ROWS))
                     .expect("frame")
                     .text()
             })
@@ -278,9 +272,9 @@ fn a_patched_text_row_keeps_its_text() {
 
 #[test]
 fn a_patched_text_node_emits_its_new_text() {
-    Runtime::scope("oracle-emit", || {
+    Owner::scope("oracle-emit", || {
         let lines = signal(vec!["top".to_string()]);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())

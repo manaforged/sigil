@@ -1,73 +1,86 @@
-use crate::layout::style_data::{Dimension, Size};
+use crate::layout::Space;
+use crate::layout::style_data::{Axes, Dimension};
 
 use super::{LayoutFields, LayoutStyle};
 
 impl LayoutStyle {
+    /// Sets the width.
     #[must_use]
     pub fn width(mut self, width: impl Into<Dimension>) -> Self {
         self.0.size.width = width.into();
         self.mark(LayoutFields::WIDTH)
     }
 
+    /// Sets the height.
     #[must_use]
     pub fn height(mut self, height: impl Into<Dimension>) -> Self {
         self.0.size.height = height.into();
         self.mark(LayoutFields::HEIGHT)
     }
 
+    /// Sets the min width.
     #[must_use]
     pub fn min_width(mut self, value: impl Into<Dimension>) -> Self {
         self.0.min_size.width = value.into();
         self.mark(LayoutFields::MIN_WIDTH)
     }
 
+    /// Sets the min height.
     #[must_use]
     pub fn min_height(mut self, value: impl Into<Dimension>) -> Self {
         self.0.min_size.height = value.into();
         self.mark(LayoutFields::MIN_HEIGHT)
     }
 
+    /// Sets the max width.
     #[must_use]
     pub fn max_width(mut self, value: impl Into<Dimension>) -> Self {
         self.0.max_size.width = value.into();
         self.mark(LayoutFields::MAX_WIDTH)
     }
 
+    /// Sets the max height.
     #[must_use]
     pub fn max_height(mut self, value: impl Into<Dimension>) -> Self {
         self.0.max_size.height = value.into();
         self.mark(LayoutFields::MAX_HEIGHT)
     }
 
+    /// Sets the fixed size.
     #[must_use]
     pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
-        self.0.size = Size::new(Dimension::Px(width), Dimension::Px(height));
+        self.0.size = Axes::new(Dimension::Px(width), Dimension::Px(height));
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
+    /// Creates a style with a fixed width and height.
     #[must_use]
     pub fn pane(width: f32, height: f32) -> Self {
-        Self::flex_column().fixed_size(width, height).gap(4.0)
+        Self::flex_column().fixed_size(width, height).gap(Space::Xs)
     }
 
+    /// Applies the fill width option.
     #[must_use]
     pub const fn fill_width(mut self) -> Self {
         self.0.size.width = Dimension::Fill;
         self.mark(LayoutFields::WIDTH)
     }
 
+    /// Applies the fill height option.
     #[must_use]
     pub const fn fill_height(mut self) -> Self {
         self.0.size.height = Dimension::Fill;
         self.mark(LayoutFields::HEIGHT)
     }
 
+    /// Applies the fill option.
     #[must_use]
     pub const fn fill(mut self) -> Self {
-        self.0.size = Size::splat(Dimension::Fill);
+        self.0.size = Axes::splat(Dimension::Fill);
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
+    /// Sets the grow.
     #[must_use]
     pub const fn grow(mut self, grow: f32) -> Self {
         self.0.flex_grow = grow;
@@ -83,6 +96,7 @@ impl LayoutStyle {
         self.mark(set)
     }
 
+    /// Sets the shrink.
     #[must_use]
     pub const fn shrink(mut self, shrink: f32) -> Self {
         self.0.flex_shrink = shrink;
@@ -90,17 +104,26 @@ impl LayoutStyle {
     }
 
     #[must_use]
+    pub(crate) const fn stretch_width(mut self) -> Self {
+        self.0.stretch_width = true;
+        self.mark(LayoutFields::STRETCH_WIDTH)
+    }
+
+    /// Sets the min size.
+    #[must_use]
     pub fn min_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
-        self.0.min_size = Size::new(width.into(), height.into());
+        self.0.min_size = Axes::new(width.into(), height.into());
         self.mark(LayoutFields::MIN_WIDTH.with(LayoutFields::MIN_HEIGHT))
     }
 
+    /// Sets the max size.
     #[must_use]
     pub fn max_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
-        self.0.max_size = Size::new(width.into(), height.into());
+        self.0.max_size = Axes::new(width.into(), height.into());
         self.mark(LayoutFields::MAX_WIDTH.with(LayoutFields::MAX_HEIGHT))
     }
 
+    /// Sets the flex basis.
     #[must_use]
     pub fn flex_basis(mut self, basis: impl Into<Dimension>) -> Self {
         self.0.flex_basis = basis.into();

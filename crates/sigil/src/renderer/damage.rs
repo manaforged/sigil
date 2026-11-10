@@ -9,13 +9,15 @@ use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::scene_command::{CommandScene, LayerScope, SceneCommand};
 use crate::scene::command::payloads::DrawRect;
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::damage::{Budget, Damage, command_ink, scene_damage};
+use crate::scene::damage::Budget;
+use crate::scene::damage::scene_damage;
+use crate::scene::damage::{Damage, command_ink};
 use crate::style::{Color, Rgba8};
 
 const FULL_OPACITY: u16 = 10_000;
 const CLEAR_BLEED: f32 = 2.0;
 const MAX_REGIONS: usize = 3;
-const GPU_BUDGET: Budget = Budget {
+pub(crate) const GPU_BUDGET: Budget = Budget {
     max_regions: MAX_REGIONS,
     margin: 1.0,
     max_share: 0.6,
@@ -58,6 +60,14 @@ impl Retained {
     }
 }
 
+/// Keeps the commands of `scene` that can paint inside `region`, with no clip around them.
+#[cfg(feature = "terminal")]
+pub(crate) fn culled(scene: &CommandScene, region: Rect) -> CommandScene {
+    let mut commands = Vec::with_capacity(scene.commands.len());
+    cull_into(&scene.commands, region, &mut commands);
+    CommandScene { commands }
+}
+
 pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Color) -> CommandScene {
     let fill = Rgba8 {
         r: linear_channel_to_srgb(clear.r),
@@ -67,7 +77,7 @@ pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Color) -> C
     };
     let mut commands = Vec::with_capacity(scene.commands.len() + 3 * regions.len());
     for region in regions {
-        commands.push(SceneCommand::PushClip(*region));
+        commands.push(SceneCommand::PushClip((*region).into()));
         commands.push(SceneCommand::Rect(DrawRect {
             node: None,
             rect: region.expand(CLEAR_BLEED),
@@ -99,7 +109,7 @@ fn cull_into(source: &[SceneCommand], region: Rect, out: &mut Vec<SceneCommand>)
                     index = SceneState::layer_end(source, index + 1) + 1;
                     continue;
                 }
-                layers.push(*scope);
+                layers.push(scope.clone());
                 true
             }
             SceneCommand::PopLayer => {
@@ -123,7 +133,8 @@ pub(crate) fn note_plan(plan: &Plan) {
         Plan::Regions(_) => crate::profile::count(crate::profile::Counter::GpuPlanRegions),
         Plan::Full(reason) => {
             crate::profile::count(crate::profile::Counter::GpuPlanFull);
-            crate::profile::attribute(crate::profile::Hotspot::GpuFullRepaint, 1, || {
+            let key = reason.name().as_ptr() as usize as u64;
+            crate::profile::attribute(crate::profile::Hotspot::GpuFullRepaint, 1, key, || {
                 reason.name().to_owned()
             });
         }

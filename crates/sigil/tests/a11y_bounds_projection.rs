@@ -9,13 +9,14 @@ use sigil::a11y::tree;
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
+use sigil::widgets::Widget;
 use sigil::widgets::{button, modal, text_field};
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
 #[test]
 fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
-    Runtime::scope("sigil_a11y::bounds_freshness", || {
+    Owner::scope("sigil_a11y::bounds_freshness", || {
         let mut cx = Cx::new_root();
         let pos = signal((10.0_f32, 20.0_f32));
         let root = cx.add(
@@ -23,7 +24,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
                 .layout(LayoutStyle::flex_column().fixed_size(400.0, 400.0))
                 .child(
                     container()
-                        .role(Role::Button)
+                        .role(sigil::kernel::Role::Button)
                         .label("Card")
                         .layout(LayoutStyle::block().fixed_size(80.0, 32.0))
                         .position_reactive(pos),
@@ -35,7 +36,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
             .children()
             .first()
             .expect("root has one child");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
         recompute(&mut cx, &mut layout, root);
         let before = projected_bounds(&cx, &layout, moved);
         assert_eq!(before, (10.0, 20.0), "starts at the signal's initial pos");
@@ -76,7 +77,7 @@ fn projected_bounds(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> (f64, f64) {
 
 #[test]
 fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
-    Runtime::scope("sigil_a11y::bounds_projection", || {
+    Owner::scope("sigil_a11y::bounds_projection", || {
         let mut cx = Cx::new_root();
 
         let button_id = cx.add(build_button);

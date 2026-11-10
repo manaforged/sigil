@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::style::space;
 use sigil::widgets::DiagSeverity;
 
 use super::facts::{count, severity_icon, severity_tone};
@@ -87,7 +86,7 @@ pub(crate) fn run(ws: Workspace, command: Command) {
     }
 }
 
-fn menus(ws: Workspace) -> sigil::widgets::MenuBarBuilder {
+fn menus(ws: Workspace) -> impl IntoNode {
     MENUS.iter().fold(menu_bar(), |bar, (title, entries)| {
         bar.menu(
             *title,
@@ -105,7 +104,7 @@ pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(menus(ws))
@@ -113,7 +112,7 @@ pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
         .child(
             text(PROJECT_NAME)
                 .nowrap()
-                .font_size(super::TEXT_SM)
+                .font_size(super::TEXT_SM, "example layout")
                 .font_weight(super::WEIGHT_SEMIBOLD),
         )
         .child(chip(BRANCH, Tone::Info))
@@ -137,7 +136,7 @@ fn severity_item(severity: DiagSeverity) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
-                .gap(space(1))
+                .gap(Space::Xs)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -148,7 +147,7 @@ fn severity_item(severity: DiagSeverity) -> NodeBuilder {
         .child(
             text(count(severity).to_string())
                 .nowrap()
-                .font_size(super::TEXT_XS),
+                .font_size(super::TEXT_XS, "example layout"),
         )
 }
 
@@ -172,14 +171,34 @@ fn right_group(ws: Workspace) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
-                .gap(space(4))
+                .gap(Space::Lg)
                 .align_items(AlignItems::Center),
         )
-        .child(text(caret_text(ws)).nowrap().font_size(super::TEXT_XS))
-        .child(text("Spaces: 4").nowrap().font_size(super::TEXT_XS))
-        .child(text("UTF-8").nowrap().font_size(super::TEXT_XS))
-        .child(text("LF").nowrap().font_size(super::TEXT_XS))
-        .child(text(language_text(ws)).nowrap().font_size(super::TEXT_XS))
+        .child(
+            text(caret_text(ws))
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout"),
+        )
+        .child(
+            text("Spaces: 4")
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout"),
+        )
+        .child(
+            text("UTF-8")
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout"),
+        )
+        .child(
+            text("LF")
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout"),
+        )
+        .child(
+            text(language_text(ws))
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout"),
+        )
         .child(
             button(TextContent::from(move || {
                 String::from(if ws.outline_open.get() {
@@ -199,20 +218,24 @@ pub(crate) fn status(ws: Workspace) -> NodeBuilder {
         container()
             .layout(
                 LayoutStyle::flex_row()
-                    .gap(space(1))
+                    .gap(Space::Xs)
                     .align_items(AlignItems::Center),
             )
             .child(dot(Tone::Success))
-            .child(text(BRANCH).nowrap().font_size(super::TEXT_XS)),
+            .child(
+                text(BRANCH)
+                    .nowrap()
+                    .font_size(super::TEXT_XS, "example layout"),
+            ),
         container().child(
             text(format!("↑{AHEAD} ↓{BEHIND}"))
                 .nowrap()
-                .font_size(super::TEXT_XS),
+                .font_size(super::TEXT_XS, "example layout"),
         ),
         container()
             .layout(
                 LayoutStyle::flex_row()
-                    .gap(space(2))
+                    .gap(Space::Sm)
                     .align_items(AlignItems::Center),
             )
             .pointer_down(move |_| run(ws, Command::Problems))

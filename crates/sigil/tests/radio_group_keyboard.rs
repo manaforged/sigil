@@ -8,14 +8,14 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::events::PhysicalKey;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
-use sigil::widgets::RadioGroupBuilder;
+use sigil::reactive::Owner;
+use sigil::style::FocusRing;
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(320.0, 240.0);
@@ -30,18 +30,11 @@ fn press(
     router.route(
         cx,
         layout,
-        ShellEvent::Key(KeyEvent::new(KeyEventInit {
-            key: key.into(),
-            physical,
-            modifiers: ModifiersState::empty(),
-            repeat: false,
-            phase: KeyPhase::Down,
-            text: None,
-        })),
+        Event::key(key, KeyPhase::Down).physical(physical),
     );
 }
 
-fn three_option_group(selected: Signal<String>) -> RadioGroupBuilder {
+fn three_option_group(selected: Signal<String>) -> impl IntoNode {
     radio_group(selected)
         .option("a", "Alpha")
         .option("b", "Beta")
@@ -50,7 +43,7 @@ fn three_option_group(selected: Signal<String>) -> RadioGroupBuilder {
 
 #[test]
 fn arrows_move_selection_with_wraparound() {
-    Runtime::scope("radio-kb-arrows", || {
+    Owner::scope("radio-kb-arrows", || {
         let selected = signal(String::from("a"));
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));
@@ -99,7 +92,7 @@ fn arrows_move_selection_with_wraparound() {
 
 #[test]
 fn checked_row_shows_focus_ring_only_while_group_focused() {
-    Runtime::scope("radio-kb-ring", || {
+    Owner::scope("radio-kb-ring", || {
         let selected = signal(String::from("b"));
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));

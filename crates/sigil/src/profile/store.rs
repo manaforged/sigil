@@ -3,16 +3,20 @@ use std::collections::VecDeque;
 use std::env;
 use std::path::PathBuf;
 use std::process::id;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use web_time::Instant;
 
 use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
-use crate::profile::event::Event;
-use crate::profile::key::{
-    BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
-};
+use crate::profile::event::TraceEvent;
+use crate::profile::key::SiteKind;
+use crate::profile::key::{BackendStatus, Cause, Counter, Hotspot, Phase, accumulate};
+use crate::profile::site::Site;
+
+mod frame;
+
+pub use frame::Frame;
 
 const MAX_EVENTS: usize = 65_536;
 const MAX_FRAMES: usize = 4_096;
@@ -20,62 +24,26 @@ const ENV_UNSET: u8 = 0;
 const ENV_OFF: u8 = 1;
 const ENV_ON: u8 = 2;
 const WARN_CAP: u8 = 8;
+const SITE_SLICE_NS: u64 = 50_000;
 
-pub const FRAME_BUDGET_NS: u64 = 16_670_000;
-pub const INTERACT_BUDGET_NS: u64 = 200_000_000;
+kittest_pub! {
+    /// The budget of one 60 Hz frame in nanoseconds.
+    #[doc(hidden)]
+    pub const FRAME_BUDGET_NS: u64 = 16_670_000;
+}
+/// The budget of one interaction in nanoseconds.
+pub(crate) const INTERACT_BUDGET_NS: u64 = 200_000_000;
 
-static FORCED: AtomicBool = AtomicBool::new(false);
-static TEST_OFF: AtomicBool = AtomicBool::new(false);
-static ENV: AtomicU8 = AtomicU8::new(ENV_UNSET);
+static STATE: AtomicU8 = AtomicU8::new(ENV_UNSET);
 static WARNS: AtomicU8 = AtomicU8::new(0);
 
 thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::new());
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct Frame {
-    pub index: u32,
-    pub cause: Cause,
-    pub wall_ns: u64,
-    pub phases: Vec<PhaseTime>,
-    pub counts: Vec<CounterValue>,
-    pub backend: Option<BackendStatus>,
-    pub hot: Vec<Attribution>,
-    pub gpu_passes: Vec<(&'static str, u64)>,
-    pub end_us: u64,
-}
-
-impl Frame {
-    #[must_use]
-    pub fn counter(&self, counter: Counter) -> u64 {
-        self.counts
-            .iter()
-            .find(|(n, _)| *n == counter)
-            .map_or(0, |(_, v)| *v)
-    }
-
-    #[must_use]
-    pub fn total_ns(&self) -> u64 {
-        if self.wall_ns > 0 {
-            return self.wall_ns;
-        }
-        self.phases
-            .iter()
-            .filter(|(phase, _)| phase.is_top_level())
-            .map(|(_, ns)| *ns)
-            .sum()
-    }
-
-    #[must_use]
-    pub fn hottest(&self) -> Option<PhaseTime> {
-        self.phases.iter().copied().max_by_key(|(_, ns)| *ns)
-    }
-}
-
 struct Store {
     origin: Instant,
-    events: VecDeque<Event>,
+    events: VecDeque<TraceEvent>,
     frames: VecDeque<Frame>,
     dropped_events: u64,
     open: Frame,
@@ -83,6 +51,10 @@ struct Store {
     open_start: Option<Instant>,
     next_flow: u64,
     open_flow: Option<(&'static str, u64, u64)>,
+    site_stack: Vec<u64>,
+    site_index: ahash::AHashMap<(usize, SiteKind), usize>,
+    attr_index: ahash::AHashMap<(Hotspot, u64), usize>,
+    attr_distinct: ahash::AHashMap<Hotspot, usize>,
 }
 
 impl Store {
@@ -97,6 +69,10 @@ impl Store {
             open_start: None,
             next_flow: 1,
             open_flow: None,
+            site_stack: Vec::new(),
+            site_index: ahash::AHashMap::new(),
+            attr_index: ahash::AHashMap::new(),
+            attr_distinct: ahash::AHashMap::new(),
         }
     }
 
@@ -104,7 +80,11 @@ impl Store {
         u64::try_from(self.origin.elapsed().as_micros()).unwrap_or(u64::MAX)
     }
 
-    fn push(&mut self, event: Event) {
+    fn since_origin_us(&self, at: Instant) -> u64 {
+        u64::try_from(at.saturating_duration_since(self.origin).as_micros()).unwrap_or(u64::MAX)
+    }
+
+    fn push(&mut self, event: TraceEvent) {
         if self.events.len() >= MAX_EVENTS {
             self.events.pop_front();
             self.dropped_events += 1;
@@ -114,32 +94,29 @@ impl Store {
 }
 
 pub(crate) fn enabled() -> bool {
-    if TEST_OFF.load(Ordering::Relaxed) {
-        return false;
-    }
-    if FORCED.load(Ordering::Relaxed) {
-        return true;
-    }
-    match ENV.load(Ordering::Relaxed) {
+    match STATE.load(Ordering::Relaxed) {
         ENV_ON => true,
         ENV_OFF => false,
         _ => {
-            let on = dump_path().is_some();
-            ENV.store(if on { ENV_ON } else { ENV_OFF }, Ordering::Relaxed);
-            on
+            let env = if dump_path().is_some() {
+                ENV_ON
+            } else {
+                ENV_OFF
+            };
+            let state = STATE
+                .compare_exchange(ENV_UNSET, env, Ordering::Relaxed, Ordering::Relaxed)
+                .map_or_else(|current| current, |_| env);
+            state == ENV_ON
         }
     }
 }
 
 pub(crate) fn enable() {
-    TEST_OFF.store(false, Ordering::Relaxed);
-    FORCED.store(true, Ordering::Relaxed);
+    STATE.store(ENV_ON, Ordering::Relaxed);
 }
 
 pub(crate) fn disable() {
-    FORCED.store(false, Ordering::Relaxed);
-    TEST_OFF.store(true, Ordering::Relaxed);
-    ENV.store(ENV_UNSET, Ordering::Relaxed);
+    STATE.store(ENV_OFF, Ordering::Relaxed);
     reset();
 }
 
@@ -157,10 +134,6 @@ pub(crate) fn dump_path() -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn now_us() -> u64 {
-    STORE.with(|cell| cell.borrow().now_us())
-}
-
 fn with_store(f: impl FnOnce(&mut Store)) {
     if enabled() {
         STORE.with(|cell| f(&mut cell.borrow_mut()));
@@ -175,9 +148,10 @@ pub(crate) fn begin_frame(backend: BackendStatus) {
     });
 }
 
-pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
+pub(crate) fn complete(phase: Phase, start: Instant, dur_ns: u64) {
     with_store(|store| {
-        store.push(Event::Complete {
+        let start_us = store.since_origin_us(start);
+        store.push(TraceEvent::Complete {
             phase,
             tid: 1,
             start_us,
@@ -187,10 +161,81 @@ pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
     });
 }
 
+pub(crate) fn site_enter() {
+    with_store(|store| store.site_stack.push(0));
+}
+
+pub(crate) fn site_exit(
+    location: &'static core::panic::Location<'static>,
+    kind: SiteKind,
+    start: Instant,
+    total_ns: u64,
+) {
+    with_store(|store| {
+        let nested = store.site_stack.pop().unwrap_or(0);
+        if let Some(parent) = store.site_stack.last_mut() {
+            *parent = parent.saturating_add(total_ns);
+        }
+        let self_ns = total_ns.saturating_sub(nested);
+        let key = (core::ptr::from_ref(location) as usize, kind);
+        let sites = &mut store.open.sites;
+        let index = *store.site_index.entry(key).or_insert_with(|| {
+            sites.push(Site {
+                location,
+                kind,
+                self_ns: 0,
+                total_ns: 0,
+                runs: 0,
+            });
+            sites.len() - 1
+        });
+        if let Some(site) = sites.get_mut(index) {
+            site.self_ns = site.self_ns.saturating_add(self_ns);
+            site.total_ns = site.total_ns.saturating_add(total_ns);
+            site.runs = site.runs.saturating_add(1);
+        }
+        if total_ns >= SITE_SLICE_NS {
+            let start_us = store.since_origin_us(start);
+            store.push(TraceEvent::Site {
+                location,
+                kind,
+                start_us,
+                dur_us: total_ns / 1_000,
+            });
+        }
+    });
+}
+
+pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce(usize) -> String) {
+    with_store(|store| {
+        let hot = &mut store.open.hot;
+        let distinct = &mut store.attr_distinct;
+        let index = *store.attr_index.entry((hotspot, key)).or_insert_with(|| {
+            let seen = distinct.entry(hotspot).or_insert(0);
+            let name = subject(*seen);
+            hot.iter()
+                .position(|a| a.hotspot == hotspot && a.subject == name)
+                .unwrap_or_else(|| {
+                    *seen += 1;
+                    hot.push(Attribution {
+                        hotspot,
+                        subject: name,
+                        count: 0,
+                    });
+                    hot.len() - 1
+                })
+        });
+        if let Some(entry) = hot.get_mut(index) {
+            entry.count = entry.count.saturating_add(n);
+        }
+    });
+}
+
 pub(crate) fn count_add(counter: Counter, n: u64) {
     with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
 
+#[cfg(feature = "scene")]
 pub(crate) fn gauge(counter: Counter, value: u64) {
     with_store(|store| {
         let counts = &mut store.open.counts;
@@ -201,6 +246,13 @@ pub(crate) fn gauge(counter: Counter, value: u64) {
     });
 }
 
+#[cfg(any(
+    test,
+    all(
+        feature = "scene",
+        any(feature = "desktop", feature = "kittest", feature = "terminal")
+    )
+))]
 pub(crate) fn with_open(f: impl FnOnce(&mut Frame)) {
     with_store(|store| f(&mut store.open));
 }
@@ -212,7 +264,7 @@ pub(crate) fn interact(cause: Cause) {
             store.open.cause = cause;
         }
         let name = cause.name();
-        store.push(Event::Instant {
+        store.push(TraceEvent::Instant {
             name,
             cat: "input",
             ts_us,
@@ -221,7 +273,7 @@ pub(crate) fn interact(cause: Cause) {
             let id = store.next_flow;
             store.next_flow = store.next_flow.saturating_add(1);
             store.open_flow = Some((name, id, ts_us));
-            store.push(Event::FlowStart { name, id, ts_us });
+            store.push(TraceEvent::FlowStart { name, id, ts_us });
         }
     });
 }
@@ -241,15 +293,21 @@ pub(crate) fn close_open() {
 fn close_frame(store: &mut Store) {
     let end_us = store.now_us();
     if let Some((name, id, _)) = store.open_flow.take() {
-        store.push(Event::FlowFinish {
+        store.push(TraceEvent::FlowFinish {
             name,
             id,
             ts_us: end_us,
         });
     }
     let mut frame = std::mem::take(&mut store.open);
+    store.site_index.clear();
+    store.attr_index.clear();
+    store.attr_distinct.clear();
+    frame
+        .sites
+        .sort_by_key(|site| std::cmp::Reverse(site.self_ns));
     for &(counter, value) in &frame.counts {
-        store.push(Event::Counter {
+        store.push(TraceEvent::Counter {
             counter,
             ts_us: end_us,
             value,
@@ -270,20 +328,21 @@ fn close_frame(store: &mut Store) {
 
 #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
 fn warn_slow(frame: &Frame) {
-    if frame.total_ns() <= FRAME_BUDGET_NS
+    if frame.work_ns() <= crate::profile::attr::budget_ns()
         || frame.cause == Cause::Idle
         || WARNS.load(Ordering::Relaxed) >= WARN_CAP
     {
         return;
     }
     WARNS.fetch_add(1, Ordering::Relaxed);
-    let ms = frame.total_ns() as f64 / 1_000_000.0;
+    let ms = frame.work_ns() as f64 / 1_000_000.0;
+    let wait_ms = frame.total_ns().saturating_sub(frame.work_ns()) as f64 / 1_000_000.0;
     let (hot, peak) = frame
         .hottest()
         .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
     let peak_ms = peak as f64 / 1_000_000.0;
     eprintln!(
-        "sigil-profile: frame {} {} {ms:.1}ms {hot}={peak_ms:.1} cmds={}",
+        "sigil-profile: frame {} {} work={ms:.1}ms wait={wait_ms:.1}ms {hot}={peak_ms:.1} cmds={}",
         frame.index,
         frame.cause,
         frame.counter(Counter::SceneCmds)
@@ -291,10 +350,14 @@ fn warn_slow(frame: &Frame) {
 }
 
 pub(crate) fn frames() -> Vec<Frame> {
-    STORE.with(|cell| cell.borrow().frames.iter().cloned().collect())
+    with_frames(|frames| frames.iter().cloned().collect())
 }
 
-pub(crate) fn events() -> Vec<Event> {
+pub(crate) fn with_frames<R>(f: impl FnOnce(&VecDeque<Frame>) -> R) -> R {
+    STORE.with(|cell| f(&cell.borrow().frames))
+}
+
+pub(crate) fn events() -> Vec<TraceEvent> {
     STORE.with(|cell| cell.borrow().events.iter().copied().collect())
 }
 

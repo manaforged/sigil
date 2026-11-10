@@ -8,7 +8,7 @@ use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::kernel::Cx;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::style::Rgba8;
 use sigil::widgets::heatmap;
 
@@ -32,7 +32,7 @@ const fn cell_color(x: usize, y: usize) -> Rgba8 {
 fn bench_heatmap_100x100(c: &mut Criterion) {
     c.bench_function("heatmap_100x100", |b| {
         b.iter(|| {
-            Runtime::scope("heatmap-bench", || {
+            Owner::scope("heatmap-bench", || {
                 let mut cx = Cx::new_root();
                 let widget = heatmap(black_box(100), black_box(100), cell_color);
                 let _ = black_box(cx.add(widget));

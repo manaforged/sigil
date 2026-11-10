@@ -7,20 +7,20 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::events::PhysicalKey;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
-use widget_support::{compute, rect_colors};
+use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[test]
 fn dropdown_has_combobox_role() {
-    sigil::reactive::Runtime::scope("dd-role", || {
+    sigil::reactive::Owner::scope("dd-role", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), vec!["A".to_owned()]));
         let node = cx.get(root).unwrap();
@@ -30,7 +30,7 @@ fn dropdown_has_combobox_role() {
 
 #[test]
 fn dropdown_trigger_emits_surface_inset_rect() {
-    sigil::reactive::Runtime::scope("dd-surface", || {
+    sigil::reactive::Owner::scope("dd-surface", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
             signal(0_usize),
@@ -44,7 +44,7 @@ fn dropdown_trigger_emits_surface_inset_rect() {
 
 #[test]
 fn dropdown_popup_hidden_emits_trigger_rect_only() {
-    sigil::reactive::Runtime::scope("dd-popup-hidden", || {
+    sigil::reactive::Owner::scope("dd-popup-hidden", || {
         let mut cx = Cx::new_root();
         let opts = vec!["X".to_owned(), "Y".to_owned(), "Z".to_owned()];
         let root = cx.add(dropdown(signal(0_usize), opts));
@@ -61,7 +61,7 @@ fn dropdown_popup_hidden_emits_trigger_rect_only() {
 
 #[test]
 fn dropdown_is_focusable() {
-    sigil::reactive::Runtime::scope("dd-focusable", || {
+    sigil::reactive::Owner::scope("dd-focusable", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), vec!["A".to_owned()]));
         let node = cx.get(root).unwrap();
@@ -71,18 +71,18 @@ fn dropdown_is_focusable() {
 
 #[test]
 fn dropdown_disabled_not_focusable() {
-    sigil::reactive::Runtime::scope("dd-disabled", || {
+    sigil::reactive::Owner::scope("dd-disabled", || {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), vec!["A".to_owned()]).disabled(disabled));
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 
 #[test]
 fn dropdown_selected_signal_updates_on_open_and_select() {
-    sigil::reactive::Runtime::scope("dd-select", || {
+    sigil::reactive::Owner::scope("dd-select", || {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let opts = vec!["Alpha".to_owned(), "Beta".to_owned()];
@@ -96,14 +96,7 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Key(KeyEvent::new(KeyEventInit {
-                key: Key::ArrowDown.into(),
-                physical: PhysicalKey::ArrowDown,
-                modifiers: ModifiersState::empty(),
-                repeat: false,
-                phase: KeyPhase::Down,
-                text: None,
-            })),
+            Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
         );
         assert_eq!(selected.get(), 0);
     });

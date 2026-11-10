@@ -2,29 +2,28 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::kernel::SortDirection;
 use crate::reactive::{Signal, effect, signal};
 
+use super::super::listbox::{only, span, toggle};
 use super::columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
 use super::derive::{compute_visible, retain_visible, reuse_identity};
 use super::identity::{self, Identifiable};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SortDir {
-    Ascending,
-    Descending,
-}
-
+/// Table sort column and direction.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SortKey {
+    /// The column.
     pub column: &'static str,
-    pub dir: SortDir,
+    /// The dir.
+    pub dir: SortDirection,
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct ColumnLayout {
-    pub order: Vec<usize>,
-    pub hidden: HashSet<&'static str>,
-    pub widths: HashMap<&'static str, f32>,
+pub(super) struct ColumnLayout {
+    pub(super) order: Vec<usize>,
+    pub(super) hidden: HashSet<&'static str>,
+    pub(super) widths: HashMap<&'static str, f32>,
 }
 
 impl ColumnLayout {
@@ -41,6 +40,7 @@ pub(super) type RowEq<Row> = Rc<dyn Fn(&Row, &Row) -> bool>;
 type Remap<Row> =
     Rc<dyn Fn(&[Row], &[Row], &HashSet<u32>, Option<u32>) -> (HashSet<u32>, Option<u32>)>;
 
+/// Rows, columns, sort, and selection.
 pub struct TableState<Row: 'static> {
     rows: Signal<Arc<Vec<Row>>>,
     columns: Rc<Vec<TableColumn<Row>>>,
@@ -72,6 +72,7 @@ impl<Row: 'static> Clone for TableState<Row> {
 }
 
 impl<Row: 'static> TableState<Row> {
+    /// Creates a table state.
     #[must_use]
     pub fn new(rows: Vec<Row>, columns: Vec<TableColumn<Row>>) -> Self {
         let rows = signal(Arc::new(rows));
@@ -112,6 +113,7 @@ impl<Row: 'static> TableState<Row> {
         }
     }
 
+    /// Sets how two rows compare.
     #[must_use]
     pub fn row_eq(mut self, eq: impl Fn(&Row, &Row) -> bool + 'static) -> Self {
         self.row_eq = Some(Rc::new(eq));
@@ -122,11 +124,13 @@ impl<Row: 'static> TableState<Row> {
         self.row_eq.clone()
     }
 
+    /// Returns the rows.
     #[must_use]
     pub const fn rows(&self) -> Signal<Arc<Vec<Row>>> {
         self.rows
     }
 
+    /// Replaces all rows.
     pub fn replace_rows(&self, rows: impl Into<Arc<Vec<Row>>>) {
         let rows = rows.into();
         let previous = self.rows.peek();
@@ -149,11 +153,13 @@ impl<Row: 'static> TableState<Row> {
         self.select_anchor.set(anchor);
     }
 
+    /// Returns the selected index.
     #[must_use]
     pub fn selected_index(&self) -> Option<u32> {
         self.selection.get().iter().copied().min()
     }
 
+    /// Returns the selected row.
     #[must_use]
     pub fn selected_row(&self) -> Option<Row>
     where
@@ -163,59 +169,69 @@ impl<Row: 'static> TableState<Row> {
         self.rows.get().get(index).cloned()
     }
 
+    /// Returns the columns.
     #[must_use]
     pub fn columns(&self) -> &[TableColumn<Row>] {
         &self.columns
     }
 
+    /// Returns the visible.
     #[must_use]
     pub const fn visible(&self) -> Signal<Rc<Vec<u32>>> {
         self.visible
     }
 
+    /// Returns the sort key.
     #[must_use]
     pub const fn sort_key(&self) -> Signal<Option<SortKey>> {
         self.sort
     }
 
+    /// Sorts by `column`, or flips the direction if it already sorts.
     pub fn toggle_sort(&self, column: &'static str) {
         if !self.is_sortable(column) {
             return;
         }
         let dir = match self.sort.peek() {
             Some(key) if key.column == column => match key.dir {
-                SortDir::Ascending => Some(SortDir::Descending),
-                SortDir::Descending => None,
+                SortDirection::Ascending => Some(SortDirection::Descending),
+                SortDirection::Descending => None,
             },
-            _ => Some(SortDir::Ascending),
+            _ => Some(SortDirection::Ascending),
         };
         self.sort.set(dir.map(|dir| SortKey { column, dir }));
     }
 
+    /// Returns the quick filter.
     #[must_use]
     pub const fn quick_filter(&self) -> Signal<String> {
         self.quick_filter
     }
 
+    /// Returns the selection.
     #[must_use]
     pub const fn selection(&self) -> Signal<Rc<HashSet<u32>>> {
         self.selection
     }
 
+    /// Selects one row and clears the others.
     pub fn select_only(&self, row: u32) {
-        self.selection.set(Rc::new(HashSet::from([row])));
-        self.select_anchor.set(Some(row));
+        let mut set: HashSet<u32> = HashSet::new();
+        let mut anchor = None;
+        only(&mut set, &mut anchor, row);
+        self.selection.set(Rc::new(set));
+        self.select_anchor.set(anchor);
     }
 
+    /// Flips the selection of one row.
     pub fn toggle_selected(&self, row: u32) {
         let mut set = (*self.selection.peek()).clone();
-        if !set.remove(&row) {
-            set.insert(row);
-        }
+        toggle(&mut set, row);
         self.selection.set(Rc::new(set));
         self.select_anchor.set(Some(row));
     }
 
+    /// Selects from the anchor row to `row`.
     pub fn select_range_to(&self, row: u32) {
         let Some(anchor) = self.select_anchor.peek() else {
             self.select_only(row);
@@ -228,29 +244,29 @@ impl<Row: 'static> TableState<Row> {
             return;
         };
         let (lo, hi) = if from <= to { (from, to) } else { (to, from) };
-        let span = visible
-            .get(lo..=hi)
-            .unwrap_or_default()
-            .iter()
-            .copied()
-            .collect::<HashSet<u32>>();
-        self.selection.set(Rc::new(span));
+        let mut set: HashSet<u32> = HashSet::new();
+        span(
+            &mut set,
+            visible.get(lo..=hi).unwrap_or_default().iter().copied(),
+        );
+        self.selection.set(Rc::new(set));
     }
 
     pub(super) fn anchor(&self) -> Option<u32> {
         self.select_anchor.peek()
     }
 
+    /// Clears the selection.
     pub fn clear_selection(&self) {
         self.selection.set(Rc::new(HashSet::new()));
         self.select_anchor.set(None);
     }
 
-    #[must_use]
-    pub const fn column_layout(&self) -> Signal<Rc<ColumnLayout>> {
+    pub(super) const fn column_layout(&self) -> Signal<Rc<ColumnLayout>> {
         self.layout
     }
 
+    /// Returns the visible columns.
     #[must_use]
     pub fn visible_columns(&self) -> Vec<(usize, &TableColumn<Row>)> {
         let layout = self.layout.peek();
@@ -264,6 +280,7 @@ impl<Row: 'static> TableState<Row> {
             .collect()
     }
 
+    /// Moves a column to a new position.
     pub fn move_column(&self, from: usize, to: usize) {
         self.edit_layout(|layout| {
             let len = layout.order.len();
@@ -276,19 +293,19 @@ impl<Row: 'static> TableState<Row> {
         });
     }
 
+    /// Hides a column.
     pub fn hide_column(&self, id: &'static str) {
         if self.visible_columns().len() > 1 {
-            self.edit_layout(|layout| {
-                layout.hidden.insert(id);
-                true
-            });
+            self.edit_layout(|layout| layout.hidden.insert(id));
         }
     }
 
+    /// Shows a hidden column.
     pub fn show_column(&self, id: &'static str) {
         self.edit_layout(|layout| layout.hidden.remove(id));
     }
 
+    /// Shows every column.
     pub fn show_all_columns(&self) {
         self.edit_layout(|layout| {
             let changed = !layout.hidden.is_empty();
@@ -297,6 +314,7 @@ impl<Row: 'static> TableState<Row> {
         });
     }
 
+    /// Fixes a column's width.
     pub fn pin_column_width(&self, id: &'static str, px: f32) {
         self.edit_layout(|layout| {
             layout.widths.insert(id, px.max(MIN_COL_WIDTH));
@@ -304,15 +322,18 @@ impl<Row: 'static> TableState<Row> {
         });
     }
 
+    /// Returns a column to its default width.
     pub fn clear_column_width(&self, id: &'static str) {
         self.edit_layout(|layout| layout.widths.remove(id).is_some());
     }
 
+    /// Restores the default column order, visibility, and widths.
     pub fn reset_columns(&self) {
         self.layout
             .set_always(Rc::new(ColumnLayout::natural(self.columns.len())));
     }
 
+    /// Returns a column's fixed width, if set.
     #[must_use]
     pub fn column_width(&self, id: &'static str) -> Option<f32> {
         let layout = self.layout.peek();
@@ -328,7 +349,8 @@ impl<Row: 'static> TableState<Row> {
             })
     }
 
-    pub fn sort(&self, column: &'static str, dir: SortDir) {
+    /// Sorts by `column` in `dir`.
+    pub fn sort(&self, column: &'static str, dir: SortDirection) {
         if self.is_sortable(column) {
             self.sort.set(Some(SortKey { column, dir }));
         }
@@ -349,6 +371,7 @@ impl<Row: 'static> TableState<Row> {
 }
 
 impl<Row: Identifiable + 'static> TableState<Row> {
+    /// Creates a table state keyed by each row's id.
     #[must_use]
     pub fn identified(rows: Vec<Row>, columns: Vec<TableColumn<Row>>) -> Self {
         let mut state = Self::new(rows, columns);

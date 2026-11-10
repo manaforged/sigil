@@ -19,13 +19,13 @@ use crate::renderer::scene_command::{GlyphRun, Transform};
 
 use super::shapes::{self, Brush, decode, solid};
 
-struct PathPen<'a> {
+struct GlyphPen<'a> {
     builder: &'a mut PathBuilder,
     x: f32,
     y: f32,
 }
 
-impl OutlinePen for PathPen<'_> {
+impl OutlinePen for GlyphPen<'_> {
     fn move_to(&mut self, x: f32, y: f32) {
         self.builder.move_to(self.x + x, self.y - y);
     }
@@ -77,7 +77,7 @@ pub(super) fn run_paths(run: &GlyphRun, transform: Transform, scale: f32) -> Vec
             let pen = Point::new(origin.x + g.x, origin.y + g.y);
             let shift = pen_shift(transform, pen, scale);
             let mut builder = PathBuilder::new();
-            let mut pen = PathPen {
+            let mut pen = GlyphPen {
                 builder: &mut builder,
                 x: pen.x + shift.x,
                 y: pen.y + shift.y,

@@ -6,19 +6,19 @@ use crate::profile::{Counter, count_add};
 use crate::scene::CommandScene;
 use crate::terminal::glyphs::Glyphs;
 
-use super::mask::{Mask, Window};
-use super::scene::{Paint, walk};
+use super::mask::{Mask, MaskWindow};
+use super::scene::{CellPaint, walk};
 use super::{Cell, Grid, floor_cell, map_glyph};
 
 const GROW: usize = 1;
 const REACH: f32 = 3.0;
 
 thread_local! {
-    static SCRATCH: RefCell<Scratch> = RefCell::new(Scratch::default());
+    static SCRATCH: RefCell<RegionScratch> = RefCell::new(RegionScratch::default());
 }
 
 #[derive(Default)]
-struct Scratch {
+struct RegionScratch {
     grid: Option<Grid>,
     reach: Vec<Rect>,
     windows: Mask,
@@ -28,7 +28,7 @@ struct Scratch {
 pub(crate) fn raster_regions(
     grid: &mut Grid,
     scene: &CommandScene,
-    paint: &Paint<'_>,
+    paint: &CellPaint<'_>,
     regions: &[Rect],
 ) -> Vec<usize> {
     let mut rows = Vec::new();
@@ -44,12 +44,12 @@ pub(crate) fn raster_regions(
     rows
 }
 
-impl Scratch {
+impl RegionScratch {
     fn raster(
         &mut self,
         grid: &mut Grid,
         scene: &CommandScene,
-        paint: &Paint<'_>,
+        paint: &CellPaint<'_>,
         (regions, rows): (&[Rect], &mut Vec<usize>),
     ) -> u64 {
         let cell = if paint.cell <= 0.0 { 1.0 } else { paint.cell };
@@ -144,7 +144,7 @@ fn prepare(fresh: &mut Grid, grid: &Grid, mask: Mask, spans: &mut Vec<Range<usiz
     fresh.mask = Some(mask);
 }
 
-fn window(grid: &Grid, region: Rect, cell: f32) -> Window {
+fn window(grid: &Grid, region: Rect, cell: f32) -> MaskWindow {
     let first = |start: f32| floor_cell(start / cell).saturating_sub(GROW);
     let end = |stop: f32, limit: usize| floor_cell(stop / cell).saturating_add(1 + GROW).min(limit);
     (

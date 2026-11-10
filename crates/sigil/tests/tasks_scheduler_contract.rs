@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -9,14 +10,14 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use sigil::hal::Scheduler;
-use sigil::reactive::{Owner, Runtime};
-use sigil::tasks::{AsyncRuntime, OwnerHandle};
+use sigil::reactive::Owner;
+use sigil::tasks::AsyncRuntime;
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
-pub fn setup() -> (AsyncRuntime, OwnerHandle) {
+pub fn setup() -> (AsyncRuntime, Owner) {
     let rt = AsyncRuntime::new().expect("build tokio runtime");
-    let handle = OwnerHandle::current().expect("inside a reactive scope");
+    let handle = Owner::current().expect("inside a reactive scope");
     (rt, handle)
 }
 
@@ -34,7 +35,7 @@ pub fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
 
 #[test]
 fn enqueue_main_runs_callback_on_drain() {
-    Runtime::scope("enqueue_main_runs_callback_on_drain", || {
+    Owner::scope("enqueue_main_runs_callback_on_drain", || {
         let (mut scheduler, handle) = setup();
         let ran = Arc::new(AtomicBool::new(false));
 
@@ -67,7 +68,7 @@ fn enqueue_main_drops_callback_for_disposed_owner() {
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
 
     let owner = Owner::new("enqueue_main_drops_callback_for_disposed_owner", None);
-    let handle = OwnerHandle::from_id(owner.id());
+    let handle = owner;
     let ran_cb = Arc::clone(&ran);
     scheduler
         .enqueue_main(
@@ -90,7 +91,7 @@ fn enqueue_main_drops_callback_for_disposed_owner() {
 #[allow(clippy::too_many_lines)]
 #[test]
 fn wake_proxy_is_called_on_enqueue() {
-    Runtime::scope("wake_proxy_is_called_on_enqueue", || {
+    Owner::scope("wake_proxy_is_called_on_enqueue", || {
         let (mut scheduler, handle) = setup();
         let wakes = Arc::new(AtomicUsize::new(0));
         {

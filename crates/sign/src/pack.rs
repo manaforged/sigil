@@ -31,6 +31,7 @@ pub enum PackError {
     Missing(PathBuf),
     Io(io::Error),
     Codesign(String),
+    Tool(String),
     Escape(PathBuf),
     Symlink(PathBuf),
     Occupied(PathBuf),
@@ -43,6 +44,7 @@ impl fmt::Display for PackError {
             Self::Missing(path) => write!(f, "missing {}", path.display()),
             Self::Io(error) => write!(f, "{error}"),
             Self::Codesign(error) => write!(f, "codesign: {error}"),
+            Self::Tool(error) => write!(f, "{error}"),
             Self::Escape(path) => write!(f, "path escapes bundle: {}", path.display()),
             Self::Symlink(path) => write!(f, "symlink refused: {}", path.display()),
             Self::Occupied(path) => write!(f, "refusing to delete {}", path.display()),
@@ -89,7 +91,7 @@ fn relative_inside(root: &Path, rel: &Path) -> Result<PathBuf, PackError> {
     }
 }
 
-fn refuse_link(path: &Path) -> Result<fs::Metadata, PackError> {
+pub(crate) fn refuse_link(path: &Path) -> Result<fs::Metadata, PackError> {
     let meta = fs::symlink_metadata(path).map_err(PackError::Io)?;
     if meta.file_type().is_symlink() {
         return Err(PackError::Symlink(path.to_path_buf()));

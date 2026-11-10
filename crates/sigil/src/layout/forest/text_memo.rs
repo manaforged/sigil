@@ -20,7 +20,7 @@ pub(super) struct TextMemoKey {
 
 pub(super) fn text_memo_key(
     id: LocalId,
-    known: crate::layout::style_data::Size<Option<f32>>,
+    known: crate::layout::style_data::Axes<Option<f32>>,
     wrap_to: Option<f32>,
     text: &LayoutText,
     fonts: u64,
@@ -54,12 +54,12 @@ pub(super) const TEXT_MEMO_LIVE: usize = 8_192;
 
 #[derive(Debug, Default)]
 pub(super) struct TextMemo {
-    pub(super) live: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Size<f32>>,
-    pub(super) stale: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Size<f32>>,
+    pub(super) live: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Axes<f32>>,
+    pub(super) stale: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Axes<f32>>,
 }
 
 impl TextMemo {
-    pub(super) fn get(&mut self, key: TextMemoKey) -> Option<crate::layout::style_data::Size<f32>> {
+    pub(super) fn get(&mut self, key: TextMemoKey) -> Option<crate::layout::style_data::Axes<f32>> {
         if let Some(hit) = self.live.get(&key) {
             return Some(*hit);
         }
@@ -68,7 +68,7 @@ impl TextMemo {
         Some(hit)
     }
 
-    pub(super) fn store(&mut self, key: TextMemoKey, size: crate::layout::style_data::Size<f32>) {
+    pub(super) fn store(&mut self, key: TextMemoKey, size: crate::layout::style_data::Axes<f32>) {
         if self.live.len() >= TEXT_MEMO_LIVE {
             self.stale = std::mem::take(&mut self.live);
         }

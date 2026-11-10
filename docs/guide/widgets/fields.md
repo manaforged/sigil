@@ -50,7 +50,7 @@ Editing keys add: Arrow Up/Down, PageUp/PageDown, Alt+Left/Right (or Alt+B/F) fo
 
 ## number_field
 
-`number_field(Signal<T>, RangeInclusive<T>) -> NumberFieldBuilder<T>` where `T: NumericKind`, a sealed trait implemented for `i32`, `i64`, `usize`, `f32`, and `f64`. A text field that parses and clamps:
+`number_field(Signal<T>, RangeInclusive<T>)` where `T` is `i32`, `i64`, `usize`, `f32`, or `f64`. A text field that parses and clamps:
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -64,13 +64,13 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## date_field
 
-`date_field(Signal<Date>) -> DateFieldBuilder`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
+`date_field(Signal<Date>)`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
 
 `Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(Signal<bool>)` and `.invalid_when(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
 
 ## color_field
 
-`color_field(Signal<Rgba8>) -> ColorFieldBuilder`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. `parse_hex(&str) -> Option<Rgba8>` and `to_hex(Rgba8) -> String` are the helpers the widget itself uses.
+`color_field(Signal<Rgba8>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Rgba8>()` and `Rgba8::to_hex`.
 
 ## combobox
 
@@ -91,7 +91,7 @@ Typing opens the popup and clears the selection unless the text equals the commi
 
 ## dropdown
 
-`dropdown(Signal<usize>, Vec<String>) -> DropdownBuilder`. A trigger button plus a popup list. Pick by index, not free text.
+`dropdown(Signal<usize>, Vec<String>)`. A trigger button plus a popup list. Pick by index, not free text.
 
 ```rust,no_run
 # use sigil::prelude::*;

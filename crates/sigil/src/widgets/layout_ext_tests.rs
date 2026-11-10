@@ -3,7 +3,8 @@
 use super::*;
 use crate::kernel::{Cx, IntoNode, NodeId, Role, container};
 use crate::layout::{Dimension, LayoutStyle};
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
+use crate::widgets::Widget;
 
 #[test]
 fn empty_overrides_are_pass_through() {
@@ -13,10 +14,17 @@ fn empty_overrides_are_pass_through() {
 }
 
 #[test]
+fn width_hint_reads_a_width_set_through_layout() {
+    let mut overrides = LayoutOverrides::new();
+    overrides.edit(LayoutEdit::Merge(LayoutStyle::default().width(64.0)));
+    assert_eq!(overrides.width_hint(), Some(64.0));
+}
+
+#[test]
 fn width_height_override_replaces_dimensions() {
     let mut overrides = LayoutOverrides::new();
-    overrides.width(100.0);
-    overrides.height(50.0);
+    overrides.edit(LayoutEdit::Width(100.0));
+    overrides.edit(LayoutEdit::Height(50.0));
     let base = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
     let result = overrides.apply(base);
     let expected = LayoutStyle::flex_row()
@@ -27,24 +35,25 @@ fn width_height_override_replaces_dimensions() {
 }
 
 #[test]
-fn full_layout_replaces_base() {
+fn full_layout_merges_into_base() {
     let mut overrides = LayoutOverrides::new();
     let replacement = LayoutStyle::block().fixed_size(7.0, 9.0);
-    overrides.layout(replacement.clone());
-    let base = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
-    let result = overrides.apply(base);
-    assert_eq!(result, replacement);
+    overrides.edit(LayoutEdit::Merge(replacement.clone()));
+    let mut expected = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
+    let result = overrides.apply(expected.clone());
+    expected.merge(&replacement);
+    assert_eq!(result, expected);
 }
 
 #[test]
 fn full_layout_then_partials_compose() {
     let mut overrides = LayoutOverrides::new();
     let replacement = LayoutStyle::block().fixed_size(7.0, 9.0);
-    overrides.layout(replacement.clone());
-    overrides.width(123.0);
-    let base = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
-    let result = overrides.apply(base);
-    let expected = replacement.width(123.0);
+    overrides.edit(LayoutEdit::Merge(replacement.clone()));
+    overrides.edit(LayoutEdit::Width(123.0));
+    let mut expected = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
+    let result = overrides.apply(expected.clone());
+    expected.merge(&replacement.width(123.0));
     assert_eq!(result, expected);
 }
 
@@ -58,11 +67,8 @@ fn assert_sized(cx: &Cx, id: NodeId) {
     assert_eq!(style.data().size.height, Dimension::Px(50.0));
 }
 
-fn assert_root_sized<N: WidgetLayoutExt + IntoNode>(
-    scope: &'static str,
-    build: impl FnOnce() -> N,
-) {
-    Runtime::scope(scope, || {
+fn assert_root_sized<N: Widget + IntoNode>(scope: &'static str, build: impl FnOnce() -> N) {
+    Owner::scope(scope, || {
         let mut cx = Cx::new_root();
         let root = cx.add(build().width(100.0).height(50.0));
         assert_sized(&cx, root);
@@ -127,7 +133,7 @@ fn tabs_width_height_override_reaches_root_node() {
 
 #[test]
 fn modal_width_height_override_reaches_dialog_frame() {
-    Runtime::scope("layout-ext-modal-smoke", || {
+    Owner::scope("layout-ext-modal-smoke", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             crate::widgets::modal::modal(signal(true))
@@ -144,4 +150,25 @@ fn modal_width_height_override_reaches_dialog_frame() {
             .expect("dialog frame child");
         assert_sized(&cx, frame);
     });
+}
+
+#[test]
+fn path_and_hint_stay_send() {
+    fn send_sync<T: Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe>() {}
+    send_sync::<crate::widgets::PathNode>();
+    send_sync::<crate::widgets::patterns::HintOverlayBuilder>();
+}
+
+#[test]
+fn cloned_hooks_still_run() {
+    let seen = std::rc::Rc::new(std::cell::Cell::new(false));
+    let flag = seen.clone();
+    let mut hooks = NodeHooks::new();
+    hooks.push(Box::new(move |node| {
+        flag.set(true);
+        node
+    }));
+    let cloned = hooks.clone();
+    let _ = cloned.finish(container());
+    assert!(seen.get());
 }

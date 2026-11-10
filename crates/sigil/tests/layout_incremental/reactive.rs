@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn reactive_text_change_invalidates_cache() {
-    Runtime::scope("layout_reactive_text_cache", || {
+    Owner::scope("layout_reactive_text_cache", || {
         let value = signal(String::from("tiny"));
         let mut cx = Cx::new_root();
         let root = cx.add(text(value));
@@ -26,7 +26,7 @@ fn reactive_text_change_invalidates_cache() {
 
 #[test]
 fn reactive_display_none_then_empty_shows_box() {
-    Runtime::scope("layout_reactive_display_none_empty", || {
+    Owner::scope("layout_reactive_display_none_empty", || {
         let show = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(

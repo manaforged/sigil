@@ -10,7 +10,7 @@ mod widget_support;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::widgets::{Orientation, splitter};
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use widget_support::compute;
 
 #[test]
@@ -27,7 +27,7 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
         &mut cx,
         root,
         Size::fixed(612.0, 200.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_0 = cx.nth_child(root, 0).expect("pane 0");
@@ -65,7 +65,7 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
         &mut cx,
         root,
         Size::fixed(300.0, 206.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_top = cx.nth_child(root, 0).expect("top pane");
@@ -105,7 +105,7 @@ fn nested_splitter_renders_all_leaves() {
         &mut cx,
         root,
         Size::fixed(306.0, 206.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let bottom_pane = cx.nth_child(root, 2).expect("bottom pane");
@@ -137,7 +137,7 @@ fn pane_builder_carries_initial_min_max_into_layout() {
         &mut cx,
         root,
         Size::fixed(406.0, 200.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_a = cx.nth_child(root, 0).expect("pane a");
@@ -158,7 +158,7 @@ fn pane_builder_carries_initial_min_max_into_layout() {
 
 #[test]
 fn grow_pane_takes_leftover_width() {
-    sigil::reactive::Runtime::scope("phase-2-4::splitter-grow", || {
+    sigil::reactive::Owner::scope("phase-2-4::splitter-grow", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             splitter(Orientation::Horizontal)
@@ -174,7 +174,7 @@ fn grow_pane_takes_leftover_width() {
             &mut cx,
             root,
             Size::fixed(406.0, 200.0),
-            Box::new(FixedMeasure::default()),
+            Box::new(FakeMeasure::default()),
         );
         let side = cx.nth_child(root, 0).expect("side pane");
         let main = cx.nth_child(root, 2).expect("main pane");
@@ -193,7 +193,7 @@ fn grow_pane_takes_leftover_width() {
 
 #[test]
 fn sizes_bind_carries_initial_sizes() {
-    sigil::reactive::Runtime::scope("phase-2-4::splitter-sizes-bind", || {
+    sigil::reactive::Owner::scope("phase-2-4::splitter-sizes-bind", || {
         let bound = signal(Vec::<f32>::new());
         let mut cx = Cx::new_root();
         let _root = cx.add(
@@ -211,4 +211,122 @@ fn sizes_bind_carries_initial_sizes() {
             "sizes_bind must reflect initial sizes after build",
         );
     });
+}
+
+#[test]
+fn dragging_the_handle_resizes_the_panes() {
+    let pane = |name: &'static str| {
+        container()
+            .role(Role::Image)
+            .label(name)
+            .layout(LayoutStyle::flex_column().fill())
+    };
+    let mut ui = sigil_kittest::Harness::new(
+        splitter(Orientation::Horizontal)
+            .child(pane("left"), 200.0)
+            .child(pane("right"), 200.0),
+    )
+    .pixels(600, 200);
+    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let from = handle.center().expect("handle bounds");
+    ui.drag(&handle, &Point::new(from.x + 50.0, from.y))
+        .settle();
+    let left = ui
+        .get_by_role(Role::Image, "left")
+        .bounds()
+        .expect("left bounds");
+    let right = ui
+        .get_by_role(Role::Image, "right")
+        .bounds()
+        .expect("right bounds");
+    assert!(
+        (left.width - 250.0).abs() < 1.0,
+        "left pane is {} px wide",
+        left.width
+    );
+    assert!(
+        (right.width - 150.0).abs() < 1.0,
+        "right pane is {} px wide",
+        right.width
+    );
+}
+
+fn shared(width: u32) -> sigil_kittest::Harness {
+    let pane = |name: &'static str| {
+        container()
+            .role(Role::Image)
+            .label(name)
+            .layout(LayoutStyle::flex_column().fill())
+    };
+    sigil_kittest::Harness::new(
+        splitter(Orientation::Horizontal)
+            .proportional()
+            .pane(pane("left"))
+            .initial(1.0)
+            .min(100.0)
+            .pane(pane("right"))
+            .initial(3.0)
+            .min(100.0)
+            .commit(),
+    )
+    .pixels(width, 200)
+}
+
+fn widths(ui: &mut sigil_kittest::Harness) -> (f32, f32) {
+    let width = |harness: &mut sigil_kittest::Harness, name| {
+        harness
+            .get_by_role(Role::Image, name)
+            .bounds()
+            .expect("pane bounds")
+            .width
+    };
+    (width(ui, "left"), width(ui, "right"))
+}
+
+#[test]
+fn a_proportional_splitter_keeps_each_panes_share_at_any_width() {
+    for (width, left, right) in [(406, 100.0, 300.0), (806, 200.0, 600.0)] {
+        let mut ui = shared(width);
+        ui.settle();
+        let (got_left, got_right) = widths(&mut ui);
+        assert!(
+            (got_left - left).abs() < 1.0 && (got_right - right).abs() < 1.0,
+            "at {width} px the panes are {got_left} and {got_right}",
+        );
+    }
+}
+
+#[test]
+fn a_proportional_drag_stops_at_the_other_panes_minimum() {
+    let mut ui = shared(806);
+    ui.settle();
+    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let from = handle.center().expect("handle bounds");
+    ui.drag(&handle, &Point::new(from.x + 700.0, from.y))
+        .settle();
+    let (left, right) = widths(&mut ui);
+    assert!((right - 100.0).abs() < 1.0, "right pane is {right} px wide");
+    assert!((left - 700.0).abs() < 1.0, "left pane is {left} px wide");
+}
+
+#[test]
+fn settle_bind_reports_sizes_when_the_drag_ends() {
+    sigil::reactive::Owner::scope("settle", settle_after_drag);
+}
+
+fn settle_after_drag() {
+    let settled = signal(Vec::<f32>::new());
+    let mut ui = sigil_kittest::Harness::new(
+        splitter(Orientation::Horizontal)
+            .child(container(), 200.0)
+            .child(container(), 200.0)
+            .settle_bind(settled),
+    )
+    .pixels(600, 200);
+    assert!(settled.peek().is_empty(), "nothing settles before a drag");
+    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let from = handle.center().expect("handle bounds");
+    ui.drag(&handle, &Point::new(from.x + 50.0, from.y))
+        .settle();
+    assert_eq!(settled.peek(), vec![250.0, 150.0]);
 }

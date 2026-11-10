@@ -1,9 +1,10 @@
 use crate::geometry::Rect;
 use crate::hal::HitPosition;
 use crate::kernel::{NodeBuilder, fragment};
+use crate::layout::LayoutStyle;
 use crate::layout::with_text_geometry;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom};
+use crate::widgets::Widget;
 
 use super::TextEditRuntime;
 

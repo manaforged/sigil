@@ -4,7 +4,7 @@ use crossterm::style::Print;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
-use super::{Pen, Style, clip, same_row};
+use super::{AnsiPen, AnsiStyle, clip, same_row};
 use crate::terminal::caps::{Caps, Cursor};
 use crate::terminal::paint::Grid;
 
@@ -22,7 +22,7 @@ pub(crate) fn inline(
         queue!(out, cursor::MoveUp(clip(last_rows - 1)))?;
     }
     let prev = prev.filter(|prev| prev.cols() == next.cols());
-    let mut pen = Pen::default();
+    let mut pen = AnsiPen::default();
     for row in 0..painted {
         if row > 0 {
             queue!(out, Print("\r\n"))?;
@@ -40,7 +40,7 @@ pub(crate) fn inline(
         }
         queue!(out, Clear(ClearType::CurrentLine))?;
         for cell in cells {
-            pen.pick(out, Style::of(cell, caps))?;
+            pen.pick(out, AnsiStyle::of(cell, caps))?;
             pen.line.push_str(&cell.text);
         }
         pen.flush(out)?;

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use super::ThemeValue;
-use crate::style::{ColorKey, Rgba8, Token};
+use crate::style::{ColorAtom, Rgba8, Token};
 
+/// One layer: a fixed array per `Token` plus a map for custom names.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TokenLayer {
     tokens: [Option<Rgba8>; Token::COUNT],
@@ -23,17 +24,20 @@ impl TokenLayer {
         self.tokens.get(token.index()).copied().flatten()
     }
 
+    /// Returns the color of `key`, if set.
     #[must_use]
-    pub fn color(&self, key: ColorKey) -> Option<Rgba8> {
+    pub fn color(&self, key: ColorAtom) -> Option<Rgba8> {
         match key {
-            ColorKey::Token(token) => self.token(token),
-            ColorKey::Custom(name) => match self.custom.get(name) {
+            ColorAtom::Rgba8(color) => Some(color),
+            ColorAtom::Token(token) => self.token(token),
+            ColorAtom::Custom(name) => match self.custom.get(name) {
                 Some(ThemeValue::Color(color)) => Some(*color),
                 _ => None,
             },
         }
     }
 
+    /// Returns the value of the token `name`, if set.
     #[must_use]
     pub fn value(&self, name: &str) -> Option<ThemeValue> {
         Token::from_name(name).map_or_else(
@@ -42,6 +46,7 @@ impl TokenLayer {
         )
     }
 
+    /// Stores a token value and returns the old value.
     pub fn insert(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
         let slot = Token::from_name(name).and_then(|token| self.tokens.get_mut(token.index()));
         match (slot, value) {
@@ -50,6 +55,7 @@ impl TokenLayer {
         }
     }
 
+    /// Returns the names.
     pub fn names(&self) -> impl Iterator<Item = &str> {
         Token::ALL
             .iter()
@@ -59,8 +65,11 @@ impl TokenLayer {
     }
 }
 
+/// The runtime override and theme layers of `Theme::tokens`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TokenTable {
+    /// The overrides.
     pub overrides: TokenLayer,
+    /// The theme.
     pub theme: TokenLayer,
 }

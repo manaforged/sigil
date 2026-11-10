@@ -6,7 +6,7 @@ use sigil::layout::LayoutEngine;
 
 #[test]
 fn text_field_shift_arrow_selects_and_cut_clears_value() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-selection", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-selection", || {
         sigil::clipboard::install(CutMemory(RefCell::new(None)));
         let value = signal(String::from("hello"));
         let mut cx = Cx::new_root();
@@ -33,7 +33,7 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
 
 #[test]
 fn text_field_ctrl_a_selects_all_and_delete_clears() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-select-all", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-select-all", || {
         let value = signal(String::from("hello world"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -52,7 +52,7 @@ fn text_field_ctrl_a_selects_all_and_delete_clears() {
 
 #[test]
 fn text_field_undo_restores_previous_value() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-undo", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-undo", || {
         let value = signal(String::new());
         let builder = text_field(value);
         let mut cx = Cx::new_root();
@@ -64,8 +64,16 @@ fn text_field_undo_restores_previous_value() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, type_char("a", PhysicalKey::KeyA));
-        router.route(&mut cx, &layout, type_char("b", PhysicalKey::KeyB));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("a").physical(PhysicalKey::KeyA),
+        );
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("b").physical(PhysicalKey::KeyB),
+        );
         assert_eq!(value.get(), "ab");
 
         router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
@@ -77,8 +85,36 @@ fn text_field_undo_restores_previous_value() {
 }
 
 #[test]
+fn text_field_undo_answers_the_terminal_undo_keys() {
+    for (key, physical) in [
+        ("_", PhysicalKey::Minus),
+        ("-", PhysicalKey::Minus),
+        ("7", PhysicalKey::Digit7),
+    ] {
+        sigil::reactive::Owner::scope("sigil-widget-text-field-terminal-undo", || {
+            let value = signal(String::new());
+            let mut cx = Cx::new_root();
+            let root = cx.add(text_field(value));
+            let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+            layout
+                .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+                .expect("layout computes");
+            let mut router = EventRouter::new();
+            router.set_focus(&mut cx, Some(root));
+            router.route(
+                &mut cx,
+                &layout,
+                Event::typed("a").physical(PhysicalKey::KeyA),
+            );
+            router.route(&mut cx, &layout, ctrl_key(key, physical));
+            assert_eq!(value.get(), "", "ctrl+{key} should undo");
+        });
+    }
+}
+
+#[test]
 fn text_field_redo_reapplies_undone_change() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-redo", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-redo", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -89,7 +125,11 @@ fn text_field_redo_reapplies_undone_change() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, type_char("x", PhysicalKey::KeyX));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("x").physical(PhysicalKey::KeyX),
+        );
         assert_eq!(value.get(), "x");
 
         router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
@@ -102,7 +142,7 @@ fn text_field_redo_reapplies_undone_change() {
 
 #[test]
 fn text_field_caret_visible_resets_on_keystroke() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-caret-blink", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-caret-blink", || {
         let value = signal(String::new());
         let mut builder = text_field(value);
         let caret_visible = builder.caret_visible();
@@ -120,7 +160,11 @@ fn text_field_caret_visible_resets_on_keystroke() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, type_char("k", PhysicalKey::KeyK));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("k").physical(PhysicalKey::KeyK),
+        );
         assert!(
             caret_visible.get(),
             "keystroke resets caret_visible to true"
@@ -130,8 +174,8 @@ fn text_field_caret_visible_resets_on_keystroke() {
 
 #[test]
 fn text_field_scroll_offset_advances_past_visible_window() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-scroll", || {
-        set_text_geometry(Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("sigil-widget-text-field-scroll", || {
+        set_text_geometry(Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut builder = text_field(value);
         let scroll_offset = builder.scroll_offset();

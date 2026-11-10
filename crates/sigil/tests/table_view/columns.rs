@@ -1,6 +1,7 @@
 use super::*;
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
+use sigil::geometry::Point;
 use sigil::kernel::Cx;
 
 const fn pointer_button(
@@ -9,21 +10,15 @@ const fn pointer_button(
     y: f32,
     button: MouseButton,
     buttons: MouseButtons,
-) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(button),
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+) -> Event {
+    Event::pointer(phase, Point::new(x, y))
+        .button(Some(button))
+        .buttons(buttons)
 }
 
 #[test]
 fn resize_handle_pins_column_width() {
-    sigil::reactive::Runtime::scope("table-view-resize", || {
+    sigil::reactive::Owner::scope("table-view-resize", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -78,7 +73,7 @@ fn resize_handle_pins_column_width() {
 
 #[test]
 fn right_click_row_selects() {
-    sigil::reactive::Runtime::scope("table-view-context", || {
+    sigil::reactive::Owner::scope("table-view-context", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -111,7 +106,7 @@ fn right_click_row_selects() {
 
 #[test]
 fn fraction_column_honours_min_width() {
-    sigil::reactive::Runtime::scope("table-min-width", || {
+    sigil::reactive::Owner::scope("table-min-width", || {
         let state = TableState::new(
             demo_rows(),
             vec![

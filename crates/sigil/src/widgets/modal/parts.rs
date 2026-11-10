@@ -1,10 +1,12 @@
 use crate::kernel::{IntoNode, NodeBuilder, TextContent, container, text};
+use crate::layout::Space;
 use crate::layout::snap;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{ControlSize, Paint, Token, space};
+use crate::style::{ControlSize, Paint, Token};
+use crate::widgets::Widget;
 
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
@@ -26,8 +28,8 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
                 .fill_width()
                 .height(snap::line(TITLE_HEIGHT))
                 .shrink(0.0)
-                .padding_right(BODY_GUTTER)
-                .gap(space(2))
+                .padding_right(Space::px(BODY_GUTTER))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -48,7 +50,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
 }
 
 pub(super) fn dialog_body(children: Vec<Box<dyn IntoNode>>, offset: Signal<f32>) -> NodeBuilder {
-    let mut content = container().layout(LayoutStyle::flex_column().fill_width().gap(space(2)));
+    let mut content = container().layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm));
     for child in children {
         content = content.child(child);
     }

@@ -3,24 +3,20 @@ use crate::style::{Color, Rgba8};
 use smallvec::smallvec;
 
 use crate::scene::{
-    CornerRadii, GradientStop, LinearGradient, PaintFill, PatternKind, SceneBuilder,
-    SceneGradientStyle, ScenePatternStyle, SceneRectStyle, Shadow, Stroke, StrokeAlign,
-    StrokeStyle,
+    CornerRadii, DrawGradient, DrawPattern, DrawRect, GradientStop, LinearGradient, PaintFill,
+    PatternKind, SceneBuilder, Shadow, Stroke, StrokeAlign, StrokeStyle,
 };
 
 pub(super) fn draw_fill(scene: &mut SceneBuilder, rect: Rect, fill: PaintFill) {
     match fill {
-        PaintFill::Solid(color) => scene.draw_rect(
-            rect,
-            SceneRectStyle::new(color, CornerRadii::uniform(16.0), 10_000),
-        ),
+        PaintFill::Solid(color) => {
+            scene.draw_rect(DrawRect::new(rect, color).border_radius(CornerRadii::uniform(16.0)));
+        }
         PaintFill::LinearGradient(gradient) => scene.draw_gradient(
-            rect,
-            SceneGradientStyle::new(gradient, CornerRadii::uniform(16.0), 10_000),
+            DrawGradient::new(rect, gradient).border_radius(CornerRadii::uniform(16.0)),
         ),
         PaintFill::Pattern(pattern) => scene.draw_pattern(
-            rect,
-            ScenePatternStyle::new(pattern, CornerRadii::uniform(16.0), 10_000),
+            DrawPattern::new(rect, pattern).border_radius(CornerRadii::uniform(16.0)),
         ),
     }
 }
@@ -60,9 +56,9 @@ pub(super) fn draw_solid_strokes(scene: &mut SceneBuilder) {
         (216.0, StrokeAlign::Centered, StrokeStyle::Dashed(6.0), 2.0),
     ] {
         scene.draw_rect(
-            rect(24.0 + index, 24.0, 64.0, 64.0),
-            SceneRectStyle::new(fill, CornerRadii::uniform(12.0), 10_000)
-                .with_stroke(stroke_with(style, align, width)),
+            DrawRect::new(rect(24.0 + index, 24.0, 64.0, 64.0), fill)
+                .border_radius(CornerRadii::uniform(12.0))
+                .stroke(stroke_with(style, align, width)),
         );
     }
 }
@@ -91,9 +87,12 @@ pub(super) fn draw_gradient_strokes(scene: &mut SceneBuilder) {
             StrokeStyle::Solid
         };
         scene.draw_gradient(
-            rect(24.0 + index as f32 * 72.0, 104.0, 64.0, 64.0),
-            SceneGradientStyle::new(gradient.clone(), CornerRadii::uniform(12.0), 10_000)
-                .with_stroke(stroke_with(style, align, 3.0)),
+            DrawGradient::new(
+                rect(24.0 + index as f32 * 72.0, 104.0, 64.0, 64.0),
+                gradient.clone(),
+            )
+            .border_radius(CornerRadii::uniform(12.0))
+            .stroke(stroke_with(style, align, 3.0)),
         );
     }
 }

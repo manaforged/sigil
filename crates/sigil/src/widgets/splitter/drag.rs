@@ -1,12 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
-use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 
+use crate::widgets::drag::axis_drag;
 use crate::widgets::orientation::Orientation;
-
-type Anchor = (usize, f32, Vec<f32>);
 
 #[derive(Clone, Copy)]
 pub(super) struct SplitterState {
@@ -22,7 +20,9 @@ struct SplitterStateInner {
     snap_points: Vec<Vec<f32>>,
     snap_threshold: f32,
     sizes_bind: Option<Signal<Vec<f32>>>,
-    drag_anchor: RefCell<Option<Anchor>>,
+    settle_bind: Option<Signal<Vec<f32>>>,
+    proportional: bool,
+    extent: Cell<f32>,
     revision: Signal<u64>,
 }
 
@@ -31,6 +31,13 @@ pub(super) struct PaneLimits {
     pub(super) mins: Vec<f32>,
     pub(super) maxs: Vec<f32>,
     pub(super) grows: Vec<f32>,
+    pub(super) proportional: bool,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct Binds {
+    pub(super) sizes: Option<Signal<Vec<f32>>>,
+    pub(super) settle: Option<Signal<Vec<f32>>>,
 }
 
 impl SplitterState {
@@ -39,7 +46,7 @@ impl SplitterState {
         limits: PaneLimits,
         snaps: Vec<(usize, Vec<f32>)>,
         snap_threshold: f32,
-        sizes_bind: Option<Signal<Vec<f32>>>,
+        binds: Binds,
     ) -> Self {
         let mut snap_points = vec![Vec::new(); limits.sizes.len().saturating_sub(1)];
         for (handle, points) in snaps {
@@ -47,7 +54,7 @@ impl SplitterState {
                 *slot = points;
             }
         }
-        if let Some(signal) = sizes_bind {
+        if let Some(signal) = binds.sizes {
             signal.set(limits.sizes.clone());
         }
         let inner = Box::leak(Box::new(SplitterStateInner {
@@ -58,8 +65,10 @@ impl SplitterState {
             grows: limits.grows,
             snap_points,
             snap_threshold: snap_threshold.max(0.0),
-            sizes_bind,
-            drag_anchor: RefCell::new(None),
+            sizes_bind: binds.sizes,
+            settle_bind: binds.settle,
+            proportional: limits.proportional,
+            extent: Cell::new(0.0),
             revision: signal(0),
         }));
         Self { inner }
@@ -91,14 +100,8 @@ impl SplitterState {
     }
 
     pub(super) fn nudge(self, handle: usize, delta: f32) {
-        self.begin(handle, 0.0);
-        self.apply_delta(handle, delta);
-        self.inner.drag_anchor.borrow_mut().take();
-    }
-
-    fn begin(self, handle: usize, axis_position: f32) {
         let snapshot = self.inner.sizes.borrow().clone();
-        *self.inner.drag_anchor.borrow_mut() = Some((handle, axis_position, snapshot));
+        self.resize(&snapshot, handle, delta);
     }
 
     fn resize(self, snapshot: &[f32], handle: usize, delta: f32) {
@@ -108,6 +111,10 @@ impl SplitterState {
             grows: &self.inner.grows,
         };
         let next = redistribute(snapshot, handle, delta, &bounds);
+        self.replace(next);
+    }
+
+    fn replace(self, next: Vec<f32>) {
         *self.inner.sizes.borrow_mut() = next;
         self.inner
             .revision
@@ -117,18 +124,36 @@ impl SplitterState {
         }
     }
 
-    fn apply_delta(self, handle: usize, delta: f32) {
-        let snapshot = match self.inner.drag_anchor.borrow().as_ref() {
-            Some((anchor, _, snapshot)) if *anchor == handle => snapshot.clone(),
-            _ => return,
-        };
-        self.resize(&snapshot, handle, delta);
+    /// Scales the panes to fill `extent` pixels, keeping their shares, in proportional mode.
+    pub(super) fn fit(self, extent: f32) {
+        let previous = self.inner.extent.get();
+        if !self.inner.proportional || extent <= 0.0 || (extent - previous).abs() < 0.5 {
+            return;
+        }
+        self.inner.extent.set(extent);
+        let total: f32 = self.inner.sizes.borrow().iter().sum();
+        if total <= 0.0 {
+            return;
+        }
+        let scale = extent / total;
+        let next = self
+            .inner
+            .sizes
+            .borrow()
+            .iter()
+            .map(|size| size * scale)
+            .collect();
+        self.replace(next);
     }
 
-    fn end(self) {
-        let Some((handle, _, _)) = self.inner.drag_anchor.borrow_mut().take() else {
-            return;
-        };
+    /// Reports the sizes to the settle bind once a drag or key move ends.
+    pub(super) fn settle(self) {
+        if let Some(signal) = self.inner.settle_bind {
+            signal.set(self.inner.sizes.borrow().clone());
+        }
+    }
+
+    fn snap(self, handle: usize) {
         let Some(points) = self.inner.snap_points.get(handle) else {
             return;
         };
@@ -170,6 +195,9 @@ fn redistribute(snapshot: &[f32], handle: usize, delta: f32, bounds: &PaneBounds
     };
     let max_delta = (max(handle) - grow_base).min(shrink_base - min(handle + 1));
     let min_delta = (min(handle) - grow_base).max(shrink_base - max(handle + 1));
+    if min_delta > max_delta {
+        return out;
+    }
     let applied = delta.clamp(min_delta, max_delta);
     if let Some(slot) = out.get_mut(handle) {
         *slot = grow_base + applied;
@@ -197,36 +225,17 @@ pub(super) fn install_handle_hooks(
     state: SplitterState,
     handle_index: usize,
 ) -> NodeBuilder {
-    node.pointer_down(move |event| {
-        let axis = axis_of(state.orientation(), event.position.x, event.position.y);
-        state.begin(handle_index, axis);
-        event.capture_pointer();
-        event.stop_propagation();
-    })
-    .pointer_move(move |event| {
-        if !event.is_captured() {
-            return;
-        }
-        let anchor_axis = state.inner.drag_anchor.borrow().as_ref().map(|a| a.1);
-        let Some(anchor_axis) = anchor_axis else {
-            return;
-        };
-        let current_axis = axis_of(state.orientation(), event.position.x, event.position.y);
-        let delta = current_axis - anchor_axis;
-        state.apply_delta(handle_index, delta);
-        event.stop_propagation();
-    })
-    .pointer_up(move |event| {
-        state.end();
-        event.stop_propagation();
-    })
-}
-
-const fn axis_of(orientation: Orientation, x: f32, y: f32) -> f32 {
-    match orientation {
-        Orientation::Horizontal => x,
-        Orientation::Vertical => y,
-    }
+    let axis = state.orientation();
+    axis_drag(
+        node,
+        axis,
+        move || state.inner.sizes.borrow().clone(),
+        move |snapshot, delta| state.resize(&snapshot, handle_index, delta),
+        move || {
+            state.snap(handle_index);
+            state.settle();
+        },
+    )
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -9,7 +10,7 @@ mod scene_support;
 
 use scene_support::{color, rect};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
-use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
+use sigil::scene::{CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand};
 use sigil::style::Color;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -48,8 +49,8 @@ fn assert_basic_command_shape(scene: &CommandScene) {
 fn basic_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.draw_rect(
-        rect(24.0, 16.0, 172.0, 48.0),
-        SceneRectStyle::new(color(220, 60, 60, 255), CornerRadii::uniform(8.0), 10_000),
+        DrawRect::new(rect(24.0, 16.0, 172.0, 48.0), color(220, 60, 60, 255))
+            .border_radius(CornerRadii::uniform(8.0)),
     );
     builder.finish()
 }

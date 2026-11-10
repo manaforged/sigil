@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn hidden_reveal_materializes_never_synced_subtree() {
-    Runtime::scope("hidden-reveal", || {
+    Owner::scope("hidden-reveal", || {
         let mut cx = Cx::new_root();
         let hidden_flag = signal(false);
         let wrapper = container()

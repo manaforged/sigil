@@ -1,8 +1,10 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
+use crate::layout::Space;
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);
@@ -15,6 +17,7 @@ pub(crate) static STATUS_CHROME: &[StyleAtom] = &[
     Token::Border.border(),
 ];
 
+/// A status line.
 #[must_use]
 pub fn status_bar<I>(children: I) -> NodeBuilder
 where
@@ -31,14 +34,14 @@ where
                 .fill_width()
                 .height(crate::layout::snap::ruled(STATUS_BAR_HEIGHT))
                 .shrink(0.0)
-                .padding_x(space(2))
-                .gap(STATUS_BAR_GAP)
+                .padding_x(Space::Sm)
+                .gap(Space::px(STATUS_BAR_GAP))
                 .align_items(AlignItems::Center),
         )
         .class(STATUS_CHROME);
     for (index, child) in children.into_iter().enumerate() {
         let layout = LayoutStyle::flex_row()
-            .gap(STATUS_BAR_GAP)
+            .gap(Space::px(STATUS_BAR_GAP))
             .align_items(AlignItems::Center);
         let layout = if Some(index) == last {
             layout.grow(1.0).justify_content(JustifyContent::End)
@@ -50,6 +53,7 @@ where
     root
 }
 
+/// One key/value row.
 #[must_use]
 pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> NodeBuilder {
     container()
@@ -58,7 +62,7 @@ pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_size(0.0, Metrics::current().control_height(ControlSize::Default))
-                .gap(KV_ROW_GAP)
+                .gap(Space::px(KV_ROW_GAP))
                 .align_items(AlignItems::Center),
         )
         .child(

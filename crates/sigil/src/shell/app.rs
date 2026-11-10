@@ -9,14 +9,13 @@ use winit::{
     window::WindowId,
 };
 
-use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
+use crate::events::{Event, WindowEvent as SigilWindowEvent};
 
 use crate::shell::{WinitWindowHandle, shell::WinitShell, waker::WakeEvent};
 
 pub(crate) struct WinitApp<F> {
     pub(crate) shell: WinitShell,
     pub(crate) frame: F,
-    pub(crate) app_redraw_pending: bool,
 }
 
 impl<F> WinitApp<F> {
@@ -68,21 +67,20 @@ where
 
         self.shell.pending_wake().store(false, Ordering::Release);
 
-        self.app_redraw_pending = true;
-        self.shell.request_redraws();
+        self.shell.request_frames();
         self.run_hidden(event_loop);
     }
 
     fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
-            self.app_redraw_pending = true;
-            self.shell.request_redraws();
+            self.shell.request_frames();
             self.run_hidden(event_loop);
         }
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         crate::shell::exit_hook::run();
+        crate::profile::dump_if_enabled();
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
@@ -103,27 +101,27 @@ where
             WinitWindowEvent::CloseRequested => {
                 if let Some(handle) = self.shell.handle_for(window_id) {
                     self.shell
-                        .push_event(handle, ShellEvent::Window(SigilWindowEvent::CloseRequested));
+                        .push_event(handle, Event::Window(SigilWindowEvent::CloseRequested));
                 }
-                self.app_redraw_pending = true;
-                self.shell.request_redraws();
+                self.shell.request_frames();
                 self.run_hidden(event_loop);
             }
             WinitWindowEvent::RedrawRequested => {
                 if !self.materialise_pending(event_loop) {
                     return;
                 }
-                if !self.app_redraw_pending {
+                let target = self.shell.handle_for(window_id);
+                if !self.shell.take_app_redraw(target) {
                     self.shell.set_force_paint();
                 }
-                self.app_redraw_pending = false;
-                let target = self.shell.handle_for(window_id);
+                if let Some(handle) = target {
+                    self.shell.centre_controls(handle);
+                }
                 self.run_frame(event_loop, target);
             }
             event => {
                 if self.shell.buffer_window_event(window_id, event) {
-                    self.app_redraw_pending = true;
-                    self.shell.request_redraws();
+                    self.shell.request_frames();
                 }
             }
         }

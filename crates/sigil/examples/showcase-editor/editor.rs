@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::style::space;
 
 use super::chrome::Command;
 use super::project::{FileId, FileKind, Folder, PROJECT_NAME};
@@ -19,7 +18,7 @@ fn tab_label(ws: Workspace, file: FileId) -> String {
     }
 }
 
-fn tab_strip(ws: Workspace) -> sigil::widgets::TabsBuilder {
+fn tab_strip(ws: Workspace) -> impl IntoNode {
     let labels = derived(move || {
         ws.open
             .get()
@@ -57,9 +56,9 @@ fn breadcrumb(file: FileId) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .shrink(0.0)
-                .padding_x(space(3))
-                .padding_y(space(1))
-                .gap(space(2))
+                .padding_x(Space::Md)
+                .padding_y(Space::Xs)
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         ),
         |row, (index, part)| {
@@ -67,13 +66,15 @@ fn breadcrumb(file: FileId) -> NodeBuilder {
                 row.child(
                     text(CRUMB_SEP)
                         .nowrap()
-                        .font_size(super::TEXT_XS)
+                        .font_size(super::TEXT_XS, "example layout")
                         .text_color(Token::OnSurfaceMuted),
                 )
             } else {
                 row
             };
-            let label = text(part).nowrap().font_size(super::TEXT_XS);
+            let label = text(part)
+                .nowrap()
+                .font_size(super::TEXT_XS, "example layout");
             row.child(if index == last {
                 label.text_color(Token::OnSurface)
             } else {
@@ -100,7 +101,7 @@ fn preview(buffer: Buffer) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill()
                 .min_size(0.0, 0.0)
-                .padding(space(4)),
+                .padding(Space::Lg),
         )
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)

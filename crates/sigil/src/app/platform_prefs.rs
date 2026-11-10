@@ -10,6 +10,17 @@ struct PlatformPrefs {
     click_interval: Option<Duration>,
 }
 
+#[cfg(feature = "scene")]
+fn apply_text(config: &AppConfig) {
+    if let Some(fonts) = &config.fonts {
+        crate::text::fonts::set_default_fonts(fonts.clone());
+    }
+    crate::text::fonts::set_fallback_fonts(&config.font_fallbacks);
+    if let Some(tuning) = config.text_tuning {
+        crate::renderer::slug::set_text_tuning(tuning);
+    }
+}
+
 pub(crate) fn apply(config: &AppConfig) {
     let platform = read();
     let reduced = config
@@ -17,14 +28,17 @@ pub(crate) fn apply(config: &AppConfig) {
         .or(platform.reduced_motion)
         .unwrap_or(false);
     MotionPrefs::set(reduced);
-    let click = config.click.unwrap_or_else(|| {
-        let default = ClickConfig::default();
-        ClickConfig {
-            interval: platform.click_interval.unwrap_or(default.interval),
-            ..default
-        }
-    });
+    let default = ClickConfig::default();
+    let click = ClickConfig {
+        interval: config
+            .double_click_time
+            .or(platform.click_interval)
+            .unwrap_or(default.interval),
+        distance: config.double_click_distance.unwrap_or(default.distance),
+    };
     ClickConfig::set(click);
+    #[cfg(feature = "scene")]
+    apply_text(config);
 }
 
 #[cfg(target_os = "macos")]

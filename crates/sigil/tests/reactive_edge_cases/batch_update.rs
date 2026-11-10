@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn nested_batch_drains_only_on_outer_exit() {
-    Runtime::scope("nested_batch", || {
+    Owner::scope("nested_batch", || {
         let n = signal(0_i32);
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -30,7 +30,7 @@ fn nested_batch_drains_only_on_outer_exit() {
 
 #[test]
 fn batch_returns_inner_value() {
-    Runtime::scope("batch_return", || {
+    Owner::scope("batch_return", || {
         let result: i32 = batch(|| 42);
         assert_eq!(result, 42);
 
@@ -41,7 +41,7 @@ fn batch_returns_inner_value() {
 
 #[test]
 fn empty_batch_is_noop() {
-    Runtime::scope("empty_batch", || {
+    Owner::scope("empty_batch", || {
         let n = signal(7_i32);
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -59,7 +59,7 @@ fn empty_batch_is_noop() {
 
 #[test]
 fn update_observes_current_value_and_writes_back() {
-    Runtime::scope("update_observe", || {
+    Owner::scope("update_observe", || {
         let n = signal(10_i32);
         let observed = Rc::new(Cell::new(-1));
         let observed_for = Rc::clone(&observed);
@@ -74,7 +74,7 @@ fn update_observes_current_value_and_writes_back() {
 
 #[test]
 fn update_can_call_back_into_other_signals() {
-    Runtime::scope("update_callback", || {
+    Owner::scope("update_callback", || {
         let n = signal(0_i32);
         let other = signal(100_i32);
         n.update(|v| {
@@ -89,7 +89,7 @@ fn update_can_call_back_into_other_signals() {
 #[test]
 fn update_re_entry_on_same_signal_panics() {
     let result = std::panic::catch_unwind(|| {
-        Runtime::scope("update_self_reentry", || {
+        Owner::scope("update_self_reentry", || {
             let n = signal(0_i32);
             n.update(|v| {
                 *v = 1;
@@ -103,7 +103,7 @@ fn update_re_entry_on_same_signal_panics() {
 #[test]
 fn get_on_self_during_own_update_panics() {
     let result = std::panic::catch_unwind(|| {
-        Runtime::scope("get_during_update", || {
+        Owner::scope("get_during_update", || {
             let n = signal(0_i32);
             n.update(|v| {
                 *v = 5;

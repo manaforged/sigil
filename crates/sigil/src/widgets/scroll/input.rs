@@ -1,53 +1,44 @@
 use std::cell::Cell;
 
 use crate::events::selection::drag_active;
-use crate::events::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
+use crate::events::{Key, KeyEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, effect, untrack};
+use crate::widgets::Widget;
 
 use super::SCROLL_LINE;
+use crate::widgets::interaction::{ValueStep, step_keys};
 
-#[derive(Clone, Copy)]
-enum Travel {
-    Line(f32),
-    Page(f32),
-    To(bool),
-}
-
-const SCROLL_KEYS: [(Key, Travel); 6] = [
-    (Key::ArrowDown, Travel::Line(1.0)),
-    (Key::ArrowUp, Travel::Line(-1.0)),
-    (Key::PageDown, Travel::Page(1.0)),
-    (Key::PageUp, Travel::Page(-1.0)),
-    (Key::Home, Travel::To(false)),
-    (Key::End, Travel::To(true)),
+const SCROLL_KEYS: [(Key, ValueStep); 6] = [
+    (Key::ArrowDown, ValueStep::Unit(1.0)),
+    (Key::ArrowUp, ValueStep::Unit(-1.0)),
+    (Key::PageDown, ValueStep::Page(1.0)),
+    (Key::PageUp, ValueStep::Page(-1.0)),
+    (Key::Home, ValueStep::Start),
+    (Key::End, ValueStep::End),
 ];
 
-impl Travel {
-    fn apply(self, event: &mut KeyEvent, scroll_y: Signal<f32>, max: f32, page: f32) {
-        match self {
-            Self::Line(sign) => step(event, scroll_y, sign * SCROLL_LINE, max),
-            Self::Page(sign) => step(event, scroll_y, sign * page, max),
-            Self::To(end) => {
-                event.stop_propagation();
-                scroll_y.set(if end { max } else { 0.0 });
-            }
+fn travel(kind: ValueStep, event: &mut KeyEvent, scroll_y: Signal<f32>, max: f32, page: f32) {
+    match kind {
+        ValueStep::Unit(sign) => step(event, scroll_y, sign * SCROLL_LINE, max),
+        ValueStep::Page(sign) => step(event, scroll_y, sign * page, max),
+        ValueStep::Start | ValueStep::End => {
+            event.stop_propagation();
+            scroll_y.set(if kind == ValueStep::End { max } else { 0.0 });
         }
     }
 }
 
 pub(super) fn bind(
-    mut root: NodeBuilder,
+    root: NodeBuilder,
     scroll_y: Signal<f32>,
     max: Signal<f32>,
     height: Signal<f32>,
 ) -> NodeBuilder {
-    for (key, travel) in SCROLL_KEYS {
-        root = root.key(key, move |event| {
-            travel.apply(event, scroll_y, max.peek(), height.peek());
-        });
-    }
-    root.on_scroll(move |event| {
+    step_keys(root, &SCROLL_KEYS, move |kind, event| {
+        travel(kind, event, scroll_y, max.peek(), height.peek());
+    })
+    .on_scroll(move |event| {
         let y = WheelAxis {
             offset: scroll_y,
             viewport: height.peek(),

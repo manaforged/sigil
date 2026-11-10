@@ -1,15 +1,16 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, snap};
+use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::DISABLED_OPACITY;
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
 use super::super::virtual_list::virtual_list;
@@ -31,6 +32,7 @@ static FRAMED: &[StyleAtom] = &[
 static UNFRAMED: &[StyleAtom] = &[Token::Surface.bg()];
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
+/// Builder of a table.
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
     row_height: f32,
@@ -51,6 +53,7 @@ pub struct TableBuilder<Row: 'static> {
     layout_overrides: LayoutOverrides,
 }
 
+/// A sortable, filterable table.
 #[must_use]
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
@@ -75,48 +78,56 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 }
 
 impl<Row: 'static> TableBuilder<Row> {
+    /// Sets the row height.
     #[must_use]
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
+    /// Sets the header height.
     #[must_use]
     pub const fn header_height(mut self, px: f32) -> Self {
         self.header_height = px;
         self
     }
 
+    /// Sets the viewport height.
     #[must_use]
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
+    /// Sets the viewport width.
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
+    /// Applies the viewport fill option.
     #[must_use]
     pub const fn viewport_fill(mut self) -> Self {
         self.viewport_fill = true;
         self
     }
 
+    /// Sets the row menu.
     #[must_use]
     pub fn row_menu(mut self, build: impl Fn(&Row) -> Vec<MenuItem> + 'static) -> Self {
         self.row_menu = Some(Rc::new(build));
         self
     }
 
+    /// Sets the row activate.
     #[must_use]
     pub fn row_activate(mut self, activate: impl Fn(&Row) + 'static) -> Self {
         self.row_activate = Some(Rc::new(activate));
         self
     }
 
+    /// Sets the density.
     #[must_use]
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
@@ -125,43 +136,49 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
+    /// Applies the striped option.
     #[must_use]
     pub const fn striped(mut self) -> Self {
         self.striped = true;
         self
     }
 
+    /// Sets the framed.
     #[must_use]
     pub const fn framed(mut self, framed: bool) -> Self {
         self.frame = if framed { FRAMED } else { UNFRAMED };
         self
     }
 
+    /// Sets the scroll bind.
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the empty.
     #[must_use]
     pub fn empty(mut self, build: impl Fn() -> NodeBuilder + 'static) -> Self {
         self.empty = Some(Rc::new(build));
         self
     }
 
+    /// Applies the selectable checkboxes option.
     #[must_use]
     pub const fn selectable_checkboxes(mut self) -> Self {
         self.select = true;
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let state = self.state;
         let chrome = TableChrome::new(self.row_menu, self.row_activate);
         let pad_x = self.density.pad_x();
@@ -305,7 +322,7 @@ fn default_empty() -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill_width()
                 .grow(1.0)
-                .padding(space(6))
+                .padding(Space::Xl)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
@@ -317,27 +334,8 @@ fn default_empty() -> NodeBuilder {
         )
 }
 
-impl<Row: 'static> IntoNode for TableBuilder<Row> {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
-
-impl<Row: 'static> WidgetLayoutExt for TableBuilder<Row> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([Row: 'static] TableBuilder<Row>: paint(style_accumulator), widget, node);
 
 #[cfg(test)]
 #[path = "view_tests.rs"]
 mod tests;
-
-impl<Row: 'static> PaintTarget for TableBuilder<Row> {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}

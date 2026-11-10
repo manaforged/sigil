@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -6,7 +7,7 @@
 
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::OffscreenTarget;
-use sigil::scene::{SceneBuilder, SceneRectStyle};
+use sigil::scene::{DrawRect, SceneBuilder};
 use sigil::style::{Color, Rgba8};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -66,9 +67,9 @@ fn ordered_batches_share_one_rect_upload_buffer() {
 
 fn two_batch_scene() -> sigil::scene::CommandScene {
     let mut scene = SceneBuilder::new();
-    scene.draw_rect(rect(4.0, 4.0), SceneRectStyle::solid(color(220, 60, 80)));
+    scene.draw_rect(DrawRect::new(rect(4.0, 4.0), color(220, 60, 80)));
     scene.with_clip(Rect::new(Point::new(48.0, 0.0), 48.0, 48.0), |scene| {
-        scene.draw_rect(rect(52.0, 4.0), SceneRectStyle::solid(color(70, 160, 240)));
+        scene.draw_rect(DrawRect::new(rect(52.0, 4.0), color(70, 160, 240)));
     });
     scene.finish()
 }

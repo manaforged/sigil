@@ -42,31 +42,28 @@ fn text_edit_row(state: State) -> NodeBuilder {
 }
 
 fn number_row(state: State) -> NodeBuilder {
-    node(
-        crate::widget_fields::number_field_demo()
-            .disabled(off(state))
-            .invalid_when(invalid(state)),
-    )
+    node(crate::widget_fields::number_field_demo(
+        off(state),
+        invalid(state),
+    ))
 }
 
 fn date_row(state: State) -> NodeBuilder {
-    node(
-        crate::widget_fields::date_field_demo()
-            .disabled(off(state))
-            .invalid_when(invalid(state)),
-    )
+    node(crate::widget_fields::date_field_demo(
+        off(state),
+        invalid(state),
+    ))
 }
 
 fn color_row(state: State) -> NodeBuilder {
-    node(
-        crate::widget_fields::color_field_demo()
-            .disabled(off(state))
-            .invalid_when(invalid(state)),
-    )
+    node(crate::widget_fields::color_field_demo(
+        off(state),
+        invalid(state),
+    ))
 }
 
 fn dropdown_row(state: State) -> NodeBuilder {
-    node(crate::widget_fields::dropdown_demo().disabled(off(state)))
+    node(crate::widget_fields::dropdown_demo(off(state)))
 }
 
 fn combobox_row(state: State) -> NodeBuilder {
@@ -74,7 +71,7 @@ fn combobox_row(state: State) -> NodeBuilder {
 }
 
 fn code_edit_row(state: State) -> NodeBuilder {
-    node(crate::widget_documents::code_edit_demo().disabled(off(state)))
+    node(crate::widget_documents::code_edit_demo(off(state)))
 }
 
 fn markdown_edit_row(state: State) -> NodeBuilder {

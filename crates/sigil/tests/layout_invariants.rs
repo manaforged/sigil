@@ -7,26 +7,31 @@
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::CharMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 7.0,
-    line_height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 struct NativeLineGeometry;
 
-impl sigil::layout::TextGeometry for NativeLineGeometry {
+impl sigil::layout::TextMeasure for NativeLineGeometry {
+    fn measure(
+        &self,
+        _content: &TextContent,
+        _space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
+        sigil::geometry::LogicalSize::default()
+    }
+
     fn hit(
         &self,
         _text: &str,
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
         _point: sigil::geometry::Point,
-    ) -> sigil::hal::HitPosition {
-        sigil::hal::HitPosition {
+    ) -> sigil::text::HitPosition {
+        sigil::text::HitPosition {
             byte_index: 0,
-            affinity: sigil::hal::TextAffinity::Downstream,
+            affinity: sigil::text::TextAffinity::Downstream,
         }
     }
 
@@ -35,7 +40,7 @@ impl sigil::layout::TextGeometry for NativeLineGeometry {
         _text: &str,
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
-        _position: sigil::hal::HitPosition,
+        _position: sigil::text::HitPosition,
     ) -> sigil::layout::CaretGeometry {
         sigil::layout::CaretGeometry {
             x: 0.0,
@@ -49,7 +54,7 @@ impl sigil::layout::TextGeometry for NativeLineGeometry {
         _text: &str,
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
-        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
+        _selection: (sigil::text::HitPosition, sigil::text::HitPosition),
     ) -> Vec<sigil::geometry::Rect> {
         Vec::new()
     }
@@ -123,7 +128,7 @@ fn visit(cx: &Cx, layout: &LayoutEngine, id: NodeId, state: WalkState, out: &mut
 }
 
 fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
-    sigil::reactive::Runtime::scope("layout-invariants", || {
+    sigil::reactive::Owner::scope("layout-invariants", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
         let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
@@ -149,13 +154,13 @@ const WIDTHS: [f32; 4] = [320.0, 640.0, 1100.0, 1600.0];
 
 fn labeled_field(label: &'static str, control: impl IntoNode + 'static) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(4.0))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
         .child(text(label))
         .child(control)
 }
 
 fn columns(children: Vec<NodeBuilder>) -> NodeBuilder {
-    let mut row = container().layout(LayoutStyle::flex_row().fill_width().gap(12.0));
+    let mut row = container().layout(LayoutStyle::flex_row().fill_width().gap(Space::Md));
     for child in children {
         row = row.child(
             container()
@@ -187,8 +192,8 @@ fn stacked_widgets_are_sound_at_every_width() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fill_width()
-                        .gap(8.0)
-                        .padding(16.0),
+                        .gap(Space::Sm)
+                        .padding(Space::Lg),
                 )
                 .child(labeled_field("progress", progress(signal(0.5_f32), 1.0)))
                 .child(labeled_field("toggle", toggle(signal(true))))
@@ -203,7 +208,7 @@ fn stacked_widgets_are_sound_at_every_width() {
 
 #[test]
 fn compact_text_field_contains_native_line_height() {
-    sigil::reactive::Runtime::scope("compact-text-field-layout", || {
+    sigil::reactive::Owner::scope("compact-text-field-layout", || {
         sigil::layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
@@ -248,7 +253,7 @@ fn scrolled_content_is_sound_at_every_width() {
     for width in WIDTHS {
         assert_sound("scrolled page", width, || {
             let page = container()
-                .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
+                .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
                 .child(labeled_field(
                     "field",
                     text_field(signal(String::from("hi"))),
@@ -267,7 +272,7 @@ fn scrolled_content_is_sound_at_every_width() {
 
 #[test]
 fn layout_re_resolves_when_the_container_resizes() {
-    sigil::reactive::Runtime::scope("layout-invariants-resize", || {
+    sigil::reactive::Owner::scope("layout-invariants-resize", || {
         let mut cx = Cx::new_root();
         let root = cx.add(columns(vec![
             labeled_field("a", progress(signal(0.5_f32), 1.0)),

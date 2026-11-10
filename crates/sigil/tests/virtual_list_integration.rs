@@ -7,16 +7,16 @@
 #[path = "events_support/input.rs"]
 mod input;
 
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use input::{pointer_down, scroll_lines};
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::events::PhysicalKey;
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
 use sigil_kittest::stub_text_measure;
@@ -26,7 +26,7 @@ const VIEWPORT_WIDTH: f32 = 1_280.0;
 
 #[test]
 fn widget_renders_only_visible_window_at_100k_items() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-window", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-integration-window", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..100_000).collect();
         let root = cx.add(
@@ -43,7 +43,7 @@ fn widget_renders_only_visible_window_at_100k_items() {
 
 #[test]
 fn scroll_signal_drives_window_advance() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-scroll", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-integration-scroll", || {
         let scroll_y = signal(0.0_f32);
         let rendered = Rc::new(RefCell::new(Vec::new()));
         build_recording_list(scroll_y, Rc::clone(&rendered));
@@ -65,7 +65,7 @@ fn scroll_signal_drives_window_advance() {
 
 #[test]
 fn keyboard_navigation_end_to_end() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-keyboard", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-integration-keyboard", || {
         let focused_row = signal(0_usize);
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();
@@ -96,7 +96,7 @@ fn keyboard_navigation_end_to_end() {
 
 #[test]
 fn selection_propagates_to_a11y() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-selection", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-integration-selection", || {
         let mut builder = virtual_list((0..20).collect::<Vec<_>>(), row)
             .row_height(ROW_HEIGHT)
             .viewport_height(480.0)
@@ -112,7 +112,7 @@ fn selection_propagates_to_a11y() {
         router.route(
             &mut cx,
             &layout,
-            pointer_down(1.0, ROW_HEIGHT.mul_add(5.0, 1.0)),
+            Event::pointer_down(Point::new(1.0, ROW_HEIGHT.mul_add(5.0, 1.0))),
         );
 
         let selected = selected_a11y_count(&cx, root);
@@ -121,7 +121,7 @@ fn selection_propagates_to_a11y() {
 }
 
 fn fastest_scroll_step(count: usize) -> Duration {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-scaling", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-integration-scaling", || {
         let scroll_y = signal(0.0_f32);
         let items: Vec<usize> = (0..count).collect();
         let mut samples = Vec::new();
@@ -221,20 +221,13 @@ fn press_down(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine) {
     router.route(
         cx,
         layout,
-        ShellEvent::Key(KeyEvent::new(KeyEventInit {
-            key: Key::ArrowDown.into(),
-            physical: PhysicalKey::ArrowDown,
-            modifiers: ModifiersState::empty(),
-            repeat: false,
-            phase: KeyPhase::Down,
-            text: None,
-        })),
+        Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
     );
 }
 
 #[test]
 fn a_static_list_renders_new_rows_when_the_wheel_scrolls() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-static-wheel", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-static-wheel", || {
         let rendered = Rc::new(RefCell::new(Vec::new()));
         let seen = Rc::clone(&rendered);
         let mut cx = Cx::new_root();
@@ -252,7 +245,11 @@ fn a_static_list_renders_new_rows_when_the_wheel_scrolls() {
         let mut layout = compute_layout(&mut cx, root, size);
         let mut router = EventRouter::new();
         for _ in 0..40 {
-            router.route(&mut cx, &layout, scroll_lines(100.0, 100.0, -3.0));
+            router.route(
+                &mut cx,
+                &layout,
+                Event::wheel(Point::new(100.0, 100.0), -3.0),
+            );
             cx.flush_reactive_children();
             layout
                 .compute(&mut cx, root, size)

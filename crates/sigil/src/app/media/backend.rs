@@ -3,7 +3,7 @@ use core::time::Duration;
 use playwire::{Event, MediaControls, PlayerConfig};
 
 use super::types::{MediaKey, PlaybackState, Repeat, Track};
-use crate::app::error::{AppResult, Error};
+use crate::error::{AppResult, Error};
 
 pub(super) type Controls = MediaControls;
 

@@ -1,5 +1,6 @@
 use sigil::Host;
-use sigil::events::{EventRouter, PhysicalKey, ShellEvent};
+use sigil::events::{Event, PhysicalKey};
+use sigil::geometry::Point;
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
@@ -7,18 +8,17 @@ use sigil::reactive::signal;
 use sigil::widgets::{button, chart, text_edit, virtual_list};
 
 use crate::budgets::Scenario;
-use crate::input::{pointer_down, pointer_move, pointer_up, scroll_lines, type_char};
 
 pub(crate) const VIEW: (f32, f32) = (1280.0, 800.0);
 const ROWS_10K: usize = 10_000;
 const BUTTONS: usize = 40;
 
-type EventAt = fn(u32) -> ShellEvent;
+type EventAt = fn(u32) -> Event;
 type TreeFn = fn() -> Box<dyn IntoNode>;
 
 pub(crate) struct Rig {
     pub tree: TreeFn,
-    pub setup: Vec<ShellEvent>,
+    pub setup: Vec<Event>,
     pub events: Option<EventAt>,
 }
 
@@ -69,19 +69,19 @@ fn plot_tree() -> impl IntoNode {
         .child(chart(values).line())
 }
 
-const fn hover(frame: u32) -> ShellEvent {
+const fn hover(frame: u32) -> Event {
     let y = if frame.is_multiple_of(2) { 10.0 } else { 60.0 };
-    pointer_move(20.0, y)
+    Event::pointer_move(Point::new(20.0, y))
 }
 
-const fn scroll(frame: u32) -> ShellEvent {
+const fn scroll(frame: u32) -> Event {
     let dy = if frame % 50 < 25 { -3.0 } else { 3.0 };
-    scroll_lines(100.0, 100.0, dy)
+    Event::wheel(Point::new(100.0, 100.0), dy)
 }
 
-fn typing(frame: u32) -> ShellEvent {
+fn typing(frame: u32) -> Event {
     let ch = if frame.is_multiple_of(2) { "a" } else { "b" };
-    type_char(ch, PhysicalKey::KeyA)
+    Event::typed(ch).physical(PhysicalKey::KeyA)
 }
 
 pub(crate) fn rig(scenario: Scenario) -> Rig {
@@ -93,8 +93,11 @@ pub(crate) fn rig(scenario: Scenario) -> Rig {
         Scenario::Chart => (plot, None),
     };
     let setup = match scenario {
-        Scenario::Typing => vec![pointer_down(20.0, 10.0), pointer_up(20.0, 10.0)],
-        Scenario::Scroll => vec![pointer_move(100.0, 100.0)],
+        Scenario::Typing => vec![
+            Event::pointer_down(Point::new(20.0, 10.0)),
+            Event::pointer_up(Point::new(20.0, 10.0)),
+        ],
+        Scenario::Scroll => vec![Event::pointer_move(Point::new(100.0, 100.0))],
         _ => Vec::new(),
     };
     Rig {
@@ -104,9 +107,9 @@ pub(crate) fn rig(scenario: Scenario) -> Rig {
     }
 }
 
-pub(crate) fn mount(host: &mut Host, router: &mut EventRouter, rig: &Rig) {
+pub(crate) fn mount(host: &mut Host, rig: &Rig) {
     host.mount(rig.tree);
     for event in rig.setup.iter().cloned() {
-        crate::drive::window_frame(host, router, Some(event), false);
+        crate::drive::window_frame(host, Some(event), false);
     }
 }

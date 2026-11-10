@@ -4,9 +4,11 @@ use std::sync::{Mutex, OnceLock};
 
 use smallvec::SmallVec;
 
-use crate::style::{Px, StyleAtom};
+use crate::style::StyleAtom;
+use crate::style::atom::{Amount, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot};
 
-pub type ComponentId = u64;
+/// Identifies a component's style.
+pub(crate) type ComponentId = u64;
 
 mod slots;
 pub(crate) use slots::SlotSet;
@@ -30,6 +32,7 @@ pub(crate) fn merge_classes(
 static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
 static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
 
+#[cfg(test)]
 #[must_use]
 pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
     WARNED
@@ -43,6 +46,8 @@ pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> us
         })
 }
 
+/// Number of unknown class names seen.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn unknown_class_warning_count() -> usize {
     UNKNOWN_CLASS.load(Ordering::Relaxed)
@@ -89,7 +94,7 @@ fn insert_atom(
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     use ResolvedSlot as S;
     use StyleAtom as A;
-    let (px, sides): (Px, &[S]) = match atom {
+    let (px, sides): (i16, &[S]) = match atom {
         A::PaddingAll(px) => (
             px,
             &[
@@ -145,12 +150,12 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::Gap(_) => ResolvedSlot::Gap,
         StyleAtom::GapX(_) => ResolvedSlot::GapX,
         StyleAtom::GapY(_) => ResolvedSlot::GapY,
-        StyleAtom::Width(_) => ResolvedSlot::Width,
-        StyleAtom::Height(_) => ResolvedSlot::Height,
-        StyleAtom::MinWidth(_) => ResolvedSlot::MinWidth,
-        StyleAtom::MaxWidth(_) => ResolvedSlot::MaxWidth,
-        StyleAtom::MinHeight(_) => ResolvedSlot::MinHeight,
-        StyleAtom::MaxHeight(_) => ResolvedSlot::MaxHeight,
+        StyleAtom::Width(_, _) => ResolvedSlot::Width,
+        StyleAtom::Height(_, _) => ResolvedSlot::Height,
+        StyleAtom::MinWidth(_, _) => ResolvedSlot::MinWidth,
+        StyleAtom::MaxWidth(_, _) => ResolvedSlot::MaxWidth,
+        StyleAtom::MinHeight(_, _) => ResolvedSlot::MinHeight,
+        StyleAtom::MaxHeight(_, _) => ResolvedSlot::MaxHeight,
         StyleAtom::Display(_) => ResolvedSlot::Display,
         StyleAtom::FlexDirection(_) => ResolvedSlot::FlexDirection,
         StyleAtom::FlexWrap(_) => ResolvedSlot::FlexWrap,
@@ -161,22 +166,18 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::GridColumns(_) => ResolvedSlot::GridColumns,
         StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
         StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::BackgroundGradient(_) => ResolvedSlot::BackgroundColor,
-        StyleAtom::TextColor(_)
-        | StyleAtom::TextThemeRef(_)
-        | StyleAtom::FgToneStep(_)
-        | StyleAtom::FgOnSolid => ResolvedSlot::TextColor,
+        StyleAtom::TextColor(_) | StyleAtom::FgToneStep(_) | StyleAtom::FgOnSolid => {
+            ResolvedSlot::TextColor
+        }
         StyleAtom::BorderRadius(_) | StyleAtom::Radius(_) => ResolvedSlot::BorderRadius,
         StyleAtom::BorderWidth(_) => ResolvedSlot::BorderWidth,
         StyleAtom::BorderTop(_) => ResolvedSlot::BorderTop,
         StyleAtom::BorderRight(_) => ResolvedSlot::BorderRight,
         StyleAtom::BorderBottom(_) => ResolvedSlot::BorderBottom,
         StyleAtom::BorderLeft(_) => ResolvedSlot::BorderLeft,
-        StyleAtom::BorderColor(_) | StyleAtom::BorderThemeRef(_) | StyleAtom::BorderToneStep(_) => {
-            ResolvedSlot::BorderColor
-        }
+        StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::Transform(_) => ResolvedSlot::Transform,
@@ -192,7 +193,78 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::OverflowY(_) => ResolvedSlot::OverflowY,
         StyleAtom::Transition(_) => ResolvedSlot::Transition,
         StyleAtom::TransitionDuration(_) => ResolvedSlot::TransitionDuration,
+        StyleAtom::TransitionEase(_) => ResolvedSlot::TransitionEase,
+        StyleAtom::TransitionDelay(_) => ResolvedSlot::TransitionDelay,
+        StyleAtom::Animation(_) => ResolvedSlot::Animation,
         StyleAtom::UnknownThemeRef(_) => ResolvedSlot::UnknownThemeRef,
+        StyleAtom::Paint(paint) => paint_slot(paint),
+        StyleAtom::ClipPath(_) => ResolvedSlot::ClipPath,
+        StyleAtom::Space(atom) => space_slot(atom),
+        StyleAtom::Mask(atom) => mask_slot(atom.0),
+        StyleAtom::MixBlend(_) => ResolvedSlot::MixBlend,
+        StyleAtom::Filter(atom) => filter_slot(atom.0),
+        StyleAtom::DropShadowColor(_) => ResolvedSlot::DropShadowColor,
+        StyleAtom::TextShadowColor(_) => ResolvedSlot::TextShadowColor,
+    }
+}
+
+const fn filter_slot(part: FilterPart) -> ResolvedSlot {
+    match part {
+        FilterPart::Blur(_) => ResolvedSlot::Blur,
+        FilterPart::Amount(Amount::Brightness, _) => ResolvedSlot::Brightness,
+        FilterPart::Amount(Amount::Contrast, _) => ResolvedSlot::Contrast,
+        FilterPart::Amount(Amount::Grayscale, _) => ResolvedSlot::Grayscale,
+        FilterPart::Amount(Amount::Invert, _) => ResolvedSlot::Invert,
+        FilterPart::Amount(Amount::Saturate, _) => ResolvedSlot::Saturate,
+        FilterPart::Amount(Amount::Sepia, _) => ResolvedSlot::Sepia,
+        FilterPart::HueRotate(_) => ResolvedSlot::HueRotate,
+        FilterPart::DropShadow(_) => ResolvedSlot::DropShadow,
+        FilterPart::TextShadow(_) => ResolvedSlot::TextShadow,
+    }
+}
+
+const fn mask_slot(part: MaskPart) -> ResolvedSlot {
+    match part {
+        MaskPart::None
+        | MaskPart::Linear(_)
+        | MaskPart::Radial(_)
+        | MaskPart::Conic(_)
+        | MaskPart::Image(_) => ResolvedSlot::MaskImage,
+        MaskPart::Stop(_, StopSlot::To, _) => ResolvedSlot::MaskTo,
+        MaskPart::Stop(..) => ResolvedSlot::MaskFrom,
+        MaskPart::Circle(_) => ResolvedSlot::MaskShape,
+        MaskPart::Extent(_) => ResolvedSlot::MaskExtent,
+        MaskPart::RadialAt(_) => ResolvedSlot::MaskRadialAt,
+        MaskPart::Luminance(_) => ResolvedSlot::MaskMode,
+        MaskPart::Size(_) => ResolvedSlot::MaskSize,
+        MaskPart::Position(_) => ResolvedSlot::MaskPosition,
+        MaskPart::Repeat(_) => ResolvedSlot::MaskRepeat,
+    }
+}
+
+const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
+    match atom {
+        SpaceAtom::RotateX(_) => ResolvedSlot::RotateX,
+        SpaceAtom::RotateY(_) => ResolvedSlot::RotateY,
+        SpaceAtom::RotateZ(_) => ResolvedSlot::RotateZ,
+        SpaceAtom::TranslateZ(_) => ResolvedSlot::TranslateZ,
+        SpaceAtom::Perspective(_) => ResolvedSlot::Perspective,
+        SpaceAtom::PerspectiveOrigin(_) => ResolvedSlot::PerspectiveOrigin,
+        SpaceAtom::Backface(_) => ResolvedSlot::Backface,
+    }
+}
+
+const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
+    match atom {
+        PaintAtom::Gradient(_) | PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
+        PaintAtom::Stop(StopSlot::From, _) => ResolvedSlot::GradientFrom,
+        PaintAtom::Stop(StopSlot::Via, _) => ResolvedSlot::GradientVia,
+        PaintAtom::Stop(StopSlot::To, _) => ResolvedSlot::GradientTo,
+        PaintAtom::StopAt(StopSlot::From, _) => ResolvedSlot::GradientFromPosition,
+        PaintAtom::StopAt(StopSlot::Via, _) => ResolvedSlot::GradientViaPosition,
+        PaintAtom::StopAt(StopSlot::To, _) => ResolvedSlot::GradientToPosition,
+        PaintAtom::ClipText => ResolvedSlot::BackgroundClip,
+        PaintAtom::Border(_) => ResolvedSlot::BorderStyle,
     }
 }
 
@@ -248,5 +320,48 @@ pub(crate) enum ResolvedSlot {
     OverflowY,
     Transition,
     TransitionDuration,
+    TransitionEase,
+    TransitionDelay,
+    Animation,
     UnknownThemeRef,
+    BackgroundImage,
+    GradientFrom,
+    GradientVia,
+    GradientTo,
+    GradientFromPosition,
+    GradientViaPosition,
+    GradientToPosition,
+    BackgroundClip,
+    BorderStyle,
+    ClipPath,
+    RotateX,
+    RotateY,
+    RotateZ,
+    TranslateZ,
+    Perspective,
+    PerspectiveOrigin,
+    Backface,
+    MaskImage,
+    MaskFrom,
+    MaskTo,
+    MaskShape,
+    MaskExtent,
+    MaskRadialAt,
+    MaskMode,
+    MaskSize,
+    MaskPosition,
+    MaskRepeat,
+    MixBlend,
+    Blur,
+    Brightness,
+    Contrast,
+    Grayscale,
+    Invert,
+    Saturate,
+    Sepia,
+    HueRotate,
+    DropShadow,
+    TextShadow,
+    DropShadowColor,
+    TextShadowColor,
 }

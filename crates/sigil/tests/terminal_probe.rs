@@ -13,7 +13,7 @@ use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use sigil::kernel::text;
 use sigil::prelude::AppConfig;
 use sigil::reactive::signal;
-use sigil::widgets::text_edit;
+use sigil::widgets::{Widget, text_edit};
 
 const CHILD: &str = "SIGIL_TERMINAL_PROBE_CHILD";
 const ALTERNATE: &[u8] = b"\x1b[?1049h";
@@ -77,10 +77,6 @@ fn halted_child() {
     if std::env::var_os(CHILD).is_none() {
         return;
     }
-    std::thread::spawn(|| {
-        std::thread::sleep(Duration::from_millis(150));
-        signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise");
-    });
     drop(sigil::run(
         AppConfig::new("probe").size(40, 12).terminal(),
         || text("inside"),
@@ -96,6 +92,15 @@ fn position(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 fn run_child(
     name: &str,
     answer: &'static [u8],
+    script: impl FnOnce(&Mutex<Box<dyn Write + Send>>),
+) -> Vec<u8> {
+    spawn_child(name, answer, false, script)
+}
+
+fn spawn_child(
+    name: &str,
+    answer: &'static [u8],
+    stop_on_alternate: bool,
     script: impl FnOnce(&Mutex<Box<dyn Write + Send>>),
 ) -> Vec<u8> {
     let pair = native_pty_system()
@@ -118,23 +123,14 @@ fn run_child(
         command.env(key, value);
     }
     let mut child = pair.slave.spawn_command(command).expect("spawn");
+    let pid = child.process_id();
     drop(pair.slave);
     let mut reader = pair.master.try_clone_reader().expect("reader");
     let writer = Arc::new(Mutex::new(pair.master.take_writer().expect("writer")));
     let seen = Arc::new(Mutex::new(Vec::new()));
     let (sink, replies) = (Arc::clone(&seen), Arc::clone(&writer));
-    std::thread::spawn(move || {
-        let mut chunk = [0_u8; 4096];
-        while let Ok(read) = reader.read(&mut chunk) {
-            let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
-                break;
-            };
-            if !answer.is_empty() && position(bytes, b"\x1b[c").is_some() {
-                replies.lock().unwrap().write_all(answer).ok();
-            }
-            sink.lock().unwrap().extend_from_slice(bytes);
-        }
-    });
+    let stop = pid.filter(|_| stop_on_alternate);
+    std::thread::spawn(move || read_output(reader.as_mut(), answer, &replies, &sink, stop));
     std::thread::sleep(Duration::from_secs(2));
     script(&writer);
     writer.lock().unwrap().write_all(b"\x03").ok();
@@ -145,6 +141,38 @@ fn run_child(
     child.kill().ok();
     std::thread::sleep(Duration::from_millis(200));
     seen.lock().unwrap().clone()
+}
+
+fn read_output(
+    reader: &mut dyn Read,
+    answer: &[u8],
+    replies: &Mutex<Box<dyn Write + Send>>,
+    sink: &Mutex<Vec<u8>>,
+    stop: Option<u32>,
+) {
+    let mut chunk = [0_u8; 4096];
+    while let Ok(read) = reader.read(&mut chunk) {
+        let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
+            break;
+        };
+        if !answer.is_empty() && position(bytes, b"\x1b[c").is_some() {
+            replies.lock().unwrap().write_all(answer).ok();
+        }
+        let entered = {
+            let mut output = sink.lock().unwrap();
+            let before = position(&output, ALTERNATE).is_some();
+            output.extend_from_slice(bytes);
+            let after = position(&output, ALTERNATE).is_some();
+            drop(output);
+            !before && after
+        };
+        if let Some(pid) = stop.filter(|_| entered) {
+            std::process::Command::new("kill")
+                .args(["-TERM", &pid.to_string()])
+                .status()
+                .ok();
+        }
+    }
 }
 
 #[test]
@@ -242,7 +270,7 @@ fn a_reply_split_at_any_byte_is_never_typed() {
 
 #[test]
 fn a_stop_signal_during_the_probe_leaves_the_alternate_screen() {
-    let output = run_child("halted_child", b"", |_| {});
+    let output = spawn_child("halted_child", b"", true, |_| {});
     position(&output, ALTERNATE).expect("the app entered the alternate screen");
     let mut screen = vt100::Parser::new(12, 40, 0);
     screen.process(&output);

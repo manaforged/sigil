@@ -1,7 +1,8 @@
 use core::any::Any;
 
+/// Returns the text of a caught panic payload.
 #[must_use]
-pub fn panic_message(payload: &(dyn Any + Send)) -> &str {
+pub(crate) fn panic_message(payload: &(dyn Any + Send)) -> &str {
     payload.downcast_ref::<&'static str>().map_or_else(
         || {
             payload

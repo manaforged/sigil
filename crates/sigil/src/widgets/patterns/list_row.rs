@@ -1,12 +1,13 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{
-    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
-};
+use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, signal};
-use crate::style::{Paint, Radius, StateVariants, Token, Tone, space};
+use crate::style::StateVariants;
+use crate::style::{Paint, Radius, Token, Tone, space};
+use crate::widgets::Widget;
 
 use super::super::chip::chip;
 use super::super::interactive::interactive;
@@ -22,20 +23,29 @@ pub(super) fn row_height() -> f32 {
     crate::layout::snap::line(24.0)
 }
 
+/// The tree chevron slot of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Disclosure {
+    /// The none disclosure.
     #[default]
     None,
+    /// The leaf disclosure.
     Leaf,
+    /// The collapsed disclosure.
     Collapsed,
+    /// The expanded disclosure.
     Expanded,
 }
 
+/// Text tone of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RowTone {
+    /// The normal row tone.
     #[default]
     Normal,
+    /// The muted row tone.
     Muted,
+    /// The header row tone.
     Header,
 }
 
@@ -55,13 +65,18 @@ impl RowTone {
     }
 }
 
+/// One fixed-width column of a list row.
 pub struct ListColumn {
+    /// The text.
     pub text: TextContent,
+    /// The width.
     pub width: f32,
+    /// The align.
     pub align: ColAlign,
 }
 
 impl ListColumn {
+    /// Creates a list column.
     #[must_use]
     pub fn new(text: impl Into<TextContent>, width: f32) -> Self {
         Self {
@@ -71,6 +86,7 @@ impl ListColumn {
         }
     }
 
+    /// Aligns the column to the start.
     #[must_use]
     pub const fn start(mut self) -> Self {
         self.align = ColAlign::Start;
@@ -84,42 +100,44 @@ impl From<(TextContent, f32)> for ListColumn {
     }
 }
 
+/// Optional parts of a list row.
 #[derive(Default)]
 pub struct ListRowSlots {
+    /// The depth.
     pub depth: u16,
+    /// The disclosure.
     pub disclosure: Disclosure,
+    /// The leading, if any.
     pub leading: Option<Box<dyn IntoNode>>,
+    /// The marker, if any.
     pub marker: Option<TextContent>,
+    /// The marker tone, if any.
     pub marker_tone: Option<Tone>,
+    /// The status, if any.
     pub status: Option<TextContent>,
+    /// The status tone, if any.
     pub status_tone: Option<Tone>,
+    /// The badge, if any.
     pub badge: Option<(TextContent, Tone)>,
+    /// The detail, if any.
     pub detail: Option<TextContent>,
+    /// The columns.
     pub columns: Vec<ListColumn>,
+    /// Whether shrink.
     pub shrink: bool,
+    /// The title width, if any.
     pub title_width: Option<f32>,
+    /// The indent, if any.
     pub indent: Option<f32>,
+    /// The tone.
     pub tone: RowTone,
+    /// The activate, if any.
     pub activate: Option<Rc<dyn Fn()>>,
 }
 
+/// Builds one list row from its slots.
 #[must_use]
 pub fn list_row(
-    selected: bool,
-    title: impl Into<TextContent>,
-    detail: impl Into<TextContent>,
-) -> NodeBuilder {
-    let detail: TextContent = detail.into();
-    let empty = matches!(&detail, TextContent::Static(value) if value.is_empty());
-    let slots = ListRowSlots {
-        status: (!empty).then_some(detail),
-        ..ListRowSlots::default()
-    };
-    list_row_with(selected, title, slots)
-}
-
-#[must_use]
-pub fn list_row_with(
     selected: bool,
     title: impl Into<TextContent>,
     mut slots: ListRowSlots,
@@ -130,24 +148,17 @@ pub fn list_row_with(
         slots.disclosure,
     );
     if let Some(marker) = slots.marker.take() {
-        row = row.child(
-            container()
-                .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
-                .child(
-                    text(marker).class("text-sm").class(
-                        slots
-                            .marker_tone
-                            .map_or(Token::Accent11, Tone::solid)
-                            .text(),
-                    ),
-                ),
-        );
+        row = row.child(marker_slot(marker, slots.marker_tone));
     }
     if let Some(leading) = slots.leading.take() {
         row = row.child(leading_slot(leading));
     }
     let tone = slots.tone;
-    row = row.child(title_text(title.into(), &slots));
+    let title = title.into();
+    if let TextContent::Static(name) = &title {
+        row = row.label(name.clone());
+    }
+    row = row.child(title_text(title, &slots));
     if let Some(detail) = slots.detail.take() {
         row = row.child(detail_text(detail, tone));
     }
@@ -195,8 +206,8 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
         LayoutStyle::flex_row()
             .fill_width()
             .height(row_height())
-            .padding_x(pad)
-            .gap(pad)
+            .padding_x(Space::px(pad))
+            .gap(Space::px(pad))
             .align_items(AlignItems::Center),
     );
     if depth > 0 {
@@ -217,6 +228,16 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
     row
 }
 
+fn marker_slot(marker: TextContent, tone: Option<Tone>) -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
+        .child(
+            text(marker)
+                .class("text-sm")
+                .class(tone.map_or(Token::Accent11, Tone::solid).text()),
+        )
+}
+
 fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
     container()
         .layout(
@@ -227,7 +248,7 @@ fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
         .child(content)
 }
 
-fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
+pub(super) fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
     let slot = container().layout(
         LayoutStyle::flex_row()
             .width(cols(INDENT_COLS))
@@ -312,7 +333,7 @@ fn status_text(
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {
-        node
+        node.layout(LayoutStyle::block().shrink(0.0))
     }
 }
 

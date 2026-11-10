@@ -2,43 +2,37 @@ use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::events::{
-    MouseButton, MouseButtons, NodeEventsExt, PointerEvent, ScrollDelta, ScrollEvent,
-};
-use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::events::{PointerEvent, ScrollDelta, ScrollEvent};
+use crate::kernel::{NodeBuilder, container};
+use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
-use crate::style::{Token, space};
+use crate::style::Token;
+use crate::widgets::Widget;
+use crate::widgets::interaction::is_primary;
 
-use super::axis::format_tick;
+use super::tips::{Probe, Tips, card};
 
 const ZOOM_PER_PIXEL: f32 = 0.002;
 const ZOOM_PER_LINE: f32 = 0.1;
 const MIN_SPAN: f32 = 2.0;
 const RULE: f32 = 1.0;
-const READOUT_OFFSET: f32 = space(1);
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Probe {
-    x: f32,
-    y: f32,
-    width: f32,
-}
 
 #[derive(Clone)]
 pub(super) struct Interact {
     range: Option<Signal<Range<f32>>>,
     crosshair: bool,
+    tooltip: bool,
     probe: Signal<Option<Probe>>,
     width: Rc<Cell<f32>>,
     drag: Rc<Cell<Option<f32>>>,
 }
 
 impl Interact {
-    pub(super) fn new(range: Option<Signal<Range<f32>>>, crosshair: bool) -> Self {
+    pub(super) fn new(range: Option<Signal<Range<f32>>>, crosshair: bool, tooltip: bool) -> Self {
         Self {
             range,
             crosshair,
+            tooltip,
             probe: signal(None),
             width: Rc::new(Cell::new(0.0)),
             drag: Rc::new(Cell::new(None)),
@@ -66,12 +60,13 @@ impl Interact {
         mut plot: NodeBuilder,
         total: usize,
         pad: f32,
-        values: impl FnOnce() -> Rc<[f32]>,
+        tips: impl FnOnce() -> Tips,
     ) -> NodeBuilder {
-        if self.crosshair {
-            plot = plot.child(self.overlay(values(), pad));
+        let hover = self.crosshair || self.tooltip;
+        if hover {
+            plot = plot.child(self.overlay(tips(), pad));
         }
-        if self.crosshair || self.range.is_some() {
+        if hover || self.range.is_some() {
             plot = self.pointer(plot, total, pad);
             plot = self.wheel(plot, total, pad);
         }
@@ -79,7 +74,7 @@ impl Interact {
     }
 
     fn pointer(&self, plot: NodeBuilder, total: usize, pad: f32) -> NodeBuilder {
-        let (probe, crosshair, range) = (self.probe, self.crosshair, self.range);
+        let (probe, hover, range) = (self.probe, self.crosshair || self.tooltip, self.range);
         let width = Rc::clone(&self.width);
         let (drag, down_drag, up_drag) = (
             Rc::clone(&self.drag),
@@ -88,17 +83,18 @@ impl Interact {
         );
         plot.pointer_move(move |event: &mut PointerEvent| {
             width.set(event.target_size.width);
-            if crosshair {
+            if hover {
                 probe.set(Some(Probe {
                     x: event.position.x,
                     y: event.position.y,
                     width: event.target_size.width,
+                    height: event.target_size.height,
                 }));
             }
             let (Some(range), Some(last)) = (range, drag.get()) else {
                 return;
             };
-            if !event.buttons.contains(MouseButtons::LEFT) {
+            if !event.is_captured() {
                 drag.set(None);
                 return;
             }
@@ -107,7 +103,7 @@ impl Interact {
             drag.set(Some(event.position.x));
         })
         .pointer_down(move |event: &mut PointerEvent| {
-            if range.is_some() && event.button == Some(MouseButton::Left) {
+            if range.is_some() && is_primary(event) {
                 down_drag.set(Some(event.position.x));
                 event.capture_pointer();
             }
@@ -145,8 +141,8 @@ impl Interact {
         })
     }
 
-    fn overlay(&self, values: Rc<[f32]>, pad: f32) -> NodeBuilder {
-        let probe = self.probe;
+    fn overlay(&self, tips: Tips, pad: f32) -> NodeBuilder {
+        let (probe, crosshair) = (self.probe, self.crosshair);
         container()
             .layout(
                 LayoutStyle::block()
@@ -158,7 +154,7 @@ impl Interact {
             .children_reactive(move || {
                 probe
                     .get()
-                    .map_or_else(Vec::new, |at| marks(at, &values, pad))
+                    .map_or_else(Vec::new, |at| marks(at, &tips, pad, crosshair))
             })
     }
 }
@@ -189,53 +185,26 @@ fn clamp_range(range: Range<f32>, total: f32) -> Range<f32> {
     start..start + len
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "the probe index is clamped to the visible point count"
-)]
-fn marks(at: Probe, values: &[f32], pad: f32) -> Vec<NodeBuilder> {
-    let count = values.len();
-    let fraction = ((at.x - pad) / span_px(at.width, pad)).clamp(0.0, 1.0);
-    let index = fraction
-        .mul_add(count as f32, -0.5)
-        .round()
-        .clamp(0.0, count.saturating_sub(1) as f32) as usize;
-    let mut nodes = vec![
-        rule(
+fn marks(at: Probe, tips: &Tips, pad: f32, crosshair: bool) -> Vec<NodeBuilder> {
+    let mut nodes = Vec::new();
+    if crosshair {
+        nodes.push(rule(
             LayoutStyle::block()
                 .inset_left(at.x)
                 .inset_top(0.0)
                 .width(RULE)
                 .fill_height(),
-        ),
-        rule(
+        ));
+        nodes.push(rule(
             LayoutStyle::block()
                 .inset_left(0.0)
                 .inset_top(at.y)
                 .height(RULE)
                 .fill_width(),
-        ),
-    ];
-    if let Some(value) = values.get(index) {
-        nodes.push(
-            container()
-                .layout(
-                    LayoutStyle::block()
-                        .position(Position::Absolute)
-                        .inset_left(at.x + READOUT_OFFSET)
-                        .inset_top(at.y + READOUT_OFFSET),
-                )
-                .class([Token::Surface.bg()])
-                .child(
-                    text(format_tick(*value))
-                        .nowrap()
-                        .class("text-xs")
-                        .class(Token::Gray12.text()),
-                ),
-        );
+        ));
     }
+    let lines = tips.index(at, pad).map(|index| (tips.lines)(index));
+    nodes.extend(lines.and_then(|lines| card(at, lines)));
     nodes
 }
 

@@ -14,10 +14,11 @@ impl EventRouter {
         if event.phase != KeyPhase::Down {
             return;
         }
-        if !self.focused_accepts_text(cx)
+        let focused = self.focused_kind(cx);
+        if focused != Focused::Text
             && {
                 let mods = event.normalized_modifiers();
-                mods.meta() || mods.ctrl()
+                mods.meta() || (mods.ctrl() && focused != Focused::Terminal)
             }
             && matches!(&event.key, LogicalKey::Character(text) if text.eq_ignore_ascii_case("c"))
             && crate::events::selection::copy_selection(cx)
@@ -26,21 +27,17 @@ impl EventRouter {
             return;
         }
         self.shortcuts.refresh(cx);
-        if self
-            .shortcuts
-            .dispatch(cx, &mut event, self.focused_accepts_text(cx))
-            || event.propagation_stopped()
-        {
+        if self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped() {
             return;
         }
         if matches!(event.key, LogicalKey::Named(Key::Escape))
             && event.modifiers.is_empty()
-            && crate::events::selection::escape(cx)
+            && crate::events::selection::escape()
         {
             return;
         }
         crate::events::note_focus_source(true);
-        if event.is_tab_navigation() {
+        if event.is_tab_navigation() && focused != Focused::Terminal {
             self.route_tab(cx, layout, &mut event);
             return;
         }
@@ -49,12 +46,20 @@ impl EventRouter {
     }
 
     fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) {
+        let terminal_first =
+            self.focused_kind(cx) == Focused::Terminal && !event.normalized_modifiers().meta();
         let Some(focused) = self.focus.focus().filter(|id| visible(cx, *id)) else {
             self.focus.set_focus(cx, None);
             return;
         };
         let path = path_to_node(cx, focused);
-        if !run_phase(cx, path.iter().copied(), event, true) {
+        if terminal_first {
+            if !run_phase(cx, path.iter().rev().copied(), event, false)
+                && !self.shortcuts.dispatch(cx, event, Focused::Other)
+            {
+                run_phase(cx, path.iter().copied(), event, true);
+            }
+        } else if !run_phase(cx, path.iter().copied(), event, true) {
             run_phase(cx, path.iter().rev().copied(), event, false);
         }
     }
@@ -75,13 +80,30 @@ impl EventRouter {
         run_phase(cx, path.iter().rev().copied(), event, false);
     }
 
-    fn focused_accepts_text(&self, cx: &Cx) -> bool {
-        self.focus
+    fn focused_kind(&self, cx: &Cx) -> Focused {
+        let role = self
+            .focus
             .focus()
             .filter(|id| visible(cx, *id))
             .and_then(|id| cx.get(id))
-            .is_some_and(|node| matches!(node.a11y.role, Role::TextInput | Role::PasswordInput))
+            .map(|node| node.a11y.role);
+        match role {
+            Some(Role::TextInput | Role::PasswordInput) => Focused::Text,
+            Some(Role::Terminal) => Focused::Terminal,
+            _ => Focused::Other,
+        }
     }
+}
+
+/// What kind of node has keyboard focus, which decides the shortcuts it leaves to the window.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Focused {
+    /// A text field: plain characters type instead of firing shortcuts.
+    Text,
+    /// A terminal: every key goes to it except shortcuts held with the command key.
+    Terminal,
+    /// Anything else.
+    Other,
 }
 
 fn run_phase(
@@ -91,7 +113,13 @@ fn run_phase(
     capture: bool,
 ) -> bool {
     for id in path {
-        let _ = dispatch(cx, id, |handlers| handlers.invoke_key(event, capture));
+        let _ = crate::events::handlers::fire(
+            cx,
+            id,
+            crate::events::handlers::EventKind::Key,
+            crate::events::handlers::Phase::of(capture),
+            crate::events::handlers::EventArg::Key(event),
+        );
         if event.propagation_stopped() {
             return true;
         }
@@ -121,14 +149,27 @@ impl ShortcutIndex {
         self.generation = generation;
     }
 
-    fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, text_focused: bool) -> bool {
+    fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, focused: Focused) -> bool {
         for (shortcut, id) in &self.entries {
-            if !visible(cx, *id) || (text_focused && shortcut.is_plain_char()) {
+            let yields = match focused {
+                Focused::Text => shortcut.is_plain_char(),
+                Focused::Terminal => !shortcut.modifiers.contains(ModifiersState::META),
+                Focused::Other => false,
+            };
+            if !visible(cx, *id) || yields {
                 continue;
             }
             if shortcut.matches(event)
                 && dispatch(cx, *id, |handlers| {
-                    handlers.invoke_shortcut(event) || handlers.invoke_key(event, false)
+                    handlers.dispatch(
+                        crate::events::handlers::EventKind::Shortcut,
+                        crate::events::handlers::Phase::Bubble,
+                        &mut crate::events::handlers::EventArg::Key(event),
+                    ) || handlers.dispatch(
+                        crate::events::handlers::EventKind::Key,
+                        crate::events::handlers::Phase::Bubble,
+                        &mut crate::events::handlers::EventArg::Key(event),
+                    )
                 }) == Some(true)
             {
                 return true;

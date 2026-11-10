@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -12,8 +13,8 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
-    CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient, SceneBuilder,
-    SceneGradientStyle, SceneRectStyle,
+    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LayerEffect, LayerScope,
+    LinearGradient, SceneBuilder,
 };
 use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::shared_device;
@@ -41,7 +42,7 @@ fn blur_sigma_sweep(c: &mut Criterion) {
         let (scene, viewport) = single_blur_scene(240, 240, sigma);
         let target_tex = make_texture(&device, viewport.0, viewport.1);
         let view = target_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+        let mut renderer = WgpuRenderer::new();
 
         group.bench_with_input(BenchmarkId::from_parameter(sigma), &sigma, |b, _| {
             b.iter(|| {
@@ -82,7 +83,7 @@ fn blur_count_sweep(c: &mut Criterion) {
         let (scene, viewport) = multi_blur_scene(count, 240, 240, FIXED_SIGMA);
         let target_tex = make_texture(&device, viewport.0, viewport.1);
         let view = target_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+        let mut renderer = WgpuRenderer::new();
 
         group.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, _| {
             b.iter(|| {
@@ -123,7 +124,7 @@ fn blur_size_sweep(c: &mut Criterion) {
         let (scene, viewport) = single_blur_scene(side, side, FIXED_SIGMA);
         let target_tex = make_texture(&device, viewport.0, viewport.1);
         let view = target_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+        let mut renderer = WgpuRenderer::new();
 
         group.bench_with_input(BenchmarkId::from_parameter(side), &side, |b, _| {
             b.iter(|| {
@@ -180,21 +181,17 @@ fn multi_blur_scene(
 
 fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
     use sigil::geometry::{Point, Rect};
-    scene.draw_gradient(
+    scene.draw_gradient(DrawGradient::new(
         Rect::new(Point::new(0.0, 0.0), w as f32, h as f32),
-        SceneGradientStyle::new(
-            LinearGradient::new(
-                Point::new(0.0, 0.0),
-                Point::new(w as f32, 0.0),
-                vec![
-                    GradientStop::new(0.0, rgba(220, 50, 50, 255)),
-                    GradientStop::new(1.0, rgba(50, 200, 220, 255)),
-                ],
-            ),
-            CornerRadii::ZERO,
-            10_000,
+        LinearGradient::new(
+            Point::new(0.0, 0.0),
+            Point::new(w as f32, 0.0),
+            vec![
+                GradientStop::new(0.0, rgba(220, 50, 50, 255)),
+                GradientStop::new(1.0, rgba(50, 200, 220, 255)),
+            ],
         ),
-    );
+    ));
 }
 
 #[allow(clippy::too_many_arguments, reason = "bench harness; deliberate")]
@@ -206,17 +203,16 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
         clip_radii: CornerRadii::ZERO,
         effect: blur_effect(sigma),
         opacity: 1.0,
+        blend: sigil::scene::BlendMode::Normal,
     });
     scene.draw_rect(
-        clip,
-        SceneRectStyle::new(rgba(240, 240, 250, 220), CornerRadii::uniform(12.0), 10_000),
+        DrawRect::new(clip, rgba(240, 240, 250, 220)).border_radius(CornerRadii::uniform(12.0)),
     );
     scene.pop_layer();
 }
 
-#[allow(clippy::missing_const_for_fn, reason = "bench harness; deliberate")]
-fn blur_effect(_sigma: f32) -> LayerEffect {
-    LayerEffect::Identity
+fn blur_effect(sigma: f32) -> LayerEffect {
+    LayerEffect::Filter(std::sync::Arc::from([sigil::scene::Filter::Blur(sigma)]))
 }
 
 fn make_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {

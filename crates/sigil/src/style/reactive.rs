@@ -3,8 +3,9 @@ use std::rc::Rc;
 
 use crate::style::{ReactiveStyleAtoms, StyleAtom};
 
+/// Holds a reactive atom channel that updates a node's style when its value changes.
 #[derive(Debug, Clone)]
-pub struct StyleReactiveEffect {
+pub(crate) struct StyleReactiveEffect {
     atoms: ReactiveStyleAtoms,
 }
 
@@ -17,8 +18,9 @@ impl Default for StyleReactiveEffect {
 }
 
 impl StyleReactiveEffect {
+    /// Creates a style reactive effect.
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 

@@ -1,5 +1,7 @@
 use core::str::FromStr;
 
+use crate::{Error, ErrorKind};
+
 use super::{KEY_LABELS, Key, LogicalKey, MODIFIER_LABELS, ModifiersState, Shortcut};
 
 const MODIFIER_ALIASES: [(ModifiersState, &str); 8] = [
@@ -13,33 +15,13 @@ const MODIFIER_ALIASES: [(ModifiersState, &str); 8] = [
     (ModifiersState::CONTROL, "ctl"),
 ];
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum ShortcutParseError {
-    Empty,
-    UnknownModifier(String),
-    UnknownKey(String),
-}
-
-impl core::fmt::Display for ShortcutParseError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Empty => f.write_str("empty shortcut"),
-            Self::UnknownModifier(name) => write!(f, "unknown modifier `{name}`"),
-            Self::UnknownKey(name) => write!(f, "unknown key `{name}`"),
-        }
-    }
-}
-
-impl core::error::Error for ShortcutParseError {}
-
 impl FromStr for Shortcut {
-    type Err = ShortcutParseError;
+    type Err = Error;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let text = text.trim();
         if text.is_empty() {
-            return Err(ShortcutParseError::Empty);
+            return Err(Error::fixed(ErrorKind::EmptyShortcut, "empty shortcut"));
         }
         if text.contains('+') && text.len() > 1 {
             parse_joined(text)
@@ -49,7 +31,7 @@ impl FromStr for Shortcut {
     }
 }
 
-fn parse_joined(text: &str) -> Result<Shortcut, ShortcutParseError> {
+fn parse_joined(text: &str) -> Result<Shortcut, Error> {
     let (head, key) = match text.rsplit_once('+') {
         Some((head, "")) => (head.strip_suffix('+').unwrap_or(head), "+"),
         Some(split) => split,
@@ -61,14 +43,18 @@ fn parse_joined(text: &str) -> Result<Shortcut, ShortcutParseError> {
         .map(str::trim)
         .filter(|part| !part.is_empty())
     {
-        let flag = modifier_named(part)
-            .ok_or_else(|| ShortcutParseError::UnknownModifier(part.to_owned()))?;
+        let flag = modifier_named(part).ok_or_else(|| {
+            Error::message(
+                ErrorKind::UnknownModifier,
+                format_args!("unknown modifier `{part}`"),
+            )
+        })?;
         modifiers |= flag;
     }
     Ok(Shortcut::new(key_named(key.trim())?, modifiers))
 }
 
-fn parse_symbols(text: &str) -> Result<Shortcut, ShortcutParseError> {
+fn parse_symbols(text: &str) -> Result<Shortcut, Error> {
     let mut modifiers = ModifiersState::empty();
     let mut rest = text;
     while let Some((flag, tail)) = MODIFIER_LABELS
@@ -95,9 +81,9 @@ fn modifier_named(name: &str) -> Option<ModifiersState> {
         })
 }
 
-fn key_named(name: &str) -> Result<LogicalKey, ShortcutParseError> {
+fn key_named(name: &str) -> Result<LogicalKey, Error> {
     if name.is_empty() {
-        return Err(ShortcutParseError::Empty);
+        return Err(Error::fixed(ErrorKind::EmptyShortcut, "empty shortcut"));
     }
     if let Some((key, _, _)) = KEY_LABELS
         .iter()
@@ -116,7 +102,7 @@ fn key_named(name: &str) -> Result<LogicalKey, ShortcutParseError> {
         .filter(|key| !matches!(key, Key::Unidentified))
         .or_else(|| named_case_insensitive(name))
         .map(LogicalKey::Named)
-        .ok_or_else(|| ShortcutParseError::UnknownKey(name.to_owned()))
+        .ok_or_else(|| Error::message(ErrorKind::UnknownKey, format_args!("unknown key `{name}`")))
 }
 
 fn named_case_insensitive(name: &str) -> Option<Key> {

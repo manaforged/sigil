@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -8,10 +9,10 @@ mod scene_support;
 
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
-    SceneGradientStyle, SceneRectStyle, Shadow, ShadowKind,
+    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
+    SceneCommand, Shadow, ShadowKind,
 };
 use sigil::style::Color;
 use smallvec::smallvec;
@@ -41,12 +42,8 @@ fn shadow_command_stacks_before_casting_rect() {
     builder.draw_shadow(rect(16.0), CornerRadii::uniform(12.0), ambient_shadow());
     builder.draw_shadow(rect(16.0), CornerRadii::uniform(12.0), key_shadow());
     builder.draw_rect(
-        rect(16.0),
-        SceneRectStyle::new(
-            color(250, 252, 255, 255),
-            CornerRadii::uniform(12.0),
-            10_000,
-        ),
+        DrawRect::new(rect(16.0), color(250, 252, 255, 255))
+            .border_radius(CornerRadii::uniform(12.0)),
     );
     let scene = builder.finish();
 
@@ -65,17 +62,12 @@ fn shadow_commands_cover_solid_gradient_and_asymmetric_radii() {
     let mut builder = SceneBuilder::new();
     builder.draw_shadow(rect(0.0), CornerRadii::uniform(10.0), key_shadow());
     builder.draw_rect(
-        rect(0.0),
-        SceneRectStyle::new(
-            color(235, 240, 248, 255),
-            CornerRadii::uniform(10.0),
-            10_000,
-        ),
+        DrawRect::new(rect(0.0), color(235, 240, 248, 255))
+            .border_radius(CornerRadii::uniform(10.0)),
     );
     builder.draw_shadow(rect(72.0), CornerRadii::top(16.0), ambient_shadow());
     builder.draw_gradient(
-        rect(72.0),
-        SceneGradientStyle::new(gradient(), CornerRadii::top(16.0), 10_000),
+        DrawGradient::new(rect(72.0), gradient()).border_radius(CornerRadii::top(16.0)),
     );
     let scene = builder.finish();
 
@@ -100,7 +92,7 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 fn gradient() -> LinearGradient {
     LinearGradient::new(

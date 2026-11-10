@@ -1,4 +1,5 @@
 use super::*;
+use sigil::kernel::HostMode;
 
 #[test]
 fn replacing_rows_repaints_the_table() {
@@ -10,7 +11,7 @@ fn replacing_rows_repaints_the_table() {
         name: String,
     }
 
-    sigil::reactive::Runtime::scope("replace-rows", || {
+    sigil::reactive::Owner::scope("replace-rows", || {
         let state = TableState::new(
             vec![Row {
                 name: "before".into(),
@@ -22,7 +23,7 @@ fn replacing_rows_repaints_the_table() {
             ],
         );
         let mounted = state.clone();
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             table(mounted.clone())
                 .row_height(8.0)
@@ -41,7 +42,7 @@ fn replacing_rows_repaints_the_table() {
             .commands
             .iter()
             .filter_map(|command| match command {
-                sigil::scene::SceneCommand::GlyphRun(draw) => Some(draw.run.text.as_str()),
+                sigil::scene::SceneCommand::GlyphRun(draw) => Some(draw.text.as_str()),
                 _ => None,
             })
             .collect();
@@ -56,7 +57,6 @@ fn replacing_rows_repaints_the_table() {
 fn a_click_selects_the_row_under_it() {
     use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
     use sigil::widgets::{ColWidth, TableColumn, TableState, table};
@@ -66,7 +66,7 @@ fn a_click_selects_the_row_under_it() {
         name: &'static str,
     }
 
-    sigil::reactive::Runtime::scope("click-row", || {
+    sigil::reactive::Owner::scope("click-row", || {
         let state = TableState::new(
             vec![
                 Row { name: "first" },
@@ -80,15 +80,14 @@ fn a_click_selects_the_row_under_it() {
             ],
         );
         let mounted = state.clone();
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             table(mounted.clone())
                 .row_height(8.0)
                 .header_height(8.0)
                 .viewport_height(64.0)
         });
-        let grid = step(&mut host, &mut router, [], 40, 10);
+        let grid = step(&mut host, [], 40, 10);
         let text = grid.text();
         let (line, col) = text
             .lines()
@@ -111,9 +110,9 @@ fn a_click_selects_the_row_under_it() {
             MouseEventKind::Up(MouseButton::Left),
         ]
         .into_iter()
-        .filter_map(|kind| map_mouse(&press(kind), 8.0, &mut at))
+        .map(|kind| map_mouse(press(kind), 8.0, &mut at))
         .collect();
-        drop(step(&mut host, &mut router, events, 40, 10));
+        drop(step(&mut host, events, 40, 10));
 
         assert_eq!(
             state.selected_row().map(|row| row.name),
@@ -127,7 +126,6 @@ fn a_click_selects_the_row_under_it() {
 fn the_wheel_scrolls_the_body() {
     use crossterm::event::{KeyModifiers, MouseEvent, MouseEventKind};
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
     use sigil::widgets::{ColWidth, TableColumn, TableState, table};
@@ -137,7 +135,7 @@ fn the_wheel_scrolls_the_body() {
         name: String,
     }
 
-    sigil::reactive::Runtime::scope("wheel", || {
+    sigil::reactive::Owner::scope("wheel", || {
         let rows: Vec<Row> = (0..60)
             .map(|i| Row {
                 name: format!("row-{i:02}"),
@@ -152,22 +150,21 @@ fn the_wheel_scrolls_the_body() {
             ],
         );
         let mounted = state;
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             table(mounted.clone())
                 .row_height(8.0)
                 .header_height(8.0)
                 .viewport_height(64.0)
         });
-        let before = step(&mut host, &mut router, [], 40, 12).text();
+        let before = step(&mut host, [], 40, 12).text();
         assert!(before.contains("row-00"), "starts at the top:\n{before}");
 
         let mut at = Point::new(0.0, 0.0);
         let wheel: Vec<_> = (0..4)
-            .filter_map(|_| {
+            .map(|_| {
                 map_mouse(
-                    &MouseEvent {
+                    MouseEvent {
                         kind: MouseEventKind::ScrollDown,
                         column: 4,
                         row: 4,
@@ -178,7 +175,7 @@ fn the_wheel_scrolls_the_body() {
                 )
             })
             .collect();
-        let after = step(&mut host, &mut router, wheel, 40, 12).text();
+        let after = step(&mut host, wheel, 40, 12).text();
         assert!(
             !after.contains("row-00"),
             "the wheel must move the window off the first row:\n{after}"

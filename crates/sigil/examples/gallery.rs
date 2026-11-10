@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::ScrollBuilder;
 
 const PAGES: &[&str] = &[
     "Controls",
@@ -58,8 +57,8 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
     let mut col = container().layout(
         LayoutStyle::flex_column()
             .fill_height()
-            .padding(12.0)
-            .gap(2.0),
+            .padding(Space::Md)
+            .gap(Space::Xxs),
     );
     col = col.child(section_label("Widgets"));
     for (index, name) in PAGES.iter().enumerate() {
@@ -77,12 +76,12 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(28.0)
-                .padding_x(8.0)
+                .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .rounded(Radius::Md)
         .paint_when(active, |s| s.bg(Token::Accent4))
-        .child(text(name).nowrap().font_size(14.0))
+        .child(text(name).nowrap().text_role(TextRole::Body))
         .pointer_up(move |_| page.set(index))
 }
 
@@ -91,14 +90,14 @@ fn content(
     dialog: Signal<bool>,
     drawer: Signal<bool>,
     queue: ToastQueue,
-) -> ScrollBuilder {
+) -> impl IntoNode {
     scroll(
         container()
             .layout(
                 LayoutStyle::flex_column()
                     .fill_width()
-                    .padding(24.0)
-                    .gap(20.0),
+                    .padding(Space::Xl)
+                    .gap(Space::raw(20.0, "example layout")),
             )
             .children_reactive(move || {
                 vec![match page.get() {
@@ -116,13 +115,13 @@ fn content(
 }
 
 fn page_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().fill_width().gap(8.0)
+    LayoutStyle::flex_column().fill_width().gap(Space::Sm)
 }
 
 fn row_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .gap(8.0)
+        .gap(Space::Sm)
         .align_items(AlignItems::Center)
 }
 
@@ -251,7 +250,14 @@ fn data_page() -> NodeBuilder {
         .child(section_label("Virtual list"))
         .child(
             virtual_list(items, |index, item| {
-                list_row(false, item.clone(), format!("{index}"))
+                list_row(
+                    false,
+                    item.clone(),
+                    ListRowSlots {
+                        status: Some(format!("{index}").into()),
+                        ..ListRowSlots::default()
+                    },
+                )
             })
             .selection(SelectionMode::Single)
             .viewport_height(140.0),
@@ -349,7 +355,17 @@ fn chrome_page() -> NodeBuilder {
         )
         .child(section_label("Patterns"))
         .child(notice_band("Deployment finished", Tone::Success))
-        .child(row2(avatar("TG"), list_row(true, "Selected row", "now")))
+        .child(row2(
+            avatar("TG"),
+            list_row(
+                true,
+                "Selected row",
+                ListRowSlots {
+                    status: Some("now".into()),
+                    ..ListRowSlots::default()
+                },
+            ),
+        ))
         .child(hint_bar("↑↓ navigate", "Enter select"))
 }
 

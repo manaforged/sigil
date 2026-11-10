@@ -1,11 +1,13 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
-use crate::events::{MouseButton, NodeEventsExt};
+use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::reactive::{OwnerId, Signal, derived, is_live, owner_by_id, signal};
+use crate::reactive::{Owner, Signal, derived, is_live, owner_by_id, signal};
 use crate::style::{ControlSize, Metrics};
+use crate::widgets::Widget;
 
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
@@ -70,7 +72,7 @@ pub(super) fn panel_layout(top: f32, left: f32, width: f32, height: f32) -> Layo
         .inset_left(left)
         .width(width)
         .height(height)
-        .padding(Metrics::current().overlay_padding())
+        .padding(Space::px(Metrics::current().overlay_padding()))
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
         .justify_content(JustifyContent::Start)
@@ -80,7 +82,7 @@ pub(super) fn menu_panel(
     rows: Vec<Row>,
     close: Rc<dyn Fn()>,
     side: PopupSide,
-    host: Option<OwnerId>,
+    host: Option<Owner>,
 ) -> NodeBuilder {
     let rows = Rc::new(rows);
     let cursor = signal(usize::MAX);
@@ -103,7 +105,7 @@ pub(super) fn menu_panel(
     )
 }
 
-fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<OwnerId>) -> Commit {
+fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<Owner>) -> Commit {
     Rc::new(move |index| {
         let Some(Row::Item(item)) = rows.get(index) else {
             return;

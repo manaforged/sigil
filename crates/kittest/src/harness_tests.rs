@@ -105,6 +105,21 @@ fn pixel_harness_renders_at_its_size() {
 }
 
 #[test]
+fn terminal_images_capture_deterministic_frames_and_interactions() {
+    let mut ui = Harness::new(counter).size(40, 6);
+    let before = ui.image().expect("terminal image").expect("CPU image");
+    assert_eq!(before.dimensions(), (400, 120));
+    assert_eq!(
+        before,
+        ui.image().expect("repeated image").expect("CPU image")
+    );
+    ui.click("Increment");
+    assert!(ui.text().contains("Count: 1"));
+    let after = ui.image().expect("updated image").expect("CPU image");
+    assert_ne!(before, after);
+}
+
+#[test]
 fn a_label_finds_the_control_it_names() {
     let mut ui = Harness::new(form).size(40, 12);
     ui.type_into("Name", "Ada").click("Agree");
@@ -197,12 +212,12 @@ fn subagent_rows(titles: [f32; 3]) -> impl IntoNode {
 fn assert_aligned_fails_on_ragged_rows() {
     Harness::new(|| subagent_rows([352.0, 416.0, 464.0]))
         .size(80, 6)
-        .assert_aligned();
+        .assert_no_flaws();
 }
 
 #[test]
 fn assert_aligned_passes_on_fixed_columns() {
     Harness::new(|| subagent_rows([464.0; 3]))
         .size(80, 6)
-        .assert_aligned();
+        .assert_no_flaws();
 }

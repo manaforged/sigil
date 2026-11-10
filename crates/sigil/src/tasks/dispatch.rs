@@ -2,21 +2,22 @@ use std::future::Future;
 
 use crate::reactive::{SendableSignal, Signal};
 
-use crate::tasks::handle::OwnerHandle;
+use crate::Error;
+use crate::reactive::Owner;
 use crate::tasks::runtime::{DispatchMessage, Dispatcher, attach_task};
-use crate::tasks::schedule_error::ScheduleError;
 use crate::tasks::status::Status;
 use crate::tasks::task::{Outcome, TaskHandle};
 
+/// Write a signal from another thread.
 #[derive(Clone)]
 pub struct SignalWriter<T: Send + 'static> {
     dispatcher: Dispatcher,
-    owner: OwnerHandle,
+    owner: Owner,
     signal: SendableSignal<T>,
 }
 
 impl<T: Send + 'static> SignalWriter<T> {
-    pub(crate) fn new(dispatcher: Dispatcher, owner: OwnerHandle, signal: Signal<T>) -> Self {
+    pub(crate) fn new(dispatcher: Dispatcher, owner: Owner, signal: Signal<T>) -> Self {
         Self {
             dispatcher,
             owner,
@@ -24,18 +25,20 @@ impl<T: Send + 'static> SignalWriter<T> {
         }
     }
 
-    pub fn set(&self, value: T) -> Result<(), ScheduleError> {
+    /// Writes `value` to the signal from any thread.
+    pub fn set(&self, value: T) -> Result<(), Error> {
         self.send(move |signal| signal.set_always(value))
     }
 
-    pub fn update<F>(&self, update: F) -> Result<(), ScheduleError>
+    /// Changes the signal's value in place from any thread.
+    pub fn update<F>(&self, update: F) -> Result<(), Error>
     where
         F: FnOnce(&mut T) + Send + 'static,
     {
         self.send(move |signal| signal.update(update))
     }
 
-    fn send(&self, write: impl FnOnce(Signal<T>) + Send + 'static) -> Result<(), ScheduleError> {
+    fn send(&self, write: impl FnOnce(Signal<T>) + Send + 'static) -> Result<(), Error> {
         let signal = self.signal;
         self.dispatcher.send(DispatchMessage {
             owner: self.owner,
@@ -44,7 +47,7 @@ impl<T: Send + 'static> SignalWriter<T> {
     }
 }
 
-pub(crate) fn dispatch_to_owner<F>(dispatcher: &Dispatcher, handle: OwnerHandle, f: F)
+pub(crate) fn dispatch_to_owner<F>(dispatcher: &Dispatcher, handle: Owner, f: F)
 where
     F: FnOnce() + Send + 'static,
 {
@@ -53,13 +56,13 @@ where
         callback: Box::new(f),
     });
     if sent.is_err() {
-        tracing::warn!(owner = ?handle.id(), "dispatch dropped: dispatcher closed");
+        tracing::warn!(owner = ?handle, "dispatch dropped: dispatcher closed");
     }
 }
 
 pub(crate) fn spawn_into<T, E, F, D>(
     parts: &crate::tasks::runtime::SpawnParts,
-    owner: OwnerHandle,
+    owner: Owner,
     future: F,
     deliver: D,
 ) -> Option<TaskHandle>
@@ -70,16 +73,17 @@ where
     D: FnOnce(Status<T, E>) + Send + 'static,
 {
     if !owner.is_alive() {
+        tracing::warn!(target: "sigil::tasks", owner = ?owner, "owner is disposed; dropped the work");
         drop(future);
         return None;
     }
     let dispatcher = parts.dispatcher.clone();
-    let task = parts.backend.spawn(owner.id(), future, move |outcome| {
+    let task = parts.backend.spawn(owner, future, move |outcome| {
         let status = match outcome {
             Outcome::Done(Ok(value)) => Status::Ok(value),
             Outcome::Done(Err(error)) => Status::Err(error),
             Outcome::Panicked(message) => Status::Panicked(message),
-            Outcome::Cancelled => return,
+            Outcome::Cancelled => Status::Idle,
         };
         dispatch_to_owner(&dispatcher, owner, move || deliver(status));
     });

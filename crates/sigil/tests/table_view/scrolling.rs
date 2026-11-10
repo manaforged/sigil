@@ -1,12 +1,13 @@
 use super::*;
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{ScrollDelta, ScrollEvent, ScrollPhase};
+use sigil::events::{ScrollDelta, ScrollPhase};
+use sigil::geometry::Point;
 use sigil::kernel::Cx;
 
 #[test]
 fn quick_filter_keeps_keyboard_row_count_live() {
-    sigil::reactive::Runtime::scope("table-view-live-count", || {
+    sigil::reactive::Owner::scope("table-view-live-count", || {
         let rows = (0..30_u32)
             .map(|i| {
                 item(
@@ -44,7 +45,11 @@ fn quick_filter_keeps_keyboard_row_count_live() {
             .expect("grid root has a body child");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(body));
-        router.route(&mut cx, &layout, key_down(Key::End, PhysicalKey::End));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::End).physical(PhysicalKey::End),
+        );
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let texts = glyph_texts(&cx, root);
         assert!(
@@ -56,7 +61,7 @@ fn quick_filter_keeps_keyboard_row_count_live() {
 
 #[test]
 fn wheel_scroll_advances_the_window() {
-    sigil::reactive::Runtime::scope("table-view-wheel", || {
+    sigil::reactive::Owner::scope("table-view-wheel", || {
         let rows = (0..100_u32)
             .map(|i| item(&format!("r{i:03}"), i64::from(i)))
             .collect::<Vec<_>>();
@@ -89,12 +94,11 @@ fn wheel_scroll_advances_the_window() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-                position: Point::new(50.0, 100.0),
-                delta: ScrollDelta::Pixels(Point::new(0.0, -120.0)),
-                modifiers: ModifiersState::empty(),
-                phase: ScrollPhase::Moved,
-            })),
+            Event::scroll(
+                Point::new(50.0, 100.0),
+                ScrollDelta::Pixels(Point::new(0.0, -120.0)),
+                ScrollPhase::Moved,
+            ),
         );
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let texts = glyph_texts(&cx, root);
@@ -117,7 +121,7 @@ fn wheel_scroll_advances_the_window() {
 
 #[test]
 fn empty_filter_shows_no_rows() {
-    sigil::reactive::Runtime::scope("table-view-empty", || {
+    sigil::reactive::Owner::scope("table-view-empty", || {
         let state = demo_state();
         state.quick_filter().set("zzzz".into());
         let mut cx = Cx::new_root();
@@ -139,7 +143,7 @@ fn empty_filter_shows_no_rows() {
 
 #[test]
 fn grid_a11y_channels_attach() {
-    sigil::reactive::Runtime::scope("table-view-a11y", || {
+    sigil::reactive::Owner::scope("table-view-a11y", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(

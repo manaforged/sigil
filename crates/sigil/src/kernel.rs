@@ -3,6 +3,7 @@
 #[cfg(test)]
 use criterion as _;
 
+mod access;
 mod announce;
 mod builder;
 mod builder_wrap;
@@ -20,20 +21,28 @@ mod semantics;
 mod text;
 mod top_layer;
 
-pub use accesskit::{Action, Live, Role, SortDirection};
-pub(crate) use announce::queue_announcement;
-pub use announce::{announce, announce_assertive};
+pub use access::{Action, Live, Role, SortDirection};
+pub use announce::announce;
 pub use builder::{NodeBuilder, container, fragment};
+#[cfg(not(feature = "kittest"))]
 pub(crate) use component::WithCx;
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub use component::WithCx;
 pub use component::{IntoNode, node};
-pub use control_flow::{StatusView, SwitchBuilder, for_each, match_status, show, switch};
+pub use control_flow::{SwitchBuilder, for_each, show, switch};
 pub use cx::{Cx, HostMode};
 pub use delta::{DeltaKind, FrameDelta, NodeTag};
 pub use id::NodeId;
 pub(crate) use image::ThemedImage;
 pub use image::{ImageBuilder, ImageCrop, ImageRaster, ImageSource, ObjectFit, image};
 pub(crate) use image_cache::cached_image;
-pub use node::{Node, NodeExtensions, NodeType, Surface, TopLayer};
+pub use node::{Node, NodeExtensions, Surface, TopLayer};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use node::NodeType;
+}
 pub use reactive_children::schedule_keyed_rebuild;
+pub(crate) use reactive_children::schedule_keyed_rebuild_at;
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind, TextCursor};
 pub use text::{TextBuilder, TextContent, text};

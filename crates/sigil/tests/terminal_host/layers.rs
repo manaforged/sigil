@@ -1,10 +1,12 @@
 use proptest::prelude::*;
 use sigil::Host;
+use sigil::kernel::HostMode;
 use sigil::kernel::{NodeBuilder, container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::{LayoutBuilderExt, Paint, Signal};
-use sigil::reactive::{Runtime, signal};
-use sigil::style::{NodeStyleExt, NumericAtomKind, Theme, Token, Transform2D};
+use sigil::prelude::Widget;
+use sigil::prelude::{Paint, Signal};
+use sigil::reactive::{Owner, signal};
+use sigil::style::{Theme, Token, Transform2D};
 use sigil::terminal::Access;
 use sigil::widgets::{modal, scroll};
 
@@ -88,7 +90,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                 .child(
                     container()
                         .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                        .animate(NumericAtomKind::TranslateX, knobs.shift)
+                        .animate_translate_x(knobs.shift)
                         .child(text(knobs.label)),
                 ),
         )
@@ -122,10 +124,10 @@ fn apply(knobs: Knobs, step: &Step, size: &mut (u16, u16)) {
 }
 
 fn frames(steps: &[Step], full: bool) -> Vec<String> {
-    Runtime::scope("layers-oracle", || {
+    Owner::scope("layers-oracle", || {
         let shared = knobs();
         let mut size = (48_u16, 16_u16);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(shared));
         let mut screen = Side::mounted(host, size, Access::default().status);
         for _ in 0..2 {

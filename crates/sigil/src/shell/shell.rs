@@ -7,7 +7,7 @@ use std::sync::{
 use web_time::Instant;
 
 use crate::app::WindowOpts;
-use crate::events::{ModifiersState, MouseButtons, ShellEvent};
+use crate::events::{Event, ModifiersState, MouseButtons};
 use crate::geometry::{LogicalSize, PhysicalSize, Point, Scale};
 use winit::{
     event_loop::{EventLoop, EventLoopProxy},
@@ -21,6 +21,7 @@ mod attrs;
 mod commands;
 mod events;
 mod shell_impl;
+mod title_bar;
 #[cfg(target_arch = "wasm32")]
 mod web;
 #[cfg(target_arch = "wasm32")]
@@ -40,7 +41,7 @@ pub(crate) enum PendingWindowSize {
 
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
-pub(crate) type TaggedEvent = (WinitWindowHandle, ShellEvent);
+pub(crate) type TaggedEvent = (WinitWindowHandle, Event);
 
 pub struct WinitShell {
     event_loop: Option<EventLoop<WakeEvent>>,
@@ -51,6 +52,7 @@ pub struct WinitShell {
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
     window_zooms: Vec<(WinitWindowHandle, f32)>,
+    title_bars: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<TaggedEvent>,
     event_window: WinitWindowHandle,
@@ -62,6 +64,7 @@ pub struct WinitShell {
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
     force_paint: bool,
+    app_redraws: Vec<WinitWindowHandle>,
     a11y_adapters: Vec<a11y::AdapterEntry>,
     #[cfg(target_arch = "wasm32")]
     canvas: Option<String>,
@@ -76,19 +79,21 @@ impl Drop for WinitShell {
 }
 
 impl WinitShell {
-    pub fn new() -> Result<Self, crate::shell::ShellError> {
-        let event_loop = EventLoop::<WakeEvent>::with_user_event().build()?;
+    pub fn new() -> Result<Self, crate::Error> {
+        let event_loop = EventLoop::<WakeEvent>::with_user_event()
+            .build()
+            .map_err(crate::Error::event_loop)?;
         Ok(Self::from_event_loop(event_loop))
     }
 
-    pub fn new_accessory() -> Result<Self, crate::shell::ShellError> {
+    pub fn new_accessory() -> Result<Self, crate::Error> {
         let mut builder = EventLoop::<WakeEvent>::with_user_event();
         #[cfg(target_os = "macos")]
         {
             use winit::platform::macos::{ActivationPolicy, EventLoopBuilderExtMacOS};
             builder.with_activation_policy(ActivationPolicy::Accessory);
         }
-        let event_loop = builder.build()?;
+        let event_loop = builder.build().map_err(crate::Error::event_loop)?;
         Ok(Self::from_event_loop(event_loop))
     }
 
@@ -103,6 +108,7 @@ impl WinitShell {
             windows: Vec::new(),
             window_scales: Vec::new(),
             window_zooms: Vec::new(),
+            title_bars: Vec::new(),
             failed: Vec::new(),
             events: Vec::new(),
             event_window: WinitWindowHandle::from_raw(0),
@@ -114,6 +120,7 @@ impl WinitShell {
             deadline_hook: None,
             exit_requested: false,
             force_paint: false,
+            app_redraws: Vec::new(),
             a11y_adapters: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             canvas: None,
@@ -129,7 +136,7 @@ impl WinitShell {
         self.deadline_hook = Some(Arc::new(hook));
     }
 
-    pub fn on_exit<F: FnOnce() + 'static>(&mut self, hook: F) {
+    pub fn on_exit<F: FnOnce() + 'static>(hook: F) {
         super::exit_hook::set(Box::new(hook));
     }
 
@@ -156,11 +163,13 @@ impl WinitShell {
             .unwrap_or(1.0)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn windows(&self) -> &[(WinitWindowHandle, Arc<Window>)] {
         &self.windows
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn take_failed_windows(&mut self) -> Vec<(WinitWindowHandle, String)> {
         std::mem::take(&mut self.failed)
@@ -178,7 +187,7 @@ impl WinitShell {
         &self.pending_wake
     }
 
-    pub(crate) fn push_event(&mut self, handle: WinitWindowHandle, event: ShellEvent) {
+    pub(crate) fn push_event(&mut self, handle: WinitWindowHandle, event: Event) {
         self.events.push((handle, event));
     }
 
@@ -203,6 +212,16 @@ impl WinitShell {
         self.redraw_target = target;
     }
 
+    pub(crate) fn centre_controls(&self, handle: WinitWindowHandle) {
+        let bar = self
+            .title_bars
+            .iter()
+            .find_map(|(h, bar)| (*h == handle).then_some(*bar));
+        if let (Some(bar), Some(window)) = (bar, self.window_for(handle)) {
+            title_bar::centre_controls(window, bar);
+        }
+    }
+
     pub(crate) fn handle_for(&self, id: winit::window::WindowId) -> Option<WinitWindowHandle> {
         self.windows
             .iter()
@@ -219,14 +238,33 @@ impl WinitShell {
         self.windows.retain(|(h, _)| *h != handle);
         self.window_scales.retain(|(h, _)| *h != handle);
         self.window_zooms.retain(|(h, _)| *h != handle);
+        self.title_bars.retain(|(h, _)| *h != handle);
         self.a11y_adapters.retain(|entry| entry.handle != handle);
         self.events.retain(|(h, _)| *h != handle);
+        self.pending.retain(|spec| spec.handle != handle);
+        self.failed.retain(|(h, _)| *h != handle);
+        self.app_redraws.retain(|h| *h != handle);
     }
 
     pub(crate) fn request_redraws(&self) {
         for (_, window) in &self.windows {
             window.request_redraw();
         }
+    }
+
+    pub(crate) fn request_frames(&mut self) {
+        for (handle, window) in &self.windows {
+            if !self.app_redraws.contains(handle) {
+                self.app_redraws.push(*handle);
+            }
+            window.request_redraw();
+        }
+    }
+
+    pub(crate) fn take_app_redraw(&mut self, handle: Option<WinitWindowHandle>) -> bool {
+        let before = self.app_redraws.len();
+        self.app_redraws.retain(|h| Some(*h) != handle);
+        self.app_redraws.len() != before
     }
 
     pub(crate) const fn set_force_paint(&mut self) {

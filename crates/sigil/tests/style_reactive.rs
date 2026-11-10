@@ -5,12 +5,13 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, container};
-use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, NodeStyleExt, Paint, StyleAtom, StyleBinding, Token};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
+use sigil::style::{ColorAtom, Paint, StyleAtom, StyleBinding, Token};
 
 #[test]
 fn paint_when_toggles_on_signal_change() {
-    Runtime::scope("sigil_style_paint_when_toggle", || {
+    Owner::scope("sigil_style_paint_when_toggle", || {
         let highlighted = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().paint_when(highlighted, |s| s.bg(Token::Accent)));
@@ -25,9 +26,7 @@ fn paint_when_toggles_on_signal_change() {
         let live = reactive_slice(&cx, id);
         assert_eq!(
             live,
-            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Accent
-            ))],
+            &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))],
             "paint_when must install the accent background when signal flips true, got {live:?}",
         );
 

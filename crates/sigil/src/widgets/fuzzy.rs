@@ -5,13 +5,17 @@ const SUBSTRING: usize = 30;
 const GAPPED: usize = 40;
 const MAX_SPREAD: usize = 3;
 
+/// Result of `fuzzy_score`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FuzzyMatch {
+    /// The score.
     pub score: usize,
+    /// The positions.
     pub positions: Vec<usize>,
 }
 
+/// Rank text against a query.
 #[must_use]
 pub fn fuzzy_score(query: &str, text: &str) -> Option<FuzzyMatch> {
     let query: Vec<char> = query.to_lowercase().chars().collect();

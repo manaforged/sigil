@@ -10,7 +10,7 @@ description = "GUI and TUI framework in Rust. One widget tree, one entry: sigil:
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui", "command-line-interface"]
-include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "examples/**"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "docs/**", "/LICENSE-MIT", "assets/**", "examples/**"]
 autobenches = false
 
 [lib]
@@ -21,7 +21,6 @@ serde_json = { workspace = true }
 accesskit = { workspace = true }
 ahash = { workspace = true }
 crossbeam-channel = { workspace = true }
-keyboard-types = { workspace = true }
 notify = { workspace = true }
 phf = { workspace = true }
 slotmap = { workspace = true }
@@ -37,6 +36,8 @@ unicode-linebreak = "0.1"
 unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-width = { workspace = true }
+pulldown-cmark = { workspace = true }
+rust-latex-parser = { version = "0.2", default-features = false, features = ["unicode"] }
 web-time = "1"
 
 accesskit_winit = { workspace = true, optional = true }
@@ -44,6 +45,9 @@ winit = { workspace = true, optional = true }
 raw-window-handle = { workspace = true, optional = true }
 sigil-fonts = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
+vello_gpu = { workspace = true, optional = true }
+vello_cpu = { workspace = true, optional = true }
+rquickjs = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 bytemuck = { workspace = true, optional = true }
 skrifa = { workspace = true, optional = true }
@@ -51,10 +55,17 @@ zeno = { workspace = true, optional = true }
 half = { workspace = true, optional = true }
 softbuffer = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
+rayon = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 usvg = { workspace = true, optional = true }
-lyon_geom = { workspace = true, optional = true }
-harfrust = { version = "0.13", optional = true }
+resvg = { workspace = true, optional = true, features = ["text"] }
+merman = { workspace = true, optional = true }
+ratex-parser = { workspace = true, optional = true }
+ratex-layout = { workspace = true, optional = true }
+ratex-types = { workspace = true, optional = true }
+ratex-svg = { workspace = true, optional = true }
+layout-rs = { workspace = true, optional = true }
+harfrust = { version = "0.12", optional = true }
 rfd = { version = "0.17", optional = true }
 muda = { version = "0.19", optional = true }
 tray-icon = { version = "0.24", optional = true }
@@ -62,6 +73,7 @@ rodio = { version = "0.22", optional = true }
 portable-pty = { version = "0.9", optional = true }
 vt100 = { version = "0.16", optional = true }
 crossterm = { version = "0.29", optional = true }
+dark-light = { version = "3", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", optional = true, features = ["event", "std"] }
@@ -89,7 +101,8 @@ web-sys = { version = "0.3", features = ["Clipboard", "CompositionEvent", "CssSt
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = { version = "21", optional = true }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAccessibility", "NSEvent", "NSWorkspace"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAccessibility", "NSButton", "NSControl", "NSEvent", "NSResponder", "NSView", "NSWindow", "NSWorkspace", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry", "objc2-core-foundation"] }
 
 [features]
 default = ["desktop"]
@@ -98,6 +111,9 @@ scene = [
     "cpu",
     "shaping-complex",
     "dep:wgpu",
+    "dep:vello_gpu",
+    "dep:vello_cpu",
+    "dep:rquickjs",
     "dep:pollster",
     "dep:bytemuck",
     "dep:skrifa",
@@ -105,7 +121,13 @@ scene = [
     "dep:half",
     "dep:image",
     "dep:usvg",
-    "dep:lyon_geom",
+    "dep:resvg",
+    "dep:merman",
+    "dep:ratex-parser",
+    "dep:ratex-layout",
+    "dep:ratex-types",
+    "dep:ratex-svg",
+    "dep:layout-rs",
     "dep:zed-font-kit",
     "dep:sigil-fonts",
     "dep:core-text",
@@ -114,7 +136,6 @@ scene = [
 shell = ["dep:winit", "dep:accesskit_winit", "dep:windows-sys"]
 cpu = ["dep:softbuffer"]
 shaping-complex = ["dep:harfrust"]
-render = ["scene"]
 clipboard = ["dep:arboard"]
 clipboard-image = ["clipboard", "arboard/image-data"]
 dialog = []
@@ -131,7 +152,7 @@ media = ["desktop", "dep:playwire", "dep:raw-window-handle"]
 hotkey = ["desktop", "dep:global-hotkey"]
 pty = ["dep:portable-pty", "dep:vt100"]
 hot = ["dep:subsecond", "dep:dioxus-devtools"]
-terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]
+terminal = ["dep:crossterm", "dep:dark-light", "dep:rustix", "dep:signal-hook", "dep:rayon", "dep:vello_cpu", "image-decode"]
 
 [dev-dependencies]
 image = { workspace = true, features = ["webp"] }
@@ -186,6 +207,14 @@ required-features = ["terminal", "pty"]
 [[test]]
 name = "terminal_probe"
 required-features = ["terminal", "pty"]
+
+[[test]]
+name = "terminal_keys"
+required-features = ["terminal"]
+
+[[test]]
+name = "terminal_session"
+required-features = ["pty"]
 
 [[test]]
 name = "image_jpeg"
@@ -306,6 +335,10 @@ name = "renderer_blur_cost"
 harness = false
 
 [[bench]]
+name = "renderer_vector_paths"
+harness = false
+
+[[bench]]
 name = "style_style_ops"
 harness = false
 
@@ -317,7 +350,7 @@ harness = false
 workspace = true
 
 [package.metadata.docs.rs]
-features = ["desktop", "terminal", "render", "clipboard", "clipboard-image", "image-decode"]
+features = ["desktop", "terminal", "clipboard", "clipboard-image", "image-decode"]
 
 [[example]]
 name = "todo-terminal"

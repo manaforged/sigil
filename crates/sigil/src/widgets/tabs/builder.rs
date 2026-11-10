@@ -1,17 +1,16 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
+use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived, signal};
-use crate::style::{
-    NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme, Token, space,
-};
+use crate::style::{Radius, Style, Token, space};
+use crate::widgets::Widget;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::BuilderMutator;
+use super::super::layout_ext::LayoutOverrides;
 use super::content::wrap_with_content;
-use super::drag::DragState;
+use super::drag::TabDrag;
 use super::list::{StripSpec, build_tab_list};
 use super::tab::line_strip_height;
 
@@ -28,13 +27,13 @@ pub(super) enum StripChrome {
 
 pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
 
+/// Builder of tabs.
 pub struct TabsBuilder {
     active: Option<Signal<usize>>,
     labels: Vec<String>,
     label_source: Option<Box<dyn Fn() -> Vec<String>>>,
     disabled: Vec<usize>,
     aria_label: String,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     contents: Vec<Box<dyn IntoNode>>,
     reorderable: bool,
@@ -46,6 +45,7 @@ pub struct TabsBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// Creates a tabs widget.
 #[must_use]
 pub fn tabs() -> TabsBuilder {
     TabsBuilder {
@@ -54,7 +54,6 @@ pub fn tabs() -> TabsBuilder {
         label_source: None,
         disabled: Vec::new(),
         aria_label: String::new(),
-        mutators: Vec::new(),
         style_accumulator: Style::new(),
         contents: Vec::new(),
         reorderable: false,
@@ -68,6 +67,7 @@ pub fn tabs() -> TabsBuilder {
 }
 
 impl TabsBuilder {
+    /// Adds a tab.
     #[must_use]
     pub fn tab<F, N>(mut self, label: impl Into<String>, content: F) -> Self
     where
@@ -79,6 +79,7 @@ impl TabsBuilder {
         self
     }
 
+    /// Sets the labels.
     #[must_use]
     pub fn labels<S>(mut self, labels: impl Reactive<Vec<S>>) -> Self
     where
@@ -90,85 +91,90 @@ impl TabsBuilder {
         self
     }
 
+    /// Sets the active.
     #[must_use]
     pub const fn active(mut self, active: Signal<usize>) -> Self {
         self.active = Some(active);
         self
     }
 
+    /// Applies the line option.
     #[must_use]
     pub const fn line(mut self) -> Self {
         self.chrome = StripChrome::Line;
         self
     }
 
+    /// Applies the pill option.
     #[must_use]
     pub const fn pill(mut self) -> Self {
         self.chrome = StripChrome::Pill;
         self
     }
 
+    /// Sets the justify list.
     #[must_use]
     pub const fn justify_list(mut self, justify: JustifyContent) -> Self {
         self.list_justify = Some(justify);
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.aria_label = label.into();
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, indices: &[usize]) -> Self {
         self.disabled = indices.to_vec();
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
+    /// Sets the reorderable.
     #[must_use]
     pub const fn reorderable(mut self, enabled: bool) -> Self {
         self.reorderable = enabled;
         self
     }
 
+    /// Sets the order.
     #[must_use]
     pub const fn order(mut self, signal: Signal<Vec<usize>>) -> Self {
         self.order = Some(signal);
         self
     }
 
+    /// Sets the closeable.
     #[must_use]
     pub const fn closeable(mut self, enabled: bool) -> Self {
         self.closeable = enabled;
         self
     }
 
+    /// Sets the callback that closes a tab.
     #[must_use]
     pub fn close(mut self, handler: impl Fn(usize) + 'static) -> Self {
         self.close_handler = Some(Rc::new(handler));
         self
     }
 
+    /// Converts this tabs builder to container.
     #[must_use]
     pub fn into_container(self) -> NodeBuilder {
         container().child(self)
     }
 
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let active = self.active.unwrap_or_else(|| signal(0));
         let labels = label_signal(self.labels, self.label_source.take());
         let spec = StripSpec {
             active,
             disabled: Rc::new(self.disabled),
             order: self.order,
-            drag: self.reorderable.then(DragState::new),
+            drag: self.reorderable.then(TabDrag::new),
             closeable: self.closeable,
             close_handler: self.close_handler,
             user_overlay: self.style_accumulator.take_state_overlay(),
@@ -184,44 +190,14 @@ impl TabsBuilder {
         } else {
             wrap_with_content(tab_list, active, self.contents)
         };
-        for mutate in self.mutators {
-            root = mutate(root);
-        }
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
-        root.mutate(move |node| {
-            let base = node
-                .get_extension::<LayoutStyle>()
-                .cloned()
-                .unwrap_or_default();
-            node.attach(self.layout_overrides.apply(base));
-        })
+        root
     }
 }
 
-impl PaintTarget for TabsBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for TabsBuilder {}
-
-impl WidgetLayoutExt for TabsBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for TabsBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] TabsBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 fn label_signal(
     fixed: Vec<String>,
@@ -280,7 +256,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .shrink(0.0)
-                .padding_y(space(6))
+                .padding_y(Space::Xl)
                 .justify_content(justify),
         )
         .child(
@@ -288,7 +264,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .height(STRIP_HEIGHT)
-                        .padding(space(1))
+                        .padding(Space::Xs)
                         .align_items(AlignItems::Center),
                 )
                 .class([Radius::Md.atom(), Token::SurfacePressed.bg()])

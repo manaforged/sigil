@@ -2,9 +2,8 @@ use std::cell::RefCell;
 use web_time::Instant;
 
 use crate::app::embed::Host;
-use crate::app::error::{AppResult, Error};
 use crate::app::{FrameHooks, FrameInfo};
-use crate::events::EventRouter;
+use crate::error::{AppResult, Error};
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
@@ -47,7 +46,7 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
         clock,
         signal_writes,
     } = ctx;
-    let WindowRecord { host, router, view } = record;
+    let WindowRecord { host, view } = record;
 
     crate::profile::begin_frame(renderer.status());
     let dt = clock.elapsed(Instant::now());
@@ -64,7 +63,7 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
         signal_writes,
         input_error: None,
     });
-    let out = host.frame(router, viewport_size, dt, frame_hooks(&env));
+    let out = host.frame(viewport_size, dt, frame_hooks(&env));
     let env = env.into_inner();
     if let Some(error) = env.input_error {
         return Err(error);
@@ -81,26 +80,20 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
 
 fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
     FrameHooks {
-        input: Some(Box::new(|host, router| {
-            input_phase(&mut env.borrow_mut(), host, router)
-        })),
-        after_layout: Some(Box::new(|host, router| {
+        input: Some(Box::new(|host| input_phase(&mut env.borrow_mut(), host))),
+        after_layout: Some(Box::new(|host| {
             let env = &mut *env.borrow_mut();
-            if let Some((cx, layout, _)) = host.tree() {
+            if let Some((cx, layout, router, _)) = host.tree() {
                 sync_ime(env.shell, env.view.handle, cx, layout, router);
             }
         })),
-        paint: Some(Box::new(|host, router, info| {
-            paint_phase(&mut env.borrow_mut(), host, router, info);
+        paint: Some(Box::new(|host, info| {
+            paint_phase(&mut env.borrow_mut(), host, info);
         })),
     }
 }
 
-fn input_phase(
-    env: &mut FrameEnv<'_>,
-    host: &mut Host,
-    router: &mut EventRouter,
-) -> Option<(f32, f32)> {
+fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
     let _effect = crate::profile::span(crate::profile::Phase::Effect);
     for (signal, value) in std::mem::take(&mut env.signal_writes) {
         signal.set(value);
@@ -125,7 +118,7 @@ fn input_phase(
     }
     pump_shell_features();
     let actions = env.shell.a11y_action_receiver(env.view.handle);
-    if let Some((cx, layout, _)) = host.tree() {
+    if let Some((cx, layout, router, _)) = host.tree() {
         drain_events(DrainCtx {
             view: env.view,
             cx,
@@ -147,25 +140,20 @@ fn input_phase(
 )]
 fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, title: &str) {
     #[cfg(feature = "menu")]
-    if crate::app::menu::has_pending()
-        && let Err(error) =
-            crate::app::menu::install(menu_hwnd(shell, window_handle), wake_fn(shell))
-    {
-        tracing::error!("sigil-app: cannot install native menu: {error}");
-    }
+    crate::app::menu::install(
+        menu_hwnd(shell, window_handle),
+        std::sync::Arc::new(wake_fn(shell)),
+    );
     #[cfg(feature = "tray")]
-    if crate::app::tray::has_pending() {
-        crate::app::tray::install(wake_fn(shell));
-    }
-    #[cfg(feature = "hotkey")]
-    crate::app::hotkey::install(wake_fn(shell));
+    crate::app::tray::install(std::sync::Arc::new(wake_fn(shell)));
+    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+    crate::app::hotkey::install(std::sync::Arc::new(wake_fn(shell)));
     #[cfg(feature = "media")]
-    if !crate::app::media::is_installed()
-        && let Err(error) =
-            crate::app::media::install(title, menu_hwnd(shell, window_handle), wake_fn(shell))
-    {
-        tracing::warn!("sigil-app: cannot install media controls: {error}");
-    }
+    crate::app::media::install(
+        title,
+        menu_hwnd(shell, window_handle),
+        std::sync::Arc::new(wake_fn(shell)),
+    );
     #[cfg(not(any(
         feature = "menu",
         feature = "tray",
@@ -188,13 +176,13 @@ fn pump_shell_features() {
     crate::app::menu::pump();
     #[cfg(feature = "tray")]
     crate::app::tray::pump();
-    #[cfg(feature = "hotkey")]
+    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
     crate::app::hotkey::pump();
     #[cfg(feature = "media")]
     crate::app::media::pump();
 }
 
-fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, info: &FrameInfo) {
+fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &FrameInfo) {
     let _paint = crate::profile::span(crate::profile::Phase::Paint);
     let force_paint = env.shell.take_force_paint();
     let paint_needed = !env.view.hidden && (force_paint || info.dirty);
@@ -203,7 +191,7 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, in
         crate::profile::interact(crate::profile::Cause::Expose);
     }
     env.view.painted = info.dirty;
-    if paint_needed && let Some((cx, _, root)) = host.tree() {
+    if paint_needed && let Some((cx, _, _, root)) = host.tree() {
         env.view.scene_cache.paint(PaintRequest {
             cx,
             root,
@@ -214,11 +202,11 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, in
         });
     }
     let _a11y = crate::profile::span(crate::profile::Phase::A11y);
-    if let Some((cx, layout, _)) = host.tree() {
+    if let Some((cx, layout, router, _)) = host.tree() {
         event_wiring::publish_a11y(
             env.shell,
             env.view.handle,
-            (cx, router, layout),
+            (cx, &*router, layout),
             paint_needed,
         );
     }

@@ -1,8 +1,9 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
 use sigil::geometry::Size;
-use sigil::layout::{AlignItems, LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{AlignItems, LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn row_height(align: AlignItems) -> f32 {
     use sigil::kernel::{Cx, container};
@@ -16,7 +17,7 @@ fn row_height(align: AlignItems) -> f32 {
             .layout(LayoutStyle::flex_column().width(300.0))
             .child(row),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(300.0, 400.0))
         .unwrap();

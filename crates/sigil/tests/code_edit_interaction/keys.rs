@@ -4,7 +4,7 @@ use sigil::kernel::Cx;
 
 #[test]
 fn click_focuses_surface_then_keys_reach_on_key() {
-    sigil::reactive::Runtime::scope("code-edit-focus", || {
+    sigil::reactive::Owner::scope("code-edit-focus", || {
         let lines = signal(vec!["abc".to_string()]);
         let caret = signal((0_usize, 0_usize));
         let keys_seen = Rc::new(Cell::new(0_u32));
@@ -13,7 +13,7 @@ fn click_focuses_surface_then_keys_reach_on_key() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(580.0, 400.0))
-                .child(code_edit(lines, caret).key(move |_event| {
+                .child(code_edit(lines, caret).key_handler(move |_event| {
                     recorder.set(recorder.get() + 1);
                 })),
         );
@@ -28,7 +28,11 @@ fn click_focuses_surface_then_keys_reach_on_key() {
             "unfocused surface must not receive keys"
         );
 
-        router.route(&mut cx, &layout, pointer_down(10.0, 10.0));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer_down(Point::new(10.0, 10.0)),
+        );
         assert_eq!(
             router.focus(),
             Some(editor),
@@ -46,7 +50,7 @@ fn click_focuses_surface_then_keys_reach_on_key() {
 
 #[test]
 fn caret_renders_even_when_caret_line_is_past_the_end() {
-    sigil::reactive::Runtime::scope("code-edit-caret-clamp", || {
+    sigil::reactive::Owner::scope("code-edit-caret-clamp", || {
         let lines = signal(vec!["abc".to_string()]);
         let caret = signal((9_usize, 1_usize));
         let mut cx = Cx::new_root();
@@ -65,7 +69,7 @@ fn caret_renders_even_when_caret_line_is_past_the_end() {
 
 #[test]
 fn trapped_tab_reaches_on_key_and_does_not_move_focus() {
-    sigil::reactive::Runtime::scope("code-edit-tab-trap", || {
+    sigil::reactive::Owner::scope("code-edit-tab-trap", || {
         let lines = signal(vec!["abc".to_string()]);
         let caret = signal((0_usize, 0_usize));
         let keys_seen = Rc::new(Cell::new(0_u32));
@@ -74,7 +78,7 @@ fn trapped_tab_reaches_on_key_and_does_not_move_focus() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(580.0, 400.0))
-                .child(code_edit(lines, caret).key(move |_event| {
+                .child(code_edit(lines, caret).key_handler(move |_event| {
                     recorder.set(recorder.get() + 1);
                 }))
                 .child(
@@ -110,14 +114,14 @@ fn trapped_tab_reaches_on_key_and_does_not_move_focus() {
 
 #[test]
 fn shift_tab_still_escapes_a_trap_tab_surface() {
-    sigil::reactive::Runtime::scope("code-edit-tab-escape", || {
+    sigil::reactive::Owner::scope("code-edit-tab-escape", || {
         let lines = signal(vec!["abc".to_string()]);
         let caret = signal((0_usize, 0_usize));
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(580.0, 400.0))
-                .child(code_edit(lines, caret).key(move |_event| {}))
+                .child(code_edit(lines, caret).key_handler(move |_event| {}))
                 .child(
                     container()
                         .role(Role::Button)
@@ -141,7 +145,7 @@ fn shift_tab_still_escapes_a_trap_tab_surface() {
 
 #[test]
 fn read_only_surface_does_not_trap_tab() {
-    sigil::reactive::Runtime::scope("code-edit-readonly-tab", || {
+    sigil::reactive::Owner::scope("code-edit-readonly-tab", || {
         let lines = signal(vec!["abc".to_string()]);
         let caret = signal((0_usize, 0_usize));
         let mut cx = Cx::new_root();

@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{CommandMenuBuilder, HintOverlayBuilder, MenuBarBuilder, MenuBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - overlays").size(640, 560), build)
@@ -33,7 +32,7 @@ pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
         )
 }
 
-pub(crate) fn menu_demo(open: Signal<bool>) -> MenuBuilder {
+pub(crate) fn menu_demo(open: Signal<bool>) -> impl IntoNode {
     menu(open)
         .label("Edit")
         .anchor(16.0, 16.0)
@@ -43,7 +42,7 @@ pub(crate) fn menu_demo(open: Signal<bool>) -> MenuBuilder {
         .item(MenuItem::new("Share").submenu(true))
 }
 
-pub(crate) fn menu_bar_demo() -> MenuBarBuilder {
+pub(crate) fn menu_bar_demo() -> impl IntoNode {
     menu_bar().fill().menu(
         "File",
         [
@@ -54,7 +53,7 @@ pub(crate) fn menu_bar_demo() -> MenuBarBuilder {
     )
 }
 
-pub(crate) fn command_menu_demo() -> CommandMenuBuilder {
+pub(crate) fn command_menu_demo() -> impl IntoNode {
     command_menu()
         .item("Refresh", || {})
         .item("Open settings", || {})
@@ -64,7 +63,11 @@ pub(crate) fn command_menu_demo() -> CommandMenuBuilder {
 
 pub(crate) fn tooltip_demo() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().fill_width().padding_top(40.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .padding_top(Space::raw(40.0, "example layout")),
+        )
         .child(
             tooltip("Saves the document")
                 .delay(0)
@@ -90,7 +93,7 @@ pub(crate) fn toast_queue_demo(shown: bool) -> NodeBuilder {
         .child(toast_queue(queue))
 }
 
-pub(crate) fn hint_overlay_demo() -> HintOverlayBuilder {
+pub(crate) fn hint_overlay_demo() -> impl IntoNode {
     hint_overlay(&[("Ctrl+K", "Palette"), ("Esc", "Close")])
 }
 

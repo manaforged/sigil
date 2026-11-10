@@ -14,65 +14,21 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::ime_event;
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::ImeEvent;
-use sigil::events::ShellEvent;
 use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
-use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil::layout::set_text_geometry;
 use sigil::prelude::*;
-use sigil::style::TextStyle;
 use widget_support::{compute, find_text_node};
 
 const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
-struct StubGeometry;
-
-impl TextGeometry for StubGeometry {
-    fn hit(
-        &self,
-        text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        point: sigil::geometry::Point,
-    ) -> sigil::hal::HitPosition {
-        sigil::hal::HitPosition {
-            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
-            affinity: sigil::hal::TextAffinity::Downstream,
-        }
-    }
-
-    fn caret(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        position: sigil::hal::HitPosition,
-    ) -> CaretGeometry {
-        let byte = position.byte_index;
-        CaretGeometry {
-            x: byte as f32 * 10.0,
-            top: 0.0,
-            height: 16.0,
-        }
-    }
-
-    fn selection_rects(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::geometry::Rect> {
-        Vec::new()
-    }
-}
-
 #[test]
 fn text_field_preedit_displays_inline() {
-    sigil::reactive::Runtime::scope("text-field-ime-preedit", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-preedit", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -83,7 +39,7 @@ fn text_field_preedit_displays_inline() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
 
         assert_eq!(displayed_text(&cx, root), "か");
@@ -97,8 +53,8 @@ fn text_field_preedit_displays_inline() {
 
 #[test]
 fn text_field_commit_writes_value_and_clears_preedit() {
-    sigil::reactive::Runtime::scope("text-field-ime-commit", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-commit", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -109,9 +65,9 @@ fn text_field_commit_writes_value_and_clears_preedit() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
-        router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("か".into())));
+        router.route(&mut cx, &layout, Event::Ime(ImeEvent::Commit("か".into())));
 
         assert_eq!(value.get(), "か");
         assert_eq!(
@@ -124,8 +80,8 @@ fn text_field_commit_writes_value_and_clears_preedit() {
 
 #[test]
 fn text_field_preedit_cancelled_on_focus_loss() {
-    sigil::reactive::Runtime::scope("text-field-ime-focus-loss", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-focus-loss", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let other = cx.add(
@@ -142,7 +98,7 @@ fn text_field_preedit_cancelled_on_focus_loss() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&cx, root), "か");
 
@@ -159,8 +115,8 @@ fn text_field_preedit_cancelled_on_focus_loss() {
 
 #[test]
 fn text_field_disabling_mid_composition_clears_preedit_immediately() {
-    sigil::reactive::Runtime::scope("text-field-ime-disable-immediate", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-disable-immediate", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
@@ -172,7 +128,7 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&cx, root), "か");
 
@@ -188,8 +144,8 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
 
 #[test]
 fn text_field_disabled_mid_composition_ignores_commit() {
-    sigil::reactive::Runtime::scope("text-field-ime-disable-commit", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-disable-commit", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
@@ -201,11 +157,11 @@ fn text_field_disabled_mid_composition_ignores_commit() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         disabled.set(true);
 
-        router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("か".into())));
+        router.route(&mut cx, &layout, Event::Ime(ImeEvent::Commit("か".into())));
 
         assert_eq!(value.get(), "", "a disabled field must not accept a Commit");
         assert_eq!(displayed_text(&cx, root), "");
@@ -214,8 +170,8 @@ fn text_field_disabled_mid_composition_ignores_commit() {
 
 #[test]
 fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
-    sigil::reactive::Runtime::scope("text-field-ime-scroll-anchor", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-scroll-anchor", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal("a".repeat(20));
         let mut cx = Cx::new_root();
         let mut builder = text_field(value);
@@ -228,7 +184,7 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         let unscrolled = router
             .ime_caret_rect(&cx, &layout)
@@ -271,31 +227,17 @@ fn displayed_text(cx: &Cx, root: NodeId) -> String {
     }
 }
 
-fn arrow_left() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
-        key: Key::ArrowLeft.into(),
-        physical: sigil::events::PhysicalKey::ArrowLeft,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn arrow_left() -> Event {
+    Event::key(Key::ArrowLeft, KeyPhase::Down).physical(sigil::events::PhysicalKey::ArrowLeft)
 }
 
-fn backspace() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
-        key: Key::Backspace.into(),
-        physical: sigil::events::PhysicalKey::Backspace,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn backspace() -> Event {
+    Event::key(Key::Backspace, KeyPhase::Down).physical(sigil::events::PhysicalKey::Backspace)
 }
 
 #[test]
 fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
-    sigil::reactive::Runtime::scope("text-field-ime-multibyte-backspace", || {
+    sigil::reactive::Owner::scope("text-field-ime-multibyte-backspace", || {
         let value = signal(String::from("a\u{e9}"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -308,7 +250,7 @@ fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
         router.route(&mut cx, &layout, backspace());
 
@@ -322,8 +264,8 @@ fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
 
 #[test]
 fn text_field_publishes_the_ime_anchor_before_composition_starts() {
-    sigil::reactive::Runtime::scope("text-field-ime-anchor-idle", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-field-ime-anchor-idle", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("abcd"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));

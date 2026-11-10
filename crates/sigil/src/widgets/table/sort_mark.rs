@@ -1,7 +1,8 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::reactive::{Signal, derived};
 
-use super::state::{SortDir, TableState};
+use super::state::TableState;
+use crate::kernel::SortDirection;
 
 #[cfg(feature = "scene")]
 static IDLE: &[crate::style::StyleAtom] = &[crate::style::StyleAtom::Opacity(3_000)];
@@ -21,8 +22,8 @@ pub(super) fn sort_mark<Row: 'static>(
     sortable: bool,
 ) -> NodeBuilder {
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
-    use crate::layout::{LayoutBuilderExt, LayoutStyle};
-    use crate::style::space;
+    use crate::layout::{LayoutStyle, Space};
+    use crate::widgets::Widget;
     use crate::widgets::icon_svg;
     let mark = state.sort_state(column, sortable);
     if crate::style::cell_size().is_some() {
@@ -37,7 +38,7 @@ pub(super) fn sort_mark<Row: 'static>(
             SortMark::Descending => icon_svg(ARROW_DOWN_SVG).strong(),
         };
         let slot = container()
-            .layout(LayoutStyle::flex_row().padding_left(space(1)).shrink(0.0))
+            .layout(LayoutStyle::flex_row().padding_left(Space::Xs).shrink(0.0))
             .child(icon.px(12.0));
         vec![if current == SortMark::Idle {
             slot.class(IDLE)
@@ -73,6 +74,7 @@ fn glyph_mark(mark: Signal<SortMark>) -> NodeBuilder {
 }
 
 impl<Row: 'static> TableState<Row> {
+    /// Moves the sort to the next column.
     pub fn cycle_sort(&self) {
         let sortable = || self.columns().iter().filter(|col| col.is_sortable());
         let current = self.sort_key().peek().map(|key| key.column);
@@ -80,17 +82,18 @@ impl<Row: 'static> TableState<Row> {
             .and_then(|id| sortable().skip_while(|col| col.id() != id).nth(1))
             .or_else(|| sortable().next());
         if let Some(col) = next {
-            self.sort(col.id(), SortDir::Ascending);
+            self.sort(col.id(), SortDirection::Ascending);
         }
     }
 
+    /// Flips the sort direction.
     pub fn reverse_sort(&self) {
         let Some(key) = self.sort_key().peek() else {
             return;
         };
         let dir = match key.dir {
-            SortDir::Ascending => SortDir::Descending,
-            SortDir::Descending => SortDir::Ascending,
+            SortDirection::Ascending => SortDirection::Descending,
+            SortDirection::Descending => SortDirection::Ascending,
         };
         self.sort(key.column, dir);
     }
@@ -99,8 +102,8 @@ impl<Row: 'static> TableState<Row> {
         let sort = self.sort_key();
         derived(move || match sort.get() {
             Some(key) if key.column == column => match key.dir {
-                SortDir::Ascending => SortMark::Ascending,
-                SortDir::Descending => SortMark::Descending,
+                SortDirection::Ascending => SortMark::Ascending,
+                SortDirection::Descending => SortMark::Descending,
             },
             _ if sortable => SortMark::Idle,
             _ => SortMark::None,

@@ -6,14 +6,15 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
+use sigil::layout::Space;
+use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 use sigil::scene::{
-    CommandScene, DrawGlyphRun, DrawRect, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
+    CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
-use sigil::style::{
-    Elevation, FocusRing, FontFamily, NodeStyleExt, Paint, Radius, TextLineHeight, Theme, Token,
-};
-use sigil_kittest::FixedMeasure;
+use sigil::style::{Elevation, FontFamily, Paint, Radius, TextLineHeight, Theme, Token};
+use sigil_kittest::FakeMeasure;
 
 #[test]
 fn theme_accent_rect_emits_in_scene() {
@@ -26,7 +27,7 @@ fn theme_accent_rect_emits_in_scene() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let rect = first_rect(&scene).unwrap();
 
     assert_eq!(rect.node, Some(root));
@@ -42,12 +43,12 @@ fn text_emits_default_on_surface_color() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Readable").unwrap();
 
-    assert_eq!(text.run.node, Some(root));
-    assert_eq!(text.run.text, "Readable");
-    assert_eq!(text.run.color, Theme::default().on_surface);
+    assert_eq!(text.node, Some(root));
+    assert_eq!(text.text, "Readable");
+    assert_eq!(text.color, Theme::default().on_surface);
 }
 
 #[test]
@@ -57,10 +58,10 @@ fn styled_text_color_overrides_default() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Accent").unwrap();
 
-    assert_eq!(text.run.color, Theme::default().accent);
+    assert_eq!(text.color, Theme::default().accent);
 }
 
 #[test]
@@ -68,34 +69,38 @@ fn styled_text_typography_emits_in_scene() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         text("Large")
-            .font_size(20.0)
+            .font_size(20.0, "test fixture")
             .font_weight(700)
             .line_height_px(32.0),
     );
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Large").unwrap();
 
-    assert_eq!(text.run.style.font_size, 20.0);
-    assert_eq!(text.run.style.font_weight, 700);
-    assert_eq!(text.run.style.line_height, TextLineHeight::Absolute(32.0));
+    assert_eq!(text.style.font_size, 20.0);
+    assert_eq!(text.style.font_weight, 700);
+    assert_eq!(text.style.line_height, TextLineHeight::Absolute(32.0));
 }
 
 #[test]
 fn visible_focus_ring_emits_one_rounded_outside_stroke() {
+    Owner::scope("visible_focus_ring", visible_focus_ring_stroke);
+}
+
+fn visible_focus_ring_stroke() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
             .rounded(Radius::Lg)
-            .focus_ring(FocusRing::static_visible(true)),
+            .focus_ring(signal(true)),
     );
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let rects = rects_for_node(&scene, root);
 
     assert_eq!(rects.len(), 1);
@@ -119,21 +124,29 @@ fn nested_text_scene_rect_is_absolute() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(240.0, 120.0).padding(24.0))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(240.0, 120.0)
+                    .padding(Space::Xl),
+            )
             .child(
                 container()
-                    .layout(LayoutStyle::block().fixed_size(120.0, 60.0).padding(8.0))
+                    .layout(
+                        LayoutStyle::block()
+                            .fixed_size(120.0, 60.0)
+                            .padding(Space::Sm),
+                    )
                     .child(text("Nested")),
             ),
     );
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Nested").unwrap();
 
-    assert_eq!(text.run.rect.origin.x, 32.0);
-    assert_eq!(text.run.rect.origin.y, 32.0);
+    assert_eq!(text.rect.origin.x, 32.0);
+    assert_eq!(text.rect.origin.y, 32.0);
 }
 
 #[test]
@@ -149,7 +162,7 @@ fn shadow_class_parses_cleanly_and_paints() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let has_shadow = scene
         .commands
         .iter()
@@ -164,7 +177,7 @@ fn shadow_class_parses_cleanly_and_paints() {
 }
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     engine
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("layout compute succeeds");
@@ -193,7 +206,7 @@ fn rects_for_node(scene: &CommandScene, node: NodeId) -> Vec<&DrawRect> {
         .collect()
 }
 
-fn find_text<'a>(scene: &'a CommandScene, expected: &str) -> Option<&'a DrawGlyphRun> {
+fn find_text<'a>(scene: &'a CommandScene, expected: &str) -> Option<&'a GlyphRun> {
     scene.find_text(expected)
 }
 
@@ -209,10 +222,10 @@ fn container_text_class_cascades_to_child_glyphs() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
-        run.run.color,
+        run.color,
         Theme::default().accent,
         "a bare text child must inherit the nearest ancestor's text-* class \
          (pre-cascade it silently painted theme.on_surface — the chip-tone \
@@ -226,7 +239,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
             .font_family(FontFamily::Mono)
             .line_height_px(24.0)
@@ -235,16 +248,16 @@ fn container_font_classes_cascade_to_child_glyph_style() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 18.0,
+        run.style.font_size, 18.0,
         "a bare text child must inherit the ancestor's text-lg"
     );
-    assert_eq!(run.run.style.font_weight, 700, "font-bold must inherit");
-    assert_eq!(run.run.style.font_family, "mono", "font-mono must inherit");
+    assert_eq!(run.style.font_weight, 700, "font-bold must inherit");
+    assert_eq!(run.style.font_family, "mono", "font-mono must inherit");
     assert_eq!(
-        run.run.style.line_height,
+        run.style.line_height,
         TextLineHeight::Absolute(24.0),
         "leading-24 must inherit"
     );
@@ -256,21 +269,21 @@ fn own_font_class_beats_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
-            .child(text("Own").font_size(12.0)),
+            .child(text("Own").font_size(12.0, "test fixture")),
     );
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Own").expect("child glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 12.0,
+        run.style.font_size, 12.0,
         "a text node's own text-* size must beat the inherited one"
     );
     assert_eq!(
-        run.run.style.font_weight, 700,
+        run.style.font_weight, 700,
         "properties the node does not set itself keep the inherited value"
     );
 }
@@ -285,7 +298,7 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
             .text_color(Token::Accent)
             .child(popup),
@@ -293,15 +306,15 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Deferred").expect("deferred glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 18.0,
+        run.style.font_size, 18.0,
         "top-layer deferral must not drop the inherited font size"
     );
-    assert_eq!(run.run.style.font_weight, 700);
+    assert_eq!(run.style.font_weight, 700);
     assert_eq!(
-        run.run.color,
+        run.color,
         Theme::default().accent,
         "the color cascade must also survive the deferral"
     );
@@ -319,10 +332,10 @@ fn own_text_class_beats_inherited_cascade() {
 
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Own").expect("child glyph run emitted");
     assert_eq!(
-        run.run.color,
+        run.color,
         Theme::default().on_accent,
         "a text node's own text-* class must beat the inherited color"
     );
@@ -341,7 +354,7 @@ fn top_layer_subtree_paints_after_later_siblings() {
     let root = cx.add(container().child(floating).child(sibling));
 
     layout(&mut cx, root);
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
 
     let theme = Theme::default();
     let accent_pos = scene

@@ -1,5 +1,65 @@
 # Hot reload
 
+There are two ways to change a running app. A view file changes the widget tree with no compiler and no extra tool. The `hot` feature patches Rust functions. Start with a view file when you iterate on shapes and layout.
+
+## View files
+
+A `.sigil` file describes a widget tree. `sigil::view!` reads a file relative to `Cargo.toml`, embeds it in the binary, and in a debug build watches the file. The screen changes within 200 ms of a save, with no rebuild.
+
+```text
+// settings.sigil
+column gap=lg padding=xl {
+  text "Settings" role=title
+  field "Name" {
+    text_field value=$name placeholder="Your name"
+  }
+  text "Saved" show=$saved
+  row gap=sm {
+    button "Save" primary activate=@save
+  }
+  slot rows
+}
+```
+
+```rust,ignore
+sigil::view!("src/settings.sigil")
+    .signal("name", name)
+    .flag("saved", saved)
+    .action("save", move || saved.set(true))
+    .slot("rows", move || rows(items))
+```
+
+Each line is one widget. A `{ }` block holds its children.
+
+| Widget | Takes | Properties |
+| --- | --- | --- |
+| `column`, `row`, `card`, `scroll` | children | `gap` |
+| `field` | `"label"` or `$name`, and one child | |
+| `text` | `"words"` or `$name` | `role` |
+| `button` | `"label"` or `$name` | `primary`, `outline`, `ghost`, `activate=@name`, `disabled=$name` |
+| `text_field` | | `value=$name` (required), `placeholder`, `disabled=$name` |
+| `checkbox` | optional `"label"` or `$name` | `checked=$name` (required), `disabled=$name` |
+| `spacer` | | |
+| `slot` | a name | |
+
+Every widget also takes `padding`, `layer`, `class="..."`, and `show=$name`.
+
+- `gap` and `padding` take a step: `none`, `xxs`, `xs`, `sm`, `md`, `lg`, `xl`, `xxl`, `xxxl`. A number is an error.
+- `role` takes `caption`, `body`, `label`, `subtitle`, `title`, `heading`, or `display`.
+- `layer` takes `page`, `sunken`, `raised`, or `overlay`.
+- `$name` binds a signal or a flag, and `@name` binds an action. A name with no binding is an error.
+- `slot` holds a tree that you build in Rust, for a chart, a list, or any other widget that the file cannot name.
+
+Signals live in Rust, so their values and the typed text stay when you save. If a save has a mistake, the previous screen stays and an error band names the line and the column. The next good save removes the band. `View::check` returns the same error, for a test:
+
+```rust,ignore
+assert!(sigil::view!("src/settings.sigil").signal("name", name).check().is_ok());
+```
+
+A release build uses the embedded text and does not watch the file. `View::new(text).watch(path)` gives the same behavior with a path that you choose. The view file works on the window host and the terminal host. `Harness` holds a view to the same design rules as any other tree. Run the example with `cargo run -p sigil-ui --example view-form --features desktop` and edit `examples/view-form.sigil`.
+
+## Patch Rust functions
+
 The `hot` feature of `sigil-ui` patches a running app when you save a source file. The window does not close and the app does not restart. Sigil uses [`subsecond`](https://crates.io/crates/subsecond), the hot-patch engine of Dioxus.
 
 The feature is for development. Do not turn it on in a release build.
@@ -40,10 +100,10 @@ Keep state that must survive a patch outside the root closure:
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 fn main() -> sigil::AppResult<()> {
-    Runtime::scope("app", || {
+    Owner::scope("app", || {
         let count = signal(0_i32);
         sigil::run(AppConfig::new("Counter"), move || counter(count))
     })

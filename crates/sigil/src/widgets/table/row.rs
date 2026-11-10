@@ -1,10 +1,12 @@
+use crate::layout::Space;
 use std::sync::Arc;
 
-use crate::events::{Key, MouseButton, NodeEventsExt, PointerEvent};
+use crate::events::{Key, MouseButton, PointerEvent};
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
+use crate::widgets::Widget;
 
 use super::super::interaction::InteractionState;
 use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};
@@ -218,7 +220,7 @@ fn row_layout(height: f32, pad_x: f32) -> LayoutStyle {
         .fill_width()
         .height(height)
         .align_items(AlignItems::Center)
-        .padding_x(pad_x)
+        .padding_x(Space::px(pad_x))
         .overflow_x(Overflow::Hidden)
 }
 

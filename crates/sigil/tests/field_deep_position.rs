@@ -15,64 +15,23 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::type_char;
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::{CaretGeometry, LayoutEngine, LayoutResult, TextGeometry, set_text_geometry};
+use sigil::layout::{LayoutEngine, LayoutResult, set_text_geometry};
 use sigil::prelude::*;
-use sigil::style::TextStyle;
 use sigil_kittest::stub_text_measure;
 use widget_support::find_text_node;
 
 const VIEWPORT: Size = Size::fixed(1000.0, 1000.0);
 const SPACER_H: f32 = 800.0;
 
-struct StubGeometry;
-impl TextGeometry for StubGeometry {
-    fn hit(
-        &self,
-        text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        point: sigil::geometry::Point,
-    ) -> sigil::hal::HitPosition {
-        sigil::hal::HitPosition {
-            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
-            affinity: sigil::hal::TextAffinity::Downstream,
-        }
-    }
-    fn caret(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        position: sigil::hal::HitPosition,
-    ) -> CaretGeometry {
-        let byte = position.byte_index;
-        CaretGeometry {
-            x: byte as f32 * 10.0,
-            top: 0.0,
-            height: 16.0,
-        }
-    }
-
-    fn selection_rects(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::geometry::Rect> {
-        Vec::new()
-    }
-}
-
 #[test]
 #[allow(clippy::too_many_lines)]
 fn deep_text_field_glyphs_stay_in_field_after_typing() {
-    sigil::reactive::Runtime::scope("field-deep-position", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("field-deep-position", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("a"));
 
         let mut spacer =
@@ -104,7 +63,11 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
         let gen_before = layout.generation();
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(field_root));
-        router.route(&mut cx, &layout, type_char("b", PhysicalKey::KeyB));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("b").physical(PhysicalKey::KeyB),
+        );
         layout
             .compute(&mut cx, root, VIEWPORT)
             .expect("layout after typing");

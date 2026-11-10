@@ -1,32 +1,39 @@
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
+use crate::layout::LayoutStyle;
+use crate::layout::Space;
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
-const DEFAULT_PADDING: f32 = space(4);
 const TITLE_GAP: f32 = space(2);
 
+/// Builder of a panel.
 pub struct PanelBuilder {
+    /// The title, if any.
     pub title: Option<String>,
-    pub padding: f32,
+    /// The padding.
+    pub padding: Space,
+    /// The elevation.
     pub elevation: u32,
     content: Option<Box<dyn IntoNode>>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
+/// A titled panel.
 #[must_use]
 pub fn panel() -> PanelBuilder {
     PanelBuilder::new()
 }
 
 impl PanelBuilder {
+    /// Creates a panel builder.
     #[must_use]
     pub fn new() -> Self {
         Self {
             title: None,
-            padding: DEFAULT_PADDING,
+            padding: Space::Lg,
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
@@ -34,41 +41,43 @@ impl PanelBuilder {
         }
     }
 
+    /// Sets the title.
     #[must_use]
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
         self
     }
 
+    /// Sets the padding.
     #[must_use]
-    pub const fn padding(mut self, px: f32) -> Self {
-        self.padding = px;
+    pub fn padding(mut self, padding: impl Into<Space>) -> Self {
+        self.padding = padding.into();
         self
     }
 
+    /// Sets the elevation.
     #[must_use]
     pub fn elevation(mut self, tier: u32) -> Self {
         self.elevation = tier.min(3);
         self
     }
 
+    /// Adds a child.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.content = Some(Box::new(child));
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
             .layout(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_column()
-                        .padding(self.padding)
-                        .gap(TITLE_GAP)
-                        .fill_width()
-                        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
-                ),
+                LayoutStyle::flex_column()
+                    .padding(self.padding)
+                    .gap(Space::px(TITLE_GAP))
+                    .fill_width()
+                    .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
             )
             .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
@@ -99,38 +108,22 @@ impl Default for PanelBuilder {
     }
 }
 
-impl PaintTarget for PanelBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
+builder_impls!([] PanelBuilder: paint(style_accumulator), widget, node);
 
-impl WidgetLayoutExt for PanelBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for PanelBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
+const fn raised(shadow: Elevation) -> [StyleAtom; 4] {
+    [
+        Token::SurfaceHover.bg(),
+        StyleAtom::BorderWidth(BORDER_WIDTH),
+        Token::Border.border(),
+        StyleAtom::Shadow(shadow),
+    ]
 }
 
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {
     match elevation {
-        0 => const { &[Token::Surface.bg()] },
-        _ => {
-            const {
-                &[
-                    Token::SurfaceHover.bg(),
-                    StyleAtom::BorderWidth(BORDER_WIDTH),
-                    Token::Border.border(),
-                ]
-            }
-        }
+        0 => Layer::Page.atoms(),
+        1 => const { &raised(Elevation::Sm) },
+        2 => const { &raised(Elevation::Base) },
+        _ => const { &raised(Elevation::Md) },
     }
 }

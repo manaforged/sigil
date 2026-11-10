@@ -6,7 +6,8 @@ use crate::kernel::Node;
 use crate::reactive::{Signal, batch, effect_named, signal};
 
 use super::install::{install_animation, install_reactive};
-use super::{DisplayKind, NumericAtomKind, StyleAtom};
+use super::{NumericAtomKind, StyleAtom};
+use crate::layout::Display;
 
 pub(crate) struct Presence {
     shown: Signal<bool>,
@@ -35,7 +36,7 @@ pub(super) fn install_presence(node: &mut Node, shown: Signal<bool>, config: Ani
         if shown.get() || !animator.borrow().settled() {
             &[]
         } else {
-            &[StyleAtom::Display(DisplayKind::None)]
+            &[StyleAtom::Display(Display::None)]
         }
     });
     let _previous = node.attach(Presence { shown });

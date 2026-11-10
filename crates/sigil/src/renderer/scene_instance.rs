@@ -10,6 +10,7 @@ use crate::renderer::scene_command::{
     DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::shadow_paint::Shadow;
+use crate::scene::command::{Gradient, GradientKind};
 use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_linear};
 
@@ -41,6 +42,10 @@ impl BlendSpace {
         }
     }
 
+    fn flag(self) -> u32 {
+        u32::from(self == Self::Linear)
+    }
+
     pub(crate) fn rgba(self, color: Rgba8) -> [f32; 4] {
         [
             self.channel(color.r),
@@ -54,6 +59,9 @@ impl BlendSpace {
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
+pub(crate) const FILL_KIND_WASH: u32 = 3;
+pub(crate) const FILL_KIND_RADIAL: u32 = 4;
+pub(crate) const FILL_KIND_CONIC: u32 = 5;
 
 pub(crate) const fn affine_rows(transform: Transform) -> [[f32; 4]; 2] {
     let [[a, b, tx], [c, d, ty]] = transform;
@@ -189,16 +197,40 @@ pub(crate) fn draw_gradient_instance(
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
-    let (start, end) = (draw.gradient.start, draw.gradient.end);
+    let (fill_kind, line, pattern_a) = pack_gradient(&draw.gradient);
+    let span = draw.gradient.repeat_span();
+    let [first, last] = span.unwrap_or([0.0, 1.0]);
     FillInstance {
-        line: [start.x, start.y, end.x, end.y],
+        line,
         stop_range: [
             stop_offset,
             stop_count.min(MAX_GRADIENT_STOPS_U32),
-            FILL_KIND_GRADIENT,
-            0,
+            fill_kind,
+            space.flag(),
         ],
+        pattern_a,
+        pattern_b: [first, last, f32::from(u8::from(span.is_some())), 0.0],
         ..base
+    }
+}
+
+const fn pack_gradient(gradient: &Gradient) -> (u32, [f32; 4], [f32; 4]) {
+    match gradient.kind {
+        GradientKind::Linear { start, end } => (
+            FILL_KIND_GRADIENT,
+            [start.x, start.y, end.x, end.y],
+            [0.0; 4],
+        ),
+        GradientKind::Radial { center, radius } => (
+            FILL_KIND_RADIAL,
+            [center.x, center.y, center.x, center.y],
+            [radius[0], radius[1], 0.0, 0.0],
+        ),
+        GradientKind::Conic { center, angle } => (
+            FILL_KIND_CONIC,
+            [center.x, center.y, center.x, center.y],
+            [0.0, 0.0, angle, 0.0],
+        ),
     }
 }
 
@@ -206,13 +238,17 @@ pub(crate) fn draw_pattern_instance(
     draw: &DrawPattern,
     opacity_scale: f32,
     space: BlendSpace,
+    [stop_offset, stop_count]: [u32; 2],
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
-    let (fill_kind, line, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
+    let (fill_kind, line, pattern_a, mut pattern_b) = pack_pattern(draw.pattern, space);
+    if fill_kind == FILL_KIND_WASH {
+        pattern_b[3] = crate::scene::command::wash_centre_bits(draw.rect.width, draw.rect.height);
+    }
     FillInstance {
         line,
-        stop_range: [0, 0, fill_kind, 0],
+        stop_range: [stop_offset, stop_count, fill_kind, space.flag()],
         pattern_a,
         pattern_b,
         ..base
@@ -234,7 +270,7 @@ fn fill_base(
         line: [0.0; 4],
         corner_radii: radii.normalized_for(rect.width, rect.height),
         params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
-        stop_range: [0; 4],
+        stop_range: [0, 0, 0, space.flag()],
         stroke_params,
         stroke_meta,
         pattern_a: [0.0; 4],
@@ -246,6 +282,10 @@ fn fill_base(
 
 type PatternPack = (u32, [f32; 4], [f32; 4], [f32; 4]);
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "a wash seed is masked to 24 bits, which f32 holds exactly"
+)]
 fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
     match kind.normalized() {
         PatternKind::Slash {
@@ -268,7 +308,31 @@ fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
             premultiplied(space, color_a),
             premultiplied(space, color_b),
         ),
+        PatternKind::Wash(wash) => (
+            FILL_KIND_WASH,
+            [wash.scale, wash.seed as f32, 0.0, 0.0],
+            [wash.density, wash.pools, wash.edges, wash.granulation],
+            [
+                wash.grain,
+                wash.specks,
+                f32::from(u8::from(wash.band) | (u8::from(wash.dark()) << 1)),
+                0.0,
+            ],
+        ),
     }
+}
+
+/// The paper and pigment stops a wash reads, with their positions in the palette.
+pub(crate) fn wash_stops(kind: PatternKind) -> Option<Vec<GradientStop>> {
+    let PatternKind::Wash(wash) = kind else {
+        return None;
+    };
+    Some(
+        wash.palette()
+            .zip(0_u16..)
+            .map(|(color, index)| GradientStop::new(f32::from(index), color))
+            .collect(),
+    )
 }
 
 fn premultiplied(space: BlendSpace, color: Rgba8) -> [f32; 4] {

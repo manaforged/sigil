@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use std::fmt;
+#[cfg(any(test, feature = "kittest"))]
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 use crate::hal::Scheduler;
-use crate::reactive::OwnerId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use crate::Error;
+use crate::reactive::Owner;
 use crate::tasks::backend::{Backend, TaskWorkers};
-use crate::tasks::handle::OwnerHandle;
-use crate::tasks::schedule_error::ScheduleError;
 use crate::tasks::task::TaskHandle;
 
 pub(crate) struct DispatchMessage {
-    pub(crate) owner: OwnerHandle,
+    pub(crate) owner: Owner,
     pub(crate) callback: Box<dyn FnOnce() + Send + 'static>,
 }
 
@@ -30,8 +30,10 @@ impl fmt::Debug for Dispatcher {
 }
 
 impl Dispatcher {
-    pub(crate) fn send(&self, message: DispatchMessage) -> Result<(), ScheduleError> {
-        self.tx.send(message).map_err(|_| ScheduleError::Closed)?;
+    pub(crate) fn send(&self, message: DispatchMessage) -> Result<(), Error> {
+        self.tx.send(message).map_err(|_| {
+            Error::fixed(crate::ErrorKind::Closed, "main-thread dispatcher is closed")
+        })?;
         (self.waker)();
         Ok(())
     }
@@ -42,15 +44,16 @@ const _: fn() = || {
     assert_send_sync_clone_static::<Dispatcher>();
 };
 
-type Registry = Mutex<HashMap<OwnerId, Vec<TaskHandle>>>;
+type TaskRegistry = Mutex<HashMap<Owner, Vec<TaskHandle>>>;
 
 #[derive(Clone)]
 pub(crate) struct SpawnParts {
     pub(crate) dispatcher: Dispatcher,
     pub(crate) backend: Backend,
-    owner_tasks: Arc<Registry>,
+    owner_tasks: Arc<TaskRegistry>,
 }
 
+/// The runtime that runs tasks and delivers their results to the UI thread.
 pub struct AsyncRuntime {
     parts: SpawnParts,
     rx: UnboundedReceiver<DispatchMessage>,
@@ -75,21 +78,22 @@ impl Drop for AsyncRuntime {
     }
 }
 
-fn lock(registry: &Registry) -> std::sync::MutexGuard<'_, HashMap<OwnerId, Vec<TaskHandle>>> {
+fn lock(registry: &TaskRegistry) -> std::sync::MutexGuard<'_, HashMap<Owner, Vec<TaskHandle>>> {
     registry
         .lock()
-        .expect("owner_tasks mutex poisoned by a panicking holder")
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 impl AsyncRuntime {
-    pub fn new() -> std::io::Result<Self> {
-        Self::with_workers(TaskWorkers::Auto)
+    /// Creates an async runtime.
+    pub fn new() -> Result<Self, crate::Error> {
+        Ok(Self::with_workers(TaskWorkers::Auto))
     }
 
-    pub fn with_workers(workers: TaskWorkers) -> std::io::Result<Self> {
+    pub(crate) fn with_workers(workers: TaskWorkers) -> Self {
         let backend = Backend::new(workers);
         let (tx, rx) = unbounded_channel();
-        Ok(Self {
+        Self {
             parts: SpawnParts {
                 dispatcher: Dispatcher {
                     tx,
@@ -99,9 +103,10 @@ impl AsyncRuntime {
                 owner_tasks: Arc::new(Mutex::new(HashMap::new())),
             },
             rx,
-        })
+        }
     }
 
+    /// Sets the function that wakes the UI thread.
     pub fn set_waker<F>(&mut self, waker: F)
     where
         F: Fn() + Send + Sync + 'static,
@@ -109,6 +114,7 @@ impl AsyncRuntime {
         self.parts.dispatcher.waker = Arc::new(waker);
     }
 
+    /// Runs waiting UI-thread work and returns how many items ran.
     pub fn pump(&mut self) -> usize {
         Scheduler::drain(self)
     }
@@ -117,6 +123,7 @@ impl AsyncRuntime {
         self.parts.clone()
     }
 
+    /// Makes this runtime the current one on this thread.
     pub fn install_current(&self) {
         crate::tasks::current::install(self.spawn_parts());
     }
@@ -133,20 +140,20 @@ impl AsyncRuntime {
     }
 }
 
-pub(crate) fn attach_task(parts: &SpawnParts, owner: OwnerHandle, task: TaskHandle) {
+pub(crate) fn attach_task(parts: &SpawnParts, owner: Owner, task: TaskHandle) {
     lock(&parts.owner_tasks)
-        .entry(owner.id())
+        .entry(owner)
         .or_default()
         .push(task.clone());
-    let registered = crate::reactive::owner_by_id(owner.id(), move || {
+    let registered = crate::reactive::owner_by_id(owner, move || {
         crate::reactive::on_cleanup(move || task.abort());
     });
     if !registered {
-        tracing::warn!(owner = ?owner.id(), "task cleanup could not attach to a live owner");
+        tracing::warn!(owner = ?owner, "task cleanup could not attach to a live owner");
     }
 }
 
-fn sweep_owner_tasks(registry: &Registry) {
+fn sweep_owner_tasks(registry: &TaskRegistry) {
     lock(registry).retain(|&owner_id, handles| {
         if !crate::reactive::is_live(owner_id) {
             for h in handles.drain(..) {
@@ -160,13 +167,14 @@ fn sweep_owner_tasks(registry: &Registry) {
 }
 
 impl Scheduler for AsyncRuntime {
-    type Error = ScheduleError;
-    type OwnerHandle = OwnerHandle;
+    type Error = Error;
+    type Owner = Owner;
     type SpawnTask = TaskHandle;
 
+    #[cfg(any(test, feature = "kittest"))]
     fn enqueue_main(
         &self,
-        owner: Self::OwnerHandle,
+        owner: Self::Owner,
         f: Box<dyn FnOnce() + Send + 'static>,
     ) -> Result<(), Self::Error> {
         self.parts
@@ -174,7 +182,8 @@ impl Scheduler for AsyncRuntime {
             .send(DispatchMessage { owner, callback: f })
     }
 
-    fn spawn<F>(&self, owner: Self::OwnerHandle, future: F) -> Self::SpawnTask
+    #[cfg(any(test, feature = "kittest"))]
+    fn spawn<F>(&self, owner: Self::Owner, future: F) -> Self::SpawnTask
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -182,7 +191,7 @@ impl Scheduler for AsyncRuntime {
             drop(future);
             return TaskHandle::finished();
         }
-        let task = self.parts.backend.spawn(owner.id(), future, drop);
+        let task = self.parts.backend.spawn(owner, future, drop);
         attach_task(&self.parts, owner, task.clone());
         task
     }
@@ -196,7 +205,7 @@ impl Scheduler for AsyncRuntime {
             let Ok(msg) = self.rx.try_recv() else {
                 break;
             };
-            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner.id(), msg.callback) {
+            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
                 ran += 1;
             }
         }

@@ -8,7 +8,7 @@ mod scene_support;
 
 use scene_support::rect;
 use sigil::geometry::Rect;
-use sigil::scene::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
+use sigil::scene::{CornerRadii, DrawRect, SceneBuilder, SceneCommand, Transform};
 use sigil::style::Rgba8;
 
 #[test]
@@ -16,7 +16,7 @@ fn builder_emits_balanced_push_pop_for_with_clip() {
     let mut builder = SceneBuilder::new();
 
     builder.with_clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
-        scene.draw_rect(rect(4.0, 6.0, 20.0, 12.0), rect_style());
+        scene.draw_rect(rect_style(rect(4.0, 6.0, 20.0, 12.0)));
     });
 
     let scene = builder.finish();
@@ -29,9 +29,9 @@ fn builder_nests_layers_correctly() {
     let mut builder = SceneBuilder::new();
 
     builder.with_layer(0.8, |scene| {
-        scene.draw_rect(rect(0.0, 0.0, 10.0, 10.0), rect_style());
+        scene.draw_rect(rect_style(rect(0.0, 0.0, 10.0, 10.0)));
         scene.with_layer(0.5, |scene| {
-            scene.draw_rect(rect(1.0, 1.0, 8.0, 8.0), rect_style());
+            scene.draw_rect(rect_style(rect(1.0, 1.0, 8.0, 8.0)));
         });
     });
 
@@ -65,9 +65,9 @@ fn builder_closes_scopes_on_drop_of_inner_scope() {
 
     builder.with_clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
         scene.with_transform(transform, |scene| {
-            scene.draw_rect(rect(2.0, 2.0, 12.0, 12.0), rect_style());
+            scene.draw_rect(rect_style(rect(2.0, 2.0, 12.0, 12.0)));
         });
-        scene.draw_rect(rect(20.0, 20.0, 12.0, 12.0), rect_style());
+        scene.draw_rect(rect_style(rect(20.0, 20.0, 12.0, 12.0)));
     });
 
     let scene = builder.finish();
@@ -89,9 +89,9 @@ fn builder_closes_scopes_on_drop_of_inner_scope() {
 fn builder_draw_rect_outside_any_scope_emits_only_draw() {
     let mut builder = SceneBuilder::new();
     let expected_rect = rect(4.0, 8.0, 16.0, 32.0);
-    let expected_style = rect_style();
+    let expected_draw = rect_style(expected_rect);
 
-    builder.draw_rect(expected_rect, expected_style);
+    builder.draw_rect(expected_draw);
 
     let scene = builder.finish();
     let kinds = command_kinds(&scene.commands);
@@ -99,9 +99,9 @@ fn builder_draw_rect_outside_any_scope_emits_only_draw() {
     match scene.commands.as_slice() {
         [SceneCommand::Rect(draw)] => {
             assert!(same_rect(draw.rect, expected_rect));
-            assert_eq!(draw.color, expected_style.color);
-            assert_eq!(draw.border_radius, expected_style.border_radius);
-            assert_eq!(draw.opacity, expected_style.opacity);
+            assert_eq!(draw.color, expected_draw.color);
+            assert_eq!(draw.border_radius, expected_draw.border_radius);
+            assert_eq!(draw.opacity, expected_draw.opacity);
         }
         other => {
             let other_kinds = command_kinds(other);
@@ -113,7 +113,7 @@ fn builder_draw_rect_outside_any_scope_emits_only_draw() {
 #[test]
 fn command_scene_clone_is_deep() {
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect(0.0, 0.0, 10.0, 10.0), rect_style());
+    builder.draw_rect(rect_style(rect(0.0, 0.0, 10.0, 10.0)));
 
     let scene = builder.finish();
     let cloned = scene.clone();
@@ -124,17 +124,18 @@ fn command_scene_clone_is_deep() {
     assert_ne!(scene.commands.as_ptr(), cloned.commands.as_ptr());
 }
 
-const fn rect_style() -> SceneRectStyle {
-    SceneRectStyle::new(
+const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
+    DrawRect::new(
+        rect,
         Rgba8 {
             r: 20,
             g: 40,
             b: 80,
             a: 255,
         },
-        CornerRadii::uniform(6.0),
-        9_500,
     )
+    .border_radius(CornerRadii::uniform(6.0))
+    .opacity(9_500)
 }
 
 fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {
@@ -157,6 +158,7 @@ fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {
             SceneCommand::Decoration(_) => "Decoration",
             SceneCommand::DrawShadow { .. } => "DrawShadow",
             SceneCommand::GlyphRun(_) => "GlyphRun",
+            SceneCommand::Path(_) => "Path",
         })
         .collect()
 }

@@ -4,8 +4,6 @@
     clippy::cast_sign_loss
 )]
 
-use std::cell::{Cell, OnceCell};
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
@@ -13,10 +11,11 @@ use crate::hal::{HitPosition, ParagraphMetrics, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;
-use crate::text::glyph::GlyphRun;
+use crate::text::glyph::ShapedRun;
 
 #[path = "paragraph_geometry.rs"]
 mod geometry;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 #[path = "paragraph_ink.rs"]
 mod ink;
 
@@ -155,7 +154,7 @@ impl LineGlyph {
 }
 
 pub(crate) struct SegmentAppend<'a> {
-    pub(crate) run: &'a GlyphRun,
+    pub(crate) run: &'a ShapedRun,
     pub(crate) advance: f32,
     pub(crate) byte_start: u32,
     pub(crate) byte_end: u32,
@@ -166,6 +165,7 @@ pub(crate) struct SegmentAppend<'a> {
 #[derive(Clone, Copy, Default)]
 struct ContentWidths {
     min: f32,
+    #[cfg(any(test, feature = "kittest"))]
     max: f32,
 }
 
@@ -185,7 +185,7 @@ pub(crate) struct FaceEntry {
 
 const OBLIQUE_ID: u64 = 1 << 63;
 
-pub(crate) type FaceTable = Rc<[FaceEntry]>;
+pub(crate) type FaceTable = Arc<[FaceEntry]>;
 
 pub(crate) fn face_table(faces: &[FaceSpec], size_px: f32) -> FaceTable {
     faces
@@ -220,13 +220,14 @@ struct ParagraphInner {
     line_height: f32,
     fonts: FaceTable,
     min_content_hint: f32,
-    content_widths: Cell<Option<ContentWidths>>,
-    ink: OnceCell<Option<Rect>>,
+    content_widths: std::sync::OnceLock<ContentWidths>,
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    ink: std::sync::OnceLock<Option<Rect>>,
 }
 
 #[derive(Clone)]
 pub struct Paragraph {
-    inner: Rc<ParagraphInner>,
+    inner: std::sync::Arc<ParagraphInner>,
 }
 
 impl Paragraph {
@@ -237,22 +238,27 @@ impl Paragraph {
         min_content_hint: f32,
     ) -> Self {
         Self {
-            inner: Rc::new(ParagraphInner {
+            inner: Arc::new(ParagraphInner {
                 lines,
                 font_size: metrics.font_size,
                 line_height: metrics.line_height,
                 fonts,
                 min_content_hint,
-                content_widths: Cell::new(None),
-                ink: OnceCell::new(),
+                content_widths: std::sync::OnceLock::new(),
+                #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+                ink: std::sync::OnceLock::new(),
             }),
         }
     }
 
     fn content_widths(&self) -> ContentWidths {
-        if let Some(cached) = self.inner.content_widths.get() {
-            return cached;
-        }
+        *self
+            .inner
+            .content_widths
+            .get_or_init(|| self.measure_widths())
+    }
+
+    fn measure_widths(&self) -> ContentWidths {
         let max = self
             .inner
             .lines
@@ -264,12 +270,11 @@ impl Paragraph {
         } else {
             max
         };
-        let result = ContentWidths {
+        ContentWidths {
             min: min.min(max),
+            #[cfg(any(test, feature = "kittest"))]
             max,
-        };
-        self.inner.content_widths.set(Some(result));
-        result
+        }
     }
 
     #[must_use]
@@ -330,6 +335,7 @@ impl Paragraph {
         rects
     }
 
+    #[cfg(any(test, feature = "kittest", feature = "scene"))]
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),
@@ -372,6 +378,7 @@ impl ParagraphMetrics for Paragraph {
         self.inner.lines.iter().map(|l| l.height).sum()
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn line_count(&self) -> usize {
         self.inner.lines.len()
     }
@@ -380,6 +387,7 @@ impl ParagraphMetrics for Paragraph {
         self.content_widths().min
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn max_content_width(&self) -> f32 {
         self.content_widths().max
     }

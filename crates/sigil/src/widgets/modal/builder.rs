@@ -1,30 +1,24 @@
+use crate::layout::Space;
 use crate::style::strings::StringKey;
-use crate::style::theme::ambient::{ActiveTheme, theme_label};
-use std::cell::Cell;
-use std::rc::Rc;
+use crate::style::theme::ambient::ActiveTheme;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, NodeEventsExt};
-use crate::kernel::{
-    AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, TopLayer,
-    container, queue_announcement,
-};
-use crate::layout::ViewportOverlay;
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container};
 use crate::layout::snap;
-use crate::layout::{
-    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
-};
-use crate::reactive::{Signal, effect_named, signal};
-use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, TransitionId, space};
+use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow, Position};
+use crate::reactive::{Signal, signal};
+use crate::style::{Style, StyleAtom, Token, TransitionId, space};
+use crate::widgets::Widget;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::popup::{self, footer};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::popup::{self, PopupAnchor, PopupLayer, close_on_escape, footer};
 use super::super::scroll::contain_scroll;
-use super::escape::{close_top_escape_modal, register_escape_modal};
+use super::super::shared::accessible_name_or;
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 const DIALOG_PADDING: f32 = space(4);
+const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
 
@@ -32,13 +26,18 @@ static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(
 
 static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 
+/// Edge of a sheet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
+    /// The left side.
     Left,
+    /// The right side.
     Right,
+    /// The bottom side.
     Bottom,
 }
 
+/// Builder of a modal or sheet.
 pub struct ModalBuilder {
     show: Signal<bool>,
     title: Option<TextContent>,
@@ -53,11 +52,13 @@ pub struct ModalBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A modal dialog.
 #[must_use]
 pub fn modal(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
 }
 
+/// A panel that slides in from a side.
 #[must_use]
 pub fn sheet(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
@@ -66,6 +67,7 @@ pub fn sheet(show: Signal<bool>) -> ModalBuilder {
 }
 
 impl ModalBuilder {
+    /// Creates a modal builder.
     #[must_use]
     pub fn new(show: Signal<bool>) -> Self {
         Self {
@@ -83,42 +85,49 @@ impl ModalBuilder {
         }
     }
 
+    /// Sets the side.
     #[must_use]
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
         self
     }
 
+    /// Sets the title.
     #[must_use]
     pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
         self
     }
 
+    /// Sets the show.
     #[must_use]
     pub const fn show(mut self, show: Signal<bool>) -> Self {
         self.show = show;
         self
     }
 
+    /// Sets the trap.
     #[must_use]
     pub const fn trap(mut self, enabled: bool) -> Self {
         self.trap = enabled;
         self
     }
 
+    /// Sets the escape closes.
     #[must_use]
     pub const fn escape_closes(mut self, enabled: bool) -> Self {
         self.escape_closes = enabled;
         self
     }
 
+    /// Sets the dismiss on backdrop.
     #[must_use]
     pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
         self.dismiss_on_backdrop = enabled;
         self
     }
 
+    /// Sets the close button.
     #[must_use]
     pub const fn close_button(mut self, enabled: bool) -> Self {
         self.close_button = if enabled {
@@ -129,18 +138,21 @@ impl ModalBuilder {
         self
     }
 
+    /// Adds a child.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.children.push(Box::new(child));
         self
     }
 
+    /// Sets the footer.
     #[must_use]
     pub fn footer(mut self, action: impl IntoNode + 'static) -> Self {
         self.actions.push(Box::new(action));
         self
     }
 
+    /// Sets the actions.
     #[must_use]
     pub fn actions(
         self,
@@ -150,14 +162,15 @@ impl ModalBuilder {
         self.footer(cancel).footer(confirm)
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let show = self.show;
-        let root_name = accessible_name(self.title.as_ref());
+        let root_name = accessible_name_or(self.title.as_ref(), StringKey::Dialog);
         let body_scroll = signal(0.0_f32);
+        let layer = PopupLayer::new(show, PopupAnchor::Top);
 
-        install_open_effects(show, self.title.clone(), body_scroll);
+        install_open_effects(layer, self.title.clone(), body_scroll);
         if self.escape_closes {
-            register_escape_modal(show);
+            layer.register_escape();
         }
 
         let side = self.side;
@@ -165,64 +178,41 @@ impl ModalBuilder {
         let backdrop = build_backdrop(show, self.dismiss_on_backdrop);
         let dialog = build_dialog(self, body_scroll);
 
-        let mut root = contain_scroll(
-            container()
-                .role(Role::GenericContainer)
-                .label(root_name)
-                .with(TopLayer)
-                .with(ViewportOverlay)
-                .layout(root_layout(side))
-                .style_reactive(move || popup::shown(show))
+        let root = contain_scroll(
+            layer
+                .wrap(
+                    container()
+                        .role(Role::GenericContainer)
+                        .label(root_name)
+                        .layout(root_layout(side)),
+                )
                 .child(backdrop)
                 .child(dialog),
         );
         if escape_closes {
-            root = root.key(Key::Escape, |ev| {
-                if close_top_escape_modal() {
-                    ev.stop_propagation();
-                }
-            });
+            close_on_escape(root)
+        } else {
+            root
         }
-
-        root
     }
 }
 
-impl WidgetLayoutExt for ModalBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scroll: Signal<f32>) {
-    let prev = Rc::new(Cell::new(true));
-    let theme = ActiveTheme::capture();
-    effect_named("sigil::modal::open", move || {
-        let open_now = show.get();
-        let was_open = prev.replace(open_now);
-        if open_now && !was_open {
-            body_scroll.set(0.0);
-            let name = title
-                .as_ref()
-                .map_or_else(|| theme.string(StringKey::Dialog), TextContent::resolve);
-            queue_announcement(name, Live::Polite);
-        }
-    });
-}
-
-impl PaintTarget for ModalBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
+builder_impls!([] ModalBuilder: paint(style_accumulator), widget);
 
 impl IntoNode for ModalBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.root().build(cx)
     }
+}
+
+fn install_open_effects(layer: PopupLayer, title: Option<TextContent>, body_scroll: Signal<f32>) {
+    let theme = ActiveTheme::capture();
+    layer.announce_open("sigil::modal::open", move || {
+        body_scroll.set(0.0);
+        title
+            .as_ref()
+            .map_or_else(|| theme.string(StringKey::Dialog), TextContent::resolve)
+    });
 }
 
 fn root_layout(side: Option<Side>) -> LayoutStyle {
@@ -243,34 +233,31 @@ fn root_layout(side: Option<Side>) -> LayoutStyle {
     root.fill()
         .position(Position::Absolute)
         .inset(0.0)
-        .padding(pad)
+        .padding(Space::px(pad))
         .align_items(align)
         .justify_content(justify)
 }
 
 fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder {
-    let mut backdrop = container()
-        .role(Role::GenericContainer)
-        .hittable(true)
-        .with(ViewportOverlay)
-        .layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_top(0.0)
-                .inset_left(0.0)
-                .fill(),
-        )
-        .class(BACKDROP_BASE)
-        .style_reactive(move || popup::shown(show));
+    let layer = PopupLayer::new(show, PopupAnchor::Viewport);
+    let backdrop = layer.wrap(
+        container()
+            .role(Role::GenericContainer)
+            .hittable(true)
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_top(0.0)
+                    .inset_left(0.0)
+                    .fill(),
+            )
+            .class(BACKDROP_BASE),
+    );
     if dismiss_on_backdrop {
-        backdrop = backdrop.pointer_down(move |ev| {
-            if show.peek() {
-                show.set(false);
-                ev.stop_propagation();
-            }
-        });
+        layer.dismiss_outside(backdrop)
+    } else {
+        backdrop
     }
-    backdrop
 }
 
 fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
@@ -286,21 +273,17 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         layout_overrides,
         ..
     } = spec;
-    let title_label = accessible_name(title.as_ref());
+    let title_label = accessible_name_or(title.as_ref(), StringKey::Dialog);
     let tab_stop = signal(false);
 
-    let mut dialog = popup::surface(Role::Dialog)
-        .label(title_label)
-        .focusable(true)
-        .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
-        .with(layout_overrides.apply(dialog_layout(side)))
-        .class(DIALOG_BASE)
-        .style_reactive(move || popup::shown(show));
-    if trap {
-        dialog = dialog.mutate(|node| {
-            node.a11y.focus_scope = Some(FocusScopeKind::Modal);
-        });
-    }
+    let mut dialog = PopupLayer::new(show, PopupAnchor::Inline).trap(trap).wrap(
+        popup::surface(Role::Dialog)
+            .label(title_label)
+            .focusable(true)
+            .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
+            .with(dialog_layout(side))
+            .class(DIALOG_BASE),
+    );
 
     if let Some(title_text) = title {
         dialog = dialog.child(dialog_header(
@@ -316,36 +299,25 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
     if !style_accumulator.is_empty() {
         dialog = dialog.style(style_accumulator);
     }
-    dialog
+    layout_overrides.finish(dialog)
 }
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     let padding_x = snap::line(DIALOG_PADDING);
     let base = LayoutStyle::flex_column()
-        .padding_x(padding_x)
-        .padding_right((padding_x - BODY_GUTTER).max(0.0))
-        .padding_y(snap::detail(DIALOG_PADDING))
+        .padding_x(Space::px(padding_x))
+        .padding_right(Space::px((padding_x - BODY_GUTTER).max(0.0)))
+        .padding_y(Space::px(snap::detail(DIALOG_PADDING)))
         .overflow_y(snap::CellForm::new(Overflow::Visible, Overflow::Hidden).pick())
-        .gap(space(2))
+        .gap(Space::Sm)
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
         .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
         .shrink(1.0);
     match side {
-        None => base.min_size(420.0, 0.0),
+        None => base.width(DIALOG_WIDTH),
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
         Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
-    }
-}
-
-fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
-    let Some(title) = title else {
-        return AccessibleName::Derived(theme_label(StringKey::Dialog));
-    };
-    match title {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(title.resolve()),
     }
 }
 

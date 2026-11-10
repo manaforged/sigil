@@ -10,6 +10,8 @@ use crate::{AppBundle, CodeSign, ResourceCopy, macos_app, sign_file, verify_file
 #[serde(rename_all = "lowercase")]
 enum PackCommand {
     Macos,
+    Dmg,
+    Notarize,
     Windows,
     Codesign,
     Sign,
@@ -22,9 +24,8 @@ fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
     while let Some(arg) = rest.next() {
         if arg == name {
             return match rest.next() {
-                Some(value) if value.starts_with("--") => Err(format!("{name} requires a value")),
-                Some(value) => Ok(Some(value.clone())),
-                None => Ok(None),
+                Some(value) if !value.starts_with("--") => Ok(Some(value.clone())),
+                _ => Err(format!("{name} requires a value")),
             };
         }
     }
@@ -88,7 +89,7 @@ fn resources(pairs: &[(PathBuf, PathBuf)]) -> Vec<ResourceCopy<'_>> {
 pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     let (cmd, rest) = argv
         .split_first()
-        .ok_or("usage: sigil-pack <macos|windows|codesign|sign|verify|genkey>")?;
+        .ok_or("usage: sigil-pack <macos|dmg|notarize|windows|codesign|sign|verify|genkey>")?;
     let command = PackCommand::deserialize(StrDeserializer::<ValueError>::new(cmd))
         .map_err(|_| format!("unknown command: {cmd}"))?;
     if !matches!(command, PackCommand::Macos)
@@ -98,6 +99,8 @@ pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     }
     match command {
         PackCommand::Macos => pack_macos(rest),
+        PackCommand::Dmg => pack_dmg(rest),
+        PackCommand::Notarize => pack_notarize(rest),
         PackCommand::Windows => pack_windows(rest),
         PackCommand::Codesign => pack_codesign(rest),
         PackCommand::Sign => pack_sign(rest),
@@ -134,9 +137,6 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let version = required(argv, "--version")?;
     let icon = flag(argv, "--icon")?;
     let provisioning_profile = flag(argv, "--provisioning-profile")?;
-    if provisioning_profile.is_none() && argv.iter().any(|arg| arg == "--provisioning-profile") {
-        return Err("--provisioning-profile requires a value".into());
-    }
     let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
     let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
     let copies = resource_pairs(argv)?;
@@ -158,6 +158,51 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
         &code_sign(&signing),
     )
     .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn pack_dmg(argv: &[String]) -> Result<(), String> {
+    let app = required(argv, "--app")?;
+    let out = required(argv, "--out")?;
+    let app_path = Path::new(&app);
+    let volume = match flag(argv, "--volume")? {
+        Some(volume) => volume,
+        None => app_path
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().into_owned())
+            .ok_or("--app has no file name")?,
+    };
+    let background = flag(argv, "--background")?;
+    let icon = flag(argv, "--icon")?;
+    let layout = flag(argv, "--layout")?;
+    let signing = codesign_flags(argv)?;
+    let dmg = crate::Dmg {
+        app: app_path,
+        volume: &volume,
+        background: background.as_deref().map(Path::new),
+        icon: icon.as_deref().map(Path::new),
+        layout: layout.as_deref().map(Path::new),
+    };
+    crate::macos_dmg(&dmg, Path::new(&out), &code_sign(&signing)).map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn pack_notarize(argv: &[String]) -> Result<(), String> {
+    let file = required(argv, "--file")?;
+    let profile = flag(argv, "--profile")?
+        .or_else(|| std::env::var("SIGIL_NOTARY_PROFILE").ok())
+        .ok_or("missing --profile")?;
+    crate::notarize(Path::new(&file), &profile).map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn pack_dmg(_argv: &[String]) -> Result<(), String> {
+    Err("dmg is supported only on macOS".into())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn pack_notarize(_argv: &[String]) -> Result<(), String> {
+    Err("notarize is supported only on macOS".into())
 }
 
 fn pack_windows(argv: &[String]) -> Result<(), String> {

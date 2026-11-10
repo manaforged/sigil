@@ -1,65 +1,69 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token};
+use crate::widgets::Widget;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
 use super::activatable::activatable;
 
-static CARD: &[StyleAtom] = &[
-    Radius::Md.atom(),
-    Token::Surface.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::Border.border(),
-];
+static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
 static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
     ROW_SELECTED.bg(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Accent8.border(),
+    StyleAtom::Shadow(Elevation::Sm),
 ];
 
+/// Builds a card.
 #[must_use]
 pub struct CardBuilder {
     node: NodeBuilder,
     selected: Option<Signal<bool>>,
     activate: Option<Activate>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A bordered card.
 pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
     CardBuilder {
         node: container()
             .role(Role::GenericContainer)
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(space(3))
-                    .gap(space(2))
+                    .padding(Space::Md)
+                    .gap(Space::Sm)
                     .fill_width()
                     .min_width(0.0),
             )
             .child(child),
         selected: None,
         activate: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl CardBuilder {
+    /// Sets the selected.
     pub fn selected(mut self, selected: impl Reactive<bool>) -> Self {
         self.selected = Some(selected.into_signal());
         self
     }
 
+    /// Sets the activate.
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
     #[must_use]
-    pub fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let node = match self.selected {
             Some(selected) => self
                 .node
@@ -80,8 +84,4 @@ impl From<CardBuilder> for NodeBuilder {
     }
 }
 
-impl IntoNode for CardBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] CardBuilder: widget, node(pub));

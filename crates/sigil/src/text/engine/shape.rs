@@ -1,22 +1,25 @@
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::text::glyph::GlyphRun;
-use crate::text::shaper::{Font, Script, Shaper, Style, TextSegment};
+use crate::text::glyph::ShapedRun;
+use crate::text::shaper::{FaceStyle, Font, Script};
+
+mod cache;
+mod face;
+
+use cache::{WordSpan, remember, replay, word_key};
+use face::{FaceSpan, cell_width, coalesce_face_spans, fit_cells, shape_in_chain};
 
 pub(super) struct ShapedSegment {
     pub(super) start: u32,
     pub(super) end: u32,
-    pub(super) run: GlyphRun,
+    pub(super) run: ShapedRun,
     pub(super) advance: f32,
     pub(super) is_break_opportunity: bool,
     pub(super) breakable_before: bool,
     pub(super) is_hard_break: bool,
     pub(super) level: u8,
-    #[cfg_attr(
-        not(any(test, debug_assertions)),
-        expect(dead_code, reason = "read only by debug_segments_for_tests")
-    )]
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) script: Script,
     pub(super) face_slot: u16,
 }
@@ -44,7 +47,7 @@ pub(super) struct WordCtx<'a> {
     pub(super) word_start: usize,
     pub(super) is_ws: bool,
     pub(super) chain: &'a [Font],
-    pub(super) style: &'a Style,
+    pub(super) style: &'a FaceStyle,
 }
 
 pub(super) fn split_word_into_uniform_runs(
@@ -119,6 +122,7 @@ impl RunAccumulator {
             fragment: &ctx.word[self.start..end_offset],
             start_byte: ctx.word_start + self.start,
             level: self.level.unwrap_or(0),
+            #[cfg(any(test, feature = "kittest"))]
             script: self.script.unwrap_or(Script::Common),
             is_break_opportunity: ctx.is_ws,
         };
@@ -140,55 +144,56 @@ pub(super) struct PushRunArgs<'a> {
     pub(super) fragment: &'a str,
     pub(super) start_byte: usize,
     pub(super) level: u8,
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) script: Script,
     pub(super) is_break_opportunity: bool,
 }
 
+const WORD_MAX_BYTES: usize = 64;
+
 pub(super) fn push_run(
     args: &PushRunArgs<'_>,
     chain: &[Font],
-    style: &Style,
+    style: &FaceStyle,
     out: &mut Vec<ShapedSegment>,
 ) {
     if args.fragment.is_empty() {
         return;
     }
+    if args.fragment.len() > WORD_MAX_BYTES {
+        shape_face_spans(args, chain, style, out);
+        return;
+    }
+    let key = word_key(args, chain, style);
+    if replay(key, args, chain, style, out) {
+        return;
+    }
+    let first = out.len();
+    shape_face_spans(args, chain, style, out);
+    remember(
+        key,
+        args,
+        chain,
+        style,
+        out.get(first..).unwrap_or_default(),
+    );
+}
+
+fn shape_face_spans(
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    style: &FaceStyle,
+    out: &mut Vec<ShapedSegment>,
+) {
     for span in coalesce_face_spans(chain, args.fragment) {
         push_face_span(args, chain, style, &span, out);
     }
 }
 
-struct FaceSpan {
-    start: usize,
-    end: usize,
-    face_slot: u16,
-}
-
-fn coalesce_face_spans(chain: &[Font], fragment: &str) -> SmallVec<[FaceSpan; 4]> {
-    let mut spans = SmallVec::<[FaceSpan; 4]>::new();
-    for (offset, cluster) in fragment.grapheme_indices(true) {
-        let (face_slot, _) = select_face(chain, cluster);
-        let end = offset + cluster.len();
-        if let Some(last) = spans.last_mut()
-            && last.face_slot == face_slot
-            && last.end == offset
-        {
-            last.end = end;
-        } else {
-            spans.push(FaceSpan {
-                start: offset,
-                end,
-                face_slot,
-            });
-        }
-    }
-    spans
-}
-
 fn push_face_span(
     args: &PushRunArgs<'_>,
     chain: &[Font],
-    style: &Style,
+    style: &FaceStyle,
     span: &FaceSpan,
     out: &mut Vec<ShapedSegment>,
 ) {
@@ -198,36 +203,35 @@ fn push_face_span(
     if sub_fragment.is_empty() {
         return;
     }
-    let start_byte = args.start_byte + span.start;
-    let end_byte = args.start_byte + span.end;
     let (face_slot, mut run) =
         shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
     apply_letter_spacing(&mut run, style);
     let advance = run_total_advance(&run);
-    out.push(ShapedSegment {
-        start: u32_clamp(start_byte),
-        end: u32_clamp(end_byte),
+    let span = WordSpan {
+        start: u32_clamp(span.start),
+        end: u32_clamp(span.end),
+        face_slot,
         run,
         advance,
+    };
+    out.push(segment(args, span));
+}
+
+fn segment(args: &PushRunArgs<'_>, span: WordSpan) -> ShapedSegment {
+    let base = u32_clamp(args.start_byte);
+    ShapedSegment {
+        start: base.saturating_add(span.start),
+        end: base.saturating_add(span.end),
+        run: span.run,
+        advance: span.advance,
         is_break_opportunity: args.is_break_opportunity,
         breakable_before: false,
         is_hard_break: false,
         level: args.level,
+        #[cfg(any(test, feature = "kittest"))]
         script: args.script,
-        face_slot,
-    });
-}
-
-fn select_face<'a>(chain: &'a [Font], fragment: &str) -> (u16, &'a Font) {
-    for (idx, font) in chain.iter().enumerate() {
-        if font.covers(fragment) {
-            return (u16::try_from(idx).unwrap_or(0), font);
-        }
+        face_slot: span.face_slot,
     }
-    let primary = chain
-        .first()
-        .expect("fallback_chain always seeds the primary face");
-    (0, primary)
 }
 
 pub(super) fn shape_validated(
@@ -235,33 +239,16 @@ pub(super) fn shape_validated(
     initial_slot: u16,
     fragment: &str,
     level: u8,
-    style: &Style,
-) -> (u16, GlyphRun) {
-    let seg = TextSegment::at_level(fragment, level);
-    if let Some(font) = chain.get(initial_slot as usize) {
-        let run = Shaper::new(font).shape(&seg, style);
-        if !run_has_disallowed_notdef(&run, fragment) {
-            return (initial_slot, run);
-        }
-        for (idx, candidate) in chain.iter().enumerate() {
-            let slot = u16::try_from(idx).unwrap_or(0);
-            if slot == initial_slot {
-                continue;
-            }
-            let candidate_run = Shaper::new(candidate).shape(&seg, style);
-            if !run_has_disallowed_notdef(&candidate_run, fragment) {
-                return (slot, candidate_run);
-            }
-        }
-        return (initial_slot, run);
+    style: &FaceStyle,
+) -> (u16, ShapedRun) {
+    let (slot, mut run) = shape_in_chain(chain, initial_slot, fragment, level, style);
+    if style.cell_grid && slot != 0 {
+        fit_cells(&mut run, cell_width(chain, style));
     }
-    let primary = chain
-        .first()
-        .expect("fallback_chain always seeds the primary face");
-    (0, Shaper::new(primary).shape(&seg, style))
+    (slot, run)
 }
 
-pub(super) fn run_has_disallowed_notdef(run: &GlyphRun, fragment: &str) -> bool {
+pub(super) fn run_has_disallowed_notdef(run: &ShapedRun, fragment: &str) -> bool {
     run.glyphs.iter().any(|g| {
         if g.id.0 != 0 {
             return false;
@@ -286,6 +273,13 @@ fn byte_level(levels: &[u8], byte: usize) -> u8 {
 
 pub(super) fn char_script(ch: char) -> Script {
     use unicode_script::{Script as UScript, UnicodeScript};
+    if ch.is_ascii() {
+        return if ch.is_ascii_alphabetic() {
+            Script::Latin
+        } else {
+            Script::Common
+        };
+    }
     match ch.script() {
         UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,
         UScript::Latin | UScript::Greek | UScript::Cyrillic => Script::Latin,
@@ -304,7 +298,7 @@ pub(super) fn char_script(ch: char) -> Script {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 pub(super) const fn script_name(script: Script) -> &'static str {
     match script {
         Script::Latin => "Latin",
@@ -320,7 +314,7 @@ pub(super) const fn script_name(script: Script) -> &'static str {
     }
 }
 
-fn apply_letter_spacing(run: &mut GlyphRun, style: &Style) {
+fn apply_letter_spacing(run: &mut ShapedRun, style: &FaceStyle) {
     let extra = style.letter_spacing_em * style.size_px;
     if extra.abs() < f32::EPSILON {
         return;
@@ -330,7 +324,7 @@ fn apply_letter_spacing(run: &mut GlyphRun, style: &Style) {
     }
 }
 
-fn run_total_advance(run: &GlyphRun) -> f32 {
+fn run_total_advance(run: &ShapedRun) -> f32 {
     run.glyphs.iter().map(|g| g.advance).sum()
 }
 

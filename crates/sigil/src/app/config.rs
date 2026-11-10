@@ -1,8 +1,11 @@
+/// What a panic in a handler does.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PanicPolicy {
+    /// The isolate panic policy.
     #[default]
     Isolate,
+    /// The abort panic policy.
     Abort,
 }
 
@@ -28,59 +31,33 @@ pub(crate) struct QuitKeys {
 
 pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_micros(16_667);
 
+const QUIT_KEYS: QuitKeys = QuitKeys {
+    esc: false,
+    ctrl_c: true,
+};
+
+#[cfg(feature = "desktop")]
+const HOST_MODE: crate::kernel::HostMode = crate::kernel::HostMode::Pixel;
+#[cfg(all(feature = "terminal", not(feature = "desktop")))]
+const HOST_MODE: crate::kernel::HostMode = crate::kernel::HostMode::Cell;
+
+mod defaults;
+mod hooks;
 #[cfg(feature = "terminal")]
-#[derive(Clone, Default)]
-pub(crate) struct TerminalHooks(
-    std::rc::Rc<std::cell::RefCell<Option<crate::terminal::Hooks<'static>>>>,
-);
+mod terminal;
+mod text;
 
 #[cfg(feature = "terminal")]
-impl TerminalHooks {
-    pub(crate) fn take(&self) -> crate::terminal::Hooks<'static> {
-        self.0.borrow_mut().take().unwrap_or_default()
-    }
-}
-
+pub(crate) use hooks::TerminalHooks;
+#[cfg(feature = "desktop")]
+pub(crate) use hooks::{CloseHook, ExitHook};
 #[cfg(feature = "terminal")]
-impl std::fmt::Debug for TerminalHooks {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("TerminalHooks")
-    }
-}
+pub(crate) use terminal::TerminalOptions;
 
-#[cfg(feature = "desktop")]
-#[derive(Clone, Default)]
-pub(crate) struct ExitHook(pub(crate) Option<std::rc::Rc<dyn Fn()>>);
-
-#[cfg(feature = "desktop")]
-impl std::fmt::Debug for ExitHook {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("ExitHook")
-    }
-}
-
-#[cfg(feature = "desktop")]
-#[derive(Clone, Default)]
-pub(crate) struct CloseHook(Option<std::rc::Rc<dyn Fn() -> crate::app::CloseAction>>);
-
-#[cfg(feature = "desktop")]
-impl CloseHook {
-    pub(crate) fn decide(&self) -> crate::app::CloseAction {
-        self.0
-            .as_ref()
-            .map_or(crate::app::CloseAction::Close, |hook| hook())
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl std::fmt::Debug for CloseHook {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("CloseHook")
-    }
-}
-
+#[doc = include_str!("../../docs/app-config.md")]
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    #[cfg(any(test, feature = "desktop", feature = "terminal"))]
     pub(crate) title: String,
     pub(crate) size: (u32, u32),
     pub(crate) quit: QuitKeys,
@@ -89,6 +66,8 @@ pub struct AppConfig {
     pub(crate) overlay: bool,
     #[cfg(feature = "desktop")]
     pub(crate) frameless: bool,
+    #[cfg(feature = "desktop")]
+    pub(crate) inset_title_bar: Option<f32>,
     #[cfg(feature = "desktop")]
     pub(crate) anchor: Option<crate::app::Anchor>,
     pub(crate) theme_file: Option<std::path::PathBuf>,
@@ -107,18 +86,17 @@ pub struct AppConfig {
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
-    pub(crate) click: Option<crate::events::ClickConfig>,
+    pub(crate) double_click_time: Option<std::time::Duration>,
+    pub(crate) double_click_distance: Option<f32>,
     pub(crate) task_workers: crate::tasks::TaskWorkers,
+    #[cfg(feature = "scene")]
+    pub(crate) fonts: Option<crate::text::fonts::DefaultFonts>,
+    #[cfg(feature = "scene")]
+    pub(crate) font_fallbacks: Vec<crate::text::fonts::FallbackFace>,
+    #[cfg(feature = "scene")]
+    pub(crate) text_tuning: Option<crate::renderer::slug::TextTuning>,
     #[cfg(feature = "terminal")]
-    pub(crate) terminal_hooks: TerminalHooks,
-    #[cfg(feature = "terminal")]
-    pub(crate) terminal_access: crate::terminal::Access,
-    #[cfg(feature = "terminal")]
-    pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
-    #[cfg(feature = "terminal")]
-    pub(crate) other_keys: OtherKeys,
-    #[cfg(feature = "terminal")]
-    pub(crate) suspend: Option<crate::events::Shortcut>,
+    pub(crate) terminal: TerminalOptions,
     #[cfg(feature = "desktop")]
     #[cfg_attr(
         not(target_arch = "wasm32"),
@@ -128,83 +106,49 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    /// Creates an app config.
     #[must_use]
     pub fn new(title: impl Into<String>) -> Self {
-        Self {
+        #[cfg(not(any(test, feature = "desktop", feature = "terminal")))]
+        drop(title);
+        let config = Self::defaults();
+        #[cfg(any(test, feature = "desktop", feature = "terminal"))]
+        let config = Self {
             title: title.into(),
-            size: (720, 480),
-            quit: QuitKeys {
-                esc: false,
-                ctrl_c: true,
-            },
-            panic_policy: PanicPolicy::default(),
-            #[cfg(feature = "desktop")]
-            overlay: false,
-            #[cfg(feature = "desktop")]
-            frameless: false,
-            #[cfg(feature = "desktop")]
-            anchor: None,
-            theme_file: None,
-            #[cfg(feature = "desktop")]
-            user_zoom: 1.0,
-            #[cfg(feature = "desktop")]
-            host: crate::kernel::HostMode::Pixel,
-            #[cfg(all(feature = "terminal", not(feature = "desktop")))]
-            host: crate::kernel::HostMode::Cell,
-            #[cfg(feature = "desktop")]
-            min_size: None,
-            #[cfg(feature = "desktop")]
-            resize: Resize::Free,
-            #[cfg(feature = "desktop")]
-            on_close: CloseHook::default(),
-            #[cfg(feature = "desktop")]
-            on_exit: ExitHook::default(),
-            inline: false,
-            frame_interval: FRAME_INTERVAL,
-            reduced_motion: None,
-            click: None,
-            task_workers: crate::tasks::TaskWorkers::Auto,
-            #[cfg(feature = "terminal")]
-            terminal_hooks: TerminalHooks::default(),
-            #[cfg(feature = "terminal")]
-            terminal_access: crate::terminal::Access::default(),
-            #[cfg(feature = "terminal")]
-            mouse_tracking: None,
-            #[cfg(feature = "terminal")]
-            other_keys: OtherKeys::Plain,
-            #[cfg(feature = "terminal")]
-            suspend: Some(crate::events::Shortcut::ctrl(
-                crate::events::LogicalKey::character("z"),
-            )),
-            #[cfg(feature = "desktop")]
-            canvas: None,
-        }
+            ..config
+        };
+        config
     }
 
+    /// Sets the size.
     #[must_use]
     pub const fn size(mut self, width: u32, height: u32) -> Self {
         self.size = (width, height);
         self
     }
 
+    /// Exit the app on Escape.
     #[must_use]
     pub const fn esc_exits(mut self, yes: bool) -> Self {
         self.quit.esc = yes;
         self
     }
 
+    /// Sets the quit on ctrl c.
     #[must_use]
     pub const fn quit_on_ctrl_c(mut self, yes: bool) -> Self {
         self.quit.ctrl_c = yes;
         self
     }
 
+    /// Sets the panic policy.
     #[must_use]
     pub const fn panic_policy(mut self, policy: PanicPolicy) -> Self {
         self.panic_policy = policy;
         self
     }
 
+    /// Sets the overlay.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn overlay(mut self, yes: bool) -> Self {
@@ -212,6 +156,7 @@ impl AppConfig {
         self
     }
 
+    /// Sets the frameless.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn frameless(mut self, yes: bool) -> Self {
@@ -219,6 +164,15 @@ impl AppConfig {
         self
     }
 
+    /// Draws content under the title bar and centres the window controls in a bar this tall.
+    #[cfg(feature = "desktop")]
+    #[must_use]
+    pub const fn inset_title_bar(mut self, height: f32) -> Self {
+        self.inset_title_bar = Some(height);
+        self
+    }
+
+    /// Sets the anchor.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn anchor(mut self, anchor: crate::app::Anchor) -> Self {
@@ -226,12 +180,14 @@ impl AppConfig {
         self
     }
 
+    /// Sets the theme file.
     #[must_use]
     pub fn theme_file(mut self, path: impl Into<std::path::PathBuf>) -> Self {
         self.theme_file = Some(path.into());
         self
     }
 
+    /// Applies the window option.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn window(mut self) -> Self {
@@ -239,6 +195,7 @@ impl AppConfig {
         self
     }
 
+    /// Sets the canvas.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub fn canvas(mut self, id: impl Into<String>) -> Self {
@@ -246,6 +203,7 @@ impl AppConfig {
         self
     }
 
+    /// Applies the terminal option.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn terminal(mut self) -> Self {
@@ -253,31 +211,35 @@ impl AppConfig {
         self
     }
 
+    /// Terminal host hooks for `sigil::run`: `external_events`, `after_frame`, `region_rows`.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub fn terminal_hooks(mut self, hooks: crate::terminal::Hooks<'static>) -> Self {
-        self.terminal_hooks = TerminalHooks(std::rc::Rc::new(std::cell::RefCell::new(Some(hooks))));
+        self.terminal.hooks = TerminalHooks(std::rc::Rc::new(std::cell::RefCell::new(Some(hooks))));
         self
     }
 
+    /// Screen-reader options for the terminal host.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn terminal_access(mut self, access: crate::terminal::Access) -> Self {
-        self.terminal_access = access;
+        self.terminal.access = access;
         self
     }
 
+    /// Mouse reports the terminal host asks for at start.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn mouse_tracking(mut self, tracking: crate::terminal::MouseTracking) -> Self {
-        self.mouse_tracking = Some(tracking);
+        self.terminal.mouse_tracking = Some(tracking);
         self
     }
 
+    /// Terminal host.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn modify_other_keys(mut self, yes: bool) -> Self {
-        self.other_keys = if yes {
+        self.terminal.other_keys = if yes {
             OtherKeys::Modified
         } else {
             OtherKeys::Plain
@@ -285,19 +247,22 @@ impl AppConfig {
         self
     }
 
+    /// The key that suspends the terminal host (job control); the default is Ctrl+Z.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub fn suspend_on(mut self, shortcut: impl Into<Option<crate::events::Shortcut>>) -> Self {
-        self.suspend = shortcut.into();
+        self.terminal.suspend = shortcut.into();
         self
     }
 
+    /// Run the terminal host in the normal screen below the prompt instead of the alternate screen.
     #[must_use]
     pub const fn inline(mut self, yes: bool) -> Self {
         self.inline = yes;
         self
     }
 
+    /// Sets the user zoom.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn user_zoom(mut self, zoom: f32) -> Self {
@@ -305,6 +270,7 @@ impl AppConfig {
         self
     }
 
+    /// Sets the min size.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn min_size(mut self, width: u32, height: u32) -> Self {
@@ -312,6 +278,7 @@ impl AppConfig {
         self
     }
 
+    /// Let the user resize the window (feature `desktop`).
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn resizable(mut self, yes: bool) -> Self {
@@ -319,6 +286,7 @@ impl AppConfig {
         self
     }
 
+    /// Sets the callback that runs on close.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub fn on_close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
@@ -326,6 +294,7 @@ impl AppConfig {
         self
     }
 
+    /// Sets the callback that runs on exit.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub fn on_exit(mut self, run: impl Fn() + 'static) -> Self {
@@ -333,48 +302,39 @@ impl AppConfig {
         self
     }
 
+    /// Sets the frame interval.
     #[must_use]
     pub const fn frame_interval(mut self, interval: std::time::Duration) -> Self {
         self.frame_interval = interval;
         self
     }
 
+    /// Override the OS reduced-motion setting that `reduced_motion()` reports.
     #[must_use]
     pub const fn reduced_motion(mut self, reduced: bool) -> Self {
         self.reduced_motion = Some(reduced);
         self
     }
 
+    /// Set the double-click time.
     #[must_use]
-    pub const fn click(mut self, click: crate::events::ClickConfig) -> Self {
-        self.click = Some(click);
+    pub const fn double_click_time(mut self, time: std::time::Duration) -> Self {
+        self.double_click_time = Some(time);
         self
     }
 
+    /// Set the double-click distance in pixels.
     #[must_use]
-    pub const fn task_workers(mut self, workers: crate::tasks::TaskWorkers) -> Self {
-        self.task_workers = workers;
+    pub const fn double_click_distance(mut self, distance: f32) -> Self {
+        self.double_click_distance = Some(distance);
         self
     }
 
+    /// Fixes the worker thread count of the task runtime.
     #[must_use]
-    pub fn title(&self) -> &str {
-        &self.title
-    }
-
-    #[must_use]
-    pub const fn window_size(&self) -> (u32, u32) {
-        self.size
-    }
-
-    #[must_use]
-    pub const fn exits_on_esc(&self) -> bool {
-        self.quit.esc
-    }
-
-    #[must_use]
-    pub const fn on_panic(&self) -> PanicPolicy {
-        self.panic_policy
+    pub const fn task_workers(mut self, count: core::num::NonZeroUsize) -> Self {
+        self.task_workers = crate::tasks::TaskWorkers::Fixed(count);
+        self
     }
 }
 
@@ -389,3 +349,7 @@ impl From<String> for AppConfig {
         Self::new(title)
     }
 }
+
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod tests;

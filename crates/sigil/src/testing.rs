@@ -1,15 +1,16 @@
 use crate::kernel::Cx;
+use crate::reactive::Owner;
 use crate::reactive::Runtime;
 
 pub fn with_cx<F: FnOnce(&mut Cx)>(name: &'static str, f: F) {
-    Runtime::scope(name, || {
+    Owner::scope(name, || {
         let mut cx = Cx::new_root();
         f(&mut cx);
     });
 }
 
 pub fn with_runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
-    Runtime::scope(name, || f(&Runtime));
+    Owner::scope(name, || f(&Runtime));
 }
 
 pub fn tick_intervals() -> usize {
@@ -23,6 +24,31 @@ pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usiz
         cx.visit_preorder(root, |_, _| size += 1);
     });
     size
+}
+
+pub fn flaws(
+    host: &crate::Host,
+    tolerance: crate::layout::audit::Tolerance,
+) -> Vec<crate::layout::audit::Flaw> {
+    host.flaws(tolerance)
+}
+
+pub fn emit_since(
+    host: &mut crate::Host,
+    viewport: (f32, f32),
+    delta: &crate::kernel::FrameDelta,
+    prev: &crate::scene::CommandScene,
+) -> (crate::scene::CommandScene, crate::scene::emit::EmitDiff) {
+    host.emit_since(viewport, delta, prev)
+}
+
+pub fn take_delta(cx: &mut Cx) -> crate::kernel::FrameDelta {
+    cx.take_delta()
+}
+
+#[must_use]
+pub const fn style_data(style: &crate::layout::LayoutStyle) -> &crate::layout::StyleData {
+    style.data()
 }
 
 #[cfg(test)]

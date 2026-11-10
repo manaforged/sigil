@@ -14,7 +14,7 @@ use sigil_kittest::{Harness, Query};
 
 #[test]
 fn widget_builders_collect_into_one_child_list() {
-    let grid = sigil::terminal::present(
+    let grid = sigil_kittest::Harness::present(
         || {
             let items: Vec<NodeBuilder> = vec![text("alpha").into(), button("beta").into()];
             items.into_iter().fold(column(), NodeBuilder::child)
@@ -29,7 +29,7 @@ fn widget_builders_collect_into_one_child_list() {
 
 #[test]
 fn signals_compare_by_identity() {
-    sigil::reactive::Runtime::scope("signal-identity", || {
+    sigil::reactive::Owner::scope("signal-identity", || {
         let first = signal(1_u8);
         let twin = signal(1_u8);
         let set: HashSet<Signal<u8>> = [first, first, twin].into_iter().collect();
@@ -82,7 +82,7 @@ fn equal_owned_gradient_stops_share_one_copy() {
 
 #[test]
 fn a_converted_builder_is_the_widget_node_itself() {
-    sigil::reactive::Runtime::scope("node-from", || {
+    sigil::reactive::Owner::scope("node-from", || {
         let mut cx = sigil::kernel::Cx::new_root();
         let converted: NodeBuilder = text("hello").into();
         let root = cx.add(column().child(converted.label("greeting")));

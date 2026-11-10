@@ -2,8 +2,9 @@
 
 use super::collection::FontCollection;
 use super::{
-    Font, PushRunArgs, Script, Style, push_run, run_has_disallowed_notdef, shape_validated,
+    FaceStyle, Font, PushRunArgs, Script, push_run, run_has_disallowed_notdef, shape_validated,
 };
+use crate::style::StyledTextEngine as _;
 use crate::text::glyph::GlyphId;
 
 const FIRA_REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
@@ -19,13 +20,16 @@ fn chain() -> Vec<Font> {
 }
 
 fn notdef_count(text: &str) -> usize {
-    crate::text::OwnedTextEngine::new(crate::text::TextConfig::default())
-        .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
-        .expect("layout")
-        .rendered_glyphs()
-        .iter()
-        .filter(|g| g.glyph_id == 0)
-        .count()
+    crate::text::OwnedTextEngine::new(crate::style::TextStyle {
+        font_size: 16.0,
+        ..crate::style::TextStyle::default()
+    })
+    .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
+    .expect("layout")
+    .rendered_glyphs()
+    .iter()
+    .filter(|g| g.glyph_id == 0)
+    .count()
 }
 
 fn args(fragment: &str) -> PushRunArgs<'_> {
@@ -43,7 +47,7 @@ fn split_coverage_segment_renders_fully_via_two_faces() {
     let chain = chain();
     let fragment = "a\u{05D0}";
     let mut out = Vec::new();
-    push_run(&args(fragment), &chain, &Style::regular(16.0), &mut out);
+    push_run(&args(fragment), &chain, &FaceStyle::regular(16.0), &mut out);
 
     assert_eq!(
         out.len(),
@@ -77,7 +81,7 @@ fn primary_preference_never_swaps_when_primary_covers() {
     );
     let chain = vec![font(FIRA_REGULAR), noto];
     let mut out = Vec::new();
-    push_run(&args("abc"), &chain, &Style::regular(16.0), &mut out);
+    push_run(&args("abc"), &chain, &FaceStyle::regular(16.0), &mut out);
 
     assert_eq!(out.len(), 1, "fully-primary-covered text must not split");
     assert_eq!(
@@ -94,7 +98,7 @@ fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
         0,
         "\u{05D0}\u{05D1}\u{05D2}",
         1,
-        &Style::regular(16.0),
+        &FaceStyle::regular(16.0),
     );
 
     assert_eq!(
@@ -111,7 +115,7 @@ fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
 #[test]
 fn shape_validated_keeps_the_initial_pick_when_it_already_shapes_cleanly() {
     let chain = chain();
-    let (slot, run) = shape_validated(&chain, 0, "abc", 0, &Style::regular(16.0));
+    let (slot, run) = shape_validated(&chain, 0, "abc", 0, &FaceStyle::regular(16.0));
     assert_eq!(slot, 0);
     assert!(run.glyphs.iter().all(|g| g.id != GlyphId(0)));
 }
@@ -121,7 +125,7 @@ fn shape_validated_stays_bounded_for_ignorable_controls() {
     let chain = chain();
     for control in ['\u{034F}', '\u{2060}', '\u{E0100}'] {
         let fragment = format!("a{control}b");
-        let (slot, run) = shape_validated(&chain, 0, &fragment, 0, &Style::regular(16.0));
+        let (slot, run) = shape_validated(&chain, 0, &fragment, 0, &FaceStyle::regular(16.0));
         assert_eq!(
             slot, 0,
             "an ignorable control must not push shape_validated past the \

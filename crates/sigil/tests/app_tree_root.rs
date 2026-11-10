@@ -9,11 +9,11 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
 use sigil::kernel::{Cx, container, text};
-use sigil::reactive::{Runtime, Signal, signal};
+use sigil::reactive::{Owner, Signal, signal};
 
 #[test]
 fn a_component_closure_builds_its_node() {
-    Runtime::scope("component-builds", || {
+    Owner::scope("component-builds", || {
         let mut cx = Cx::new_root();
         let root = cx.add(|| container().child(text("hi")));
         assert!(cx.get(root).is_some());
@@ -22,7 +22,7 @@ fn a_component_closure_builds_its_node() {
 
 #[test]
 fn a_component_owns_the_signals_it_creates() {
-    Runtime::scope("component-owns", || {
+    Owner::scope("component-owns", || {
         let made: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
         let slot = Rc::clone(&made);
         let mut cx = Cx::new_root();

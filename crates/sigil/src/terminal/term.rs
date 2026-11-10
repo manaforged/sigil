@@ -17,17 +17,20 @@ use crossterm::{cursor, execute, queue};
 
 use crate::terminal::caps::{Caps, Cursor, Keyboard};
 use crate::terminal::mouse::{MOUSE_OFF, MouseTracking};
+use crate::terminal::notify;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals;
 
 mod above;
 mod calibrate;
 mod frame;
+mod hook;
 pub(crate) use frame::paint_frame;
+pub(crate) use hook::HookGuard;
 
-pub use above::{PrintAboveError, print_above};
+pub use above::print_above;
 pub use calibrate::calibrate;
-pub(crate) use calibrate::{Measured, ProbeRow};
+pub(crate) use calibrate::{Calibration, ProbeRow};
 #[cfg(unix)]
 pub(crate) use calibrate::{measure, query as calibration};
 
@@ -58,6 +61,7 @@ pub(crate) struct Term {
     pub(crate) redraw: bool,
     inline: bool,
     caps: Caps,
+    cell_stale: bool,
     out: BufWriter<io::Stdout>,
 }
 
@@ -65,7 +69,7 @@ impl Term {
     pub(crate) fn enter(config: &crate::AppConfig) -> io::Result<Self> {
         let inline = config.inline;
         MODIFY_KEYS_WANTED.store(
-            config.other_keys == crate::app::config::OtherKeys::Modified,
+            config.terminal.other_keys == crate::app::config::OtherKeys::Modified,
             Ordering::Relaxed,
         );
         TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
@@ -86,6 +90,7 @@ impl Term {
             redraw: true,
             inline,
             caps,
+            cell_stale: false,
             out: BufWriter::with_capacity(BUFFER, io::stdout()),
         };
         if inline {
@@ -94,7 +99,7 @@ impl Term {
         Ok(term)
     }
 
-    pub(crate) fn paint(&mut self, screen: &mut Screen) -> io::Result<()> {
+    pub(crate) fn paint(&mut self, screen: &mut Screen) -> Result<(), crate::Error> {
         let _painting = signals::painting();
         if signals::halted() {
             return Ok(());
@@ -117,12 +122,33 @@ impl Term {
         self.caps
     }
 
-    pub(crate) fn reenter(&mut self) -> io::Result<()> {
-        enter_screen(self.inline)?;
-        enter_modes(self.inline)?;
-        if self.inline {
-            ground(&mut self.out)?;
+    pub(crate) fn set_backdrop(&mut self, backdrop: crate::terminal::Backdrop) {
+        self.caps.backdrop = Some(backdrop);
+        CAPS.with(|slot| slot.set(Some(self.caps)));
+        self.redraw = true;
+    }
+
+    pub(crate) const fn mark_cell_stale(&mut self) {
+        self.cell_stale = self.caps.cell.is_some();
+    }
+
+    pub(crate) fn remeasure(&mut self) -> Option<Caps> {
+        if !self.cell_stale {
+            return None;
         }
+        let answer = crate::terminal::caps::ask_cell().ok()?;
+        self.cell_stale = false;
+        let cell = answer?;
+        if Some(cell) == self.caps.cell {
+            return None;
+        }
+        self.caps.cell = Some(cell);
+        CAPS.with(|slot| slot.set(Some(self.caps)));
+        Some(self.caps)
+    }
+
+    pub(crate) fn reenter(&mut self) -> io::Result<()> {
+        reapply(self.inline, &mut self.out)?;
         self.redraw = true;
         Ok(())
     }
@@ -132,6 +158,7 @@ impl Drop for Term {
     fn drop(&mut self) {
         LIVE.with(|live| live.set(false));
         restore();
+        INLINE.store(false, Ordering::Relaxed);
         if self.inline {
             drop(execute!(io::stdout(), Print("\n")));
         }
@@ -161,7 +188,6 @@ fn keyboard_flags() -> KeyboardEnhancementFlags {
 }
 
 fn enter_screen(inline: bool) -> io::Result<()> {
-    INLINE.store(inline, Ordering::Relaxed);
     if !inline {
         execute!(io::stdout(), EnterAlternateScreen, DisableLineWrap)?;
     }
@@ -170,7 +196,6 @@ fn enter_screen(inline: bool) -> io::Result<()> {
 
 fn enter_modes(inline: bool) -> io::Result<()> {
     INLINE.store(inline, Ordering::Relaxed);
-    RESTORED.store(false, Ordering::Relaxed);
     enable_raw_mode()?;
     let mut out = io::stdout();
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
@@ -188,6 +213,9 @@ fn enter_modes(inline: bool) -> io::Result<()> {
         MODIFY_KEYS_SET.store(true, Ordering::Relaxed);
         drop(execute!(out, Print(modify)));
     }
+    if let Some(seq) = notify::held_activity(true) {
+        drop(execute!(out, Print(seq)));
+    }
     TITLE.with(|slot| {
         slot.borrow()
             .as_deref()
@@ -204,6 +232,7 @@ fn modify_keys_sequence(keyboard: Keyboard, wanted: bool) -> &'static str {
     }
 }
 
+/// The capabilities the terminal host probed when it entered raw mode, for the current thread.
 #[must_use]
 pub fn caps() -> Option<Caps> {
     CAPS.with(Cell::get)
@@ -216,6 +245,18 @@ pub(crate) fn current_caps() -> Caps {
 fn write_title(title: &str) -> io::Result<()> {
     TITLED.store(true, Ordering::Relaxed);
     execute!(io::stdout(), SetTitle(title))
+}
+
+fn reapply(inline: bool, out: &mut impl Write) -> io::Result<()> {
+    if !RESTORED.swap(false, Ordering::Relaxed) {
+        return Ok(());
+    }
+    enter_screen(inline)?;
+    enter_modes(inline)?;
+    if inline {
+        ground(out)?;
+    }
+    Ok(())
 }
 
 fn ground(out: &mut impl Write) -> io::Result<()> {
@@ -244,6 +285,9 @@ pub(crate) fn restore() {
     if TITLED.swap(false, Ordering::Relaxed) {
         drop(execute!(out, SetTitle("")));
     }
+    if let Some(seq) = notify::held_activity(false) {
+        drop(execute!(out, Print(seq)));
+    }
     if BAR_CURSOR.load(Ordering::Relaxed) {
         drop(execute!(out, cursor::SetCursorStyle::DefaultUserShape));
     }
@@ -255,7 +299,7 @@ pub(crate) fn restore() {
         Print(MOUSE_OFF),
         cursor::Show
     ));
-    if !INLINE.swap(false, Ordering::Relaxed) {
+    if !INLINE.load(Ordering::Relaxed) {
         drop(execute!(out, LeaveAlternateScreen, EnableLineWrap));
     }
     drop(disable_raw_mode());
@@ -265,25 +309,26 @@ pub(crate) fn set_focused(yes: bool) {
     FOCUSED.with(|focused| focused.set(yes));
 }
 
-pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
+/// Leaves terminal mode, runs `run`, and returns to terminal mode.
+pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
     if !live() {
         return Ok(run());
     }
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
     let result = run();
-    enter_screen(inline)?;
-    enter_modes(inline)?;
-    if inline {
-        ground(&mut io::stdout())?;
+    {
+        let _painting = signals::painting();
+        reapply(inline, &mut io::stdout())?;
     }
     REDRAW.with(|flag| flag.set(true));
     Ok(result)
 }
 
-pub fn set_title(title: &str) -> io::Result<()> {
+/// Sets the terminal title.
+pub fn set_title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
-    if live() {
+    if applied() {
         write_title(title)?;
     }
     Ok(())
@@ -293,17 +338,15 @@ pub(crate) fn live() -> bool {
     LIVE.with(Cell::get)
 }
 
-pub fn set_mouse_capture(yes: bool) -> io::Result<()> {
-    set_mouse_tracking(if yes {
-        MouseTracking::Drags
-    } else {
-        MouseTracking::Off
-    })
+/// Whether this thread drives the terminal and its modes are applied, so escape sequences reach it.
+pub(crate) fn applied() -> bool {
+    live() && !RESTORED.load(Ordering::Relaxed)
 }
 
-pub fn set_mouse_tracking(tracking: MouseTracking) -> io::Result<()> {
+/// Sets how much mouse movement the terminal reports.
+pub fn set_mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
     MOUSE.with(|mouse| mouse.set(tracking));
-    if live() {
+    if applied() {
         write_mouse(&mut io::stdout(), tracking)?;
     }
     Ok(())
@@ -315,6 +358,7 @@ fn write_mouse(out: &mut impl Write, tracking: MouseTracking) -> io::Result<()> 
     out.flush()
 }
 
+/// Returns whether the terminal has focus.
 #[must_use]
 pub fn focused() -> bool {
     FOCUSED.with(Cell::get)
@@ -325,36 +369,6 @@ struct EnterGuard;
 impl Drop for EnterGuard {
     fn drop(&mut self) {
         restore();
-    }
-}
-
-type PanicHook = Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Send + Sync + 'static>;
-
-pub(crate) struct HookGuard {
-    previous: Option<PanicHook>,
-}
-
-impl HookGuard {
-    pub(crate) fn install() -> Self {
-        let previous: std::sync::Arc<PanicHook> = std::sync::Arc::new(std::panic::take_hook());
-        let chained = std::sync::Arc::clone(&previous);
-        std::panic::set_hook(Box::new(move |info| {
-            if owns_terminal() {
-                restore();
-            }
-            chained(info);
-        }));
-        Self {
-            previous: Some(Box::new(move |info| previous(info))),
-        }
-    }
-}
-
-impl Drop for HookGuard {
-    fn drop(&mut self) {
-        if let Some(previous) = self.previous.take() {
-            std::panic::set_hook(previous);
-        }
     }
 }
 

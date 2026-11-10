@@ -2,16 +2,15 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::events::{
-    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PasteEvent, PointerEvent, ScrollEvent,
-    Shortcut,
+    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut,
 };
+use crate::kernel::Action;
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
 use crate::reactive::Signal;
-use accesskit::Action;
 
 use crate::events::EventHandlers;
-use crate::events::handlers::KeyBinding;
+use crate::events::handlers::{EventKind, Handler, Phase};
 use crate::events::ime_handlers::{CaretAnchorExt, ImeHandlers};
 use crate::events::router::{GestureHandlers, PasteHandlers};
 use crate::events::selection::SelectableText;
@@ -19,128 +18,167 @@ use crate::events::selection::SelectableText;
 macro_rules! handler_methods {
     ($m:ident) => {
         $m! {
-            pointer_down => EventHandlers.pointer_down: [Fn(&mut PointerEvent)],
-            pointer_down_capture => EventHandlers.pointer_down_capture: [Fn(&mut PointerEvent)],
-            pointer_up_capture => EventHandlers.pointer_up_capture: [Fn(&mut PointerEvent)],
-            pointer_move => EventHandlers.pointer_move: [Fn(&mut PointerEvent)],
-            pointer_move_capture => EventHandlers.pointer_move_capture: [Fn(&mut PointerEvent)],
-            pointer_enter => EventHandlers.pointer_enter: [Fn(&mut PointerEvent)],
-            pointer_leave => EventHandlers.pointer_leave: [Fn(&mut PointerEvent)],
-            file_drop => EventHandlers.file_drop: [Fn(&FileDropEvent)],
-            link => EventHandlers.link: [Fn(&str)],
-            on_selection_copy => EventHandlers.selection_copy:
+            @table
+            /// Runs `h` when a pointer button goes down on the node.
+            pointer_down => PointerDown, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when a pointer button goes down, before the node's children see it.
+            pointer_down_capture => PointerDown, Capture, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when a pointer button goes up, before the node's children see it.
+            pointer_up_capture => PointerUp, Capture, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when the pointer moves over the node.
+            pointer_move => PointerMove, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when the pointer moves, before the node's children see it.
+            pointer_move_capture => PointerMove, Capture, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when the pointer enters the node.
+            pointer_enter => PointerEnter, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when the pointer leaves the node.
+            pointer_leave => PointerLeave, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            /// Runs `h` when files are dragged over or dropped on the node.
+            file_drop => FileDrop, Bubble, FileDrop: [Fn(&FileDropEvent)],
+            /// Runs `h` with the target when a link inside the node is activated.
+            link => Link, Bubble, Link: [Fn(&str)],
+            /// Runs `h` with the copied text and the clipboard result after a selection copy.
+            on_selection_copy => SelectionCopy, Bubble, SelectionCopy:
                 [Fn(&str, &crate::AppResult<crate::clipboard::Delivery>)],
-            on_scroll => EventHandlers.scroll: [Fn(&mut ScrollEvent)],
-            key_any => EventHandlers.key_any: [Fn(&mut KeyEvent)],
-            key_capture_any => EventHandlers.key_capture_any: [Fn(&mut KeyEvent)],
-            focus_in => EventHandlers.focus_in: [Fn()],
-            focus_out => EventHandlers.focus_out: [Fn()],
+            /// Runs `h` when the node receives a scroll event.
+            on_scroll => Scroll, Bubble, Scroll: [Fn(&mut ScrollEvent)],
+            /// Runs `h` when focus enters the node or one of its children.
+            focus_in => FocusIn, Bubble, Focus: [Fn()],
+            /// Runs `h` when focus leaves the node or one of its children.
+            focus_out => FocusOut, Bubble, Focus: [Fn()],
+        }
+        $m! {
+            @ext
+            /// Runs `h` for each input method event sent to the node.
             on_ime => ImeHandlers.handlers: [Fn(&ImeEvent)],
-            on_paste => PasteHandlers.handlers: [Fn(&mut PasteEvent)],
+            /// Runs `h` with pasted text; returning true stops the paste from reaching ancestors.
+            on_paste => PasteHandlers.handlers: [Fn(&str) -> bool],
+            /// Runs `h` for each touchpad gesture over the node.
             on_gesture => GestureHandlers.handlers: [Fn(&mut GestureEvent)],
         }
         $m! {
-            @keyed key => key, shortcut => shortcut, key_capture => key_capture,
+            @keyed
+            /// Runs `h` when a key event matching `shortcut` reaches the node.
+            key => Key, Bubble,
+            /// Runs `h` when the key combination `shortcut` reaches the node.
+            shortcut => Shortcut, Bubble,
+            /// Runs `h` for a key event matching `shortcut` before the node's children see it.
+            key_capture => Key, Capture,
+        }
+        $m! {
+            @any
+            /// Runs `h` for every key event that reaches the node.
+            key_any => Bubble,
+            /// Runs `h` for every key event before the node's children see it.
+            key_capture_any => Capture,
         }
     };
 }
 
-macro_rules! declare {
-    ($($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
-        $(#[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static;)*
-    };
-    (@keyed $($name:ident => $field:ident,)*) => {
-        $(#[must_use] fn $name<S, H>(self, shortcut: S, h: H) -> Self
-        where S: Into<Shortcut>, H: Fn(&mut KeyEvent) + 'static;)*
-    };
-}
+pub(crate) use handler_methods;
 
 macro_rules! implement {
-    ($($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
-        $(fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
-            with_ext(self, move |ext: &mut $ext| ext.$field.push(Box::new(h)))
+    (@table $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident, $variant:ident: [$($bound:tt)*],)*) => {
+        $(pub(crate) fn $name<H>(node: NodeBuilder, h: H) -> NodeBuilder where H: $($bound)* + 'static {
+            with_handlers(node, move |handlers| {
+                handlers.push(EventKind::$kind, Phase::$phase, Handler::$variant(Box::new(h)));
+            })
         })*
     };
-    (@keyed $($name:ident => $field:ident,)*) => {
-        $(fn $name<S, H>(self, shortcut: S, h: H) -> Self
-        where S: Into<Shortcut>, H: Fn(&mut KeyEvent) + 'static {
-            let shortcut = shortcut.into();
-            with_handlers(self, move |handlers| {
-                handlers.$field.push(KeyBinding { shortcut, handler: Box::new(h) });
+    (@ext $($(#[$doc:meta])* $name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
+        $(pub(crate) fn $name<H>(node: NodeBuilder, h: H) -> NodeBuilder where H: $($bound)* + 'static {
+            with_ext(node, move |ext: &mut $ext| ext.$field.push(Box::new(h)))
+        })*
+    };
+    (@keyed $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident,)*) => {
+        $(pub(crate) fn $name<H>(node: NodeBuilder, shortcut: Shortcut, h: H) -> NodeBuilder
+        where H: Fn(&mut KeyEvent) + 'static {
+            with_handlers(node, move |handlers| {
+                handlers.push(EventKind::$kind, Phase::$phase, Handler::Key(Some(shortcut), Box::new(h)));
+            })
+        })*
+    };
+    (@any $($(#[$doc:meta])* $name:ident => $phase:ident,)*) => {
+        $(pub(crate) fn $name<H>(node: NodeBuilder, h: H) -> NodeBuilder where H: Fn(&mut KeyEvent) + 'static {
+            with_handlers(node, move |handlers| {
+                handlers.push(EventKind::Key, Phase::$phase, Handler::Key(None, Box::new(h)));
             })
         })*
     };
 }
 
-pub trait NodeEventsExt {
-    handler_methods!(declare);
-
-    #[must_use]
-    fn pointer_up<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static;
-
-    #[must_use]
-    fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self;
-
-    #[must_use]
-    fn ime_eligible<F>(self, f: F) -> Self
-    where
-        F: Fn() -> bool + 'static;
-
-    #[must_use]
-    fn selectable_text(self, yes: bool) -> Self;
-
-    #[must_use]
-    fn autofocus(self) -> Self;
-
-    #[must_use]
-    fn focus_when(self, trigger: Signal<u64>) -> Self;
+macro_rules! event_methods {
+    (@table $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident, $variant:ident: [$($bound:tt)*],)*) => {
+        $($(#[$doc])* #[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
+            self.map_node(move |node| $crate::events::builder_ext::$name(node, h))
+        })*
+    };
+    (@ext $($(#[$doc:meta])* $name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
+        $($(#[$doc])* #[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
+            self.map_node(move |node| $crate::events::builder_ext::$name(node, h))
+        })*
+    };
+    (@keyed $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident,)*) => {
+        $($(#[$doc])* #[must_use] fn $name<S, H>(self, shortcut: S, h: H) -> Self
+        where S: Into<Shortcut>, H: Fn(&mut KeyEvent) + 'static {
+            let shortcut = shortcut.into();
+            self.map_node(move |node| $crate::events::builder_ext::$name(node, shortcut, h))
+        })*
+    };
+    (@any $($(#[$doc:meta])* $name:ident => $phase:ident,)*) => {
+        $($(#[$doc])* #[must_use] fn $name<H>(self, h: H) -> Self where H: Fn(&mut KeyEvent) + 'static {
+            self.map_node(move |node| $crate::events::builder_ext::$name(node, h))
+        })*
+    };
 }
 
-impl NodeEventsExt for NodeBuilder {
-    handler_methods!(implement);
+pub(crate) use event_methods;
 
-    fn pointer_up<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        with_handlers(self.action(Action::Click), move |handlers| {
-            handlers.pointer_up.push(Box::new(h));
-        })
-    }
+handler_methods!(implement);
 
-    fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self {
-        self.mutate(move |node| {
-            node.attach(CaretAnchorExt(anchor));
-        })
-    }
+pub(crate) fn pointer_up<H>(node: NodeBuilder, h: H) -> NodeBuilder
+where
+    H: Fn(&mut PointerEvent) + 'static,
+{
+    with_handlers(node.action(Action::Click), move |handlers| {
+        handlers.push(
+            EventKind::PointerUp,
+            Phase::Bubble,
+            Handler::Pointer(Box::new(h)),
+        );
+    })
+}
 
-    fn ime_eligible<F>(self, f: F) -> Self
-    where
-        F: Fn() -> bool + 'static,
-    {
-        with_ext(self, move |ime: &mut ImeHandlers| {
-            ime.eligible = Some(Box::new(f));
-        })
-    }
+pub(crate) fn ime_caret(node: NodeBuilder, anchor: Rc<Cell<Option<CaretGeometry>>>) -> NodeBuilder {
+    node.mutate(move |node| {
+        node.attach(CaretAnchorExt(anchor));
+    })
+}
 
-    fn selectable_text(self, yes: bool) -> Self {
-        if yes { self.with(SelectableText) } else { self }
-    }
+pub(crate) fn ime_eligible<F>(node: NodeBuilder, f: F) -> NodeBuilder
+where
+    F: Fn() -> bool + 'static,
+{
+    with_ext(node, move |ime: &mut ImeHandlers| {
+        ime.eligible = Some(Box::new(f));
+    })
+}
 
-    fn autofocus(self) -> Self {
-        self.with(crate::events::focus::Autofocus)
-            .on_added(|_, id| crate::events::focus::request_focus(id))
-    }
+pub(crate) fn selectable_text(node: NodeBuilder, yes: bool) -> NodeBuilder {
+    if yes { node.with(SelectableText) } else { node }
+}
 
-    fn focus_when(self, trigger: Signal<u64>) -> Self {
-        self.on_added(move |_, id| {
-            crate::events::focus::focus_on_trigger(trigger, move || {
-                crate::events::focus::request_focus(id);
-            });
-        })
-    }
+pub(crate) fn autofocus(node: NodeBuilder) -> NodeBuilder {
+    node.with(crate::events::focus::Autofocus)
+        .on_added(|_, id| crate::events::focus::request_focus(id))
+}
+
+pub(crate) fn focus_when(node: NodeBuilder, trigger: Signal<u64>) -> NodeBuilder {
+    node.on_added(move |_, id| {
+        crate::events::focus::focus_on_trigger(trigger, move || {
+            crate::events::focus::request_focus(id);
+        });
+    })
 }
 
 fn with_ext<T: Default + 'static>(

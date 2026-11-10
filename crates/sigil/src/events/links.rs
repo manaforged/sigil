@@ -1,7 +1,6 @@
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::events::handlers::dispatch;
 use crate::events::hit_test::NodePath;
 use crate::events::pointer_dispatch::path_to_node;
 use crate::geometry::{Point, Rect};
@@ -100,7 +99,14 @@ pub(crate) fn link_at(cx: &Cx, path: &NodePath, global: Point) -> Option<Arc<str
 
 pub(crate) fn activate(cx: &Cx, path: &NodePath, href: &str) {
     for id in path.iter().rev().copied() {
-        if dispatch(cx, id, |handlers| handlers.invoke_link(href)) == Some(true) {
+        if crate::events::handlers::fire(
+            cx,
+            id,
+            crate::events::handlers::EventKind::Link,
+            crate::events::handlers::Phase::Bubble,
+            crate::events::handlers::EventArg::Link(href),
+        ) == Some(true)
+        {
             return;
         }
     }

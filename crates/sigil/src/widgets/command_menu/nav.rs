@@ -1,15 +1,16 @@
 use std::rc::Rc;
 
-use crate::reactive::{Owner, OwnerId, Signal, owner_by_id, signal};
+use crate::reactive::{Owner, Signal, owner_by_id, signal};
 
-use super::super::fuzzy::fuzzy_score;
+use super::super::listbox::Matcher;
 use super::super::shared::Activate;
 
 pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
 
-pub(super) enum Entry {
+pub(super) enum PaletteEntry {
     Leaf {
         label: String,
+        detail: Option<String>,
         action: Option<Activate>,
         disabled: bool,
     },
@@ -20,11 +21,25 @@ pub(super) enum Entry {
     },
 }
 
-impl Entry {
+impl PaletteEntry {
     pub(super) const fn disabled(&self) -> bool {
         match self {
             Self::Leaf { disabled, .. } | Self::Submenu { disabled, .. } => *disabled,
         }
+    }
+
+    pub(super) fn detail(&self) -> Option<&str> {
+        match self {
+            Self::Leaf { detail, .. } => detail.as_deref(),
+            Self::Submenu { .. } => None,
+        }
+    }
+
+    fn search_text(&self) -> String {
+        self.detail().map_or_else(
+            || self.label().to_owned(),
+            |detail| format!("{} {detail}", self.label()),
+        )
     }
 
     pub(super) fn label(&self) -> &str {
@@ -36,13 +51,13 @@ impl Entry {
 
 #[derive(Clone)]
 pub(super) struct MenuLevel {
-    pub(super) entries: Rc<Vec<Entry>>,
+    pub(super) entries: Rc<Vec<PaletteEntry>>,
     pub(super) shown: Signal<Vec<usize>>,
     pub(super) cursor: Signal<usize>,
 }
 
 impl MenuLevel {
-    pub(super) fn new(entries: Rc<Vec<Entry>>) -> Self {
+    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>) -> Self {
         let shown: Vec<usize> = (0..entries.len()).collect();
         let cursor = signal(first_enabled(&entries, &shown));
         Self {
@@ -52,38 +67,33 @@ impl MenuLevel {
         }
     }
 
-    pub(super) fn entry_at(&self, row: usize) -> Option<&Entry> {
+    pub(super) fn entry_at(&self, row: usize) -> Option<&PaletteEntry> {
         let index = *self.shown.peek().get(row)?;
         self.entries.get(index)
     }
 }
 
-fn first_enabled(entries: &[Entry], shown: &[usize]) -> usize {
+fn first_enabled(entries: &[PaletteEntry], shown: &[usize]) -> usize {
     shown
         .iter()
         .position(|index| entries.get(*index).is_some_and(|e| !e.disabled()))
         .unwrap_or(0)
 }
 
-fn ranked(entries: &[Entry], query: &str) -> Vec<usize> {
-    let mut hits: Vec<(usize, usize)> = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(index, entry)| fuzzy_score(query, entry.label()).map(|m| (m.score, index)))
-        .collect();
-    hits.sort_by_key(|(score, _)| *score);
-    hits.into_iter().map(|(_, index)| index).collect()
+fn ranked(entries: &[PaletteEntry], query: &str) -> Vec<usize> {
+    let texts: Vec<String> = entries.iter().map(PaletteEntry::search_text).collect();
+    Matcher::Fuzzy.rank(query, texts.iter().map(String::as_str))
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct Palette {
+pub(super) struct CommandPalette {
     pub(super) stack: Signal<Vec<MenuLevel>>,
     pub(super) query: Signal<String>,
-    owner: Option<OwnerId>,
+    owner: Option<Owner>,
 }
 
-impl Palette {
-    pub(super) fn new(entries: Rc<Vec<Entry>>) -> Self {
+impl CommandPalette {
+    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>) -> Self {
         Self {
             stack: signal(vec![MenuLevel::new(entries)]),
             query: signal(String::new()),
@@ -91,7 +101,7 @@ impl Palette {
         }
     }
 
-    fn level(self, entries: &Rc<Vec<Entry>>) -> MenuLevel {
+    fn level(self, entries: &Rc<Vec<PaletteEntry>>) -> MenuLevel {
         let mut made = None;
         if let Some(owner) = self.owner {
             let _ = owner_by_id(owner, || made = Some(MenuLevel::new(Rc::clone(entries))));
@@ -135,12 +145,12 @@ impl Palette {
             return;
         }
         match entry {
-            Entry::Submenu { entries, .. } => {
+            PaletteEntry::Submenu { entries, .. } => {
                 let child = self.level(entries);
                 self.stack.update(|current| current.push(child));
                 self.clear_query();
             }
-            Entry::Leaf { action, label, .. } => {
+            PaletteEntry::Leaf { action, label, .. } => {
                 if let Some(cb) = action {
                     cb();
                 }

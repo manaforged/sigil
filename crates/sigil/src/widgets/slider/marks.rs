@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{JustifyContent, LayoutStyle};
 use crate::style::Token;
+use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
 

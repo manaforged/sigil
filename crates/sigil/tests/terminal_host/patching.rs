@@ -1,12 +1,14 @@
 use sigil::Host;
-use sigil::events::{EventRouter, NodeEventsExt};
+use sigil::events::Event;
+use sigil::geometry::Point;
+use sigil::kernel::HostMode;
 use sigil::kernel::{NodeBuilder, container, fragment, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::{LayoutBuilderExt, Paint};
+use sigil::prelude::Paint;
+use sigil::prelude::Widget;
 use sigil::profile::{self, BackendStatus, Counter};
-use sigil::reactive::{Runtime, Signal, signal};
+use sigil::reactive::{Owner, Signal, signal};
 use sigil::terminal::Screen;
-use sigil_kittest::input::{click, tab};
 
 const SIZE: (u16, u16) = (40, 12);
 
@@ -31,8 +33,8 @@ fn row(kind: Row, word: &str) -> NodeBuilder {
     }
 }
 
-fn mounted(rows: Signal<Vec<(Row, String)>>) -> (Host, EventRouter, Screen) {
-    let mut host = Host::cells();
+fn mounted(rows: Signal<Vec<(Row, String)>>) -> (Host, Screen) {
+    let mut host = Host::new(HostMode::Cell);
     host.mount(move || {
         container()
             .layout(LayoutStyle::flex_column().fill_width())
@@ -44,28 +46,23 @@ fn mounted(rows: Signal<Vec<(Row, String)>>) -> (Host, EventRouter, Screen) {
                 })
             })
     });
-    let mut router = EventRouter::new();
     let mut screen = Screen::new(SIZE.0, SIZE.1);
     for _ in 0..2 {
-        screen
-            .frame(&mut host, &mut router, [], SIZE)
-            .expect("frame");
+        screen.frame(&mut host, [], SIZE).expect("frame");
     }
-    (host, router, screen)
+    (host, screen)
 }
 
 fn rebuilt(from: Row, to: Row) -> (u64, u64) {
-    Runtime::scope("patching-counts", || {
+    Owner::scope("patching-counts", || {
         let rows = signal((0..5).map(|at| (from, format!("row {at}"))).collect());
-        let (mut host, mut router, mut screen) = mounted(rows);
+        let (mut host, mut screen) = mounted(rows);
         let _profiled = crate::profiled();
         profile::enable();
         profile::reset();
         profile::begin_frame(BackendStatus::TERMINAL);
         rows.set((0..5).map(|at| (to, format!("new {at}"))).collect());
-        screen
-            .frame(&mut host, &mut router, [], SIZE)
-            .expect("frame");
+        screen.frame(&mut host, [], SIZE).expect("frame");
         profile::tick_frame();
         let counted = profile::frames().last().map_or((0, 0), |frame| {
             (
@@ -100,26 +97,25 @@ fn a_rebuild_that_changes_kind_mounts_new_rows() {
 
 #[test]
 fn a_row_patched_into_a_focusable_one_takes_tab() {
-    Runtime::scope("patching-focus", || {
+    Owner::scope("patching-focus", || {
         let rows = signal((0..3).map(|at| (Row::Boxed, format!("row {at}"))).collect());
-        let (mut host, mut router, mut screen) = mounted(rows);
+        let (mut host, mut screen) = mounted(rows);
         rows.update(|rows| rows[1].0 = Row::Focusable);
+        screen.frame(&mut host, [], SIZE).expect("frame");
         screen
-            .frame(&mut host, &mut router, [], SIZE)
-            .expect("frame");
-        screen
-            .frame(&mut host, &mut router, [tab(false)], SIZE)
+            .frame(&mut host, [Event::tab(false)], SIZE)
             .expect("frame");
         assert!(
-            router.focus().is_some(),
+            host.focus().is_some(),
             "Tab found no focusable row after the patch"
         );
     });
 }
 
 fn themed(dark: Signal<bool>) -> Host {
-    use sigil::style::{NodeStyleExt, Theme, Token};
-    let mut host = Host::cells();
+    use sigil::prelude::Widget;
+    use sigil::style::{Theme, Token};
+    let mut host = Host::new(HostMode::Cell);
     host.mount(move || {
         container()
             .layout(LayoutStyle::flex_column().fill_width())
@@ -145,19 +141,20 @@ fn themed(dark: Signal<bool>) -> Host {
 fn a_nested_theme_change_reaches_the_emitted_scene() {
     use sigil::scene::CommandScene;
     let view = (320.0, 96.0);
-    Runtime::scope("patching-theme", || {
+    Owner::scope("patching-theme", || {
         let dark = signal(false);
         let mut host = themed(dark);
         host.layout(view).expect("layout");
-        let delta = host.cx().take_delta();
-        let (first, _) = host.emit_since(view, &delta, &CommandScene::default());
+        let delta = sigil::testing::take_delta(host.cx());
+        let (first, _) =
+            sigil::testing::emit_since(&mut host, view, &delta, &CommandScene::default());
         host.layout(view).expect("layout");
-        let idle = host.cx().take_delta();
-        let (second, _) = host.emit_since(view, &idle, &first);
+        let idle = sigil::testing::take_delta(host.cx());
+        let (second, _) = sigil::testing::emit_since(&mut host, view, &idle, &first);
         dark.set(true);
         host.layout(view).expect("layout");
-        let changed = host.cx().take_delta();
-        let (third, diff) = host.emit_since(view, &changed, &second);
+        let changed = sigil::testing::take_delta(host.cx());
+        let (third, diff) = sigil::testing::emit_since(&mut host, view, &changed, &second);
         assert!(!diff.unchanged(), "a theme change emitted no change");
         assert_eq!(
             third,
@@ -169,9 +166,9 @@ fn a_nested_theme_change_reaches_the_emitted_scene() {
 
 #[test]
 fn a_patched_row_drops_children_it_no_longer_has() {
-    Runtime::scope("patching-orphans", || {
+    Owner::scope("patching-orphans", || {
         let wide = signal(true);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
@@ -184,18 +181,12 @@ fn a_patched_row_drops_children_it_no_longer_has() {
                     }]
                 })
         });
-        let mut router = EventRouter::new();
         let mut screen = Screen::new(SIZE.0, SIZE.1);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], SIZE)
-                .expect("frame");
+            screen.frame(&mut host, [], SIZE).expect("frame");
         }
         wide.set(false);
-        let shown = screen
-            .frame(&mut host, &mut router, [], SIZE)
-            .expect("frame")
-            .text();
+        let shown = screen.frame(&mut host, [], SIZE).expect("frame").text();
         assert!(
             shown.contains("kept") && !shown.contains("dropped"),
             "{shown}"
@@ -205,27 +196,25 @@ fn a_patched_row_drops_children_it_no_longer_has() {
 
 #[test]
 fn tab_reaches_a_row_patched_into_focus_after_the_order_is_known() {
-    Runtime::scope("patching-focus-order", || {
+    Owner::scope("patching-focus-order", || {
         let rows = signal(vec![
             (Row::Focusable, String::from("row 0")),
             (Row::Boxed, String::from("row 1")),
             (Row::Boxed, String::from("row 2")),
         ]);
-        let (mut host, mut router, mut screen) = mounted(rows);
+        let (mut host, mut screen) = mounted(rows);
         screen
-            .frame(&mut host, &mut router, [tab(false)], SIZE)
+            .frame(&mut host, [Event::tab(false)], SIZE)
             .expect("frame");
-        let first = router.focus();
+        let first = host.focus();
         assert!(first.is_some(), "Tab found the focusable row");
         rows.update(|rows| rows[2].0 = Row::Focusable);
+        screen.frame(&mut host, [], SIZE).expect("frame");
         screen
-            .frame(&mut host, &mut router, [], SIZE)
-            .expect("frame");
-        screen
-            .frame(&mut host, &mut router, [tab(false)], SIZE)
+            .frame(&mut host, [Event::tab(false)], SIZE)
             .expect("frame");
         assert!(
-            router.focus().is_some() && router.focus() != first,
+            host.focus().is_some() && host.focus() != first,
             "Tab skipped the row patched into focus"
         );
     });
@@ -233,9 +222,9 @@ fn tab_reaches_a_row_patched_into_focus_after_the_order_is_known() {
 
 #[test]
 fn a_row_patched_to_take_clicks_receives_them() {
-    Runtime::scope("patching-click", || {
+    Owner::scope("patching-click", || {
         let (armed, hits) = (signal(false), signal(0_u32));
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
@@ -250,19 +239,14 @@ fn a_row_patched_to_take_clicks_receives_them() {
                     }]
                 })
         });
-        let mut router = EventRouter::new();
         let mut screen = Screen::new(SIZE.0, SIZE.1);
         let at = Host::CELL / 2.0;
-        for events in [Vec::new(), click(at, at).to_vec()] {
-            screen
-                .frame(&mut host, &mut router, events, SIZE)
-                .expect("frame");
+        for events in [Vec::new(), Event::click(Point::new(at, at)).to_vec()] {
+            screen.frame(&mut host, events, SIZE).expect("frame");
         }
         armed.set(true);
-        for events in [Vec::new(), click(at, at).to_vec()] {
-            screen
-                .frame(&mut host, &mut router, events, SIZE)
-                .expect("frame");
+        for events in [Vec::new(), Event::click(Point::new(at, at)).to_vec()] {
+            screen.frame(&mut host, events, SIZE).expect("frame");
         }
         assert_eq!(hits.get(), 1, "the click missed the row patched to take it");
     });

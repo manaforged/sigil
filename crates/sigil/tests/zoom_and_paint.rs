@@ -11,8 +11,8 @@
 
 use sigil::geometry::{Point, Rect};
 use sigil::prelude::*;
-use sigil::scene::{CornerRadii, SceneRectStyle};
-use sigil::style::{NumericAtomKind, Transform2D};
+use sigil::scene::DrawRect;
+use sigil::style::Transform2D;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 
@@ -31,14 +31,14 @@ fn zoomed(scale: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(100.0).height(50.0))
                 .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                .animate(NumericAtomKind::ScaleX, signal(scale))
-                .animate(NumericAtomKind::ScaleY, signal(scale))
+                .animate_scale_x(signal(scale))
+                .animate_scale_y(signal(scale))
                 .child(
                     container().bg(Token::Accent9).layout(
                         LayoutStyle::block()
                             .width(20.0)
                             .height(20.0)
-                            .margin_left(10.25),
+                            .margin_left(Space::raw(10.25, "test fixture")),
                     ),
                 ),
         )
@@ -76,7 +76,7 @@ fn a_canvas_draws_what_its_closure_records() {
                 30.0,
                 20.0,
             );
-            scene.draw_rect(inner, SceneRectStyle::new(RED, CornerRadii::ZERO, u16::MAX));
+            scene.draw_rect(DrawRect::new(inner, RED).opacity(u16::MAX));
         })
         .layout(LayoutStyle::block().width(100.0).height(60.0))
     })

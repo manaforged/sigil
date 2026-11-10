@@ -1,8 +1,8 @@
 use smallvec::SmallVec;
 
+use crate::Error;
 use crate::geometry::{Dim, Rect, Size};
 use crate::kernel::{Cx, DeltaKind, NodeId};
-use crate::layout::LayoutError;
 use crate::layout::snap;
 
 use super::LayoutEngine;
@@ -40,7 +40,7 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
         solved: &[NodeId],
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let mut found = Found::default();
         collect(cx, root, &mut found);
         for id in found.overlays {
@@ -138,11 +138,7 @@ fn target(rect: Rect, anchor: Option<Rect>, popup: Popup, viewport: (f32, f32)) 
     (x, y)
 }
 
-#[allow(
-    clippy::missing_const_for_fn,
-    reason = "const f32::mul_add needs Rust 1.94; the MSRV is 1.90"
-)]
-fn align_x(anchor: Rect, width: f32, center: bool) -> f32 {
+const fn align_x(anchor: Rect, width: f32, center: bool) -> f32 {
     if center {
         width.mul_add(-0.5, anchor.width.mul_add(0.5, anchor.origin.x))
     } else {

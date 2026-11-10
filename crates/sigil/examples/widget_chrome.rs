@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{CardBuilder, PanelBuilder, SplitterBuilder, TabsBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - chrome").size(720, 720), build)
@@ -21,11 +20,11 @@ pub(crate) fn app_shell_demo() -> NodeBuilder {
         ))
 }
 
-pub(crate) fn panel_demo() -> PanelBuilder {
+pub(crate) fn panel_demo() -> impl IntoNode {
     panel().title("Panel").child(text("Panel body").nowrap())
 }
 
-pub(crate) fn card_demo() -> CardBuilder {
+pub(crate) fn card_demo() -> impl IntoNode {
     card(kv_grid([("Host", "wgpu"), ("Backend", "metal")]))
 }
 
@@ -34,31 +33,37 @@ pub(crate) fn sidebar_demo() -> NodeBuilder {
         .layout(LayoutStyle::flex_row().fill_width().height(144.0))
         .child(sidebar(
             container()
-                .layout(LayoutStyle::flex_column().padding(8.0).gap(2.0))
+                .layout(
+                    LayoutStyle::flex_column()
+                        .padding(Space::Sm)
+                        .gap(Space::Xxs),
+                )
                 .child(section_label("Widgets"))
-                .child(list_row(true, "Controls", ""))
-                .child(list_row(false, "Inputs", "")),
+                .child(list_row(true, "Controls", ListRowSlots::default()))
+                .child(list_row(false, "Inputs", ListRowSlots::default())),
         ))
 }
 
-pub(crate) fn tabs_demo() -> TabsBuilder {
+pub(crate) fn tabs_demo(active: Signal<usize>, disabled: &'static [usize]) -> impl IntoNode {
     tabs()
-        .active(signal(0_usize))
+        .active(active)
         .tab("First", move || text("First tab pane").nowrap())
         .tab("Second", move || text("Second tab pane").nowrap())
         .tab("Third", move || text("Third tab pane").nowrap())
+        .disabled(disabled)
 }
 
-pub(crate) fn tabs_line_demo() -> TabsBuilder {
+pub(crate) fn tabs_line_demo(active: Signal<usize>, disabled: &'static [usize]) -> impl IntoNode {
     tabs()
-        .active(signal(0_usize))
+        .active(active)
         .tab("Overview", move || text("Overview pane").nowrap())
         .tab("Activity", move || text("Activity pane").nowrap())
         .tab("Settings", move || text("Settings pane").nowrap())
         .line()
+        .disabled(disabled)
 }
 
-pub(crate) fn splitter_demo() -> SplitterBuilder {
+pub(crate) fn splitter_demo() -> impl IntoNode {
     splitter(Orientation::Horizontal)
         .child(card(text("Navigation").nowrap()), 180.0)
         .child(card(text("Content").nowrap()), 260.0)
@@ -67,7 +72,7 @@ pub(crate) fn splitter_demo() -> SplitterBuilder {
 
 fn scroll_lines() -> NodeBuilder {
     (1..=12).fold(
-        container().layout(LayoutStyle::flex_column().fill_width().gap(4.0)),
+        container().layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs)),
         |column, index| column.child(text(format!("Scrolled line {index}")).nowrap()),
     )
 }
@@ -106,9 +111,9 @@ fn build() -> impl IntoNode {
                 container()
                     .layout(LayoutStyle::flex_row().gap(cols(1.0)))
                     .child(sidebar_demo())
-                    .child(tabs_demo()),
+                    .child(tabs_demo(signal(0_usize), &[])),
             )
-            .child(tabs_line_demo())
+            .child(tabs_line_demo(signal(0_usize), &[]))
             .child(panel_demo())
             .child(card_demo())
             .child(splitter_demo())

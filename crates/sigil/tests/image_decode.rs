@@ -4,8 +4,7 @@
 mod decode {
     use std::io::Cursor;
 
-    use sigil::kernel::{Cx, NodeType};
-    use sigil::widgets::image_bytes;
+    use sigil::kernel::{Cx, ImageSource, NodeType, image};
 
     fn png(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {
         let pixels = rgba.repeat((w * h) as usize);
@@ -20,7 +19,7 @@ mod decode {
     #[test]
     fn decodes_png_to_image_node_with_correct_dimensions() {
         let bytes = png(4, 3, [10, 20, 30, 255]);
-        let builder = image_bytes(&bytes).expect("valid PNG must decode");
+        let builder = image(ImageSource::decode(&bytes).expect("valid PNG must decode"));
 
         let mut cx = Cx::new_root();
         let id = cx.add(builder);
@@ -35,6 +34,6 @@ mod decode {
 
     #[test]
     fn rejects_garbage_bytes() {
-        assert!(image_bytes(&[0xDE, 0xAD, 0xBE, 0xEF]).is_none());
+        assert!(ImageSource::decode(&[0xDE, 0xAD, 0xBE, 0xEF]).is_none());
     }
 }

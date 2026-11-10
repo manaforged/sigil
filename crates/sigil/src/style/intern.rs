@@ -4,22 +4,22 @@ use std::sync::{Mutex, OnceLock, PoisonError};
 
 use crate::style::{GradientStopKey, StyleAtom};
 
-type Cache<T> = OnceLock<Mutex<HashSet<&'static [T]>>>;
+type InternCache<T> = OnceLock<Mutex<HashSet<&'static [T]>>>;
 
 pub(crate) trait Interned: Hash + Eq + Send + Sync + 'static + Sized {
-    fn cache() -> &'static Cache<Self>;
+    fn cache() -> &'static InternCache<Self>;
 }
 
 impl Interned for StyleAtom {
-    fn cache() -> &'static Cache<Self> {
-        static CACHE: Cache<StyleAtom> = OnceLock::new();
+    fn cache() -> &'static InternCache<Self> {
+        static CACHE: InternCache<StyleAtom> = OnceLock::new();
         &CACHE
     }
 }
 
 impl Interned for GradientStopKey {
-    fn cache() -> &'static Cache<Self> {
-        static CACHE: Cache<GradientStopKey> = OnceLock::new();
+    fn cache() -> &'static InternCache<Self> {
+        static CACHE: InternCache<GradientStopKey> = OnceLock::new();
         &CACHE
     }
 }

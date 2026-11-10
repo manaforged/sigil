@@ -1,10 +1,10 @@
+use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ColWidth, FontFamily, Identifiable, LayoutBuilderExt, LayoutStyle, MenuItem,
-    NodeBuilder, Paint, TableColumn, TableState, Token, Tone, chip, container, effect, table, text,
+    AlignItems, ColWidth, FontFamily, Identifiable, LayoutStyle, MenuItem, NodeBuilder, Paint,
+    TableColumn, TableState, Token, Tone, chip, container, effect, table, text,
 };
+use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
-use sigil::style::space;
-use sigil::widgets::{ChipBuilder, TableBuilder};
 
 use super::data::{
     BRANCH_WIDTH, COMMIT_MIN_WIDTH, DURATION_WIDTH, Job, JobStatus, REGION_WIDTH, SHA_WIDTH,
@@ -59,7 +59,7 @@ pub(crate) fn job_state(console: Console) -> TableState<JobRow> {
     state
 }
 
-pub(crate) fn job_table(console: Console, state: TableState<JobRow>) -> TableBuilder<JobRow> {
+pub(crate) fn job_table(console: Console, state: TableState<JobRow>) -> impl IntoNode {
     table(state)
         .selectable_checkboxes()
         .viewport_fill()
@@ -109,7 +109,7 @@ fn columns(console: Console) -> Vec<TableColumn<JobRow>> {
     ]
 }
 
-fn plain(value: &'static str) -> sigil::kernel::TextBuilder {
+fn plain(value: &'static str) -> sigil::prelude::TextBuilder {
     text(value).nowrap().ellipsize()
 }
 
@@ -119,7 +119,7 @@ fn commit_cell(job: &'static Job) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_width(0.0)
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -137,7 +137,7 @@ fn commit_cell(job: &'static Job) -> NodeBuilder {
         )
 }
 
-fn duration_cell(console: Console, slot: usize, secs: u32) -> sigil::kernel::TextBuilder {
+fn duration_cell(console: Console, slot: usize, secs: u32) -> sigil::prelude::TextBuilder {
     text(move || {
         if console.status_of(slot) == JobStatus::Queued {
             "—".to_owned()
@@ -149,7 +149,7 @@ fn duration_cell(console: Console, slot: usize, secs: u32) -> sigil::kernel::Tex
     .tabular_nums(true)
 }
 
-pub(crate) fn status_chip(console: Console, slot: usize) -> ChipBuilder {
+pub(crate) fn status_chip(console: Console, slot: usize) -> impl IntoNode {
     chip(
         move || console.status_of(slot).label().to_owned(),
         Tone::Neutral,

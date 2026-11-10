@@ -1,9 +1,9 @@
+use sigil::layout::Space;
+use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, ControlSize, LayoutBuilderExt, LayoutStyle, LogicalKey, NodeBuilder, Paint,
-    Shortcut, Token, Tone, avatar, button, chip, command_menu, container, modal, spacer,
-    status_bar, text, tooltip,
+    AlignItems, ControlSize, LayoutStyle, LogicalKey, NodeBuilder, Paint, Shortcut, Token, Tone,
+    avatar, button, chip, command_menu, container, modal, spacer, status_bar, text, tooltip,
 };
-use sigil::style::space;
 use sigil::widgets::ModalBuilder;
 
 use super::data::{Bucket, Section, TEXT_SMALL};
@@ -14,7 +14,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(3))
+                .gap(Space::Md)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -49,7 +49,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
         .child(spacer())
         .child(
             tooltip("Search services, jobs, and commands")
-                .shortcut(Some(menu_shortcut().label()))
+                .hint(Some(menu_shortcut().label()))
                 .child(
                     button("Search or run a command")
                         .ghost()
@@ -79,7 +79,7 @@ pub(crate) fn status(console: Console) -> NodeBuilder {
             menu_shortcut().label()
         ))
         .nowrap()
-        .font_size(TEXT_SMALL)
+        .font_size(TEXT_SMALL, "example layout")
         .text_color(Token::OnSurfaceMuted),
     ])
 }

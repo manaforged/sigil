@@ -7,9 +7,9 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::events::{MouseButton, MouseButtons};
 use sigil::geometry::Point;
 use sigil::kernel::AccessibleName;
 use sigil::kernel::{Cx, NodeId};
@@ -26,21 +26,15 @@ fn recompute(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
     layout.compute(cx, root, VIEWPORT).expect("layout");
 }
 
-fn pointer(x: f32, y: f32, phase: PointerPhase) -> ShellEvent {
+fn pointer(x: f32, y: f32, phase: PointerPhase) -> Event {
     let up_or_down = matches!(phase, PointerPhase::Down | PointerPhase::Up);
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: up_or_down.then_some(MouseButton::Left),
-        buttons: if phase == PointerPhase::Down {
+    Event::pointer(phase, Point::new(x, y))
+        .button(up_or_down.then_some(MouseButton::Left))
+        .buttons(if phase == PointerPhase::Down {
             MouseButtons::LEFT
         } else {
             MouseButtons::empty()
-        },
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+        })
 }
 
 fn click(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, x: f32, y: f32) {
@@ -54,7 +48,7 @@ fn frame_event(
     cx: &mut Cx,
     root: NodeId,
     layout: &mut LayoutEngine,
-    event: ShellEvent,
+    event: Event,
 ) {
     Runtime::begin_effect();
     router.route(cx, layout, event);
@@ -86,7 +80,7 @@ fn frame_click(
 
 fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
     compute(cx, root, VIEWPORT, stub_text_measure());
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
@@ -113,7 +107,7 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
         "trigger must fill the compact root"
     );
 
-    let scene = emit_scene(cx, root);
+    let scene = emit_scene(cx, root, None);
     let trigger_rects: Vec<_> = scene
         .commands
         .iter()
@@ -138,7 +132,7 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
 
 #[test]
 fn border_click_toggles_popup_open_and_closed() {
-    sigil::reactive::Runtime::scope("dd-border-click", || {
+    sigil::reactive::Owner::scope("dd-border-click", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown_fixture);
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
@@ -161,7 +155,7 @@ fn border_click_toggles_popup_open_and_closed() {
 }
 
 fn mid_gesture_disable_vetoes_release(scope: &'static str, x: f32, y: f32) {
-    sigil::reactive::Runtime::scope(scope, || {
+    sigil::reactive::Owner::scope(scope, || {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -190,7 +184,7 @@ fn mid_gesture_disable_vetoes_border_release() {
 
 #[test]
 fn reactive_disable_vetoes_arrow_down_open() {
-    sigil::reactive::Runtime::scope("dd-disable-arrow", || {
+    sigil::reactive::Owner::scope("dd-disable-arrow", || {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -206,14 +200,8 @@ fn reactive_disable_vetoes_arrow_down_open() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
-                key: Key::ArrowDown.into(),
-                physical: sigil::events::PhysicalKey::ArrowDown,
-                modifiers: ModifiersState::empty(),
-                repeat: false,
-                phase: KeyPhase::Down,
-                text: None,
-            })),
+            Event::key(Key::ArrowDown, KeyPhase::Down)
+                .physical(sigil::events::PhysicalKey::ArrowDown),
         );
         assert_eq!(
             glyph_runs(&mut cx, root),
@@ -230,7 +218,7 @@ fn mid_gesture_disable_vetoes_interior_release() {
 
 #[test]
 fn interior_click_toggles_exactly_once() {
-    sigil::reactive::Runtime::scope("dd-interior-click", || {
+    sigil::reactive::Owner::scope("dd-interior-click", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown_fixture);
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
@@ -249,7 +237,7 @@ fn interior_click_toggles_exactly_once() {
 
 #[test]
 fn trigger_reopens_after_selecting_an_option() {
-    sigil::reactive::Runtime::scope("dd-reopen-after-select", || {
+    sigil::reactive::Owner::scope("dd-reopen-after-select", || {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
@@ -286,7 +274,7 @@ fn trigger_reopens_after_selecting_an_option() {
 
 #[test]
 fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
-    sigil::reactive::Runtime::scope("dd-production-frame-reopen", || {
+    sigil::reactive::Owner::scope("dd-production-frame-reopen", || {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
@@ -334,7 +322,7 @@ fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
 
 #[test]
 fn compact_dropdown_keeps_its_label_and_popup_anchor() {
-    sigil::reactive::Runtime::scope("dd-compact-geometry", || {
+    sigil::reactive::Owner::scope("dd-compact-geometry", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             dropdown(

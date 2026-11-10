@@ -1,6 +1,6 @@
 use core::error::Error;
 
-use crate::hal::geometry::{Color, PhysicalSize};
+use crate::hal::geometry::PhysicalSize;
 
 pub trait Renderer {
     type Error: Error + Send + Sync + 'static;
@@ -20,6 +20,4 @@ pub trait Renderer {
         surface: &mut Self::Surface,
         size: PhysicalSize,
     ) -> Result<(), Self::Error>;
-
-    fn clear(&mut self, surface: &mut Self::Surface, color: Color) -> Result<(), Self::Error>;
 }

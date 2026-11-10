@@ -15,6 +15,9 @@ macro_rules! same_name_match {
     };
 }
 
+#[cfg(feature = "menu")]
+pub(crate) use same_name_match;
+
 pub(crate) fn map_logical_key(key: WinitKey) -> LogicalKey {
     match key {
         WinitKey::Named(WinitNamedKey::Space) => LogicalKey::character(" "),

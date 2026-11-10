@@ -56,7 +56,8 @@ pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
             entries
                 .filter_map(|(row, channel)| {
                     let name = names.get(channel)?;
-                    let item = list_row(row == cursor, format!("# {name}"), "");
+                    let item =
+                        list_row(row == cursor, format!("# {name}"), ListRowSlots::default());
                     Some(item.pointer_up(move |_| pick(chat, picker, channel)))
                 })
                 .collect::<Vec<_>>()

@@ -1,10 +1,14 @@
 use crate::layout::snap::CellForm;
 use crate::style::space;
 
+/// Row density of a table.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Density {
+    /// The grid density.
     Grid,
+    /// The compact density.
     Compact,
+    /// The default density.
     #[default]
     Default,
 }

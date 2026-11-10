@@ -16,27 +16,25 @@ cargo add --dev --git https://github.com/manaforged/sigil sigil-kittest
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil_kittest::{InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png};
+use sigil_kittest::{Golden, Harness};
 
 #[test]
 fn button_default() -> Result<(), sigil_kittest::Error> {
-    let Some(img) = render_widget_to_png(
-        || button("Save"),
-        InteractionMode::Default,
-        [200, 60],
-        (10.0, 10.0),
-    )?
+    let Some(img) = Harness::render(|| button("Save"))
+        .size([200, 60])
+        .hit((10.0, 10.0))
+        .image()?
     else {
         return Ok(());
     };
-    assert_png_matches_golden(&img, &golden_path!("button_default"), 0.5);
+    Golden::new("button_default").assert_image(&img);
     Ok(())
 }
 ```
 
-`render_widget_to_png(build, mode, size_px, hit_point)` returns `Result<Option<RgbaImage>, Error>`. The hit point must land inside the widget for `Hover`, `Pressed`, and `Clicked` to take effect. For `Disabled`, build the widget disabled, for example `button("Save").disabled(true)`; the harness sends no events in that mode.
+`Harness::render(build)` returns a `Render`. Set `.mode(mode)`, `.size([w, h])`, `.scale(scale)`, and `.hit((x, y))`, then call `.image()` for `Result<Option<RgbaImage>, Error>`. The hit point must land inside the widget for `Hover`, `Pressed`, and `Clicked` to take effect. For `Disabled`, build the widget disabled, for example `button("Save").disabled(true)`; the harness sends no events in that mode. `.focus_first()` drives the first focusable descendant. `.capture(&mut settle)` also returns the top layer bounds. `.filmstrip(frames, dt)` puts hover frames side by side.
 
-`golden_path!(stem)` resolves `tests/goldens/<stem>.png` under the calling crate's manifest directory. `assert_goldens_differ!(a, b)` fails when two goldens are identical.
+`Golden::new(stem)` resolves `tests/goldens/<stem>.png` under `CARGO_MANIFEST_DIR`, read when the test runs. `cargo test` sets it to the crate that the test belongs to. If you run a test binary directly, set it yourself, or the path is relative to the current directory. `golden.assert_differs(&other)` fails when two goldens are identical.
 
 ## Interaction modes
 
@@ -54,9 +52,9 @@ fn button_default() -> Result<(), sigil_kittest::Error> {
 
 ## Text layout
 
-The harness uses the real text engine. For a fixed 40x16 box per text node, call `render_widget_to_png_stub`, or pass `stub_text_measure()` to `render_widget_to_png_with`.
+The harness uses the real text engine. For a fixed 40x16 box per text node, call `.stub()`, or pass any measure with `.measure(|| ...)`.
 
-Layout tests that need a deterministic measure without rendering pass `FixedMeasure { width, height }` (one box per text node) or `CharMeasure { char_width, line_height }` (widest line times `char_width`, line count times `line_height`) to `LayoutEngine::with_text_measure`.
+Layout tests that need a deterministic measure without rendering pass `FakeMeasure::fixed(width, height)` (one box per text node) or `FakeMeasure::chars(char_width, line_height)` (widest line times `char_width`, line count times `line_height`) to `LayoutEngine::with_text_measure`.
 
 ## No GPU
 
@@ -86,7 +84,7 @@ To bake the goldens for one adapter:
 
 ## Tolerance
 
-`assert_png_matches_golden(actual, golden, max_delta_pct)` allows a percentage of pixels to differ, to absorb GPU driver differences. A pixel differs when any RGBA channel differs by more than 2. Use `0.5` unless a test needs another budget. `assert_rendered_matches_golden(rendered, golden, max_delta_pct)` takes the `Rendered` result directly and skips the check when no adapter is available.
+`Golden::delta(max_delta_pct)` allows a percentage of pixels to differ, to absorb GPU driver differences. A pixel differs when any RGBA channel differs by more than 2. The default is `0.5`. `Golden::assert(rendered)` takes the `Rendered` result directly and skips the check when no adapter is available.
 
 The offscreen target clears to opaque black.
 
@@ -104,23 +102,6 @@ The scenarios are `page_scroll`, `modal_table_scroll`, and `hover_sweep`. `SIGIL
 ## Raw captures
 
 For renderer tests that inspect pixels, `gpu::render_capture` renders a `CommandScene` into a new texture described by `gpu::Capture` (viewport, pixel size, scale, clear color). `gpu::read_pixels` reads it back as RGBA8 rows, and `gpu::pixel_rgba` returns one pixel. `gpu::create_capture_texture` and `gpu::FORMAT` create a target for custom render paths.
-
-## API
-
-<!-- truesight:surface sigil-kittest -->
-
-193 public items (18 types, 53 functions, 64 methods, 30 fields, 18 variants, 8 constants, 2 macros) at 193 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
-
-| Module | Items | Types | Functions | Methods | Aliases |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil_kittest` | 119 | 12 | 17 | 50 | 0 |
-| `sigil_kittest::gpu` | 15 | 2 | 9 | 0 | 0 |
-| `sigil_kittest::input` | 15 | 0 | 15 | 0 | 0 |
-| `sigil_kittest::parity` | 16 | 2 | 5 | 0 | 0 |
-| `sigil_kittest::scene_gen` | 23 | 2 | 2 | 14 | 0 |
-| `sigil_kittest::scene_gen::stress` | 5 | 0 | 5 | 0 | 0 |
-
-<!-- /truesight -->
 
 ## License
 

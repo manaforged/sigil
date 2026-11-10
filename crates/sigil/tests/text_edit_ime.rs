@@ -14,70 +14,22 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::{ime_event, type_char};
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{ImeEvent, KeyEventInit, PhysicalKey};
+use sigil::events::{ImeEvent, PhysicalKey};
 use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
-use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil::layout::set_text_geometry;
 use sigil::prelude::*;
-use sigil::style::TextStyle;
 use sigil::widgets::text_edit;
 use widget_support::{compute, find_text_node};
 
 const VIEWPORT: Size = Size::fixed(360.0, 160.0);
 
-struct StubGeometry;
-
-impl TextGeometry for StubGeometry {
-    fn hit(
-        &self,
-        text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        point: sigil::geometry::Point,
-    ) -> sigil::hal::HitPosition {
-        sigil::hal::HitPosition {
-            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
-            affinity: sigil::hal::TextAffinity::Downstream,
-        }
-    }
-
-    fn caret(
-        &self,
-        text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        position: sigil::hal::HitPosition,
-    ) -> CaretGeometry {
-        let byte = position.byte_index;
-        let byte = byte.min(text.len());
-        let prefix = &text[..byte];
-        let line = prefix.matches('\n').count();
-        let col_start = prefix.rfind('\n').map_or(0, |i| i + 1);
-        CaretGeometry {
-            x: (byte - col_start) as f32 * 10.0,
-            top: line as f32 * 16.0,
-            height: 16.0,
-        }
-    }
-
-    fn selection_rects(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::geometry::Rect> {
-        Vec::new()
-    }
-}
-
 #[test]
 fn text_edit_preedit_displays_inline() {
-    sigil::reactive::Runtime::scope("text-edit-ime-preedit", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-preedit", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -87,7 +39,7 @@ fn text_edit_preedit_displays_inline() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
         assert_eq!(
@@ -100,8 +52,8 @@ fn text_edit_preedit_displays_inline() {
 
 #[test]
 fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
-    sigil::reactive::Runtime::scope("text-edit-ime-line2-commit", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-line2-commit", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aaa\nbbb\nccc"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -114,7 +66,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
         let anchor = router
             .ime_caret_rect(&cx, &layout)
@@ -124,7 +76,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
             "caret on line 2 (0-indexed line 1) must anchor at top=16.0+8.0 padding, got {}",
             anchor.origin.y
         );
-        router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("X".into())));
+        router.route(&mut cx, &layout, Event::Ime(ImeEvent::Commit("X".into())));
         assert_eq!(
             value.get(),
             "aaa\nXbbb\nccc",
@@ -135,8 +87,8 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
 
 #[test]
 fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
-    sigil::reactive::Runtime::scope("text-edit-ime-preedit-cursor", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-preedit-cursor", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -146,7 +98,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("ab".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("ab".into(), Some((0, 1)))),
         );
         let mid_cursor = router
             .ime_caret_rect(&cx, &layout)
@@ -154,7 +106,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("ab".into(), Some((0, 2)))),
+            Event::Ime(ImeEvent::Preedit("ab".into(), Some((0, 2)))),
         );
         let end_cursor = router
             .ime_caret_rect(&cx, &layout)
@@ -178,8 +130,8 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
 
 #[test]
 fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
-    sigil::reactive::Runtime::scope("text-edit-ime-multibyte-backspace", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-multibyte-backspace", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aé"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -190,7 +142,7 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
         router.route(&mut cx, &layout, backspace());
         assert_eq!(value.get(), "é", "backspace must land on the shrunk buffer");
@@ -199,8 +151,8 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
 
 #[test]
 fn text_edit_selection_replace_during_preedit_does_not_panic() {
-    sigil::reactive::Runtime::scope("text-edit-ime-selection-replace", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-selection-replace", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("café"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -211,9 +163,13 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
-        router.route(&mut cx, &layout, type_char("z", PhysicalKey::KeyZ));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::typed("z").physical(PhysicalKey::KeyZ),
+        );
         let result = value.get();
         assert!(
             result.contains('z'),
@@ -228,8 +184,8 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
 
 #[test]
 fn text_edit_external_value_mutation_survives_ime_commit() {
-    sigil::reactive::Runtime::scope("text-edit-ime-external-mutation", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-external-mutation", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("initial"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -240,9 +196,9 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("!".into(), Some((0, 1)))),
+            Event::Ime(ImeEvent::Preedit("!".into(), Some((0, 1)))),
         );
-        router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("!".into())));
+        router.route(&mut cx, &layout, Event::Ime(ImeEvent::Commit("!".into())));
         let result = value.get();
         assert!(
             !result.contains("initial"),
@@ -263,8 +219,8 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
 
 #[test]
 fn text_edit_preedit_cancelled_on_focus_loss() {
-    sigil::reactive::Runtime::scope("text-edit-ime-focus-loss", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-focus-loss", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let other = cx.add(
@@ -280,7 +236,7 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
         router.set_focus(&mut cx, Some(other));
@@ -295,8 +251,8 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
 
 #[test]
 fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
-    sigil::reactive::Runtime::scope("text-edit-ime-disable-immediate", || {
-        set_text_geometry(std::rc::Rc::new(StubGeometry));
+    sigil::reactive::Owner::scope("text-edit-ime-disable-immediate", || {
+        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
@@ -307,7 +263,7 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         router.route(
             &mut cx,
             &layout,
-            ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+            Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
         disabled.set(true);
@@ -318,35 +274,16 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         );
     });
 }
-fn arrow_left() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::ArrowLeft.into(),
-        physical: PhysicalKey::ArrowLeft,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn arrow_left() -> Event {
+    Event::key(Key::ArrowLeft, KeyPhase::Down).physical(PhysicalKey::ArrowLeft)
 }
-fn backspace() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::Backspace.into(),
-        physical: PhysicalKey::Backspace,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn backspace() -> Event {
+    Event::key(Key::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
 }
-fn ctrl_a() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character("a"),
-        physical: PhysicalKey::KeyA,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_a() -> Event {
+    Event::key(LogicalKey::character("a"), KeyPhase::Down)
+        .physical(PhysicalKey::KeyA)
+        .modifiers(ModifiersState::CONTROL)
 }
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();

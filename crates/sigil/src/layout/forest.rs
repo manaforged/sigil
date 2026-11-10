@@ -4,9 +4,8 @@ use crate::kernel::{NodeId, TextContent};
 use crate::style::TextStyle;
 use smallvec::SmallVec;
 
-#[cfg(test)]
-use crate::layout::TextMeasure;
-use crate::layout::{LayoutError, StyleData};
+use crate::Error;
+use crate::layout::StyleData;
 
 mod box_cell;
 mod default_style;
@@ -148,7 +147,7 @@ impl LayoutForest {
         id
     }
 
-    pub(crate) fn set_style(&mut self, id: LocalId, style: StyleData) -> Result<(), LayoutError> {
+    pub(crate) fn set_style(&mut self, id: LocalId, style: StyleData) -> Result<(), Error> {
         let entry = self.live_mut(id)?;
         let resolved = crate::layout::units::resolve_style(style);
         if entry.style != resolved {
@@ -158,11 +157,7 @@ impl LayoutForest {
         Ok(())
     }
 
-    pub(crate) fn set_text(
-        &mut self,
-        id: LocalId,
-        text: Option<LayoutText>,
-    ) -> Result<(), LayoutError> {
+    pub(crate) fn set_text(&mut self, id: LocalId, text: Option<LayoutText>) -> Result<(), Error> {
         let entry = self.live_mut(id)?;
         let same = match (&entry.text, &text) {
             (Some(old), Some(new)) => old.same_source(new),
@@ -202,7 +197,7 @@ impl LayoutForest {
             .map(BoxCell::frame)
     }
 
-    pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), LayoutError> {
+    pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), Error> {
         self.node(id).ok_or_else(|| stale(id))?;
         let frame = self.frame;
         self.boxes
@@ -216,7 +211,7 @@ impl LayoutForest {
         self.node(id).map(|_| NodeRef { forest: self, id })
     }
 
-    fn live_mut(&mut self, id: LocalId) -> Result<&mut LayoutNode, LayoutError> {
+    fn live_mut(&mut self, id: LocalId) -> Result<&mut LayoutNode, Error> {
         self.nodes
             .get_mut(id.index as usize)
             .filter(|entry| entry.alive && entry.tag == id.tag)
@@ -224,8 +219,8 @@ impl LayoutForest {
     }
 }
 
-fn stale(id: LocalId) -> LayoutError {
-    LayoutError::LayoutInvalid(format!(
+fn stale(id: LocalId) -> Error {
+    Error::layout(format!(
         "stale layout-forest id index={} tag={}",
         id.index, id.tag
     ))

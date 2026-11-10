@@ -2,7 +2,7 @@
 
 use ahash::AHashSet;
 
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::block::{BlockSolver, Position2};
 use crate::layout::flex::{CbSize, FlexSolver};
 use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
@@ -11,7 +11,7 @@ use crate::layout::grid_tracks::{
     resolve_gap, spanned_height,
 };
 use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Dimension, Display, Size, StyleData};
+use crate::layout::style_data::{Axes, Dimension, Display, StyleData};
 
 pub(crate) struct GridSolver<'a> {
     scope: MeasureScope<'a>,
@@ -50,7 +50,7 @@ struct GridFrame<'a> {
     content: Position2,
 }
 
-struct Placement {
+struct GridPlacement {
     cid: LocalId,
     row: usize,
     col: usize,
@@ -117,7 +117,7 @@ impl<'a> GridSolver<'a> {
         Self { scope }
     }
 
-    pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
+    pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), Error> {
         let avail = self.scope.available();
         let border_w = match subtree.style().size.width {
             Dimension::Px(px) => px,
@@ -131,7 +131,7 @@ impl<'a> GridSolver<'a> {
         subtree: NodeRef<'_>,
         border_w: f32,
         origin: Position2,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let style = subtree.style();
         let edges = NodeEdges::build(style, border_w);
         let inner_w = (border_w - edges.inline_chrome()).max(0.0);
@@ -179,16 +179,18 @@ impl<'a> GridSolver<'a> {
 
     fn layout_rows(
         &self,
-        places: &[Placement],
+        places: &[GridPlacement],
         frame: &GridFrame<'_>,
-    ) -> Result<Vec<f32>, LayoutError> {
+    ) -> Result<Vec<f32>, Error> {
         let mut row_h = self.measure_row_heights(places, &frame.cols)?;
         apply_row_template(&mut row_h, &frame.style.grid_template_rows);
         let avail_h = definite(self.scope.available().h);
         let chrome = frame.edges.block_chrome();
         let inner_h = match frame.style.size.height {
             Dimension::Px(px) => Some((px - chrome).max(0.0)),
-            Dimension::Text(length) => Some((length.px() - chrome).max(0.0)),
+            Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => {
+                Some((frame.style.size.height.text_px().unwrap_or(0.0) - chrome).max(0.0))
+            }
             Dimension::Fill => Some((avail_h - chrome).max(0.0)),
             Dimension::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
             Dimension::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
@@ -212,7 +214,7 @@ impl<'a> GridSolver<'a> {
         Ok(row_h)
     }
 
-    fn flow_children(&self, children: &[LocalId], frame: &GridFrame<'_>) -> Vec<Placement> {
+    fn flow_children(&self, children: &[LocalId], frame: &GridFrame<'_>) -> Vec<GridPlacement> {
         let (ncols, dense) = (frame.cols.n, frame.style.grid_auto_flow_dense);
         let row_cap = frame
             .style
@@ -242,7 +244,7 @@ impl<'a> GridSolver<'a> {
                 }
                 cell
             });
-            out.push(Placement {
+            out.push(GridPlacement {
                 cid: s.cid,
                 row: r,
                 col: c,
@@ -276,9 +278,9 @@ impl<'a> GridSolver<'a> {
 
     fn measure_row_heights(
         &self,
-        places: &[Placement],
+        places: &[GridPlacement],
         cols: &Cols,
-    ) -> Result<Vec<f32>, LayoutError> {
+    ) -> Result<Vec<f32>, Error> {
         let nrows = places.iter().map(|p| p.row + p.row_span).max().unwrap_or(0);
         let mut row_h = vec![0.0_f32; nrows];
         for p in places {
@@ -299,10 +301,10 @@ impl<'a> GridSolver<'a> {
 
     fn place_cells(
         &self,
-        places: &[Placement],
+        places: &[GridPlacement],
         cols: &Cols,
         rows: &RowTracks<'_>,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         for p in places {
             let origin = Position2 {
                 x: cell_x(cols, p.col, p.span),
@@ -315,17 +317,11 @@ impl<'a> GridSolver<'a> {
         Ok(())
     }
 
-    fn layout_cell(
-        &self,
-        cid: LocalId,
-        w: f32,
-        h: f32,
-        origin: Position2,
-    ) -> Result<(), LayoutError> {
+    fn layout_cell(&self, cid: LocalId, w: f32, h: f32, origin: Position2) -> Result<(), Error> {
         let forest = self.scope.forest();
         let cell = forest
             .refer(cid)
-            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale grid cell {cid:?}")))?;
+            .ok_or_else(|| Error::layout(format!("stale grid cell {cid:?}")))?;
         let stretch = matches!(cell.style().size.height, Dimension::Auto);
         let nested = MeasureScope::new(forest, self.scope.text(), self.scope.available());
         match cell.style().display {
@@ -337,9 +333,9 @@ impl<'a> GridSolver<'a> {
             Display::Grid => GridSolver::new(nested).solve_at(cell, w, origin),
             Display::Block | Display::None => BlockSolver::new(nested).solve_at_assigned(
                 cell,
-                Size::new(w, h),
+                Axes::new(w, h),
                 origin,
-                Size::new(Some(w), None),
+                Axes::new(Some(w), None),
             ),
         }?;
         if stretch && h > 0.0 {

@@ -1,18 +1,23 @@
 use std::fmt::Write as _;
 
+/// Layout direction.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Direction {
+    /// The ltr direction.
     #[default]
     Ltr,
+    /// The rtl direction.
     Rtl,
 }
 
 impl Direction {
+    /// Returns whether this direction is rtl.
     #[must_use]
     pub const fn is_rtl(self) -> bool {
         matches!(self, Self::Rtl)
     }
 
+    /// Creates a direction from name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&DIRECTION_NAMES, name)
@@ -40,11 +45,15 @@ fn lookup<T: Copy>(table: &[(&str, T)], name: &str) -> Option<T> {
         .map(|(_, value)| *value)
 }
 
+/// The order of day, month, and year in a date.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub enum DateOrder {
+    /// The ymd date order.
     #[default]
     Ymd,
+    /// The dmy date order.
     Dmy,
+    /// The mdy date order.
     Mdy,
 }
 
@@ -56,6 +65,7 @@ enum DatePart {
 }
 
 impl DateOrder {
+    /// Creates a date order from name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&DATE_ORDER_NAMES, name)
@@ -70,13 +80,20 @@ impl DateOrder {
     }
 }
 
+/// The number and date formats of a language.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Locale {
+    /// The decimal.
     pub decimal: char,
+    /// The group, if any.
     pub group: Option<char>,
+    /// The group size.
     pub group_size: u8,
+    /// The zero.
     pub zero: char,
+    /// The date order.
     pub date_order: DateOrder,
+    /// The date separator.
     pub date_separator: char,
 }
 
@@ -87,6 +104,7 @@ impl Default for Locale {
 }
 
 impl Locale {
+    /// Creates a locale.
     #[must_use]
     pub const fn new(decimal: char, group: Option<char>) -> Self {
         Self {
@@ -99,21 +117,25 @@ impl Locale {
         }
     }
 
+    /// Creates a locale from name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&LOCALE_PRESETS, name)
     }
 
+    /// Returns the en locale.
     #[must_use]
     pub const fn en() -> Self {
         Self::new('.', Some(',')).with_date(DateOrder::Mdy, '/')
     }
 
+    /// Returns the de locale.
     #[must_use]
     pub const fn de() -> Self {
         Self::new(',', Some('.')).with_date(DateOrder::Dmy, '.')
     }
 
+    /// Returns the ar locale.
     #[must_use]
     pub const fn ar() -> Self {
         Self::new('\u{066B}', Some('\u{066C}'))
@@ -121,6 +143,7 @@ impl Locale {
             .with_zero('\u{0660}')
     }
 
+    /// Sets the date order.
     #[must_use]
     pub const fn with_date(mut self, order: DateOrder, separator: char) -> Self {
         self.date_order = order;
@@ -128,12 +151,14 @@ impl Locale {
         self
     }
 
+    /// Sets the zero digit.
     #[must_use]
     pub const fn with_zero(mut self, zero: char) -> Self {
         self.zero = zero;
         self
     }
 
+    /// Sets the group size.
     #[must_use]
     pub const fn with_group_size(mut self, size: u8) -> Self {
         self.group_size = size;
@@ -153,6 +178,7 @@ impl Locale {
             .unwrap_or(c)
     }
 
+    /// Converts localized number text to plain digits.
     #[must_use]
     pub fn normalize_number(&self, input: &str) -> Option<String> {
         let trimmed = input.trim();
@@ -177,6 +203,7 @@ impl Locale {
         Some(out)
     }
 
+    /// Parses localized number text.
     #[must_use]
     pub fn parse_number(&self, input: &str) -> Option<f64> {
         self.normalize_number(input)?
@@ -185,6 +212,7 @@ impl Locale {
             .filter(|v| v.is_finite())
     }
 
+    /// Converts plain number text to this locale's separators.
     #[must_use]
     pub fn localize_number(&self, plain: &str) -> String {
         plain
@@ -199,6 +227,7 @@ impl Locale {
             .collect()
     }
 
+    /// Formats `value` with this many fraction digits.
     #[must_use]
     pub fn format_number(&self, value: f64, fraction_digits: usize) -> String {
         let plain = format!("{:.*}", fraction_digits, value.abs());
@@ -231,6 +260,7 @@ impl Locale {
         out
     }
 
+    /// Formats a date in this locale's order.
     #[must_use]
     pub fn format_date(&self, year: i32, month: u8, day: u8) -> String {
         let mut out = String::with_capacity(10);
@@ -247,6 +277,7 @@ impl Locale {
         out.chars().map(|c| self.local_digit(c)).collect()
     }
 
+    /// Parses a date in this locale's order.
     #[must_use]
     pub fn parse_date(&self, input: &str) -> Option<(i32, u8, u8)> {
         let ascii: String = input

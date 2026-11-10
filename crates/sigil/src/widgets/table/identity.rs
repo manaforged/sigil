@@ -2,9 +2,12 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::sync::Arc;
 
+/// Stable row identity.
 pub trait Identifiable {
+    /// The type of the id.
     type Id: Clone + Eq + Hash;
 
+    /// Returns the stable id of this value.
     fn id(&self) -> Self::Id;
 }
 

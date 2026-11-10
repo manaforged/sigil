@@ -1,51 +1,76 @@
 use std::ops::Range;
 
+/// Whether a diff line was added, removed, or kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LineKind {
+    /// The context line kind.
     Context,
+    /// The removed line kind.
     Removed,
+    /// The added line kind.
     Added,
+    /// The note line kind.
     Note,
 }
 
 impl LineKind {
+    /// Returns whether this line kind is change.
     #[must_use]
     pub const fn is_change(self) -> bool {
         matches!(self, Self::Removed | Self::Added)
     }
 }
 
+/// Identifies a line of a patch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LineId {
+    /// The hunk.
     pub hunk: usize,
+    /// The line.
     pub line: usize,
 }
 
+/// One line of a patch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Line {
+    /// The kind.
     pub kind: LineKind,
+    /// The text.
     pub text: String,
+    /// The old, if any.
     pub old: Option<usize>,
+    /// The new, if any.
     pub new: Option<usize>,
 }
 
+/// One group of changes in a patch.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Hunk {
+    /// The meta.
     pub meta: Vec<String>,
+    /// The path, if any.
     pub path: Option<String>,
+    /// The header.
     pub header: String,
+    /// The old start.
     pub old_start: usize,
+    /// The new start.
     pub new_start: usize,
+    /// The lines.
     pub lines: Vec<Line>,
 }
 
+/// A parsed unified diff.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Patch {
+    /// The hunks.
     pub hunks: Vec<Hunk>,
+    /// The trailer.
     pub trailer: Vec<String>,
 }
 
 impl Patch {
+    /// Parses unified diff text.
     #[must_use]
     pub fn parse(text: &str) -> Self {
         let mut parser = Parser::default();
@@ -56,15 +81,18 @@ impl Patch {
         parser.patch
     }
 
+    /// Returns the line with this id.
     #[must_use]
     pub fn line(&self, id: LineId) -> Option<&Line> {
         self.hunks.get(id.hunk)?.lines.get(id.line)
     }
 
+    /// Returns the changes.
     pub fn changes(&self) -> impl Iterator<Item = LineId> + '_ {
         (0..self.hunks.len()).flat_map(|hunk| self.hunk_changes(hunk))
     }
 
+    /// Returns the changed lines of a hunk.
     pub fn hunk_changes(&self, hunk: usize) -> impl Iterator<Item = LineId> + '_ {
         self.hunks
             .get(hunk)

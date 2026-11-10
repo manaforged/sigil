@@ -14,17 +14,7 @@ impl LayoutForest {
     }
 }
 
-struct NullText;
-
-impl TextMeasure for NullText {
-    fn measure(
-        &self,
-        _: &crate::kernel::TextContent,
-        _: crate::geometry::Size,
-    ) -> crate::geometry::LogicalSize {
-        crate::geometry::LogicalSize::default()
-    }
-}
+const NO_TEXT: crate::layout::FakeMeasure = crate::layout::FakeMeasure::fixed(0.0, 0.0);
 
 fn forest(count: usize) -> (LayoutForest, Vec<LocalId>) {
     let mut f = LayoutForest::new();
@@ -84,10 +74,10 @@ fn freed_slot_is_reused_with_a_new_era_and_default_style() {
     f.write(first, cb(42.0, 0.0, 0.0, 0.0)).unwrap();
     f.free(first).unwrap();
     assert!(f.node(first).is_none());
-    assert!(matches!(
-        f.write(first, ComputedBox::default()).unwrap_err(),
-        LayoutError::LayoutInvalid(_)
-    ));
+    assert_eq!(
+        f.write(first, ComputedBox::default()).unwrap_err().kind(),
+        crate::ErrorKind::Layout
+    );
     let reused = f.insert(None, StyleData::default());
     assert_eq!((reused.slot(), reused.era()), (first.slot(), 1));
     assert_eq!(f.slab(), 2);
@@ -96,7 +86,7 @@ fn freed_slot_is_reused_with_a_new_era_and_default_style() {
     let n = f.refer(reused).unwrap();
     assert!((n.style().flex_grow - 0.0).abs() < f32::EPSILON);
     assert_eq!(n.style().display, crate::layout::style_data::Display::Block);
-    let scope = MeasureScope::new(&f, &NullText, UNBOUNDED);
+    let scope = MeasureScope::new(&f, &NO_TEXT, UNBOUNDED);
     scope.write(first, cb(-1.0, 0.0, 0.0, 0.0));
     assert_eq!(f.boxed(reused), Some(ComputedBox::default()));
     assert!(f.boxed(first).is_none());
@@ -116,7 +106,7 @@ fn boxes_are_written_per_id_directly_and_through_a_scope() {
     assert_eq!(f.boxed(ids[0]), Some(updated));
     assert_eq!(f.boxed(ids[1]), Some(boxes[1]));
     let avail = AvailableSpace::definite(100.0, 50.0);
-    let scope = MeasureScope::new(&f, &NullText, avail);
+    let scope = MeasureScope::new(&f, &NO_TEXT, avail);
     assert_eq!(scope.available(), avail);
     assert_eq!(scope.forest().count(), 3);
     let _ = scope.text();
@@ -152,7 +142,7 @@ fn text_memo_keeps_recent_entries_across_overflow() {
         content: 0,
         fonts: 0,
     };
-    let size = crate::layout::style_data::Size {
+    let size = crate::layout::style_data::Axes {
         width: 1.0,
         height: 2.0,
     };

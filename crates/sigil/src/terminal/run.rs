@@ -1,39 +1,49 @@
+use crate::reactive::Owner;
 use std::time::{Duration, Instant};
 
-use crate::app::PanicPolicy;
-use crate::events::EventRouter;
-use crate::events::ShellEvent;
+use crate::events::Event;
 use crate::kernel::IntoNode;
-use crate::layout::LayoutError;
 use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
 
 use crate::profile;
 use crate::terminal::caps::Caps;
-use crate::terminal::input::{Incoming, Wake, gather_input, limit};
+use crate::terminal::input::{Incoming, InputWake, gather_input, limit};
 use crate::terminal::paint::Grid;
+use crate::terminal::pixels::Pixels;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals::SignalGuard;
 pub use crate::terminal::term::calibrate;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
-use crate::terminal::term::{HookGuard, Term, restore};
+use crate::terminal::term::{HookGuard, Term};
+
+mod turn;
+
+use turn::Turn;
+pub(super) use turn::{isolated, recover};
 
 pub(crate) const CELL: f32 = crate::Host::CELL;
 
-pub type EventPump<'a> = Box<dyn FnMut(&mut Vec<ShellEvent>) + 'a>;
+/// Reads the next batch of events for an embedded terminal loop.
+pub(crate) type EventPump<'a> = Box<dyn FnMut(&mut Vec<Event>) + 'a>;
 
-pub type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &mut EventRouter, &Screen) + 'a>;
+/// Runs after each terminal frame.
+pub(crate) type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &Screen) + 'a>;
 
+/// The hooks of an embedded terminal loop.
 #[derive(Default)]
 pub struct Hooks<'a> {
+    /// The external events, if any.
     pub external_events: Option<EventPump<'a>>,
+    /// The after frame, if any.
     pub after_frame: Option<AfterFrame<'a>>,
+    /// The region rows, if any.
     pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
 }
 
 pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
-    let hooks = &mut config.terminal_hooks.take();
+    let hooks = &mut config.terminal.hooks.take();
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install();
     #[cfg(feature = "inspect")]
@@ -48,18 +58,17 @@ pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'stati
         }));
         let mut after = hooks.after_frame.take();
         let svc = inspect.clone();
-        hooks.after_frame = Some(Box::new(move |host, router, screen| {
+        hooks.after_frame = Some(Box::new(move |host, screen| {
             svc.service(
                 host,
-                router,
-                crate::app::inspect::View {
+                crate::app::inspect::InspectView {
                     cell: Some(CELL),
                     text: Some(&screen.text()),
                     shot: None,
                 },
             );
             if let Some(hook) = after.as_mut() {
-                hook(host, router, screen);
+                hook(host, screen);
             }
         }));
     }
@@ -71,47 +80,70 @@ pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'stati
     };
     #[cfg(not(feature = "inspect"))]
     let inspect_pending = || false;
-    let result = Runtime::scope("sigil-terminal", || {
+    let result = Owner::scope("sigil-terminal", || {
         live(config, tree, hooks, inspect_pending)
     });
     profile::dump_if_enabled();
     result
 }
 
-pub fn present<N: IntoNode>(
+#[cfg(test)]
+pub(crate) fn present<N: IntoNode>(
     tree: impl Fn() -> N + 'static,
     cols: u16,
     rows: u16,
-    events: &[ShellEvent],
-) -> Result<String, LayoutError> {
-    Runtime::scope("sigil-terminal-present", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    events: &[Event],
+) -> Result<String, Error> {
+    Owner::scope("sigil-terminal-present", || {
+        let mut host = Host::new(crate::kernel::HostMode::Cell);
         host.mount(tree);
-        prime(&mut host, &mut router, cols, rows)?;
-        Ok(step(&mut host, &mut router, events.iter().cloned(), cols, rows)?.text())
+        prime(&mut host, cols, rows)?;
+        Ok(host.grid(events.iter().cloned(), cols, rows)?.text())
     })
 }
 
-pub fn step(
+#[cfg(test)]
+pub(crate) fn step(
     host: &mut Host,
-    router: &mut EventRouter,
-    events: impl IntoIterator<Item = ShellEvent>,
+    events: impl IntoIterator<Item = Event>,
     cols: u16,
     rows: u16,
-) -> Result<Grid, LayoutError> {
-    let mut screen = Screen::new(cols, rows);
-    screen.frame(host, router, events, (cols, rows)).cloned()
+) -> Result<Grid, Error> {
+    host.grid(events, cols, rows)
 }
 
-fn prime(
-    host: &mut Host,
-    router: &mut EventRouter,
-    cols: u16,
-    rows: u16,
-) -> Result<(), LayoutError> {
+impl Host {
+    /// Runs one terminal frame and returns its cell grid.
+    pub fn grid(
+        &mut self,
+        events: impl IntoIterator<Item = Event>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<Grid, Error> {
+        Screen::new(cols, rows)
+            .frame(self, events, (cols, rows))
+            .cloned()
+    }
+
+    /// Writes the ANSI bytes that turn the `prev` grid into the `next` grid.
+    pub fn ansi(
+        out: &mut impl std::io::Write,
+        prev: &Grid,
+        next: &Grid,
+        depth: crate::terminal::ColorDepth,
+    ) -> Result<(), Error> {
+        crate::terminal::write::render(out, prev, next, depth)
+    }
+
+    /// Draws a scene into a cell grid with this host's theme.
+    pub fn paint_cells(&self, grid: &mut Grid, scene: &crate::scene::CommandScene) {
+        crate::terminal::paint::raster_into(grid, scene, self.theme(), CELL);
+    }
+}
+
+fn prime(host: &mut Host, cols: u16, rows: u16) -> Result<(), Error> {
     host.layout(view(cols, rows))?;
-    host.repair_focus(router);
+    host.repair_focus();
     Ok(())
 }
 
@@ -121,7 +153,7 @@ pub(crate) fn view(cols: u16, rows: u16) -> (f32, f32) {
 
 type Prepared = (
     crate::tasks::AsyncRuntime,
-    Wake,
+    InputWake,
     Option<crate::app::ThemeWatcher>,
 );
 
@@ -129,9 +161,8 @@ type Setup = (Prepared, Term, (SignalGuard, HookGuard), (u16, u16));
 
 fn setup(config: &AppConfig) -> AppResult<Setup> {
     crate::app::clear_exit();
-    let mut async_rt =
-        crate::tasks::AsyncRuntime::with_workers(config.task_workers).map_err(Error::task)?;
-    let wake = Wake::install(&mut async_rt);
+    let mut async_rt = crate::tasks::AsyncRuntime::with_workers(config.task_workers);
+    let wake = InputWake::install(&mut async_rt);
     async_rt.install_current();
     let theme = crate::app::launch_theme(config.theme_file.as_deref());
     crate::terminal::signals::resume();
@@ -156,22 +187,23 @@ fn live<N: IntoNode>(
 ) -> AppResult {
     let ((mut async_rt, waker, _theme_watch), mut term, _guards, (mut cols, mut rows)) =
         setup(config)?;
-    let mut host = Host::cells();
-    let mut router = EventRouter::new();
-    crate::terminal::clipboard::install_clipboard(term.caps());
-    host.set_caps(term.caps().host());
-    host.mount_app(tree);
-    prime(&mut host, &mut router, cols, rows).map_err(Error::from)?;
+    let tree = std::rc::Rc::new(tree);
+    let _follow = crate::terminal::backdrop::Follow::start(term.caps().backdrop);
+    let mut host = mount_cell(&tree, &term, (cols, rows))?;
     let mut screen = open_screen(config, (cols, rows), term.caps());
+    let mut pixels = Pixels::open(config, term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
     let (mut first, mut settle, mut last) = (true, true, Instant::now());
-    loop {
-        if crate::terminal::signals::stopped() {
-            break;
+    while !crate::terminal::signals::stopped() {
+        let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
+        settle |= follow_backdrop(config, &mut term, &mut screen);
+        if pixels.sync(&tree, &mut host).map_err(Error::io)? {
+            settle = true;
+            invalidate(&mut term, &mut screen);
         }
-        let woke = pump(&host, &mut async_rt);
-        let timing = turn_wait(config.frame_interval, woke, last, screen.deadline());
-        let pending = inspect_pending() || due(screen.deadline());
+        let deadline = pixels.host().map_or_else(|| screen.deadline(), |_| None);
+        let timing = turn_wait(config.frame_interval, woke, last, deadline);
+        let pending = inspect_pending() || due(deadline);
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
             Incoming::Quit => break,
             Incoming::Idle if idle(settle, woke, &term, pending) => continue,
@@ -179,38 +211,84 @@ fn live<N: IntoNode>(
             Incoming::Events(events) => events,
             Incoming::Resized(next_cols, next_rows, events) => {
                 (cols, rows) = (next_cols, next_rows);
-                screen.invalidate();
-                term.redraw = true;
+                term.mark_cell_stale();
+                invalidate(&mut term, &mut screen);
                 events
             }
         };
+        remeasure(&mut term, &mut screen);
+        settle = !input.is_empty();
+        if pixels.host().is_some() {
+            let dt = tick(&mut last);
+            if pixels.turn(config.panic_policy, (input, dt), (cols, rows), &mut term)? {
+                break;
+            }
+            continue;
+        }
         if !timing.1 {
             pump(&host, &mut async_rt);
         }
-        settle = !input.is_empty();
-        let mut turn = Turn {
-            last: &mut last,
-            screen: &mut screen,
-            host: &mut host,
-            router: &mut router,
-            term: &mut term,
-        };
-        turn.take(config, input, (cols, rows), hooks)?;
-        if turn.screen.exited() {
+        let mut turn = Turn::new(&mut last, &mut screen, &mut host, &mut term);
+        if turn.take(config, input, (cols, rows), hooks)? {
             break;
         }
     }
-    Ok(())
+    pixels.close(term.caps().mux).map_err(Error::io)
+}
+
+fn mount_cell<N: IntoNode>(
+    tree: &std::rc::Rc<impl Fn() -> N + 'static>,
+    term: &Term,
+    (cols, rows): (u16, u16),
+) -> AppResult<Host> {
+    let mut host = Host::new(crate::kernel::HostMode::Cell);
+    crate::terminal::clipboard::install_clipboard(term.caps());
+    host.set_hyperlinks(term.caps().hyperlinks);
+    let shared = tree.clone();
+    host.mount_app(move || shared());
+    prime(&mut host, cols, rows)?;
+    Ok(host)
+}
+
+fn follow_backdrop(config: &AppConfig, term: &mut Term, screen: &mut Screen) -> bool {
+    let Some(backdrop) = crate::terminal::backdrop()
+        .peek()
+        .filter(|now| term.caps().backdrop != Some(*now))
+    else {
+        return false;
+    };
+    term.set_backdrop(backdrop);
+    default_theme(config, backdrop);
+    screen.invalidate();
+    true
+}
+
+const fn invalidate(term: &mut Term, screen: &mut Screen) {
+    screen.invalidate();
+    term.redraw = true;
+}
+
+fn tick(last: &mut Instant) -> f32 {
+    let dt = last.elapsed().as_secs_f32();
+    *last = Instant::now();
+    dt
+}
+
+fn remeasure(term: &mut Term, screen: &mut Screen) {
+    if let Some(caps) = term.remeasure() {
+        screen.set_caps(caps);
+        invalidate(term, screen);
+    }
 }
 
 fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
-    screen.set_access(config.terminal_access);
+    screen.set_access(config.terminal.access);
     screen.speak_above(config.inline);
     screen
 }
 
-fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
+pub(super) fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
     let _env = host.enter();
     async_rt.pump()
 }
@@ -230,7 +308,7 @@ fn frame_due() -> bool {
         || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
-fn turn_wait(
+pub(super) fn turn_wait(
     tick: Duration,
     woke: usize,
     last: Instant,
@@ -247,98 +325,27 @@ fn turn_wait(
     (wait, true)
 }
 
-struct Turn<'a> {
-    last: &'a mut Instant,
-    screen: &'a mut Screen,
-    host: &'a mut Host,
-    router: &'a mut EventRouter,
-    term: &'a mut Term,
-}
-
-impl Turn<'_> {
-    fn take(
-        &mut self,
-        config: &AppConfig,
-        incoming: Vec<ShellEvent>,
-        (cols, rows): (u16, u16),
-        hooks: &mut Hooks<'_>,
-    ) -> AppResult<()> {
-        let size = match hooks.region_rows.as_mut() {
-            Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
-            _ => (cols, rows),
-        };
-        self.screen.set_dt(self.last.elapsed().as_secs_f32());
-        *self.last = Instant::now();
-        profile::begin_frame(profile::BackendStatus::TERMINAL);
-        let recovered = frame_isolated(
-            config.panic_policy,
-            self.screen,
-            self.host,
-            self.router,
-            incoming,
-            size,
-        )
-        .map_err(Error::io)?;
-        if recovered {
-            restore();
-            self.term.reenter().map_err(Error::io)?;
-        }
-        if let Some(after) = hooks.after_frame.as_mut() {
-            after(self.host, self.router, self.screen);
-        }
-        for message in self.screen.take_above() {
-            if let Err(err) = crate::terminal::print_above(&message) {
-                tracing::warn!(target: "sigil::terminal", error = %err, "announcement write failed");
-            }
-        }
-        {
-            let _phase = profile::span(crate::profile::Phase::TuiPresent);
-            self.term.paint(self.screen).map_err(Error::io)?;
-        }
-        profile::tick_frame();
-        Ok(())
-    }
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    reason = "frame needs the policy, screen, host, router, decoded input, and size"
-)]
-fn frame_isolated(
-    policy: PanicPolicy,
-    screen: &mut Screen,
-    host: &mut Host,
-    router: &mut EventRouter,
-    incoming: Vec<ShellEvent>,
-    size: (u16, u16),
-) -> Result<bool, LayoutError> {
-    match policy {
-        PanicPolicy::Abort => screen.frame(host, router, incoming, size).map(|_| false),
-        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            screen.frame(host, router, incoming, size).map(|_| false)
-        }))
-        .unwrap_or_else(|payload| {
-            let detail = crate::tasks::panic_message(&*payload);
-            eprintln!("sigil-terminal: frame isolated after panic: {detail}");
-            Runtime::recover_from_panic();
-            Ok(true)
-        }),
-    }
-}
-
 #[cfg(test)]
 #[path = "run_tests.rs"]
 mod tests;
 
 fn enter(config: &AppConfig) -> AppResult<Term> {
-    if let Some(tracking) = config.mouse_tracking {
+    if let Some(tracking) = config.terminal.mouse_tracking {
         crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
     }
     let term = Term::enter(config).map_err(Error::io)?;
     crate::app::set_ambiguous(term.caps().ambiguous);
-    let dark = term.caps().backdrop == Some(crate::terminal::Backdrop::Dark);
-    if config.theme_file.is_none() && dark {
-        crate::app::set_theme(crate::style::Theme::dark());
+    if term.caps().backdrop == Some(crate::terminal::Backdrop::Dark) {
+        default_theme(config, crate::terminal::Backdrop::Dark);
     }
     Ok(term)
+}
+
+fn default_theme(config: &AppConfig, backdrop: crate::terminal::Backdrop) {
+    if config.theme_file.is_none() {
+        crate::app::set_theme(match backdrop {
+            crate::terminal::Backdrop::Dark => crate::style::Theme::dark(),
+            crate::terminal::Backdrop::Light => crate::style::Theme::light(),
+        });
+    }
 }

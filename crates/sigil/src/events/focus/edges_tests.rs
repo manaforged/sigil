@@ -1,6 +1,7 @@
 use super::*;
 use crate::kernel::container;
 use crate::layout::*;
+use crate::widgets::Widget;
 
 fn ring_of_three(cx: &mut Cx) {
     let mut root = container().layout(LayoutStyle::block().fixed_size(100.0, 100.0));

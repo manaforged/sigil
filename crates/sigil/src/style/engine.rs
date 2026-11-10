@@ -1,8 +1,10 @@
+use crate::style::atom::{PaintAtom, PaintStyle};
 use crate::style::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
+/// Applies style atoms to paint and text styles against a theme and tone.
 #[derive(Debug, Clone, Copy)]
 pub struct StyleEngine<'theme> {
     theme: &'theme Theme,
@@ -10,16 +12,19 @@ pub struct StyleEngine<'theme> {
 }
 
 impl<'theme> StyleEngine<'theme> {
+    /// Creates a style engine.
     #[must_use]
     pub const fn new(theme: &'theme Theme) -> Self {
         Self::with_tone(theme, Tone::Neutral)
     }
 
+    /// Creates an engine that resolves colors in `tone`.
     #[must_use]
     pub const fn with_tone(theme: &'theme Theme, tone: Tone) -> Self {
         Self { theme, tone }
     }
 
+    /// Applies `atoms` to a render style.
     pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
         for atom in atoms {
             (*self).apply_atom(*atom, render);
@@ -28,11 +33,15 @@ impl<'theme> StyleEngine<'theme> {
 
     pub(crate) fn overlay_render(overlay: &dyn AnimatorOverlay, render: &mut RenderStyle) {
         render.transform = render.transform.overlay(overlay);
+        render.space.overlay(overlay);
+        render.filter.overlay(overlay);
+        render.paint.overlay(overlay);
+        render.mask.overlay(overlay);
         if let Some(value) = overlay.value_for(NumericAtomKind::Opacity) {
             render.opacity = encode_opacity(value);
         }
         if let Some(value) = overlay.value_for(NumericAtomKind::BorderRadius) {
-            render.border_radius = Some(encode_px(value));
+            render.border_radius = Some(encode_px(value).0);
         }
         if let Some(color) = overlay.value_for_color(ColorAtomKind::Background) {
             render.background_color = Some(color);
@@ -54,6 +63,7 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
+    /// Applies `atoms` to a text style.
     #[allow(clippy::unused_self, reason = "intentional, reviewed trade-off")]
     pub fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
         apply_text_atoms(atoms, text);
@@ -68,12 +78,10 @@ impl<'theme> StyleEngine<'theme> {
         )
     }
 
+    /// Resolves a color atom against the theme.
     #[must_use]
     pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
-        match color {
-            ColorAtom::Rgba8(color) => color,
-            ColorAtom::ThemeRef(token) => self.theme.resolve_color(token),
-        }
+        self.theme.resolve_color(color)
     }
 
     #[allow(
@@ -85,16 +93,10 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BackgroundColor(color) => {
                 render.background_color = Some(self.resolve_color(color));
             }
-            StyleAtom::BackgroundThemeRef(token) => {
-                render.background_color = Some(self.theme.resolve_color(token));
-            }
             StyleAtom::BackgroundGradient(gradient) => {
                 render.background_gradient = Some(gradient);
             }
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
-            StyleAtom::TextThemeRef(token) => {
-                render.text_color = Some(self.theme.resolve_color(token));
-            }
             StyleAtom::BgToneStep(step) => render.background_color = Some(self.tone_step(step)),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
@@ -102,7 +104,7 @@ impl<'theme> StyleEngine<'theme> {
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::Radius(radius) => {
-                render.border_radius = Some(self.theme.metrics.radius(radius));
+                render.border_radius = Some(super::metrics::radius_px(radius));
             }
             StyleAtom::BorderWidth(width) => render.border_width = Some(width),
             StyleAtom::BorderTop(width) => render.border_top = Some(width),
@@ -110,9 +112,6 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BorderBottom(width) => render.border_bottom = Some(width),
             StyleAtom::BorderLeft(width) => render.border_left = Some(width),
             StyleAtom::BorderColor(color) => render.border_color = Some(self.resolve_color(color)),
-            StyleAtom::BorderThemeRef(token) => {
-                render.border_color = Some(self.theme.resolve_color(token));
-            }
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
@@ -134,12 +133,12 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::Gap(_)
             | StyleAtom::GapX(_)
             | StyleAtom::GapY(_)
-            | StyleAtom::Width(_)
-            | StyleAtom::Height(_)
-            | StyleAtom::MinWidth(_)
-            | StyleAtom::MaxWidth(_)
-            | StyleAtom::MinHeight(_)
-            | StyleAtom::MaxHeight(_)
+            | StyleAtom::Width(_, _)
+            | StyleAtom::Height(_, _)
+            | StyleAtom::MinWidth(_, _)
+            | StyleAtom::MaxWidth(_, _)
+            | StyleAtom::MinHeight(_, _)
+            | StyleAtom::MaxHeight(_, _)
             | StyleAtom::Display(_)
             | StyleAtom::FlexDirection(_)
             | StyleAtom::FlexWrap(_)
@@ -161,7 +160,41 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::OverflowY(_)
             | StyleAtom::Transition(_)
             | StyleAtom::TransitionDuration(_)
+            | StyleAtom::TransitionEase(_)
+            | StyleAtom::TransitionDelay(_)
+            | StyleAtom::Animation(_)
             | StyleAtom::UnknownThemeRef(_) => {}
+            StyleAtom::Paint(paint) => self.apply_paint(paint, &mut render.paint),
+            StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
+            StyleAtom::Space(atom) => render.space.apply(atom),
+            StyleAtom::Mask(atom) => render.mask.apply(atom.0),
+            StyleAtom::MixBlend(mode) => render.blend = mode,
+            StyleAtom::Filter(atom) => render.filter.apply(atom.0),
+            StyleAtom::DropShadowColor(color) => {
+                render.filter.drop_color = Some(self.resolve_color(color));
+            }
+            StyleAtom::TextShadowColor(color) => {
+                render.filter.text_color = Some(self.resolve_color(color));
+            }
+        }
+    }
+
+    fn apply_paint(self, atom: PaintAtom, paint: &mut PaintStyle) {
+        match atom {
+            PaintAtom::Gradient(shape) => paint.gradient = Some(shape),
+            PaintAtom::Stop(slot, color) => {
+                if let Some(stop) = paint.stops.get_mut(slot.index()) {
+                    *stop = Some(self.resolve_color(color));
+                }
+            }
+            PaintAtom::StopAt(slot, percent) => {
+                if let Some(position) = paint.positions.get_mut(slot.index()) {
+                    *position = Some(percent);
+                }
+            }
+            PaintAtom::ClipText => paint.clip_text = true,
+            PaintAtom::Image(id) => paint.image = Some(id),
+            PaintAtom::Border(style) => paint.border = style,
         }
     }
 }
@@ -196,12 +229,12 @@ pub(crate) fn apply_text_atoms(atoms: &[StyleAtom], text: &mut TextStyle) {
 )]
 fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
     match atom {
-        StyleAtom::FontSize(px) => text.font_size = f32::from(px.0).max(1.0),
+        StyleAtom::FontSize(px) => text.font_size = f32::from(px).max(1.0),
         StyleAtom::FontWeight(weight) => text.font_weight = weight.clamp(1, 1000),
         StyleAtom::FontItalic(italic) => text.italic = italic,
         StyleAtom::FontFamily(name) => name.clone_into(&mut text.font_family),
         StyleAtom::LineHeight(px) => {
-            text.line_height = TextLineHeight::Absolute(f32::from(px.0).max(1.0));
+            text.line_height = TextLineHeight::Absolute(f32::from(px).max(1.0));
         }
         StyleAtom::TabularNums(on) => text.tabular_nums = on,
         StyleAtom::LetterSpacing(thousandths) => {
@@ -225,12 +258,12 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::Gap(_)
         | StyleAtom::GapX(_)
         | StyleAtom::GapY(_)
-        | StyleAtom::Width(_)
-        | StyleAtom::Height(_)
-        | StyleAtom::MinWidth(_)
-        | StyleAtom::MaxWidth(_)
-        | StyleAtom::MinHeight(_)
-        | StyleAtom::MaxHeight(_)
+        | StyleAtom::Width(_, _)
+        | StyleAtom::Height(_, _)
+        | StyleAtom::MinWidth(_, _)
+        | StyleAtom::MaxWidth(_, _)
+        | StyleAtom::MinHeight(_, _)
+        | StyleAtom::MaxHeight(_, _)
         | StyleAtom::Display(_)
         | StyleAtom::FlexDirection(_)
         | StyleAtom::FlexWrap(_)
@@ -241,10 +274,8 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::GridColumns(_)
         | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
-        | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)
         | StyleAtom::BorderWidth(_)
@@ -253,7 +284,6 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BorderBottom(_)
         | StyleAtom::BorderLeft(_)
         | StyleAtom::BorderColor(_)
-        | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Transform(_)
@@ -262,7 +292,18 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
+        | StyleAtom::TransitionEase(_)
+        | StyleAtom::TransitionDelay(_)
+        | StyleAtom::Animation(_)
         | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::Paint(_)
+        | StyleAtom::ClipPath(_)
+        | StyleAtom::Space(_)
+        | StyleAtom::Mask(_)
+        | StyleAtom::MixBlend(_)
+        | StyleAtom::Filter(_)
+        | StyleAtom::DropShadowColor(_)
+        | StyleAtom::TextShadowColor(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}

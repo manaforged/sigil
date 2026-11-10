@@ -1,9 +1,10 @@
 use crate::clipboard::clipboard;
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
+use crate::events::Key;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
+use crate::widgets::Widget;
 use crate::widgets::grapheme::col_count;
 use crate::widgets::text_edit::{
     KeyProfile, LineStep, TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit,
@@ -12,16 +13,16 @@ use crate::widgets::text_edit::{
 };
 
 use super::SelectionAnchor;
-use super::a11y::{byte_at, point_at};
+use super::a11y::{byte_at, joins_to, point_at};
 
 #[derive(Clone, Copy)]
-pub(super) struct Model {
+pub(super) struct EditModel {
     pub(super) lines: Signal<Vec<String>>,
     pub(super) caret: Signal<(usize, usize)>,
     pub(super) selection: Option<SelectionAnchor>,
 }
 
-pub(super) fn runtime(model: Model, disabled: Option<Signal<bool>>) -> TextEditRuntime {
+pub(super) fn runtime(model: EditModel, disabled: Option<Signal<bool>>) -> TextEditRuntime {
     let lines = model.lines.peek();
     let value = signal(lines.join("\n"));
     let caret = signal(byte_at(&lines, model.caret.peek()));
@@ -39,7 +40,7 @@ pub(super) fn runtime(model: Model, disabled: Option<Signal<bool>>) -> TextEditR
     runtime
 }
 
-fn sync_inward(model: Model, runtime: &TextEditRuntime) {
+fn sync_inward(model: EditModel, runtime: &TextEditRuntime) {
     let (value, caret, selection) = (runtime.value, runtime.caret, runtime.selection);
     effect(move || {
         let lines = model.lines.get();
@@ -57,13 +58,13 @@ fn sync_inward(model: Model, runtime: &TextEditRuntime) {
     });
 }
 
-fn sync_outward(model: Model, runtime: &TextEditRuntime) {
+fn sync_outward(model: EditModel, runtime: &TextEditRuntime) {
     let (value, caret, selection) = (runtime.value, runtime.caret, runtime.selection);
     effect(move || {
         let text = value.get();
         let (at, anchor) = (caret.get(), selection.get());
         let current = model.lines.peek();
-        let lines = if current.join("\n") == text {
+        let lines = if joins_to(&current, &text) {
             current
         } else {
             text.split('\n').map(str::to_owned).collect()
@@ -121,7 +122,7 @@ enum LineMove {
 }
 
 fn move_line(edit: &mut TextEdit, line_move: LineMove, extend: bool) {
-    let lines: Vec<String> = edit.as_str().split('\n').map(str::to_owned).collect();
+    let lines: Vec<&str> = edit.as_str().split('\n').collect();
     let (line, col) = point_at(&lines, edit.caret());
     let last = lines.len().saturating_sub(1);
     let target = match line_move {

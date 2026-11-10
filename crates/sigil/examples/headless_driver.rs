@@ -2,33 +2,24 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use sigil::Host;
-use sigil::a11y::snapshot;
-use sigil::events::EventRouter;
-use sigil::events::PointerEventInit;
-use sigil::events::ShellEvent;
+use sigil::events::Event;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::scene::{CommandScene, SceneCommand};
 
-const fn pointer(phase: PointerPhase, x: f32, y: f32) -> ShellEvent {
+const fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         PointerPhase::Up => (Some(MouseButton::Left), MouseButtons::empty()),
         _ => (None, MouseButtons::empty()),
     };
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+    Event::pointer(phase, Point::new(x, y))
+        .button(button)
+        .buttons(buttons)
 }
 
-fn click(host: &mut Host, router: &mut EventRouter, name: &str) {
-    let tree = host.accessibility_tree(router);
+fn click(host: &mut Host, name: &str) {
+    let tree = host.accessibility_tree();
     let click_target = tree.nodes.iter().find_map(|(_, node)| {
         (node.label().is_some_and(|label| label == name)
             && node.supports_action(accesskit::Action::Click))
@@ -42,47 +33,40 @@ fn click(host: &mut Host, router: &mut EventRouter, name: &str) {
     let x = f64::midpoint(bounds.x0, bounds.x1) as f32;
     let y = f64::midpoint(bounds.y0, bounds.y1) as f32;
     println!("click \"{name}\" at ({x:.0},{y:.0})");
-    host.route(router, pointer(PointerPhase::Move, x, y));
-    host.route(router, pointer(PointerPhase::Down, x, y));
-    host.route(router, pointer(PointerPhase::Up, x, y));
+    host.route(pointer(PointerPhase::Move, x, y));
+    host.route(pointer(PointerPhase::Down, x, y));
+    host.route(pointer(PointerPhase::Up, x, y));
 }
 
 fn main() {
-    Runtime::scope("headless-driver", || {
+    Owner::scope("headless-driver", || {
         let count = signal(0_i32);
         let label_text = derived(move || format!("Count: {}", count.get()));
-        let mut host = Host::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(480.0, 240.0)
-                        .gap(16.0),
+                        .gap(Space::Lg),
                 )
                 .child(text(label_text))
                 .child(button("Increment").activate(move || {
                     count.set(count.peek() + 1);
                 }))
         });
-        let mut router = EventRouter::new();
         let viewport = (480.0, 240.0);
         if let Err(err) = host.layout(viewport) {
             eprintln!("{err}");
             return;
         }
-        println!(
-            "-- before --\n{}",
-            snapshot(&host.accessibility_tree(&router))
-        );
-        click(&mut host, &mut router, "Increment");
+        println!("-- before --\n{}", host.accessibility_text());
+        click(&mut host, "Increment");
         if let Err(err) = host.layout(viewport) {
             eprintln!("{err}");
             return;
         }
-        println!(
-            "-- after --\n{}",
-            snapshot(&host.accessibility_tree(&router))
-        );
+        println!("-- after --\n{}", host.accessibility_text());
         match host.scene(viewport) {
             Ok(scene) => println!("scene text: {:?}", scene_text(&scene)),
             Err(err) => eprintln!("{err}"),
@@ -95,7 +79,7 @@ fn scene_text(scene: &CommandScene) -> Vec<&str> {
         .commands
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::GlyphRun(draw) => Some(draw.run.text.as_str()),
+            SceneCommand::GlyphRun(draw) => Some(draw.text.as_str()),
             _ => None,
         })
         .collect()

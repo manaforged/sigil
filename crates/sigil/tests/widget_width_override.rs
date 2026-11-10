@@ -7,23 +7,20 @@
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::{CharMeasure, FixedMeasure};
+use sigil_kittest::FakeMeasure;
 
-const CHAR_MEASURE: CharMeasure = CharMeasure {
-    char_width: 7.0,
-    line_height: 16.0,
-};
+const CHAR_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) -> f32 {
     let mut width = -1.0;
-    sigil::reactive::Runtime::scope("width-override", || {
+    sigil::reactive::Owner::scope("width-override", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(parent_w, 200.0))
                 .child(make()),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(parent_w, 200.0))
             .expect("layout");
@@ -89,7 +86,7 @@ fn button_honours_its_width() {
 
 #[test]
 fn hug_button_keeps_width_next_to_a_grow_spacer() {
-    sigil::reactive::Runtime::scope("button-no-shrink", || {
+    sigil::reactive::Owner::scope("button-no-shrink", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
@@ -126,7 +123,7 @@ fn hug_button_keeps_width_next_to_a_grow_spacer() {
 
 #[test]
 fn button_hugs_its_label_at_desktop_density() {
-    sigil::reactive::Runtime::scope("button-hug", || {
+    sigil::reactive::Owner::scope("button-hug", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("Save"));
         let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
@@ -148,7 +145,7 @@ fn button_hugs_its_label_at_desktop_density() {
 
 #[test]
 fn grow_size_fills_button_without_collapsing_its_height() {
-    sigil::reactive::Runtime::scope("button-grow-size", || {
+    sigil::reactive::Owner::scope("button-grow-size", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
@@ -181,7 +178,7 @@ fn grow_size_fills_button_without_collapsing_its_height() {
 
 #[test]
 fn text_field_inner_surface_leaves_one_pixel_frame() {
-    sigil::reactive::Runtime::scope("text-field-frame", || {
+    sigil::reactive::Owner::scope("text-field-frame", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             text_field(signal(String::from("Hello")))
@@ -216,7 +213,7 @@ fn text_field_inner_surface_leaves_one_pixel_frame() {
 #[test]
 fn button_and_toggle_fill_via_grow() {
     let mut cx_widths = Vec::new();
-    sigil::reactive::Runtime::scope("grow-fill", || {
+    sigil::reactive::Owner::scope("grow-fill", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
@@ -224,7 +221,7 @@ fn button_and_toggle_fill_via_grow() {
                 .child(button("Save").grow(1.0))
                 .child(toggle(signal(false)).grow(1.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 60.0))
             .expect("layout");

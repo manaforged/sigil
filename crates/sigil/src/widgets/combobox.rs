@@ -1,19 +1,21 @@
-use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::Space;
+use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{ControlSize, Metrics, space};
+use crate::widgets::Widget;
 
-use super::layout_ext::WidgetLayoutExt;
-use super::listbox::{ListModel, listbox, scrolled};
+use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
+use super::shared::disabled_now;
 use super::text_field::{TextFieldBuilder, text_field};
 
 const MAX_VISIBLE: usize = 8;
 const FIELD_HEIGHT: f32 = space(8);
 
+/// State of a combobox.
 #[derive(Clone, Copy)]
 pub struct Combobox {
     options: Signal<Vec<String>>,
@@ -27,6 +29,7 @@ pub struct Combobox {
 }
 
 impl Combobox {
+    /// Creates a combobox.
     #[must_use]
     pub fn new(options: Vec<String>) -> Self {
         Self {
@@ -41,69 +44,79 @@ impl Combobox {
         }
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the placeholder.
     #[must_use]
     pub const fn placeholder(mut self, text: &'static str) -> Self {
         self.placeholder = text;
         self
     }
 
+    /// Returns the query.
     pub fn query(self) -> String {
         self.query.get()
     }
 
+    /// Returns the selected.
     pub fn selected(self) -> Option<usize> {
         self.selected.get()
     }
 
+    /// Returns the selected option.
     pub fn selected_option(self) -> Option<String> {
         self.selected
             .get()
             .and_then(|index| self.options.peek().get(index).cloned())
     }
 
+    /// Returns the selected signal.
     pub const fn selected_signal(self) -> Signal<Option<usize>> {
         self.selected
     }
 
+    /// Returns whether this combobox is open.
     pub fn is_open(self) -> bool {
         self.open.get()
     }
 
+    /// Opens the list.
     pub fn open(self) {
         let row = self
             .selected
             .peek()
             .and_then(|index| self.filtered().iter().position(|(i, _)| *i == index))
             .unwrap_or(0);
-        self.cursor.set(row);
-        self.open.set(true);
+        self.reveal(row);
     }
 
+    /// Closes the list.
     pub fn close(self) {
         self.open.set(false);
     }
 
+    /// Returns the filtered.
     pub fn filtered(self) -> Vec<(usize, String)> {
-        let query = self.query.get().to_lowercase();
-        self.options
-            .get()
-            .iter()
-            .enumerate()
-            .filter(|(_, label)| query.is_empty() || label.to_lowercase().contains(&query))
-            .map(|(index, label)| (index, label.clone()))
+        let query = self.query.get();
+        let options = self.options.get();
+        Matcher::Substring
+            .rank(&query, options.iter().map(String::as_str))
+            .into_iter()
+            .filter_map(|index| options.get(index).map(|label| (index, label.clone())))
             .collect()
     }
 
+    /// Returns the cursor.
     pub fn cursor(self) -> usize {
         self.cursor.get()
     }
 
+    /// Replaces the query text.
     pub fn edit_query(self, text: &str) {
         self.query.update(|q| {
             q.clear();
@@ -112,6 +125,7 @@ impl Combobox {
         self.edit(text);
     }
 
+    /// Moves the list cursor by `delta`.
     pub fn move_cursor(self, delta: i32) {
         let len = self.filtered().len();
         if len == 0 {
@@ -126,7 +140,11 @@ impl Combobox {
             .set(if delta < 0 { next } else { next.min(len - 1) });
     }
 
+    /// Chooses the option at `index`.
     pub fn commit(self, index: usize) {
+        if disabled_now(self.disabled) {
+            return;
+        }
         let Some(label) = self.options.peek().get(index).cloned() else {
             return;
         };
@@ -136,6 +154,7 @@ impl Combobox {
         self.session.update(|s| *s += 1);
     }
 
+    /// Returns the commit cursor.
     pub fn commit_cursor(self) -> bool {
         let Some(&(index, _)) = self.filtered().get(self.cursor.peek()) else {
             return false;
@@ -144,9 +163,20 @@ impl Combobox {
         true
     }
 
-    fn edit(self, text: &str) {
+    fn reveal(self, row: usize) {
+        if disabled_now(self.disabled) {
+            return;
+        }
+        self.cursor.set(row);
         self.open.set(true);
-        self.cursor.set(0);
+    }
+
+    fn shown(self) -> bool {
+        self.open.get() && !self.filtered().is_empty()
+    }
+
+    fn edit(self, text: &str) {
+        self.reveal(0);
         let matches_selection = self
             .selected
             .peek()
@@ -190,6 +220,7 @@ impl ListModel for Combobox {
     }
 }
 
+/// A text input with a filtered list.
 #[must_use]
 pub fn combobox(state: Combobox) -> NodeBuilder {
     let label = if state.placeholder.is_empty() {
@@ -201,7 +232,7 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
         container()
             .role(Role::ComboBox)
             .label(label)
-            .expanded(state.open)
+            .expanded(derived(move || state.shown()))
             .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT)),
         state,
     )
@@ -213,7 +244,7 @@ fn field_host(state: Combobox) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fill_width())
         .pointer_down_capture(move |_| {
-            if !state.disabled.is_some_and(|disabled| disabled.peek()) && !state.open.peek() {
+            if !state.open.peek() {
                 state.open();
             }
         })
@@ -243,9 +274,8 @@ fn build_field(state: Combobox) -> TextFieldBuilder {
 
 fn popup_host(state: Combobox) -> NodeBuilder {
     container().children_reactive(move || {
-        let matches = state.filtered();
-        if state.open.get() && !matches.is_empty() {
-            vec![build_popup(state, matches)]
+        if state.shown() {
+            vec![build_popup(state, state.filtered())]
         } else {
             Vec::new()
         }
@@ -260,34 +290,52 @@ fn rows_height(count: usize) -> f32 {
     count as f32 * Metrics::current().control_height(ControlSize::Default)
 }
 
-fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
-    let count = matches.len();
+pub(super) fn list_popup(
+    (top, width): (f32, Option<f32>),
+    (count, max_visible): (usize, usize),
+    cursor: Signal<usize>,
+    rows: impl Iterator<Item = NodeBuilder>,
+) -> NodeBuilder {
+    let view_h = rows_height(count.min(max_visible));
     let extent = rows_height(count);
-    let view_h = rows_height(count.min(MAX_VISIBLE));
-    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(
-        LayoutStyle::flex_column()
-            .fill_width()
-            .height(2.0f32.mul_add(popup::inset(), view_h))
-            .padding(Metrics::current().overlay_padding())
-            .position(Position::Absolute)
-            .inset_top(FIELD_HEIGHT + POPUP_GAP)
-            .inset_left(0.0),
-    );
-    let list = matches.into_iter().enumerate().fold(
+    let inner_w = width.map(|width| 2.0f32.mul_add(-popup::inset(), width).max(0.0));
+    let base = LayoutStyle::flex_column()
+        .position(Position::Absolute)
+        .inset_top(top)
+        .inset_left(0.0)
+        .height(2.0f32.mul_add(popup::inset(), view_h))
+        .padding(Space::px(Metrics::current().overlay_padding()));
+    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(match width {
+        Some(width) => base.width(width),
+        None => base.fill_width(),
+    });
+    let list = rows.fold(
         container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
-        |list, (row, (index, label))| list.child(build_row(state, row, index, label)),
+        NodeBuilder::child,
     );
-    if count > MAX_VISIBLE {
+    if count > max_visible {
         frame.child(scrolled(
             list,
-            state.cursor,
+            cursor,
             rows_height(1),
             extent,
-            (None, view_h),
+            (inner_w, view_h),
         ))
     } else {
         frame.child(list)
     }
+}
+
+fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
+    list_popup(
+        (FIELD_HEIGHT + POPUP_GAP, None),
+        (matches.len(), MAX_VISIBLE),
+        state.cursor,
+        matches
+            .into_iter()
+            .enumerate()
+            .map(move |(row, (index, label))| build_row(state, row, index, label)),
+    )
 }
 
 fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBuilder {

@@ -1,11 +1,11 @@
-use crate::style::{DateOrder, Direction, Locale, Rgba8, StringKey, Theme, ThemeValue};
+use crate::style::{DateOrder, Direction, Locale, StringKey, Theme, ThemeValue};
 
 pub(super) fn load(path: &std::path::Path) -> Option<Theme> {
     let input = std::fs::read_to_string(path).ok()?;
     parse(&input)
 }
 
-pub fn parse(input: &str) -> Option<Theme> {
+pub(crate) fn parse(input: &str) -> Option<Theme> {
     let doc = input.parse::<toml::Table>().ok()?;
     let mut theme = match doc.get("base").and_then(toml::Value::as_str) {
         Some("dark") => Theme::dark(),
@@ -16,7 +16,7 @@ pub fn parse(input: &str) -> Option<Theme> {
     let tokens = doc.get("tokens")?.as_table()?;
     for (name, value) in tokens {
         let hex = value.as_str()?;
-        let color = parse_hex(hex)?;
+        let color = hex.parse().ok()?;
         theme.register_token(name, ThemeValue::Color(color));
     }
     if let Some(value) = doc.get("direction") {
@@ -80,21 +80,6 @@ fn single_char(value: &toml::Value) -> Option<char> {
     chars.next().is_none().then_some(first)
 }
 
-fn parse_hex(hex: &str) -> Option<Rgba8> {
-    let digits = hex
-        .strip_prefix('#')
-        .or_else(|| hex.strip_prefix("0x"))
-        .unwrap_or(hex);
-    let value = u32::from_str_radix(digits, 16).ok()?;
-    let rgba = match digits.len() {
-        6 => (value << 8) | 0xff,
-        8 => value,
-        _ => return None,
-    };
-    let [r, g, b, a] = rgba.to_be_bytes();
-    Some(Rgba8 { r, g, b, a })
-}
-
 pub(super) fn watcher(
     path: &std::path::Path,
 ) -> Result<(notify::RecommendedWatcher, crossbeam_channel::Receiver<()>), notify::Error> {
@@ -137,6 +122,19 @@ pub(crate) fn launch(path: Option<&std::path::Path>) -> Option<crate::app::Theme
             );
         })
         .ok()
+}
+
+impl std::str::FromStr for Theme {
+    type Err = crate::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        parse(input).ok_or_else(|| {
+            crate::Error::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "theme",
+            ))
+        })
+    }
 }
 
 #[cfg(test)]

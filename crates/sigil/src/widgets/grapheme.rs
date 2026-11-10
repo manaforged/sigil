@@ -1,5 +1,3 @@
-#![allow(clippy::redundant_pub_crate)]
-
 use unicode_segmentation::UnicodeSegmentation;
 
 pub(crate) fn byte_at_col(text: &str, col: usize) -> usize {

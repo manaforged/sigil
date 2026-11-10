@@ -4,12 +4,13 @@
 )]
 #![allow(clippy::expect_used)]
 
-use sigil::app::parse_theme;
-use sigil::style::{DateOrder, Direction, StringKey};
+use std::str::FromStr;
+
+use sigil::style::{DateOrder, Direction, StringKey, Theme};
 
 #[test]
 fn a_theme_file_sets_direction_locale_and_labels() {
-    let theme = parse_theme(
+    let theme = Theme::from_str(
         r#"
 base = "light"
 direction = "rtl"
@@ -33,6 +34,6 @@ close = "Schließen"
 
 #[test]
 fn an_unknown_label_name_rejects_the_file() {
-    let theme = parse_theme("base = \"light\"\n[tokens]\n[strings]\nnot_a_label = \"x\"\n");
-    assert!(theme.is_none());
+    let theme = Theme::from_str("base = \"light\"\n[tokens]\n[strings]\nnot_a_label = \"x\"\n");
+    assert!(theme.is_err());
 }

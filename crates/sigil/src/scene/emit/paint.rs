@@ -1,19 +1,18 @@
+use smallvec::SmallVec;
+
 use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageCrop, Node, NodeId, NodeType, ThemedImage};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{
-    CellBorder, CellRect, DecorationKind, DrawImage, GlyphRun, GradientStop, LinearGradient,
-    SceneDecorationStyle, SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
-    TextFlow, shape_run,
+    CellBorder, CellRect, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawRect,
+    GlyphRun, Gradient, Stroke, StrokeAlign, StrokeStyle, TextFlow, shape_run,
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
-use crate::style::{
-    BgGradient, Elevation, GradientAxis, RenderStyle, Rgba8, StyleEngine, TextDecoration,
-    TextStyle, Theme, Tone,
-};
+use crate::style::atom::BorderStyle;
+use crate::style::{Elevation, RenderStyle, Rgba8, TextDecoration, TextStyle, Theme, Tone};
 
 pub(super) fn push_focus_ring(
     scene: &mut SceneBuilder,
@@ -38,13 +37,15 @@ pub(super) fn push_focus_ring(
     );
     scene.draw_rect_for_node(
         id,
-        ring_rect,
-        SceneRectStyle::new(TRANSPARENT, radii, ring.opacity).with_stroke(Stroke {
-            color: ring.color,
-            width: ring.width,
-            style: StrokeStyle::Solid,
-            align: StrokeAlign::Outside,
-        }),
+        DrawRect::new(ring_rect, TRANSPARENT)
+            .border_radius(radii)
+            .opacity(ring.opacity)
+            .stroke(Stroke {
+                color: ring.color,
+                width: ring.width,
+                style: StrokeStyle::Solid,
+                align: StrokeAlign::Outside,
+            }),
         CellRect {
             outline: true,
             ..CellRect::default()
@@ -59,6 +60,8 @@ pub(super) struct NodePaint<'a> {
     pub(super) tone: Option<Tone>,
     pub(super) leaf: bool,
     pub(super) selected: Option<(usize, usize)>,
+    pub(super) text_fill: Option<&'a Gradient>,
+    pub(super) text_shadows: &'a [Shadow],
 }
 
 impl NodePaint<'_> {
@@ -80,7 +83,7 @@ impl NodePaint<'_> {
             rect,
             widths,
             color: super::borders::border_color(self.style, self.theme),
-            rounded: self.style.border_radius.is_some_and(|radius| radius.0 > 0),
+            rounded: self.style.border_radius.is_some_and(|radius| radius > 0),
         })
     }
 }
@@ -104,43 +107,61 @@ fn push_text_decoration(
             rect.origin.y + rect.height - thickness
         }
     };
-    scene.draw_decoration(SceneDecorationStyle {
-        kind,
-        band: Rect::new(Point::new(rect.origin.x, y), rect.width, thickness),
-        color,
-        opacity,
-        period: 0.0,
-        line_width: thickness,
-    });
+    let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
+    scene.draw_decoration(
+        DrawDecoration::new(kind, band, color)
+            .opacity(opacity)
+            .line_width(thickness),
+    );
 }
 
-fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
-    let style = paint.style;
+fn push_container(
+    scene: &mut SceneBuilder,
+    node: (NodeId, &Node),
+    rect: Rect,
+    paint: &NodePaint<'_>,
+) {
+    let (id, style) = (node.0, paint.style);
     let radii = corner_radii_for(style.border_radius);
     if let Some(elevation) = style.shadow {
         scene.draw_shadow(rect, radii, elevation_shadow(elevation));
     }
-    let stroke = super::borders::border_stroke(style, paint.theme);
-    if let Some(spec) = style.background_gradient {
-        let fill = gradient_fill(rect, spec, paint.theme);
-        let mut gradient_style = SceneGradientStyle::new(fill, radii, style.opacity);
-        let mut cell = paint.cell();
-        if let Some(stroke) = stroke {
-            gradient_style = gradient_style.with_stroke(stroke);
-            cell.border = paint.border(rect);
-        }
-        scene.draw_gradient_for_node(id, rect, gradient_style, cell);
-    } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
-        let fill = style.background_color.unwrap_or(TRANSPARENT);
-        let mut rect_style = SceneRectStyle::new(fill, radii, style.opacity);
-        let mut cell = paint.cell();
-        if let Some(stroke) = stroke {
-            rect_style = rect_style.with_stroke(stroke);
-            cell.border = paint.border(rect);
-        }
-        scene.draw_rect_for_node(id, rect, rect_style, cell);
+    let styled = style.paint.border != BorderStyle::Solid;
+    let stroke = super::borders::border_stroke(style, paint.theme).filter(|_| !styled);
+    let mut cell = paint.cell();
+    if stroke.is_some() {
+        cell.border = paint.border(rect);
     }
-    super::borders::push_side_borders(scene, id, rect, paint);
+    let fill = super::background::fill(rect, style, paint.theme).filter(|_| !style.paint.clip_text);
+    if let Some(fill) = fill {
+        if let Some(color) = style.background_color {
+            scene.draw_rect(
+                DrawRect::new(rect, color)
+                    .border_radius(radii)
+                    .opacity(style.opacity),
+            );
+        }
+        let mut draw = DrawGradient::new(rect, fill)
+            .border_radius(radii)
+            .opacity(style.opacity);
+        if let Some(stroke) = stroke {
+            draw = draw.stroke(stroke);
+        }
+        scene.draw_gradient_for_node(id, draw, cell);
+    } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
+        let background = style.background_color.unwrap_or(TRANSPARENT);
+        let mut draw = DrawRect::new(rect, background)
+            .border_radius(radii)
+            .opacity(style.opacity);
+        if let Some(stroke) = stroke {
+            draw = draw.stroke(stroke);
+        }
+        scene.draw_rect_for_node(id, draw, cell);
+    }
+    super::background::push_image(scene, node, rect, style);
+    if !super::dashes::push_styled_border(scene, id, rect, paint) {
+        super::borders::push_side_borders(scene, id, rect, paint);
+    }
 }
 
 pub(super) fn push_node(
@@ -152,7 +173,7 @@ pub(super) fn push_node(
 ) {
     let style = paint.style;
     match &node.kind {
-        NodeType::Container => push_container(scene, id, rect, paint),
+        NodeType::Container => push_container(scene, (id, node), rect, paint),
         NodeType::Text { .. } => push_text(scene, id, node, rect, paint),
         NodeType::Image { source, fit } => {
             let themed = node.get_extension::<ThemedImage>();
@@ -186,11 +207,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     let Some(color) = style.text_color else {
         return;
     };
-    let flow = match (*wrap, *ellipsis) {
-        (true, _) => TextFlow::Wrap,
-        (false, true) => TextFlow::Ellipsis,
-        (false, false) => TextFlow::Line,
-    };
+    let flow = text_flow(*wrap, *ellipsis);
     let mut text_style = text_style_for(node, paint.theme, paint.text_base);
     text_style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
     let text = content.resolve();
@@ -207,23 +224,85 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             },
         );
     }
+    let clip = super::background::fill(rect, style, paint.theme)
+        .filter(|_| style.paint.clip_text)
+        .or_else(|| paint.text_fill.cloned());
+    let color = clip.as_ref().map_or(color, text_color);
     let run = shape_run(
         GlyphRun::new(rect, text, color, text_style.clone(), style.opacity)
             .with_cell(flow, paint.tone)
             .with_inks(super::runs::inks(text_style.runs.as_ref(), paint.theme)),
     );
+    let run = match clip {
+        Some(gradient) => gradient_text(run, &gradient),
+        None => run,
+    };
     let run = super::runs::split(scene, id, run);
-    let overflows = *ellipsis && overflows(&run, rect);
+    let clip_rect = (*ellipsis && overflows(&run, rect)).then_some(rect);
+    emit_run(scene, id, run, clip_rect, paint);
+    push_text_decoration(scene, rect, color, style.opacity, &text_style);
+}
+
+const fn text_flow(wrap: bool, ellipsis: bool) -> TextFlow {
+    match (wrap, ellipsis) {
+        (true, _) => TextFlow::Wrap,
+        (false, true) => TextFlow::Ellipsis,
+        (false, false) => TextFlow::Line,
+    }
+}
+
+fn emit_run(
+    scene: &mut SceneBuilder,
+    id: NodeId,
+    run: GlyphRun,
+    clip_rect: Option<Rect>,
+    paint: &NodePaint<'_>,
+) {
+    let style = paint.style;
+    let shadows = text_shadows(style, paint.text_shadows);
     let emit = |target: &mut SceneBuilder| {
+        for shadow in shadows.iter().rev() {
+            target.draw_text_shadow(&run, *shadow);
+        }
         push_color_glyphs(target, id, &run, style.opacity);
         target.draw_glyph_run_for_node(id, run);
     };
-    if overflows {
+    if let Some(rect) = clip_rect {
         scene.with_clip(rect, emit);
     } else {
         emit(scene);
     }
-    push_text_decoration(scene, rect, color, style.opacity, &text_style);
+}
+
+fn text_shadows(style: &RenderStyle, inherited: &[Shadow]) -> SmallVec<[Shadow; 3]> {
+    if style.filter.inherits_text_shadows() {
+        inherited.iter().copied().collect()
+    } else {
+        style.filter.text_shadows()
+    }
+}
+
+#[cfg(feature = "scene")]
+fn text_color(gradient: &Gradient) -> Rgba8 {
+    super::text_fill::flat_color(gradient)
+}
+
+#[cfg(feature = "scene")]
+fn gradient_text(run: GlyphRun, gradient: &Gradient) -> GlyphRun {
+    match super::text_fill::glyph_fill(&run, gradient) {
+        Some(fill) => run.with_fill(fill),
+        None => run,
+    }
+}
+
+#[cfg(not(feature = "scene"))]
+fn text_color(gradient: &Gradient) -> Rgba8 {
+    crate::scene::command::fills::color_at(&gradient.normalized().stops, 0.5)
+}
+
+#[cfg(not(feature = "scene"))]
+const fn gradient_text(run: GlyphRun, _: &Gradient) -> GlyphRun {
+    run
 }
 
 #[cfg(feature = "scene")]
@@ -260,32 +339,4 @@ pub(super) const fn elevation_shadow(elevation: Elevation) -> Shadow {
         Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
     };
     Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
-}
-
-fn gradient_fill(rect: Rect, spec: BgGradient, theme: &Theme) -> LinearGradient {
-    let (left, top) = (rect.origin.x, rect.origin.y);
-    let (right, bottom) = (left + rect.width, top + rect.height);
-    let (mid_x, mid_y) = (left + rect.width / 2.0, top + rect.height / 2.0);
-    let (start, end) = match spec.axis {
-        GradientAxis::TopToBottom => ((mid_x, top), (mid_x, bottom)),
-        GradientAxis::BottomToTop => ((mid_x, bottom), (mid_x, top)),
-        GradientAxis::LeftToRight => ((left, mid_y), (right, mid_y)),
-        GradientAxis::RightToLeft => ((right, mid_y), (left, mid_y)),
-    };
-    let engine = StyleEngine::new(theme);
-    let stops = spec
-        .stops
-        .iter()
-        .map(|stop| {
-            GradientStop::new(
-                f32::from(stop.offset) / 1000.0,
-                engine.resolve_color(stop.color),
-            )
-        })
-        .collect::<Vec<_>>();
-    LinearGradient::new(
-        Point::new(start.0, start.1),
-        Point::new(end.0, end.1),
-        stops,
-    )
 }

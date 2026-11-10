@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crate::reactive::OwnerId;
+use crate::reactive::Owner;
 use crate::tasks::task::{Guarded, Outcome, TaskHandle};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum TaskWorkers {
+pub(crate) enum TaskWorkers {
     #[default]
     Auto,
     Fixed(std::num::NonZeroUsize),
@@ -68,6 +68,7 @@ impl Backend {
             return Some(handle.clone());
         }
         if !matches!(*pool, Pool::Idle) {
+            tracing::warn!("task runtime is shut down; cancelled the work");
             return None;
         }
         let runtime = match build(self.lazy.workers) {
@@ -105,7 +106,7 @@ impl Backend {
         self.lazy.handle.get().is_some()
     }
 
-    pub(crate) fn spawn<T, F, C>(&self, owner: OwnerId, future: F, on_done: C) -> TaskHandle
+    pub(crate) fn spawn<T, F, C>(&self, owner: Owner, future: F, on_done: C) -> TaskHandle
     where
         T: Send + 'static,
         F: Future<Output = T> + Send + 'static,

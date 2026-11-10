@@ -77,25 +77,46 @@ impl<'a> MeasureScope<'a> {
     pub(crate) fn measure_leaf_text(
         &self,
         node: NodeRef<'_>,
-        border_known: crate::layout::style_data::Size<Option<f32>>,
+        border_known: crate::layout::style_data::Axes<Option<f32>>,
         cb_width: f32,
         edges: &NodeEdges,
-    ) -> Option<crate::layout::style_data::Size<f32>> {
+    ) -> Option<crate::layout::style_data::Axes<f32>> {
         let inline = edges.inline_chrome();
         let block = edges.block_chrome();
-        let known = crate::layout::style_data::Size {
+        let known = crate::layout::style_data::Axes {
             width: border_known.width.map(|w| (w - inline).max(0.0)),
             height: border_known.height.map(|h| (h - block).max(0.0)),
         };
         self.measure_text(node, known, Some((cb_width - inline).max(0.0)))
     }
 
+    pub(crate) fn min_content_width(&self, node: NodeRef<'_>) -> Option<f32> {
+        let text = node.text()?;
+        if text.ellipsis {
+            return None;
+        }
+        let width = if text.wrap {
+            crate::geometry::Dim::MinContent
+        } else {
+            crate::geometry::Dim::MaxContent
+        };
+        let space = crate::geometry::Size {
+            width,
+            height: crate::geometry::Dim::MaxContent,
+        };
+        let measured = text.style.as_ref().map_or_else(
+            || self.text.measure(&text.content, space),
+            |style| self.text.measure_styled(&text.content, style, space),
+        );
+        Some(measured.width)
+    }
+
     fn measure_text(
         &self,
         node: NodeRef<'_>,
-        known: crate::layout::style_data::Size<Option<f32>>,
+        known: crate::layout::style_data::Axes<Option<f32>>,
         wrap_to: Option<f32>,
-    ) -> Option<crate::layout::style_data::Size<f32>> {
+    ) -> Option<crate::layout::style_data::Axes<f32>> {
         let text = node.text()?;
         let memo_key = text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
         if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
@@ -125,7 +146,7 @@ impl<'a> MeasureScope<'a> {
         } else {
             measured.width
         };
-        let out = crate::layout::style_data::Size {
+        let out = crate::layout::style_data::Axes {
             width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
         };

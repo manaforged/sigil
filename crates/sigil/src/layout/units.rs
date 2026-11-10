@@ -1,38 +1,44 @@
 use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::snap::cell;
-use crate::layout::style_data::{
-    Dimension, LengthPercentage, LengthPercentageAuto, StyleData, TrackSize,
-};
+use crate::layout::style_data::{Dimension, LengthPercentage, StyleData, TrackSize};
 use crate::layout::text_geometry::with_text_geometry;
 use crate::style::{TextLineHeight, TextStyle};
 
 const ADVANCE_SAMPLE: &str = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TextLength {
+pub(crate) enum TextLength {
     Rows(f32),
     Cols(f32),
     Em(f32),
 }
 
+/// Height of `count` text lines.
 #[must_use]
-pub const fn rows(count: f32) -> TextLength {
-    TextLength::Rows(count)
+pub const fn rows(count: f32) -> Dimension {
+    Dimension::Rows(count)
 }
 
+/// Width of `count` character cells.
 #[must_use]
-pub const fn cols(count: f32) -> TextLength {
-    TextLength::Cols(count)
+pub const fn cols(count: f32) -> Dimension {
+    Dimension::Cols(count)
 }
 
+/// `count` times the font size.
 #[must_use]
-pub const fn em(count: f32) -> TextLength {
-    TextLength::Em(count)
+pub const fn em(count: f32) -> Dimension {
+    Dimension::Em(count)
 }
 
-impl From<TextLength> for Dimension {
-    fn from(length: TextLength) -> Self {
-        Self::Text(length)
+impl Dimension {
+    pub(crate) fn text_px(self) -> Option<f32> {
+        match self {
+            Self::Rows(count) => Some(TextLength::Rows(count).px()),
+            Self::Cols(count) => Some(TextLength::Cols(count).px()),
+            Self::Em(count) => Some(TextLength::Em(count).px()),
+            Self::Px(_) | Self::Percent(_) | Self::Auto | Self::Fill => None,
+        }
     }
 }
 
@@ -44,7 +50,7 @@ impl From<TextLength> for LengthPercentage {
 
 impl TextLength {
     #[must_use]
-    pub fn px(self) -> f32 {
+    pub(crate) fn px(self) -> f32 {
         match self {
             Self::Rows(count) => count * row(),
             Self::Cols(count) => count * col(),
@@ -53,7 +59,9 @@ impl TextLength {
     }
 }
 
+/// A pixel count or a `Dimension`, for widget sizes such as `width` and `row_height`.
 pub trait IntoPx {
+    /// Converts this into px to px.
     fn into_px(self) -> f32;
 }
 
@@ -66,6 +74,18 @@ impl IntoPx for f32 {
 impl IntoPx for TextLength {
     fn into_px(self) -> f32 {
         self.px()
+    }
+}
+
+impl IntoPx for Dimension {
+    fn into_px(self) -> f32 {
+        match self {
+            Self::Px(value) => value,
+            Self::Rows(count) => TextLength::Rows(count).px(),
+            Self::Cols(count) => TextLength::Cols(count).px(),
+            Self::Em(count) => TextLength::Em(count).px(),
+            Self::Percent(_) | Self::Auto | Self::Fill => 0.0,
+        }
     }
 }
 
@@ -85,19 +105,31 @@ fn row() -> f32 {
     })
 }
 
+fn col() -> f32 {
+    cell().unwrap_or_else(|| {
+        let style = TextStyle::default();
+        advance(&style).unwrap_or(style.font_size * 0.5)
+    })
+}
+
 #[allow(
     clippy::cast_precision_loss,
     reason = "the sample length is a small constant"
 )]
-fn col() -> f32 {
-    cell().unwrap_or_else(|| {
-        let style = TextStyle::default();
-        let end = downstream(ADVANCE_SAMPLE.len());
-        with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, &style, None, end).x)
-            .map(|width| width / ADVANCE_SAMPLE.len() as f32)
-            .filter(|advance| *advance > 0.0)
-            .unwrap_or(style.font_size * 0.5)
-    })
+fn advance(style: &TextStyle) -> Option<f32> {
+    let end = downstream(ADVANCE_SAMPLE.len());
+    with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, style, None, end).x)
+        .map(|width| width / ADVANCE_SAMPLE.len() as f32)
+        .filter(|advance| *advance > 0.0)
+}
+
+#[cfg(feature = "pty")]
+pub(crate) fn mono_cell() -> (f32, f32) {
+    let style = TextStyle {
+        font_family: "mono".to_string(),
+        ..TextStyle::default()
+    };
+    (advance(&style).unwrap_or_else(col), row())
 }
 
 const fn downstream(byte_index: usize) -> HitPosition {
@@ -109,7 +141,9 @@ const fn downstream(byte_index: usize) -> HitPosition {
 
 fn dimension(value: Dimension) -> Dimension {
     match value {
-        Dimension::Text(length) => finite_dimension(length.px()),
+        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => {
+            finite_dimension(value.text_px().unwrap_or(0.0))
+        }
         Dimension::Px(px) => finite_dimension(px),
         Dimension::Percent(pct) if !pct.is_finite() => Dimension::Auto,
         other => other,
@@ -124,26 +158,20 @@ const fn finite_dimension(px: f32) -> Dimension {
     }
 }
 
-fn length(value: LengthPercentage) -> LengthPercentage {
-    let px = match value {
-        LengthPercentage::Text(length) => length.px(),
-        LengthPercentage::Px(px) => px,
-        LengthPercentage::Percent(pct) if pct.is_finite() => return value,
-        LengthPercentage::Percent(_) => 0.0,
-    };
-    LengthPercentage::Px(if px.is_finite() { px } else { 0.0 })
+const fn finite_edge(value: Dimension) -> Dimension {
+    finite_edge_or(value, Dimension::Px(0.0))
 }
 
-const fn length_auto(
-    value: LengthPercentageAuto,
-    fallback: LengthPercentageAuto,
-) -> LengthPercentageAuto {
-    match value {
-        LengthPercentageAuto::Px(v) | LengthPercentageAuto::Percent(v) if !v.is_finite() => {
-            fallback
-        }
-        other => other,
-    }
+const fn finite_edge_or(value: Dimension, fallback: Dimension) -> Dimension {
+    let finite = match value {
+        Dimension::Px(px)
+        | Dimension::Percent(px)
+        | Dimension::Rows(px)
+        | Dimension::Cols(px)
+        | Dimension::Em(px) => px.is_finite(),
+        Dimension::Auto | Dimension::Fill => true,
+    };
+    if finite { value } else { fallback }
 }
 
 const fn factor(value: f32, initial: f32) -> f32 {
@@ -172,15 +200,15 @@ pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
     style.size = style.size.map(dimension);
     style.min_size = style.min_size.map(dimension);
     style.max_size = style.max_size.map(dimension);
-    style.gap = style.gap.map(length);
-    style.padding = style.padding.map(length);
-    style.border = style.border.map(length);
+    style.gap = style.gap.map(finite_edge);
+    style.padding = style.padding.map(finite_edge);
+    style.border = style.border.map(finite_edge);
     style.margin = style
         .margin
-        .map(|v| length_auto(v, LengthPercentageAuto::Px(0.0)));
+        .map(|value| finite_edge_or(value, Dimension::Px(0.0)));
     style.inset = style
         .inset
-        .map(|v| length_auto(v, LengthPercentageAuto::Auto));
+        .map(|value| finite_edge_or(value, Dimension::Auto));
     for list in [
         &mut style.grid_template_columns,
         &mut style.grid_template_rows,

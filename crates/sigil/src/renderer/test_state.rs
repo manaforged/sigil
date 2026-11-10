@@ -1,6 +1,6 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use crate::renderer::raster_paint::{set_test_atlas_size_override, test_atlas_size_override};
+use crate::renderer::quad_paint::{set_test_atlas_size_override, test_atlas_size_override};
 use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
 
 fn lock() -> &'static Mutex<()> {

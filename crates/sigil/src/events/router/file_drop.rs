@@ -1,5 +1,4 @@
 use crate::events::FileDropEvent;
-use crate::events::handlers::dispatch;
 use crate::events::pointer_dispatch::path_to_node;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
@@ -23,7 +22,7 @@ impl EventRouter {
             return;
         };
         for id in path.iter().rev().copied() {
-            if dispatch(cx, id, |handlers| handlers.invoke_file_drop(event)) == Some(true) {
+            if drop_on(cx, id, event) == Some(true) {
                 return;
             }
         }
@@ -36,7 +35,17 @@ fn broadcast_file_drop(cx: &Cx, event: &FileDropEvent) {
         let Some(node) = cx.get(id) else {
             continue;
         };
-        let _ = dispatch(cx, id, |handlers| handlers.invoke_file_drop(event));
+        let _ = drop_on(cx, id, event);
         stack.extend(node.children().iter().copied());
     }
+}
+
+fn drop_on(cx: &Cx, id: NodeId, event: &FileDropEvent) -> Option<bool> {
+    crate::events::handlers::fire(
+        cx,
+        id,
+        crate::events::handlers::EventKind::FileDrop,
+        crate::events::handlers::Phase::Bubble,
+        crate::events::handlers::EventArg::FileDrop(event),
+    )
 }

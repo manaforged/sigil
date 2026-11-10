@@ -1,44 +1,140 @@
 #![allow(clippy::suboptimal_flops)]
 
 use core::f32::consts::{FRAC_PI_2, PI};
+use std::hash::{Hash, Hasher};
 use std::num::NonZeroU16;
 
-use super::bezier::CubicBezier;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+/// Tween easing curve.
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Easing {
+    /// The linear easing.
     #[default]
     Linear,
+    /// The quad in easing.
     QuadIn,
+    /// The quad out easing.
     QuadOut,
+    /// The quad in out easing.
     QuadInOut,
+    /// The cubic in easing.
     CubicIn,
+    /// The cubic out easing.
     CubicOut,
+    /// The cubic in out easing.
     CubicInOut,
+    /// The sine in easing.
     SineIn,
+    /// The sine out easing.
     SineOut,
+    /// The sine in out easing.
     SineInOut,
+    /// The expo in easing.
     ExpoIn,
+    /// The expo out easing.
     ExpoOut,
+    /// The back out easing.
     BackOut,
+    /// The back in out easing.
     BackInOut,
+    /// The bounce out easing.
     BounceOut,
-    Bezier(CubicBezier),
+    /// The steps easing.
     Steps {
+        /// The count.
         count: NonZeroU16,
+        /// Whether start.
         start: bool,
+    },
+    /// The CSS `cubic-bezier(x1, y1, x2, y2)` easing.
+    CubicBezier {
+        /// The first control point x, in 0..=1.
+        x1: f32,
+        /// The first control point y.
+        y1: f32,
+        /// The second control point x, in 0..=1.
+        x2: f32,
+        /// The second control point y.
+        y2: f32,
     },
 }
 
+impl PartialEq for Easing {
+    fn eq(&self, other: &Self) -> bool {
+        self.key() == other.key()
+    }
+}
+
+impl Eq for Easing {}
+
+impl Hash for Easing {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.key().hash(state);
+    }
+}
+
 impl Easing {
+    /// The Tailwind `ease-in` curve, `cubic-bezier(0.4, 0, 1, 1)`.
+    pub const IN: Self = Self::cubic_bezier(0.4, 0.0, 1.0, 1.0);
+    /// The Tailwind `ease-out` curve, `cubic-bezier(0, 0, 0.2, 1)`.
+    pub const OUT: Self = Self::cubic_bezier(0.0, 0.0, 0.2, 1.0);
+    /// The Tailwind `ease-in-out` curve, `cubic-bezier(0.4, 0, 0.2, 1)`.
+    pub const IN_OUT: Self = Self::cubic_bezier(0.4, 0.0, 0.2, 1.0);
+
+    /// Creates the CSS `cubic-bezier(x1, y1, x2, y2)` easing; `x1` and `x2` are clamped to 0..=1, and a non-finite point gives `Linear`.
+    #[must_use]
+    pub const fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        if !(x1.is_finite() && y1.is_finite() && x2.is_finite() && y2.is_finite()) {
+            return Self::Linear;
+        }
+        Self::CubicBezier {
+            x1: x1.clamp(0.0, 1.0),
+            y1,
+            x2: x2.clamp(0.0, 1.0),
+            y2,
+        }
+    }
+
+    fn key(self) -> (u8, [u32; 4]) {
+        match self {
+            Self::Steps { count, start } => (1, [u32::from(count.get()), u32::from(start), 0, 0]),
+            Self::CubicBezier { x1, y1, x2, y2 } => {
+                (2, [x1, y1, x2, y2].map(|value| (value + 0.0).to_bits()))
+            }
+            other => (0, [other.ordinal(), 0, 0, 0]),
+        }
+    }
+
+    const fn ordinal(self) -> u32 {
+        match self {
+            Self::Linear => 0,
+            Self::QuadIn => 1,
+            Self::QuadOut => 2,
+            Self::QuadInOut => 3,
+            Self::CubicIn => 4,
+            Self::CubicOut => 5,
+            Self::CubicInOut => 6,
+            Self::SineIn => 7,
+            Self::SineOut => 8,
+            Self::SineInOut => 9,
+            Self::ExpoIn => 10,
+            Self::ExpoOut => 11,
+            Self::BackOut => 12,
+            Self::BackInOut => 13,
+            Self::BounceOut => 14,
+            Self::Steps { .. } | Self::CubicBezier { .. } => 15,
+        }
+    }
+
+    /// Creates a step easing with `count` steps, jumping at the start of each step when `start` is true.
     #[must_use]
     pub const fn steps(count: NonZeroU16, start: bool) -> Self {
         Self::Steps { count, start }
     }
 
+    /// Maps progress `t` through this easing curve.
     #[must_use]
     pub fn apply(self, t: f32) -> f32 {
-        let t = t.clamp(0.0, 1.0);
+        let t = unit(t);
         match self {
             Self::Linear => t,
             Self::QuadIn => t * t,
@@ -79,13 +175,43 @@ impl Easing {
             Self::BackOut => back_out(t),
             Self::BackInOut => back_in_out(t),
             Self::BounceOut => bounce_out(t),
-            Self::Bezier(curve) => curve.apply(t),
             Self::Steps { count, start } => {
                 let count = f32::from(count.get());
                 ((t * count).floor() + f32::from(u8::from(start))).min(count) / count
             }
+            Self::CubicBezier { x1, y1, x2, y2 } => cubic_bezier(t, [x1, y1, x2, y2]),
         }
     }
+}
+
+#[allow(
+    clippy::manual_clamp,
+    reason = "max then min maps NaN to 0.0, where clamp keeps NaN"
+)]
+const fn unit(t: f32) -> f32 {
+    t.max(0.0).min(1.0)
+}
+
+fn cubic_bezier(x: f32, points: [f32; 4]) -> f32 {
+    let [x1, y1, x2, y2] = points;
+    if x <= 0.0 || x >= 1.0 || !points.iter().all(|point| point.is_finite()) {
+        return x;
+    }
+    let (mut low, mut high) = (0.0_f32, 1.0_f32);
+    for _ in 0..32 {
+        let t = f32::midpoint(low, high);
+        if bezier_coordinate(t, x1, x2) < x {
+            low = t;
+        } else {
+            high = t;
+        }
+    }
+    bezier_coordinate(f32::midpoint(low, high), y1, y2)
+}
+
+fn bezier_coordinate(t: f32, first: f32, second: f32) -> f32 {
+    let inverse = 1.0 - t;
+    (3.0 * inverse * inverse * t).mul_add(first, (3.0 * inverse * t * t).mul_add(second, t * t * t))
 }
 
 const BACK_C1: f32 = 1.701_58;

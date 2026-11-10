@@ -1,20 +1,49 @@
-use std::rc::Rc;
-
-use accesskit::Role;
+use crate::kernel::Role;
 
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
-use crate::style::{PaintTarget, Style, StyleSlot};
-use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use crate::style::{PaintTarget, StyleSlot};
+use crate::widgets::layout_ext::NodeHooks;
+use crate::widgets::{Edit, Sealed, Widget};
 
+/// Decoded RGBA pixels.
 #[derive(Clone)]
 pub struct ImageSource {
     id: u64,
     width: u32,
     height: u32,
-    rgba: Rc<Vec<u8>>,
+    rgba: std::sync::Arc<Vec<u8>>,
 }
 
 impl ImageSource {
+    /// Decodes PNG, JPEG, and other encoded bytes, cached by content.
+    #[cfg(feature = "image-decode")]
+    #[must_use]
+    pub fn decode(encoded: &[u8]) -> Option<Self> {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        encoded.hash(&mut hasher);
+        crate::kernel::cached_image(hasher.finish(), || {
+            let decoded = ::image::load_from_memory(encoded).ok()?.into_rgba8();
+            let (width, height) = decoded.dimensions();
+            Self::from_rgba8(width, height, decoded.into_raw())
+        })
+    }
+
+    /// Decodes a base64 raster `data:` URI; SVG and non-base64 URIs are refused.
+    #[cfg(feature = "image-decode")]
+    pub(crate) fn from_data_uri(uri: &str) -> Option<Self> {
+        use base64::Engine;
+        let (meta, payload) = uri.strip_prefix("data:")?.split_once(',')?;
+        if !meta.ends_with(";base64") || meta.contains("svg") {
+            return None;
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(payload)
+            .ok()?;
+        Self::decode(&bytes)
+    }
+
+    /// Creates an image source from rgba8.
     #[must_use]
     pub fn from_rgba8(width: u32, height: u32, rgba: Vec<u8>) -> Option<Self> {
         let expected = (width as usize)
@@ -28,34 +57,41 @@ impl ImageSource {
             id,
             width,
             height,
-            rgba: Rc::new(rgba),
+            rgba: std::sync::Arc::new(rgba),
         })
     }
 
+    /// Returns the id.
     #[must_use]
     pub const fn id(&self) -> u64 {
         self.id
     }
 
+    /// Returns the width.
     #[must_use]
     pub const fn width(&self) -> u32 {
         self.width
     }
 
+    /// Returns the height.
     #[must_use]
     pub const fn height(&self) -> u32 {
         self.height
     }
 
+    /// Returns the rgba.
     #[must_use]
     pub fn rgba(&self) -> &[u8] {
         &self.rgba
     }
 }
 
+/// Vertical crop of an image: rows `top..top + height`, clamped to the image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ImageCrop {
+    /// The top.
     pub top: u32,
+    /// The height.
     pub height: u32,
 }
 
@@ -79,40 +115,39 @@ impl core::fmt::Debug for ImageSource {
 }
 
 fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    let mut hash = OFFSET;
+    let mut hash = crate::fnv::OFFSET;
     for byte in width
         .to_le_bytes()
         .into_iter()
         .chain(height.to_le_bytes())
         .chain(rgba.iter().copied())
     {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(PRIME);
+        hash = crate::fnv::mix(hash, u64::from(byte));
     }
     hash
 }
 
-type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource>;
+type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync;
 
+/// Resolution-independent source of an image.
 #[derive(Clone)]
 pub struct ImageRaster {
     key: u64,
-    raster: Rc<RasterFn>,
+    raster: std::sync::Arc<RasterFn>,
 }
 
 impl ImageRaster {
     pub(crate) fn new(
         key: u64,
-        raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + 'static,
+        raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync + 'static,
     ) -> Self {
         Self {
             key,
-            raster: Rc::new(raster),
+            raster: std::sync::Arc::new(raster),
         }
     }
 
+    /// Pixels for a physical size in device pixels at `scale`.
     #[must_use]
     pub fn at(&self, width: u32, height: u32, scale: f32) -> Option<ImageSource> {
         (self.raster)(width, height, scale)
@@ -161,53 +196,59 @@ impl ThemedImage {
     }
 }
 
+/// How an image fills its box.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ObjectFit {
+    /// The fill object fit.
     #[default]
     Fill,
+    /// The contain object fit.
     Contain,
+    /// The cover object fit.
     Cover,
 }
 
-type NodeExt = Box<dyn FnOnce(&mut crate::kernel::Node)>;
-
+/// The one image builder.
 pub struct ImageBuilder {
-    source: ImageSource,
-    fit: ObjectFit,
-    a11y: A11yProps,
-    pre_extensions: Vec<NodeExt>,
-    layout_overrides: LayoutOverrides,
-    style_accumulator: Style,
+    node: NodeBuilder,
+    hooks: NodeHooks,
 }
 
+/// An image node from an `ImageSource`.
 #[must_use]
 pub fn image(source: ImageSource) -> ImageBuilder {
-    ImageBuilder {
+    let kind = NodeType::Image {
         source,
         fit: ObjectFit::Fill,
-        a11y: A11yProps {
-            role: Role::Image,
-            ..A11yProps::default()
-        },
-        pre_extensions: Vec::new(),
-        layout_overrides: LayoutOverrides::new(),
-        style_accumulator: Style::new(),
+    };
+    let a11y = A11yProps {
+        role: Role::Image,
+        ..A11yProps::default()
+    };
+    ImageBuilder {
+        node: NodeBuilder::from_parts(kind, a11y, Vec::new()),
+        hooks: NodeHooks::default(),
     }
 }
 
 impl ImageBuilder {
+    /// Sets the alt.
     #[must_use]
     pub fn alt(mut self, text: impl Into<String>) -> Self {
-        self.a11y.name = AccessibleName::Static(text.into());
+        self.node.a11y.name = AccessibleName::Static(text.into());
         self
     }
 
+    /// Sets the fit.
     #[must_use]
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
-        self.fit = fit;
+        if let NodeType::Image { fit: slot, .. } = &mut self.node.kind {
+            *slot = fit;
+        }
         self
     }
 
+    /// Sets the crop.
     #[must_use]
     pub fn crop(self, top: u32, height: u32) -> Self {
         self.mutate(move |node| {
@@ -215,43 +256,46 @@ impl ImageBuilder {
         })
     }
 
+    /// Sets the mutate.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
-        self.pre_extensions.push(Box::new(apply));
+        self.node = self.node.mutate(apply);
         self
+    }
+
+    pub(crate) fn into_node_builder(self) -> NodeBuilder {
+        self.hooks.finish(self.node)
     }
 }
 
 impl PaintTarget for ImageBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
+        self.node.style_slot()
     }
 }
 
-impl WidgetLayoutExt for ImageBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
+impl Sealed for ImageBuilder {
+    fn edit(mut self, edit: Edit) -> Self {
+        self.node = edit.apply(self.node);
+        self
+    }
+
+    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.map_node(f)
+    }
+}
+
+impl Widget for ImageBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.hooks
+            .push(Box::new(move |node| node.map_keeping_kind(f)));
+        self
     }
 }
 
 impl IntoNode for ImageBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        let kind = NodeType::Image {
-            source: self.source,
-            fit: self.fit,
-        };
-        let mut node = NodeBuilder::from_parts(kind, self.a11y, self.pre_extensions);
-        if self.layout_overrides != LayoutOverrides::new() {
-            node = node.with(
-                self.layout_overrides
-                    .clone()
-                    .apply(crate::layout::LayoutStyle::default()),
-            );
-        }
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        self.layout_overrides.finish(node).build(cx)
+        self.into_node_builder().build(cx)
     }
 }
 

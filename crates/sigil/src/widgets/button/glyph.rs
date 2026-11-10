@@ -4,8 +4,11 @@ use crate::kernel::TextContent;
 
 use super::{ButtonBuilder, button};
 
+/// What `icon_button` shows.
 pub enum ButtonGlyph {
+    /// The text button glyph.
     Text(TextContent),
+    /// The icon button glyph.
     #[cfg(feature = "scene")]
     Icon(Icon),
 }

@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn viewport_fill_sets_root_dimensions_to_fill() {
     use crate::layout::Dimension;
-    Runtime::scope("sigil-virtual-list-viewport-fill", || {
+    Owner::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
         let root = cx.add(virtual_list(items, |_, _| container()).viewport_fill());
@@ -21,9 +21,10 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
 #[test]
 fn viewport_fill_tracks_parent_pane_measured_size() {
     use crate::geometry::Size;
-    use crate::layout::{LayoutBuilderExt, LayoutStyle};
+    use crate::layout::LayoutStyle;
+    use crate::widgets::Widget;
 
-    Runtime::scope("sigil-virtual-list-viewport-fill-layout", || {
+    Owner::scope("sigil-virtual-list-viewport-fill-layout", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..50).collect();
         let parent = cx.add(
@@ -63,7 +64,7 @@ fn viewport_fill_tracks_parent_pane_measured_size() {
 fn select_fires_with_selected_index() {
     use std::cell::Cell;
     use std::rc::Rc;
-    Runtime::scope("sigil-virtual-list-select", || {
+    Owner::scope("sigil-virtual-list-select", || {
         let last_index: Rc<Cell<Option<usize>>> = Rc::new(Cell::new(None));
         let last_clone = Rc::clone(&last_index);
 

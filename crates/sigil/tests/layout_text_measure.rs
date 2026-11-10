@@ -7,17 +7,14 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use stub::stub_engine;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 100.0,
-    height: 20.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(100.0, 20.0);
 
 #[test]
 fn custom_text_measure_overrides_placeholder_measurement() {
@@ -33,7 +30,7 @@ fn computed_text_width(mut engine: LayoutEngine) -> f32 {
     let root = cx.add(container().child(text("AB")));
     cx.get_mut(root)
         .expect("root exists")
-        .attach(LayoutStyle::flex_row().align_items(AlignItems::FlexStart));
+        .attach(LayoutStyle::flex_row().align_items(AlignItems::Start));
 
     let child = cx
         .get(root)

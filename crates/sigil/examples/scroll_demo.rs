@@ -17,13 +17,13 @@ fn root() -> NodeBuilder {
     let items = tall_column();
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill().padding(24.0))
+        .layout(LayoutStyle::flex_column().fill().padding(Space::Xl))
         .bg(Token::Surface)
         .child(scroll(items).extent(600.0).height(300.0))
 }
 
 fn tall_column() -> NodeBuilder {
-    let mut col = container().layout(LayoutStyle::flex_column().gap(8.0));
+    let mut col = container().layout(LayoutStyle::flex_column().gap(Space::Sm));
     for i in 1..=15 {
         col = col.child(button(format!("Item {i}")).activate(|| {}));
     }

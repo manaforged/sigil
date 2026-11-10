@@ -10,10 +10,7 @@
 use sigil::app::DefaultTextMeasure;
 use sigil::prelude::*;
 
-use sigil_kittest::{
-    InteractionMode, assert_goldens_differ, assert_png_matches_golden, golden_path,
-    render_widget_to_png_scaled,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode};
 
 const DELTA_PCT: f32 = 0.5;
 const LOGICAL_SIZE: [u32; 2] = [160, 56];
@@ -31,20 +28,19 @@ fn build_button() -> impl IntoNode {
 }
 
 fn capture_at_scale(stem: &str, scale: f32) {
-    let img = render_widget_to_png_scaled(
-        build_button,
-        InteractionMode::Default,
-        LOGICAL_SIZE,
-        scale,
-        HIT_POINT,
-        Box::new(DefaultTextMeasure::new()),
-    )
-    .expect("sigil-kittest");
+    let img = Harness::render(build_button)
+        .measure(|| Box::new(DefaultTextMeasure::new()))
+        .mode(InteractionMode::Default)
+        .size(LOGICAL_SIZE)
+        .scale(scale)
+        .hit(HIT_POINT)
+        .image()
+        .expect("sigil-kittest");
     let Some(img) = img else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
-    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
+    Golden::new(stem).delta(DELTA_PCT).assert_image(&img);
 }
 
 #[test]
@@ -71,7 +67,7 @@ fn button_label_dpi_scale_200() {
 fn button_label_dpi_scales_are_pairwise_distinct() {
     for (i, (stem_a, _)) in SCALE_STEMS.iter().enumerate() {
         for (stem_b, _) in &SCALE_STEMS[i + 1..] {
-            assert_goldens_differ!(stem_a, stem_b);
+            Golden::new(stem_a).assert_differs(&Golden::new(stem_b));
         }
     }
 }

@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -12,7 +13,7 @@
 use sigil::renderer::{DrawParams, ScreenSubmission, SlugTextPipeline};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::text::OwnedTextEngine;
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels, shared_device};
 
 const BYTES_PER_PIXEL: u32 = 4;

@@ -2,6 +2,8 @@ use crate::kernel::{Cx, NodeId, NodeType};
 use crate::style::{StyleBinding, TextStyle};
 use smallvec::{SmallVec, smallvec};
 
+use crate::Error;
+use crate::layout::LayoutStyle;
 use crate::layout::engine_drive::NodeHandle;
 use crate::layout::forest::LayoutText;
 use crate::layout::text_geometry::TextStyleCapture;
@@ -9,7 +11,6 @@ use crate::layout::text_style::{
     InheritedText, inherited_direction, inherited_signature, inherited_text_style, node_direction,
     signature_is_rtl,
 };
-use crate::layout::{LayoutError, LayoutStyle};
 use crate::style::locale::Direction;
 
 use super::LayoutEngine;
@@ -17,7 +18,7 @@ use super::direction::apply_direction;
 use super::overlays::{apply_intrinsic_image_size, apply_reactive_position, apply_style_overlay};
 
 impl LayoutEngine {
-    fn hide_children(&mut self, id: NodeId) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
+    fn hide_children(&mut self, id: NodeId) -> Result<SmallVec<[NodeHandle; 4]>, Error> {
         let parent_handle = self.handle(id)?;
         self.drive.set_children(parent_handle, &[])?;
         self.hidden.insert(id);
@@ -29,8 +30,8 @@ impl LayoutEngine {
         cx: &Cx,
         id: NodeId,
         inherited: InheritedText<'_>,
-    ) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
-        let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+    ) -> Result<SmallVec<[NodeHandle; 4]>, Error> {
+        let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         crate::animation_runtime::style::prepare(cx, id);
         self.track_reactive(id, node);
         let kernel_version = node.version();
@@ -85,7 +86,7 @@ impl LayoutEngine {
         node: &crate::kernel::Node,
         inherited_text: &TextStyle,
         direction: Direction,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let (intent, text) = Self::layout_inputs_for_node(node, inherited_text, direction);
         let Some(handle) = self.core_to_handle.get(id.key()).copied() else {
             let handle = self.drive.insert_with_kernel(id, intent.data().clone());
@@ -109,11 +110,7 @@ impl LayoutEngine {
         self.drive.set_text(handle, text)
     }
 
-    pub(super) fn apply_dirty_nodes(
-        &mut self,
-        cx: &Cx,
-        dirty: &[NodeId],
-    ) -> Result<(), LayoutError> {
+    pub(super) fn apply_dirty_nodes(&mut self, cx: &Cx, dirty: &[NodeId]) -> Result<(), Error> {
         for id in dirty.iter().copied() {
             if cx.get(id).is_some() {
                 self.sync_one_node(cx, id)?;
@@ -130,8 +127,8 @@ impl LayoutEngine {
         Ok(())
     }
 
-    pub(super) fn sync_one_node(&mut self, cx: &Cx, id: NodeId) -> Result<(), LayoutError> {
-        let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+    pub(super) fn sync_one_node(&mut self, cx: &Cx, id: NodeId) -> Result<(), Error> {
+        let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         crate::animation_runtime::style::prepare(cx, id);
         self.track_reactive(id, node);
         if matches!(node.kind, NodeType::Fragment) {
@@ -163,7 +160,7 @@ impl LayoutEngine {
         cx: &Cx,
         id: NodeId,
         inherited: InheritedText<'_>,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let Some(node) = cx.get(id) else {
             return Ok(());
         };

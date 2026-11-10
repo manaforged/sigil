@@ -75,28 +75,28 @@ const SOURCES: &[(&str, &str)] = &[
 
 const APPS: &[(&str, App)] = &[
     ("todo-terminal", || {
-        sigil::kernel::node(crate::todo_terminal::app())
+        sigil::prelude::node(crate::todo_terminal::app())
     }),
     ("preferences-window", || {
-        sigil::kernel::node(crate::preferences_window::build())
+        sigil::prelude::node(crate::preferences_window::build())
     }),
     ("chat-both", || {
-        sigil::kernel::node(crate::chat_both::app_tree())
+        sigil::prelude::node(crate::chat_both::app_tree())
     }),
     ("hello-counter", || {
-        sigil::kernel::node(crate::hello_counter::app_tree())
+        sigil::prelude::node(crate::hello_counter::app_tree())
     }),
     ("pomodoro-both", || {
-        sigil::kernel::node(crate::pomodoro_both::app_tree())
+        sigil::prelude::node(crate::pomodoro_both::app_tree())
     }),
     ("showcase-dashboard", || {
-        sigil::kernel::node(crate::showcase_dashboard::app())
+        sigil::prelude::node(crate::showcase_dashboard::app())
     }),
     ("showcase-editor", || {
-        sigil::kernel::node(crate::showcase_editor::app())
+        sigil::prelude::node(crate::showcase_editor::app())
     }),
     ("showcase-settings", || {
-        sigil::kernel::node(crate::showcase_settings::app())
+        sigil::prelude::node(crate::showcase_settings::app())
     }),
 ];
 

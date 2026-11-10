@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -14,22 +15,20 @@
 
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
+use sigil::widgets::Widget as _;
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
 use sigil::events::EventRouter;
-use sigil::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
-    ShellEvent,
-};
+use sigil::events::{Event, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
 use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, emit_scene};
 use sigil::style::Color;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -48,10 +47,7 @@ impl Mode {
     }
 }
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 40.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(40.0, 16.0);
 
 struct Gpu {
     device: wgpu::Device,
@@ -81,7 +77,7 @@ fn try_init_gpu() -> Option<Gpu> {
         })
         .block_on()
         .ok()?;
-    let renderer = WgpuRenderer::new().ok()?;
+    let renderer = WgpuRenderer::new();
     Some(Gpu {
         device,
         queue,
@@ -108,29 +104,15 @@ fn make_capture(device: &wgpu::Device, w: u32, h: u32) -> (wgpu::Texture, wgpu::
     (texture, view)
 }
 
-fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
+fn pointer_move(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Move, Point::new(x, y))
 }
 
 #[allow(dead_code, reason = "bench harness; deliberate")]
-fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Down,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-    }))
+fn pointer_down(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Down, Point::new(x, y))
+        .button(Some(MouseButton::Left))
+        .buttons(MouseButtons::LEFT)
 }
 
 fn drive(
@@ -157,7 +139,7 @@ fn render_one(
     size_px: (f32, f32),
     hit: (f32, f32),
 ) {
-    Runtime::scope("widget-render-bench", || {
+    Owner::scope("widget-render-bench", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build);
 
@@ -173,7 +155,7 @@ fn render_one(
             .compute(&mut cx, root, Size::fixed(size_px.0, size_px.1))
             .expect("layout-after-state");
 
-        let scene: CommandScene = emit_scene(&cx, root);
+        let scene: CommandScene = emit_scene(&cx, root, None);
         let clear = Color {
             r: 0.0,
             g: 0.0,

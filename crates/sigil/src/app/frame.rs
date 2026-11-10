@@ -1,81 +1,83 @@
-use crate::animation_runtime::{
-    active_count as active_animation_count, running_clocks, tick as tick_animations, tick_clocks,
-};
+use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
-use crate::events::EventRouter;
 use crate::kernel::FrameDelta;
-use crate::layout::LayoutError;
-use crate::reactive::{Runtime, tick_intervals};
+use crate::reactive::{Runtime, tick_frame};
 
 const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
+/// State of the current frame that `Host::frame` passes to the paint hook, with the frame's `FrameDelta` for `Host::emit_since`.
 #[non_exhaustive]
 pub struct FrameInfo {
+    /// Whether dirty.
     pub dirty: bool,
+    /// Whether animating.
     pub animating: bool,
+    /// Whether layout ok.
     pub layout_ok: bool,
-    pub delta: FrameDelta,
+    #[cfg_attr(
+        not(feature = "terminal"),
+        allow(dead_code, reason = "only the terminal host reads the delta")
+    )]
+    pub(crate) delta: FrameDelta,
 }
 
+/// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
 pub struct FrameOutput {
+    /// Whether exit.
     pub exit: bool,
+    /// The intervals.
     pub intervals: usize,
+    /// Whether animating.
     pub animating: bool,
-    pub layout: Result<(), LayoutError>,
+    /// The layout.
+    pub layout: Result<(), Error>,
 }
 
-pub type FrameInputHook<'a> =
-    Box<dyn FnOnce(&mut Host, &mut EventRouter) -> Option<(f32, f32)> + 'a>;
+/// Runs before layout and may return a new viewport.
+pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
 
-pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host, &mut EventRouter) + 'a>;
+/// Runs after layout.
+pub(crate) type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 
-pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &mut EventRouter, &FrameInfo) + 'a>;
+/// Runs when the frame paints.
+pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
 
+/// The optional hooks that `Host::frame` runs.
 #[derive(Default)]
 pub struct FrameHooks<'a> {
+    /// The input, if any.
     pub input: Option<FrameInputHook<'a>>,
+    /// The after layout, if any.
     pub after_layout: Option<FrameLayoutHook<'a>>,
+    /// The paint, if any.
     pub paint: Option<FramePaintHook<'a>>,
 }
 
 impl Host {
+    /// Runs one frame: effects, layout, animation, and the paint hook.
     pub fn frame(
         &mut self,
-        router: &mut EventRouter,
         mut viewport: (f32, f32),
         dt: f32,
         hooks: FrameHooks<'_>,
     ) -> FrameOutput {
         #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
-        self.remount_patched(router);
+        self.remount_patched();
         let _env = self.enter();
         Runtime::begin_effect();
-        if let Some(next) = hooks.input.and_then(|input| input(self, router)) {
+        if let Some(next) = hooks.input.and_then(|input| input(self)) {
             viewport = next;
         }
         crate::reactive::run_dispatch_deferred();
         self.apply_pending_theme();
         #[cfg(feature = "dialog")]
         self.sync_dialogs();
-        let intervals = tick_intervals();
-        let animating = advance(dt.min(MAX_ANIMATION_FRAME_SECS));
+        let (intervals, animating) = tick_frame(dt.min(MAX_ANIMATION_FRAME_SECS));
         self.publish_viewport(viewport);
         let exit = ExitOnUnwind(take_exit());
-        Runtime::begin_layout();
-        let layout = {
-            let _layout = crate::profile::span(crate::profile::Phase::Layout);
-            self.settle_layout(viewport)
-        };
+        let layout = self.layout_phase(viewport, hooks.after_layout);
         let layout_ok = layout.is_ok();
-        if layout_ok {
-            self.apply_focus_requests(router);
-            self.repair_focus(router);
-            self.sync_hover(router);
-            if let Some(after_layout) = hooks.after_layout {
-                after_layout(self, router);
-            }
-        }
         self.cx().flush_announcements();
         Runtime::begin_paint();
         let info = FrameInfo {
@@ -85,7 +87,11 @@ impl Host {
             delta: self.cx().take_delta(),
         };
         if let Some(paint) = hooks.paint {
-            paint(self, router, &info);
+            paint(self, &info);
+        }
+        #[cfg(debug_assertions)]
+        if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
+            self.report_flaws();
         }
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
@@ -96,15 +102,27 @@ impl Host {
             layout,
         }
     }
-}
 
-fn advance(dt: f32) -> bool {
-    let animating = active_animation_count() > 0;
-    if animating {
-        tick_animations(dt);
+    fn layout_phase(
+        &mut self,
+        viewport: (f32, f32),
+        after_layout: Option<FrameLayoutHook<'_>>,
+    ) -> Result<(), Error> {
+        Runtime::begin_layout();
+        let layout = {
+            let _layout = crate::profile::span(crate::profile::Phase::Layout);
+            self.settle_layout(viewport)
+        };
+        if layout.is_ok() {
+            self.apply_focus_requests();
+            self.repair_focus();
+            self.sync_hover();
+            if let Some(after_layout) = after_layout {
+                after_layout(self);
+            }
+        }
+        layout
     }
-    tick_clocks(dt);
-    animating || running_clocks() > 0
 }
 
 struct ExitOnUnwind(bool);

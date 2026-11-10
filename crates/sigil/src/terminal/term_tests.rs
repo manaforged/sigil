@@ -13,14 +13,17 @@ fn shift_enter_is_requested_as_its_own_key() {
 static SERIAL: Mutex<()> = Mutex::new(());
 
 #[test]
-fn committing_lines_above_the_live_region_repaints_it() -> io::Result<()> {
+fn committing_lines_above_the_live_region_repaints_it() -> Result<(), crate::Error> {
+    let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
     LIVE.with(|live| live.set(true));
     INLINE.store(true, Ordering::Relaxed);
+    RESTORED.store(false, Ordering::Relaxed);
     REDRAW.with(|flag| flag.set(false));
     let printed = print_above("committed");
     let pending = REDRAW.with(Cell::get);
     LIVE.with(|live| live.set(false));
     INLINE.store(false, Ordering::Relaxed);
+    RESTORED.store(true, Ordering::Relaxed);
     printed?;
     assert!(
         pending,
@@ -33,9 +36,11 @@ fn committing_lines_above_the_live_region_repaints_it() -> io::Result<()> {
 fn reentry_restores_inline_mode() {
     let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
     INLINE.store(false, Ordering::Relaxed);
-    let entered = enter_modes(true);
+    RESTORED.store(true, Ordering::Relaxed);
+    let entered = reapply(true, &mut std::io::sink());
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
+    INLINE.store(false, Ordering::Relaxed);
     drop(entered);
     assert!(inline, "re-entering an inline host must keep inline mode");
 }
@@ -142,14 +147,11 @@ impl Write for FailingFlush {
 
 #[test]
 fn a_frame_whose_final_flush_fails_is_written_again() {
-    crate::reactive::Runtime::scope("term-flush-retry", || {
-        let mut host = crate::Host::cells();
+    crate::reactive::Owner::scope("term-flush-retry", || {
+        let mut host = crate::Host::new(crate::kernel::HostMode::Cell);
         host.mount(|| crate::kernel::text("hello"));
-        let mut router = crate::events::EventRouter::new();
         let mut screen = Screen::new(20, 4);
-        screen
-            .frame(&mut host, &mut router, [], (20, 4))
-            .expect("frame");
+        screen.frame(&mut host, [], (20, 4)).expect("frame");
         assert!(paint_frame(&mut FailingFlush(Vec::new()), &mut screen, false, false).is_err());
         let mut out = Vec::new();
         paint_frame(&mut out, &mut screen, false, false).expect("retry");

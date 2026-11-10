@@ -76,9 +76,15 @@ pub(super) fn install_theme(node: &mut Node, theme: Theme) {
     crate::scene::emit_cache::theme_changed();
 }
 
-pub(super) fn install_focus_ring(node: &mut Node, ring: FocusRing) {
+pub(super) fn install_focus_ring(node: &mut Node, change: impl FnOnce(&mut FocusRing)) {
     debug_assert_not_fragment(node, "focus_ring");
-    let _previous = node.attach(ring);
+    if let Some(ring) = node.get_extension_mut::<FocusRing>() {
+        change(ring);
+    } else {
+        let mut ring = FocusRing::default();
+        change(&mut ring);
+        let _previous = node.attach(ring);
+    }
 }
 
 pub(super) fn install_reactive<F>(node: &mut Node, f: F)

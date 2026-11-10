@@ -27,13 +27,16 @@ impl Default for TextTuning {
     }
 }
 
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 static TUNING: RwLock<TextTuning> = RwLock::new(DEFAULT);
 
 #[must_use]
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub fn text_tuning() -> TextTuning {
     *TUNING.read().unwrap_or_else(PoisonError::into_inner)
 }
 
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub fn set_text_tuning(tuning: TextTuning) {
     *TUNING.write().unwrap_or_else(PoisonError::into_inner) = tuning;
 }

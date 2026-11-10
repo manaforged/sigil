@@ -10,7 +10,8 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
         Script::Khmer => &["Khmer Sangam MN"],
         Script::Thai => &["Thonburi"],
         Script::Lao => &["Lao Sangam MN"],
-        Script::Latin | Script::Common | Script::Other => &[],
+        Script::Other => &["Menlo", "Apple Symbols", "Apple Braille", "STIX Two Math"],
+        Script::Latin | Script::Common => &[],
     }
 }
 
@@ -21,7 +22,8 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
         Script::Arabic | Script::Hebrew => &["Segoe UI"],
         Script::Devanagari => &["Nirmala UI"],
         Script::Khmer | Script::Thai | Script::Lao => &["Leelawadee UI"],
-        Script::Latin | Script::Common | Script::Other => &[],
+        Script::Other => &["Segoe UI Symbol"],
+        Script::Latin | Script::Common => &[],
     }
 }
 
@@ -41,6 +43,7 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
         Script::Khmer => &["Noto Sans Khmer"],
         Script::Thai => &["Noto Sans Thai", "Garuda"],
         Script::Lao => &["Noto Sans Lao"],
-        Script::Latin | Script::Common | Script::Other => &[],
+        Script::Other => &["Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans"],
+        Script::Latin | Script::Common => &[],
     }
 }

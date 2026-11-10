@@ -1,17 +1,17 @@
 use std::io::{self, Write};
 
-use super::{CONTINUES, Pen, Style, cells, row_bytes, same_cell, same_row};
+use super::{AnsiPen, AnsiStyle, CONTINUES, cells, row_bytes, same_cell, same_row};
 use crate::terminal::caps::Caps;
 use crate::terminal::paint::{Cell, Grid};
 use crate::terminal::scroll::Shift;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Damage {
+pub(crate) struct RowDamage {
     rows: Vec<usize>,
     moved: bool,
 }
 
-impl Damage {
+impl RowDamage {
     pub(crate) fn new(mut rows: Vec<usize>, moved: bool) -> Self {
         rows.sort_unstable();
         rows.dedup();
@@ -32,7 +32,7 @@ impl Damage {
     }
 }
 
-pub(crate) fn unchanged(prev: &Grid, next: &Grid, damage: Option<&Damage>, caps: &Caps) -> bool {
+pub(crate) fn unchanged(prev: &Grid, next: &Grid, damage: Option<&RowDamage>, caps: &Caps) -> bool {
     let same = |row: usize| same_row(prev.row(row), next.row(row), caps);
     prev.cols() == next.cols()
         && prev.rows() == next.rows()
@@ -47,16 +47,16 @@ pub(crate) fn dirty(
     prev: &Grid,
     next: &Grid,
     caps: &Caps,
-    damage: Option<&Damage>,
+    damage: Option<&RowDamage>,
 ) -> io::Result<()> {
     let shift = match damage {
         Some(damage) if !damage.moved => None,
         _ => Shift::find(prev, next),
     };
-    let mut pen = Pen::default();
+    let mut pen = AnsiPen::default();
     if let Some(shift) = shift {
         shift.emit(out)?;
-        pen.style = Some(Style::plain());
+        pen.style = Some(AnsiStyle::plain());
     }
     let rows: Box<dyn Iterator<Item = usize>> = match damage.filter(|_| shift.is_none()) {
         Some(damage) => Box::new(damage.rows(next.rows())),
@@ -77,7 +77,7 @@ fn span(
     out: &mut impl Write,
     (old, row): (&[Cell], usize),
     next: &Grid,
-    pen: &mut Pen,
+    pen: &mut AnsiPen,
     caps: &Caps,
 ) -> io::Result<()> {
     let new = next.row(row);

@@ -1,10 +1,12 @@
 use crate::animation_runtime::presets;
-use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
+use crate::kernel::{TextBuilder, TextContent, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, Elevation, GHOST_VARIANT, NodeStyleExt, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
+    BORDER_WIDTH, ColorAtom, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
     StyleVariant, Tone, TransitionId,
 };
+use crate::widgets::Widget;
 
 const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -15,18 +17,10 @@ pub(super) enum ButtonWidth {
     Fill,
 }
 
-pub(super) fn accessible_label(label: &TextContent) -> AccessibleName {
-    match label {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
-    }
-}
-
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
     let layout = LayoutStyle::flex_row()
         .height(height)
-        .padding_x(padding_x)
+        .padding_x(Space::px(padding_x))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center);
     match width {
@@ -44,13 +38,23 @@ pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderToneStep(6),
 ];
 
-pub(super) static SOLID_FRAME: &[StyleAtom] = &[StyleAtom::Shadow(Elevation::Sm)];
+const CLEAR_BORDER: StyleAtom =
+    StyleAtom::BorderColor(ColorAtom::Rgba8(crate::scene::command::fills::TRANSPARENT));
+
+pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
+
+pub(super) static SOLID_FRAME: &[StyleAtom] = &[
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    CLEAR_BORDER,
+    StyleAtom::Shadow(Elevation::Sm),
+];
 
 pub(super) static LABEL_TEXT_SOLID: &[StyleAtom] = &[
     StyleAtom::FgOnSolid,
     StyleAtom::FontWeight(500),
     StyleAtom::LetterSpacing(-10),
 ];
+static LABEL_TEXT_SOLID_CELL: &[StyleAtom] = &[StyleAtom::FgOnSolid, StyleAtom::FontWeight(700)];
 pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
     StyleAtom::FgToneStep(11),
     StyleAtom::FontWeight(500),
@@ -63,7 +67,7 @@ pub(super) fn label_node(
     atoms: &'static [StyleAtom],
     compact: bool,
 ) -> TextBuilder {
-    let node = text(label).nowrap().tone(tone).class(atoms);
+    let node = text(label).nowrap().tone_scope(tone).class(atoms);
     if compact { node.class("text-xs") } else { node }
 }
 
@@ -84,9 +88,11 @@ impl ButtonFill {
         }
     }
 
-    pub(super) const fn label_atoms(self) -> &'static [StyleAtom] {
+    pub(super) fn label_atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Solid => LABEL_TEXT_SOLID,
+            Self::Solid => {
+                crate::layout::snap::CellForm::new(LABEL_TEXT_SOLID, LABEL_TEXT_SOLID_CELL).pick()
+            }
             Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
         }
     }

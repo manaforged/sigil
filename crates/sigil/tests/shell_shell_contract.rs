@@ -1,9 +1,10 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 
-use sigil::shell::{ShellError, WinitShell, WinitWaker};
+use sigil::shell::{WinitShell, WinitWaker};
 
 #[test]
 fn waker_is_send_sync_clone_static() {
@@ -15,19 +16,7 @@ fn waker_is_send_sync_clone_static() {
 #[test]
 fn shell_error_implements_std_error() {
     fn assert_error<E: std::error::Error + Send + Sync + 'static>() {}
-    assert_error::<ShellError>();
-}
-
-#[test]
-fn already_run_error_has_display_message() {
-    let err = ShellError::AlreadyRun;
-    assert_eq!(err.to_string(), "shell run called twice");
-}
-
-#[test]
-fn event_loop_closed_error_has_display_message() {
-    let err = ShellError::EventLoopClosed;
-    assert_eq!(err.to_string(), "event loop already exited");
+    assert_error::<sigil::Error>();
 }
 
 #[test]

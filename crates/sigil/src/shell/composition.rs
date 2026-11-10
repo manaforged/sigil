@@ -1,5 +1,3 @@
-use smol_str::SmolStr;
-
 use crate::events::ImeEvent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,21 +19,21 @@ const IME_PROCESS_KEY_CODE: u32 = 229;
 pub(crate) fn composition_events(input: CompositionInput<'_>) -> Vec<ImeEvent> {
     match input {
         CompositionInput::Start => vec![ImeEvent::Enabled],
-        CompositionInput::Update("") => vec![ImeEvent::Preedit(SmolStr::default(), None)],
+        CompositionInput::Update("") => vec![ImeEvent::Preedit(String::new(), None)],
         CompositionInput::Update(text) => vec![ImeEvent::Preedit(
-            SmolStr::new(text),
+            String::from(text),
             Some((text.len(), text.len())),
         )],
         CompositionInput::End(text) => {
-            let mut out = vec![ImeEvent::Preedit(SmolStr::default(), None)];
+            let mut out = vec![ImeEvent::Preedit(String::new(), None)];
             if !text.is_empty() {
-                out.push(ImeEvent::Commit(SmolStr::new(text)));
+                out.push(ImeEvent::Commit(String::from(text)));
             }
             out
         }
         CompositionInput::Text("") => Vec::new(),
         CompositionInput::Text(text) => {
-            vec![ImeEvent::Enabled, ImeEvent::Commit(SmolStr::new(text))]
+            vec![ImeEvent::Enabled, ImeEvent::Commit(String::from(text))]
         }
     }
 }

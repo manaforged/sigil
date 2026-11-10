@@ -1,16 +1,12 @@
+use sigil::Error;
 use sigil::Host;
-use sigil::events::EventRouter;
-use sigil::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
+use sigil::events::{Event, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
-use sigil::layout::LayoutError;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::style::Token;
 use sigil::terminal::{Cell, Grid, Ink};
-use sigil_kittest::{InteractionMode, capture_widget_scaled_focus_descendant, real_text_measure};
+use sigil_kittest::{Harness, InteractionMode};
 
 use std::time::Duration;
 
@@ -75,19 +71,21 @@ pub(crate) fn paint<N: IntoNode + 'static>(
         container()
             .theme(theme)
             .bg(Token::Surface)
-            .layout(LayoutStyle::flex_column().fill().padding(pad))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fill()
+                    .padding(Space::raw(pad, "example layout")),
+            )
             .child(child())
     };
     let extra = (2.0 * pad) as u32;
-    capture_widget_scaled_focus_descendant(
-        frame,
-        view.mode,
-        [view.size[0] + extra, view.size[1] + extra],
-        scale,
-        (view.hit.0 + pad, view.hit.1 + pad),
-        real_text_measure(),
-        &mut wait,
-    )
+    Harness::render(frame)
+        .focus_first()
+        .mode(view.mode)
+        .size([view.size[0] + extra, view.size[1] + extra])
+        .scale(scale)
+        .hit((view.hit.0 + pad, view.hit.1 + pad))
+        .capture(&mut wait)
 }
 
 pub(crate) struct Cells {
@@ -97,20 +95,19 @@ pub(crate) struct Cells {
 
 pub(crate) struct Run<'a> {
     pub(crate) look: Look,
-    pub(crate) events: Vec<ShellEvent>,
+    pub(crate) events: Vec<Event>,
     pub(crate) focus: bool,
     pub(crate) cells: (u16, u16),
     pub(crate) settle: Settle,
     pub(crate) tasks: &'a mut AsyncRuntime,
 }
 
-pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells, LayoutError> {
+pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells, Error> {
     let (cols, rows) = run.cells;
     let tasks = run.tasks;
     let settle = run.settle;
-    Runtime::scope("visual-catalog-terminal", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    Owner::scope("visual-catalog-terminal", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .theme(run.look.theme())
@@ -119,14 +116,15 @@ pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells,
         });
         host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))?;
         if run.focus {
-            host.repair_focus(&mut router);
-            router.focus_next(host.cx());
+            host.repair_focus();
+            let (cx, layout, router) = host.parts();
+            router.focus_next(cx, layout);
         }
-        let mut grid = sigil::terminal::step(&mut host, &mut router, run.events, cols, rows)?;
+        let mut grid = host.grid(run.events, cols, rows)?;
         for _ in 0..SETTLE_FRAMES + settle.frames {
             std::thread::sleep(Duration::from_millis(settle.ms));
             tasks.pump();
-            grid = sigil::terminal::step(&mut host, &mut router, [], cols, rows)?;
+            grid = host.grid([], cols, rows)?;
         }
         Ok(Cells {
             grid,
@@ -137,14 +135,14 @@ pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells,
 
 const SETTLE_FRAMES: u32 = 3;
 
-pub(crate) fn drive(state: State, hit: (f32, f32), drag: [f32; 2]) -> Vec<ShellEvent> {
+pub(crate) fn drive(state: State, hit: (f32, f32), drag: [f32; 2]) -> Vec<Event> {
     let phases: &[PointerPhase] = match state {
         State::Hover => &[PointerPhase::Move],
         State::Pressed | State::Dragged => &[PointerPhase::Move, PointerPhase::Down],
         State::Open => &[PointerPhase::Move, PointerPhase::Down, PointerPhase::Up],
         _ => &[],
     };
-    let mut events: Vec<ShellEvent> = phases
+    let mut events: Vec<Event> = phases
         .iter()
         .map(|phase| pointer(hit, *phase, *phase == PointerPhase::Down))
         .collect();
@@ -155,20 +153,14 @@ pub(crate) fn drive(state: State, hit: (f32, f32), drag: [f32; 2]) -> Vec<ShellE
     events
 }
 
-fn pointer(hit: (f32, f32), phase: PointerPhase, pressed: bool) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(hit.0, hit.1),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: (phase != PointerPhase::Move).then_some(MouseButton::Left),
-        buttons: if pressed {
+fn pointer(hit: (f32, f32), phase: PointerPhase, pressed: bool) -> Event {
+    Event::pointer(phase, Point::new(hit.0, hit.1))
+        .button((phase != PointerPhase::Move).then_some(MouseButton::Left))
+        .buttons(if pressed {
             MouseButtons::LEFT
         } else {
             MouseButtons::empty()
-        },
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+        })
 }
 
 pub(crate) struct Term {
@@ -195,11 +187,11 @@ pub(crate) fn term(cells: &Cells, look: Look) -> Term {
     );
     for row in 0..rows {
         for cell in grid.row(row).iter().take(cols) {
-            if cell.text.is_empty() {
+            if cell.text().is_empty() {
                 continue;
             }
             let style = cell_style(cell, &theme);
-            let text = escape(&cell.text);
+            let text = escape(cell.text());
             if style.is_empty() {
                 out.push_str(&text);
             } else {

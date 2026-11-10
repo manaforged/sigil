@@ -1,21 +1,27 @@
 use std::rc::Rc;
 
-use crate::events::{NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
+use crate::events::PointerEvent;
+use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::PopupSide;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Owner, OwnerId, Signal};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::layout::{LayoutStyle, Position};
+use crate::reactive::{Owner, Signal};
+use crate::style::Style;
+use crate::widgets::Widget;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::popup::{self, PANEL_WIDTH};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::popup::{self, PANEL_WIDTH, PopupAnchor, PopupLayer};
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
+/// One menu entry.
 #[derive(Clone)]
 pub struct MenuItem {
+    /// The label.
     pub label: String,
+    /// The shortcut, if any.
     pub shortcut: Option<String>,
+    /// Whether disabled.
     pub disabled: bool,
+    /// Whether submenu indicator.
     pub submenu_indicator: bool,
     pub(super) on_activate: Option<Rc<dyn Fn()>>,
 }
@@ -33,6 +39,7 @@ impl std::fmt::Debug for MenuItem {
 }
 
 impl MenuItem {
+    /// Creates a menu item.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
@@ -44,24 +51,28 @@ impl MenuItem {
         }
     }
 
+    /// Sets the shortcut.
     #[must_use]
     pub fn shortcut(mut self, hint: impl Into<String>) -> Self {
         self.shortcut = Some(hint.into());
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub const fn disabled(mut self, yes: bool) -> Self {
         self.disabled = yes;
         self
     }
 
+    /// Sets the submenu.
     #[must_use]
     pub const fn submenu(mut self, yes: bool) -> Self {
         self.submenu_indicator = yes;
         self
     }
 
+    /// Sets the action the item runs.
     #[must_use]
     pub fn activate(mut self, on_activate: impl Fn() + 'static) -> Self {
         self.on_activate = Some(Rc::new(on_activate));
@@ -69,9 +80,10 @@ impl MenuItem {
     }
 }
 
+/// Builder of a popup menu.
 pub struct MenuBuilder {
     open: Signal<bool>,
-    host: Option<OwnerId>,
+    host: Option<Owner>,
     rows: Vec<Row>,
     label: Option<String>,
     anchor: Option<(f32, f32)>,
@@ -79,12 +91,14 @@ pub struct MenuBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A popup menu.
 #[must_use]
 pub fn menu(open: Signal<bool>) -> MenuBuilder {
     MenuBuilder::new(open)
 }
 
 impl MenuBuilder {
+    /// Creates a menu builder.
     #[must_use]
     pub fn new(open: Signal<bool>) -> Self {
         Self {
@@ -98,37 +112,42 @@ impl MenuBuilder {
         }
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the host.
     #[must_use]
-    pub const fn host(mut self, owner: OwnerId) -> Self {
+    pub const fn host(mut self, owner: Owner) -> Self {
         self.host = Some(owner);
         self
     }
 
+    /// Sets the anchor.
     #[must_use]
     pub const fn anchor(mut self, x: f32, y: f32) -> Self {
         self.anchor = Some((x, y));
         self
     }
 
+    /// Adds an item.
     #[must_use]
     pub fn item(mut self, item: MenuItem) -> Self {
         self.rows.push(Row::Item(item));
         self
     }
 
+    /// Applies the separator option.
     #[must_use]
     pub fn separator(mut self) -> Self {
         self.rows.push(Row::Separator);
         self
     }
 
-    pub(crate) fn into_node_builder(self) -> NodeBuilder {
+    pub(crate) fn into_node_builder(mut self) -> NodeBuilder {
         let open = self.open;
         let height = panel_height(&self.rows);
         let width = self.layout_overrides.width_hint().unwrap_or(PANEL_WIDTH);
@@ -147,46 +166,35 @@ impl MenuBuilder {
                 panel_layout(0.0, 0.0, width, height),
             ),
         };
+        let overrides = std::mem::take(&mut self.layout_overrides);
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
-        let hooks = self.layout_overrides.hooks();
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
-            .with(self.layout_overrides.apply(placement))
+            .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);
         if !self.style_accumulator.is_empty() {
             panel = panel.style(self.style_accumulator);
         }
+        let panel = overrides.finish(panel);
 
-        let root = container()
-            .layout(layout)
+        let layer = PopupLayer::new(open, PopupAnchor::Inline);
+        layer.register_escape();
+        layer.register_light();
+        layer
+            .dismiss_outside(container().layout(layout))
             .style_reactive(move || popup::shown(open))
-            .pointer_down(move |event| {
-                open.set(false);
-                event.stop_propagation();
-            })
-            .child(panel);
-        hooks.finish(root)
+            .child(panel)
     }
 }
 
-impl WidgetLayoutExt for MenuBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl PaintTarget for MenuBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
+builder_impls!([] MenuBuilder: paint(style_accumulator), widget);
 
 impl IntoNode for MenuBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> NodeId {
         self.into_node_builder().build(cx)
     }
 }

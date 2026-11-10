@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -9,10 +10,7 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::events::{
-    EventRouter, ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
+use sigil::events::{Event, EventRouter, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{Dimension, LayoutEngine};
@@ -20,26 +18,27 @@ use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
 use sigil::style::Color;
-use sigil_kittest::{CharMeasure, gpu::read_pixels};
+use sigil_kittest::{FakeMeasure, gpu::read_pixels};
 use std::env::temp_dir;
 use std::process;
 use wgpu::TextureFormat;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 8.0,
-    line_height: 16.8,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.8);
 
 fn editor_view(name: &str, body: &str) -> NodeBuilder {
     let line_count = body.lines().count().max(1);
     let extent = (line_count as f32).mul_add(16.8, 20.0);
     let mono = text(body.to_owned())
-        .font_size(14.0)
+        .font_size(14.0, "test fixture")
         .font_family(FontFamily::Mono);
     let code = container()
-        .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .padding(Space::raw(10.0, "test fixture"))
+                .width(2000.0),
+        )
         .child(mono);
     let column = LayoutStyle::flex_column()
         .grow(1.0)
@@ -47,9 +46,11 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
     container()
         .layout(column)
         .child(
-            container()
-                .label(name.to_owned())
-                .layout(LayoutStyle::flex_row().height(28.0).padding_x(10.0)),
+            container().label(name.to_owned()).layout(
+                LayoutStyle::flex_row()
+                    .height(28.0)
+                    .padding_x(Space::raw(10.0, "test fixture")),
+            ),
         )
         .child(scroll(code).extent(extent).width(580.0).height(720.0))
 }
@@ -77,7 +78,7 @@ fn render(
     dev: Option<&(wgpu::Device, wgpu::Queue)>,
     label: &str,
 ) {
-    let scene = emit_scene(cx, root);
+    let scene = emit_scene(cx, root, None);
     let Some((device, queue)) = dev else {
         return;
     };
@@ -125,7 +126,7 @@ fn render(
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn clicking_second_file_swaps_editor_without_breaking() {
-    sigil::reactive::Runtime::scope("editor-swap-probe", || {
+    sigil::reactive::Owner::scope("editor-swap-probe", || {
         let files = [
             (
                 "short.rs".to_owned(),
@@ -151,7 +152,7 @@ fn clicking_second_file_swaps_editor_without_breaking() {
                 }),
         );
 
-        let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+        let mut renderer = WgpuRenderer::new();
         let dev = renderer_device(&mut renderer);
 
         let mut layout = fresh_engine();
@@ -176,28 +177,14 @@ fn fresh_engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
 }
 
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
+const fn pointer_move(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Move, Point::new(x, y))
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Down,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-    }))
+const fn pointer_down(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Down, Point::new(x, y))
+        .button(Some(MouseButton::Left))
+        .buttons(MouseButtons::LEFT)
 }
 
 fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuilder {
@@ -206,7 +193,11 @@ fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuil
         .layout(LayoutStyle::flex_row().grow(1.0))
         .child(
             container()
-                .layout(LayoutStyle::flex_column().width(248.0).padding(6.0))
+                .layout(
+                    LayoutStyle::flex_column()
+                        .width(248.0)
+                        .padding(Space::raw(6.0, "test fixture")),
+                )
                 .children_reactive(move || {
                     let active = selected.get();
                     explorer_files
@@ -231,7 +222,7 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
         .role(Role::Button)
         .label(name.to_owned())
         .focusable(true)
-        .layout(LayoutStyle::flex_row().height(22.0).padding_x(8.0));
+        .layout(LayoutStyle::flex_row().height(22.0).padding_x(Space::Sm));
     let row = if active { row.bg(Token::Accent) } else { row };
     row.pointer_down(move |ev| {
         selected.set(idx);
@@ -243,7 +234,7 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn routed_clicks_through_explorer_dont_break() {
-    sigil::reactive::Runtime::scope("editor-swap-routed", || {
+    sigil::reactive::Owner::scope("editor-swap-routed", || {
         let files = vec![
             ("a.rs".to_owned(), "fn a() {}\n".to_owned()),
             (
@@ -259,7 +250,7 @@ fn routed_clicks_through_explorer_dont_break() {
         let mut cx = Cx::new_root();
         let root = cx.add(shell_root(selected, files));
 
-        let mut renderer = WgpuRenderer::new().expect("renderer");
+        let mut renderer = WgpuRenderer::new();
         let dev = renderer_device(&mut renderer);
         let mut layout = fresh_engine();
         let mut router = EventRouter::new();
@@ -275,22 +266,14 @@ fn routed_clicks_through_explorer_dont_break() {
     });
 }
 
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Up,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
+const fn pointer_up(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Up, Point::new(x, y)).button(Some(MouseButton::Left))
 }
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn captured_scroll_thumb_survives_editor_rebuild() {
-    sigil::reactive::Runtime::scope("editor-swap-capture", || {
+    sigil::reactive::Owner::scope("editor-swap-capture", || {
         let files = vec![
             (
                 "a.rs".to_owned(),
@@ -341,7 +324,7 @@ fn captured_scroll_thumb_survives_editor_rebuild() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 #[allow(clippy::too_many_lines)]
 fn deep_reactive_scroll_switch_stays_positioned() {
-    sigil::reactive::Runtime::scope("deep-reactive-scroll", || {
+    sigil::reactive::Owner::scope("deep-reactive-scroll", || {
         let tall = signal(false);
         let pane = container()
             .layout(LayoutStyle::flex_column().grow(1.0))
@@ -353,7 +336,11 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .join("\n");
                 let extent = (lines as f32).mul_add(16.8, 20.0);
                 let code = container()
-                    .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .padding(Space::raw(10.0, "test fixture"))
+                            .width(2000.0),
+                    )
                     .child(text(body));
                 vec![scroll(code).extent(extent).width(580.0).height(720.0)]
             });

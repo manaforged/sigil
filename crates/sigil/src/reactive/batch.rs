@@ -9,6 +9,7 @@ impl Drop for BatchGuard {
     }
 }
 
+/// Group writes into one update.
 pub fn batch<R>(f: impl FnOnce() -> R) -> R {
     let depth = with_rt(|rt| {
         rt.batch_depth += 1;

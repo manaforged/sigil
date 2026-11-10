@@ -1,7 +1,7 @@
 use sigil::prelude::*;
 use sigil::widgets::{ColWidth, Orientation, TableColumn, TableState, TreeNode};
 
-use super::{present, step};
+use super::{painted, present, step};
 
 fn line_with<'a>(grid: &'a str, needle: &str) -> &'a str {
     grid.lines()
@@ -55,27 +55,26 @@ fn job_table() -> TableState<(usize, String)> {
 
 #[test]
 fn a_table_updated_while_its_tab_is_hidden_lays_out_when_shown() {
-    sigil::reactive::Runtime::scope("hidden-table", || {
+    sigil::reactive::Owner::scope("hidden-table", || {
         let active = signal(0_usize);
         let state = job_table();
         let screen_state = state.clone();
-        let mut host = sigil::Host::cells();
+        let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(move || jobs_screen(active, &screen_state));
-        let mut router = sigil::events::EventRouter::new();
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         active.set(1);
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         state.replace_rows(rows(2000, 1));
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         active.set(0);
-        let shown = sigil::terminal::step(&mut host, &mut router, [], 160, 40);
+        let shown = host.grid([], 160, 40);
         assert!(shown.is_ok(), "showing the tab failed: {:?}", shown.err());
     });
 }
 
 #[test]
 fn the_tab_strip_keeps_its_row_when_the_content_overflows() {
-    sigil::reactive::Runtime::scope("tab-strip", || {
+    sigil::reactive::Owner::scope("tab-strip", || {
         let state = job_table();
         let grid = present(move || jobs_screen(signal(0), &state), 80, 24, &[]);
         assert!(grid.contains("Jobs") && grid.contains("Other"), "{grid}");
@@ -129,15 +128,30 @@ fn a_slider_track_fills_whole_cells() {
     );
 }
 
+fn bold_at(grid: &sigil::terminal::Grid, needle: &str) -> bool {
+    let text = grid.text();
+    let (row, line) = text
+        .lines()
+        .enumerate()
+        .find(|(_, line)| line.contains(needle))
+        .unwrap_or_else(|| panic!("{text}"));
+    let col = line[..line.find(needle).expect("needle")].chars().count();
+    grid.row(row)[col].bold
+}
+
 #[test]
 fn the_active_segment_is_marked() {
-    let grid = present(
+    let grid = painted(
         || segmented(signal(1), vec!["Day".into(), "Week".into(), "Month".into()]),
         40,
         4,
-        &[],
     );
-    assert!(grid.contains("[Week]") && !grid.contains("[Day]"), "{grid}");
+    assert!(
+        bold_at(&grid, "Week") && !bold_at(&grid, "Day"),
+        "{}",
+        grid.text()
+    );
+    assert!(!grid.text().contains('['), "{}", grid.text());
 }
 
 #[test]
@@ -169,7 +183,7 @@ fn progress_draws_the_unfilled_track() {
     let track: String = grid
         .row(bar)
         .iter()
-        .map(|cell| cell.text.as_str())
+        .map(sigil::terminal::Cell::text)
         .collect();
     assert!(
         track.contains('─'),
@@ -274,7 +288,7 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
         &[],
     );
     let range = row_of(&grid, "range");
-    assert!(line_with(&grid, "range").contains("[24h]"), "{grid}");
+    assert!(line_with(&grid, "range").contains("24h"), "{grid}");
     assert_eq!(row_of(&grid, "below"), range + 1, "{grid}");
 }
 
@@ -285,29 +299,29 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
             sigil::widgets::canvas(|scene, area| {
                 let cell = sigil::Host::CELL;
                 let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
-                scene.draw_rect(
+                scene.draw_rect(sigil::scene::DrawRect::new(
                     top,
-                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                    Rgba8 {
                         r: 200,
                         g: 40,
                         b: 40,
                         a: 255,
-                    }),
-                );
+                    },
+                ));
                 let lower = sigil::geometry::Rect::new(
                     sigil::geometry::Point::new(area.origin.x, area.origin.y + cell / 2.0),
                     cell * 4.0,
                     cell / 2.0,
                 );
-                scene.draw_rect(
+                scene.draw_rect(sigil::scene::DrawRect::new(
                     lower,
-                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                    Rgba8 {
                         r: 40,
                         g: 40,
                         b: 200,
                         a: 255,
-                    }),
-                );
+                    },
+                ));
             })
             .layout(
                 LayoutStyle::block()
@@ -323,4 +337,44 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
         grid.lines().next().is_some_and(|line| line.contains('▄')),
         "{grid}"
     );
+}
+
+#[test]
+fn tabs_built_from_a_label_list_print_every_label() {
+    for labels in [
+        vec![
+            "Models".to_string(),
+            "Providers".to_string(),
+            "Usage".to_string(),
+        ],
+        vec!["One".to_string()],
+    ] {
+        let shown = labels.clone();
+        let grid = present(
+            move || {
+                container()
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .height(sigil::Host::CELL)
+                            .align_items(AlignItems::Center),
+                    )
+                    .child(
+                        tabs()
+                            .labels(shown.clone())
+                            .active(signal(0))
+                            .label("Settings tabs"),
+                    )
+            },
+            60,
+            3,
+            &[],
+        );
+        let first = grid.lines().next().unwrap_or_default();
+        for label in &labels {
+            assert!(
+                first.contains(label.as_str()),
+                "{label} not on the tab row:\n{grid}"
+            );
+        }
+    }
 }

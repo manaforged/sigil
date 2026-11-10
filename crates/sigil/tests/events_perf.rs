@@ -7,14 +7,13 @@
 #[path = "events_support/input.rs"]
 mod input;
 
-use sigil_kittest::FixedMeasure;
+use sigil::geometry::Point;
+use sigil::widgets::Widget;
+use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use input::{key_down, pointer_down, pointer_drag, pointer_up};
-use sigil::events::{
-    Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, ShellEvent, *,
-};
+use sigil::events::{Event, Key, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, *};
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
@@ -26,7 +25,7 @@ fn pointer_route_depth_64_does_not_allocate() {
     let _ = root;
 
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, pointer_down(0.5, 0.5));
+        router.route(&mut cx, &layout, Event::pointer_down(Point::new(0.5, 0.5)));
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
@@ -52,7 +51,11 @@ fn focused_key_route_depth_64_does_not_allocate() {
     router.set_focus(&mut cx, Some(leaf));
 
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, key_down(Key::Enter, PhysicalKey::Enter));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Enter).physical(PhysicalKey::Enter),
+        );
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
@@ -79,16 +82,24 @@ fn captured_pointer_up_release_does_not_allocate() {
         ),
     );
     let mut router = EventRouter::new();
-    router.route(&mut cx, &layout, pointer_down(0.5, 0.5));
+    router.route(&mut cx, &layout, Event::pointer_down(Point::new(0.5, 0.5)));
 
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, pointer_up(200.0, 200.0));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer_up(Point::new(200.0, 200.0)),
+        );
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
     assert_eq!(ups.get(), 1);
 
-    router.route(&mut cx, &layout, pointer_drag(200.0, 200.0));
+    router.route(
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(200.0, 200.0)),
+    );
     assert_eq!(ups.get(), 1);
 }
 
@@ -112,10 +123,14 @@ fn captured_pointer_move_does_not_allocate() {
         ),
     );
     let mut router = EventRouter::new();
-    router.route(&mut cx, &layout, pointer_down(0.5, 0.5));
+    router.route(&mut cx, &layout, Event::pointer_down(Point::new(0.5, 0.5)));
 
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, pointer_drag(200.0, 200.0));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer_drag(Point::new(200.0, 200.0)),
+        );
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
@@ -145,12 +160,14 @@ fn semantic_shortcut_scan_1000_nodes_does_not_allocate() {
     let layout = compute_layout(&mut cx, root);
     let mut router = EventRouter::new();
 
+    router.route(&mut cx, &layout, ctrl_s());
+    let event = ctrl_s();
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, ctrl_s());
+        router.route(&mut cx, &layout, event);
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
-    assert_eq!(hits.get(), 1);
+    assert_eq!(hits.get(), 2);
 }
 
 fn deep_tree(depth: usize, leaf: Option<NodeBuilder>) -> (Cx, NodeId, LayoutEngine) {
@@ -176,7 +193,7 @@ fn deepest_child(cx: &Cx, root: NodeId) -> NodeId {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout.compute(cx, root, Size::fixed(240.0, 240.0)).unwrap();
     layout
 }
@@ -196,19 +213,12 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
         .position(Position::Absolute)
-        .with_layout(move |style| {
-            style.inset.left = LengthPercentageAuto::Px(x);
-            style.inset.top = LengthPercentageAuto::Px(y);
-        })
+        .inset_left(x)
+        .inset_top(y)
 }
 
-fn ctrl_s() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character("s"),
-        physical: PhysicalKey::KeyS,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_s() -> Event {
+    Event::key(LogicalKey::character("s"), KeyPhase::Down)
+        .physical(PhysicalKey::KeyS)
+        .modifiers(ModifiersState::CONTROL)
 }

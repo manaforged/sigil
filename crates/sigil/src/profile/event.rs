@@ -1,10 +1,16 @@
 use crate::profile::key::{Counter, Phase};
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Event {
+pub(crate) enum TraceEvent {
     Complete {
         phase: Phase,
         tid: u32,
+        start_us: u64,
+        dur_us: u64,
+    },
+    Site {
+        location: &'static core::panic::Location<'static>,
+        kind: crate::profile::key::SiteKind,
         start_us: u64,
         dur_us: u64,
     },

@@ -8,12 +8,13 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move;
+use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, LayoutResult};
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::style::scale::ruby_light;
 use sigil::style::{Token, render_style_for};
 use widget_support::{compute, rect_colors};
@@ -37,15 +38,15 @@ fn width(build: impl IntoNode) -> f32 {
 fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Rgba8>, Vec<Rgba8>) {
     let (mut cx, root, layout) = laid_out(build);
     let rest = rect_colors(&cx, root);
-    EventRouter::new().route(&mut cx, &layout, pointer_move(8.0, 8.0));
+    EventRouter::new().route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
     (rest, rect_colors(&cx, root))
 }
 
 #[test]
 fn a_padding_class_widens_a_button() {
-    Runtime::scope("precedence-class-padding", || {
+    Owner::scope("precedence-class-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").layout(LayoutStyle::default().padding(32.0)));
+        let padded = width(button("A").layout(LayoutStyle::default().padding(Space::Xxl)));
         assert!(
             padded >= plain + 40.0,
             "padding(32) left the button at {padded} (plain {plain})"
@@ -55,9 +56,9 @@ fn a_padding_class_widens_a_button() {
 
 #[test]
 fn typed_padding_widens_a_button() {
-    Runtime::scope("precedence-typed-padding", || {
+    Owner::scope("precedence-typed-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").layout(LayoutStyle::default().padding_x(32.0)));
+        let padded = width(button("A").layout(LayoutStyle::default().padding_x(Space::Xxl)));
         assert!(
             padded >= plain + 40.0,
             "padding_x(32) left the button at {padded} (plain {plain})"
@@ -67,7 +68,7 @@ fn typed_padding_widens_a_button() {
 
 #[test]
 fn a_hover_state_in_style_paints_on_hover() {
-    Runtime::scope("precedence-style-hover", || {
+    Owner::scope("precedence-style-hover", || {
         let (rest, hovered) = rest_and_hover_colors(
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
@@ -80,7 +81,7 @@ fn a_hover_state_in_style_paints_on_hover() {
 
 #[test]
 fn a_background_set_on_a_button_holds_under_hover() {
-    Runtime::scope("precedence-button-hover", || {
+    Owner::scope("precedence-button-hover", || {
         let ruby = ruby_light().step(9);
         let (rest, hovered) = rest_and_hover_colors(button("Save").bg(ruby));
         assert!(rest.contains(&ruby), "rest colors: {rest:?}");
@@ -93,7 +94,7 @@ fn a_background_set_on_a_button_holds_under_hover() {
 
 #[test]
 fn a_border_set_on_a_text_field_holds_at_rest() {
-    Runtime::scope("precedence-field-border", || {
+    Owner::scope("precedence-field-border", || {
         let value = signal(String::new());
         let (cx, root, _) = laid_out(text_field(value).border_color(Token::Accent9));
         let node = cx.get(root).expect("the field is in the tree");

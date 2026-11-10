@@ -1,116 +1,149 @@
 use crate::events::ModifiersState;
 use crate::geometry::{LogicalSize, Point};
 
+/// Pointer device.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum PointerKind {
+    /// The mouse pointer kind.
     #[default]
     Mouse,
+    /// The touch pointer kind.
     Touch,
+    /// The pen pointer kind.
     Pen,
 }
 
+/// One mouse button.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum MouseButton {
+    /// The left mouse button.
     Left,
+    /// The right mouse button.
     Right,
+    /// The middle mouse button.
     Middle,
+    /// The back mouse button.
     Back,
+    /// The forward mouse button.
     Forward,
+    /// The other mouse button.
     Other(u16),
 }
 
+/// Set of pressed buttons.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MouseButtons(u8);
 
 impl MouseButtons {
+    /// No buttons.
     pub const EMPTY: Self = Self(0);
+    /// The left button.
     pub const LEFT: Self = Self(1 << 0);
+    /// The right button.
     pub const RIGHT: Self = Self(1 << 1);
+    /// The middle button.
     pub const MIDDLE: Self = Self(1 << 2);
+    /// The back button.
     pub const BACK: Self = Self(1 << 3);
+    /// The forward button.
     pub const FORWARD: Self = Self(1 << 4);
 
+    /// Returns the empty mouse buttons.
     #[must_use]
     pub const fn empty() -> Self {
         Self::EMPTY
     }
 
+    /// Returns whether `button` is in this set.
     #[must_use]
     pub const fn contains(self, button: Self) -> bool {
         self.0 & button.0 == button.0
     }
 
+    /// Adds `button` to this set.
     pub const fn insert(&mut self, button: Self) {
         self.0 |= button.0;
     }
 
+    /// Removes `button` from this set.
     pub const fn remove(&mut self, button: Self) {
         self.0 &= !button.0;
     }
 }
 
+/// Pointer event phase.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum PointerPhase {
+    /// The down pointer phase.
     Down,
+    /// The move pointer phase.
     Move,
+    /// The up pointer phase.
     Up,
+    /// The enter pointer phase.
     Enter,
+    /// The leave pointer phase.
     Leave,
+    /// The cancel pointer phase.
     Cancel,
 }
 
+/// Pen tilt in degrees.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PointerTilt {
+    /// The x.
     pub x: f32,
+    /// The y.
     pub y: f32,
 }
 
+/// A pointer event.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct PointerEvent {
+    /// The position.
     pub position: Point,
+    /// The window position.
     pub window_position: Point,
+    /// The delta.
     pub delta: Point,
+    /// The kind.
     pub kind: PointerKind,
+    /// The button, if any.
     pub button: Option<MouseButton>,
+    /// The buttons.
     pub buttons: MouseButtons,
+    /// The modifiers.
     pub modifiers: ModifiersState,
+    /// The phase.
     pub phase: PointerPhase,
+    /// The target size.
     pub target_size: LogicalSize,
+    /// The pointer id.
     pub pointer_id: u64,
+    /// The pressure, if any.
     pub pressure: Option<f32>,
+    /// The tilt, if any.
     pub tilt: Option<PointerTilt>,
     capture_requested: bool,
     captured: bool,
     propagation_stopped: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PointerEventInit {
-    pub position: Point,
-    pub delta: Point,
-    pub kind: PointerKind,
-    pub button: Option<MouseButton>,
-    pub buttons: MouseButtons,
-    pub modifiers: ModifiersState,
-    pub phase: PointerPhase,
-}
-
 impl PointerEvent {
-    #[must_use]
-    pub const fn new(init: PointerEventInit) -> Self {
+    pub(crate) const fn new(phase: PointerPhase, position: Point) -> Self {
         Self {
-            position: init.position,
-            window_position: init.position,
-            delta: init.delta,
-            kind: init.kind,
-            button: init.button,
-            buttons: init.buttons,
-            modifiers: init.modifiers,
-            phase: init.phase,
+            position,
+            window_position: position,
+            delta: Point::new(0.0, 0.0),
+            kind: PointerKind::Mouse,
+            button: None,
+            buttons: MouseButtons::empty(),
+            modifiers: ModifiersState::empty(),
+            phase,
             target_size: LogicalSize::new(0.0, 0.0),
             pointer_id: 0,
             pressure: None,
@@ -121,8 +154,9 @@ impl PointerEvent {
         }
     }
 
+    #[cfg(any(test, feature = "desktop"))]
     #[must_use]
-    pub const fn with_contact(
+    pub(crate) const fn with_contact(
         mut self,
         pointer_id: u64,
         pressure: Option<f32>,
@@ -134,38 +168,44 @@ impl PointerEvent {
         self
     }
 
+    /// Stops the event from reaching ancestor nodes.
     pub const fn stop_propagation(&mut self) {
         self.propagation_stopped = true;
     }
 
+    /// Sends later pointer events to this node until release.
     pub const fn capture_pointer(&mut self) {
         self.capture_requested = true;
     }
 
+    /// Returns whether this pointer event is captured.
     #[must_use]
     pub const fn is_captured(&self) -> bool {
         self.captured
     }
 
+    /// Returns whether propagation stopped is set.
     #[must_use]
     pub const fn propagation_stopped(&self) -> bool {
         self.propagation_stopped
     }
 
+    /// Returns whether capture requested is set.
     #[must_use]
     pub const fn capture_requested(&self) -> bool {
         self.capture_requested
     }
 
+    /// Sets the captured.
     pub const fn set_captured(&mut self, captured: bool) {
         self.captured = captured;
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ClickConfig {
-    pub interval: core::time::Duration,
-    pub distance: f32,
+pub(crate) struct ClickConfig {
+    pub(crate) interval: core::time::Duration,
+    pub(crate) distance: f32,
 }
 
 impl Default for ClickConfig {
@@ -183,16 +223,17 @@ thread_local! {
 
 impl ClickConfig {
     #[must_use]
-    pub fn current() -> Self {
+    pub(crate) fn current() -> Self {
         CLICK.with(core::cell::Cell::get).unwrap_or_default()
     }
 
-    pub fn set(config: Self) {
+    #[cfg(any(test, feature = "desktop", feature = "terminal"))]
+    pub(crate) fn set(config: Self) {
         CLICK.with(|cell| cell.set(Some(config)));
     }
 
     #[must_use]
-    pub fn is_repeat(&self, elapsed: core::time::Duration, from: Point, to: Point) -> bool {
+    pub(crate) fn is_repeat(&self, elapsed: core::time::Duration, from: Point, to: Point) -> bool {
         elapsed <= self.interval
             && (from.x - to.x).abs() <= self.distance
             && (from.y - to.y).abs() <= self.distance

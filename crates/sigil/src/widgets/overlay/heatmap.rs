@@ -1,13 +1,13 @@
 use crate::kernel::{NodeBuilder, ObjectFit, Role, container, image};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::style::Rgba8;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
-
-use super::super::layout_ext::WidgetLayoutExt;
+use crate::widgets::Widget;
 
 mod raster;
 
+/// A grid of colored cells, drawn as one image that fills its box.
 #[must_use]
 pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
     grid_w: usize,
@@ -24,7 +24,7 @@ pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
                 .grow(1.0)
                 .min_size(0.0, 0.0),
         );
-    let Some(grid) = raster::Grid::new(grid_w, grid_h, &color) else {
+    let Some(grid) = raster::HeatGrid::new(grid_w, grid_h, &color) else {
         return root;
     };
     let Some(source) = grid.source() else {

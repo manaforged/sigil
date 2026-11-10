@@ -10,14 +10,11 @@
 )]
 
 use super::*;
-use crate::geometry::{LogicalSize, Size as HalSize};
-use crate::kernel::TextContent;
 use crate::layout::forest::{AvailableSpace, LayoutForest, MeasureScope};
-use crate::layout::resolve::{Edges as AlgoEdges, clamp, dim_to_border_box, resolve_lp};
+use crate::layout::resolve::{ResolvedEdges as AlgoEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::layout::style_data::{
-    AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap,
-    JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, Size as StyleSize,
-    StyleData,
+    AlignContent, AlignItems, Axes as StyleSize, BoxSizing, Dimension, Display, Edges,
+    FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
 };
 
 impl FlexSolver<'_> {
@@ -32,12 +29,7 @@ impl FlexSolver<'_> {
 
 const TOL: f32 = 0.01;
 
-struct NullText;
-impl crate::layout::TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
+const NO_TEXT: crate::layout::FakeMeasure = crate::layout::FakeMeasure::fixed(0.0, 0.0);
 
 fn near(a: f32, b: f32) -> bool {
     (a - b).abs() <= TOL
@@ -49,7 +41,7 @@ fn run(
     w: f32,
     h: f32,
 ) -> FlexSolver<'_> {
-    let measurer: &'static NullText = &NullText;
+    let measurer: &'static crate::layout::FakeMeasure = &NO_TEXT;
     let scope = MeasureScope::new(forest, measurer, AvailableSpace::definite(w, h));
     let solver = FlexSolver::new(scope);
     solver.solve(forest.refer(root).unwrap()).unwrap();

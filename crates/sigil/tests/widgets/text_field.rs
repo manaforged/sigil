@@ -2,10 +2,11 @@ use super::*;
 use sigil::events::EventRouter;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
+use sigil::style::FocusRing;
 
 #[test]
 fn text_field_typing_updates_signal() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-typing", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-typing", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));
@@ -29,7 +30,7 @@ fn text_field_typing_updates_signal() {
 
 #[test]
 fn text_field_typing_emits_the_updated_glyph_run() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-typing-paint", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-typing-paint", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));
@@ -55,7 +56,7 @@ fn text_field_typing_emits_the_updated_glyph_run() {
 
 #[test]
 fn text_field_backspace_removes_last_character() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-backspace", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-backspace", || {
         let value = signal(String::from("ab"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -74,7 +75,7 @@ fn text_field_backspace_removes_last_character() {
 
 #[test]
 fn text_field_disabled_ignores_typing() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-disabled", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-disabled", || {
         let value = signal(String::new());
         let disabled = signal(true);
         let mut cx = Cx::new_root();
@@ -89,15 +90,14 @@ fn text_field_disabled_ignores_typing() {
         router.route(&mut cx, &layout, text_down("a"));
 
         assert_eq!(value.get(), "");
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 
 #[test]
 fn text_field_enter_fires_submit_with_current_value() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-submit", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-submit", || {
         let value = signal(String::from("ready"));
         let submitted = Rc::new(RefCell::new(String::new()));
         let mut cx = Cx::new_root();
@@ -123,7 +123,7 @@ fn text_field_enter_fires_submit_with_current_value() {
 
 #[test]
 fn text_field_placeholder_renders_when_empty_and_unfocused() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-placeholder", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-placeholder", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Add note"));
@@ -132,12 +132,12 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
 
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         let placeholder = scene
             .commands
             .iter()
             .find_map(|command| match command {
-                SceneCommand::GlyphRun(run) if run.run.text == "Add note" => Some(&run.run),
+                SceneCommand::GlyphRun(run) if run.text == "Add note" => Some(run),
                 _ => None,
             })
             .expect("placeholder glyph run");
@@ -148,7 +148,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
 
 #[test]
 fn text_field_placeholder_remains_visible_when_focused() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-placeholder-focus", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-placeholder-focus", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Add note"));
@@ -169,7 +169,7 @@ fn text_field_placeholder_remains_visible_when_focused() {
 
 #[test]
 fn text_field_focus_ring_visible_when_focused() {
-    sigil::reactive::Runtime::scope("sigil-widget-text-field-focus-ring", || {
+    sigil::reactive::Owner::scope("sigil-widget-text-field-focus-ring", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));

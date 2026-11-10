@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -10,14 +11,23 @@ mod scene_support;
 
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
-use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, SpriteKind, SpriteSource};
+use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
+use sigil::scene::{
+    CommandScene, DrawSprite, SceneBuilder, SceneCommand, SpriteKind, SpriteSource,
+};
 use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (360.0, 80.0);
 const VIEWPORT_WIDTH: u32 = 360;
 const VIEWPORT_HEIGHT: u32 = 80;
+const MASKS: [(f32, f32); 5] = [
+    (0.0, 204.0),
+    (128.0, 204.0),
+    (256.0, 204.0),
+    (384.0, 204.0),
+    (0.0, 332.0),
+];
 const CAPTURE: Capture = Capture {
     viewport: VIEWPORT,
     size_px: [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
@@ -63,28 +73,29 @@ fn assert_icon_command_shape(scene: &CommandScene) {
         panic!("expected five icon draw commands");
     };
 
-    for (index, draw) in [heart, gear, search, arrow, close].into_iter().enumerate() {
+    for ((x, y), draw) in MASKS.into_iter().zip([heart, gear, search, arrow, close]) {
         assert_eq!(draw.kind, SpriteKind::Mono);
-        assert_eq!(draw.source.atlas, BUILTIN_ICON_ATLAS_BASE_ID + index as u32);
+        assert_eq!(draw.source.atlas, BUILTIN_SPRITE_ATLAS_ID);
+        assert_eq!(draw.source.region.origin, Point::new(x, y));
     }
 }
 
 fn icon_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
-    for index in 0..5 {
-        builder.draw_sprite(
-            source(BUILTIN_ICON_ATLAS_BASE_ID + index, 0.0, 0.0),
+    for (index, (x, y)) in MASKS.into_iter().enumerate() {
+        builder.draw_sprite(DrawSprite::new(
+            source(x, y),
             rect(index as f32 * 64.0),
             SpriteKind::Mono,
             color(220, 220, 240, 255),
-        );
+        ));
     }
     builder.finish()
 }
 
-const fn source(atlas: u32, x: f32, y: f32) -> SpriteSource {
+const fn source(x: f32, y: f32) -> SpriteSource {
     SpriteSource {
-        atlas,
+        atlas: BUILTIN_SPRITE_ATLAS_ID,
         region: Rect::new(Point::new(x, y), 128.0, 128.0),
         phase: 0.0,
     }

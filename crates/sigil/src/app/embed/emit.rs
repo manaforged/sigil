@@ -5,8 +5,9 @@ use crate::scene::emit::{EmitDiff, EmitMemo, emit_scene_since};
 use super::{Host, viewport_rect};
 
 impl Host {
+    #[cfg(any(test, feature = "terminal", feature = "kittest"))]
     #[must_use]
-    pub fn emit_since(
+    pub(crate) fn emit_since(
         &mut self,
         viewport: (f32, f32),
         delta: &FrameDelta,
@@ -49,6 +50,7 @@ impl Host {
         })
     }
 
+    /// Clears the memo that incremental painting reuses.
     pub fn reset_emit(&mut self) {
         self.emitted = EmitMemo::default();
     }

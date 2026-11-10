@@ -1,7 +1,9 @@
+#[cfg(test)]
 mod hsv;
 
 use crate::style::Rgba8;
 use crate::style::scale::rgb;
+#[cfg(test)]
 use hsv::{perceived_brightness, tint_toward_hue};
 
 pub(crate) const fn is_dark(c: Rgba8) -> bool {
@@ -24,20 +26,20 @@ pub(crate) const fn perceived_brightness_u32(c: Rgba8) -> u32 {
     let b = c.b as u32;
     r * 30 + g * 59 + b * 11
 }
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Palette {
-    pub background: Rgba8,
-    pub text: Rgba8,
-    pub primary: Rgba8,
-    pub success: Rgba8,
-    pub warning: Rgba8,
-    pub danger: Rgba8,
+pub(crate) struct Palette {
+    pub(crate) background: Rgba8,
+    pub(crate) text: Rgba8,
+    pub(crate) primary: Rgba8,
+    pub(crate) success: Rgba8,
+    pub(crate) warning: Rgba8,
+    pub(crate) danger: Rgba8,
 }
 
 impl Palette {
+    #[cfg(test)]
     #[must_use]
-    pub const fn aetherlight() -> Self {
+    pub(crate) const fn aetherlight() -> Self {
         Self {
             background: rgb(0xF5, 0xF7, 0xFB),
             text: rgb(0x14, 0x1B, 0x2D),
@@ -47,9 +49,8 @@ impl Palette {
             danger: rgb(0xD0, 0x3A, 0x4A),
         }
     }
-
     #[must_use]
-    pub const fn obsidian() -> Self {
+    pub(crate) const fn obsidian() -> Self {
         Self {
             background: rgb(0x14, 0x16, 0x1C),
             text: rgb(0xE8, 0xEA, 0xF0),
@@ -59,9 +60,8 @@ impl Palette {
             danger: rgb(0xE4, 0x5E, 0x6E),
         }
     }
-
     #[must_use]
-    pub const fn terminal() -> Self {
+    pub(crate) const fn terminal() -> Self {
         Self {
             background: rgb(0x0A, 0x0A, 0x0A),
             text: rgb(0x33, 0xFF, 0x33),
@@ -71,9 +71,9 @@ impl Palette {
             danger: rgb(0xFF, 0x33, 0x33),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn voltglyph() -> Self {
+    pub(crate) const fn voltglyph() -> Self {
         Self {
             background: rgb(0x07, 0x05, 0x12),
             text: rgb(0xE2, 0xE6, 0xFA),
@@ -83,9 +83,9 @@ impl Palette {
             danger: rgb(0xFF, 0x3C, 0x66),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn mythril() -> Self {
+    pub(crate) const fn mythril() -> Self {
         Self {
             background: rgb(0x1A, 0x14, 0x26),
             text: rgb(0xE5, 0xDC, 0xF5),
@@ -95,9 +95,9 @@ impl Palette {
             danger: rgb(0xEC, 0x6D, 0x96),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn frostkeep() -> Self {
+    pub(crate) const fn frostkeep() -> Self {
         Self {
             background: rgb(0x1C, 0x24, 0x30),
             text: rgb(0xD8, 0xE0, 0xEC),
@@ -107,9 +107,9 @@ impl Palette {
             danger: rgb(0xD8, 0x7E, 0x9A),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn vellum() -> Self {
+    pub(crate) const fn vellum() -> Self {
         Self {
             background: rgb(0xF2, 0xE8, 0xD0),
             text: rgb(0x3A, 0x2A, 0x1A),
@@ -119,9 +119,9 @@ impl Palette {
             danger: rgb(0xB0, 0x40, 0x40),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn embergrove() -> Self {
+    pub(crate) const fn embergrove() -> Self {
         Self {
             background: rgb(0x1F, 0x16, 0x10),
             text: rgb(0xF0, 0xDC, 0xB4),
@@ -131,9 +131,9 @@ impl Palette {
             danger: rgb(0xE0, 0x60, 0x4A),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn verdigris() -> Self {
+    pub(crate) const fn verdigris() -> Self {
         Self {
             background: rgb(0x18, 0x24, 0x22),
             text: rgb(0xD0, 0xE0, 0xC0),
@@ -143,9 +143,9 @@ impl Palette {
             danger: rgb(0xD0, 0x70, 0x60),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn faewine() -> Self {
+    pub(crate) const fn faewine() -> Self {
         Self {
             background: rgb(0x22, 0x1C, 0x2A),
             text: rgb(0xF0, 0xE0, 0xEC),
@@ -155,9 +155,9 @@ impl Palette {
             danger: rgb(0xE0, 0x7C, 0x96),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub const fn crystalline() -> Self {
+    pub(crate) const fn crystalline() -> Self {
         Self {
             background: rgb(0x0E, 0x10, 0x20),
             text: rgb(0xE0, 0xE8, 0xFA),
@@ -167,9 +167,9 @@ impl Palette {
             danger: rgb(0xFF, 0x70, 0xA0),
         }
     }
-
+    #[cfg(test)]
     #[must_use]
-    pub fn spellforge(accent: Rgba8) -> Self {
+    pub(crate) fn spellforge(accent: Rgba8) -> Self {
         let accent_is_bright = perceived_brightness(accent) > 128;
         let (bg, fg) = if accent_is_bright {
             (rgb(0x14, 0x16, 0x1C), rgb(0xE8, 0xEA, 0xF0))

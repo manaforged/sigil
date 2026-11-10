@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -8,27 +9,27 @@
 mod scene_support;
 
 use scene_support::rect;
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
-use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder, SceneCommand};
 use sigil::style::{Color, Rgba8};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_construction_does_not_panic() {
-    let _ = WgpuRenderer::new().expect("renderer construction");
+    let _ = WgpuRenderer::new();
 }
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_new_repeatable() {
-    let _a = WgpuRenderer::new().expect("first renderer");
-    let _b = WgpuRenderer::new().expect("second renderer");
+    let _a = WgpuRenderer::new();
+    let _b = WgpuRenderer::new();
 }
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_pre_surface_accessors_return_none() {
-    let r = WgpuRenderer::new().expect("renderer");
+    let r = WgpuRenderer::new();
     assert!(r.device().is_none());
     assert!(r.queue().is_none());
 }
@@ -57,7 +58,7 @@ fn render_command_scene_paints_nested_clip() {
 fn render_command_scene_paints_save_layer_with_opacity() {
     let mut builder = SceneBuilder::new();
     builder.with_layer(0.5, |scene| {
-        scene.draw_rect(rect(0.0, 0.0, 10.0, 10.0), rect_style());
+        scene.draw_rect(rect_style(rect(0.0, 0.0, 10.0, 10.0)));
     });
     let scene = builder.finish();
 
@@ -79,7 +80,7 @@ fn render_command_scene_transform_affects_descendants() {
     let transform = [[1.0, 0.0, 8.0], [0.0, 1.0, 12.0]];
     let mut builder = SceneBuilder::new();
     builder.with_transform(transform, |scene| {
-        scene.draw_rect(rect(1.0, 2.0, 10.0, 10.0), rect_style());
+        scene.draw_rect(rect_style(rect(1.0, 2.0, 10.0, 10.0)));
     });
     let scene = builder.finish();
 
@@ -101,27 +102,26 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 fn nested_clip_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.with_clip(rect(0.0, 0.0, 100.0, 100.0), |scene| {
         scene.with_clip(rect(10.0, 10.0, 40.0, 40.0), |scene| {
-            scene.draw_rect(rect(5.0, 5.0, 80.0, 80.0), rect_style());
+            scene.draw_rect(rect_style(rect(5.0, 5.0, 80.0, 80.0)));
         });
     });
     builder.finish()
 }
 
-const fn rect_style() -> SceneRectStyle {
-    SceneRectStyle::new(
+const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
+    DrawRect::new(
+        rect,
         Rgba8 {
             r: 180,
             g: 20,
             b: 80,
             a: 255,
         },
-        CornerRadii::ZERO,
-        10_000,
     )
 }

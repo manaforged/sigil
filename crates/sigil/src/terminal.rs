@@ -1,5 +1,8 @@
 mod access;
+pub(crate) mod backdrop;
 mod caps;
+#[cfg(feature = "scene")]
+mod capture;
 mod clipboard;
 mod colour;
 mod glyphs;
@@ -14,6 +17,8 @@ pub(crate) use keys::fuzz_strip;
 mod mouse;
 mod notify;
 mod paint;
+mod pixels;
+mod placeholder;
 mod run;
 mod screen;
 mod scroll;
@@ -23,26 +28,46 @@ mod transcript;
 mod write;
 
 pub use access::{Access, FocusCursor};
-pub use caps::{
-    Backdrop, Borders, Caps, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard, Notices, Notify,
-};
-pub use clipboard::install_clipboard;
-pub use glyphs::{Glyphs, glyphs};
-pub use graphics::{
-    Mux, Placement, Protocol, base64, blocks, blocks_window, detect, detect_mux, png, png_window,
-    sextants, sextants_window,
-};
-pub use keys::{key_down, map_key, paste};
-pub use mouse::{MouseTracking, cell_point, click, map_mouse, pointer, wheel};
-pub use notify::{bell, notify, progress};
-pub use paint::{
-    CONTINUES, Cell, Grid, Ink, Lines, Marks, Paint, Underline, raster, raster_into, raster_with,
-};
+pub use backdrop::backdrop;
+pub use caps::{Backdrop, Borders, Caps, ColorDepth, Cursor, Fills, Keyboard, Notify};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use glyphs::Glyphs;
+}
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub use glyphs::glyphs;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use graphics::{base64, detect};
+}
+pub use graphics::{Mux, Protocol};
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub use graphics::{blocks, png, sextants};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use keys::map_key;
+}
+pub use mouse::MouseTracking;
+#[cfg(any(test, feature = "kittest"))]
+#[doc(hidden)]
+pub use mouse::cell_point;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use mouse::map_mouse;
+}
+pub use notify::{Activity, activity, bell, notify, progress};
+pub use paint::{Cell, Grid, Ink, Lines, Underline};
+pub use pixels::{pixels, set_pixels};
+#[cfg(test)]
+pub(crate) use run::present;
 pub(crate) use run::run;
-pub use run::{AfterFrame, EventPump, Hooks, calibrate, present, step};
+#[cfg(all(
+    test,
+    any(feature = "dialog", all(feature = "hot", not(target_arch = "wasm32")))
+))]
+pub(crate) use run::step;
+pub use run::{Hooks, calibrate};
 pub use screen::Screen;
-pub use term::{
-    PrintAboveError, caps, focused, print_above, set_mouse_capture, set_mouse_tracking, set_title,
-    suspend,
-};
-pub use write::render;
+pub use term::{caps, focused, print_above, set_mouse_tracking, set_title, suspend};

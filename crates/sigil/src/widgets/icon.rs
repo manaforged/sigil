@@ -1,13 +1,11 @@
-#[cfg(feature = "scene")]
-use std::rc::Rc;
-
-use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
-use crate::style::{ControlSize, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot, Tone};
+use crate::style::{ControlSize, Style, StyleAtom, Tone};
+use crate::widgets::Widget;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 #[cfg(feature = "scene")]
 mod svg;
@@ -18,9 +16,10 @@ static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 enum Glyph {
     Text(TextContent),
     #[cfg(feature = "scene")]
-    Svg(Rc<str>),
+    Svg(std::sync::Arc<str>),
 }
 
+/// Builder of an icon.
 pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
@@ -34,6 +33,7 @@ pub struct IconBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// What `icon` accepts: a bundled `Icon` or any text glyph.
 #[derive(Clone)]
 pub struct IconSource(Glyph);
 
@@ -43,7 +43,9 @@ impl IntoIconSource for IconSource {
     }
 }
 
+/// A value that can be drawn as an icon.
 pub trait IntoIconSource {
+    /// Converts this into icon source to icon source.
     fn into_icon_source(self) -> IconSource;
 }
 
@@ -56,24 +58,27 @@ impl<T: Into<TextContent>> IntoIconSource for T {
 #[cfg(feature = "scene")]
 impl IntoIconSource for crate::icons::Icon {
     fn into_icon_source(self) -> IconSource {
-        IconSource(Glyph::Svg(Rc::from(self.svg())))
+        IconSource(Glyph::Svg(std::sync::Arc::from(self.svg())))
     }
 }
 
+/// An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph.
 #[must_use]
 pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
+/// An SVG icon.
 #[cfg(feature = "scene")]
 #[must_use]
-pub fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder {
+pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
     let mut builder = IconBuilder::new("");
     builder.glyph = Glyph::Svg(svg.into());
     builder
 }
 
 impl IconBuilder {
+    /// Creates an icon builder.
     #[must_use]
     pub fn new(glyph: impl IntoIconSource) -> Self {
         Self {
@@ -90,24 +95,28 @@ impl IconBuilder {
         }
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
+    /// Sets the size.
     #[must_use]
     pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self
     }
 
+    /// Sets the px.
     #[must_use]
     pub const fn px(mut self, px: f32) -> Self {
         self.px = Some(px);
         self
     }
 
+    /// Applies the strong option.
     #[must_use]
     pub const fn strong(mut self) -> Self {
         self.step = 12;
@@ -121,13 +130,14 @@ impl IconBuilder {
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let (base, glyph_class) = match self.size {
             ControlSize::Compact => (16.0, "text-xs"),
             ControlSize::Default => (20.0, "text-base"),
@@ -146,29 +156,24 @@ impl IconBuilder {
             .shrink(0.0)
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::Center);
-        let container_node = container()
-            .role(role)
-            .with(self.layout_overrides.apply(layout))
-            .tone(self.tone);
+        let container_node = container().role(role).with(layout).tone_scope(self.tone);
         let mut container_node = match self.glyph {
             Glyph::Text(glyph) => container_node.child(
                 text(glyph)
                     .class(glyph_class)
                     .class(ICON_GLYPH_COLOR)
-                    .tone(self.tone)
+                    .tone_scope(self.tone)
                     .hittable(false),
             ),
             #[cfg(feature = "scene")]
-            Glyph::Svg(svg) => container_node.child(svg::SvgGlyph {
-                svg,
-                pixels: svg_pixels(drawn),
-                token: if self.on_solid {
+            Glyph::Svg(svg) => {
+                let token = if self.on_solid {
                     Token::OnSolid
                 } else {
                     Token::scale(self.tone.scale_role(), self.step).unwrap_or(Token::Gray11)
-                },
-                extent: drawn,
-            }),
+                };
+                container_node.child(svg::glyph(svg, token, drawn))
+            }
         };
         if let Some(label) = self.label {
             container_node = container_node.label(label);
@@ -180,36 +185,7 @@ impl IconBuilder {
     }
 }
 
-#[cfg(feature = "scene")]
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "icon extents are small positive constants"
-)]
-fn svg_pixels(extent: f32) -> u32 {
-    (extent * 2.0).round() as u32
-}
-
-impl PaintTarget for IconBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for IconBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for IconBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] IconBuilder: paint(style_accumulator), widget, node);
 
 #[cfg(test)]
 #[path = "icon_tests.rs"]

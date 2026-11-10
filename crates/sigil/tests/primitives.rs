@@ -9,21 +9,18 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{
-    EventRouter, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState,
-};
-use sigil::events::{PRIMARY, PhysicalKey, ShellEvent, Shortcut};
+use sigil::events::{Event, PhysicalKey, Shortcut};
+use sigil::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState};
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
-use sigil::tasks::Status;
-use sigil::widgets::{SortDir, SortKey};
+use sigil::reactive::Owner;
+use sigil::widgets::{SortDirection, SortKey};
 
 const VIEW: (f32, f32) = (480.0, 320.0);
 
-fn settle(host: &mut Host, router: &mut EventRouter) {
+fn settle(host: &mut Host) {
     for _ in 0..3 {
-        let _ = host.frame(router, VIEW, 1.0 / 60.0, FrameHooks::default());
+        let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
     }
 }
 
@@ -41,10 +38,9 @@ fn counted(count: &Rc<Cell<u32>>, label: &'static str) -> impl Fn() -> NodeBuild
 
 fn mounts_of_first_page(keep_alive: bool) -> u32 {
     let mounts = Rc::new(Cell::new(0));
-    Runtime::scope("primitives::switch", || {
+    Owner::scope("primitives::switch", || {
         let page = signal(0_u8);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         let view = counted(&mounts, "First page");
         host.mount(
             column().child(
@@ -54,14 +50,14 @@ fn mounts_of_first_page(keep_alive: bool) -> u32 {
                     .keep_alive(keep_alive),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "First page"));
         page.set(1);
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "Second page"));
         assert!(!drawn(&mut host, "First page"));
         page.set(0);
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "First page"));
     });
     mounts.get()
@@ -74,46 +70,13 @@ fn switch_keeps_a_page_mounted_only_with_keep_alive() {
 }
 
 #[test]
-fn match_status_shows_the_view_of_each_status() {
-    Runtime::scope("primitives::match_status", || {
-        let step = signal(0_u8);
-        let status = move || match step.get() {
-            0 => Status::<u32, String>::Pending,
-            1 => Status::Ok(3),
-            _ => Status::Err(String::from("offline")),
-        };
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
-        host.mount(
-            column().child(
-                match_status(status)
-                    .pending(|| text("Loading"))
-                    .ok(|value: &u32| text(format!("Loaded {value}")))
-                    .error(|error: &String| text(format!("Failed: {error}"))),
-            ),
-        );
-        settle(&mut host, &mut router);
-        assert!(drawn(&mut host, "Loading"));
-
-        step.set(1);
-        settle(&mut host, &mut router);
-        assert!(drawn(&mut host, "Loaded 3"));
-
-        step.set(2);
-        settle(&mut host, &mut router);
-        assert!(drawn(&mut host, "Failed: offline"));
-    });
-}
-
-#[test]
 fn tabs_follow_their_labels_and_clamp_the_active_tab() {
-    Runtime::scope("primitives::tabs", || {
+    Owner::scope("primitives::tabs", || {
         let labels = signal(vec![String::from("Alpha"), String::from("Beta")]);
         let active = signal(1_usize);
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(tabs().active(active).labels(labels)));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "Beta"));
 
         labels.set(vec![
@@ -121,35 +84,27 @@ fn tabs_follow_their_labels_and_clamp_the_active_tab() {
             String::from("Beta"),
             String::from("Gamma"),
         ]);
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "Gamma"));
 
         active.set(2);
         labels.set(vec![String::from("Alpha")]);
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(!drawn(&mut host, "Gamma"));
         assert_eq!(active.get(), 0);
     });
 }
 
-fn key_down(key: Key) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::Named(key),
-        physical: PhysicalKey::ArrowRight,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn key_down(key: Key) -> Event {
+    Event::key(LogicalKey::Named(key), KeyPhase::Down).physical(PhysicalKey::ArrowRight)
 }
 
 #[test]
 fn a_resizable_sidebar_grows_from_its_handle_keys() {
-    Runtime::scope("primitives::sidebar", || {
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+    Owner::scope("primitives::sidebar", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(row().child(sidebar(text("Files")).width(200.0).resizable(120.0, 400.0)));
-        settle(&mut host, &mut router);
+        settle(&mut host);
         let handle = {
             let root = host.root().expect("mounted");
             let cx = host.cx();
@@ -173,19 +128,19 @@ fn a_resizable_sidebar_grows_from_its_handle_keys() {
             .expect("handle value");
 
         let _ = host.frame(
-            &mut router,
             VIEW,
             1.0 / 60.0,
             FrameHooks {
-                input: Some(Box::new(move |target, events| {
-                    events.set_focus(target.cx(), Some(handle));
-                    target.route(events, key_down(Key::ArrowRight));
+                input: Some(Box::new(move |target| {
+                    let (cx, _, router) = target.parts();
+                    router.set_focus(cx, Some(handle));
+                    target.route(key_down(Key::ArrowRight));
                     None
                 })),
                 ..FrameHooks::default()
             },
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
         let after = host
             .cx()
             .get(handle)
@@ -219,14 +174,14 @@ fn procs() -> TableState<Proc> {
 
 #[test]
 fn table_sort_cycles_reverses_and_moves_the_selection() {
-    Runtime::scope("primitives::table", || {
+    Owner::scope("primitives::table", || {
         let state = procs();
         state.cycle_sort();
         assert_eq!(
             state.sort_key().get(),
             Some(SortKey {
                 column: "name",
-                dir: SortDir::Ascending
+                dir: SortDirection::Ascending
             })
         );
         state.cycle_sort();
@@ -234,7 +189,7 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
             state.sort_key().get(),
             Some(SortKey {
                 column: "cpu",
-                dir: SortDir::Ascending
+                dir: SortDirection::Ascending
             })
         );
         state.reverse_sort();
@@ -242,7 +197,7 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
             state.sort_key().get(),
             Some(SortKey {
                 column: "cpu",
-                dir: SortDir::Descending
+                dir: SortDirection::Descending
             })
         );
         state.cycle_sort();
@@ -262,30 +217,40 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
     });
 }
 
-#[test]
-fn primary_shortcuts_use_the_platform_modifier() {
-    let save = Shortcut::primary(LogicalKey::character("s"));
-    assert_eq!(save.modifiers, PRIMARY);
-    if cfg!(target_os = "macos") {
-        assert_eq!(PRIMARY, ModifiersState::META);
-    } else {
-        assert_eq!(PRIMARY, ModifiersState::CONTROL);
+fn key_with(key: &str, modifiers: ModifiersState) -> KeyEvent {
+    match Event::press(LogicalKey::character(key), modifiers) {
+        [Event::Key(event), _] => event,
+        _ => unreachable!("press starts with a key event"),
     }
 }
 
-#[cfg(feature = "menu")]
 #[test]
-fn one_shortcut_drives_the_native_menu_hint() {
+fn shift_letter_shortcuts_match_the_shifted_character() {
+    let shortcut: Shortcut = "shift+p".parse().expect("shortcut");
+    let shifted = key_with("P", ModifiersState::SHIFT);
+    assert!(shortcut.matches(&shifted));
+    assert!(!shortcut.matches(&key_with("P", ModifiersState::empty())));
+    assert!(!Shortcut::plain(LogicalKey::character("p")).matches(&shifted));
+    assert!(
+        !Shortcut::plain(LogicalKey::character("p"))
+            .matches(&key_with("P", ModifiersState::empty()))
+    );
+}
+
+#[test]
+fn primary_shortcuts_use_the_platform_modifier() {
     let save = Shortcut::primary(LogicalKey::character("s"));
-    assert!(sigil::app::menu::accelerator(&save).is_some());
-    assert!(sigil::app::menu::accelerator(&Shortcut::plain(Key::F13)).is_none());
+    if cfg!(target_os = "macos") {
+        assert_eq!(save.modifiers, ModifiersState::META);
+    } else {
+        assert_eq!(save.modifiers, ModifiersState::CONTROL);
+    }
 }
 
 #[test]
 fn typing_in_the_command_menu_filters_its_items() {
-    Runtime::scope("primitives::palette", || {
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+    Owner::scope("primitives::palette", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
                 command_menu()
@@ -294,26 +259,19 @@ fn typing_in_the_command_menu_filters_its_items() {
                     .item("Wait", || {}),
             ),
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
         assert!(drawn(&mut host, "Attack"));
 
         let _ = host.frame(
-            &mut router,
             VIEW,
             1.0 / 60.0,
             FrameHooks {
-                input: Some(Box::new(|target, events| {
+                input: Some(Box::new(|target| {
                     for ch in ["w", "a"] {
                         target.route(
-                            events,
-                            ShellEvent::Key(KeyEvent::new(KeyEventInit {
-                                key: LogicalKey::character(ch),
-                                physical: PhysicalKey::KeyA,
-                                modifiers: ModifiersState::empty(),
-                                repeat: false,
-                                phase: KeyPhase::Down,
-                                text: Some(ch.into()),
-                            })),
+                            Event::key(LogicalKey::character(ch), KeyPhase::Down)
+                                .physical(PhysicalKey::KeyA)
+                                .text(Some(ch.into())),
                         );
                     }
                     None
@@ -321,7 +279,7 @@ fn typing_in_the_command_menu_filters_its_items() {
                 ..FrameHooks::default()
             },
         );
-        settle(&mut host, &mut router);
+        settle(&mut host);
 
         assert!(drawn(&mut host, "Wait"));
         assert!(!drawn(&mut host, "Attack"));

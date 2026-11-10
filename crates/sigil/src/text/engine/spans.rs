@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::Arc;
 
 use smallvec::SmallVec;
@@ -7,8 +8,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::bidi;
 use crate::style::{TextRuns, TextStyle};
 use crate::text::FaceSpec;
-use crate::text::glyph::GlyphRun;
-use crate::text::shaper::{Font, Script, Style};
+use crate::text::glyph::ShapedRun;
+use crate::text::shaper::{FaceStyle, Font, Script};
 
 use super::FontCollection;
 use super::shape::{
@@ -20,15 +21,15 @@ pub(super) struct ShapeSpan {
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) chain: Arc<[Font]>,
-    pub(super) style: Style,
+    pub(super) style: FaceStyle,
     pub(super) slot: u16,
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 pub(super) fn shape_segments(
     chain: &[Font],
     text: &str,
-    style: &Style,
+    style: &FaceStyle,
     paragraph_bidi: &bidi::ParagraphBidi<'_>,
 ) -> Vec<ShapedSegment> {
     let span = ShapeSpan {
@@ -50,7 +51,8 @@ pub(super) fn shape_spans(
         return Vec::new();
     }
     let levels = paragraph_bidi.levels();
-    let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len().min(32));
+    let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len() / 2 + 1);
+    let mut first_span = 0;
     for (word_start, fragment) in text.split_word_bound_indices() {
         if fragment.is_empty() {
             continue;
@@ -61,10 +63,7 @@ pub(super) fn shape_spans(
         }
         let is_ws = fragment.chars().all(char::is_whitespace);
         let word_end = word_start + fragment.len();
-        for span in spans
-            .iter()
-            .filter(|span| span.start < word_end && span.end > word_start)
-        {
+        for span in overlapping(spans, &mut first_span, word_start..word_end) {
             let lo = span.start.max(word_start);
             let Some(word) = text.get(lo..span.end.min(word_end)) else {
                 continue;
@@ -87,16 +86,30 @@ pub(super) fn shape_spans(
     out
 }
 
+fn overlapping<'s>(
+    spans: &'s [ShapeSpan],
+    first: &mut usize,
+    word: Range<usize>,
+) -> &'s [ShapeSpan] {
+    while spans.get(*first).is_some_and(|span| span.end <= word.start) {
+        *first += 1;
+    }
+    let rest = spans.get(*first..).unwrap_or_default();
+    let count = rest.iter().take_while(|span| span.start < word.end).count();
+    rest.get(..count).unwrap_or_default()
+}
+
 fn hard_break(start: usize, len: usize) -> ShapedSegment {
     ShapedSegment {
         start: u32_clamp(start),
         end: u32_clamp(start + len),
-        run: GlyphRun::empty(),
+        run: ShapedRun::empty(),
         advance: 0.0,
         is_break_opportunity: true,
         breakable_before: false,
         is_hard_break: true,
         level: 0,
+        #[cfg(any(test, feature = "kittest"))]
         script: Script::Common,
         face_slot: 0,
     }
@@ -138,7 +151,7 @@ pub(super) fn style_spans(
     fonts: &FontCollection,
     text: &str,
     style: &TextStyle,
-    shaper: &Style,
+    shaper: &FaceStyle,
     chain_of: &mut impl FnMut(&Font, u16) -> Arc<[Font]>,
 ) -> (SmallVec<[ShapeSpan; 2]>, SmallVec<[FaceSpec; 8]>) {
     let mut chains = SmallVec::<[Chain<'_>; 2]>::new();
@@ -165,7 +178,7 @@ pub(super) fn style_spans(
             start,
             end,
             chain,
-            style: Style {
+            style: FaceStyle {
                 weight,
                 ..shaper.clone()
             },

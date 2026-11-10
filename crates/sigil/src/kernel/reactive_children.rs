@@ -1,3 +1,4 @@
+use core::panic::Location;
 use std::cell::{Cell, RefCell};
 use std::hash::Hash;
 use std::rc::Rc;
@@ -8,7 +9,7 @@ use smallvec::SmallVec;
 use crate::kernel::builder::Fate;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
-use crate::reactive::{Owner, OwnerId, is_live, on_cleanup};
+use crate::reactive::{Owner, is_live, on_cleanup};
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
@@ -67,7 +68,7 @@ pub(crate) fn take_seed(parent: NodeId) -> PriorNodes {
 fn generation_owner() -> Owner {
     Owner::new(
         "sigil-kernel::children-generation",
-        crate::reactive::current_effect_owner().map(OwnerId),
+        crate::reactive::current_effect_owner().map(Owner),
     )
 }
 
@@ -75,7 +76,7 @@ struct GenerationGuard(Option<Owner>);
 
 impl GenerationGuard {
     fn superseded(&self) -> bool {
-        self.0.is_some_and(|owner| !is_live(owner.id()))
+        self.0.is_some_and(|owner| !is_live(owner))
     }
 }
 
@@ -88,19 +89,19 @@ impl Drop for GenerationGuard {
 }
 
 fn dispose_if_live(owner: Owner) {
-    if is_live(owner.id()) {
+    if is_live(owner) {
         owner.dispose();
     }
 }
 
-pub(crate) fn install<F, I, N>(parent: NodeId, mut f: F)
+pub(crate) fn install<F, I, N>(parent: NodeId, location: &'static Location<'static>, mut f: F)
 where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = N>,
     N: IntoNode + 'static,
 {
     let prior: Rc<RefCell<PriorNodes>> = Rc::new(RefCell::new(take_seed(parent)));
-    crate::reactive::effect_named("sigil-kernel::children_reactive", move || {
+    crate::reactive::effect_at("sigil-kernel::children_reactive", location, move || {
         let generation = generation_owner();
         let builders: Vec<Box<dyn ErasedComponent>> = generation.with(|| {
             f().into_iter()
@@ -113,6 +114,7 @@ where
         enqueue(DeferredRebuild {
             parent,
             apply: Box::new(move |cx| {
+                let _site = crate::profile::site(location, crate::profile::SiteKind::Mount);
                 apply_positional(
                     cx,
                     parent,
@@ -125,22 +127,31 @@ where
     });
 }
 
-pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F)
-where
+pub(crate) fn install_keyed<F, I, K, N>(
+    parent: NodeId,
+    location: &'static Location<'static>,
+    mut f: F,
+) where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = (K, N)>,
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
     let prior = Rc::new(RefCell::new(Vec::<(K, NodeId)>::new()));
-    crate::reactive::effect_named("sigil-kernel::children_keyed", move || {
+    crate::reactive::effect_at("sigil-kernel::children_keyed", location, move || {
         let generation = generation_owner();
         let incoming: KeyedIncoming<K> = generation.with(|| {
             f().into_iter()
                 .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
-        enqueue_keyed(parent, Rc::clone(&prior), incoming, Some(generation));
+        enqueue_keyed(
+            parent,
+            location,
+            Rc::clone(&prior),
+            incoming,
+            Some(generation),
+        );
     });
 }
 
@@ -174,8 +185,26 @@ fn apply_positional(
     *prior.borrow_mut() = settle(cx, parent, &fates, generation);
 }
 
+/// Rebuilds the keyed children of `parent` from `incoming` before the next layout.
+#[track_caller]
+#[cfg_attr(
+    not(feature = "kittest"),
+    allow(dead_code, reason = "public only under kittest")
+)]
 pub fn schedule_keyed_rebuild<K, N>(
     parent: NodeId,
+    prior: Rc<RefCell<Vec<(K, NodeId)>>>,
+    incoming: Vec<(K, Option<N>)>,
+) where
+    K: Clone + Eq + Hash + 'static,
+    N: IntoNode + 'static,
+{
+    schedule_keyed_rebuild_at(parent, Location::caller(), prior, incoming);
+}
+
+pub(crate) fn schedule_keyed_rebuild_at<K, N>(
+    parent: NodeId,
+    location: &'static Location<'static>,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
     incoming: Vec<(K, Option<N>)>,
 ) where
@@ -191,11 +220,12 @@ pub fn schedule_keyed_rebuild<K, N>(
             )
         })
         .collect();
-    enqueue_keyed(parent, prior, incoming, None);
+    enqueue_keyed(parent, location, prior, incoming, None);
 }
 
 fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
     parent: NodeId,
+    location: &'static Location<'static>,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
     incoming: KeyedIncoming<K>,
     generation: Option<Owner>,
@@ -205,6 +235,7 @@ fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
     enqueue(DeferredRebuild {
         parent,
         apply: Box::new(move |cx| {
+            let _site = crate::profile::site(location, crate::profile::SiteKind::Mount);
             apply_keyed(
                 cx,
                 parent,
@@ -264,16 +295,12 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
         dispose_if_live(generation);
         return;
     }
-    let mut owners = SmallVec::<[Owner; 4]>::new();
-    for id in fresh {
-        let Some(owner) = cx.owner_for_node.get(id).copied() else {
-            continue;
-        };
-        if owners.iter().any(|seen: &Owner| seen.id() == owner.id()) {
-            continue;
-        }
-        owners.push(owner);
-    }
+    let mut owners: SmallVec<[Owner; 4]> = fresh
+        .iter()
+        .filter_map(|id| cx.owner_for_node.get(id).copied())
+        .collect();
+    owners.sort_unstable();
+    owners.dedup();
     if owners.is_empty() {
         return;
     }
@@ -318,6 +345,7 @@ fn mount_keyed<K: Clone + Eq + Hash>(
 }
 
 impl Cx {
+    /// Rebuilds the reactive children that changed.
     pub fn flush_reactive_children(&mut self) {
         loop {
             let pending = drain_pending();

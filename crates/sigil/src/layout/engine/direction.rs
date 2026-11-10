@@ -1,5 +1,5 @@
 use crate::layout::style_data::{
-    AlignItems, Display, FlexDirection, JustifyContent, Position, Rect, StyleData,
+    AlignItems, Display, Edges, FlexDirection, JustifyContent, Position, StyleData,
 };
 use crate::style::locale::Direction;
 
@@ -28,7 +28,7 @@ pub(super) fn apply_direction(style: &mut StyleData, direction: Direction) {
     }
 }
 
-const fn swap_sides<T: Copy>(rect: &mut Rect<T>) {
+const fn swap_sides<T: Copy>(rect: &mut Edges<T>) {
     core::mem::swap(&mut rect.left, &mut rect.right);
 }
 

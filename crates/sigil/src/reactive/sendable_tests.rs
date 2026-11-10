@@ -1,10 +1,10 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 #[test]
 fn sendable_signal_rehydration_on_correct_runtime_works() {
-    Runtime::scope("sendable_same_runtime", || {
+    Owner::scope("sendable_same_runtime", || {
         let sig = signal(7_i32);
         let sendable = sig.into_sendable();
         let rehydrated = sendable.into_signal();
@@ -25,14 +25,14 @@ fn sendable_signal_rehydration_on_wrong_runtime_panics() {
     use std::thread;
 
     let (tx, rx) = mpsc::channel();
-    Runtime::scope("sendable_wrong_runtime::origin", || {
+    Owner::scope("sendable_wrong_runtime::origin", || {
         let sig = signal(123_i32);
         tx.send(sig.into_sendable()).expect("send to worker");
     });
 
     let join = thread::spawn(move || {
         let sendable = rx.recv().expect("recv from main");
-        Runtime::scope("sendable_wrong_runtime::worker", || {
+        Owner::scope("sendable_wrong_runtime::worker", || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let _ = sendable.into_signal();
             }));

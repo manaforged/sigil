@@ -5,6 +5,7 @@ use crate::style::merge::{ResolvedSlot, SlotSet};
 pub(crate) struct LayoutFields(u64);
 
 impl LayoutFields {
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) const ALL: Self = Self(u64::MAX);
     pub(crate) const GRID_COLUMNS: Self = Self(1 << 44);
     pub(crate) const GRID_ROWS: Self = Self(1 << 45);
@@ -96,4 +97,5 @@ fields! {
     41 COLUMN_START [] grid_column_start;
     42 ROW_START [] grid_row_start;
     43 DENSE [] grid_auto_flow_dense;
+    44 STRETCH_WIDTH [] stretch_width;
 }

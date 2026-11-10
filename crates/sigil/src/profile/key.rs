@@ -1,17 +1,18 @@
 use std::fmt;
 
 macro_rules! named {
-    ($(#[$attr:meta])* $ty:ident { $($(#[$vattr:meta])* $variant:ident => $name:literal),+ $(,)? }) => {
+    ($(#[$attr:meta])* $vis:vis $ty:ident { $($(#[$vattr:meta])* $variant:ident => $name:literal),+ $(,)? }) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         $(#[$attr])*
         #[non_exhaustive]
-        pub enum $ty {
-            $($(#[$vattr])* $variant),+
+        $vis enum $ty {
+            $($(#[$vattr])* #[doc = concat!("The `", $name, "` ", stringify!($ty), ".")] $variant),+
         }
 
         impl $ty {
+            /// Returns the name this value has in profile output.
             #[must_use]
-            pub const fn name(self) -> &'static str {
+            $vis const fn name(self) -> &'static str {
                 match self {
                     $(Self::$variant => $name),+
                 }
@@ -26,7 +27,9 @@ macro_rules! named {
     };
 }
 
-named!(Category {
+named!(
+    /// Where a phase belongs in the summary.
+    pub(crate) Category {
     Layout => "layout",
     Paint => "paint",
     Render => "render",
@@ -35,7 +38,9 @@ named!(Category {
     App => "app",
 });
 
-named!(Phase {
+named!(
+    /// A timed stage of a frame.
+    pub Phase {
     Effect => "effect",
     Layout => "layout",
     LayoutSolve => "layout.solve",
@@ -69,8 +74,9 @@ named!(Phase {
 });
 
 impl Phase {
+    /// Returns the category of this phase.
     #[must_use]
-    pub const fn category(self) -> Category {
+    pub(crate) const fn category(self) -> Category {
         match self {
             Self::Layout
             | Self::LayoutSolve
@@ -103,6 +109,7 @@ impl Phase {
         }
     }
 
+    /// Returns whether this phase is not nested in another phase.
     #[must_use]
     pub const fn is_top_level(self) -> bool {
         matches!(
@@ -112,7 +119,9 @@ impl Phase {
     }
 }
 
-named!(#[derive(Default)] Cause {
+named!(
+    /// Why a frame ran.
+    #[derive(Default)] pub Cause {
     #[default]
     Idle => "idle",
     Pointer => "pointer",
@@ -127,6 +136,7 @@ named!(#[derive(Default)] Cause {
 });
 
 impl Cause {
+    /// Returns the priority of this cause; a higher rank wins.
     #[must_use]
     pub const fn rank(self) -> u8 {
         match self {
@@ -139,7 +149,9 @@ impl Cause {
     }
 }
 
-named!(Counter {
+named!(
+    /// A value that a frame counts.
+    pub Counter {
     SceneEmit => "scene.emit",
     SceneReplay => "scene.replay",
     SceneCmds => "scene.cmds",
@@ -231,7 +243,9 @@ named!(Counter {
     TextOutlineMisses => "text.outline.misses",
 });
 
-named!(Hotspot {
+named!(
+    /// A cost that the profile attributes to a subject.
+    pub Hotspot {
     LayoutDirtyKernel => "layout.dirty.kernel",
     LayoutDirtySeed => "layout.dirty.seed",
     LayoutResized => "layout.resized",
@@ -242,14 +256,37 @@ named!(Hotspot {
     RowRebuild => "widget.row_rebuild",
 });
 
-named!(BackendKind {
+impl Hotspot {
+    /// Returns the unit its counts are in.
+    #[must_use]
+    pub(crate) const fn unit(self) -> &'static str {
+        match self {
+            Self::GpuLayer => " px",
+            _ => "",
+        }
+    }
+}
+
+named!(
+    /// What a timed source line was doing.
+    pub SiteKind {
+    Effect => "effect",
+    Mount => "mount",
+    Message => "message",
+});
+
+named!(
+    /// A renderer backend.
+    pub BackendKind {
     Gpu => "gpu",
     GpuSoftware => "gpu-software",
     Cpu => "cpu",
     Terminal => "terminal",
 });
 
-named!(FallbackCause {
+named!(
+    /// Why the renderer fell back.
+    pub FallbackCause {
     None => "none",
     NoAdapter => "no-adapter",
     DeviceError => "device-error",
@@ -257,13 +294,17 @@ named!(FallbackCause {
     UnknownEnv => "unknown-env",
 });
 
+/// The renderer backend of a frame and why it fell back, if it did.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BackendStatus {
+    /// The backend in use.
     pub kind: BackendKind,
+    /// The reason for a fallback, if any.
     pub fallback: FallbackCause,
 }
 
 impl BackendStatus {
+    /// The status of the terminal host.
     pub const TERMINAL: Self = Self {
         kind: BackendKind::Terminal,
         fallback: FallbackCause::None,
@@ -279,8 +320,10 @@ impl fmt::Display for BackendStatus {
     }
 }
 
-pub type PhaseTime = (Phase, u64);
-pub type CounterValue = (Counter, u64);
+/// A phase and its time in nanoseconds.
+pub(crate) type PhaseTime = (Phase, u64);
+/// A counter and its value.
+pub(crate) type CounterValue = (Counter, u64);
 
 pub(crate) fn accumulate<K: Copy + PartialEq>(list: &mut Vec<(K, u64)>, key: K, add: u64) {
     if let Some((_, ns)) = list.iter_mut().find(|(k, _)| *k == key) {

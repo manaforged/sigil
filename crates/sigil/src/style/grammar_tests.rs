@@ -1,9 +1,10 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent, Overflow};
 use crate::style::parser::ParseError;
 use crate::style::{
-    AlignKind, ColorKey, Dimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, OverflowKind,
-    Px, StateSlot, StyleAtom, TextDecoration, Token, parse_class_string, parse_stateful_token,
+    ColorAtom, StateSlot, StyleAtom, TextDecoration, Token, parse_class_string,
+    parse_stateful_token,
 };
 
 #[test]
@@ -13,9 +14,9 @@ fn parse_minimal() {
             .unwrap()
             .as_slice(),
         &[
-            StyleAtom::PaddingAll(Px(16)),
-            StyleAtom::BorderRadius(Px(6)),
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+            StyleAtom::PaddingAll(16),
+            StyleAtom::BorderRadius(6),
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
         ],
     );
 }
@@ -33,36 +34,36 @@ fn parse_grammar_branches() {
     )
     .unwrap();
 
-    assert!(parsed.contains(&StyleAtom::PaddingX(Px(8))));
-    assert!(parsed.contains(&StyleAtom::PaddingY(Px(12))));
-    assert!(parsed.contains(&StyleAtom::MarginAll(Px(4))));
-    assert!(parsed.contains(&StyleAtom::Gap(Px(8))));
-    assert!(parsed.contains(&StyleAtom::Width(Dimension::Px(Px(16)))));
-    assert!(parsed.contains(&StyleAtom::Height(Dimension::Px(Px(20)))));
-    assert!(parsed.contains(&StyleAtom::Width(Dimension::Full)));
-    assert!(parsed.contains(&StyleAtom::Height(Dimension::Auto)));
-    assert!(parsed.contains(&StyleAtom::Display(DisplayKind::Flex)));
-    assert!(parsed.contains(&StyleAtom::Display(DisplayKind::Block)));
-    assert!(parsed.contains(&StyleAtom::Display(DisplayKind::None)));
-    assert!(parsed.contains(&StyleAtom::FlexDirection(FlexDir::Row)));
-    assert!(parsed.contains(&StyleAtom::FlexDirection(FlexDir::Column)));
-    assert!(parsed.contains(&StyleAtom::AlignItems(AlignKind::Stretch)));
-    assert!(parsed.contains(&StyleAtom::JustifyContent(JustifyKind::Around)));
-    assert!(parsed.contains(&StyleAtom::BorderRadius(Px(2))));
-    assert!(parsed.contains(&StyleAtom::BorderRadius(Px(8))));
-    assert!(parsed.contains(&StyleAtom::BorderRadius(Px(9_999))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(12))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(14))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(16))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(18))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(20))));
-    assert!(parsed.contains(&StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))));
+    assert!(parsed.contains(&StyleAtom::PaddingX(8)));
+    assert!(parsed.contains(&StyleAtom::PaddingY(12)));
+    assert!(parsed.contains(&StyleAtom::MarginAll(4)));
+    assert!(parsed.contains(&StyleAtom::Gap(8)));
+    assert!(parsed.contains(&StyleAtom::Width(crate::style::atom::ATOM_PX, 16)));
+    assert!(parsed.contains(&StyleAtom::Height(crate::style::atom::ATOM_PX, 20)));
+    assert!(parsed.contains(&StyleAtom::Width(crate::style::atom::ATOM_FULL, 0)));
+    assert!(parsed.contains(&StyleAtom::Height(crate::style::atom::ATOM_AUTO, 0)));
+    assert!(parsed.contains(&StyleAtom::Display(Display::Flex)));
+    assert!(parsed.contains(&StyleAtom::Display(Display::Block)));
+    assert!(parsed.contains(&StyleAtom::Display(Display::None)));
+    assert!(parsed.contains(&StyleAtom::FlexDirection(FlexDirection::Row)));
+    assert!(parsed.contains(&StyleAtom::FlexDirection(FlexDirection::Column)));
+    assert!(parsed.contains(&StyleAtom::AlignItems(AlignItems::Stretch)));
+    assert!(parsed.contains(&StyleAtom::JustifyContent(JustifyContent::SpaceAround)));
+    assert!(parsed.contains(&StyleAtom::BorderRadius(2)));
+    assert!(parsed.contains(&StyleAtom::BorderRadius(8)));
+    assert!(parsed.contains(&StyleAtom::BorderRadius(9_999)));
+    assert!(parsed.contains(&StyleAtom::FontSize(12)));
+    assert!(parsed.contains(&StyleAtom::FontSize(14)));
+    assert!(parsed.contains(&StyleAtom::FontSize(16)));
+    assert!(parsed.contains(&StyleAtom::FontSize(18)));
+    assert!(parsed.contains(&StyleAtom::FontSize(20)));
+    assert!(parsed.contains(&StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface))));
     assert!(parsed.contains(&StyleAtom::FontWeight(400)));
     assert!(parsed.contains(&StyleAtom::FontWeight(500)));
     assert!(parsed.contains(&StyleAtom::FontWeight(700)));
     assert!(parsed.contains(&StyleAtom::FontItalic(true)));
     assert!(parsed.contains(&StyleAtom::FontItalic(false)));
-    assert!(parsed.contains(&StyleAtom::LineHeight(Px(24))));
+    assert!(parsed.contains(&StyleAtom::LineHeight(24)));
     assert!(parsed.contains(&StyleAtom::Opacity(7_500)));
 }
 
@@ -106,15 +107,15 @@ fn parse_state_and_responsive_prefixes_not_supported() {
 fn t12_vocabulary_tokens_parse() {
     let parsed = parse_class_string("gap-x-16 gap-y-8 flex-wrap justify-evenly overflow-auto")
         .expect("t12 tokens parse");
-    assert!(parsed.contains(&StyleAtom::GapX(Px(16))));
-    assert!(parsed.contains(&StyleAtom::GapY(Px(8))));
-    assert!(parsed.contains(&StyleAtom::FlexWrap(FlexWrapKind::Wrap)));
-    assert!(parsed.contains(&StyleAtom::JustifyContent(JustifyKind::Evenly)));
-    assert!(parsed.contains(&StyleAtom::OverflowX(OverflowKind::Auto)));
-    assert!(parsed.contains(&StyleAtom::OverflowY(OverflowKind::Auto)));
+    assert!(parsed.contains(&StyleAtom::GapX(16)));
+    assert!(parsed.contains(&StyleAtom::GapY(8)));
+    assert!(parsed.contains(&StyleAtom::FlexWrap(FlexWrap::Wrap)));
+    assert!(parsed.contains(&StyleAtom::JustifyContent(JustifyContent::SpaceEvenly)));
+    assert!(parsed.contains(&StyleAtom::OverflowX(Overflow::Auto)));
+    assert!(parsed.contains(&StyleAtom::OverflowY(Overflow::Auto)));
 
     let nowrap = parse_class_string("flex-nowrap").expect("flex-nowrap parses");
-    assert!(nowrap.contains(&StyleAtom::FlexWrap(FlexWrapKind::NoWrap)));
+    assert!(nowrap.contains(&StyleAtom::FlexWrap(FlexWrap::NoWrap)));
 }
 
 #[test]
@@ -134,25 +135,25 @@ fn border_tokens_resolve_to_width_and_color_atoms() {
     let bare = parse_class_string("border").unwrap();
     assert!(
         bare.iter()
-            .any(|a| matches!(a, StyleAtom::BorderWidth(px) if px.0 == 1))
+            .any(|a| matches!(a, StyleAtom::BorderWidth(px) if *px == 1))
     );
     let width = parse_class_string("border-2").unwrap();
     assert!(
         width
             .iter()
-            .any(|a| matches!(a, StyleAtom::BorderWidth(px) if px.0 == 2))
+            .any(|a| matches!(a, StyleAtom::BorderWidth(px) if *px == 2))
     );
     let colored = parse_class_string("border-accent").unwrap();
     assert!(
         colored
             .iter()
-            .any(|a| matches!(a, StyleAtom::BorderThemeRef(ColorKey::Token(Token::Accent)))),
+            .any(|a| matches!(a, StyleAtom::BorderColor(ColorAtom::Token(Token::Accent)))),
         "border-<token> must resolve as a theme colour reference"
     );
     let left = parse_class_string("border-l-4").unwrap();
     assert!(
         left.iter()
-            .any(|a| matches!(a, StyleAtom::BorderLeft(px) if px.0 == 4)),
+            .any(|a| matches!(a, StyleAtom::BorderLeft(px) if *px == 4)),
         "border-l-4 must resolve as a left-edge width"
     );
     let axis = parse_class_string("border-x").unwrap();
@@ -183,8 +184,8 @@ type AtomCheck = fn(&StyleAtom) -> bool;
 #[test]
 fn new_parity_tokens_resolve_to_expected_atoms() {
     let cases: [(&str, AtomCheck); 9] = [
-        ("min-h-16", |a| matches!(a, StyleAtom::MinHeight(_))),
-        ("max-h-16", |a| matches!(a, StyleAtom::MaxHeight(_))),
+        ("min-h-16", |a| matches!(a, StyleAtom::MinHeight(_, _))),
+        ("max-h-16", |a| matches!(a, StyleAtom::MaxHeight(_, _))),
         ("grow", |a| matches!(a, StyleAtom::FlexGrow(1000))),
         ("grow-0", |a| matches!(a, StyleAtom::FlexGrow(0))),
         ("shrink", |a| matches!(a, StyleAtom::FlexShrink(1000))),
@@ -233,25 +234,23 @@ fn class_routes_state_prefixes_to_overlay_slots() {
 
     assert_eq!(
         slot_atoms(&s, None),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Surface
-        ))]
+        [StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Hovered)),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
+        [StyleAtom::BackgroundColor(ColorAtom::Token(
             Token::SurfaceHover
         ))]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Pressed)),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
+        [StyleAtom::BackgroundColor(ColorAtom::Token(
             Token::SurfacePressed
         ))]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Focused)),
-        [StyleAtom::BorderRadius(Px(6))]
+        [StyleAtom::BorderRadius(6)]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Disabled)),
@@ -266,11 +265,11 @@ fn class_accumulates_slot() {
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Hovered)),
         [
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-            StyleAtom::BorderRadius(Px(6)),
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+            StyleAtom::BorderRadius(6),
         ]
     );
-    assert_eq!(slot_atoms(&s, None), [StyleAtom::PaddingX(Px(16))]);
+    assert_eq!(slot_atoms(&s, None), [StyleAtom::PaddingX(16)]);
 }
 
 #[cfg(debug_assertions)]

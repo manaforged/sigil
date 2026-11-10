@@ -7,12 +7,12 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::kernel::{Cx, container, text};
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 #[test]
 fn a_rebuild_queued_under_a_replaced_scope_never_mounts() {
     let mounts = Rc::new(Cell::new(0_u32));
-    Runtime::scope("sigil_kernel_children_reactive_superseded", || {
+    Owner::scope("sigil_kernel_children_reactive_superseded", || {
         let outer = signal(0_u32);
         let inner = signal(0_u32);
         let counted = Rc::clone(&mounts);

@@ -1,10 +1,11 @@
-use crate::clipboard::{ClipError, Delivery};
+use crate::clipboard::Delivery;
 #[cfg(feature = "clipboard-image")]
 use crate::kernel::ImageSource;
-use crate::{AppResult, Error};
+use crate::{AppResult, Error, ErrorKind};
 
 pub(super) fn copy(text: &str) -> AppResult<Delivery> {
-    let window = web_sys::window().ok_or_else(|| Error::io(ClipError::new("no browser window")))?;
+    let window =
+        web_sys::window().ok_or_else(|| Error::fixed(ErrorKind::Io, "no browser window"))?;
     let pending = window.navigator().clipboard().write_text(text);
     wasm_bindgen_futures::spawn_local(async move {
         if let Err(err) = wasm_bindgen_futures::JsFuture::from(pending).await {
@@ -14,10 +15,11 @@ pub(super) fn copy(text: &str) -> AppResult<Delivery> {
     Ok(Delivery::Requested)
 }
 
-pub(super) fn paste() -> AppResult<String> {
-    Err(Error::io(ClipError::new(
+pub(super) const fn paste() -> AppResult<String> {
+    Err(Error::fixed(
+        ErrorKind::Io,
         "the browser clipboard has no synchronous read",
-    )))
+    ))
 }
 
 #[cfg(feature = "clipboard-image")]
@@ -27,7 +29,8 @@ pub(super) const fn image() -> AppResult<Option<ImageSource>> {
 
 #[cfg(feature = "clipboard-image")]
 pub(super) fn copy_image(_image: &ImageSource) -> AppResult<Delivery> {
-    Err(Error::io(ClipError::new(
+    Err(Error::fixed(
+        ErrorKind::Io,
         "the browser clipboard has no image write",
-    )))
+    ))
 }

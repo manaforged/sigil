@@ -7,11 +7,9 @@ use crate::scene::geometry::IDENTITY;
 fn a_stray_pop_keeps_the_layer_bounds_clip() {
     let bounds = Rect::new(Point::new(0.0, 0.0), 10.0, 10.0);
     let mut state = SceneState::new(Some(bounds), IDENTITY, 1.0);
-    state.apply(&SceneCommand::PushClip(Rect::new(
-        Point::new(0.0, 0.0),
-        5.0,
-        5.0,
-    )));
+    state.apply(&SceneCommand::PushClip(
+        Rect::new(Point::new(0.0, 0.0), 5.0, 5.0).into(),
+    ));
     state.apply(&SceneCommand::PopClip);
     state.apply(&SceneCommand::PopClip);
     assert_eq!(

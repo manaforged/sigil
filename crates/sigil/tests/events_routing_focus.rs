@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -11,6 +12,8 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
+use sigil::geometry::Point;
+use sigil::widgets::Widget;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -18,7 +21,6 @@ use sigil::events::*;
 use sigil::kernel::*;
 use sigil::layout::*;
 
-use input::{pointer_down, tab};
 use routing_helpers::{compute_layout, focus_tree, record_focus, route_event};
 
 #[test]
@@ -43,7 +45,12 @@ fn pointer_down_focuses_nearest_focusable_ancestor() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(10.0, 10.0)),
+    );
 
     assert_eq!(
         router.focus(),
@@ -58,15 +65,15 @@ fn tab_cycles_in_insertion_order() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(ids[0]));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(ids[1]));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(ids[2]));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(ids[0]));
-    route_event(&mut router, &mut cx, &layout, tab(true));
+    route_event(&mut router, &mut cx, &layout, Event::tab(true));
     assert_eq!(router.focus(), Some(ids[2]));
 }
 
@@ -76,7 +83,7 @@ fn tab_index_overrides_insertion_order() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
 
     assert_eq!(router.focus(), Some(ids[1]));
 }
@@ -131,11 +138,11 @@ fn tab_ring_rebuilds_after_focusability_mutation() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(ids[0]));
     cx.get_mut(ids[1]).unwrap().a11y.focusable = false;
     cx.mark_mutated();
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
 
     assert_eq!(router.focus(), Some(ids[2]));
 }

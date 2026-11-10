@@ -1,7 +1,8 @@
+use std::path::Path;
+
 use serde_json::{Value, json};
 
-const API_DOC: &str = include_str!("../../../../docs/api.md");
-const SECTION: &str = "\n## Prelude";
+const SOURCE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src");
 
 pub(crate) struct ApiRow {
     pub(crate) name: String,
@@ -17,22 +18,29 @@ impl ApiRow {
 
 pub(crate) struct ApiMap {
     rows: Vec<ApiRow>,
+    aliases: Vec<(String, String)>,
 }
 
 impl ApiMap {
     pub(crate) fn load() -> Self {
-        let start = API_DOC.find(SECTION).unwrap_or(0);
-        let rows = API_DOC
-            .get(start..)
-            .unwrap_or(API_DOC)
-            .lines()
-            .filter_map(parse_row)
-            .collect();
-        Self { rows }
+        let mut map = Self {
+            rows: Vec::new(),
+            aliases: Vec::new(),
+        };
+        map.collect(Path::new(SOURCE_ROOT));
+        map
     }
 
     pub(crate) fn row(&self, name: &str) -> Option<&ApiRow> {
-        self.rows.iter().find(|row| row.name == name)
+        let mut named = self.rows.iter().filter(|row| row.name == name);
+        let Some(first) = named.next() else {
+            let (_, source) = self.aliases.iter().find(|(alias, _)| alias == name)?;
+            return self.rows.iter().find(|row| &row.name == source);
+        };
+        if first.purpose.is_empty() {
+            return named.find(|row| !row.purpose.is_empty()).or(Some(first));
+        }
+        Some(first)
     }
 
     pub(crate) fn rows_for(&self, builder: &str) -> Vec<Value> {
@@ -46,32 +54,89 @@ impl ApiMap {
         }
         out
     }
+
+    fn collect(&mut self, dir: &Path) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        let mut paths: Vec<_> = entries
+            .filter_map(|entry| entry.ok().map(|e| e.path()))
+            .collect();
+        paths.sort();
+        for path in paths {
+            if path.is_dir() {
+                self.collect(&path);
+            } else if path.extension().is_some_and(|ext| ext == "rs")
+                && let Ok(text) = std::fs::read_to_string(&path)
+            {
+                self.parse(&text);
+            }
+        }
+    }
+
+    fn parse(&mut self, text: &str) {
+        let lines: Vec<&str> = text.lines().collect();
+        for (at, line) in lines.iter().enumerate() {
+            if let Some(list) = line.strip_prefix("pub use ") {
+                self.aliases.extend(aliases(list));
+            } else if let Some(name) = item_name(line) {
+                self.rows.push(item_row(name, &lines, at));
+            }
+        }
+    }
 }
 
-fn parse_row(line: &str) -> Option<ApiRow> {
-    let inner = line.strip_prefix("| ")?.strip_suffix(" |")?;
-    if !inner.starts_with('`') {
-        return None;
+fn item_row(name: &str, lines: &[&str], at: usize) -> ApiRow {
+    let mut docs: Vec<&str> = lines
+        .get(..at)
+        .unwrap_or_default()
+        .iter()
+        .rev()
+        .take_while(|l| l.starts_with("///") || l.starts_with("#["))
+        .filter_map(|l| l.strip_prefix("///"))
+        .map(str::trim)
+        .collect();
+    docs.reverse();
+    let purpose = docs.join(" ");
+    let tail = lines.get(at..).unwrap_or_default();
+    let end = tail
+        .iter()
+        .position(|l| l.contains(['{', ';']))
+        .map_or(tail.len(), |end| end + 1);
+    let joined = tail
+        .get(..end)
+        .unwrap_or_default()
+        .iter()
+        .map(|l| l.trim())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let signature = joined.split(['{', ';']).next().unwrap_or_default();
+    ApiRow {
+        name: name.to_owned(),
+        signature: signature.trim_start_matches("pub ").trim().to_owned(),
+        purpose,
     }
-    let cells: Vec<&str> = inner.split(" | ").collect();
-    let (name, rest) = cells.split_first()?;
-    let (purpose, signature) = rest.split_last()?;
-    if signature.is_empty() {
-        return None;
-    }
-    let joined = signature.join(" | ");
-    Some(ApiRow {
-        name: unquote(name).to_owned(),
-        signature: unquote(&joined).to_owned(),
-        purpose: (*purpose).to_owned(),
-    })
 }
 
-fn unquote(cell: &str) -> &str {
-    cell.strip_prefix('`')
-        .and_then(|rest| rest.strip_suffix('`'))
-        .filter(|rest| !rest.contains('`'))
-        .unwrap_or(cell)
+fn aliases(list: &str) -> Vec<(String, String)> {
+    let inner = list.split(['{', '}']).nth(1).unwrap_or(list);
+    inner
+        .split(',')
+        .filter_map(|pair| pair.trim().trim_end_matches(';').split_once(" as "))
+        .filter_map(|(source, alias)| {
+            let source = source.rsplit("::").next()?.trim();
+            Some((alias.trim().to_owned(), source.to_owned()))
+        })
+        .collect()
+}
+
+fn item_name(line: &str) -> Option<&str> {
+    let rest = line
+        .strip_prefix("pub fn ")
+        .or_else(|| line.strip_prefix("pub const fn "))
+        .or_else(|| line.strip_prefix("pub struct "))?;
+    rest.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .next()
 }
 
 fn builder_type(signature: &str) -> Option<&str> {

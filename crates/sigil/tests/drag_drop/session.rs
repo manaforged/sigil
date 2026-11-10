@@ -3,7 +3,7 @@ use sigil::events::EventRouter;
 
 #[test]
 fn plain_click_and_right_click_never_start_a_session() {
-    sigil::reactive::Runtime::scope("drag-drop-click", || {
+    sigil::reactive::Owner::scope("drag-drop-click", || {
         let (state, drops, downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -51,12 +51,7 @@ fn plain_click_and_right_click_never_start_a_session() {
             &layout,
             pointer(PointerPhase::Move, 60.0, 30.0),
         );
-        route(
-            &mut router,
-            &mut cx,
-            &layout,
-            pointer(PointerPhase::Up, 60.0, 30.0),
-        );
+        route(&mut router, &mut cx, &layout, right_up(60.0, 30.0));
         assert!(!state.is_active(), "right-drag never starts a session");
         assert!(drops.borrow().is_empty(), "no drops fired");
         assert_eq!(
@@ -69,7 +64,7 @@ fn plain_click_and_right_click_never_start_a_session() {
 
 #[test]
 fn drag_past_threshold_activates_and_survives_leaving_the_source() {
-    sigil::reactive::Runtime::scope("drag-drop-threshold", || {
+    sigil::reactive::Owner::scope("drag-drop-threshold", || {
         let (state, drops, _downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -121,7 +116,7 @@ fn drag_past_threshold_activates_and_survives_leaving_the_source() {
 
 #[test]
 fn drop_on_accepting_target_fires_the_payload() {
-    sigil::reactive::Runtime::scope("drag-drop-deliver", || {
+    sigil::reactive::Owner::scope("drag-drop-deliver", || {
         let (state, drops, _downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();

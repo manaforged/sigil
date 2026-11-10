@@ -3,13 +3,17 @@
 use std::collections::HashSet;
 
 use sigil::hal::{ParagraphMetrics, TextEngine};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
 
 const NOTO_HEBREW: &[u8] = include_bytes!("../fixtures/text/NotoSansHebrew-Regular.ttf");
 const HEBREW_WORD: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 const ETHIOPIC_WORD: &str = "\u{1230}\u{120B}\u{121D}";

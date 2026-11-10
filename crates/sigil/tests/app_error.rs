@@ -26,21 +26,6 @@ fn error_new_wraps_arbitrary_std_error() {
     assert!(format!("{e}").contains("inner failure"));
 }
 
-#[cfg(feature = "desktop")]
-#[test]
-fn error_renderer_error_into_works_via_question_mark() {
-    fn try_renderer() -> Result<(), Error> {
-        Err(sigil::renderer::RendererError::NotInitialized)?;
-        Ok(())
-    }
-    let err = try_renderer().expect_err("must propagate");
-    let msg = format!("{err}");
-    assert!(
-        msg.to_lowercase().contains("init") || msg.to_lowercase().contains("surface"),
-        "expected RendererError::NotInitialized message, got: {msg}"
-    );
-}
-
 #[test]
 fn error_implements_std_error() {
     fn assert_std<E: StdError>(_: &E) {}

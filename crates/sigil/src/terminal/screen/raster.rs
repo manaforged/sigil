@@ -1,33 +1,33 @@
 use crate::app::FrameHooks;
-use crate::events::ShellEvent;
+use crate::events::Event;
 use crate::geometry::{Point, Rect};
 use crate::profile;
 use crate::scene::CommandScene;
 use crate::scene::damage::{Changed, Damage as SceneDamage, FullReason, cell_damage};
-use crate::terminal::paint::{Marks, Paint, raster_regions, raster_with};
+use crate::terminal::paint::{CellPaint, Marks, raster_regions, raster_with};
 use crate::terminal::run::view;
-use crate::terminal::write::Damage;
+use crate::terminal::write::RowDamage;
 
 use super::{CELL, Screen};
 
 pub(super) fn frame_hooks<'s>(
     screen: &'s mut Screen,
-    events: impl IntoIterator<Item = ShellEvent> + 's,
+    events: impl IntoIterator<Item = Event> + 's,
     size: (u16, u16),
 ) -> FrameHooks<'s> {
     let (cols, rows) = size;
     FrameHooks {
-        input: Some(Box::new(move |host, router| {
+        input: Some(Box::new(move |host| {
             let _phase = profile::span(profile::Phase::Effect);
             for event in events {
                 profile::interact(profile::Cause::Input);
                 profile::count(profile::Counter::TuiEvents);
-                host.route(router, event);
+                host.route(event);
             }
             None
         })),
-        paint: Some(Box::new(move |host, router, info| {
-            paint(screen, (host, router), info, (cols, rows));
+        paint: Some(Box::new(move |host, info| {
+            paint(screen, host, info, (cols, rows));
         })),
         ..FrameHooks::default()
     }
@@ -35,7 +35,7 @@ pub(super) fn frame_hooks<'s>(
 
 fn paint(
     screen: &mut Screen,
-    (host, router): (&mut crate::Host, &mut crate::events::EventRouter),
+    host: &mut crate::Host,
     info: &crate::app::FrameInfo,
     (cols, rows): (u16, u16),
 ) {
@@ -61,18 +61,19 @@ fn paint(
     if !screen.dirty && info.delta.is_empty() {
         return;
     }
-    let reuse = diff.unchanged() && !screen.marks.stale(host.cx(), router.focus(), &info.delta);
+    let focus = host.focus();
+    let reuse = diff.unchanged() && !screen.marks.stale(host.cx(), focus, &info.delta);
     let (marks, relinked) = if reuse {
         (core::mem::take(&mut screen.marks), false)
     } else {
-        let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
+        let marks = Marks::collect(host.cx(), focus, &next, CELL);
         let relinked = !marks.same_links(&screen.marks);
         (marks, relinked)
     };
     screen.dirty |= relinked;
     if screen.dirty {
         let _raster = profile::span(profile::Phase::TuiRaster);
-        let paint = Paint {
+        let paint = CellPaint {
             theme: host.theme(),
             cell: CELL,
             caps: screen.caps,
@@ -93,7 +94,7 @@ fn paint(
 fn raster(
     screen: &mut Screen,
     (next, changed): (&CommandScene, &[Changed]),
-    paint: &Paint<'_>,
+    paint: &CellPaint<'_>,
     (cols, rows): (u16, u16),
     whole: bool,
 ) {
@@ -118,7 +119,7 @@ fn raster(
             let restored = screen.announcer.restore(&mut screen.grid);
             let mut touched = raster_regions(&mut screen.grid, next, paint, &regions);
             touched.extend(restored);
-            screen.damage = Some(Damage::new(touched, false));
+            screen.damage = Some(RowDamage::new(touched, false));
         }
         SceneDamage::Unchanged | SceneDamage::Full(_) => {
             screen.grid.resize(cols, rows);

@@ -6,7 +6,7 @@ Add the harness as a dev-dependency:
 
 ```toml
 [dev-dependencies]
-sigil-kittest = { git = "https://github.com/manaforged/sigil" }
+sigil-kittest = "0.2"
 ```
 
 ## A first test
@@ -27,7 +27,7 @@ Harness::new(counter).click("+").expect_text("Count: 1");
 
 `click("+")` finds the control a user sees as "+". A label names the text on a button or tab, a checkbox label, or a field's label. When the label matches a control and a plain text, the control wins; a label on two controls fails the test. `expect_text` waits until a node shows the text, up to `EXPECT_TIMEOUT` (5 s), then fails with the accessibility tree. Every action runs frames until the UI settles, so a test never calls `settle` itself.
 
-`size(cols, rows)` uses the terminal cell host; the default is 80×24. `pixels(width, height)` uses the window host instead. Queries and actions behave the same on both.
+`size(cols, rows)` uses the terminal cell host; the default is 80×24. `pixels(width, height)` uses the window host instead, and `.scale(2.0)` renders it at twice the device pixels, like a Retina window. Queries and actions behave the same on both.
 
 ## Find controls
 
@@ -76,7 +76,7 @@ assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
 | `type_text("abc")` | one key per character |
 | `type_into("Name", "Ada")` | a click on the control labelled Name, then the text |
 | `focus_next()`, `focus_previous()` | Tab, Shift+Tab |
-| `send(events)` | any `ShellEvent`s, built with `sigil_kittest::input` |
+| `send(events)` | any `Event`s, built with the `Event` constructors |
 
 A target is a label, a `Node`, or a `Point` in layout points. A label waits up to `EXPECT_TIMEOUT` for its control to appear. Every action runs frames until no signal write and no animation is pending. A tree that never settles fails the test after `SETTLE_SAFETY_CAP` frames.
 
@@ -116,7 +116,9 @@ assert!(ui.text().contains("ticks 3"));
 `snapshot("name")` compares the harness output with a committed golden under `tests/goldens/` of the crate that runs the test:
 
 - A cell harness writes the grid text to `<name>.txt`.
-- A pixel harness renders offscreen and compares `<name>.png` within `SNAPSHOT_MAX_DELTA_PCT`. `snapshot_with(name, pct)` sets the budget.
+- A pixel harness renders offscreen and compares `<name>.png` within 0.5% of its pixels. `snapshot_with(name, pct)` sets the budget.
+
+`image()` captures either surface as an RGBA image. A cell harness uses the CPU renderer at 10×20 pixels per cell, with no window, GPU, or terminal process. Save it with `image().unwrap().unwrap().save("terminal.png")`. The capture preserves cell positions, colors, text styles, and cursor position; it does not reproduce a particular terminal application's font rendering. Terminal graphics images return an error. Cell `snapshot()` keeps its existing text-golden behavior; use `Golden::assert_image` on `image()` when a pixel comparison is needed.
 
 `SIGIL_REGEN_GOLDENS=1` rewrites the goldens. A pixel snapshot without a GPU adapter fails unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.
 
@@ -127,9 +129,59 @@ let mut ui = Harness::new(|| button("Save")).pixels(200, 60);
 ui.snapshot("save_button");
 ```
 
+## Design rules
+
+A harness that mounted a tree checks it when the harness is dropped. The test fails if the laid-out tree breaks a design rule, and the message names the node and the fix.
+
+| `FlawKind` | The rule |
+| --- | --- |
+| `ClippedText` | Text fits inside the box that clips it. |
+| `UnevenControls` | Controls in one row have one height. |
+| `Overlap` | Siblings in normal flow do not cover each other. |
+| `Overflow` | A child stays inside a parent that does not clip or scroll. |
+| `Contrast` | Text meets WCAG 2.2 AA: 4.5:1, or 3:1 for large text. |
+| `SmallTarget` | A pointer control is at least 24 by 24 px. The terminal host skips this rule. |
+| `Column` | The cells of table rows line up. |
+| `Inset` | A lone child has even space around it, not nearly even space. |
+
+Call `ui.assert_no_flaws()` to check one state in the middle of a test, or `ui.flaws()` to read the list. Call `.unaudited()` on a fixture that breaks a rule on purpose. In app code, `.allow_flaw(FlawKind::Overflow, "reason")` opts a node and its children out of one rule.
+
+```rust,no_run
+# use sigil::prelude::*;
+# use sigil_kittest::Harness;
+let mut ui = Harness::new(|| row().child(button("Save")).child(button("Cancel"))).pixels(320, 80);
+ui.assert_no_flaws();
+```
+
+## Every sequence
+
+`Harness::explore` runs every sequence of user steps up to a depth, shortest first, each on a fresh app. Each step drives the app and applies the same change to a small model of what the app should do. After each step, a check compares the app with the model. A failure names the shortest sequence that breaks it. `Harness::walk` runs one long sequence picked from a seed, and the seed replays it.
+
+```rust
+# use sigil::prelude::*;
+# use sigil_kittest::{Harness, Step};
+fn counter() -> impl IntoNode {
+    let count = signal(0);
+    row()
+        .child(text(move || format!("Count: {}", count.get())))
+        .child(button("+").activate(move || count.update(|n| *n += 1)))
+}
+
+let steps: [Step<i32>; 1] = [("click +", |ui, count| {
+    ui.click("+");
+    *count += 1;
+})];
+let check = |ui: &mut Harness, count: &i32| {
+    let shown = format!("Count: {count}");
+    if ui.text().contains(&shown) { Ok(()) } else { Err(format!("expected {shown}")) }
+};
+Harness::explore(counter, &steps, 3, check);
+Harness::walk(counter, &steps, 20, 7, check);
+```
+
 ## Lower level
 
-`ui.host()` returns the `Host` and `EventRouter` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.
+`ui.host()` returns the `Host` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.
 
 ## Real terminals
 

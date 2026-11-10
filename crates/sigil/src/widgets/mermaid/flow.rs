@@ -6,7 +6,7 @@ pub(super) const GAP_COLS: usize = 5;
 pub(super) const SPACING: usize = 3;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Shape {
+pub(super) enum NodeShape {
     Box,
     Round,
     Stadium,
@@ -37,15 +37,15 @@ impl Dir {
     }
 }
 
-pub(super) struct Node {
+pub(super) struct FlowNode {
     pub(super) id: String,
     pub(super) label: Vec<String>,
-    pub(super) shape: Shape,
+    pub(super) shape: NodeShape,
     pub(super) dummy: bool,
     pub(super) dashed: bool,
 }
 
-pub(super) struct Edge {
+pub(super) struct FlowEdge {
     pub(super) from: usize,
     pub(super) to: usize,
     pub(super) label: String,
@@ -54,14 +54,14 @@ pub(super) struct Edge {
 }
 
 pub(super) struct Graph {
-    pub(super) nodes: Vec<Node>,
-    pub(super) edges: Vec<Edge>,
+    pub(super) nodes: Vec<FlowNode>,
+    pub(super) edges: Vec<FlowEdge>,
     pub(super) dir: Dir,
     pub(super) state: bool,
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct Rect {
+pub(super) struct GridRect {
     pub(super) x: usize,
     pub(super) y: usize,
     pub(super) w: usize,
@@ -77,9 +77,14 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
 }
 
 pub(super) fn render(graph: Graph) -> Vec<String> {
+    let (graph, rects) = arrange(graph);
+    graph.paint(&rects)
+}
+
+pub(super) fn arrange(graph: Graph) -> (Graph, Vec<GridRect>) {
     let ranks = graph.fold(graph.rank());
     let (graph, ranks) = expand(graph, ranks);
     let layers = graph.order(&ranks);
     let rects = graph.place(&ranks, &layers);
-    graph.paint(&rects)
+    (graph, rects)
 }

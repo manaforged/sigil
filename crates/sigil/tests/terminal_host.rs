@@ -19,32 +19,32 @@ fn profiled() -> std::sync::MutexGuard<'static, ()> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-use sigil::events::{Key, ShellEvent};
+use sigil::events::{Event, Key};
 use sigil::kernel::IntoNode;
 use sigil::kernel::{container, text};
-use sigil::prelude::{LayoutBuilderExt, Paint};
+use sigil::prelude::Paint;
+use sigil::prelude::Widget;
 use sigil::reactive::{derived, signal};
 use sigil::widgets::button;
 
-use sigil::terminal::{key_down, present as try_present};
+use sigil_kittest::Harness;
 
 fn present<N: IntoNode>(
     tree: impl Fn() -> N + 'static,
     cols: u16,
     rows: u16,
-    events: &[ShellEvent],
+    events: &[Event],
 ) -> String {
-    try_present(tree, cols, rows, events).expect("layout")
+    Harness::present(tree, cols, rows, events).expect("layout")
 }
 
 fn step(
     host: &mut sigil::Host,
-    router: &mut sigil::events::EventRouter,
-    events: impl IntoIterator<Item = ShellEvent>,
+    events: impl IntoIterator<Item = Event>,
     cols: u16,
     rows: u16,
 ) -> sigil::terminal::Grid {
-    sigil::terminal::step(host, router, events, cols, rows).expect("layout")
+    host.grid(events, cols, rows).expect("layout")
 }
 
 fn painted<N: IntoNode>(
@@ -52,18 +52,17 @@ fn painted<N: IntoNode>(
     cols: u16,
     rows: u16,
 ) -> sigil::terminal::Grid {
-    sigil::reactive::Runtime::scope("terminal-painted", || {
-        let mut host = sigil::Host::cells();
+    sigil::reactive::Owner::scope("terminal-painted", || {
+        let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(tree);
-        let mut router = sigil::events::EventRouter::new();
-        drop(step(&mut host, &mut router, [], cols, rows));
-        step(&mut host, &mut router, [], cols, rows)
+        drop(step(&mut host, [], cols, rows));
+        step(&mut host, [], cols, rows)
     })
 }
 
 fn solid(row: &[sigil::terminal::Cell]) -> usize {
     row.iter()
-        .filter(|cell| cell.text.trim().is_empty() && cell.bg != sigil::terminal::Ink::Bare)
+        .filter(|cell| cell.text().trim().is_empty() && cell.bg != sigil::terminal::Ink::Bare)
         .count()
 }
 

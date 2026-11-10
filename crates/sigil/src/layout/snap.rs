@@ -1,4 +1,4 @@
-use crate::layout::resolve::{AutoEdges, Edges};
+use crate::layout::resolve::{AutoEdges, ResolvedEdges};
 
 pub(crate) fn cell() -> Option<f32> {
     crate::style::cell_size().filter(|cell| *cell > 0.0)
@@ -75,7 +75,7 @@ pub(crate) fn size(value: Option<f32>) -> Option<f32> {
     value.map(span)
 }
 
-pub(crate) fn rule_edges(edges: Edges, height: Option<f32>) -> Edges {
+pub(crate) fn rule_edges(edges: ResolvedEdges, height: Option<f32>) -> ResolvedEdges {
     let Some(cell) = cell() else {
         return edges;
     };

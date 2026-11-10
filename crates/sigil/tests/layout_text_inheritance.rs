@@ -10,7 +10,7 @@ use std::rc::Rc;
 use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, TextMeasure};
-use sigil::style::{Paint, Px, StyleAtom, StyleBinding, TextStyle};
+use sigil::style::{Paint, StyleAtom, StyleBinding, TextStyle};
 
 #[derive(Default)]
 struct RecordingMeasure {
@@ -69,7 +69,7 @@ fn text_child_measures_with_inherited_typography() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
             .child(text("Inherit")),
     );
@@ -100,7 +100,9 @@ fn text_child_measures_with_inherited_typography() {
 #[test]
 fn ancestor_typography_change_remeasures_descendant_text() {
     let mut cx = Cx::new_root();
-    let styled = container().font_size(18.0).child(text("Target"));
+    let styled = container()
+        .font_size(18.0, "test fixture")
+        .child(text("Target"));
     let root = cx.add(
         container()
             .child(styled)
@@ -125,7 +127,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     cx.get_mut(styled_id)
         .unwrap()
         .attach(StyleBinding::owned_atoms(
-            std::iter::once(StyleAtom::FontSize(Px(20))).collect(),
+            std::iter::once(StyleAtom::FontSize(20)).collect(),
         ));
     engine
         .compute(&mut cx, root, Size::fixed(600.0, 400.0))

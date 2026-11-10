@@ -1,9 +1,11 @@
 use crate::geometry::Rect;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutResult;
-use crate::scene::command::effects::{Transform, transform_rect};
+use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
+use crate::style::atom::SpaceStyle;
+use crate::style::projection::projection;
 use crate::style::{FocusRing, Metrics, RenderStyle, StyleAtom, StyleBinding, Transform2D};
 
 use super::{EmitWalk, Inherited, child_inherited, is_display_none, is_top_layer};
@@ -23,16 +25,21 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         };
         let rect = result.rect();
-        let transform = style.transform.matrix(rect);
-        let content = content_bounds(self.cx, id).unwrap_or(rect).expand(1.0);
-        let Some(bounds) = visible_bounds(content, clip, transform, style.transform.is_identity())
-        else {
+        let reach = filter_reach(&style.filter.filters());
+        let content = content_bounds(self.cx, id)
+            .unwrap_or(rect)
+            .expand(1.0 + reach);
+        let (effect, screen) = layer_effect(self.cx, id, &style, rect, content);
+        let flat = style.transform.is_identity() && style.space.is_flat();
+        let Some(bounds) = visible_bounds(content, clip, screen, flat) else {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
             return;
         };
         let opacity = f32::from(style.opacity) / 10_000.0;
         style.opacity = 10_000;
+        let blend = std::mem::take(&mut style.blend);
         style.transform = Transform2D::IDENTITY;
+        style.space = SpaceStyle::FLAT;
         let cx = self.cx;
         let deferred = &mut *self.deferred;
         let selection = self.selection;
@@ -41,8 +48,9 @@ impl<'t> EmitWalk<'_, 't> {
             LayerScope {
                 clip: bounds,
                 clip_radii: CornerRadii::ZERO,
-                effect: LayerEffect::Transform(transform),
+                effect,
                 opacity,
+                blend,
             },
             |scene| {
                 EmitWalk {
@@ -52,16 +60,42 @@ impl<'t> EmitWalk<'_, 't> {
                     selection,
                     track,
                 }
-                .push_contents(id, inherited, None, &style);
+                .push_masked(id, inherited, None, style);
             },
         );
+    }
+}
+
+fn layer_effect(
+    cx: &Cx,
+    id: NodeId,
+    style: &RenderStyle,
+    rect: Rect,
+    content: Rect,
+) -> (LayerEffect, Option<Rect>) {
+    if let Some((transform, hide_backface)) =
+        projection(cx, id, (style.transform, &style.space), rect)
+    {
+        (
+            LayerEffect::Projected {
+                transform,
+                hide_backface,
+            },
+            transform.bounds(content),
+        )
+    } else {
+        let transform = style.transform.matrix(rect);
+        (
+            LayerEffect::Transform(transform),
+            Some(transform_rect(transform, content)),
+        )
     }
 }
 
 fn visible_bounds(
     bounds: Rect,
     clip: Option<Rect>,
-    transform: Transform,
+    screen: Option<Rect>,
     identity: bool,
 ) -> Option<Rect> {
     let Some(clip) = clip else {
@@ -72,12 +106,10 @@ fn visible_bounds(
     } else {
         bounds
     };
-    transform_rect(transform, bounds)
-        .intersects(clip)
-        .then_some(bounds)
+    screen?.intersects(clip).then_some(bounds)
 }
 
-fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
+pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
     let node = cx.get(id)?;
     if is_display_none(node) {
         return None;
@@ -124,10 +156,13 @@ fn transformed_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
     }
     let bounds = content_bounds(cx, id)?;
     let rect = node.get_extension::<LayoutResult>()?.rect();
-    Some(
-        node.get_extension::<StyleBinding>()
-            .map_or(bounds, |binding| {
-                transform_rect(Transform2D::for_binding(binding).matrix(rect), bounds)
-            }),
-    )
+    let Some(binding) = node.get_extension::<StyleBinding>() else {
+        return Some(bounds);
+    };
+    let flat = Transform2D::for_binding(binding);
+    let space = SpaceStyle::for_binding(binding);
+    match projection(cx, id, (flat, &space), rect) {
+        Some((transform, _)) => transform.bounds(bounds),
+        None => Some(transform_rect(flat.matrix(rect), bounds)),
+    }
 }

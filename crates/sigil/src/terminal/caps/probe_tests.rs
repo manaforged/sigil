@@ -10,6 +10,15 @@ fn an_osc_11_reply_sets_the_backdrop_from_its_luma() {
     assert_eq!(dark.backdrop, Some(Backdrop::Dark));
     assert_eq!(light.backdrop, Some(Backdrop::Light));
     assert_eq!(none.backdrop, None);
+    assert_eq!(
+        dark.background,
+        Some(crate::style::Rgba8 {
+            r: 10,
+            g: 10,
+            b: 10,
+            a: 255
+        })
+    );
 }
 
 #[test]
@@ -129,7 +138,7 @@ fn a_reply_split_at_any_byte_reads_the_same() -> std::io::Result<()> {
         "{expected:?}"
     );
     assert!(
-        matches!(expected.measured, super::super::Measured::Columns(_)),
+        matches!(expected.measured, super::super::Calibration::Columns(_)),
         "{expected:?}"
     );
     for split in 1..whole.len() {
@@ -164,7 +173,7 @@ fn a_modified_f3_during_the_probe_leaves_the_widths_alone() {
     ];
     let clean = parse(&reports.concat()).measured;
     assert!(
-        matches!(clean, super::super::Measured::Columns(_)),
+        matches!(clean, super::super::Calibration::Columns(_)),
         "{clean:?}"
     );
     for at in 0..=reports.len() {

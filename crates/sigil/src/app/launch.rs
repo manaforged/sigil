@@ -9,13 +9,12 @@ use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
 use crate::app::config::{AppConfig, PanicPolicy};
-use crate::app::error::{AppResult, Error};
 use crate::app::exit::clear_exit;
 use crate::app::window::allocate_window_id;
+use crate::error::{AppResult, Error};
 use crate::kernel::IntoNode;
 
 pub(super) mod backend;
-mod clock;
 mod event_wiring;
 mod frame;
 mod lifecycle;
@@ -23,14 +22,12 @@ mod record;
 #[path = "scene_cache.rs"]
 mod scene_cache;
 mod tick;
-#[cfg(target_arch = "wasm32")]
-mod web;
 
-use backend::{Backend, Surface};
-#[cfg(test)]
-use clock::AnimationClock;
+use backend::{Backend, RenderSurface};
 use frame::frame_once;
 use record::{WindowRecord, Windows};
+#[cfg(test)]
+use tick::AnimationClock;
 use tick::{FrameCtx, LoopState};
 
 pub(crate) fn launch<C, F, N>(config: C, tree: F) -> AppResult<()>
@@ -46,7 +43,7 @@ where
     owner.dispose();
     #[cfg(target_arch = "wasm32")]
     if let Err(error) = &result {
-        web::report(error);
+        report(error);
     }
     result
 }
@@ -57,7 +54,7 @@ where
     N: IntoNode,
 {
     crate::app::window::reset();
-    crate::text::prefer_system_fonts();
+    crate::text::fonts::use_system_fonts();
     let mut shell = if config.overlay {
         WinitShell::new_accessory()
     } else {
@@ -66,18 +63,20 @@ where
     .map_err(Error::window)?;
     #[cfg(target_arch = "wasm32")]
     shell.set_canvas(config.canvas.clone());
-    let async_rt = install_async_runtime(&shell, config.task_workers)?;
+    let async_rt = install_async_runtime(&shell, config.task_workers);
+    #[cfg(feature = "terminal")]
+    let _follow = crate::terminal::backdrop::Follow::start(None);
     crate::text::on_fonts_changed(wake_fn(&shell));
     let windows = initial_windows(&mut shell, config, tree)?;
     let _theme_watch = crate::app::launch_theme(config.theme_file.as_deref());
-    let mut renderer = Backend::from_env()?;
+    let mut renderer = Backend::from_env();
     #[cfg(target_arch = "wasm32")]
     renderer.request_device(wake_fn(&shell));
     renderer.set_transparent(config.overlay || config.frameless);
     clear_exit();
     shell.on_idle_deadline(next_interval_deadline);
     if let Some(hook) = config.on_exit.0.clone() {
-        shell.on_exit(move || hook());
+        WinitShell::on_exit(move || hook());
     }
     let state = LoopState::new(windows, renderer, async_rt, config.panic_policy);
     drive(shell, state, owner)
@@ -109,7 +108,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
     let inspect = crate::app::inspect::install_with_wake(wake_fn(&shell));
     let failure = Rc::new(Cell::new(None));
     let launch_failure = Rc::clone(&failure);
-    let result = shell
+    shell
         .run(move |shell| {
             owner.with(|| {
                 #[cfg(feature = "inspect")]
@@ -119,18 +118,14 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
                 if let Err(error) = state.tick(shell) {
                     Runtime::recover_from_panic();
                     #[cfg(target_arch = "wasm32")]
-                    web::report(&error);
+                    report(&error);
                     launch_failure.set(Some(error));
                     shell.request_exit();
                 }
             });
         })
         .map_err(Error::window)
-        .and_then(|()| failure.take().map_or(Ok(()), Err));
-    if cfg!(not(target_arch = "wasm32")) {
-        crate::profile::dump_if_enabled();
-    }
-    result
+        .and_then(|()| failure.take().map_or(Ok(()), Err))
 }
 
 fn request_animation_frame(shell: &WinitShell, handle: Option<WinitWindowHandle>) {
@@ -146,14 +141,11 @@ fn wake_fn(shell: &WinitShell) -> impl Fn() + Send + Sync + 'static {
     move || drop(WinitShell::wake(&waker))
 }
 
-fn install_async_runtime(
-    shell: &WinitShell,
-    workers: crate::tasks::TaskWorkers,
-) -> AppResult<AsyncRuntime> {
-    let mut async_rt = AsyncRuntime::with_workers(workers).map_err(Error::task)?;
+fn install_async_runtime(shell: &WinitShell, workers: crate::tasks::TaskWorkers) -> AsyncRuntime {
+    let mut async_rt = AsyncRuntime::with_workers(workers);
     async_rt.set_waker(wake_fn(shell));
     async_rt.install_current();
-    Ok(async_rt)
+    async_rt
 }
 
 fn create_initial_window<S>(
@@ -171,6 +163,7 @@ where
             crate::app::WindowOpts {
                 overlay: config.overlay,
                 frameless: config.frameless,
+                inset_title_bar: config.inset_title_bar,
                 anchor: config.anchor,
                 user_zoom: ((config.user_zoom - 1.0).abs() > f32::EPSILON)
                     .then_some(config.user_zoom),
@@ -225,7 +218,11 @@ pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce())
     Runtime::end_frame();
 }
 
-fn resize_surface(renderer: &mut Backend, surface: &mut Option<Surface>, physical: PhysicalSize) {
+fn resize_surface(
+    renderer: &mut Backend,
+    surface: &mut Option<RenderSurface>,
+    physical: PhysicalSize,
+) {
     if let Some(surface) = surface.as_mut()
         && let Err(err) = renderer.resize(surface, physical)
     {
@@ -256,3 +253,9 @@ fn scale_from_f64(scale: f64) -> Scale {
 #[cfg(test)]
 #[path = "launch_tests.rs"]
 mod tests;
+
+#[cfg(target_arch = "wasm32")]
+fn report(error: &crate::error::Error) {
+    tracing::error!("sigil-app: {error}");
+    web_sys::console::error_1(&format!("sigil: {error}").into());
+}

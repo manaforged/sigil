@@ -9,10 +9,8 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move;
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::PointerEventInit;
-use sigil::events::ShellEvent;
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
@@ -24,25 +22,23 @@ const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[test]
 fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
-    sigil::reactive::Runtime::scope("ds2-button-pressed-overlay", || {
+    sigil::reactive::Owner::scope("ds2-button-pressed-overlay", || {
         let mut cx = Cx::new_root();
         let ruby_10 = ruby_light().step(10);
         let root = cx.add(button("Delete").pressed(|s| s.bg(ruby_10)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move(31.0, 14.0));
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: Point::new(31.0, 14.0),
-                delta: Point::new(0.0, 0.0),
-                kind: PointerKind::Mouse,
-                button: Some(MouseButton::Left),
-                phase: PointerPhase::Down,
-                buttons: MouseButtons::LEFT,
-                modifiers: ModifiersState::empty(),
-            })),
+            Event::pointer_move(Point::new(31.0, 14.0)),
+        );
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer(PointerPhase::Down, Point::new(31.0, 14.0))
+                .button(Some(MouseButton::Left))
+                .buttons(MouseButtons::LEFT),
         );
 
         let colors = rect_colors(&cx, root);
@@ -56,7 +52,7 @@ fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
 
 #[test]
 fn button_user_rest_overlay_overrides_widget_rest_bg() {
-    sigil::reactive::Runtime::scope("ds2-button-rest-overlay", || {
+    sigil::reactive::Owner::scope("ds2-button-rest-overlay", || {
         let mut cx = Cx::new_root();
         let ruby_3 = ruby_light().step(3);
         let root = cx.add(button("Cancel").rest(|s| s.bg(ruby_3)));
@@ -73,7 +69,7 @@ fn button_user_rest_overlay_overrides_widget_rest_bg() {
 
 #[test]
 fn button_destructive_sugar_matches_solid_error_tone() {
-    sigil::reactive::Runtime::scope("ds2-5-button-destructive", || {
+    sigil::reactive::Owner::scope("ds2-5-button-destructive", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("Delete").destructive());
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
@@ -90,7 +86,7 @@ fn button_destructive_sugar_matches_solid_error_tone() {
 
 #[test]
 fn button_solid_error_tone_paints_error_scale_step_9() {
-    sigil::reactive::Runtime::scope("ds2-5-button-tone-error", || {
+    sigil::reactive::Owner::scope("ds2-5-button-tone-error", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("Delete").solid().tone(Tone::Error));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
@@ -107,7 +103,7 @@ fn button_solid_error_tone_paints_error_scale_step_9() {
 
 #[test]
 fn button_without_overlay_keeps_widget_defaults() {
-    sigil::reactive::Runtime::scope("ds2-button-no-overlay", || {
+    sigil::reactive::Owner::scope("ds2-button-no-overlay", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

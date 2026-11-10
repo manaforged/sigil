@@ -1,7 +1,8 @@
 use std::time::Duration;
 
+use sigil::ErrorKind;
 use sigil::prelude::{
-    ScheduleError, Signal, SignalWriter, Status, ToastQueue, signal, signal_writer, spawn,
+    Error, Signal, SignalWriter, Status, ToastQueue, signal, signal_writer, spawn,
 };
 use sigil::tasks::sleep;
 
@@ -56,7 +57,7 @@ struct Feed {
 }
 
 impl Feed {
-    async fn run(self) -> Result<(), ScheduleError> {
+    async fn run(self) -> Result<(), Error> {
         sleep(Duration::from_millis(START_DELAY_MS)).await;
         for step in SCRIPT {
             if step.after_ms > 0 {
@@ -67,7 +68,7 @@ impl Feed {
         Ok(())
     }
 
-    fn apply(&self, event: Event) -> Result<(), ScheduleError> {
+    fn apply(&self, event: Event) -> Result<(), Error> {
         match event {
             Event::Status(slot, status) => self.statuses.update(move |all| {
                 if let Some(entry) = all.get_mut(slot) {
@@ -99,7 +100,8 @@ pub(crate) fn start() -> Console {
     };
     let feed = spawn(async move {
         match backend.run().await {
-            Ok(()) | Err(ScheduleError::Closed) => Ok(()),
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == ErrorKind::Closed => Ok(()),
             Err(err) => Err(err.to_string()),
         }
     });

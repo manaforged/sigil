@@ -8,7 +8,7 @@ use sigil::geometry::Size;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
 #[test]
 fn a_fitted_path_keeps_its_aspect_ratio() {
@@ -25,10 +25,7 @@ fn a_fitted_path_keeps_its_aspect_ratio() {
                     .fit(),
             ),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure {
-        width: 10.0,
-        height: 16.0,
-    }));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(10.0, 16.0)));
     layout
         .compute(&mut cx, root, Size::fixed(960.0, 220.0))
         .unwrap();

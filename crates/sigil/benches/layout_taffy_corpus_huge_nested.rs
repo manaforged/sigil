@@ -11,18 +11,16 @@ use std::time::Duration;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 use taffy::prelude::*;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;
 const AVAILABLE: Size = Size::fixed(NODE_SIZE, NODE_SIZE);
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 0.0,
-    height: 0.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 
 const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {

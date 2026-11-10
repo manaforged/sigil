@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{ChangeKind, DiagSpan, HlSpan};
+use sigil::widgets::{ChangeKind, DiagSpan, Highlight};
 
 use super::facts::{CHANGES, DIAGNOSTICS};
 use super::project::{FILE_COUNT, FileId, Folder, TreeItem};
@@ -35,7 +35,7 @@ impl BottomTab {
 pub(crate) struct Buffer {
     pub(crate) lines: Signal<Vec<String>>,
     pub(crate) caret: Signal<(usize, usize)>,
-    pub(crate) highlights: Signal<Vec<Vec<HlSpan>>>,
+    pub(crate) highlights: Signal<Vec<Vec<Highlight>>>,
     pub(crate) gutter: Signal<Vec<Option<ChangeKind>>>,
     pub(crate) diagnostics: Signal<Vec<DiagSpan>>,
     pub(crate) text: Signal<String>,
@@ -51,7 +51,7 @@ impl Buffer {
         let language = spec.kind.language();
         let highlights = signal(Vec::new());
         effect(move || {
-            let spans = lines.with(|rows| hl_spans(language, &rows.join("\n")));
+            let spans = lines.with(|rows| highlight(language, &rows.join("\n")));
             highlights.update(|current| *current = spans);
         });
         Self {

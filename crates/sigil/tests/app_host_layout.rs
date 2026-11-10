@@ -1,19 +1,21 @@
 #![allow(clippy::unwrap_used, unused_crate_dependencies)]
 
 use sigil::Host;
+use sigil::kernel::HostMode;
 use sigil::kernel::{Surface, container, text};
-use sigil::layout::{LayoutBuilderExt, LayoutError, LayoutStyle};
+use sigil::layout::LayoutStyle;
+use sigil::prelude::Widget;
 use sigil::style::{Paint, Token, Tone, ToneContext};
 
 #[test]
 fn host_root_is_none_until_build() {
-    let host = Host::new();
+    let host = Host::new(HostMode::Pixel);
     assert!(host.root().is_none());
 }
 
 #[test]
 fn host_mount_accepts_text_node() {
-    let mut host = Host::new();
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(move || text("hello"));
     assert!(host.root().is_some());
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
@@ -26,7 +28,7 @@ fn host_mount_accepts_text_node() {
 
 #[test]
 fn host_layout_reads_text_and_tone_without_a_window() {
-    let mut host = Host::new();
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(move || {
         container()
             .with(ToneContext::new(Tone::Primary))
@@ -36,27 +38,26 @@ fn host_layout_reads_text_and_tone_without_a_window() {
     let scene = host.scene((80.0, 24.0)).unwrap();
     let hello = scene.find_text("hello").expect("hello run");
     assert!(
-        hello.run.rect.width > 0.0 && hello.run.rect.height > 0.0,
+        hello.rect.width > 0.0 && hello.rect.height > 0.0,
         "expected a laid-out rect in {scene:?}"
     );
 }
 
 #[test]
 fn host_layout_returns_missing_root_error() {
-    let mut host = Host::new();
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(|| text("gone"));
     let root = host.root().unwrap();
     assert!(host.cx().remove(root));
 
-    assert_eq!(
-        host.layout((80.0, 24.0)),
-        Err(LayoutError::NodeMissing(root))
-    );
+    let err = host.layout((80.0, 24.0)).unwrap_err();
+    assert_eq!(err.kind(), sigil::ErrorKind::NodeMissing);
+    assert_eq!(err.node(), Some(root));
 }
 
 #[test]
 fn host_surfaces_reports_hole_rect() {
-    let mut host = Host::new();
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(move || {
         container()
             .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
@@ -72,7 +73,7 @@ fn host_surfaces_reports_hole_rect() {
 
 #[test]
 fn host_paint_skips_surface_children() {
-    let mut host = Host::new();
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(move || {
         container()
             .layout(LayoutStyle::flex_row().fixed_size(80.0, 24.0))

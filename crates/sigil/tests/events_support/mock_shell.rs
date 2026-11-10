@@ -3,13 +3,13 @@
 use std::error::Error;
 use std::fmt;
 
-use sigil::events::ShellEvent;
+use sigil::events::Event;
 use sigil::geometry::PhysicalSize;
 use sigil::hal::Shell;
 
 #[derive(Default)]
 pub(crate) struct MockShell {
-    events: Vec<ShellEvent>,
+    events: Vec<Event>,
     pub(crate) created: Vec<(String, PhysicalSize)>,
 }
 
@@ -18,7 +18,7 @@ impl MockShell {
         Self::default()
     }
 
-    pub(crate) fn push_event(&mut self, event: ShellEvent) {
+    pub(crate) fn push_event(&mut self, event: Event) {
         self.events.push(event);
     }
 }
@@ -54,7 +54,7 @@ impl Shell for MockShell {
         Ok(self.created.len() - 1)
     }
 
-    fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
+    fn drain_events(&mut self) -> std::vec::IntoIter<Event> {
         std::mem::take(&mut self.events).into_iter()
     }
 

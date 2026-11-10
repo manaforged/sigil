@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -8,10 +9,10 @@ mod scene_support;
 
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
-    SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
+    SceneCommand, Stroke, StrokeAlign, StrokeStyle,
 };
 use sigil::style::{Color, Rgba8};
 use smallvec::smallvec;
@@ -22,17 +23,17 @@ fn per_corner_radii_round_trip_with_strokes() {
     let stroke = solid_stroke();
     let mut builder = SceneBuilder::new();
     builder.draw_rect(
-        rect(0.0, 0.0),
-        SceneRectStyle::new(color(24, 32, 48, 255), left_round, 10_000).with_stroke(stroke),
+        DrawRect::new(rect(0.0, 0.0), color(24, 32, 48, 255))
+            .border_radius(left_round)
+            .stroke(stroke),
     );
     builder.draw_gradient(
-        rect(56.0, 0.0),
-        SceneGradientStyle::new(gradient(), CornerRadii::top(10.0), 9_000).with_stroke(stroke),
+        DrawGradient::new(rect(56.0, 0.0), gradient())
+            .border_radius(CornerRadii::top(10.0))
+            .opacity(9_000)
+            .stroke(stroke),
     );
-    builder.draw_rect(
-        rect(112.0, 0.0),
-        SceneRectStyle::new(color(8, 12, 20, 255), CornerRadii::ZERO, 10_000),
-    );
+    builder.draw_rect(DrawRect::new(rect(112.0, 0.0), color(8, 12, 20, 255)));
     let scene = builder.finish();
 
     assert!(matches!(
@@ -69,7 +70,7 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 fn gradient() -> LinearGradient {
     LinearGradient::new(

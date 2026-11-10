@@ -71,7 +71,7 @@ fn align_self_overrides_container_align_items() {
         ..flex_box(200.0, 100.0)
     };
     let item = StyleData {
-        align_self: Some(AlignSelf::End),
+        align_self: Some(AlignItems::End),
         ..fixed(40.0, 30.0)
     };
     assert!(near(kids(parent, &[item])[0].y, 70.0));

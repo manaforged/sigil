@@ -1,22 +1,26 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil::hal::{ParagraphMetrics, TextEngine};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
 
 const WORD_A: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 const WORD_B: &str = "\u{05E2}\u{05D5}\u{05DC}\u{05DD}";
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 fn caret_x(
     p: &sigil::text::Paragraph,
     byte_index: usize,
-    affinity: sigil::hal::TextAffinity,
+    affinity: sigil::text::TextAffinity,
 ) -> f32 {
     p.caret_rect(
-        sigil::hal::HitPosition {
+        sigil::text::HitPosition {
             byte_index,
             affinity,
         },
@@ -36,10 +40,10 @@ fn embedded_rtl_run_sits_between_ltr_neighbors_and_advances_rtl_internally() {
     let hebrew_start = 4_usize;
     let hebrew_end = 10_usize;
 
-    let abc_end_x = caret_x(&p, 3, sigil::hal::TextAffinity::Upstream);
-    let hebrew_start_x = caret_x(&p, hebrew_start, sigil::hal::TextAffinity::Downstream);
-    let hebrew_end_x = caret_x(&p, hebrew_end, sigil::hal::TextAffinity::Upstream);
-    let def_start_x = caret_x(&p, hebrew_end + 1, sigil::hal::TextAffinity::Downstream);
+    let abc_end_x = caret_x(&p, 3, sigil::text::TextAffinity::Upstream);
+    let hebrew_start_x = caret_x(&p, hebrew_start, sigil::text::TextAffinity::Downstream);
+    let hebrew_end_x = caret_x(&p, hebrew_end, sigil::text::TextAffinity::Upstream);
+    let def_start_x = caret_x(&p, hebrew_end + 1, sigil::text::TextAffinity::Downstream);
 
     assert!(
         abc_end_x <= hebrew_start_x.min(hebrew_end_x),
@@ -105,7 +109,7 @@ fn wrapped_line_applies_l1_reset_not_just_paragraph_wide_levels() {
         p.line_count(),
     );
 
-    let abc_start = caret_x(&p, 7, sigil::hal::TextAffinity::Downstream);
+    let abc_start = caret_x(&p, 7, sigil::text::TextAffinity::Downstream);
     assert!(
         abc_start > 0.5,
         "L1-corrected line must push 'abc' off the line's left edge (the \

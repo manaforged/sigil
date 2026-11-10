@@ -1,6 +1,6 @@
 # Controls
 
-Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, and `radio_group` take the `WidgetLayoutExt` sizing methods (`.width()`, `.height()`, `.grow()`, `.padding()`, `.layout()`); `slider` sizes through `.layout()`. `button`, `checkbox`, and `slider` implement `StateHost`: the state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
+Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, and `radio_group` take the `Widget` sizing methods (`.width()`, `.height()`, `.grow()`, `.padding()`, `.layout()`); `slider` sizes through `.layout()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
 
 ## button
 
@@ -28,13 +28,13 @@ Key options:
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
-Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the `FocusRing` that `InteractionState` installs.
+Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
 
 `icon_button(glyph, activate)` is `button(glyph).ghost().activate(f)` with a square hit area: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
 
 ## checkbox
 
-`checkbox(Signal<bool>) -> CheckboxBuilder`. A bordered box with a vector check mark. `Role::CheckBox`; publishes `checked` to the accessibility tree.
+`checkbox(Signal<bool>)`. A bordered box with a vector check mark. `Role::CheckBox`; publishes `checked` to the accessibility tree.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -52,11 +52,11 @@ Pointer release, Enter, and Space flip the value. In the terminal host the indic
 
 ## toggle
 
-`toggle(Signal<bool>) -> ToggleBuilder`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(Signal<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
+`toggle(Signal<bool>)`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(Signal<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
 
 ## radio_group
 
-`radio_group(Signal<String>) -> RadioGroupBuilder`. A vertical stack of options bound to a string key.
+`radio_group(Signal<String>)`. A vertical stack of options bound to a string key.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -73,7 +73,7 @@ radio_group(mode)
 
 ## slider
 
-`slider(Signal<f32>, RangeInclusive<f32>) -> SliderBuilder`. A drag thumb on a filled track. `Role::Slider`; publishes the value, the range, and the step so assistive tech can issue Increment/Decrement.
+`slider(Signal<f32>, RangeInclusive<f32>)`. A drag thumb on a filled track. `Role::Slider`; publishes the value, the range, and the step so assistive tech can issue Increment/Decrement.
 
 ```rust,no_run
 # use sigil::prelude::*;

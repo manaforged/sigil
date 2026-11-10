@@ -14,7 +14,6 @@ mod services;
 mod shell;
 
 use sigil::prelude::*;
-use sigil::style::space;
 
 use data::INSPECTOR_BREAKPOINT;
 
@@ -46,7 +45,7 @@ fn work(console: live::Console) -> NodeBuilder {
                 .fill_width()
                 .grow(1.0)
                 .min_size(0.0, 0.0)
-                .gap(space(2)),
+                .gap(Space::Sm),
         )
         .child(nav::rail(console))
         .child(services::column(console))

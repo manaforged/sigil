@@ -9,11 +9,11 @@ use sigil::prelude::*;
 
 #[test]
 fn scroll_preserves_content_layout_style() {
-    sigil::reactive::Runtime::scope("scroll-preserves-content-layout", || {
+    sigil::reactive::Owner::scope("scroll-preserves-content-layout", || {
         let mut cx = Cx::new_root();
 
         let content =
-            container().layout(LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32));
+            container().layout(LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl));
 
         let root = cx.add(scroll(content).extent(800.0_f32));
 
@@ -47,7 +47,7 @@ fn scroll_preserves_content_layout_style() {
             .get_extension::<LayoutStyle>()
             .expect("content node must have a LayoutStyle");
 
-        let expected = LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32);
+        let expected = LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl);
         assert_eq!(
             style, &expected,
             "content LayoutStyle was clobbered by scroll::wrap_content; \
@@ -58,11 +58,11 @@ fn scroll_preserves_content_layout_style() {
 
 #[test]
 fn scroll_sizing_container_has_fixed_size_layout() {
-    sigil::reactive::Runtime::scope("scroll-sizing-container-layout", || {
+    sigil::reactive::Owner::scope("scroll-sizing-container-layout", || {
         let mut cx = Cx::new_root();
 
         let content =
-            container().layout(LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32));
+            container().layout(LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl));
         let root = cx.add(scroll(content).extent(800.0_f32));
 
         let root_node = cx.get(root).expect("root exists");
@@ -73,7 +73,7 @@ fn scroll_sizing_container_has_fixed_size_layout() {
             .get_extension::<LayoutStyle>()
             .expect("sizing container must have a LayoutStyle");
 
-        let user_style = LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32);
+        let user_style = LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl);
         assert_ne!(
             body_style, &user_style,
             "sizing container should NOT carry the user's flex_column layout"

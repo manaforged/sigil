@@ -1,7 +1,9 @@
 use crate::events::ImeEvent;
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, NodeId};
-use crate::layout::{CaretGeometry, LayoutEngine};
+use crate::layout::CaretGeometry;
+use crate::layout::LayoutEngine;
 
 use crate::events::EventRouter;
 
@@ -31,8 +33,13 @@ impl core::fmt::Debug for ImeHandlers {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(
+    not(any(test, feature = "kittest", feature = "desktop")),
+    allow(dead_code, reason = "only the window host reads the caret anchor")
+)]
 pub(crate) struct CaretAnchorExt(pub(crate) std::rc::Rc<std::cell::Cell<Option<CaretGeometry>>>);
 
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 const CARET_ANCHOR_W: f32 = 2.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -43,58 +50,72 @@ pub(crate) enum ImeSession {
     Cancelled,
 }
 
+impl ImeSession {
+    pub(crate) fn end(&mut self, cx: &Cx) {
+        if let Self::Active(owner) = *self {
+            dispatch_to_owner(cx, owner, &ImeEvent::Disabled);
+            *self = Self::Cancelled;
+        }
+    }
+}
+
 impl EventRouter {
     pub(crate) fn route_ime(&mut self, cx: &Cx, layout: &LayoutEngine, event: &ImeEvent) {
-        if let ImeSession::Active(owner) = self.ime_session
+        if let ImeSession::Active(owner) = self.focus.ime_session
             && (self.focus() != Some(owner) || !valid_ime_target(self, cx, layout, owner))
         {
-            dispatch_to_owner(cx, owner, &ImeEvent::Disabled);
-            self.ime_session = ImeSession::Cancelled;
+            self.focus.ime_session.end(cx);
         }
-        match (self.ime_session, event) {
+        match (self.focus.ime_session, event) {
             (ImeSession::Idle, ImeEvent::Enabled | ImeEvent::Preedit(..))
             | (ImeSession::Cancelled, ImeEvent::Enabled) => {
-                self.ime_session = self
+                self.focus.ime_session = self
                     .focus()
                     .filter(|id| valid_ime_target(self, cx, layout, *id))
                     .map_or(ImeSession::Idle, ImeSession::Active);
             }
             (ImeSession::Cancelled, ImeEvent::Disabled) => {
-                self.ime_session = ImeSession::Idle;
+                self.focus.ime_session = ImeSession::Idle;
                 return;
             }
             (ImeSession::Cancelled, ImeEvent::Preedit(..) | ImeEvent::Commit(_))
             | (ImeSession::Idle, ImeEvent::Commit(_) | ImeEvent::Disabled) => return,
             (ImeSession::Active(_), _) => {}
         }
-        let ImeSession::Active(owner) = self.ime_session else {
+        let ImeSession::Active(owner) = self.focus.ime_session else {
             return;
         };
         dispatch_to_owner(cx, owner, event);
         if matches!(event, ImeEvent::Disabled) {
-            self.ime_session = ImeSession::Idle;
+            self.focus.ime_session = ImeSession::Idle;
         }
     }
 
-    #[must_use]
-    pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
-        self.focus()
-            .and_then(|id| cx.get(id))
-            .and_then(|node| node.get_extension::<ImeHandlers>())
-            .is_some_and(ImeHandlers::is_eligible)
+    kittest_pub! {
+        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[must_use]
+        pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
+            self.focus()
+                .and_then(|id| cx.get(id))
+                .and_then(|node| node.get_extension::<ImeHandlers>())
+                .is_some_and(ImeHandlers::is_eligible)
+        }
     }
 
-    #[must_use]
-    pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
-        let focused = self.focus()?;
-        let node = cx.get(focused)?;
-        let local = node.get_extension::<CaretAnchorExt>()?.0.get()?;
-        let origin = layout.result(focused)?.rect().origin;
-        Some(Rect::new(
-            Point::new(origin.x + local.x, origin.y + local.top),
-            CARET_ANCHOR_W,
-            local.height,
-        ))
+    kittest_pub! {
+        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[must_use]
+        pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
+            let focused = self.focus()?;
+            let node = cx.get(focused)?;
+            let local = node.get_extension::<CaretAnchorExt>()?.0.get()?;
+            let origin = layout.result(focused)?.rect().origin;
+            Some(Rect::new(
+                Point::new(origin.x + local.x, origin.y + local.top),
+                CARET_ANCHOR_W,
+                local.height,
+            ))
+        }
     }
 }
 

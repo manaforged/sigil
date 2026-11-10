@@ -4,7 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
 fn save_form(saves: Signal<u32>) -> impl IntoNode {
@@ -18,7 +18,7 @@ fn save_form(saves: Signal<u32>) -> impl IntoNode {
 
 #[test]
 fn a_closure_drives_disabled_until_the_field_has_text() {
-    Runtime::scope("reactive-props-disabled", || {
+    Owner::scope("reactive-props-disabled", || {
         let saves = signal(0_u32);
         let mut ui = Harness::new(move || save_form(saves));
         let save = ui.get_by_role(Role::Button, "Save");

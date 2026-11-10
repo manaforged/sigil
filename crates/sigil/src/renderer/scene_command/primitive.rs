@@ -2,22 +2,24 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::FrameUploads;
-use crate::renderer::scene_command::walk::{Walk, pipeline_for, rect_from_fields, transform_rect};
+use crate::renderer::scene_command::walk::transform_rect;
+use crate::renderer::scene_command::walk::{SceneWalk, pipeline_for, rect_from_fields};
 use crate::renderer::scene_command::{
-    DrawDecoration, DrawGradient, DrawPattern, DrawRect, Stroke, StrokeBand, Transform,
+    DrawDecoration, DrawGradient, DrawPattern, DrawRect, PatternKind, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
-    draw_shadow_instance, gradient_stop_records,
+    draw_shadow_instance, gradient_stop_records, wash_stops,
 };
 use crate::renderer::scene_paint::{PaintCtx, ScenePipeline};
-use crate::renderer::shadow_paint::{Shadow, ShadowPipeline};
+use crate::renderer::shadow_paint::Shadow;
+use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::scene::CornerRadii;
 use crate::scene::command::trim::{Trimmed, tile_phase, trim_to_view};
 
 const TRIM_PAD: f32 = 2.0;
 
-impl Walk<'_> {
+impl SceneWalk<'_> {
     pub(super) fn queue_rect(&mut self, draw: &DrawRect) {
         let Some((transform, trimmed, dash)) =
             self.trimmed(draw.rect, draw.border_radius, draw.stroke)
@@ -142,6 +144,11 @@ impl Walk<'_> {
     }
 
     pub(super) fn queue_pattern(&mut self, draw: &DrawPattern) {
+        if let PatternKind::Wash(wash) = draw.pattern
+            && self.draw_wash(draw, wash)
+        {
+            return;
+        }
         let Some((transform, trimmed, dash)) =
             self.trimmed(draw.rect, draw.border_radius, draw.stroke)
         else {
@@ -152,7 +159,14 @@ impl Walk<'_> {
         local.border_radius = trimmed.radii;
         let phase = tile_phase(trimmed.shift, draw.pattern.tile_extent());
         let space = BlendSpace::from_format(self.ctx.format);
-        let instance = draw_pattern_instance(&local, self.state.current_opacity(), space);
+        let stops = wash_stops(draw.pattern)
+            .map_or_else(Vec::new, |stops| gradient_stop_records(&stops, space));
+        let range = [
+            u32::try_from(self.ctx.pending.stops.len()).unwrap_or(u32::MAX),
+            u32::try_from(stops.len()).unwrap_or(u32::MAX),
+        ];
+        self.ctx.pending.stops.extend(stops);
+        let instance = draw_pattern_instance(&local, self.state.current_opacity(), space, range);
         self.ctx.pending.fills.push(
             instance
                 .with_phase(phase)

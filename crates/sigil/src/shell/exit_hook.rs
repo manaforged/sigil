@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 
-pub(crate) type ExitHook = Box<dyn FnOnce()>;
+pub(crate) type ExitFn = Box<dyn FnOnce()>;
 
 thread_local! {
-    static HOOK: RefCell<Option<ExitHook>> = const { RefCell::new(None) };
+    static HOOK: RefCell<Option<ExitFn>> = const { RefCell::new(None) };
 }
 
-pub(crate) fn set(hook: ExitHook) {
+pub(crate) fn set(hook: ExitFn) {
     HOOK.with(|slot| *slot.borrow_mut() = Some(hook));
 }
 

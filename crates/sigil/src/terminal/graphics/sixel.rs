@@ -4,15 +4,20 @@ use std::fmt::Write as _;
 use super::encode::{Sample, premultiplied};
 use crate::kernel::ImageSource;
 
-const CELL_W: usize = 8;
-const CELL_H: usize = 16;
+const DEFAULT_CELL: [u16; 2] = [8, 16];
 const BAND: usize = 6;
 const EMPTY: u8 = 0;
 const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
 
-pub(crate) fn encode(source: &ImageSource, window: (u32, u32), cols: u16, rows: u16) -> String {
-    let width = usize::from(cols).saturating_mul(CELL_W);
-    let height = usize::from(rows).saturating_mul(CELL_H);
+pub(crate) fn encode(
+    source: &ImageSource,
+    window: (u32, u32),
+    (cols, rows): (u16, u16),
+    cell: Option<[u16; 2]>,
+) -> String {
+    let [cell_w, cell_h] = cell.unwrap_or(DEFAULT_CELL);
+    let width = usize::from(cols).saturating_mul(usize::from(cell_w));
+    let height = usize::from(rows).saturating_mul(usize::from(cell_h));
     let pixels = palette_pixels(source, window, width, height);
     let used: BTreeSet<u8> = pixels.iter().copied().filter(|reg| *reg != EMPTY).collect();
     let mut seq = String::new();

@@ -8,14 +8,25 @@ use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, with_rt};
 
 const DRAIN_BUDGET: usize = 10_000;
 
+/// Runs a closure now and again when the signals it reads change.
 #[track_caller]
 pub fn effect<F: FnMut() + 'static>(f: F) {
     effect_named("<unnamed>", f);
 }
 
-#[track_caller]
-pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
-    let location = Location::caller();
+kittest_pub! {
+    #[track_caller]
+    pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
+        effect_at(name, Location::caller(), f);
+    }
+}
+
+/// Runs `f` as an effect that profiles and reports errors at `location`.
+pub(crate) fn effect_at<F: FnMut() + 'static>(
+    name: &'static str,
+    location: &'static Location<'static>,
+    f: F,
+) {
     let key = with_rt(|rt| {
         let owner = rt
             .current_owner
@@ -44,6 +55,7 @@ pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
     run_effect(key);
 }
 
+/// Run `f` without subscribing the current effect to its reads.
 pub fn untrack<R>(f: impl FnOnce() -> R) -> R {
     struct Restore(Option<EffectKey>);
     impl Drop for Restore {
@@ -56,6 +68,7 @@ pub fn untrack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// Run `f` after the current effect returns, or now outside an effect.
 pub fn defer(f: impl FnOnce() + 'static) {
     let f: Box<dyn FnOnce()> = Box::new(f);
     with_rt(|rt| {

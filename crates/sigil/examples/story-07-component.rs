@@ -14,8 +14,8 @@ pub(crate) fn steppers() -> impl IntoNode {
 
 fn stepper(label: &'static str, value: Signal<i32>) -> impl IntoNode {
     row()
-        .child(text(label))
+        .child(text(label).width(56.0))
         .child(button("-").activate(move || value.update(|v| *v -= 1)))
-        .child(text(value))
+        .child(text(value).class("tabular-nums"))
         .child(button("+").activate(move || value.update(|v| *v += 1)))
 }

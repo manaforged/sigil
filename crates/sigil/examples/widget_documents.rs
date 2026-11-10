@@ -4,7 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{CodeEditBuilder, DiffBuilder};
+use sigil::widgets::DiffBuilder;
 
 const PATCH: &str = "--- a/src/app.rs\n+++ b/src/app.rs\n@@ -1,3 +1,3 @@\n fn main() {\n-    old();\n+    fresh();\n }";
 const QUADRANTS: &str = "iVBORw0KGgoAAAANSUhEUgAAAGAAAAAwCAYAAADuFn/PAAAAeklEQVR42u3SQQ0AQAgDQYQh7MTihVPBo8k8VkAzrene5PpNdAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAFA+oD0AwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcNAHChr0hrUljjwAAAAASUVORK5CYII=";
@@ -40,13 +40,13 @@ pub(crate) fn html_demo() -> NodeBuilder {
     )))
 }
 
-pub(crate) fn code_edit_demo() -> CodeEditBuilder {
+pub(crate) fn code_edit_demo(disabled: Signal<bool>) -> impl IntoNode {
     let lines = vec![
         String::from("fn main() {"),
         String::from("    println!(\"hi\");"),
         String::from("}"),
     ];
-    code_edit(signal(lines), signal((1, 4)))
+    code_edit(signal(lines), signal((1, 4))).disabled(disabled)
 }
 
 pub(crate) fn mermaid_demo() -> NodeBuilder {
@@ -69,7 +69,7 @@ fn build() -> impl IntoNode {
             .child(markdown_image_demo())
             .child(markdown_edit_demo(signal(false)))
             .child(html_demo())
-            .child(code_edit_demo())
+            .child(code_edit_demo(signal(false)))
             .child(mermaid_demo())
             .child(diff_demo()),
     )

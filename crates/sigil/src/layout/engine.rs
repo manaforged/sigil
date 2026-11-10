@@ -6,10 +6,11 @@ use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use std::collections::BTreeSet;
 
+use crate::Error;
 use crate::layout::cache_key::{LayoutCacheKey, reactive_layout_signature};
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
 use crate::layout::text_style::InheritedText;
-use crate::layout::{LayoutError, LayoutResult, TextMeasure};
+use crate::layout::{LayoutResult, TextMeasure};
 use crate::style::locale::Direction;
 use cache::take_cache_miss;
 use measure::Pass;
@@ -66,6 +67,7 @@ impl LayoutEngine {
         std::mem::replace(&mut self.republished, false)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn mirrored_node_count(&self) -> usize {
         self.core_to_handle.len()
@@ -96,21 +98,16 @@ impl LayoutEngine {
         ))
     }
 
-    pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
+    pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), Error> {
         self.gc(cx)?;
         let root_text = TextStyle::default();
         self.sync_subtree(cx, root, InheritedText::new(&root_text, Direction::Ltr))
             .map(|_handles| ())
     }
 
-    pub fn compute(
-        &mut self,
-        cx: &mut Cx,
-        root: NodeId,
-        available: Size,
-    ) -> Result<(), LayoutError> {
+    pub fn compute(&mut self, cx: &mut Cx, root: NodeId, available: Size) -> Result<(), Error> {
         if cx.get(root).is_none() {
-            return Err(LayoutError::NodeMissing(root));
+            return Err(Error::node_missing(root));
         }
         {
             let _children = crate::profile::span(crate::profile::Phase::LayoutChildren);
@@ -182,7 +179,7 @@ impl LayoutEngine {
         (root, available): (NodeId, Size),
         solved: &[NodeId],
         cache_key: LayoutCacheKey,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         {
             let _overlays = crate::profile::span(crate::profile::Phase::LayoutOverlays);
             self.measure_viewport_overlays(cx, root, available, solved)?;
@@ -219,7 +216,7 @@ impl LayoutEngine {
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
     }
 
-    pub fn gc(&mut self, cx: &Cx) -> Result<(), LayoutError> {
+    pub fn gc(&mut self, cx: &Cx) -> Result<(), Error> {
         let stale: Vec<_> = self
             .core_to_handle
             .keys()
@@ -234,7 +231,7 @@ impl LayoutEngine {
         Ok(())
     }
 
-    fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
+    fn remove_mirror(&mut self, id: NodeId) -> Result<(), Error> {
         let handle = self.handle(id)?;
         for h in self.drive.subtree_handles(handle)? {
             if let Some(core_id) = self.drive.kernel_for(h) {
@@ -278,11 +275,11 @@ impl LayoutEngine {
         }
     }
 
-    fn handle(&self, id: NodeId) -> Result<NodeHandle, LayoutError> {
+    fn handle(&self, id: NodeId) -> Result<NodeHandle, Error> {
         self.core_to_handle
             .get(id.key())
             .copied()
-            .ok_or(LayoutError::NodeMissing(id))
+            .ok_or_else(|| Error::node_missing(id))
     }
 }
 

@@ -1,6 +1,7 @@
 use super::text::RunNodes;
 use crate::geometry::Rect;
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+use crate::reactive::Signal;
 use accesskit::{
     Action, Invalid, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,
 };
@@ -16,13 +17,13 @@ pub(crate) enum TreeScope {
     Reading,
 }
 
-struct Walk<'a> {
+struct AccessWalk<'a> {
     bounds: BoundsLookup<'a>,
     scope: TreeScope,
     focus: Option<NodeId>,
 }
 
-impl Walk<'_> {
+impl AccessWalk<'_> {
     fn keeps(&self, id: NodeId, node: &Node) -> bool {
         self.scope == TreeScope::Full
             || self.focus == Some(id)
@@ -34,6 +35,7 @@ impl Walk<'_> {
     }
 }
 
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
     tree_scoped(cx, focus, bounds, TreeScope::Full)
@@ -46,7 +48,7 @@ pub(crate) fn tree_scoped(
     bounds: BoundsLookup<'_>,
     scope: TreeScope,
 ) -> TreeUpdate {
-    let walk = Walk {
+    let walk = AccessWalk {
         bounds,
         scope,
         focus,
@@ -56,7 +58,7 @@ pub(crate) fn tree_scoped(
     let mut nodes = Vec::with_capacity(cx.len() + 1);
     for root in cx.roots().iter().copied() {
         flatten(cx, root, &mut top);
-        walk_subtree(cx, root, &walk, &mut nodes);
+        walk_subtree(cx, root, &walk, true, &mut nodes);
     }
     if scope == TreeScope::Full {
         super::modal_scope::hide_outside(cx, &mut nodes);
@@ -81,20 +83,27 @@ pub(crate) fn tree_scoped(
     }
 }
 
-fn walk_subtree(cx: &Cx, id: NodeId, walk: &Walk<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
+fn walk_subtree(
+    cx: &Cx,
+    id: NodeId,
+    walk: &AccessWalk<'_>,
+    shown: bool,
+    out: &mut Vec<(AkNodeId, AkNode)>,
+) {
     let Some(kernel_node) = cx.get(id) else {
         return;
     };
+    let shown = shown && !crate::events::hit_test::conceals(kernel_node);
     if matches!(kernel_node.kind, NodeType::Fragment) {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, walk, out);
+            walk_subtree(cx, child, walk, shown, out);
         }
         return;
     }
     let kept = walk.keeps(id, kernel_node);
     let at = out.len();
     let has_runs = if kept {
-        let (projected, runs) = project(cx, id, walk.bounds);
+        let (projected, runs) = project(cx, id, walk.bounds, shown);
         out.push((id.to_accesskit(), projected));
         runs.map(|runs| out.extend(runs)).is_some()
     } else {
@@ -103,15 +112,16 @@ fn walk_subtree(cx: &Cx, id: NodeId, walk: &Walk<'_>, out: &mut Vec<(AkNodeId, A
     let below = out.len();
     if has_runs {
         for control in embedded_controls(cx, kernel_node) {
-            walk_subtree(cx, control, walk, out);
+            let seen = crate::events::hit_test::visible(cx, control);
+            walk_subtree(cx, control, walk, seen, out);
         }
     } else {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, walk, out);
+            walk_subtree(cx, child, walk, shown, out);
         }
     }
     if !kept && out.len() > below {
-        let (projected, runs) = project(cx, id, walk.bounds);
+        let (projected, runs) = project(cx, id, walk.bounds, shown);
         let own = std::iter::once((id.to_accesskit(), projected)).chain(runs.into_iter().flatten());
         let _ = out.splice(at..at, own);
     }
@@ -138,17 +148,23 @@ fn retain_emitted(top: &mut Vec<NodeId>, nodes: &mut [(AkNodeId, AkNode)]) {
     }
 }
 
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
-    project(cx, id, bounds).0
+    project(cx, id, bounds, crate::events::hit_test::visible(cx, id)).0
 }
 
-fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<RunNodes>) {
+fn project(
+    cx: &Cx,
+    id: NodeId,
+    bounds: BoundsLookup<'_>,
+    shown: bool,
+) -> (AkNode, Option<RunNodes>) {
     let Some(kernel_node) = cx.get(id) else {
         return (AkNode::new(accesskit::Role::Unknown), None);
     };
     let a11y = &kernel_node.a11y;
-    let mut ak = AkNode::new(a11y.role);
+    let mut ak = AkNode::new(a11y.role.native());
 
     if a11y.labelled_by.is_none()
         && let Some(label) = name_text(&a11y.name)
@@ -162,11 +178,11 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
-    if !crate::events::hit_test::visible(cx, id) {
+    if !shown {
         ak.set_hidden();
     }
     apply_grid(&mut ak, a11y);
-    let factor = f64::from(cx.scale().factor());
+    let factor = f64::from(cx.scale());
     apply_bounds(&mut ak, id, bounds, factor);
     let runs = super::text::export(id, a11y, &mut ak);
     if runs.is_none() {
@@ -221,14 +237,17 @@ fn apply_labelled_by(ak: &mut AkNode, a11y: &A11yProps) {
 
 fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     for action in &a11y.actions {
-        ak.add_action(*action);
+        ak.add_action(action.native());
     }
     if let Some(shortcut) = &a11y.keyboard_shortcut {
-        ak.set_keyboard_shortcut(format!("{shortcut:?}"));
+        ak.set_keyboard_shortcut(shortcut.label());
     }
     ak.add_action(Action::ScrollIntoView);
     if a11y.is_disabled() {
         return;
+    }
+    if a11y.focusable {
+        ak.add_action(Action::Focus);
     }
     if a11y.text_value.is_some() || a11y.value_now.is_some() {
         ak.add_action(Action::SetValue);
@@ -247,7 +266,9 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
         ak.set_disabled();
     }
     if let Some(sig) = a11y.checked {
-        let toggled = if sig.peek() {
+        let toggled = if a11y.mixed.is_some_and(Signal::peek) {
+            Toggled::Mixed
+        } else if sig.peek() {
             Toggled::True
         } else {
             Toggled::False
@@ -257,6 +278,28 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.selected {
         ak.set_selected(sig.peek());
     }
+    apply_value(ak, a11y);
+    if let Some(sig) = a11y.expanded {
+        ak.set_expanded(sig.peek());
+    }
+    if a11y.invalid.is_some_and(|sig| sig.peek()) {
+        ak.set_invalid(Invalid::True);
+    }
+    if a11y.required.is_some_and(|sig| sig.peek()) {
+        ak.set_required();
+    }
+    if a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Modal) {
+        ak.set_modal();
+    }
+    if let Some(live) = a11y.live.or_else(|| default_live(a11y.role)) {
+        ak.set_live(live.native());
+    }
+    if let Some(level) = a11y.level {
+        ak.set_level(level);
+    }
+}
+
+fn apply_value(ak: &mut AkNode, a11y: &A11yProps) {
     if let (Some(now), Some(min), Some(max)) = (a11y.value_now, a11y.value_min, a11y.value_max) {
         ak.set_numeric_value(f64::from(now.peek()));
         ak.set_min_numeric_value(f64::from(min));
@@ -271,30 +314,12 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(placeholder) = &a11y.placeholder {
         ak.set_placeholder(placeholder.clone());
     }
-    if let Some(sig) = a11y.expanded {
-        ak.set_expanded(sig.peek());
-    }
-    if a11y.invalid.is_some_and(|sig| sig.peek()) {
-        ak.set_invalid(Invalid::True);
-    }
-    if a11y.required.is_some_and(|sig| sig.peek()) {
-        ak.set_required();
-    }
-    if a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Modal) {
-        ak.set_modal();
-    }
-    if let Some(live) = a11y.live.or_else(|| default_live(a11y.role)) {
-        ak.set_live(live);
-    }
-    if let Some(level) = a11y.level {
-        ak.set_level(level);
-    }
 }
 
-const fn default_live(role: accesskit::Role) -> Option<accesskit::Live> {
+const fn default_live(role: crate::kernel::Role) -> Option<crate::kernel::Live> {
     match role {
-        accesskit::Role::Alert => Some(accesskit::Live::Assertive),
-        accesskit::Role::Status => Some(accesskit::Live::Polite),
+        crate::kernel::Role::Alert => Some(crate::kernel::Live::Assertive),
+        crate::kernel::Role::Status => Some(crate::kernel::Live::Polite),
         _ => None,
     }
 }
@@ -321,7 +346,7 @@ fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.sort_direction
         && let Some(direction) = sig.peek()
     {
-        ak.set_sort_direction(direction);
+        ak.set_sort_direction(direction.native());
     }
 }
 

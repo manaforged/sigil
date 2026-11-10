@@ -4,11 +4,12 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::events::Event;
+use sigil::geometry::Point;
 use sigil::geometry::Rect;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
-use sigil::widgets::{DragDropExt, DragState};
-use sigil_kittest::input::{pointer_down, pointer_drag, pointer_move, pointer_up};
+use sigil::reactive::Owner;
+use sigil::widgets::DragState;
 use sigil_kittest::{Harness, Query};
 
 fn row_bounds(ui: &mut Harness, name: &str) -> Rect {
@@ -46,16 +47,19 @@ fn drag_rows(first: f32, release_below: bool) -> (Option<(u32, u32)>, bool) {
     let onto = row_bounds(&mut ui, "row 4");
     let (x, fy) = (from.origin.x + 20.0, from.origin.y + from.height / 2.0);
     let ty = onto.origin.y + onto.height / 2.0;
-    ui.send([pointer_move(x, fy), pointer_down(x, fy)]);
-    ui.send([pointer_drag(x, fy + first)]);
+    ui.send([
+        Event::pointer_move(Point::new(x, fy)),
+        Event::pointer_down(Point::new(x, fy)),
+    ]);
+    ui.send([Event::pointer_drag(Point::new(x, fy + first))]);
     for t in [0.125_f32, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0] {
-        ui.send([pointer_drag(x, (ty - fy).mul_add(t, fy))]);
+        ui.send([Event::pointer_drag(Point::new(x, (ty - fy).mul_add(t, fy)))]);
     }
     let release_y = if release_below { 380.0 } else { ty };
     if release_below {
-        ui.send([pointer_drag(x, release_y)]);
+        ui.send([Event::pointer_drag(Point::new(x, release_y))]);
     }
-    ui.send([pointer_up(x, release_y)]);
+    ui.send([Event::pointer_up(Point::new(x, release_y))]);
     ui.settle();
     (dropped.peek(), probe.is_active())
 }
@@ -66,21 +70,21 @@ fn drop_after_first_move(first: f32) -> Option<(u32, u32)> {
 
 #[test]
 fn a_drag_starts_when_the_first_move_stays_on_the_source() {
-    Runtime::scope("drag-slow", || {
+    Owner::scope("drag-slow", || {
         assert_eq!(drop_after_first_move(10.0), Some((0, 4)));
     });
 }
 
 #[test]
 fn a_drag_starts_when_the_first_move_already_left_the_source() {
-    Runtime::scope("drag-fast", || {
+    Owner::scope("drag-fast", || {
         assert_eq!(drop_after_first_move(18.0), Some((0, 4)));
     });
 }
 
 #[test]
 fn a_fast_drag_released_over_empty_space_ends() {
-    Runtime::scope("drag-gap", || {
+    Owner::scope("drag-gap", || {
         let (dropped, active) = drag_rows(18.0, true);
         assert_eq!(dropped, None);
         assert!(

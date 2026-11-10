@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::reactive::Owner;
 use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
@@ -11,7 +12,7 @@ use sigil::reactive::{DrawPhase, Runtime, effect, signal};
 
 #[test]
 fn a_frame_abandoned_mid_phase_recovers_to_a_runnable_state() {
-    Runtime::scope("panic-recovery-frame", || {
+    Owner::scope("panic-recovery-frame", || {
         Runtime::begin_effect();
         Runtime::begin_layout();
         Runtime::begin_paint();
@@ -40,7 +41,7 @@ fn a_frame_abandoned_mid_phase_recovers_to_a_runnable_state() {
 
 #[test]
 fn the_runtime_stays_usable_after_an_effect_panics() {
-    Runtime::scope("panic-recovery-usable", || {
+    Owner::scope("panic-recovery-usable", || {
         let value = signal(0_i32);
         let panic_armed = Rc::new(Cell::new(false));
 

@@ -1,13 +1,13 @@
 use crate::kernel::Cx;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 use super::html;
 use super::parse::parse_html;
-use crate::widgets::markdown::parse::Block;
+use crate::widgets::markdown::parse::{Block, Inline};
 
 #[test]
 fn html_builds() {
-    Runtime::scope("html-builds", || {
+    Owner::scope("html-builds", || {
         let source = signal(String::from("<h1>Hi</h1><p>there</p>"));
         let mut cx = Cx::new_root();
         let id = cx.add(html(source));
@@ -26,7 +26,9 @@ fn html_maps_subset_to_markdown_blocks() {
         blocks.first(),
         Some(Block::Heading { level: 1, .. })
     ));
-    assert!(matches!(blocks.get(1), Some(Block::Paragraph(body)) if body.contains("**world**")));
+    assert!(
+        matches!(blocks.get(1), Some(Block::Paragraph(body)) if body.contains(&Inline::Strong(vec![Inline::Text("world".into())])))
+    );
     assert!(matches!(blocks.get(2), Some(Block::List(list)) if list.items.len() == 2));
 }
 
@@ -47,7 +49,7 @@ fn html_drops_script() {
     let text: Vec<_> = blocks
         .iter()
         .filter_map(|block| match block {
-            Block::Paragraph(body) => Some(body.as_str()),
+            Block::Paragraph(body) => Some(Inline::plain(body)),
             _ => None,
         })
         .collect();
@@ -58,10 +60,10 @@ fn html_drops_script() {
 fn html_unclosed_angle_keeps_text_once() {
     assert_eq!(
         parse_html("a < b"),
-        vec![Block::Paragraph(String::from("a < b"))]
+        vec![Block::Paragraph(vec![Inline::Text("a < b".into())])]
     );
     assert_eq!(
         parse_html("<p>x < y</p>"),
-        vec![Block::Paragraph(String::from("x < y"))]
+        vec![Block::Paragraph(vec![Inline::Text("x < y".into())])]
     );
 }

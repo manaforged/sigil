@@ -13,15 +13,14 @@ pub(crate) struct GlyphPos {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct GlyphRun {
+#[cfg_attr(not(test), allow(dead_code, reason = "only tests read the run totals"))]
+pub(crate) struct ShapedRun {
     pub(crate) glyphs: SmallVec<[GlyphPos; 16]>,
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) baseline: f32,
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) width: f32,
 }
 
-impl GlyphRun {
+impl ShapedRun {
     #[must_use]
     pub(crate) fn empty() -> Self {
         Self {

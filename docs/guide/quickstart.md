@@ -8,7 +8,7 @@ use sigil::prelude::*;
 
 ## Install
 
-Sigil is not on crates.io yet. Add the Git dependency from [Install](https://github.com/manaforged/sigil#install).
+Add the dependency from [Install](https://github.com/manaforged/sigil#install).
 
 The package is `sigil-ui` because the `sigil` name is taken on crates.io. The library is `sigil`, so imports read `sigil::`. [Terminal host](terminal.md) covers that host.
 
@@ -26,7 +26,7 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(32.0))
+        .layout(LayoutStyle::default().padding(Space::Xxl))
         .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
@@ -67,10 +67,10 @@ The tree is the same. The host changes.
 | You want | You call |
 |---|---|
 | A desktop window | `sigil::run(config, tree)` (`hello-counter`) |
-| Your own loop | `Host` inside `Runtime::scope` (`hello-host`) |
+| Your own loop | `Host` inside `Owner::scope` (`hello-host`) |
 | A character grid | `sigil::run(config.terminal(), tree)` (feature `terminal`, `hello-terminal`) |
 
-`signal` panics outside `Runtime::scope`. `sigil::run` opens that scope. An embed host that uses signals must call it.
+`signal` panics outside `Owner::scope`. `sigil::run` opens that scope. An embed host that uses signals must call it.
 
 `Host::scene` lays out the tree and returns the `CommandScene`. After layout, `Host::surfaces` lists `surface(key)` holes. You place a native view. The `sigil-ui` README covers the embed details.
 
@@ -82,13 +82,13 @@ Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes throu
 # use sigil::prelude::*;
 # let _ = {
 container()
-    .layout(LayoutStyle::default().padding(16.0).gap(8.0))
+    .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Sm))
     .bg(Token::Overlay)
     .border_w(1)
     .border_color(Token::OverlayBorder)
     .rounded(Radius::Md)
     .shadow(Elevation::Md)
-    .child(text("Title").font_size(18.0).font_weight(600).text_color(Token::OnSurface))
+    .child(text("Title").text_role(TextRole::Title).text_color(Token::OnSurface))
     .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
 # };
 ```
@@ -97,7 +97,7 @@ container()
 
 | Method | Sets |
 | --- | --- |
-| `bg`, `background_gradient` | Background color or gradient |
+| `bg` | Background color |
 | `text_color` | Text color |
 | `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
 | `rounded(Radius)` | Corner radius |
@@ -106,7 +106,8 @@ container()
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
 | `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
 | `underline`, `line_through` | Text decoration |
-| `transition`, `duration` | Style transitions |
+| `transition`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease`, `delay` | Style transitions, as in Tailwind |
+| `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
 
 Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap. Put all layout for one node in one `LayoutStyle` chain.
 
@@ -133,10 +134,10 @@ Shared metrics:
 | Spacing step | `space(n)` | `n` × 4 px |
 | Radius family | `Radius::{Sm, Base, Md, Lg, Full}` | 2, 4, 6, 8, 9999 px; 0 on a character grid |
 | Border width | `BORDER_WIDTH` | 1 px |
-| Focus ring | `FocusRing` default | 2 px wide, 2 px offset, color `Ring` |
-| Overlay | `Token::Overlay`, `Token::OverlayBorder`, `OVERLAY_SHADOW`, `Metrics::overlay_padding` | fill, border, `Elevation::Md`, 4 px |
-| Disabled | `DISABLED_OPACITY` | 50 % |
-| Icon glyph | `ICON_SIZE`, `Metrics::icon_size` | 20 px font size; one cell on a character grid |
+| Focus ring | `Widget::focus_ring` default | 2 px wide, 2 px offset, color `Ring` |
+| Overlay | `Token::Overlay`, `Token::OverlayBorder`, `Metrics::overlay_padding` | fill, border, `Elevation::Md`, 4 px |
+| Disabled | opacity | 50 % |
+| Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider, `interactive` |
 | Controls | `Metrics::current()` | `control_height`, `padding`, `gap` per `Size` |
 
@@ -153,7 +154,7 @@ Static styling works on any node. Interaction styling goes through `interactive(
 # let _ = {
 interactive(
     container()
-        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(32.0))
+        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(Space::Xxl))
         .bg(Token::Accent)
         .rounded(Radius::Md),
 )

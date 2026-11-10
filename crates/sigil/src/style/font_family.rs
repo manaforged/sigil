@@ -1,13 +1,20 @@
+/// Font family for `font_family`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FontFamily {
+    /// The sans font family.
     Sans,
+    /// The mono font family.
     Mono,
+    /// The serif font family.
     Serif,
+    /// The icon font family.
     Icon,
+    /// The display font family.
     Display,
 }
 
 impl FontFamily {
+    /// Returns the name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {

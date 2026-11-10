@@ -4,18 +4,18 @@ use std::rc::Rc;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::closure::Closure;
 use web_sys::{
-    CompositionEvent, Event, EventTarget, FocusEvent, HtmlCanvasElement, HtmlTextAreaElement,
-    InputEvent, KeyboardEvent, KeyboardEventInit,
+    CompositionEvent, Event as DomEvent, EventTarget, FocusEvent, HtmlCanvasElement,
+    HtmlTextAreaElement, InputEvent, KeyboardEvent, KeyboardEventInit,
 };
 
 use crate::events::focus::TabEdges;
-use crate::events::{ShellEvent, WindowEvent};
+use crate::events::{Event, WindowEvent};
 use crate::geometry::Rect;
 use crate::shell::WinitWaker;
 use crate::shell::composition::{CompositionInput, KeyRoute, composition_events, key_route};
 
-type Queue = Rc<RefCell<Vec<ShellEvent>>>;
-type Listener = Closure<dyn FnMut(Event)>;
+type ImeQueue = Rc<RefCell<Vec<Event>>>;
+type Listener = Closure<dyn FnMut(DomEvent)>;
 
 const AREA_STYLE: &str = "position:fixed;left:0;top:0;width:1px;height:1em;padding:0;border:0;\
 margin:0;outline:none;resize:none;overflow:hidden;opacity:0;pointer-events:none;\
@@ -33,7 +33,7 @@ const AREA_ATTRS: [(&str, &str); 6] = [
 pub(crate) struct WebIme {
     area: HtmlTextAreaElement,
     canvas: HtmlCanvasElement,
-    queue: Queue,
+    queue: ImeQueue,
     edges: Rc<Cell<TabEdges>>,
     handoff: Rc<Cell<bool>>,
     allowed: bool,
@@ -43,7 +43,7 @@ pub(crate) struct WebIme {
 struct Wiring {
     area: HtmlTextAreaElement,
     canvas: HtmlCanvasElement,
-    queue: Queue,
+    queue: ImeQueue,
     edges: Rc<Cell<TabEdges>>,
     waker: WinitWaker,
 }
@@ -61,7 +61,7 @@ impl WebIme {
         }
         area.set_attribute("style", AREA_STYLE).ok()?;
         document.body()?.append_child(&area).ok()?;
-        let queue = Queue::default();
+        let queue = ImeQueue::default();
         let edges = Rc::new(Cell::new(TabEdges::default()));
         let wiring = Wiring {
             area: area.clone(),
@@ -81,7 +81,7 @@ impl WebIme {
         })
     }
 
-    pub(crate) fn drain_into(&self, events: &mut Vec<ShellEvent>) {
+    pub(crate) fn drain_into(&self, events: &mut Vec<Event>) {
         events.append(&mut self.queue.borrow_mut());
     }
 
@@ -105,7 +105,7 @@ impl WebIme {
             self.area.set_value("");
             self.queue
                 .borrow_mut()
-                .push(ShellEvent::Ime(crate::events::ImeEvent::Disabled));
+                .push(Event::Ime(crate::events::ImeEvent::Disabled));
         }
         self.allowed = allowed;
     }
@@ -152,7 +152,7 @@ impl Wiring {
             .into_iter()
             .filter_map(|name| {
                 let wiring = Rc::clone(&this);
-                let listener = Listener::new(move |event: Event| wiring.handle(name, &event));
+                let listener = Listener::new(move |event: DomEvent| wiring.handle(name, &event));
                 let target: &EventTarget = this.area.unchecked_ref();
                 target
                     .add_event_listener_with_callback(name, listener.as_ref().unchecked_ref())
@@ -166,7 +166,7 @@ impl Wiring {
 
     fn release_tab_from_canvas(self: &Rc<Self>) -> Option<Listener> {
         let wiring = Rc::clone(self);
-        let listener = Listener::new(move |event: Event| {
+        let listener = Listener::new(move |event: DomEvent| {
             if wiring.releases_tab(&event) {
                 event.stop_immediate_propagation();
             }
@@ -182,7 +182,7 @@ impl Wiring {
             .map(|()| listener)
     }
 
-    fn releases_tab(&self, event: &Event) -> bool {
+    fn releases_tab(&self, event: &DomEvent) -> bool {
         let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
             return false;
         };
@@ -198,7 +198,7 @@ impl Wiring {
             }
     }
 
-    fn handle(&self, name: &str, event: &Event) {
+    fn handle(&self, name: &str, event: &DomEvent) {
         match name {
             "keydown" | "keyup" => self.key(name, event),
             "compositionstart" => self.compose(CompositionInput::Start),
@@ -219,7 +219,7 @@ impl Wiring {
         }
     }
 
-    fn key(&self, name: &str, event: &Event) {
+    fn key(&self, name: &str, event: &DomEvent) {
         let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
             return;
         };
@@ -247,7 +247,7 @@ impl Wiring {
         }
     }
 
-    fn input(&self, event: &Event) {
+    fn input(&self, event: &DomEvent) {
         let Some(input) = event.dyn_ref::<InputEvent>() else {
             return;
         };
@@ -259,13 +259,13 @@ impl Wiring {
         self.compose(CompositionInput::Text(&data));
     }
 
-    fn blur(&self, event: &Event) {
+    fn blur(&self, event: &DomEvent) {
         let to_canvas = event
             .dyn_ref::<FocusEvent>()
             .and_then(FocusEvent::related_target)
             .is_some_and(|target| &target == self.canvas.unchecked_ref::<EventTarget>());
         if !to_canvas {
-            self.push(vec![ShellEvent::Window(WindowEvent::Focused(false))]);
+            self.push(vec![Event::Window(WindowEvent::Focused(false))]);
         }
     }
 
@@ -273,12 +273,12 @@ impl Wiring {
         self.push(
             composition_events(input)
                 .into_iter()
-                .map(ShellEvent::Ime)
+                .map(Event::Ime)
                 .collect(),
         );
     }
 
-    fn push(&self, mut events: Vec<ShellEvent>) {
+    fn push(&self, mut events: Vec<Event>) {
         if events.is_empty() {
             return;
         }

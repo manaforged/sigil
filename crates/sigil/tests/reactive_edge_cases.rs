@@ -6,7 +6,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, batch, effect, on_cleanup, signal};
 
 #[path = "reactive_edge_cases/batch_update.rs"]
 mod batch_update;

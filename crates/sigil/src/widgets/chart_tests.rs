@@ -2,8 +2,12 @@
 
 use super::*;
 use crate::Host;
-use crate::kernel::{IntoNode, container};
-use crate::reactive::Runtime;
+use crate::kernel::Cx;
+use crate::kernel::HostMode;
+use crate::kernel::{IntoNode, container, text};
+use crate::layout::LayoutStyle;
+use crate::reactive::Owner;
+use crate::widgets::Widget;
 
 #[test]
 fn nice_max_steps_are_1_2_5() {
@@ -14,7 +18,7 @@ fn nice_max_steps_are_1_2_5() {
 
 #[test]
 fn empty_and_line_charts_build() {
-    Runtime::scope("chart-empty", || {
+    Owner::scope("chart-empty", || {
         let mut cx = Cx::new_root();
         let id = chart([]).build(&mut cx);
         assert!(cx.get(id).is_some());
@@ -25,8 +29,8 @@ fn empty_and_line_charts_build() {
 
 #[test]
 fn bar_chart_builds() {
-    Runtime::scope("chart-bar", || {
-        let mut host = Host::new();
+    Owner::scope("chart-bar", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container().child(chart([4.0, 8.0, 3.0, 10.0]).labels(["Mon", "Tue", "Wed", "Thu"]))
         });
@@ -38,8 +42,8 @@ fn bar_chart_builds() {
 
 #[test]
 fn narrow_chart_dates_keep_the_day_digits_visible() {
-    Runtime::scope("chart-compact-dates", || {
-        let mut host = Host::new();
+    Owner::scope("chart-compact-dates", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()
                 .layout(LayoutStyle::flex_column())
@@ -50,8 +54,8 @@ fn narrow_chart_dates_keep_the_day_digits_visible() {
         });
         host.layout((400.0, 300.0)).unwrap();
         let scene = host.scene((400.0, 300.0)).unwrap();
-        let reference = scene.find_text("26").unwrap().run.positioned_glyphs();
-        let date = scene.find_text("Sep 26").unwrap().run.positioned_glyphs();
+        let reference = scene.find_text("26").unwrap().positioned_glyphs();
+        let date = scene.find_text("Sep 26").unwrap().positioned_glyphs();
         let digits: Vec<_> = reference.iter().map(|glyph| glyph.glyph_id).collect();
         let date_glyphs: Vec<_> = date.iter().map(|glyph| glyph.glyph_id).collect();
         assert!(!digits.is_empty(), "reference digits are rendered");
@@ -65,8 +69,8 @@ fn narrow_chart_dates_keep_the_day_digits_visible() {
 #[test]
 fn a_whole_number_chart_never_labels_a_fraction() {
     let labelled = |whole: bool| {
-        Runtime::scope("chart-whole-ticks", move || {
-            let mut host = Host::new();
+        Owner::scope("chart-whole-ticks", move || {
+            let mut host = Host::new(HostMode::Pixel);
             host.mount(move || {
                 let plot = chart([0.0, 0.0, 1.0]).bar().height(400.0);
                 container()

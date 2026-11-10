@@ -9,9 +9,10 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::{key_down, pointer_down};
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
@@ -24,7 +25,7 @@ fn modal_dialog(cx: &Cx, root: NodeId) -> NodeId {
 
 #[test]
 fn modal_width_sizes_the_dialog_not_the_overlay() {
-    sigil::reactive::Runtime::scope("sigil-modal-dialog-box", || {
+    sigil::reactive::Owner::scope("sigil-modal-dialog-box", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
@@ -57,7 +58,7 @@ fn modal_width_sizes_the_dialog_not_the_overlay() {
 
 #[test]
 fn modal_open_pushes_focus_scope() {
-    sigil::reactive::Runtime::scope("sigil-modal-trap-focus-scope", || {
+    sigil::reactive::Owner::scope("sigil-modal-trap-focus-scope", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
@@ -75,19 +76,27 @@ fn modal_open_pushes_focus_scope() {
         let dialog = modal_dialog(&cx, modal_root);
 
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+        );
 
         assert_eq!(router.focus(), Some(dialog));
 
         show.set(false);
-        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+        );
         assert!(!show.get());
     });
 }
 
 #[test]
 fn sheet_open_pushes_the_same_focus_scope_as_modal() {
-    sigil::reactive::Runtime::scope("sigil-sheet-trap-focus-scope", || {
+    sigil::reactive::Owner::scope("sigil-sheet-trap-focus-scope", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
@@ -111,14 +120,18 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
         );
 
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+        );
         assert_eq!(router.focus(), Some(dialog));
     });
 }
 
 #[test]
 fn dismissed_modal_releases_focus_trap() {
-    sigil::reactive::Runtime::scope("sigil-modal-trap-release", || {
+    sigil::reactive::Owner::scope("sigil-modal-trap-release", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
@@ -137,14 +150,22 @@ fn dismissed_modal_releases_focus_trap() {
         let dialog = modal_dialog(&cx, modal_root);
 
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+        );
         assert_eq!(router.focus(), Some(dialog), "modal traps focus while open");
 
         show.set(false);
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("recompute after dismiss");
-        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+        );
         assert_eq!(
             router.focus(),
             Some(outside),
@@ -155,7 +176,7 @@ fn dismissed_modal_releases_focus_trap() {
 
 #[test]
 fn escape_closes_modal_when_enabled_default() {
-    sigil::reactive::Runtime::scope("sigil-modal-trap-escape", || {
+    sigil::reactive::Owner::scope("sigil-modal-trap-escape", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(modal(show));
@@ -164,7 +185,11 @@ fn escape_closes_modal_when_enabled_default() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(dialog));
-        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+        );
 
         assert!(!show.get());
     });
@@ -172,7 +197,7 @@ fn escape_closes_modal_when_enabled_default() {
 
 #[test]
 fn backdrop_click_closes_when_opt_in() {
-    sigil::reactive::Runtime::scope("sigil-modal-trap-backdrop", || {
+    sigil::reactive::Owner::scope("sigil-modal-trap-backdrop", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
@@ -193,17 +218,21 @@ fn backdrop_click_closes_when_opt_in() {
             !(rect.origin.x <= 5.0 && rect.origin.y <= 5.0),
             "backdrop probe point (5,5) must lie outside the dialog rect {rect:?}"
         );
-        router.route(&mut cx, &layout, pointer_down(mid_x, mid_y));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer_down(Point::new(mid_x, mid_y)),
+        );
         assert!(show.get(), "dialog click must not dismiss");
 
-        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, Event::pointer_down(Point::new(5.0, 5.0)));
         assert!(!show.get(), "backdrop click dismisses");
     });
 }
 
 #[test]
 fn three_modal_stack_escape_pops_one_at_a_time() {
-    sigil::reactive::Runtime::scope("sigil-modal-trap-stack", || {
+    sigil::reactive::Owner::scope("sigil-modal-trap-stack", || {
         let first = signal(true);
         let second = signal(true);
         let third = signal(true);
@@ -222,19 +251,31 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(top_dialog));
 
-        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+        );
         assert_eq!(
             (first.get(), second.get(), third.get()),
             (true, true, false)
         );
 
-        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+        );
         assert_eq!(
             (first.get(), second.get(), third.get()),
             (true, false, false)
         );
 
-        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+        );
         assert_eq!(
             (first.get(), second.get(), third.get()),
             (false, false, false)

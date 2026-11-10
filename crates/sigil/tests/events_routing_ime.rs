@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -11,7 +12,7 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use input::ime_event;
+use sigil::widgets::Widget;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -43,7 +44,7 @@ fn route_ime_delivers_preedit_to_focused_target() {
                 let seen = Rc::clone(&seen);
                 move |event| {
                     if let ImeEvent::Preedit(text, _) = event {
-                        *seen.borrow_mut() = text.to_string();
+                        *seen.borrow_mut() = text.clone();
                     }
                 }
             }),
@@ -56,7 +57,7 @@ fn route_ime_delivers_preedit_to_focused_target() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+        Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
 
     assert_eq!(*seen.borrow(), "か");
@@ -83,12 +84,12 @@ fn route_ime_delivers_commit_to_focused_target() {
     let mut router = EventRouter::new();
     router.set_focus(&mut cx, Some(root));
 
-    route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Enabled));
+    route_event(&mut router, &mut cx, &layout, Event::Ime(ImeEvent::Enabled));
     route_event(
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Commit("か".into())),
+        Event::Ime(ImeEvent::Commit("か".into())),
     );
 
     assert_eq!(*committed.borrow(), "か");
@@ -114,7 +115,7 @@ fn route_ime_dropped_when_no_focus() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("x".into(), None)),
+        Event::Ime(ImeEvent::Preedit("x".into(), None)),
     );
 
     assert_eq!(hits.get(), 0, "no panic and no dispatch without focus");
@@ -136,7 +137,7 @@ fn route_ime_dropped_when_focused_node_has_no_ime_target() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Commit("x".into())),
+        Event::Ime(ImeEvent::Commit("x".into())),
     );
 
     assert!(!router.focus_wants_ime(&cx));
@@ -206,14 +207,14 @@ fn route_ime_focus_change_cancels_owner_and_drops_commit() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+        Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
     router.set_focus(&mut cx, Some(b));
     route_event(
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Commit("か".into())),
+        Event::Ime(ImeEvent::Commit("か".into())),
     );
 
     assert!(
@@ -228,6 +229,10 @@ fn route_ime_focus_change_cancels_owner_and_drops_commit() {
     );
 }
 
+fn route_ime(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, event: ImeEvent) {
+    route_event(router, cx, layout, Event::Ime(event));
+}
+
 #[test]
 fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
     let mut cx = Cx::new_root();
@@ -237,38 +242,33 @@ fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
     let mut router = EventRouter::new();
     router.set_focus(&mut cx, Some(a));
 
-    route_event(
+    route_ime(
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+        ImeEvent::Preedit("か".into(), Some((0, 3))),
     );
     router.set_focus(&mut cx, Some(b));
-    route_event(
+    route_ime(
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("かん".into(), Some((0, 6)))),
+        ImeEvent::Preedit("かん".into(), Some((0, 6))),
     );
-    route_event(
-        &mut router,
-        &mut cx,
-        &layout,
-        ime_event(ImeEvent::Commit("感".into())),
-    );
+    route_ime(&mut router, &mut cx, &layout, ImeEvent::Commit("感".into()));
     assert!(
         b_log.borrow().is_empty(),
         "quarantined composition leaked to the new focus: {:?}",
         b_log.borrow()
     );
 
-    route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Disabled));
-    route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Enabled));
-    route_event(
+    route_ime(&mut router, &mut cx, &layout, ImeEvent::Disabled);
+    route_ime(&mut router, &mut cx, &layout, ImeEvent::Enabled);
+    route_ime(
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("に".into(), Some((0, 3)))),
+        ImeEvent::Preedit("に".into(), Some((0, 3))),
     );
     assert_eq!(
         *b_log.borrow(),
@@ -308,7 +308,7 @@ fn route_ime_scope_change_cancels_owner_without_focus_move() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
+        Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
 
     let _modal = cx.add_child(
@@ -323,7 +323,7 @@ fn route_ime_scope_change_cancels_owner_without_focus_move() {
         &mut router,
         &mut cx,
         &layout,
-        ime_event(ImeEvent::Commit("か".into())),
+        Event::Ime(ImeEvent::Commit("か".into())),
     );
 
     assert_eq!(

@@ -64,13 +64,13 @@ pub(crate) fn cell_damage(
 pub(crate) type Changed = (Range<usize>, Range<usize>);
 
 #[derive(Default)]
-struct Marks {
+struct DamageMarks {
     ranges: Vec<(usize, Vec<bool>)>,
     count: usize,
     end: usize,
 }
 
-impl Marks {
+impl DamageMarks {
     fn get(&self, index: usize) -> bool {
         let after = self.ranges.partition_point(|(start, _)| *start <= index);
         after
@@ -98,7 +98,7 @@ fn changed_inks(
 ) -> Damage<Inks> {
     let (before, after) = (&previous.commands, &next.commands);
     if after.iter().any(
-        |command| matches!(command, SceneCommand::PushLayer(scope) if !local_effect(scope.effect)),
+        |command| matches!(command, SceneCommand::PushLayer(scope) if !local_effect(&scope.effect)),
     ) {
         return Damage::Full(FullReason::NonLocalLayerEffect);
     }
@@ -124,8 +124,8 @@ fn diff_marks(
     before: &[SceneCommand],
     after: &[SceneCommand],
     changed: &[Changed],
-) -> Option<(Marks, Marks)> {
-    let (mut old, mut new) = (Marks::default(), Marks::default());
+) -> Option<(DamageMarks, DamageMarks)> {
+    let (mut old, mut new) = (DamageMarks::default(), DamageMarks::default());
     let mut differs = false;
     for (was, now) in changed {
         let (Some(was_slice), Some(now_slice)) = (before.get(was.clone()), after.get(now.clone()))
@@ -200,11 +200,12 @@ fn mark(marks: &mut [bool], range: Range<usize>) {
     }
 }
 
-fn local_effect(effect: LayerEffect) -> bool {
-    match effect {
-        LayerEffect::Identity => true,
+fn local_effect(effect: &LayerEffect) -> bool {
+    match *effect {
+        LayerEffect::Identity | LayerEffect::Mask(_) => true,
         LayerEffect::Transform([[_, skew_x, _], [skew_y, _, _]]) => skew_x == 0.0 && skew_y == 0.0,
-        LayerEffect::LayerBlur { .. } => false,
+        LayerEffect::Filter(ref filters) => filters.iter().all(|filter| filter.is_color()),
+        LayerEffect::Projected { .. } => false,
     }
 }
 

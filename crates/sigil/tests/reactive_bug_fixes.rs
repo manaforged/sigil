@@ -8,11 +8,11 @@ use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, Signal, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, Signal, batch, effect, on_cleanup, signal};
 
 #[test]
 fn cleanup_inside_effect_fires_before_next_run() {
-    Runtime::scope("cleanup_inside_effect_fires_before_next_run", || {
+    Owner::scope("cleanup_inside_effect_fires_before_next_run", || {
         let trigger = signal(0_i32);
         let log: Rc<RefCell<Vec<&'static str>>> = Rc::default();
         let log_for_effect = Rc::clone(&log);
@@ -31,7 +31,7 @@ fn cleanup_inside_effect_fires_before_next_run() {
 
 #[test]
 fn signal_inside_effect_is_disposed_on_re_run() {
-    Runtime::scope("signal_inside_effect_is_disposed_on_re_run", || {
+    Owner::scope("signal_inside_effect_is_disposed_on_re_run", || {
         let trigger = signal(0_i32);
         let captured: Rc<Cell<Option<Signal<i32>>>> = Rc::new(Cell::new(None));
         let captured_for = Rc::clone(&captured);
@@ -56,7 +56,7 @@ fn signal_inside_effect_is_disposed_on_re_run() {
 
 #[test]
 fn nested_effect_inside_outer_effect_is_disposed_on_outer_re_run() {
-    Runtime::scope(
+    Owner::scope(
         "nested_effect_inside_outer_effect_is_disposed_on_outer_re_run",
         || {
             let outer_trigger = signal(0_i32);
@@ -92,8 +92,8 @@ fn nested_effect_inside_outer_effect_is_disposed_on_outer_re_run() {
 
 #[test]
 fn owner_current_inside_effect_is_distinct_from_outer_scope() {
-    Runtime::scope("owner_current_inside_effect_is_distinct", || {
-        let outside = Owner::current().expect("inside Runtime::scope");
+    Owner::scope("owner_current_inside_effect_is_distinct", || {
+        let outside = Owner::current().expect("inside Owner::scope");
         let captured_inside: Rc<Cell<Option<_>>> = Rc::new(Cell::new(None));
         let captured_for = Rc::clone(&captured_inside);
         effect(move || {
@@ -109,7 +109,7 @@ fn owner_current_inside_effect_is_distinct_from_outer_scope() {
 
 #[test]
 fn panic_inside_owner_with_restores_prior_current_owner() {
-    Runtime::scope("panic_inside_owner_with", || {
+    Owner::scope("panic_inside_owner_with", || {
         let outer = Owner::current().expect("scope active");
         let child = Owner::new("child", Owner::current());
         let result = catch_unwind(AssertUnwindSafe(|| {
@@ -125,7 +125,7 @@ fn panic_inside_owner_with_restores_prior_current_owner() {
 
 #[test]
 fn panic_inside_batch_decrements_depth() {
-    Runtime::scope("panic_inside_batch", || {
+    Owner::scope("panic_inside_batch", || {
         let first = catch_unwind(AssertUnwindSafe(|| {
             batch(|| {
                 panic!("boom");
@@ -154,7 +154,7 @@ fn panic_inside_batch_decrements_depth() {
 
 #[test]
 fn panic_inside_effect_clears_running_set() {
-    Runtime::scope("panic_inside_effect_clears_running_set", || {
+    Owner::scope("panic_inside_effect_clears_running_set", || {
         let n = signal(0_i32);
         let first_done = Rc::new(Cell::new(false));
         {
@@ -196,7 +196,7 @@ fn panic_inside_effect_clears_running_set() {
 
 #[test]
 fn panic_inside_update_restores_value_and_clears_sentinel() {
-    Runtime::scope("panic_inside_update", || {
+    Owner::scope("panic_inside_update", || {
         let n = signal(7_i32);
         let result = catch_unwind(AssertUnwindSafe(|| {
             n.update(|v| {

@@ -26,7 +26,7 @@ fn lines() -> NodeBuilder {
             let lead = f32::from(step) / f32::from(OFFSETS);
             column = column
                 .child(container().layout(LayoutStyle::block().fixed_size(1.0, lead)))
-                .child(text("o o o").font_size(f32::from(size)));
+                .child(text("o o o").font_size(f32::from(size), "test fixture"));
         }
     }
     column
@@ -143,7 +143,7 @@ fn outline_glyph_counters_stay_open_at_curve_joins() {
     let mut checked = 0;
     let mut barred = Vec::new();
     for tenths in SCALES {
-        let scene = ui.host().0.emit(viewport);
+        let scene = ui.host().emit(viewport);
         let size = [VIEWPORT.0 * tenths / 10, VIEWPORT.1 * tenths / 10];
         let ink = Ink::new(&render_scene_to_image(&mut renderer, &scene, viewport, size).unwrap());
         for bounds in ink.glyph_boxes() {

@@ -2,34 +2,39 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use std::rc::Rc;
 
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text,
-};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, derived};
 use crate::style::Tone;
+use crate::widgets::Widget;
 
 mod glyphs;
 
 #[cfg(any(feature = "terminal", test))]
 pub(crate) use glyphs::spark_glyph;
 
+/// Sparkline glyphs.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum SparkMark {
+    /// The block spark mark.
     #[default]
     Block,
+    /// The braille spark mark.
     Braille,
 }
 
+/// Body of a multi-row sparkline.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum SparkFill {
+    /// The solid spark fill.
     #[default]
     Solid,
+    /// The shade spark fill.
     Shade,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Layer {
+pub(crate) enum SparkLayer {
     Edge,
     Body,
 }
@@ -44,11 +49,14 @@ struct SparkShape {
     rows: usize,
 }
 
+/// Builder of a sparkline.
 pub struct SparklineBuilder {
     values: Rc<dyn Reactive<Vec<f32>>>,
     shape: SparkShape,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A sparkline.
 #[must_use]
 pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
     SparklineBuilder {
@@ -61,40 +69,47 @@ pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
             fill: SparkFill::Solid,
             rows: 1,
         },
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl SparklineBuilder {
+    /// Sets the range.
     #[must_use]
     pub const fn range(mut self, low: f32, high: f32) -> Self {
         self.shape.range = Some((low, high));
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.shape.tone = tone;
         self
     }
 
+    /// Sets the tones.
     #[must_use]
     pub fn tones(mut self, tones: impl IntoIterator<Item = Option<Tone>>) -> Self {
         self.shape.tones = tones.into_iter().collect();
         self
     }
 
+    /// Sets the mark.
     #[must_use]
     pub const fn mark(mut self, mark: SparkMark) -> Self {
         self.shape.mark = mark;
         self
     }
 
+    /// Sets the fill.
     #[must_use]
     pub const fn fill(mut self, fill: SparkFill) -> Self {
         self.shape.fill = fill;
         self
     }
 
+    /// Sets the rows.
     #[must_use]
     pub fn rows(mut self, rows: usize) -> Self {
         self.shape.rows = rows.max(1);
@@ -107,7 +122,7 @@ impl SparklineBuilder {
     }
 
     #[cfg(test)]
-    fn runs(&self) -> Vec<Vec<(Tone, Layer, String)>> {
+    fn runs(&self) -> Vec<Vec<(Tone, SparkLayer, String)>> {
         self.shape.runs(&self.values.read())
     }
 }
@@ -140,7 +155,7 @@ impl SparkShape {
         glyphs::graph_rows(&self.fractions(values), self.rows, self.mark)
     }
 
-    fn runs(&self, values: &[f32]) -> Vec<Vec<(Tone, Layer, String)>> {
+    fn runs(&self, values: &[f32]) -> Vec<Vec<(Tone, SparkLayer, String)>> {
         let tones = glyphs::cell_tones(&self.tones, values.len(), self.mark, self.tone);
         let graph = self.graph(values);
         let layers = glyphs::cell_layers(&graph, self.fill);
@@ -170,16 +185,16 @@ impl SparkShape {
     }
 }
 
-fn run_text(tone: Tone, layer: Layer, glyphs: String) -> TextBuilder {
+fn run_text(tone: Tone, layer: SparkLayer, glyphs: String) -> TextBuilder {
     let ink = match layer {
-        Layer::Edge => tone.solid(),
-        Layer::Body => tone.shade(),
+        SparkLayer::Edge => tone.solid(),
+        SparkLayer::Body => tone.shade(),
     };
     text(glyphs).nowrap().class(ink.text())
 }
 
-impl IntoNode for SparklineBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
+impl SparklineBuilder {
+    fn root(self) -> NodeBuilder {
         let source = self.values;
         let values = derived(move || source.read());
         let shape = self.shape;
@@ -195,9 +210,10 @@ impl IntoNode for SparklineBuilder {
             })
             .layout(LayoutStyle::flex_column())
             .children_reactive(move || values.with(|values| shape.lines(values)))
-            .build(cx)
     }
 }
+
+builder_impls!([] SparklineBuilder: widget, node);
 
 #[cfg(test)]
 #[path = "sparkline_tests.rs"]

@@ -25,21 +25,22 @@ impl TextMeasure for CharText {
         let char_w = 7.0_f32;
         #[allow(clippy::cast_precision_loss)]
         let natural = text.chars().count() as f32 * char_w;
-        match space.width {
-            sigil::geometry::Dim::Fixed(w) if w > 0.0 && natural > w => {
-                let per_line = (w / char_w).floor().max(1.0);
-                #[allow(clippy::cast_precision_loss)]
-                let lines = (text.chars().count() as f32 / per_line).ceil();
-                sigil::geometry::LogicalSize::new(w, lines * 16.0)
-            }
-            _ => sigil::geometry::LogicalSize::new(natural, 16.0),
+        if let Some(w) = space.fixed_width()
+            && w > 0.0
+            && natural > w
+        {
+            let per_line = (w / char_w).floor().max(1.0);
+            #[allow(clippy::cast_precision_loss)]
+            let lines = (text.chars().count() as f32 / per_line).ceil();
+            return sigil::geometry::LogicalSize::new(w, lines * 16.0);
         }
+        sigil::geometry::LogicalSize::new(natural, 16.0)
     }
 }
 
 fn text_height(node: TextBuilder) -> f32 {
     let mut height = -1.0;
-    sigil::reactive::Runtime::scope("text-wrap", || {
+    sigil::reactive::Owner::scope("text-wrap", || {
         let long = node;
         let mut cx = Cx::new_root();
         let column = container()
@@ -92,7 +93,7 @@ fn nowrap_stays_a_single_line() {
 
 #[test]
 fn wrapped_text_stays_within_its_container_width() {
-    sigil::reactive::Runtime::scope("text-wrap-width", || {
+    sigil::reactive::Owner::scope("text-wrap-width", || {
         let mut cx = Cx::new_root();
         let column = container()
             .layout(LayoutStyle::flex_column().fixed_size(120.0, 400.0))
@@ -120,7 +121,7 @@ const LONGER_THAN_VIEWPORT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 fn row_cell_rect(style: LayoutStyle) -> sigil::geometry::Rect {
     let mut rect = sigil::geometry::Rect::new(sigil::geometry::Point::new(0.0, 0.0), -1.0, -1.0);
-    sigil::reactive::Runtime::scope("text-wrap-off-viewport", || {
+    sigil::reactive::Owner::scope("text-wrap-off-viewport", || {
         let mut cx = Cx::new_root();
         let cell = text(LONGER_THAN_VIEWPORT)
             .nowrap()
@@ -182,7 +183,7 @@ fn ellipsize_longer_than_viewport_stays_one_line_when_grown() {
 
 #[test]
 fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
-    sigil::reactive::Runtime::scope("text-ellipsize-floor", || {
+    sigil::reactive::Owner::scope("text-ellipsize-floor", || {
         let mut cx = Cx::new_root();
         let fixed = container().layout(LayoutStyle::block().width(96.0).height(16.0));
         let flex = text(LONG).nowrap().ellipsize().layout(LayoutStyle::block());

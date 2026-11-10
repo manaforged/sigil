@@ -17,7 +17,7 @@ use skrifa::raw::types::Tag;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun};
+use crate::text::glyph::{GlyphId, GlyphPos, ShapedRun};
 
 #[path = "shaper/classify.rs"]
 mod classify_mod;
@@ -55,12 +55,13 @@ impl core::fmt::Debug for Font {
 static NEXT_FONT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Font {
-    pub fn from_bytes(data: Vec<u8>, index: u32) -> Result<Self, ShaperError> {
+    pub fn from_bytes(data: Vec<u8>, index: u32) -> Result<Self, crate::Error> {
         Self::from_shared(Arc::new(data), index)
     }
 
-    pub(crate) fn from_shared(data: Arc<Vec<u8>>, index: u32) -> Result<Self, ShaperError> {
-        let font_ref = FontRef::from_index(&data, index).map_err(|_| ShaperError::InvalidFont)?;
+    pub(crate) fn from_shared(data: Arc<Vec<u8>>, index: u32) -> Result<Self, crate::Error> {
+        let font_ref = FontRef::from_index(&data, index)
+            .map_err(|_| crate::Error::fixed(crate::ErrorKind::Font, "invalid font data"))?;
         let variations = Arc::new(variations::VariationModel::new(&font_ref));
         Ok(Self {
             data,
@@ -176,45 +177,32 @@ impl<'a> TextSegment<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Style {
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FaceStyle {
     pub(crate) size_px: f32,
     pub(crate) weight: u16,
     pub(crate) features: SmallVec<[FeatureTag; 4]>,
     pub(crate) letter_spacing_em: f32,
+    pub(crate) cell_grid: bool,
 }
 
-impl Style {
+impl FaceStyle {
     pub(crate) fn regular(size_px: f32) -> Self {
         Self {
             size_px,
             weight: 400,
             features: SmallVec::new(),
             letter_spacing_em: 0.0,
+            cell_grid: false,
         }
     }
 }
 
-impl Default for Style {
+impl Default for FaceStyle {
     fn default() -> Self {
         Self::regular(16.0)
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShaperError {
-    InvalidFont,
-}
-
-impl core::fmt::Display for ShaperError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::InvalidFont => f.write_str("invalid font data"),
-        }
-    }
-}
-
-impl std::error::Error for ShaperError {}
 
 pub(crate) struct Shaper<'a> {
     font_ref: FontRef<'a>,
@@ -229,9 +217,9 @@ impl<'a> Shaper<'a> {
         }
     }
 
-    pub(crate) fn shape(&self, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+    pub(crate) fn shape(&self, segment: &TextSegment<'_>, style: &FaceStyle) -> ShapedRun {
         if segment.text.is_empty() {
-            return GlyphRun::empty();
+            return ShapedRun::empty();
         }
         #[cfg(feature = "shaping-complex")]
         {
@@ -249,7 +237,7 @@ impl<'a> Shaper<'a> {
         shape_simple(self.font, segment, style)
     }
 
-    pub(crate) fn strut(&self, style: &Style) -> (f32, f32) {
+    pub(crate) fn strut(&self, style: &FaceStyle) -> (f32, f32) {
         let size = Size::new(style.size_px.max(1.0));
         let location = self.font.location(style.weight, style.size_px);
         let m = self
@@ -259,7 +247,7 @@ impl<'a> Shaper<'a> {
     }
 }
 
-fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &FaceStyle) -> ShapedRun {
     let font_ref = font.font_ref();
     let charmap = font_ref.charmap();
     let size = Size::new(style.size_px.max(1.0));
@@ -295,7 +283,7 @@ fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &Style) -> GlyphR
     let baseline = face_metrics.ascent;
     let width = max_x - min_x;
 
-    GlyphRun {
+    ShapedRun {
         glyphs,
         baseline,
         width,

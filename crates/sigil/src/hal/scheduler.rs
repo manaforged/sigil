@@ -8,17 +8,19 @@ use alloc::boxed::Box;
 pub trait Scheduler {
     type Error: Error + Send + Sync + 'static;
 
-    type OwnerHandle: Clone + Send + Sync + 'static;
+    type Owner: Clone + Send + Sync + 'static;
 
     type SpawnTask: Send + 'static;
 
+    #[cfg(any(test, feature = "kittest"))]
     fn enqueue_main(
         &self,
-        owner: Self::OwnerHandle,
+        owner: Self::Owner,
         f: Box<dyn FnOnce() + Send + 'static>,
     ) -> Result<(), Self::Error>;
 
-    fn spawn<F>(&self, owner: Self::OwnerHandle, future: F) -> Self::SpawnTask
+    #[cfg(any(test, feature = "kittest"))]
+    fn spawn<F>(&self, owner: Self::Owner, future: F) -> Self::SpawnTask
     where
         F: Future<Output = ()> + Send + 'static;
 

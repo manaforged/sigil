@@ -1,11 +1,16 @@
+#[cfg(test)]
+use crate::animation_runtime::tick as tick_animations;
+use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
+
+use web_time::Instant;
+
 use crate::app::config::PanicPolicy;
-use crate::app::error::AppResult;
 use crate::app::window::set_current_window;
+use crate::error::AppResult;
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
 use super::backend::Backend;
-use super::clock::AnimationClock;
 use super::lifecycle::{apply_commands, dispatch_events, open_requested};
 use super::record::{SignalWrite, WindowRecord, Windows};
 use super::{request_animation_frame, run_frame};
@@ -55,8 +60,8 @@ impl LoopState {
         if let Some(handle) = target {
             self.frame_window(shell, handle)?;
         }
-        apply_commands(shell, &mut self.windows, target);
         open_requested(shell, &mut self.windows)?;
+        apply_commands(shell, &mut self.windows, target);
         dispatch_events(shell, &mut self.windows);
         if crate::app::exit::take_exit() {
             self.exit_requested = true;
@@ -93,7 +98,7 @@ impl LoopState {
             .is_some_and(|entry| std::mem::take(&mut entry.view.painted));
         if painted {
             self.windows.mark_others_for_repaint(handle);
-            shell.request_redraws();
+            shell.request_frames();
         }
         result
     }
@@ -104,7 +109,7 @@ impl LoopState {
         let Some(record) = self.windows.first_mut() else {
             return;
         };
-        let WindowRecord { host, router, view } = record;
+        let WindowRecord { host, view } = record;
         let viewport = view.viewport;
         let surface = view.surface.as_ref();
         let mut shot = |app: &mut crate::app::embed::Host| {
@@ -112,12 +117,46 @@ impl LoopState {
         };
         inspect.service(
             host,
-            router,
-            crate::app::inspect::View {
+            crate::app::inspect::InspectView {
                 cell: None,
                 text: None,
                 shot: Some(&mut shot),
             },
         );
+    }
+}
+
+const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
+
+#[derive(Default)]
+pub(crate) struct AnimationClock {
+    pub(super) previous: Option<Instant>,
+}
+
+impl AnimationClock {
+    pub(crate) fn elapsed(&mut self, now: Instant) -> f32 {
+        if active_animation_count() == 0 && running_clocks() == 0 {
+            self.previous = None;
+            return NOMINAL_FRAME_SECS;
+        }
+        self.previous
+            .replace(now)
+            .map_or(NOMINAL_FRAME_SECS, |previous| {
+                now.saturating_duration_since(previous).as_secs_f32()
+            })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tick_active(&mut self, now: Instant) -> bool {
+        if active_animation_count() == 0 {
+            self.previous = None;
+            return false;
+        }
+        let dt = self.elapsed(now);
+        tick_animations(dt);
+        if active_animation_count() == 0 {
+            self.previous = None;
+        }
+        true
     }
 }

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::flow::{Edge, GAP_COLS, GAP_ROWS, Graph, Node, Rect, SPACING, Shape};
+use super::flow::{FlowEdge, FlowNode, GAP_COLS, GAP_ROWS, Graph, GridRect, NodeShape, SPACING};
+
+const MAX_LABEL_GAP: usize = 24;
 
 pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usize>) {
     let mut edges = Vec::new();
@@ -13,16 +15,16 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
         }
         let mut previous = edge.from;
         for rank in from_rank.saturating_add(1)..to_rank {
-            graph.nodes.push(Node {
+            graph.nodes.push(FlowNode {
                 id: String::new(),
                 label: Vec::new(),
-                shape: Shape::Box,
+                shape: NodeShape::Box,
                 dummy: true,
                 dashed: edge.dashed,
             });
             ranks.push(rank);
             let dummy = graph.nodes.len().saturating_sub(1);
-            edges.push(Edge {
+            edges.push(FlowEdge {
                 from: previous,
                 to: dummy,
                 label: if previous == edge.from {
@@ -35,7 +37,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
             });
             previous = dummy;
         }
-        edges.push(Edge {
+        edges.push(FlowEdge {
             from: previous,
             to: edge.to,
             label: String::new(),
@@ -47,7 +49,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
     (graph, ranks)
 }
 
-pub(super) fn size(node: &Node) -> (usize, usize) {
+pub(super) fn size(node: &FlowNode) -> (usize, usize) {
     if node.dummy {
         return (1, 1);
     }
@@ -58,7 +60,7 @@ pub(super) fn size(node: &Node) -> (usize, usize) {
         .max()
         .unwrap_or(0);
     let extra = match node.shape {
-        Shape::Circle | Shape::Stadium | Shape::Subroutine | Shape::Flag => 2,
+        NodeShape::Circle | NodeShape::Stadium | NodeShape::Subroutine | NodeShape::Flag => 2,
         _ => 0,
     };
     (
@@ -161,7 +163,7 @@ impl Graph {
             .unwrap_or_else(|| index.saturating_mul(1000))
     }
 
-    pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<Rect> {
+    pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<GridRect> {
         let sizes: Vec<(usize, usize)> = self.nodes.iter().map(size).collect();
         let vertical = self.dir.vertical();
         let oriented = |node: usize| {
@@ -179,9 +181,14 @@ impl Graph {
                     .unwrap_or(1)
             })
             .collect();
-        let gap = if vertical { GAP_ROWS } else { GAP_COLS };
+        let spacing = self.spacing();
+        let positions = self.positions(layers, &across, &spacing);
+        let gap = if vertical {
+            GAP_ROWS
+        } else {
+            GAP_COLS.max(self.label_gap(&positions, &across))
+        };
         let offsets = offsets(layers, &rank_size, gap, self.dir.forward());
-        let positions = self.positions(layers, &across);
         self.nodes
             .iter()
             .enumerate()
@@ -197,12 +204,57 @@ impl Graph {
                 } else {
                     ((offset, long), (at, wide))
                 };
-                Rect { x, y, w, h }
+                GridRect { x, y, w, h }
             })
             .collect()
     }
 
-    fn positions(&self, layers: &[Vec<usize>], across: &dyn Fn(usize) -> usize) -> Vec<usize> {
+    fn label_gap(&self, positions: &[usize], across: &dyn Fn(usize) -> usize) -> usize {
+        let center = |node: usize| {
+            positions
+                .get(node)
+                .copied()
+                .unwrap_or(0)
+                .saturating_add(across(node) / 2)
+        };
+        self.edges
+            .iter()
+            .map(|edge| {
+                let width = edge.label.chars().count().min(MAX_LABEL_GAP);
+                if width > 0 && center(edge.from) != center(edge.to) {
+                    width.saturating_add(1).saturating_mul(2)
+                } else {
+                    width.saturating_add(2)
+                }
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub(super) fn spacing(&self) -> Vec<usize> {
+        let mut spacing = vec![SPACING; self.nodes.len()];
+        if !self.dir.vertical() {
+            return spacing;
+        }
+        for edge in &self.edges {
+            let Some(node) = self.nodes.get(edge.to) else {
+                continue;
+            };
+            let right = size(node).0.div_ceil(2);
+            let room = (edge.label.chars().count() + 3).saturating_sub(right);
+            if let Some(slot) = spacing.get_mut(edge.to) {
+                *slot = (*slot).max(room);
+            }
+        }
+        spacing
+    }
+
+    fn positions(
+        &self,
+        layers: &[Vec<usize>],
+        across: &dyn Fn(usize) -> usize,
+        spacing: &[usize],
+    ) -> Vec<usize> {
         let mut positions = vec![0_usize; self.nodes.len()];
         for layer in layers {
             let mut cursor = 0_usize;
@@ -215,10 +267,11 @@ impl Graph {
                 if let Some(slot) = positions.get_mut(*node) {
                     *slot = at;
                 }
-                cursor = at.saturating_add(extent).saturating_add(SPACING);
+                let after = spacing.get(*node).copied().unwrap_or(SPACING);
+                cursor = at.saturating_add(extent).saturating_add(after);
             }
         }
-        compact(layers, &mut positions, across);
+        compact(layers, &mut positions, across, spacing);
         positions
     }
 
@@ -244,13 +297,19 @@ impl Graph {
     }
 }
 
-fn compact(layers: &[Vec<usize>], positions: &mut [usize], across: &dyn Fn(usize) -> usize) {
+fn compact(
+    layers: &[Vec<usize>],
+    positions: &mut [usize],
+    across: &dyn Fn(usize) -> usize,
+    spacing: &[usize],
+) {
+    let after = |node: usize| spacing.get(node).copied().unwrap_or(SPACING);
     let span = |layer: &Vec<usize>| {
         layer
             .iter()
-            .map(|node| across(*node).saturating_add(SPACING))
+            .map(|node| across(*node).saturating_add(after(*node)))
             .sum::<usize>()
-            .saturating_sub(SPACING)
+            .saturating_sub(layer.last().map_or(0, |node| after(*node)))
     };
     let widest = layers.iter().map(span).max().unwrap_or(0);
     for layer in layers {

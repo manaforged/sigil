@@ -1,10 +1,10 @@
 # Indicators
 
-Read-only status visuals. They paint state; except for chip with `.activate()`, none of them take input, and they do not implement `StateHost`. State closures are a compile error by design.
+Read-only status visuals. They paint state; except for chip with `.activate()`, none of them take input. Their state closures style the root node only; the widget draws no state of its own.
 
 ## chip
 
-`chip(label, Tone) -> ChipBuilder`: a 20 px `text-xs font-medium` label in a tinted `rounded-full` pill. Use it for a status tag or a count. The label renders as written; write it in sentence case.
+`chip(label, Tone)`: a 20 px `text-xs font-medium` label in a tinted `rounded-full` pill. Use it for a status tag or a count. The label renders as written; write it in sentence case.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -22,11 +22,11 @@ The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warn`, `Err
 
 ## dot
 
-`dot(Tone) -> DotBuilder`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide/Grow 16 px. Not hittable, not focusable.
+`dot(Tone)`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide/Grow 16 px. Not hittable, not focusable.
 
 ## gauge
 
-`gauge(Signal<f32>) -> GaugeBuilder`. A labeled 160×8 px meter with a proportional fill. `Role::ProgressIndicator`; publishes the value over 0..max.
+`gauge(Signal<f32>)`. A labeled 160×8 px meter with a proportional fill. `Role::ProgressIndicator`; publishes the value over 0..max.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -42,7 +42,7 @@ gauge(cpu).max(1.0).label("CPU").warn(0.2);
 
 ## progress
 
-`progress(Signal<f32>, max: f32) -> ProgressBuilder`. An 8 px fill bar. `Role::ProgressIndicator`.
+`progress(Signal<f32>, max: f32)`. An 8 px fill bar. `Role::ProgressIndicator`.
 
 ```rust,no_run
 # use sigil::prelude::*;

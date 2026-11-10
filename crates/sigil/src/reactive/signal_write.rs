@@ -73,6 +73,7 @@ fn notify(rt: &mut RuntimeState, signal: SignalKey) -> Option<SmallVec<[EffectKe
 }
 
 impl<T: PartialEq + 'static> Signal<T> {
+    /// Writes `value` and notifies subscribers.
     #[inline]
     #[track_caller]
     pub fn set(self, value: T) {
@@ -141,6 +142,7 @@ impl<T: 'static> Signal<T> {
         })
     }
 
+    /// Changes the value in place and notifies subscribers.
     #[track_caller]
     pub fn update(self, f: impl FnOnce(&mut T)) {
         let caller = Location::caller();

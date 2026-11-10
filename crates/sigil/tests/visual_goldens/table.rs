@@ -64,59 +64,59 @@ fn table_golden_view() -> NodeBuilder {
 
 #[test]
 fn table_default() {
-    let img = render_widget_to_png_stub(
-        table_golden_view,
-        InteractionMode::Default,
-        [320, 172],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("table_default"), DELTA_PCT);
+    let img = Harness::render(table_golden_view)
+        .stub()
+        .mode(InteractionMode::Default)
+        .size([320, 172])
+        .hit((1.0, 1.0))
+        .image();
+    Golden::new("table_default").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn table_selected() {
-    let img = render_widget_to_png_stub(
-        || {
-            let state = table_golden_state();
-            state.select_only(1);
-            container()
-                .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                .bg(Token::Surface)
-                .child(
-                    table(state)
-                        .row_height(24.0)
-                        .header_height(28.0)
-                        .viewport_width(320.0)
-                        .viewport_height(144.0),
-                )
-        },
-        InteractionMode::Default,
-        [320, 172],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("table_selected"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let state = table_golden_state();
+        state.select_only(1);
+        container()
+            .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
+            .bg(Token::Surface)
+            .child(
+                table(state)
+                    .row_height(24.0)
+                    .header_height(28.0)
+                    .viewport_width(320.0)
+                    .viewport_height(144.0),
+            )
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([320, 172])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("table_selected").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn table_sorted() {
-    let img = render_widget_to_png_stub(
-        || {
-            let state = table_golden_state();
-            state.toggle_sort("name");
-            container()
-                .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                .bg(Token::Surface)
-                .child(
-                    table(state)
-                        .row_height(24.0)
-                        .header_height(28.0)
-                        .viewport_width(320.0)
-                        .viewport_height(144.0),
-                )
-        },
-        InteractionMode::Default,
-        [320, 172],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("table_sorted"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let state = table_golden_state();
+        state.toggle_sort("name");
+        container()
+            .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
+            .bg(Token::Surface)
+            .child(
+                table(state)
+                    .row_height(24.0)
+                    .header_height(28.0)
+                    .viewport_width(320.0)
+                    .viewport_height(144.0),
+            )
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([320, 172])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("table_sorted").delta(DELTA_PCT).assert(img);
 }

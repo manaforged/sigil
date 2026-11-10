@@ -1,14 +1,17 @@
 macro_rules! lucide_icons {
     ($($variant:ident => $name:literal,)*) => {
+        /// A bundled Lucide icon.
         #[non_exhaustive]
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         pub enum Icon {
-            $($variant,)*
+            $(#[doc = concat!("The `", $name, "` icon.")] $variant,)*
         }
 
         impl Icon {
+            /// Every bundled icon.
             pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
 
+            /// Returns the Lucide name of this icon.
             #[must_use]
             pub const fn name(self) -> &'static str {
                 match self {
@@ -16,6 +19,7 @@ macro_rules! lucide_icons {
                 }
             }
 
+            /// Returns the SVG source of this icon.
             #[must_use]
             pub const fn svg(self) -> &'static str {
                 match self {
@@ -63,6 +67,7 @@ lucide_icons! {
     EyeOff => "eye-off",
     Eye => "eye",
     FileCode => "file-code",
+    FileDiff => "file-diff",
     FileText => "file-text",
     File => "file",
     FolderOpen => "folder-open",
@@ -91,6 +96,7 @@ lucide_icons! {
     LogIn => "log-in",
     LogOut => "log-out",
     Mail => "mail",
+    Maximize2 => "maximize-2",
     Menu => "menu",
     Minus => "minus",
     Monitor => "monitor",
@@ -132,4 +138,6 @@ lucide_icons! {
     VolumeX => "volume-x",
     X => "x",
     Zap => "zap",
+    ZoomIn => "zoom-in",
+    ZoomOut => "zoom-out",
 }

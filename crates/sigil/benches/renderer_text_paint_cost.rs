@@ -8,10 +8,13 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, container, text};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::text::{OwnedTextEngine, TextConfig};
-use sigil_kittest::FixedMeasure;
+use sigil::style::StyledTextEngine as _;
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
+use sigil_kittest::FakeMeasure;
 use std::hint::black_box;
 
 fn text_paint_cost(c: &mut Criterion) {
@@ -26,14 +29,17 @@ fn text_paint_cost(c: &mut Criterion) {
         .collect::<Vec<_>>();
     assert_eq!(runs.len(), 50);
 
-    let engine = OwnedTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     warm_interim_cache(&engine, &runs);
 
     c.bench_function("text_paint_cost/dr025_interim_50_text_nodes", |b| {
         b.iter(|| {
             let mut glyphs = 0_usize;
             for draw in &runs {
-                let run = &draw.run;
+                let run = draw;
                 let paragraph = engine
                     .layout_paragraph_styled(&run.text, Some(run.rect.width.max(1.0)), &run.style)
                     .expect("bench text layout succeeds");
@@ -47,16 +53,16 @@ fn text_paint_cost(c: &mut Criterion) {
         b.iter(|| {
             let mut glyphs = 0_usize;
             for draw in &runs {
-                glyphs = glyphs.saturating_add(draw.run.positioned_glyphs().len());
+                glyphs = glyphs.saturating_add(draw.glyph_count());
             }
             black_box(glyphs);
         });
     });
 }
 
-fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::scene::DrawGlyphRun]) {
+fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::scene::GlyphRun]) {
     for draw in runs {
-        let run = &draw.run;
+        let run = draw;
         let _ = engine
             .layout_paragraph_styled(&run.text, Some(run.rect.width.max(1.0)), &run.style)
             .expect("bench text layout succeeds");
@@ -76,13 +82,10 @@ fn text_scene() -> sigil::scene::CommandScene {
     LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
         .compute(&mut cx, root, Size::fixed(360.0, 1_200.0))
         .expect("bench scene layout computes");
-    emit_scene(&cx, root)
+    emit_scene(&cx, root, None)
 }
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 160.0,
-    height: 18.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(160.0, 18.0);
 
 criterion_group!(benches, text_paint_cost);
 criterion_main!(benches);

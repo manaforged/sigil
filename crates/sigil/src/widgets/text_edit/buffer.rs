@@ -1,8 +1,6 @@
-#![allow(clippy::redundant_pub_crate)]
-
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::bidi::{ParagraphBidi, Step};
+use crate::bidi::{CaretStep, ParagraphBidi};
 
 use crate::widgets::grapheme::{
     clamp_to_len_boundary, line_end, line_start, next_boundary, previous_boundary, selection_range,
@@ -104,10 +102,12 @@ impl TextEdit {
         let end = line_end(&self.buffer, self.caret);
         let line = self.buffer.get(start..end).unwrap_or_default();
         match ParagraphBidi::new(line).visual_step(self.caret - start, right) {
-            Step::To(pos) if pos + start > self.caret => next_boundary(&self.buffer, self.caret),
-            Step::To(_) => previous_boundary(&self.buffer, self.caret),
-            Step::Edge if start == 0 && end == self.buffer.len() => None,
-            Step::Edge | Step::Logical => logical(),
+            CaretStep::To(pos) if pos + start > self.caret => {
+                next_boundary(&self.buffer, self.caret)
+            }
+            CaretStep::To(_) => previous_boundary(&self.buffer, self.caret),
+            CaretStep::Edge if start == 0 && end == self.buffer.len() => None,
+            CaretStep::Edge | CaretStep::Logical => logical(),
         }
     }
 

@@ -2,11 +2,11 @@ use super::*;
 
 const HE: &str = "אבג";
 
-fn to(step: Step) -> Option<usize> {
+fn to(step: CaretStep) -> Option<usize> {
     match step {
-        Step::To(p) => Some(p),
-        Step::Edge => None,
-        Step::Logical => unreachable!("expected a single-run step"),
+        CaretStep::To(p) => Some(p),
+        CaretStep::Edge => None,
+        CaretStep::Logical => unreachable!("expected a single-run step"),
     }
 }
 
@@ -35,6 +35,6 @@ fn single_run_steps_follow_direction() {
 fn mixed_line_defers_to_logical() {
     assert_eq!(
         ParagraphBidi::new("aאבc").visual_step(1, true),
-        Step::Logical
+        CaretStep::Logical
     );
 }

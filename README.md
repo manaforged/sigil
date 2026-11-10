@@ -8,15 +8,15 @@ A GUI and TUI framework written in Rust. One widget tree runs in a window, in a 
 - **Widgets**: markdown, tables, trees, charts, mermaid diagrams, a code editor, and the usual controls and fields.
 - **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
 
-[Book](docs/guide/README.md) | [API map](docs/api.md) | [Examples](docs/reference/sigil-ui/examples/index.md)
+[Book](docs/guide/README.md) | [API reference](https://docs.rs/sigil-ui) | [Examples](crates/sigil/examples)
 
 ![The workbench example application](docs/workbench.png)
 
-Status: 0.1 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
+Status: 0.2 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
-- Rust 1.90 or newer.
+- Rust 1.95 or newer.
 - On Linux, the window host needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages. On Debian and Ubuntu: `sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev`. The terminal host needs none of them.
 - A wgpu-capable GPU for the default renderer of the window host. Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
@@ -32,11 +32,11 @@ No mobile host.
 
 ## Install
 
-Sigil is not on crates.io yet. Add the Git dependency:
+Add the dependency:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil" }
+sigil-ui = "0.2"
 ```
 
 The package is `sigil-ui` because the `sigil` name is taken on crates.io. The library is `sigil`, so imports read `sigil::`. The first build compiles the wgpu stack and can take a few minutes.
@@ -45,7 +45,7 @@ For a terminal-only program:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
+sigil-ui = { version = "0.2", default-features = false, features = ["terminal"] }
 ```
 
 To pack release builds, install the `sigil-sign` package. It provides the `sigil-pack` command.
@@ -54,7 +54,7 @@ To pack release builds, install the `sigil-sign` package. It provides the `sigil
 cargo install --git https://github.com/manaforged/sigil sigil-sign
 ```
 
-To sign packages from your own code, add `sigil-sign = { git = "https://github.com/manaforged/sigil" }`; see [Signing](docs/guide/signing.md).
+To sign packages from your own code, add `sigil-sign = "0.2"`; see [Signing](docs/guide/signing.md).
 
 ## Usage
 
@@ -68,14 +68,14 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(32.0))
+        .layout(LayoutStyle::default().padding(Space::Xxl))
         .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
 ```
 
-`sigil::run` opens the window and drives the frame loop. Pass `AppConfig::new(title).terminal()` to run the same tree in the terminal. The embed host pumps `Host` inside `Runtime::scope`. To run the examples, clone this repository and run:
+`sigil::run` opens the window and drives the frame loop. Pass `AppConfig::new(title).terminal()` to run the same tree in the terminal. The embed host pumps `Host` inside `Owner::scope`. To run the examples, clone this repository and run:
 
 ```bash
 cargo run -p sigil-ui --example hello-counter                        # the app above
@@ -103,7 +103,7 @@ The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `d
 | [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal color. |
 | [GUI and TUI](docs/guide/hosts.md) | Build for the window, the terminal, or both; host-only APIs; how to split host code. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
-| [API map](docs/api.md) | Every exported item with its signature and an example, in one Markdown file. |
+| [API reference](https://docs.rs/sigil-ui) | Every public item, generated from the source by rustdoc. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |
 
 The [changelog](CHANGELOG.md) lists each release.

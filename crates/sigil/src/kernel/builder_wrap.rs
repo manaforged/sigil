@@ -58,6 +58,7 @@ fn overlay_options(base: &mut A11yProps, edits: A11yProps) {
     keep(&mut base.tab_stop, edits.tab_stop);
     keep(&mut base.keyboard_shortcut, edits.keyboard_shortcut);
     keep(&mut base.checked, edits.checked);
+    keep(&mut base.mixed, edits.mixed);
     keep(&mut base.selected, edits.selected);
     keep(&mut base.value_now, edits.value_now);
     keep(&mut base.value_min, edits.value_min);

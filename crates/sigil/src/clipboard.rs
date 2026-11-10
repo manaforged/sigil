@@ -1,8 +1,7 @@
 use std::cell::RefCell;
-use std::fmt;
 use std::rc::Rc;
 
-use crate::{AppResult, Error};
+use crate::{AppResult, Error, ErrorKind};
 
 #[cfg(feature = "clipboard")]
 mod os;
@@ -11,49 +10,48 @@ pub use os::OsClipboard;
 #[cfg(feature = "desktop")]
 pub(crate) use os::install_os;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClipError(String);
-
-impl ClipError {
-    pub fn new(msg: impl fmt::Display) -> Self {
-        Self(msg.to_string())
-    }
-}
-
-impl fmt::Display for ClipError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for ClipError {}
-
+/// Whether the OS took the text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Delivery {
+    /// The confirmed delivery.
     Confirmed,
+    /// The requested delivery.
     Requested,
 }
 
+/// A clipboard back end.
 pub trait Clipboard {
-    fn set(&self, text: &str) -> Result<Delivery, ClipError>;
+    /// Writes text to the clipboard.
+    fn set(&self, text: &str) -> Result<Delivery, Error>;
+    /// Returns the get.
     fn get(&self) -> Option<String>;
 
+    /// Returns the image.
     #[cfg(feature = "clipboard-image")]
-    fn image(&self) -> Result<Option<crate::kernel::ImageSource>, ClipError> {
+    fn image(&self) -> Result<Option<crate::kernel::ImageSource>, Error> {
         Ok(None)
     }
 
+    /// Writes an image to the clipboard.
     #[cfg(feature = "clipboard-image")]
-    fn set_image(&self, _image: &crate::kernel::ImageSource) -> Result<Delivery, ClipError> {
-        Err(ClipError::new("this clipboard does not accept images"))
+    fn set_image(&self, _image: &crate::kernel::ImageSource) -> Result<Delivery, Error> {
+        Err(Error::fixed(
+            ErrorKind::Clipboard,
+            "this clipboard does not accept images",
+        ))
     }
 }
 
-pub struct NoopClipboard;
+kittest_pub! {
+    /// `Clipboard` implementation used when no clipboard is installed.
+    #[doc(hidden)]
+    pub struct NoopClipboard;
+}
 
 impl Clipboard for NoopClipboard {
-    fn set(&self, _text: &str) -> Result<Delivery, ClipError> {
-        Err(ClipError::new(
+    fn set(&self, _text: &str) -> Result<Delivery, Error> {
+        Err(Error::fixed(
+            ErrorKind::Clipboard,
             "no clipboard handle is installed; call install first",
         ))
     }
@@ -66,38 +64,44 @@ thread_local! {
     static CURRENT: RefCell<Rc<dyn Clipboard>> = RefCell::new(Rc::new(NoopClipboard));
 }
 
+/// Replace the installed clipboard.
 pub fn install(clip: impl Clipboard + 'static) {
     CURRENT.with(|slot| *slot.borrow_mut() = Rc::new(clip));
 }
 
+/// Returns the installed clipboard.
 #[must_use]
 pub fn clipboard() -> Rc<dyn Clipboard> {
     CURRENT.with(|slot| Rc::clone(&*slot.borrow()))
 }
 
-pub(crate) fn write(clip: &dyn Clipboard, text: &str) -> Result<Delivery, ClipError> {
+pub(crate) fn write(clip: &dyn Clipboard, text: &str) -> Result<Delivery, Error> {
     clip.set(text).inspect_err(
         |err| tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard write failed"),
     )
 }
 
+/// Write text to the installed clipboard.
 pub fn copy(text: &str) -> AppResult<Delivery> {
-    clipboard().set(text).map_err(Error::io)
+    clipboard().set(text)
 }
 
+/// Read text from the installed clipboard.
 pub fn paste() -> AppResult<String> {
     clipboard()
         .get()
-        .ok_or_else(|| Error::io(ClipError::new("clipboard is empty")))
+        .ok_or_else(|| Error::fixed(ErrorKind::Io, "clipboard is empty"))
 }
 
+/// Reads an image from the installed clipboard.
 #[cfg(feature = "clipboard-image")]
 pub fn image() -> AppResult<Option<crate::kernel::ImageSource>> {
-    clipboard().image().map_err(Error::io)
+    clipboard().image()
 }
 
+/// Copies an image to the installed clipboard.
 #[cfg(feature = "clipboard-image")]
-pub fn copy_image(image: &crate::kernel::ImageSource) -> Result<Delivery, ClipError> {
+pub fn copy_image(image: &crate::kernel::ImageSource) -> Result<Delivery, Error> {
     clipboard().set_image(image)
 }
 

@@ -4,25 +4,31 @@ pub(super) const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
     Rgba8 { r, g, b, a: 255 }
 }
 
+/// A 12-step color scale.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorScale {
+    /// The steps.
     pub steps: [Rgba8; 12],
+    /// The on solid.
     pub on_solid: Rgba8,
 }
 
 impl ColorScale {
+    /// Creates a color scale from steps.
     #[must_use]
     pub const fn from_steps(steps: [Rgba8; 12]) -> Self {
         let on_solid = heuristic_on_solid(steps[8]);
         Self { steps, on_solid }
     }
 
+    /// Sets the on solid.
     #[must_use]
     pub const fn with_on_solid(mut self, on_solid: Rgba8) -> Self {
         self.on_solid = on_solid;
         self
     }
 
+    /// Returns step `n` of the scale.
     #[must_use]
     #[allow(
         clippy::indexing_slicing,
@@ -44,6 +50,7 @@ const fn heuristic_on_solid(step9: Rgba8) -> Rgba8 {
     }
 }
 
+/// The light slate scale.
 #[must_use]
 pub const fn slate_light() -> ColorScale {
     ColorScale::from_steps([
@@ -63,7 +70,9 @@ pub const fn slate_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The light iris scale.
 #[must_use]
+#[cfg(any(test, feature = "kittest"))]
 pub const fn iris_light() -> ColorScale {
     ColorScale::from_steps([
         rgb(0xFD, 0xFD, 0xFF),
@@ -82,6 +91,7 @@ pub const fn iris_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The light green scale.
 #[must_use]
 pub const fn green_light() -> ColorScale {
     ColorScale::from_steps([
@@ -95,12 +105,13 @@ pub const fn green_light() -> ColorScale {
         rgb(0x5B, 0xB9, 0x8C),
         rgb(0x30, 0xA4, 0x6C),
         rgb(0x2B, 0x9A, 0x66),
-        rgb(0x21, 0x83, 0x58),
+        rgb(0x1F, 0x7B, 0x53),
         rgb(0x19, 0x3B, 0x2D),
     ])
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The light amber scale.
 #[must_use]
 pub const fn amber_light() -> ColorScale {
     ColorScale::from_steps([
@@ -114,12 +125,13 @@ pub const fn amber_light() -> ColorScale {
         rgb(0xCB, 0x8E, 0x1E),
         rgb(0xFF, 0xC5, 0x3D),
         rgb(0xFF, 0xBA, 0x18),
-        rgb(0xAB, 0x64, 0x00),
+        rgb(0x9F, 0x5D, 0x00),
         rgb(0x4F, 0x34, 0x22),
     ])
     .with_on_solid(rgb(0x4F, 0x34, 0x22))
 }
 
+/// The light ruby scale.
 #[must_use]
 pub const fn ruby_light() -> ColorScale {
     ColorScale::from_steps([
@@ -139,6 +151,7 @@ pub const fn ruby_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The light cyan scale.
 #[must_use]
 pub const fn cyan_light() -> ColorScale {
     ColorScale::from_steps([
@@ -152,12 +165,13 @@ pub const fn cyan_light() -> ColorScale {
         rgb(0x3D, 0xB9, 0xCC),
         rgb(0x00, 0xA2, 0xC7),
         rgb(0x07, 0x97, 0xB9),
-        rgb(0x10, 0x7D, 0x98),
+        rgb(0x0F, 0x76, 0x90),
         rgb(0x0D, 0x34, 0x42),
     ])
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark slate scale.
 #[must_use]
 pub const fn slate_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -177,7 +191,9 @@ pub const fn slate_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark iris scale.
 #[must_use]
+#[cfg(any(test, feature = "kittest"))]
 pub const fn iris_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x13, 0x13, 0x1E),
@@ -196,6 +212,7 @@ pub const fn iris_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The light blue scale.
 #[must_use]
 pub const fn blue_light() -> ColorScale {
     ColorScale::from_steps([
@@ -215,6 +232,7 @@ pub const fn blue_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark blue scale.
 #[must_use]
 pub const fn blue_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -234,6 +252,7 @@ pub const fn blue_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark green scale.
 #[must_use]
 pub const fn green_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -253,6 +272,7 @@ pub const fn green_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark amber scale.
 #[must_use]
 pub const fn amber_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -272,6 +292,7 @@ pub const fn amber_dark() -> ColorScale {
     .with_on_solid(rgb(0x4F, 0x34, 0x22))
 }
 
+/// The dark ruby scale.
 #[must_use]
 pub const fn ruby_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -291,6 +312,7 @@ pub const fn ruby_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The dark cyan scale.
 #[must_use]
 pub const fn cyan_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -310,13 +332,20 @@ pub const fn cyan_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
+/// The job of a color scale in a theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ScaleRole {
+    /// The gray scale role.
     Gray,
+    /// The accent scale role.
     Accent,
+    /// The success scale role.
     Success,
+    /// The warn scale role.
     Warn,
+    /// The error scale role.
     Error,
+    /// The info scale role.
     Info,
 }
 

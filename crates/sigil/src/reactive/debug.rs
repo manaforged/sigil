@@ -1,8 +1,10 @@
 use std::fmt::Write as _;
 
-use crate::reactive::owner::OwnerId;
+use crate::reactive::owner::Owner;
 use crate::reactive::runtime::{OwnerKey, OwnerSlot, with_rt};
 
+/// Indented text of every reactive owner with its name and source location, for debugging leaks.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn dump_owner_tree() -> String {
     let roots = with_rt(|rt| {
@@ -18,13 +20,16 @@ pub fn dump_owner_tree() -> String {
     out
 }
 
+/// `dump_owner_tree` for one owner and its children.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
-pub fn dump_subtree(owner: OwnerId) -> String {
+pub fn dump_subtree(owner: Owner) -> String {
     let mut out = String::new();
     write_subtree(&mut out, owner.0, 0);
     out
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
     let Some(children) = with_rt(|rt| {
         rt.owners.get(key).map(|slot| {
@@ -39,6 +44,7 @@ fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
     }
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn render_line(slot: &OwnerSlot, depth: usize) -> String {
     let counts = [
         ("signals", slot.signals.len()),

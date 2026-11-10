@@ -2,15 +2,22 @@ use std::collections::BTreeSet;
 
 use crate::events::{MouseButton, PointerEvent};
 use crate::reactive::Signal;
+use crate::widgets::listbox::{only, span, toggle};
 
+/// Selection mode of a list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionMode {
+    /// The none selection mode.
     None,
+    /// The single selection mode.
     Single,
+    /// The multi selection mode.
     Multi,
+    /// The extend selection mode.
     Extend,
 }
 
+/// Selected indexes of a list.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectionState {
     mode: SelectionMode,
@@ -24,6 +31,7 @@ pub(super) struct SelectionRuntime {
 }
 
 impl SelectionState {
+    /// Creates a selection state.
     #[must_use]
     pub fn new(mode: SelectionMode) -> Self {
         Self {
@@ -33,28 +41,34 @@ impl SelectionState {
         }
     }
 
+    /// Returns the mode.
     #[must_use]
     pub const fn mode(&self) -> SelectionMode {
         self.mode
     }
 
+    /// Returns whether `index` is selected.
     #[must_use]
     pub fn contains(&self, index: usize) -> bool {
         self.selected.contains(&index)
     }
 
+    /// Returns the selected indices.
     pub fn selected_indices(&self) -> impl Iterator<Item = usize> + '_ {
         self.selected.iter().copied()
     }
 
+    /// Selects only `index`.
     pub fn click(&mut self, index: usize) {
         self.apply_click(index, false, false);
     }
 
+    /// Flips the selection of `index`.
     pub fn ctrl_click(&mut self, index: usize) {
         self.apply_click(index, false, true);
     }
 
+    /// Selects the range from the anchor to `index`.
     pub fn shift_click(&mut self, index: usize) {
         self.apply_click(index, true, false);
     }
@@ -71,23 +85,17 @@ impl SelectionState {
     }
 
     fn replace(&mut self, index: usize) {
-        self.selected.clear();
-        let _ = self.selected.insert(index);
-        self.anchor = Some(index);
+        only(&mut self.selected, &mut self.anchor, index);
     }
 
     fn toggle(&mut self, index: usize) {
-        if !self.selected.remove(&index) {
-            let _ = self.selected.insert(index);
-        }
+        toggle(&mut self.selected, index);
+        self.anchor = Some(index);
     }
 
     fn extend(&mut self, index: usize) {
         let anchor = self.anchor.unwrap_or(index);
-        self.selected.clear();
-        for selected in anchor.min(index)..=anchor.max(index) {
-            let _ = self.selected.insert(selected);
-        }
+        span(&mut self.selected, anchor.min(index)..=anchor.max(index));
         self.anchor = Some(anchor);
     }
 }

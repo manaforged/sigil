@@ -6,13 +6,13 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use sigil::reactive::{Runtime, batch, effect, signal};
+use sigil::reactive::{Owner, batch, effect, signal};
 
 #[test]
 fn ping_pong_effects_stop_at_the_drain_budget() {
     let (done, finished) = mpsc::channel();
     std::thread::spawn(move || {
-        Runtime::scope("reactive-ping-pong", || {
+        Owner::scope("reactive-ping-pong", || {
             let x = signal(0_u64);
             let y = signal(0_u64);
             batch(|| {

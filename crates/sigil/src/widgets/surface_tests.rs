@@ -1,11 +1,11 @@
 use crate::kernel::{Cx, Surface};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 use super::surface;
 
 #[test]
 fn surface_attaches_key() {
-    Runtime::scope("surface-key", || {
+    Owner::scope("surface-key", || {
         let mut cx = Cx::new_root();
         let id = cx.add(surface(7));
         let key = cx

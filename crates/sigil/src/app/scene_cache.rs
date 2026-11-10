@@ -4,7 +4,7 @@ use crate::reactive::Runtime;
 use crate::scene::{CommandScene, SceneCommand, paint_backdrop};
 use crate::style::Theme;
 
-use crate::app::launch::backend::{Backend, Surface};
+use crate::app::launch::backend::{Backend, RenderSurface};
 
 use crate::app::embed::emit_viewport_scene;
 
@@ -22,7 +22,7 @@ impl SceneKey {
             context: cx.instance_id(),
             root,
             viewport: [viewport.0.to_bits(), viewport.1.to_bits()],
-            scale: cx.scale().factor().to_bits(),
+            scale: cx.scale().to_bits(),
         }
     }
 }
@@ -134,7 +134,7 @@ pub(super) struct PaintRequest<'a> {
     pub(super) cx: &'a Cx,
     pub(super) root: NodeId,
     pub(super) renderer: &'a mut Backend,
-    pub(super) surface: &'a mut Option<Surface>,
+    pub(super) surface: &'a mut Option<RenderSurface>,
     pub(super) viewport: (f32, f32),
     pub(super) allow_replay: bool,
 }

@@ -3,15 +3,18 @@ pub struct WgpuSurface {
 
     pub(crate) config: wgpu::SurfaceConfiguration,
     pub(crate) backbuffer: Option<Box<wgpu::Texture>>,
+    pub(crate) device_generation: u64,
 }
 
 impl WgpuSurface {
+    #[cfg(feature = "inspect")]
     #[must_use]
-    pub const fn size(&self) -> crate::geometry::PhysicalSize {
+    pub(crate) const fn size(&self) -> crate::geometry::PhysicalSize {
         crate::geometry::PhysicalSize::new(self.config.width, self.config.height)
     }
 
     #[must_use]
+    #[cfg(any(test, feature = "kittest"))]
     pub const fn format(&self) -> wgpu::TextureFormat {
         self.config.format
     }

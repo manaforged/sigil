@@ -2,12 +2,9 @@
 
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, LayoutResult};
-use sigil_kittest::CharMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 8.0,
-    line_height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 
 #[allow(clippy::redundant_pub_crate)]
 pub(crate) fn stub_engine() -> LayoutEngine {

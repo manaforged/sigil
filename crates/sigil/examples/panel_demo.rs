@@ -16,7 +16,12 @@ fn build() -> impl IntoNode {
 fn root() -> NodeBuilder {
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill().gap(16.0).padding(24.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill()
+                .gap(Space::Lg)
+                .padding(Space::Xl),
+        )
         .bg(Token::Surface)
         .child(panel().elevation(0).title("Elevation 0 — flat"))
         .child(panel().elevation(1).title("Elevation 1 — subtle"))

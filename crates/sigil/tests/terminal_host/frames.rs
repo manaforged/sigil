@@ -1,11 +1,12 @@
 use super::*;
+use sigil::kernel::HostMode;
 
 #[test]
 fn a_still_tree_reports_no_movement() {
     use sigil::Host;
 
-    sigil::reactive::Runtime::scope("still", || {
-        let mut host = Host::cells();
+    sigil::reactive::Owner::scope("still", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || container().child(text("steady")));
         host.layout((320.0, 64.0)).expect("layout");
         let first = host.emit((320.0, 64.0));
@@ -25,8 +26,9 @@ fn a_still_tree_reports_no_movement() {
 #[test]
 fn a_reactive_class_change_repaints() {
     use sigil::Host;
+    use sigil::prelude::Widget;
     use sigil::reactive::signal;
-    use sigil::style::{NodeStyleExt, Paint, Token};
+    use sigil::style::{Paint, Token};
 
     fn fills(scene: &sigil::scene::CommandScene) -> Vec<sigil::style::Rgba8> {
         scene
@@ -40,9 +42,9 @@ fn a_reactive_class_change_repaints() {
     }
 
     fn truth(start: bool) -> Vec<sigil::style::Rgba8> {
-        sigil::reactive::Runtime::scope("reactive-truth", || {
+        sigil::reactive::Owner::scope("reactive-truth", || {
             let active = signal(start);
-            let mut host = Host::cells();
+            let mut host = Host::new(HostMode::Cell);
             host.mount(move || {
                 container()
                     .paint_when(active, |s| s.bg(Token::Accent))
@@ -59,9 +61,9 @@ fn a_reactive_class_change_repaints() {
         "control: the class must resolve to a different fill at all"
     );
 
-    sigil::reactive::Runtime::scope("reactive-class", || {
+    sigil::reactive::Owner::scope("reactive-class", || {
         let active = signal(false);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
                 .paint_when(active, |s| s.bg(Token::Accent))
@@ -88,27 +90,19 @@ fn a_reactive_class_change_repaints() {
 #[test]
 fn a_skipped_frame_returns_what_is_showing() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::terminal::Screen;
 
-    sigil::reactive::Runtime::scope("skip-grid", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    sigil::reactive::Owner::scope("skip-grid", || {
+        let mut host = Host::new(HostMode::Cell);
         let mut screen = Screen::new(30, 6);
         host.mount(move || container().child(text("onscreen")));
 
-        let drawn = screen
-            .frame(&mut host, &mut router, [], (30, 6))
-            .expect("layout")
-            .text();
+        let drawn = screen.frame(&mut host, [], (30, 6)).expect("layout").text();
         assert!(drawn.contains("onscreen"), "first frame paints:\n{drawn}");
         let mut sink = std::io::sink();
         screen.flush(&mut sink).expect("flush");
 
-        let again = screen
-            .frame(&mut host, &mut router, [], (30, 6))
-            .expect("layout")
-            .text();
+        let again = screen.frame(&mut host, [], (30, 6)).expect("layout").text();
         assert_eq!(drawn, again, "a skipped frame must report the screen");
     });
 }
@@ -116,70 +110,52 @@ fn a_skipped_frame_returns_what_is_showing() {
 #[test]
 fn only_a_change_sends_bytes() {
     use sigil::Host;
-    use sigil::events::EventRouter;
     use sigil::reactive::signal;
     use sigil::terminal::Screen;
 
-    sigil::reactive::Runtime::scope("bytes", || {
+    sigil::reactive::Owner::scope("bytes", || {
         let count = signal(0_i32);
         let label = sigil::reactive::derived(move || format!("n={}", count.get()));
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         let mut screen = Screen::new(30, 6);
         host.mount(move || container().child(text(label)));
 
-        let sent = |next: &mut Screen, app: &mut Host, events: &mut EventRouter| {
-            next.frame(app, events, [], (30, 6)).expect("layout");
+        let sent = |next: &mut Screen, app: &mut Host| {
+            next.frame(app, [], (30, 6)).expect("layout");
             let mut out: Vec<u8> = Vec::new();
             next.flush(&mut out).expect("flush");
             out.len()
         };
 
-        assert!(
-            sent(&mut screen, &mut host, &mut router) > 0,
-            "first frame draws"
-        );
+        assert!(sent(&mut screen, &mut host,) > 0, "first frame draws");
         assert_eq!(
-            sent(&mut screen, &mut host, &mut router),
+            sent(&mut screen, &mut host,),
             0,
             "an unchanged frame sends nothing"
         );
 
         count.set(1);
         assert!(
-            sent(&mut screen, &mut host, &mut router) > 0,
+            sent(&mut screen, &mut host,) > 0,
             "a changed label must reach the terminal"
         );
-        assert_eq!(
-            sent(&mut screen, &mut host, &mut router),
-            0,
-            "and then settle again"
-        );
+        assert_eq!(sent(&mut screen, &mut host,), 0, "and then settle again");
     });
 }
 
 #[test]
 fn a_width_only_resize_repaints_at_the_new_width() {
-    sigil::reactive::Runtime::scope("frames-resize", || {
-        let mut host = sigil::Host::cells();
+    sigil::reactive::Owner::scope("frames-resize", || {
+        let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(|| sigil::kernel::text("fixed"));
-        let mut router = sigil::events::EventRouter::new();
         let mut screen = sigil::terminal::Screen::new(20, 5);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (20, 5))
-                .expect("frame");
+            screen.frame(&mut host, [], (20, 5)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
-        let wider = screen
-            .frame(&mut host, &mut router, [], (30, 5))
-            .expect("frame")
-            .cols();
+        let wider = screen.frame(&mut host, [], (30, 5)).expect("frame").cols();
         assert_eq!(wider, 30);
-        let taller = screen
-            .frame(&mut host, &mut router, [], (30, 8))
-            .expect("frame")
-            .rows();
+        let taller = screen.frame(&mut host, [], (30, 8)).expect("frame").rows();
         assert_eq!(taller, 8);
     });
 }

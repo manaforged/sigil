@@ -9,7 +9,7 @@
 use sigil::layout::Position;
 use sigil::prelude::*;
 
-use sigil_kittest::{InteractionMode, render_widget_to_png_stub};
+use sigil_kittest::{Harness, InteractionMode};
 
 #[test]
 fn position_relative_child_paints() {
@@ -17,38 +17,38 @@ fn position_relative_child_paints() {
     const SAMPLE_X: u32 = 64;
     const SAMPLE_Y: u32 = 64;
 
-    let Some(img) = render_widget_to_png_stub(
-        || {
-            let inner = container()
-                .layout(
-                    LayoutStyle::block()
-                        .fixed_size(40.0, 40.0)
-                        .position(Position::Absolute)
-                        .inset_left(20.0)
-                        .inset_top(20.0),
-                )
-                .bg(Token::Accent);
-            let middle = container()
-                .layout(
-                    LayoutStyle::block()
-                        .fixed_size(80.0, 80.0)
-                        .position(Position::Relative),
-                )
-                .bg(Token::SurfacePressed)
-                .child(inner);
-            container()
-                .layout(
-                    LayoutStyle::block()
-                        .fixed_size(150.0, 150.0)
-                        .padding(ROOT_PADDING as f32),
-                )
-                .bg(Token::Surface)
-                .child(middle)
-        },
-        InteractionMode::Default,
-        [150, 150],
-        (0.0, 0.0),
-    )
+    let Some(img) = Harness::render(|| {
+        let inner = container()
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(40.0, 40.0)
+                    .position(Position::Absolute)
+                    .inset_left(20.0)
+                    .inset_top(20.0),
+            )
+            .bg(Token::Accent);
+        let middle = container()
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(80.0, 80.0)
+                    .position(Position::Relative),
+            )
+            .bg(Token::SurfacePressed)
+            .child(inner);
+        container()
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(150.0, 150.0)
+                    .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
+            )
+            .bg(Token::Surface)
+            .child(middle)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([150, 150])
+    .hit((0.0, 0.0))
+    .image()
     .expect("sigil-kittest") else {
         println!("no GPU adapter — skipping position_relative_child_paints");
         return;
@@ -76,29 +76,29 @@ fn narrow_text_renders_glyph() {
     const WIN_W: u32 = 14;
     const WIN_H: u32 = 16;
 
-    let Some(img) = render_widget_to_png_stub(
-        || {
-            let glyph = text("v")
-                .layout(LayoutStyle::block().width(WIN_W as f32))
-                .text_color(Token::OnSurface);
-            let wrapper = container()
-                .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-                .rounded(Radius::Sm)
-                .bg(Token::Surface)
-                .child(glyph);
-            container()
-                .layout(
-                    LayoutStyle::block()
-                        .fixed_size(200.0, 80.0)
-                        .padding(ROOT_PADDING as f32),
-                )
-                .bg(Token::Surface)
-                .child(wrapper)
-        },
-        InteractionMode::Default,
-        [200, 80],
-        (0.0, 0.0),
-    )
+    let Some(img) = Harness::render(|| {
+        let glyph = text("v")
+            .layout(LayoutStyle::block().width(WIN_W as f32))
+            .text_color(Token::OnSurface);
+        let wrapper = container()
+            .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
+            .rounded(Radius::Sm)
+            .bg(Token::Surface)
+            .child(glyph);
+        container()
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(200.0, 80.0)
+                    .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
+            )
+            .bg(Token::Surface)
+            .child(wrapper)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([200, 80])
+    .hit((0.0, 0.0))
+    .image()
     .expect("sigil-kittest") else {
         println!("no GPU adapter — skipping narrow_text_renders_glyph");
         return;

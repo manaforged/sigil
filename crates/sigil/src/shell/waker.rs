@@ -1,4 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -6,7 +5,7 @@ use std::sync::{
 
 use winit::event_loop::EventLoopProxy;
 
-use crate::shell::ShellError;
+use crate::{Error, ErrorKind};
 
 pub static WAKE_DELIVERED_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -21,9 +20,9 @@ pub struct WinitWaker {
 }
 
 impl WinitWaker {
-    pub fn wake(&self) -> Result<(), ShellError> {
+    pub fn wake(&self) -> Result<(), Error> {
         if !self.alive.load(Ordering::Acquire) {
-            return Err(ShellError::EventLoopClosed);
+            return Err(Error::fixed(ErrorKind::Closed, "event loop already exited"));
         }
 
         if self
@@ -34,14 +33,17 @@ impl WinitWaker {
             return Ok(());
         }
 
-        let proxy = self.proxy.lock().map_err(|_| ShellError::WakerPoisoned)?;
+        let proxy = self
+            .proxy
+            .lock()
+            .map_err(|_| Error::fixed(ErrorKind::Poisoned, "waker mutex poisoned"))?;
         if proxy.send_event(WakeEvent).is_ok() {
             WAKE_DELIVERED_COUNT.fetch_add(1, Ordering::Relaxed);
             Ok(())
         } else {
             self.pending.store(false, Ordering::Release);
             self.alive.store(false, Ordering::Release);
-            Err(ShellError::EventLoopClosed)
+            Err(Error::fixed(ErrorKind::Closed, "event loop already exited"))
         }
     }
 }

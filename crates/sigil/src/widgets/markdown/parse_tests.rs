@@ -1,5 +1,18 @@
-use super::super::containers::{List, ListItem, Task};
-use super::{Block, Span, parse_blocks, parse_inlines};
+use super::super::containers::{List, ListItem, TaskMark};
+use super::super::table_data::{Align, Table};
+use super::{Block, Inline, parse_blocks, parse_inlines};
+
+fn text(body: &str) -> Vec<Inline> {
+    vec![Inline::Text(body.into())]
+}
+
+fn hello() -> Vec<Inline> {
+    vec![
+        Inline::Text("Hello ".into()),
+        Inline::Strong(text("world")),
+        Inline::Text(".".into()),
+    ]
+}
 
 #[test]
 fn parse_headings_list_fence_and_paragraph() {
@@ -10,14 +23,14 @@ fn parse_headings_list_fence_and_paragraph() {
         vec![
             Block::Heading {
                 level: 1,
-                text: "Title".into(),
+                body: text("Title"),
             },
-            Block::Paragraph("Hello **world**.".into()),
+            Block::Paragraph(hello()),
             Block::List(List {
                 start: None,
                 items: vec![
-                    ListItem::plain(vec![Block::Paragraph("one".into())]),
-                    ListItem::plain(vec![Block::Paragraph("two".into())]),
+                    ListItem::plain(vec![Block::Paragraph(text("one"))]),
+                    ListItem::plain(vec![Block::Paragraph(text("two"))]),
                 ],
             }),
             Block::Code {
@@ -26,34 +39,28 @@ fn parse_headings_list_fence_and_paragraph() {
             },
         ]
     );
-    assert_eq!(
-        parse_inlines("Hello **world**."),
-        vec![
-            Span::Text("Hello ".into()),
-            Span::Bold("world".into()),
-            Span::Text(".".into()),
-        ]
-    );
+    assert_eq!(parse_inlines("Hello **world**."), hello());
     assert_eq!(
         parse_inlines("see [docs](https://example.com)"),
         vec![
-            Span::Text("see ".into()),
-            Span::Link {
-                text: "docs".into(),
+            Inline::Text("see ".into()),
+            Inline::Link {
                 href: "https://example.com".into(),
+                body: text("docs"),
+                label_is_href: false,
             },
         ]
     );
     assert_eq!(
         parse_blocks("| a | b |\n| --- | --- |\n| 1 | 2 |\n"),
-        vec![Block::Table(vec![
-            vec!["a".into(), "b".into()],
-            vec!["1".into(), "2".into()],
-        ])]
+        vec![Block::Table(Table {
+            align: vec![Align::Start; 2],
+            rows: vec![vec![text("a"), text("b")], vec![text("1"), text("2")]],
+        })]
     );
 }
 
-fn tasks(source: &str) -> Vec<(Option<Task>, Vec<Block>)> {
+fn tasks(source: &str) -> Vec<(Option<TaskMark>, Vec<Block>)> {
     match parse_blocks(source).into_iter().next() {
         Some(Block::List(list)) => list
             .items
@@ -69,28 +76,25 @@ fn task_items_carry_checked_state_and_drop_the_marker() {
     assert_eq!(
         tasks("- [ ] todo\n- [x] done\n- [X] loud\n- plain [x]\n"),
         vec![
-            (Some(Task::Open), vec![Block::Paragraph("todo".into())]),
-            (Some(Task::Done), vec![Block::Paragraph("done".into())]),
-            (Some(Task::Done), vec![Block::Paragraph("loud".into())]),
-            (None, vec![Block::Paragraph("plain [x]".into())]),
+            (Some(TaskMark::Open), vec![Block::Paragraph(text("todo"))]),
+            (Some(TaskMark::Done), vec![Block::Paragraph(text("done"))]),
+            (Some(TaskMark::Done), vec![Block::Paragraph(text("loud"))]),
+            (None, vec![Block::Paragraph(text("plain [x]"))]),
         ]
     );
 }
 
 #[test]
 fn a_star_between_spaces_is_text_not_emphasis() {
-    assert_eq!(parse_inlines("a * b"), vec![Span::Text("a * b".into())]);
-    assert_eq!(parse_inlines("a ** b"), vec![Span::Text("a ** b".into())]);
-    assert_eq!(
-        parse_inlines("2 * 3 * 4"),
-        vec![Span::Text("2 * 3 * 4".into())]
-    );
+    assert_eq!(parse_inlines("a * b"), text("a * b"));
+    assert_eq!(parse_inlines("a ** b"), text("a ** b"));
+    assert_eq!(parse_inlines("2 * 3 * 4"), text("2 * 3 * 4"));
     assert_eq!(
         parse_inlines("*x* and **y**"),
         vec![
-            Span::Italic("x".into()),
-            Span::Text(" and ".into()),
-            Span::Bold("y".into()),
+            Inline::Em(text("x")),
+            Inline::Text(" and ".into()),
+            Inline::Strong(text("y")),
         ]
     );
 }

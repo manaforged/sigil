@@ -4,10 +4,11 @@
 )]
 #![allow(clippy::print_stdout, reason = "the bench prints its profile report")]
 
+use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::prelude::*;
 use sigil::profile;
-use sigil_kittest::{Harness, Query, input};
+use sigil_kittest::{Harness, Query};
 
 const SURFACE_WIDTH: u16 = 1600;
 const SURFACE_HEIGHT: u16 = 1000;
@@ -105,7 +106,7 @@ fn modal_page() -> impl IntoNode {
 }
 
 fn surface(app: impl IntoNode + 'static) -> Harness {
-    let mut ui = Harness::new(app).gpu(
+    let mut ui = Harness::new(app).unaudited().gpu(
         u32::from(SURFACE_WIDTH),
         u32::from(SURFACE_HEIGHT),
         SURFACE_SCALE,
@@ -130,8 +131,8 @@ fn wheel(ui: &mut Harness, at: Point) {
             WHEEL_LINES
         };
         ui.send([
-            input::pointer_move(at.x, at.y),
-            input::scroll_lines(at.x, at.y, lines),
+            Event::pointer_move(Point::new(at.x, at.y)),
+            Event::wheel(Point::new(at.x, at.y), lines),
         ]);
     }
 }
@@ -177,7 +178,7 @@ fn hover_sweep() {
         .collect();
     measured("hover_sweep", &mut ui, |ui| {
         for (_, at) in (0..HOVER_FRAMES).zip(targets.iter().cycle()) {
-            ui.send([input::pointer_move(at.x, at.y)]);
+            ui.send([Event::pointer_move(Point::new(at.x, at.y))]);
         }
     });
 }
@@ -187,7 +188,7 @@ fn main() {
     let mut ran = false;
     for (name, run) in SCENARIOS {
         if only.as_deref().is_none_or(|wanted| wanted == *name) {
-            sigil::reactive::Runtime::scope(name, run);
+            sigil::reactive::Owner::scope(name, run);
             ran = true;
         }
     }

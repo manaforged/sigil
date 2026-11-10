@@ -1,15 +1,18 @@
+use crate::layout::Space;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::events::request_focus;
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, untrack};
-use crate::style::{StyleOverlay, space};
+use crate::style::StyleOverlay;
+use crate::widgets::Widget;
 
+use super::super::listbox::{Move, RowSource, TAB_LIST};
 use super::builder::{CloseHandler, StripChrome};
-use super::drag::DragState;
+use super::drag::TabDrag;
 use super::tab::{build_tab, tab_height};
 
 type TabIds = Rc<RefCell<Vec<Option<NodeId>>>>;
@@ -18,24 +21,23 @@ type TabIds = Rc<RefCell<Vec<Option<NodeId>>>>;
 struct Roving {
     active: Signal<usize>,
     order: Rc<Vec<usize>>,
-    disabled: Rc<Vec<usize>>,
+    enabled: Rc<Vec<bool>>,
     ids: TabIds,
 }
 
-impl Roving {
-    fn enabled(&self) -> Vec<usize> {
-        (0..self.order.len())
-            .filter(|&visual| {
-                self.order
-                    .get(visual)
-                    .is_some_and(|original| !self.disabled.contains(original))
-            })
-            .collect()
+impl RowSource for Roving {
+    fn len(&self) -> usize {
+        self.order.len()
     }
 
-    fn move_to(&self, key: Key, from: usize) {
-        let enabled = self.enabled();
-        let Some(target) = roving_target(&enabled, from, key) else {
+    fn enabled(&self, index: usize) -> bool {
+        self.enabled.get(index).copied().unwrap_or(false)
+    }
+}
+
+impl Roving {
+    fn move_to(&self, step: Move, from: usize) {
+        let Some(target) = TAB_LIST.target(self, from, step) else {
             return;
         };
         if let Some(original) = self.order.get(target) {
@@ -47,10 +49,10 @@ impl Roving {
     }
 
     fn install(&self, mut node: NodeBuilder, visual: usize) -> NodeBuilder {
-        for key in [Key::ArrowLeft, Key::ArrowRight, Key::Home, Key::End] {
+        for (key, step) in TAB_LIST.bindings() {
             let roving = self.clone();
             node = node.key(key, move |event| {
-                roving.move_to(key, visual);
+                roving.move_to(step, visual);
                 event.stop_propagation();
             });
         }
@@ -63,25 +65,12 @@ impl Roving {
     }
 }
 
-fn roving_target(enabled: &[usize], from: usize, key: Key) -> Option<usize> {
-    let len = enabled.len();
-    let at = enabled.iter().position(|visual| *visual == from);
-    let index = match (key, at) {
-        (Key::Home, _) => 0,
-        (Key::End, _) => len.checked_sub(1)?,
-        (Key::ArrowRight, Some(at)) => (at + 1) % len,
-        (Key::ArrowLeft, Some(at)) => (at + len - 1) % len,
-        _ => return None,
-    };
-    enabled.get(index).copied()
-}
-
 #[derive(Clone)]
 pub(super) struct StripSpec {
     pub(super) active: Signal<usize>,
     pub(super) disabled: Rc<Vec<usize>>,
     pub(super) order: Option<Signal<Vec<usize>>>,
-    pub(super) drag: Option<DragState>,
+    pub(super) drag: Option<TabDrag>,
     pub(super) closeable: bool,
     pub(super) close_handler: Option<CloseHandler>,
     pub(super) user_overlay: StyleOverlay,
@@ -112,7 +101,7 @@ pub(super) fn build_tab_list(
             LayoutStyle::flex_row()
                 .height(tab_height(spec.chrome))
                 .shrink(0.0)
-                .gap(space(1))
+                .gap(Space::Xs)
                 .align_items(AlignItems::Center),
         )
         .children_reactive(move || {
@@ -124,15 +113,20 @@ pub(super) fn build_tab_list(
 fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
     let count = labels.len();
     let active = spec.active;
+    let order: Vec<usize> = spec
+        .order
+        .map(|order| order.peek())
+        .filter(|current| current.len() == count)
+        .unwrap_or_else(|| (0..count).collect());
+    let disabled: HashSet<usize> = spec.disabled.iter().copied().collect();
+    let enabled = order
+        .iter()
+        .map(|original| !disabled.contains(original))
+        .collect();
     let roving = Roving {
         active,
-        order: Rc::new(
-            spec.order
-                .map(|order| order.peek())
-                .filter(|current| current.len() == count)
-                .unwrap_or_else(|| (0..count).collect()),
-        ),
-        disabled: Rc::clone(&spec.disabled),
+        order: Rc::new(order),
+        enabled: Rc::new(enabled),
         ids: Rc::new(RefCell::new(vec![None; count])),
     };
     if let Some(drag_state) = spec.drag {

@@ -5,13 +5,13 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::TreeNode;
 use sigil_kittest::{Harness, Query};
 
 #[test]
 fn tree_expands_collapses_and_activates_leaves() {
-    Runtime::scope("widget-gaps-tree", || {
+    Owner::scope("widget-gaps-tree", || {
         let opened = signal(None::<&'static str>);
         let nodes = vec![
             TreeNode::new("src", "src").children([TreeNode::new("main", "main.rs")]),
@@ -41,7 +41,7 @@ fn tree_expands_collapses_and_activates_leaves() {
 
 #[test]
 fn card_activates_on_click_and_enter() {
-    Runtime::scope("widget-gaps-card", || {
+    Owner::scope("widget-gaps-card", || {
         let hits = signal(0_u32);
         let mut ui =
             Harness::new(move || card(text("Deploy")).activate(move || hits.update(|n| *n += 1)));
@@ -67,7 +67,7 @@ fn stat_shows_label_value_delta_and_caption() {
 
 #[test]
 fn kv_grid_values_follow_their_signals() {
-    Runtime::scope("widget-gaps-kv", || {
+    Owner::scope("widget-gaps-kv", || {
         let state = signal("queued".to_owned());
         let mut ui = Harness::new(move || kv_grid([("State", move || state.get())]));
         ui.expect_text("queued");
@@ -78,7 +78,7 @@ fn kv_grid_values_follow_their_signals() {
 
 #[test]
 fn clearable_field_empties_the_value_and_fires_change() {
-    Runtime::scope("widget-gaps-clear", || {
+    Owner::scope("widget-gaps-clear", || {
         let value = signal(String::new());
         let changes = signal(0_u32);
         let mut ui = Harness::new(move || {
@@ -114,7 +114,7 @@ fn clearable_field_empties_the_value_and_fires_change() {
 #[test]
 fn list_row_draws_its_badge() {
     let mut ui = Harness::new(|| {
-        list_row_with(
+        list_row(
             false,
             "Incidents",
             ListRowSlots {
@@ -194,16 +194,26 @@ fn highlight_marks_markdown_headings_and_typescript_keywords() {
 }
 
 #[test]
-fn every_bundled_icon_bakes_to_visible_pixels() {
-    let oven = sigil::icons::IconBaker::new();
-    for icon in Icon::ALL {
-        let baked = oven
-            .bake(icon.svg(), 24, 24)
-            .unwrap_or_else(|err| panic!("{} does not bake: {err:?}", icon.name()));
+fn every_bundled_icon_draws_visible_pixels() {
+    const BLACK: Rgba8 = Rgba8 {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+    for bundled in Icon::ALL {
+        let mut ui = Harness::new(|| {
+            container()
+                .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
+                .bg(BLACK)
+                .child(icon(*bundled).px(24.0))
+        })
+        .pixels(32, 32);
+        let frame = ui.image().expect("harness image").expect("gpu frame");
         assert!(
-            baked.alpha.iter().any(|a| *a > 0),
-            "{} bakes empty",
-            icon.name()
+            frame.pixels().any(|pixel| pixel.0[0] > 32),
+            "{} draws nothing",
+            bundled.name()
         );
     }
 }
@@ -219,18 +229,16 @@ fn scroll_converts_into_a_node_builder() {
 
 #[test]
 fn divider_vertical_takes_a_fixed_height() {
-    Runtime::scope("widget-gaps-divider", || {
+    Owner::scope("widget-gaps-divider", || {
         let mut cx = sigil::kernel::Cx::new_root();
         let root = cx.add(
             row()
                 .layout(LayoutStyle::flex_row().fixed_size(200.0, 100.0))
                 .child(divider_vertical().height(16.0)),
         );
-        let mut layout =
-            sigil::layout::LayoutEngine::with_text_measure(Box::new(sigil_kittest::FixedMeasure {
-                width: 10.0,
-                height: 16.0,
-            }));
+        let mut layout = sigil::layout::LayoutEngine::with_text_measure(Box::new(
+            sigil_kittest::FakeMeasure::fixed(10.0, 16.0),
+        ));
         layout
             .compute(&mut cx, root, sigil::geometry::Size::fixed(200.0, 100.0))
             .unwrap();
@@ -254,7 +262,7 @@ fn divider_vertical_takes_a_fixed_height() {
 
 #[test]
 fn square_icon_button_draws_its_icon_not_an_empty_label() {
-    Runtime::scope("widget-gaps-icon-button", || {
+    Owner::scope("widget-gaps-icon-button", || {
         let mut cx = sigil::kernel::Cx::new_root();
         let root = cx.add(icon_button("", || {}).icon(Icon::Search));
         let mut texts = 0;
@@ -269,15 +277,13 @@ fn square_icon_button_draws_its_icon_not_an_empty_label() {
 
 #[test]
 fn chip_dot_follows_a_reactive_tone() {
-    Runtime::scope("widget-gaps-chip-dot", || {
+    Owner::scope("widget-gaps-chip-dot", || {
         let tone = signal(Tone::Success);
         let mut cx = sigil::kernel::Cx::new_root();
         let root = cx.add(chip("Live", Tone::Success).tone(tone).dot());
-        let mut layout =
-            sigil::layout::LayoutEngine::with_text_measure(Box::new(sigil_kittest::FixedMeasure {
-                width: 10.0,
-                height: 16.0,
-            }));
+        let mut layout = sigil::layout::LayoutEngine::with_text_measure(Box::new(
+            sigil_kittest::FakeMeasure::fixed(10.0, 16.0),
+        ));
         let size = sigil::geometry::Size::fixed(200.0, 40.0);
         layout.compute(&mut cx, root, size).unwrap();
         tone.set(Tone::Error);

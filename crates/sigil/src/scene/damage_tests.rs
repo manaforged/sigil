@@ -1,6 +1,6 @@
 use super::{Damage, cell_damage};
 use crate::geometry::{Point, Rect};
-use crate::scene::command::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
+use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
 use crate::style::Rgba8;
 
 const CELL: (f32, f32) = (8.0, 8.0);
@@ -25,10 +25,9 @@ fn scene(rects: &[(f32, f32, Rgba8)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), 16.0, 8.0);
-        scene.commands.push(SceneCommand::Rect(DrawRect::new(
-            rect,
-            SceneRectStyle::solid(*color),
-        )));
+        scene
+            .commands
+            .push(SceneCommand::Rect(DrawRect::new(rect, *color)));
     }
     scene
 }
@@ -170,6 +169,7 @@ fn layered(effect: crate::scene::command::LayerEffect, color: Rgba8) -> CommandS
             clip_radii: crate::scene::corner_radii::CornerRadii::default(),
             effect,
             opacity: 1.0,
+            blend: crate::scene::BlendMode::Normal,
         }));
     layer
         .commands
@@ -183,7 +183,10 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     use crate::scene::command::LayerEffect;
     let shifted = LayerEffect::Transform([[1.0, 0.0, 8.0], [0.0, 1.0, 0.0]]);
     for effect in [LayerEffect::Identity, shifted] {
-        let found = regions(&layered(effect, RED), &layered(effect, BLUE));
+        let found = regions(
+            &layered(effect.clone(), RED),
+            &layered(effect.clone(), BLUE),
+        );
         assert_ne!(
             found,
             Damage::Full(super::FullReason::NonLocalLayerEffect),
@@ -192,10 +195,15 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     }
     let skewed = LayerEffect::Transform([[1.0, 0.5, 0.0], [0.0, 1.0, 0.0]]);
     let leaning = LayerEffect::Transform([[1.0, 0.0, 0.0], [0.5, 1.0, 0.0]]);
-    let blurred = LayerEffect::LayerBlur { sigma: 2.0 };
+    let blurred = LayerEffect::Filter(std::sync::Arc::new([crate::scene::command::Filter::Blur(
+        2.0,
+    )]));
     for effect in [skewed, leaning, blurred] {
         assert_eq!(
-            regions(&layered(effect, RED), &layered(effect, BLUE)),
+            regions(
+                &layered(effect.clone(), RED),
+                &layered(effect.clone(), BLUE)
+            ),
             Damage::Full(super::FullReason::NonLocalLayerEffect),
             "{effect:?}"
         );
@@ -204,7 +212,7 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
 
 fn clipped(clip: Rect, inside: Rgba8) -> CommandScene {
     let mut clipped = CommandScene::default();
-    clipped.commands.push(SceneCommand::PushClip(clip));
+    clipped.commands.push(SceneCommand::PushClip(clip.into()));
     clipped
         .commands
         .extend(scene(&[(80.0, 40.0, inside)]).commands);

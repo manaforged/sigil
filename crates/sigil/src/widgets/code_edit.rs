@@ -3,19 +3,22 @@ mod editing;
 mod render;
 mod scroll;
 
+use super::highlight::Highlight;
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use crate::style::locale::Direction;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
-use crate::events::{KeyEvent, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
-use crate::layout::LayoutReactiveExt;
+use crate::events::KeyEvent;
+use crate::kernel::{NodeBuilder, Role, container};
+use crate::widgets::Widget;
+
 use crate::layout::snap::{CellForm, line};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal};
-use crate::style::{NodeStyleExt, StyleOverlay, Token, space};
+use crate::style::{StyleOverlay, Token, space};
 
 use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_state};
 use crate::widgets::interaction::InteractionState;
@@ -36,10 +39,14 @@ type SelRange = ((usize, usize), (usize, usize));
 
 type GutterMarks = Signal<Vec<Option<ChangeKind>>>;
 
+/// Line change mark in the `code_edit` gutter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChangeKind {
+    /// The added change kind.
     Added,
+    /// The modified change kind.
     Modified,
+    /// The deleted change kind.
     Deleted,
 }
 
@@ -53,18 +60,16 @@ impl ChangeKind {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct HlSpan {
-    pub start: usize,
-    pub end: usize,
-    pub token: &'static str,
-}
-
+/// The severity of a code diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DiagSeverity {
+    /// The hint diag severity.
     Hint,
+    /// The info diag severity.
     Info,
+    /// The warning diag severity.
     Warning,
+    /// The error diag severity.
     Error,
 }
 
@@ -78,28 +83,36 @@ impl DiagSeverity {
     }
 }
 
+/// A code diagnostic on a byte range.
 #[derive(Clone, Copy, Debug)]
 pub struct DiagSpan {
+    /// The line.
     pub line: usize,
+    /// The start.
     pub start: usize,
+    /// The end.
     pub end: usize,
+    /// The severity.
     pub severity: DiagSeverity,
 }
 
 type DiagSpans = Signal<Vec<DiagSpan>>;
 
+/// Builder of a code editor.
 pub struct CodeEditBuilder {
     lines: Signal<Vec<String>>,
     caret: Signal<(usize, usize)>,
-    highlights: Option<Signal<Vec<Vec<HlSpan>>>>,
+    highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
     diagnostics: Option<DiagSpans>,
     on_key: Option<KeyHandler>,
     disabled: Option<Signal<bool>>,
     row_h: Option<f32>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A code editor with built-in `text_edit` editing.
 #[must_use]
 pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> CodeEditBuilder {
     CodeEditBuilder {
@@ -112,54 +125,62 @@ pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> C
         on_key: None,
         disabled: None,
         row_h: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl CodeEditBuilder {
+    /// Sets the selection.
     #[must_use]
     pub const fn selection(mut self, anchor: Signal<Option<(usize, usize)>>) -> Self {
         self.selection = Some(anchor);
         self
     }
 
+    /// Sets the key handler.
     #[must_use]
-    pub fn key(mut self, f: impl Fn(&mut KeyEvent) + 'static) -> Self {
+    pub fn key_handler(mut self, f: impl Fn(&mut KeyEvent) + 'static) -> Self {
         self.on_key = Some(Rc::new(f));
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the highlights.
     #[must_use]
-    pub const fn highlights(mut self, spans: Signal<Vec<Vec<HlSpan>>>) -> Self {
+    pub const fn highlights(mut self, spans: Signal<Vec<Vec<Highlight>>>) -> Self {
         self.highlights = Some(spans);
         self
     }
 
+    /// Sets the row height.
     #[must_use]
     pub const fn row_height(mut self, h: f32) -> Self {
         self.row_h = Some(h);
         self
     }
 
+    /// Sets the gutter.
     #[must_use]
     pub const fn gutter(mut self, marks: GutterMarks) -> Self {
         self.gutter = Some(marks);
         self
     }
 
+    /// Sets the diagnostics.
     #[must_use]
     pub const fn diagnostics(mut self, spans: DiagSpans) -> Self {
         self.diagnostics = Some(spans);
         self
     }
 
-    fn into_node(self) -> NodeBuilder {
-        let model = editing::Model {
+    fn root(self) -> NodeBuilder {
+        let model = editing::EditModel {
             lines: self.lines,
             caret: self.caret,
             selection: self.selection,
@@ -184,7 +205,7 @@ impl CodeEditBuilder {
             .class("w-full h-full")
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(CellForm::new(space(1), 0.0).pick())
+                    .padding(Space::px(CellForm::new(space(1), 0.0).pick()))
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
@@ -192,7 +213,7 @@ impl CodeEditBuilder {
             .on_scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
             .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
-                Surface {
+                EditSurface {
                     lines,
                     caret: self.caret,
                     highlights: self.highlights,
@@ -201,7 +222,7 @@ impl CodeEditBuilder {
                     diagnostics: self.diagnostics,
                     start,
                     viewport,
-                    caret_shown: caret_shown(interaction.focus_visible()),
+                    caret_shown: caret_shown(interaction.focused()),
                 },
                 row_h,
             ));
@@ -236,10 +257,10 @@ fn gated(on_key: KeyHandler, disabled: Option<Signal<bool>>) -> impl Fn(&mut Key
 }
 
 #[derive(Clone, Copy)]
-struct Surface {
+struct EditSurface {
     lines: Signal<Vec<String>>,
     caret: Signal<(usize, usize)>,
-    highlights: Option<Signal<Vec<Vec<HlSpan>>>>,
+    highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
     diagnostics: Option<DiagSpans>,
@@ -249,14 +270,10 @@ struct Surface {
 }
 
 #[derive(Clone, Copy)]
-struct Window {
+struct LineWindow {
     start: usize,
     budget: usize,
     row_h: f32,
 }
 
-impl IntoNode for CodeEditBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node().build(cx)
-    }
-}
+builder_impls!([] CodeEditBuilder: widget, node);

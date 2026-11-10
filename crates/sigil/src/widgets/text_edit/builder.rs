@@ -2,28 +2,31 @@ use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
+use crate::kernel::{NodeBuilder, TextContent};
 use crate::reactive::{Signal, signal};
-use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
+use crate::style::Style;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::{BuilderMutator, disabled_now};
+use super::super::layout_ext::LayoutOverrides;
 use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, content_padding, edit_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
-pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
+pub(super) use crate::widgets::shared::TextChange;
 
+/// The key that runs `TextEditBuilder::submit`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SubmitKey {
+    /// The ctrl enter submit key.
     #[default]
     CtrlEnter,
+    /// The enter submit key.
     Enter,
 }
 
+/// Builder of a text editor.
 pub struct TextEditBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
@@ -38,19 +41,18 @@ pub struct TextEditBuilder {
     pub(super) content_padding: (f32, f32),
     pub(super) chrome: bool,
     state: Option<TextEditState>,
-    autofocus: bool,
-    focus_trigger: Option<Signal<u64>>,
     pub(super) style_accumulator: Style,
-    mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
 }
 
+/// A multi-line text editor.
 #[must_use]
 pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
     TextEditBuilder::new(value)
 }
 
 impl TextEditBuilder {
+    /// Creates a text edit builder.
     #[must_use]
     pub fn new(value: Signal<String>) -> Self {
         Self {
@@ -67,42 +69,45 @@ impl TextEditBuilder {
             content_padding: content_padding(),
             chrome: true,
             state: None,
-            autofocus: false,
-            focus_trigger: None,
             style_accumulator: Style::new(),
-            mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
 
+    /// Returns the signal that says whether the caret shows.
     pub fn caret_visible(&mut self) -> Signal<bool> {
         *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
+    /// Sets the caret position.
     #[must_use]
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
         self
     }
 
+    /// Sets the caret rect.
     #[must_use]
     pub const fn caret_rect(mut self, rect: Signal<Option<Rect>>) -> Self {
         self.caret_rect = Some(rect);
         self
     }
 
+    /// Sets the content padding.
     #[must_use]
     pub const fn content_padding(mut self, horizontal: f32, vertical: f32) -> Self {
         self.content_padding = (horizontal, vertical);
         self
     }
 
+    /// Sets the chrome.
     #[must_use]
     pub const fn chrome(mut self, enabled: bool) -> Self {
         self.chrome = enabled;
         self
     }
 
+    /// Sets the state.
     #[must_use]
     pub fn state(mut self, state: TextEditState) -> Self {
         self.value = state.value;
@@ -111,57 +116,51 @@ impl TextEditBuilder {
         self
     }
 
+    /// Sets the placeholder.
     #[must_use]
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
         self.disabled = Some(flag.into_signal());
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
         self
     }
 
+    /// Sets the key that submits.
     #[must_use]
     pub const fn submit_on(mut self, key: SubmitKey) -> Self {
         self.submit_key = key;
         self
     }
 
+    /// Sets the submit.
     #[must_use]
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
         self
     }
 
-    #[must_use]
-    pub const fn autofocus(mut self) -> Self {
-        self.autofocus = true;
-        self
-    }
-
-    #[must_use]
-    pub const fn focus_when(mut self, trigger: Signal<u64>) -> Self {
-        self.focus_trigger = Some(trigger);
-        self
-    }
-
+    /// Sets the clipboard.
     #[must_use]
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self
     }
 
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let value = self.value;
-        let interaction = InteractionState::new(!disabled_now(self.disabled));
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let state = self.state.unwrap_or_else(|| {
             let caret = self.caret_position;
             TextEditState::new(value, caret.unwrap_or_else(|| signal(value.peek().len())))
@@ -187,50 +186,16 @@ impl TextEditBuilder {
             self.chrome,
         );
         let node = interaction.install(attach_key_handlers(node, runtime.clone(), self.submit_key));
-        let node = attach_ime_handlers(node, &runtime);
-        let mut node = self
-            .mutators
-            .into_iter()
-            .fold(node, |node, mutate| mutate(node));
+        let mut node = attach_ime_handlers(node, &runtime);
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.with(self.layout_overrides.apply(edit_layout()))
+        node.with(edit_layout())
     }
 }
 
-impl PaintTarget for TextEditBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
+builder_impls!([] TextEditBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
-impl StateHost for TextEditBuilder {}
-
-impl WidgetLayoutExt for TextEditBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for TextEditBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        let (autofocus, trigger) = (self.autofocus, self.focus_trigger);
-        let node = self
-            .layout_overrides
-            .hooks()
-            .finish(self.into_node_builder());
-        let node = if autofocus {
-            <NodeBuilder as crate::events::NodeEventsExt>::autofocus(node)
-        } else {
-            node
-        };
-        let id = node.build(cx);
-        if let Some(trigger) = trigger {
-            crate::events::focus::focus_on_trigger(trigger, move || {
-                crate::events::request_focus(id);
-            });
-        }
-        id
-    }
-}
+#[cfg(test)]
+#[path = "builder_tests.rs"]
+mod tests;

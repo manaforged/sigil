@@ -1,10 +1,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once, Weak};
 
-use crate::events::EventRouter;
 use crate::kernel::{AccessibleName, Cx, IntoNode, Node, NodeId};
-use crate::reactive::{OwnerId, Runtime};
-use crate::tasks::OwnerHandle;
+use crate::reactive::Owner;
+use crate::reactive::Runtime;
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::tasks::runtime::Dispatcher;
 
@@ -22,7 +21,7 @@ pub(crate) struct HotRoot {
 }
 
 impl HotRoot {
-    fn new<F, N>(root: F, owner: OwnerId) -> Self
+    fn new<F, N>(root: F, owner: Owner) -> Self
     where
         F: Fn() -> N + 'static,
         N: IntoNode,
@@ -57,7 +56,7 @@ fn call_root<F: Fn() -> N, N: IntoNode>(root: &F, cx: &mut Cx) -> NodeId {
 fn on_patch(
     patched: Weak<AtomicBool>,
     dispatcher: Option<Dispatcher>,
-    owner: OwnerId,
+    owner: Owner,
 ) -> PatchHandler {
     Arc::new(move || {
         let Some(flag) = patched.upgrade() else {
@@ -65,16 +64,13 @@ fn on_patch(
         };
         flag.store(true, Ordering::Release);
         if let Some(dispatcher) = &dispatcher {
-            dispatch_to_owner(
-                dispatcher,
-                OwnerHandle::from_id(owner),
-                Runtime::mark_frame_dirty,
-            );
+            dispatch_to_owner(dispatcher, owner, Runtime::mark_frame_dirty);
         }
     })
 }
 
 impl Host {
+    /// Mount `root` through the `subsecond` jump table and connect to the `dx` devserver once.
     pub fn mount_hot<F, N>(&mut self, root: F)
     where
         F: Fn() -> N + 'static,
@@ -88,16 +84,16 @@ impl Host {
     }
 
     #[cfg(test)]
-    #[allow(dead_code, reason = "the seam that fires a patch without a devserver")]
     pub(crate) fn fire_hot_patch(&self) -> bool {
         self.hot.as_ref().map(|hot| (hot.handler)()).is_some()
     }
 
-    pub(crate) fn remount_patched(&mut self, router: &EventRouter) {
+    pub(crate) fn remount_patched(&mut self) {
         let Some(mut hot) = self.hot.take_if(|hot| hot.take_patched()) else {
             return;
         };
-        let focus = router
+        let focus = self
+            .router
             .focus()
             .zip(self.root)
             .and_then(|(id, root)| focus_path(&self.cx, root, id));
@@ -112,8 +108,8 @@ impl Host {
 }
 
 #[derive(PartialEq, Eq)]
-struct Step {
-    role: accesskit::Role,
+struct PathStep {
+    role: crate::kernel::Role,
     name: String,
     ordinal: usize,
 }
@@ -130,7 +126,7 @@ fn same(a: &Node, b: &Node) -> bool {
     a.a11y.role == b.a11y.role && name(a) == name(b)
 }
 
-fn focus_path(cx: &Cx, root: NodeId, focused: NodeId) -> Option<Vec<Step>> {
+fn focus_path(cx: &Cx, root: NodeId, focused: NodeId) -> Option<Vec<PathStep>> {
     let mut path = Vec::new();
     let mut id = focused;
     while id != root {
@@ -142,7 +138,7 @@ fn focus_path(cx: &Cx, root: NodeId, focused: NodeId) -> Option<Vec<Step>> {
             .take_while(|&&sibling| sibling != id)
             .filter(|&&sibling| cx.get(sibling).is_some_and(|other| same(other, node)))
             .count();
-        path.push(Step {
+        path.push(PathStep {
             role: node.a11y.role,
             name: name(node),
             ordinal,
@@ -153,7 +149,7 @@ fn focus_path(cx: &Cx, root: NodeId, focused: NodeId) -> Option<Vec<Step>> {
     Some(path)
 }
 
-fn find(cx: &Cx, root: NodeId, path: &[Step]) -> Option<NodeId> {
+fn find(cx: &Cx, root: NodeId, path: &[PathStep]) -> Option<NodeId> {
     path.iter().try_fold(root, |parent, step| {
         cx.get(parent)?
             .children()

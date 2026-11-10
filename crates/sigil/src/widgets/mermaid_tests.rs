@@ -1,5 +1,5 @@
 use super::draw;
-use crate::layout::LayoutBuilderExt;
+use crate::widgets::Widget;
 
 fn joined(source: &str) -> String {
     draw(source).join("\n")
@@ -202,7 +202,7 @@ const GOAL: &str = r"stateDiagram-v2
     [*] --> Setup: /goal objective
     Setup: Select or resume durable Goal Work
     Setup: Resolve checks from configured commands,
-    Setup: .summonr/check.toml, or language detection
+    Setup: repository check lists, or language detection
     Setup --> FirstPrompt
     FirstPrompt: Send objective and gate instructions
     FirstPrompt --> Running

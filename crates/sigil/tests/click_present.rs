@@ -5,22 +5,22 @@ use std::time::Instant;
 use sigil::Host;
 use sigil::prelude::*;
 use sigil::profile::FRAME_BUDGET_NS;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 const SAMPLES: usize = 64;
 
 #[test]
 fn increment_layout_emit_under_frame_budget() {
-    Runtime::scope("click-present", || {
+    Owner::scope("click-present", || {
         let count = signal(0_i32);
         let label = derived(move || format!("Count: {}", count.get()));
-        let mut host = Host::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(480.0, 240.0)
-                        .gap(16.0),
+                        .gap(Space::Lg),
                 )
                 .child(text(label))
                 .child(text("Increment"))

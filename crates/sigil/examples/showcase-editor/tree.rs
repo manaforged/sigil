@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::style::space;
 use sigil::widgets::{ListRowSlots, RowTone, TreeNode};
 
 use super::project::{FileId, Folder, GitStatus, PROJECT_NAME, TreeItem};
@@ -18,7 +17,7 @@ pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill_height()
                 .shrink(0.0)
-                .gap(space(1))
+                .gap(Space::Xs)
                 .align_items(AlignItems::Center),
         ),
         |strip, (activity, glyph, name)| {
@@ -68,10 +67,10 @@ fn explorer(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill()
                 .min_size(0.0, 0.0)
-                .padding_y(space(1)),
+                .padding_y(Space::Xs),
         )
         .child(header("EXPLORER"))
-        .child(list_row_with(
+        .child(list_row(
             false,
             PROJECT_NAME.to_uppercase(),
             ListRowSlots {
@@ -148,8 +147,8 @@ fn source_control(ws: Workspace) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding_y(space(1))
-                .gap(space(1)),
+                .padding_y(Space::Xs)
+                .gap(Space::Xs),
         )
         .child(header("SOURCE CONTROL"))
         .child(
@@ -171,8 +170,8 @@ fn change_row(ws: Workspace, file: FileId, git: GitStatus, staged: bool) -> Node
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .padding_x(space(2))
-                .gap(space(2))
+                .padding_x(Space::Sm)
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(chip(git.letter(), git.tone()))
@@ -180,7 +179,11 @@ fn change_row(ws: Workspace, file: FileId, git: GitStatus, staged: bool) -> Node
             container()
                 .layout(LayoutStyle::flex_row().grow(1.0).min_size(0.0, 0.0))
                 .pointer_down(move |_| ws.open_file(file))
-                .child(text(file.path()).ellipsize().font_size(super::TEXT_SM)),
+                .child(
+                    text(file.path())
+                        .ellipsize()
+                        .font_size(super::TEXT_SM, "example layout"),
+                ),
         )
         .child(
             button(if staged { "Unstage" } else { "Stage" })

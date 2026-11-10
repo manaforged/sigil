@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -12,7 +13,7 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
-use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
 use sigil::style::{Color, Rgba8};
 
 #[path = "renderer_split_path_pixel_check/support.rs"]
@@ -42,7 +43,6 @@ fn assert_submit_screen_renders_into_offscreen() {
     let scene = build_red_rect_scene();
 
     WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
         .submit_screen(
             &ScreenSubmission {
                 device: &device,
@@ -81,7 +81,7 @@ fn assert_renderer_reusable_across_targets() {
     let tex_b = create_capture_texture(&device, vp_b.0 as u32, vp_b.1 as u32);
     let view_b = tex_b.create_view(&wgpu::TextureViewDescriptor::default());
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+    let mut renderer = WgpuRenderer::new();
 
     renderer
         .submit_screen(
@@ -139,7 +139,6 @@ fn assert_deprecated_offscreen_forwards() {
     let view_new = tex_new.create_view(&wgpu::TextureViewDescriptor::default());
 
     WgpuRenderer::new()
-        .expect("deprecated renderer")
         .render_command_scene_offscreen(
             OffscreenTarget {
                 device: &device,
@@ -155,7 +154,6 @@ fn assert_deprecated_offscreen_forwards() {
         .expect("render_command_scene_offscreen");
 
     WgpuRenderer::new()
-        .expect("new renderer")
         .submit_screen(
             &ScreenSubmission {
                 device: &device,
@@ -178,19 +176,15 @@ fn assert_deprecated_offscreen_forwards() {
 fn build_red_rect_scene() -> CommandScene {
     use sigil::geometry::{Point, Rect};
     let mut scene = SceneBuilder::new();
-    scene.draw_rect(
+    scene.draw_rect(DrawRect::new(
         Rect::new(Point::new(RED_RECT_X, RED_RECT_Y), RED_RECT_W, RED_RECT_H),
-        SceneRectStyle::new(
-            Rgba8 {
-                r: 220,
-                g: 20,
-                b: 20,
-                a: 255,
-            },
-            CornerRadii::ZERO,
-            10_000,
-        ),
-    );
+        Rgba8 {
+            r: 220,
+            g: 20,
+            b: 20,
+            a: 255,
+        },
+    ));
     scene.finish()
 }
 

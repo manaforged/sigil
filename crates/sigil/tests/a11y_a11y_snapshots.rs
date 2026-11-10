@@ -3,8 +3,8 @@
     reason = "target does not use every package dependency"
 )]
 
-use accesskit::Role;
 use sigil::a11y::{snapshot, tree};
+use sigil::kernel::Role;
 use sigil::kernel::{Cx, container, fragment};
 
 #[test]

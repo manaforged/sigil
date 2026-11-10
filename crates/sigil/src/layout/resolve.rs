@@ -2,18 +2,18 @@
 
 use crate::layout::snap;
 use crate::layout::style_data::{
-    BoxSizing, Dimension, LengthPercentage, LengthPercentageAuto, Rect, StyleData,
+    Axes, BoxSizing, Dimension, Edges, LengthPercentage, LengthPercentageAuto, StyleData,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct Edges {
+pub(crate) struct ResolvedEdges {
     pub(crate) left: f32,
     pub(crate) right: f32,
     pub(crate) top: f32,
     pub(crate) bottom: f32,
 }
 
-impl Edges {
+impl ResolvedEdges {
     pub(crate) fn map(self, f: impl Fn(f32) -> f32) -> Self {
         Self {
             left: f(self.left),
@@ -33,8 +33,8 @@ pub(crate) struct AutoEdges {
 }
 
 impl AutoEdges {
-    pub(crate) fn or_zero(self) -> Edges {
-        Edges {
+    pub(crate) fn or_zero(self) -> ResolvedEdges {
+        ResolvedEdges {
             left: self.left.unwrap_or(0.0),
             right: self.right.unwrap_or(0.0),
             top: self.top.unwrap_or(0.0),
@@ -45,8 +45,8 @@ impl AutoEdges {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct NodeEdges {
-    pub(crate) padding: Edges,
-    pub(crate) border: Edges,
+    pub(crate) padding: ResolvedEdges,
+    pub(crate) border: ResolvedEdges,
     pub(crate) margin: AutoEdges,
 }
 
@@ -82,7 +82,7 @@ impl NodeEdges {
 fn fixed_px(dim: Dimension) -> Option<f32> {
     match dim {
         Dimension::Px(value) => Some(value),
-        Dimension::Text(length) => Some(length.px()),
+        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => dim.text_px(),
         _ => None,
     }
 }
@@ -93,15 +93,16 @@ pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
         Dimension::Percent(p) => Some(p * cb),
         Dimension::Fill => Some(cb),
         Dimension::Auto => None,
-        Dimension::Text(length) => Some(length.px()),
+        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => dim.text_px(),
     })
 }
 
-pub(crate) fn resolve_lp(lp: LengthPercentage, cb: f32) -> f32 {
-    match lp {
-        LengthPercentage::Px(v) => v,
-        LengthPercentage::Percent(p) => p * cb,
-        LengthPercentage::Text(length) => length.px(),
+pub(crate) fn resolve_lp(lp: Dimension, cb: f32) -> f32 {
+    match lp.definite() {
+        Some(LengthPercentage::Px(px)) => px,
+        Some(LengthPercentage::Percent(percent)) => percent * cb,
+        Some(LengthPercentage::Text(text)) => text.px(),
+        None => 0.0,
     }
 }
 
@@ -113,8 +114,8 @@ fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
     }
 }
 
-fn edges_lp(rect: Rect<LengthPercentage>, cb_inline: f32) -> Edges {
-    Edges {
+fn edges_lp(rect: Edges<Dimension>, cb_inline: f32) -> ResolvedEdges {
+    ResolvedEdges {
         left: resolve_lp(rect.left, cb_inline),
         right: resolve_lp(rect.right, cb_inline),
         top: resolve_lp(rect.top, cb_inline),
@@ -122,12 +123,12 @@ fn edges_lp(rect: Rect<LengthPercentage>, cb_inline: f32) -> Edges {
     }
 }
 
-fn edges_lp_auto(rect: Rect<LengthPercentageAuto>, cb_inline: f32) -> AutoEdges {
+fn edges_lp_auto(rect: Edges<Dimension>, cb_inline: f32) -> AutoEdges {
     AutoEdges {
-        left: resolve_lp_auto(rect.left, cb_inline),
-        right: resolve_lp_auto(rect.right, cb_inline),
-        top: resolve_lp_auto(rect.top, cb_inline),
-        bottom: resolve_lp_auto(rect.bottom, cb_inline),
+        left: resolve_lp_auto(rect.left.into(), cb_inline),
+        right: resolve_lp_auto(rect.right.into(), cb_inline),
+        top: resolve_lp_auto(rect.top.into(), cb_inline),
+        bottom: resolve_lp_auto(rect.bottom.into(), cb_inline),
     }
 }
 
@@ -151,8 +152,8 @@ pub(crate) fn dim_to_border_box(
 
 #[derive(Clone, Copy)]
 pub(crate) struct InsetAxis {
-    pub(crate) leading: LengthPercentageAuto,
-    pub(crate) trailing: LengthPercentageAuto,
+    pub(crate) leading: Dimension,
+    pub(crate) trailing: Dimension,
     pub(crate) origin: f32,
     pub(crate) cb_dim: f32,
     pub(crate) box_dim: f32,
@@ -161,7 +162,10 @@ pub(crate) struct InsetAxis {
 }
 
 pub(crate) fn resolve_inset_axis(a: InsetAxis) -> f32 {
-    match (a.leading, a.trailing) {
+    match (
+        LengthPercentageAuto::from(a.leading),
+        LengthPercentageAuto::from(a.trailing),
+    ) {
         (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
             let off = resolve_lp_auto(t, a.cb_dim).unwrap_or(0.0);
             a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
@@ -171,12 +175,12 @@ pub(crate) fn resolve_inset_axis(a: InsetAxis) -> f32 {
 }
 
 pub(crate) fn stretched(
-    [leading, trailing]: [LengthPercentageAuto; 2],
+    [leading, trailing]: [Dimension; 2],
     cb_dim: f32,
     margins: f32,
 ) -> Option<f32> {
-    let leading = resolve_lp_auto(leading, cb_dim)?;
-    let trailing = resolve_lp_auto(trailing, cb_dim)?;
+    let leading = resolve_lp_auto(leading.into(), cb_dim)?;
+    let trailing = resolve_lp_auto(trailing.into(), cb_dim)?;
     Some((cb_dim - leading - trailing - margins).max(0.0))
 }
 
@@ -189,3 +193,31 @@ pub(crate) fn stretched(
 )]
 #[path = "resolve_tests.rs"]
 mod tests;
+
+pub(crate) fn resolve_absolute_xy(
+    style: &StyleData,
+    edges: &NodeEdges,
+    (origin_x, origin_y): (f32, f32),
+    padding_box: Axes<f32>,
+    (box_w, box_h): (f32, f32),
+) -> (f32, f32) {
+    let x = resolve_inset_axis(InsetAxis {
+        leading: style.inset.left,
+        trailing: style.inset.right,
+        origin: origin_x,
+        cb_dim: padding_box.width,
+        box_dim: box_w,
+        margin_leading: edges.margin.left.unwrap_or(0.0),
+        margin_trailing: edges.margin.right.unwrap_or(0.0),
+    });
+    let y = resolve_inset_axis(InsetAxis {
+        leading: style.inset.top,
+        trailing: style.inset.bottom,
+        origin: origin_y,
+        cb_dim: padding_box.height,
+        box_dim: box_h,
+        margin_leading: edges.margin_top(),
+        margin_trailing: edges.margin.bottom.unwrap_or(0.0),
+    });
+    (x, y)
+}

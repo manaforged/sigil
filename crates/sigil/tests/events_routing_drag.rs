@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -12,25 +13,20 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use sigil::events::{PointerEventInit, *};
+use sigil::events::Event;
+use sigil::events::*;
 use sigil::geometry::{Point, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
+use sigil::widgets::Widget;
 
-use input::pointer_down;
 use routing_helpers::route_event;
 
-const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(dx, dy),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
+const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> Event {
+    Event::pointer(PointerPhase::Move, Point::new(x, y))
+        .delta(Point::new(dx, dy))
+        .buttons(MouseButtons::LEFT)
 }
 
 fn node_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
@@ -43,7 +39,7 @@ fn node_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn dragging_a_position_reactive_node_moves_its_box() {
-    Runtime::scope("events_routing_drag", || {
+    Owner::scope("events_routing_drag", || {
         let pos = signal((100.0_f32, 100.0_f32));
 
         let mut cx = Cx::new_root();
@@ -71,7 +67,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
         let card = *cx.get(root).unwrap().children().first().unwrap();
 
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_kittest::FixedMeasure::default()));
+            LayoutEngine::with_text_measure(Box::new(sigil_kittest::FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .unwrap();
@@ -83,7 +79,12 @@ fn dragging_a_position_reactive_node_moves_its_box() {
         );
 
         let mut router = EventRouter::new();
-        route_event(&mut router, &mut cx, &layout, pointer_down(150.0, 130.0));
+        route_event(
+            &mut router,
+            &mut cx,
+            &layout,
+            Event::pointer_down(Point::new(150.0, 130.0)),
+        );
         route_event(
             &mut router,
             &mut cx,
@@ -121,7 +122,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
 
 #[test]
 fn window_blur_cancels_a_captured_drag() {
-    Runtime::scope("events_blur_cancel", || {
+    Owner::scope("events_blur_cancel", || {
         let ended = signal(Option::<PointerPhase>::None);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -136,8 +137,13 @@ fn window_blur_cancels_a_captured_drag() {
         );
         let layout = routing_helpers::compute_layout(&mut cx, root, 400.0, 300.0);
         let mut router = EventRouter::new();
-        route_event(&mut router, &mut cx, &layout, pointer_down(20.0, 20.0));
-        route_event(&mut router, &mut cx, &layout, input::window_blur());
+        route_event(
+            &mut router,
+            &mut cx,
+            &layout,
+            Event::pointer_down(Point::new(20.0, 20.0)),
+        );
+        route_event(&mut router, &mut cx, &layout, Event::blur());
         assert_eq!(ended.get(), Some(PointerPhase::Cancel));
     });
 }

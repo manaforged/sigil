@@ -134,15 +134,16 @@ impl Gen<'_, '_, '_> {
         let effect = match self.entropy.below(3) {
             0 => LayerEffect::Identity,
             1 => LayerEffect::Transform(self.transform()),
-            _ => LayerEffect::LayerBlur {
-                sigma: self.entropy.pick(&[0.0, 0.3, 2.0, 8.0, 64.0, 1.0e4]),
-            },
+            _ => LayerEffect::Filter(std::sync::Arc::new([sigil::scene::Filter::Blur(
+                self.entropy.pick(&[0.0, 0.3, 2.0, 8.0, 64.0, 1.0e4]),
+            )])),
         };
         LayerScope {
             clip,
             clip_radii,
             effect,
             opacity: self.opacity_f32(),
+            blend: sigil::scene::BlendMode::Normal,
         }
     }
 

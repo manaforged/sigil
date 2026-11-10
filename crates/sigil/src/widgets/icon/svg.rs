@@ -1,120 +1,37 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::rc::Rc;
+use std::fmt::Write as _;
+use std::sync::Arc;
 
-use crate::icons::{BakedIcon, IconBaker};
-use crate::kernel::{
-    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, container, image,
-};
-use crate::layout::LayoutStyle;
-use crate::style::{Rgba8, Theme, Token};
+use crate::kernel::{NodeBuilder, container};
+use crate::style::{Rgba8, Token};
+use crate::widgets::svg_picture::square;
 
-const CACHE_CAP: usize = 256;
+const ROOT: &str = "<svg";
 
-type TintKey = (u64, [u8; 4]);
-
-thread_local! {
-    static BAKED: RefCell<HashMap<u64, Option<Rc<BakedIcon>>>> = RefCell::new(HashMap::new());
-    static TINTED: RefCell<HashMap<TintKey, ImageSource>> = RefCell::new(HashMap::new());
-}
-
-pub(super) struct SvgGlyph {
-    pub(super) svg: Rc<str>,
-    pub(super) pixels: u32,
-    pub(super) token: Token,
-    pub(super) extent: f32,
-}
-
-fn bake_key(svg: &str, pixels: u32) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    svg.hash(&mut hasher);
-    pixels.hash(&mut hasher);
-    hasher.finish()
-}
-
-fn baked(svg: &str, pixels: u32) -> Option<(u64, Rc<BakedIcon>)> {
-    let key = bake_key(svg, pixels);
-    BAKED.with(|map| {
-        let mut map = map.borrow_mut();
-        if map.len() >= CACHE_CAP {
-            map.clear();
-        }
-        map.entry(key)
-            .or_insert_with(|| IconBaker::new().bake(svg, pixels, pixels).ok().map(Rc::new))
-            .clone()
-            .map(|icon| (key, icon))
+/// An SVG icon drawn as paths in a square of `extent` logical pixels, with `currentColor` and the default fill set to `token`.
+pub(super) fn glyph(svg: Arc<str>, token: Token, extent: f32) -> NodeBuilder {
+    square("icon", extent, move |theme| {
+        tinted(&svg, theme.color(token))
     })
+    .unwrap_or_else(container)
 }
 
-fn tint(key: u64, icon: &BakedIcon, color: Rgba8) -> Option<ImageSource> {
-    let tint_key = (key, [color.r, color.g, color.b, color.a]);
-    if let Some(hit) = TINTED.with(|map| map.borrow().get(&tint_key).cloned()) {
-        return Some(hit);
+fn tinted(svg: &str, color: Rgba8) -> Option<String> {
+    let start = svg.find(ROOT)? + ROOT.len();
+    let root = &svg[start..start + svg[start..].find('>')?];
+    let Rgba8 { r, g, b, a } = color;
+    let mut extra = String::new();
+    if !names(root, "color") {
+        let _ = write!(extra, " color=\"#{r:02x}{g:02x}{b:02x}{a:02x}\"");
     }
-    let rgba = icon
-        .alpha
-        .iter()
-        .flat_map(|&alpha| {
-            let scaled = u16::from(alpha) * u16::from(color.a) / 255;
-            [
-                color.r,
-                color.g,
-                color.b,
-                u8::try_from(scaled).unwrap_or(u8::MAX),
-            ]
-        })
-        .collect();
-    let source = ImageSource::from_rgba8(icon.width, icon.height, rgba)?;
-    TINTED.with(|map| {
-        let mut map = map.borrow_mut();
-        if map.len() >= CACHE_CAP {
-            map.clear();
-        }
-        map.insert(tint_key, source.clone());
-    });
-    Some(source)
+    if !names(root, "fill") {
+        extra.push_str(" fill=\"currentColor\"");
+    }
+    Some(format!("{}{extra}{}", &svg[..start], &svg[start..]))
 }
 
-impl SvgGlyph {
-    fn source(&self, theme: &Theme) -> Option<ImageSource> {
-        self.sized(theme.color(self.token), self.pixels)
-    }
-
-    fn sized(&self, color: Rgba8, pixels: u32) -> Option<ImageSource> {
-        let (key, icon) = baked(&self.svg, pixels)?;
-        tint(key, &icon, color)
-    }
-
-    fn bind(self: &Rc<Self>, base: u64, theme: &Theme) -> ImageRaster {
-        let color = theme.color(self.token);
-        let glyph = Rc::clone(self);
-        let key = base ^ u64::from(u32::from_le_bytes([color.r, color.g, color.b, color.a]));
-        ImageRaster::new(key, move |width, height, _| {
-            glyph.sized(color, width.max(height))
-        })
-    }
-}
-
-impl IntoNode for SvgGlyph {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        let Some(source) = self.source(&Theme::light()) else {
-            return container().build(cx);
-        };
-        let extent = self.extent;
-        let id = image(source).build(cx);
-        let layout = LayoutStyle::block().fixed_size(extent, extent).shrink(0.0);
-        let base = bake_key(&self.svg, 0);
-        let glyph = Rc::new(self);
-        let fallback = Rc::clone(&glyph);
-        let themed = ThemedImage::new(
-            move |theme| fallback.source(theme),
-            move |theme| glyph.bind(base, theme),
-        );
-        if let Some(node) = cx.get_mut(id) {
-            let _ = node.attach(layout);
-            let _ = node.attach(themed);
-        }
-        id
-    }
+fn names(root: &str, attribute: &str) -> bool {
+    root.split_whitespace().any(|part| {
+        part.strip_prefix(attribute)
+            .is_some_and(|rest| rest.starts_with('='))
+    })
 }

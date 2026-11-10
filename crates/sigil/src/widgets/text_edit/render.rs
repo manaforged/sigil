@@ -1,21 +1,23 @@
 use crate::animation_runtime::presets;
-use crate::events::{ModifiersState, NodeEventsExt, PointerEvent};
+use crate::events::{ModifiersState, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
+use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{
-    CaretGeometry, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
-    TextStyleCapture, rows, with_text_geometry,
+    CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
+    with_text_geometry,
 };
-use crate::reactive::{Signal, derived, effect};
+use crate::reactive::{Owner, Signal, derived, effect, interval, signal};
 use crate::style::TransitionId;
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
-    StyleAtom, StyleOverlay, StyleVariant, Token, space,
+    BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
+    Token, space,
 };
+use crate::widgets::Widget;
 
-use crate::widgets::interaction::InteractionState;
+use crate::widgets::interaction::{InteractionState, is_primary};
 
 use super::super::shared::binary_style_state;
 use super::handlers::TextEditRuntime;
@@ -75,21 +77,21 @@ pub(super) fn build_base_node(
             binary_style_state(interaction, disabled)
         })
         .seal_style()
-        .child(edit_inner(lines, runtime, interaction))
+        .child(edit_inner(lines, runtime, (interaction, chrome)))
 }
 
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).px()).pick())
+        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).into_px()).pick())
         .min_size(0.0, 0.0)
-        .padding(1.0)
+        .padding(Space::px(1.0))
 }
 
 fn edit_inner(
-    lines: TextBuilder,
+    lines: NodeBuilder,
     runtime: &TextEditRuntime,
-    interaction: InteractionState,
+    (interaction, chrome): (InteractionState, bool),
 ) -> NodeBuilder {
     let down = runtime.clone();
     let moved = runtime.clone();
@@ -111,11 +113,11 @@ fn edit_inner(
             LayoutStyle::block()
                 .fill_width()
                 .min_size(0.0, 0.0)
-                .padding_x(padding_x),
+                .padding_x(Space::px(padding_x)),
         )
-        .animate(NumericAtomKind::Height, extent)
+        .animate_height(extent)
         .child(text_box);
-    container()
+    let viewport = container()
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
@@ -124,28 +126,61 @@ fn edit_inner(
                 .overflow_y(Overflow::Hidden),
         )
         .size_reactive(runtime.viewport_size)
-        .class(Radius::Sm.atom())
-        .class(Token::Surface.bg())
-        .pointer_down(move |event| pointer_drag(event, &down, scroll_y, true))
-        .pointer_move(move |event| pointer_drag(event, &moved, scroll_y, false))
-        .pointer_up(move |event| {
-            let _ = interaction.release_pointer(event);
-        })
-        .child(body)
+        .class(Radius::Sm.atom());
+    if chrome {
+        viewport.class(Token::Surface.bg())
+    } else {
+        viewport
+    }
+    .pointer_down(move |event| pointer_drag(event, &down, scroll_y, true))
+    .pointer_move(move |event| pointer_drag(event, &moved, scroll_y, false))
+    .pointer_up(move |event| {
+        let _ = interaction.release_pointer(event);
+    })
+    .child(body)
 }
 
 static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
 const CARET_W: f32 = 1.5;
+const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
+
+/// Whether a focused caret is lit: it blinks, and stays lit for a beat after `moved` changes.
+pub(in crate::widgets) fn blink(
+    interaction: InteractionState,
+    moved: impl Fn() + 'static,
+) -> Signal<bool> {
+    let lit = signal(true);
+    let held = std::rc::Rc::new(std::cell::Cell::new(false));
+    let mark_held = held.clone();
+    effect(move || {
+        moved();
+        interaction.focused().with(|_| ());
+        mark_held.set(true);
+        lit.set(true);
+    });
+    if Owner::current().is_some() {
+        interval(BLINK, move || {
+            if interaction.focused().peek() && !held.replace(false) {
+                lit.set(!lit.peek());
+            }
+        });
+    }
+    lit
+}
 
 fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> NodeBuilder {
     let value = runtime.value;
     let caret = runtime.caret;
     let caret_visible = runtime.caret_visible;
+    let lit = blink(interaction, move || {
+        value.with(|_| ());
+        caret.with(|_| ());
+    });
     let runtime = runtime.clone();
     fragment()
         .layout(LayoutStyle::block())
         .children_reactive(move || {
-            if !interaction.focus_visible().get() || !caret_visible.get() {
+            if !interaction.focused().get() || !caret_visible.get() || !lit.get() {
                 return Vec::new();
             }
             let (buffer, byte) = runtime.ime.composing_caret(&value.get(), caret.get());
@@ -174,7 +209,12 @@ fn pointer_drag(
     scroll_y: Signal<f32>,
     down: bool,
 ) {
-    if runtime.disabled() || !(down || event.is_captured()) {
+    let owned = if down {
+        is_primary(event)
+    } else {
+        event.is_captured()
+    };
+    if runtime.disabled() || !owned {
         return;
     }
     let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
@@ -193,26 +233,43 @@ fn pointer_drag(
     }
 }
 
-fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> TextBuilder {
+fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilder {
+    let (value, preedit) = (runtime.value, runtime.ime.preedit);
+    let empty = derived(move || value.get().is_empty() && preedit.get().is_empty());
+    let runtime = runtime.clone();
+    container()
+        .hittable(false)
+        .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
+        .children_reactive(move || {
+            let lines = if empty.get() {
+                let placeholder = placeholder.clone();
+                text(derived(move || placeholder.resolve())).class(Token::Placeholder.text())
+            } else {
+                typed_lines(&runtime).class(Token::OnSurface.text())
+            };
+            let text_style = runtime.text_style;
+            vec![
+                lines
+                    .mutate(move |node| {
+                        let _ = node.attach(TextStyleCapture::new(text_style));
+                    })
+                    .hittable(false)
+                    .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0)),
+            ]
+        })
+}
+
+fn typed_lines(runtime: &TextEditRuntime) -> TextBuilder {
     let (value, preedit, caret) = (runtime.value, runtime.ime.preedit, runtime.caret);
-    let text_style = runtime.text_style;
     text(derived(move || {
-        let current = value.get();
         let composing = preedit.get();
-        if !composing.is_empty() {
-            splice_preedit(&current, caret.get(), &composing)
-        } else if current.is_empty() {
-            placeholder.resolve()
-        } else {
+        let current = value.get();
+        if composing.is_empty() {
             current
+        } else {
+            splice_preedit(&current, caret.get(), &composing)
         }
     }))
-    .mutate(move |node| {
-        let _ = node.attach(TextStyleCapture::new(text_style));
-    })
-    .hittable(false)
-    .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
-    .class(Token::OnSurface.text())
 }
 
 pub(crate) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
@@ -241,7 +298,7 @@ fn accessible_label(placeholder: &str) -> String {
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
-    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(Px(0))];
+    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(0)];
     if !chrome {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }

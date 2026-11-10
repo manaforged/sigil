@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, NodeId, NodeType};
 use crate::style::StyleBinding;
 
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::engine_drive::NodeHandle;
 use crate::layout::text_style::{InheritedText, inherited_direction, inherited_text_style};
 
@@ -13,7 +13,7 @@ impl LayoutEngine {
         cx: &Cx,
         id: NodeId,
         node: &crate::kernel::Node,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let parent = if matches!(node.kind, NodeType::Fragment) {
             Self::nearest_mirrored_ancestor(cx, id)
         } else {
@@ -60,10 +60,10 @@ impl LayoutEngine {
         &mut self,
         cx: &Cx,
         children: &[NodeId],
-    ) -> Result<Vec<NodeHandle>, LayoutError> {
+    ) -> Result<Vec<NodeHandle>, Error> {
         let mut handles = Vec::new();
         for child in children {
-            let node = cx.get(*child).ok_or(LayoutError::NodeMissing(*child))?;
+            let node = cx.get(*child).ok_or_else(|| Error::node_missing(*child))?;
             if matches!(node.kind, NodeType::Fragment) {
                 handles.extend(self.flatten_child_handles(cx, node.children())?);
             } else if let Some(handle) = self.core_to_handle.get(child.key()).copied() {

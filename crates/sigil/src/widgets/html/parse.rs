@@ -1,6 +1,4 @@
-use std::fmt::Write as _;
-
-use crate::widgets::markdown::parse::{Block, List, ListItem};
+use crate::widgets::markdown::parse::{Block, Inline, List, ListItem};
 use crate::widgets::text_search::{CloseTags, find_ci, starts_ci};
 
 pub(crate) fn parse_html(source: &str) -> Vec<Block> {
@@ -22,7 +20,7 @@ pub(crate) fn parse_html(source: &str) -> Vec<Block> {
             continue;
         }
         let (text, eaten) = take_text(rest);
-        if !text.trim().is_empty() {
+        if !Inline::plain(&text).trim().is_empty() {
             out.push(Block::Paragraph(text));
         }
         rest = &rest[eaten..];
@@ -73,7 +71,7 @@ fn heading(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
             return Some((
                 Block::Heading {
                     level,
-                    text: inner_text(&inner),
+                    body: inlines(&inner),
                 },
                 eaten,
             ));
@@ -84,7 +82,7 @@ fn heading(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
 
 fn paragraph(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let (inner, eaten) = tagged(rest, ("<p>", "</p>"), tags)?;
-    Some((Block::Paragraph(inner_text(&inner)), eaten))
+    Some((Block::Paragraph(inlines(&inner)), eaten))
 }
 
 fn pre(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
@@ -107,7 +105,7 @@ fn list(rest: &str, tag: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let (inner, eaten) = tagged(rest, (&open, &close), tags)?;
     let items = repeated(&inner, ("<li>", "</li>"))
         .iter()
-        .map(|item| ListItem::plain(vec![Block::Paragraph(inner_text(item))]))
+        .map(|item| ListItem::plain(vec![Block::Paragraph(inlines(item))]))
         .collect();
     let start = (tag == "ol").then_some(1);
     Some((Block::List(List { start, items }), eaten))
@@ -134,7 +132,7 @@ fn repeated(source: &str, pair: (&str, &str)) -> Vec<String> {
     items
 }
 
-fn row_cells(row: &str) -> Vec<String> {
+fn row_cells(row: &str) -> Vec<Vec<Inline>> {
     let mut cells = Vec::new();
     let mut cursor = row;
     let mut tags = CloseTags::default();
@@ -145,7 +143,7 @@ fn row_cells(row: &str) -> Vec<String> {
         let Some((cell, used)) = next else {
             break;
         };
-        cells.push(inner_text(&cell));
+        cells.push(inlines(&cell));
         cursor = cursor.get(used..).unwrap_or("");
     }
     cells
@@ -162,62 +160,71 @@ fn tagged(rest: &str, pair: (&str, &str), tags: &mut CloseTags) -> Option<(Strin
     Some((inner, inner_at + rel + close.len()))
 }
 
-fn take_text(rest: &str) -> (String, usize) {
+fn take_text(rest: &str) -> (Vec<Inline>, usize) {
     match rest.find('<').filter(|&i| rest[i..].contains('>')) {
         Some(0) => {
             let end = rest.find('>').map_or(rest.len(), |i| i + 1);
-            (String::new(), end)
+            (Vec::new(), end)
         }
-        Some(i) => (inner_text(&rest[..i]), i),
-        None => (inner_text(rest), rest.len()),
+        Some(i) => (inlines(&rest[..i]), i),
+        None => (inlines(rest), rest.len()),
     }
 }
 
-fn inner_text(source: &str) -> String {
-    let mut out = String::new();
+fn inlines(source: &str) -> Vec<Inline> {
+    let mut out = Vec::new();
     let mut rest = source;
     let mut tags = CloseTags::default();
     while !rest.is_empty() {
         if rest.starts_with('<') {
             if let Some((inner, eaten, kind)) = inline_tag(rest, &mut tags) {
-                let body = inner_text(&inner);
-                match kind {
-                    Inline::Strong => drop(write!(out, "**{body}**")),
-                    Inline::Em => drop(write!(out, "*{body}*")),
-                    Inline::Code => drop(write!(out, "`{body}`")),
-                    Inline::Link(href) => drop(write!(out, "[{body}]({href})")),
-                }
+                out.push(kind.wrap(inlines(&inner)));
                 rest = rest.get(eaten..).unwrap_or("");
                 continue;
             }
             let Some(close) = rest.find('>') else {
-                out.push_str(&decode(rest));
+                Inline::push_text(&mut out, &decode(rest));
                 break;
             };
             rest = rest.get(close + 1..).unwrap_or("");
             continue;
         }
         let end = rest.find('<').unwrap_or(rest.len());
-        out.push_str(&decode(&rest[..end]));
+        Inline::push_text(&mut out, &decode(&rest[..end]));
         rest = rest.get(end..).unwrap_or("");
     }
-    out
+    Inline::finish(out)
 }
 
-enum Inline {
+enum Tag {
     Strong,
     Em,
     Code,
     Link(String),
 }
 
-fn inline_tag(rest: &str, tags: &mut CloseTags) -> Option<(String, usize, Inline)> {
+impl Tag {
+    fn wrap(self, body: Vec<Inline>) -> Inline {
+        match self {
+            Self::Strong => Inline::Strong(body),
+            Self::Em => Inline::Em(body),
+            Self::Code => Inline::Code(Inline::plain(&body)),
+            Self::Link(href) => Inline::Link {
+                label_is_href: Inline::plain(&body) == href,
+                href,
+                body,
+            },
+        }
+    }
+}
+
+fn inline_tag(rest: &str, tags: &mut CloseTags) -> Option<(String, usize, Tag)> {
     let pairs = [
-        ("<strong>", "</strong>", Inline::Strong),
-        ("<b>", "</b>", Inline::Strong),
-        ("<em>", "</em>", Inline::Em),
-        ("<i>", "</i>", Inline::Em),
-        ("<code>", "</code>", Inline::Code),
+        ("<strong>", "</strong>", Tag::Strong),
+        ("<b>", "</b>", Tag::Strong),
+        ("<em>", "</em>", Tag::Em),
+        ("<i>", "</i>", Tag::Em),
+        ("<code>", "</code>", Tag::Code),
     ];
     for (open, close, kind) in pairs {
         if let Some((inner, eaten)) = tagged(rest, (open, close), tags) {
@@ -231,7 +238,7 @@ fn inline_tag(rest: &str, tags: &mut CloseTags) -> Option<(String, usize, Inline
         let close = "</a>";
         let rel = tags.find(rest.get(gt + 1..)?, close)?;
         let inner = rest.get(gt + 1..gt + 1 + rel)?.to_string();
-        Some((inner, gt + 1 + rel + close.len(), Inline::Link(href)))
+        Some((inner, gt + 1 + rel + close.len(), Tag::Link(href)))
     } else {
         None
     }

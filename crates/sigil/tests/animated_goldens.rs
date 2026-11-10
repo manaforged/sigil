@@ -9,50 +9,50 @@
 
 use sigil::prelude::*;
 
-use sigil_kittest::{
-    InteractionMode, assert_rendered_matches_golden, capture_filmstrip, golden_path,
-    render_widget_to_png_stub,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode};
 
 const DELTA_PCT: f32 = 0.5;
 const DT: f32 = 1.0 / 60.0;
 
 #[test]
 fn button_hover_settled() {
-    let img = render_widget_to_png_stub(
-        || button("Save"),
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(|| button("Save"))
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [160, 56],
-        (24.0, 16.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("button_hover_settled"), DELTA_PCT);
+        })
+        .size([160, 56])
+        .hit((24.0, 16.0))
+        .image();
+    Golden::new("button_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn button_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        || button("Save"),
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [160, 56],
-        (24.0, 16.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("button_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(|| button("Save"))
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([160, 56])
+        .hit((24.0, 16.0))
+        .image();
+    Golden::new("button_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn button_hover_filmstrip() {
-    let img = capture_filmstrip(
-        || button("Save"),
-        [160, 56],
-        (24.0, 16.0),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("button_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(|| button("Save"))
+        .stub()
+        .size([160, 56])
+        .hit((24.0, 16.0))
+        .filmstrip(6, DT);
+    Golden::new("button_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn checkbox_widget() -> impl IntoNode {
@@ -62,40 +62,43 @@ fn checkbox_widget() -> impl IntoNode {
 
 #[test]
 fn checkbox_hover_settled() {
-    let img = render_widget_to_png_stub(
-        checkbox_widget,
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(checkbox_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [36, 36],
-        (16.0, 16.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_settled"), DELTA_PCT);
+        })
+        .size([36, 36])
+        .hit((16.0, 16.0))
+        .image();
+    Golden::new("checkbox_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn checkbox_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        checkbox_widget,
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [36, 36],
-        (16.0, 16.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(checkbox_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([36, 36])
+        .hit((16.0, 16.0))
+        .image();
+    Golden::new("checkbox_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn checkbox_hover_filmstrip() {
-    let img = capture_filmstrip(
-        checkbox_widget,
-        [36, 36],
-        (16.0, 16.0),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(checkbox_widget)
+        .stub()
+        .size([36, 36])
+        .hit((16.0, 16.0))
+        .filmstrip(6, DT);
+    Golden::new("checkbox_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn slider_widget() -> impl IntoNode {
@@ -105,40 +108,43 @@ fn slider_widget() -> impl IntoNode {
 
 #[test]
 fn slider_hover_settled() {
-    let img = render_widget_to_png_stub(
-        slider_widget,
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(slider_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [192, 36],
-        (90.0, 14.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("slider_hover_settled"), DELTA_PCT);
+        })
+        .size([192, 36])
+        .hit((90.0, 14.0))
+        .image();
+    Golden::new("slider_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn slider_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        slider_widget,
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [192, 36],
-        (90.0, 14.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("slider_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(slider_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([192, 36])
+        .hit((90.0, 14.0))
+        .image();
+    Golden::new("slider_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn slider_hover_filmstrip() {
-    let img = capture_filmstrip(
-        slider_widget,
-        [192, 36],
-        (90.0, 14.0),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("slider_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(slider_widget)
+        .stub()
+        .size([192, 36])
+        .hit((90.0, 14.0))
+        .filmstrip(6, DT);
+    Golden::new("slider_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn dropdown_widget_options() -> Vec<String> {
@@ -152,40 +158,43 @@ fn dropdown_widget() -> impl IntoNode {
 
 #[test]
 fn dropdown_hover_settled() {
-    let img = render_widget_to_png_stub(
-        dropdown_widget,
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(dropdown_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_settled"), DELTA_PCT);
+        })
+        .size([212, 52])
+        .hit((90.0, 22.0))
+        .image();
+    Golden::new("dropdown_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn dropdown_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        dropdown_widget,
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [212, 52],
-        (90.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(dropdown_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([212, 52])
+        .hit((90.0, 22.0))
+        .image();
+    Golden::new("dropdown_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn dropdown_hover_filmstrip() {
-    let img = capture_filmstrip(
-        dropdown_widget,
-        [212, 52],
-        (90.0, 22.0),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(dropdown_widget)
+        .stub()
+        .size([212, 52])
+        .hit((90.0, 22.0))
+        .filmstrip(6, DT);
+    Golden::new("dropdown_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn text_field_widget() -> impl IntoNode {
@@ -195,40 +204,43 @@ fn text_field_widget() -> impl IntoNode {
 
 #[test]
 fn text_field_hover_settled() {
-    let img = render_widget_to_png_stub(
-        text_field_widget,
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(text_field_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_settled"), DELTA_PCT);
+        })
+        .size([192, 44])
+        .hit((40.0, 22.0))
+        .image();
+    Golden::new("text_field_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn text_field_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        text_field_widget,
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [192, 44],
-        (40.0, 22.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(text_field_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([192, 44])
+        .hit((40.0, 22.0))
+        .image();
+    Golden::new("text_field_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn text_field_hover_filmstrip() {
-    let img = capture_filmstrip(
-        text_field_widget,
-        [192, 44],
-        (40.0, 22.0),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(text_field_widget)
+        .stub()
+        .size([192, 44])
+        .hit((40.0, 22.0))
+        .filmstrip(6, DT);
+    Golden::new("text_field_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn toggle_widget() -> impl IntoNode {
@@ -238,38 +250,41 @@ fn toggle_widget() -> impl IntoNode {
 
 #[test]
 fn toggle_hover_settled() {
-    let img = render_widget_to_png_stub(
-        toggle_widget,
-        InteractionMode::HoverAfterFrames {
+    let img = Harness::render(toggle_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
-        },
-        [50, 32],
-        (35.0, 22.4),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_settled"), DELTA_PCT);
+        })
+        .size([50, 32])
+        .hit((35.0, 22.4))
+        .image();
+    Golden::new("toggle_hover_settled")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn toggle_hover_midflight() {
-    let img = render_widget_to_png_stub(
-        toggle_widget,
-        InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [50, 32],
-        (35.0, 22.4),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_midflight"), DELTA_PCT);
+    let img = Harness::render(toggle_widget)
+        .stub()
+        .mode(InteractionMode::HoverAfterFrames { frames: 6, dt: DT })
+        .size([50, 32])
+        .hit((35.0, 22.4))
+        .image();
+    Golden::new("toggle_hover_midflight")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn toggle_hover_filmstrip() {
-    let img = capture_filmstrip(
-        toggle_widget,
-        [50, 32],
-        (35.0, 22.4),
-        6,
-        DT,
-        sigil_kittest::stub_text_measure,
-    );
-    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_filmstrip"), DELTA_PCT);
+    let img = Harness::render(toggle_widget)
+        .stub()
+        .size([50, 32])
+        .hit((35.0, 22.4))
+        .filmstrip(6, DT);
+    Golden::new("toggle_hover_filmstrip")
+        .delta(DELTA_PCT)
+        .assert(img);
 }

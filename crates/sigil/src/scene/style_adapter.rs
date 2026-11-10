@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::kernel::Node;
-use crate::style::{FocusRing, Px, Rgba8, StyleEngine, Theme};
+use crate::style::{FocusRing, Rgba8, StyleEngine, Theme};
 
 pub(crate) use crate::style::{render_style_for, text_style_for};
 
@@ -30,8 +30,8 @@ pub(crate) fn focus_ring_for(node: &Node, inherited: &Theme) -> Option<ResolvedF
     })
 }
 
-pub(crate) fn corner_radii_for(border_radius: Option<Px>) -> CornerRadii {
+pub(crate) fn corner_radii_for(border_radius: Option<i16>) -> CornerRadii {
     border_radius.map_or(CornerRadii::ZERO, |radius| {
-        CornerRadii::uniform(f32::from(radius.0))
+        CornerRadii::uniform(f32::from(radius))
     })
 }

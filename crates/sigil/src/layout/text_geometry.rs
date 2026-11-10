@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::geometry::{Point, Rect};
-use crate::hal::HitPosition;
+use crate::layout::TextMeasure;
 use crate::reactive::Signal;
 use crate::style::TextStyle;
 
@@ -27,49 +26,31 @@ impl TextStyleCapture {
     }
 }
 
+/// Holds the position and height of a text caret.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CaretGeometry {
+    /// The x.
     pub x: f32,
+    /// The top.
     pub top: f32,
+    /// The height.
     pub height: f32,
 }
 
-pub trait TextGeometry {
-    fn hit(&self, text: &str, style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition;
-
-    fn caret(
-        &self,
-        text: &str,
-        style: &TextStyle,
-        width: Option<f32>,
-        position: HitPosition,
-    ) -> CaretGeometry;
-
-    fn selection_rects(
-        &self,
-        text: &str,
-        style: &TextStyle,
-        width: Option<f32>,
-        selection: (HitPosition, HitPosition),
-    ) -> Vec<Rect>;
-}
-
 thread_local! {
-    static TEXT_GEOMETRY: RefCell<Option<Rc<dyn TextGeometry>>> = const { RefCell::new(None) };
+    static TEXT_GEOMETRY: RefCell<Option<Rc<dyn TextMeasure>>> = const { RefCell::new(None) };
 }
 
 #[cfg(any(test, feature = "kittest"))]
-pub fn set_text_geometry(geometry: Rc<dyn TextGeometry>) {
+pub fn set_text_geometry(geometry: Rc<dyn TextMeasure>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }
 
-pub(crate) fn swap_geometry(
-    geometry: Option<Rc<dyn TextGeometry>>,
-) -> Option<Rc<dyn TextGeometry>> {
+pub(crate) fn swap_geometry(geometry: Option<Rc<dyn TextMeasure>>) -> Option<Rc<dyn TextMeasure>> {
     TEXT_GEOMETRY.with(|cell| core::mem::replace(&mut *cell.borrow_mut(), geometry))
 }
 
-pub(crate) fn with_text_geometry<R>(f: impl FnOnce(&dyn TextGeometry) -> R) -> Option<R> {
+pub(crate) fn with_text_geometry<R>(f: impl FnOnce(&dyn TextMeasure) -> R) -> Option<R> {
     let provider = TEXT_GEOMETRY.with(|cell| cell.borrow().clone());
     provider.map(|geometry| f(geometry.as_ref()))
 }

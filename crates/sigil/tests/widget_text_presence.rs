@@ -8,28 +8,25 @@ use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil_kittest::CharMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 7.0,
-    line_height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> {
     let mut found = Vec::new();
-    sigil::reactive::Runtime::scope("text-presence", || {
+    sigil::reactive::Owner::scope("text-presence", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
         let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(width, 400.0))
             .expect("layout computes");
-        found = emit_scene(&cx, root)
+        found = emit_scene(&cx, root, None)
             .commands
             .iter()
             .filter_map(|c| match c {
-                SceneCommand::GlyphRun(g) if g.run.rect.width > 0.5 && g.run.rect.height > 0.5 => {
-                    Some(g.run.text.clone())
+                SceneCommand::GlyphRun(g) if g.rect.width > 0.5 && g.rect.height > 0.5 => {
+                    Some(g.text.clone())
                 }
                 _ => None,
             })
@@ -106,7 +103,7 @@ fn text_survives_the_equal_columns_idiom() {
                     .child(child)
             }
             container()
-                .layout(LayoutStyle::flex_row().fill_width().gap(8.0))
+                .layout(LayoutStyle::flex_row().fill_width().gap(Space::Sm))
                 .child(cell(dropdown(signal(0_usize), vec!["Banana".into()])))
                 .child(cell(button("Save")))
         });

@@ -19,16 +19,14 @@ use crate::reactive::{Signal, effect};
 
 use std::ops::Deref;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::scroll::ScrollAxis;
 use super::table::Identifiable;
 pub use row::RowRender;
 pub use selection::{SelectionMode, SelectionState};
 
-#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
-pub const DEFAULT_ROW_HEIGHT: f32 = 32.0;
-#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
-pub const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
+pub(crate) const DEFAULT_ROW_HEIGHT: f32 = 32.0;
+pub(crate) const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
 const DEFAULT_OVERSCAN: usize = 1;
 
 type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
@@ -69,6 +67,7 @@ where
     (*value).as_ref()
 }
 
+/// Builder of a virtual list.
 pub struct VirtualListBuilder<T, R>
 where
     T: 'static,
@@ -81,7 +80,7 @@ where
     row_height: f32,
     viewport_height: f32,
     viewport_width: Option<f32>,
-    sizing: Sizing,
+    sizing: ListSizing,
     overscan: usize,
     scroll_y: Option<Signal<f32>>,
     scroll_x: Option<ScrollAxis>,
@@ -99,25 +98,32 @@ where
     max_scroll_bind: Option<Signal<f32>>,
     measured: bool,
     estimate: Option<f32>,
+    location: &'static core::panic::Location<'static>,
     scrollbar: bool,
     style_accumulator: crate::style::Style,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Sizing {
+enum ListSizing {
     Fixed,
     Fill,
     ShrinkToContent,
 }
 
+/// Where a virtual list stays scrolled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollAnchor {
+    /// The top scroll anchor.
     Top,
+    /// The bottom scroll anchor.
     Bottom,
+    /// The index scroll anchor.
     Index(usize),
 }
 
+/// A collection that can become a virtual list.
 pub trait IntoList<T, R: RowRender<T>> {
+    /// Creates a virtual list that renders with `render`.
     fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
 }
 
@@ -139,7 +145,9 @@ where
     }
 }
 
+/// A list that builds only the visible rows.
 #[must_use]
+#[track_caller]
 pub fn virtual_list<T, R, N, I>(items: I, render: R) -> VirtualListBuilder<T, R>
 where
     T: 'static,
@@ -147,7 +155,9 @@ where
     N: IntoNode + 'static,
     I: IntoList<T, R>,
 {
-    items.into_list(render)
+    let mut list = items.into_list(render);
+    list.location = core::panic::Location::caller();
+    list
 }
 
 fn from_vec<T, R>(items: Vec<T>, render: R) -> VirtualListBuilder<T, R>
@@ -163,7 +173,7 @@ where
         row_height: 0.0,
         viewport_height: DEFAULT_VIEWPORT_HEIGHT,
         viewport_width: None,
-        sizing: Sizing::Fixed,
+        sizing: ListSizing::Fixed,
         overscan: DEFAULT_OVERSCAN,
         scroll_y: None,
         scroll_x: None,
@@ -181,21 +191,10 @@ where
         max_scroll_bind: None,
         measured: false,
         estimate: None,
+        location: core::panic::Location::caller(),
         scrollbar: false,
         style_accumulator: crate::style::Style::new(),
     }
-}
-
-#[must_use]
-pub fn virtual_list_bind<S, T, R, N>(items: Signal<S>, render: R) -> VirtualListBuilder<T, R>
-where
-    S: Deref + Clone + 'static,
-    S::Target: AsRef<[T]>,
-    T: 'static,
-    R: Fn(usize, &T) -> N + 'static,
-    N: IntoNode + 'static,
-{
-    virtual_list(items, render)
 }
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -203,6 +202,7 @@ where
     T: 'static,
     R: RowRender<T>,
 {
+    /// Applies the identified option.
     #[must_use]
     pub fn identified(self) -> Self
     where
@@ -216,30 +216,35 @@ where
         })
     }
 
+    /// Sets the key by.
     #[must_use]
     pub fn key_by(mut self, f: impl Fn(usize, &T) -> u64 + 'static) -> Self {
         self.row_key = Some(std::rc::Rc::new(f));
         self
     }
 
+    /// Sets the row height.
     #[must_use]
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
+    /// Applies the measured option.
     #[must_use]
     pub const fn measured(mut self) -> Self {
         self.measured = true;
         self
     }
 
+    /// Sets the estimate.
     #[must_use]
     pub fn estimate(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.estimate = Some(length.into_px());
         self
     }
 
+    /// Sets the item height.
     #[must_use]
     pub fn item_height(mut self, f: impl Fn(usize, &T) -> f32 + 'static) -> Self {
         self.item_height = Some(Box::new(f));
@@ -247,42 +252,49 @@ where
         self
     }
 
+    /// Sets the viewport height.
     #[must_use]
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
+    /// Sets the overscan.
     #[must_use]
     pub const fn overscan(mut self, pages: usize) -> Self {
         self.overscan = pages;
         self
     }
 
+    /// Sets the viewport width.
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
+    /// Applies the viewport fill option.
     #[must_use]
     pub const fn viewport_fill(mut self) -> Self {
-        self.sizing = Sizing::Fill;
+        self.sizing = ListSizing::Fill;
         self
     }
 
+    /// Applies the shrink to content option.
     #[must_use]
     pub const fn shrink_to_content(mut self) -> Self {
-        self.sizing = Sizing::ShrinkToContent;
+        self.sizing = ListSizing::ShrinkToContent;
         self
     }
 
+    /// Sets the scroll bind.
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
+    /// Sets the scroll x bind.
     #[must_use]
     pub const fn scroll_x_bind(
         mut self,
@@ -298,6 +310,7 @@ where
         self
     }
 
+    /// Sets the cursor.
     #[must_use]
     pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
         self.focused_row = Some(cursor);
@@ -307,23 +320,27 @@ where
         self
     }
 
+    /// Sets the selection.
     #[must_use]
     pub const fn selection(mut self, mode: SelectionMode) -> Self {
         self.selection_mode = mode;
         self
     }
 
+    /// Returns the signal that holds the selection.
     #[must_use]
     pub fn selection_state(&mut self) -> Signal<SelectionState> {
         self.ensure_selection_state()
     }
 
+    /// Sets the keyboard.
     #[must_use]
     pub const fn keyboard(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
@@ -335,6 +352,7 @@ where
         self
     }
 
+    /// Sets the follow end.
     #[must_use]
     pub const fn follow_end(mut self, on: bool) -> Self {
         if on {
@@ -344,12 +362,14 @@ where
         self
     }
 
+    /// Sets the scroll into view.
     #[must_use]
     pub const fn scroll_into_view(mut self, index: usize) -> Self {
         self.initial_scroll = Some(ScrollAnchor::Index(index));
         self
     }
 
+    /// Sets the initial scroll.
     #[must_use]
     pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
         self.initial_scroll = match anchor {
@@ -359,6 +379,7 @@ where
         self
     }
 
+    /// Sets the follow row.
     #[must_use]
     pub const fn follow_row(mut self, target: Signal<usize>) -> Self {
         self.follow = Some(target);
@@ -366,17 +387,7 @@ where
     }
 }
 
-impl<T: 'static, R: RowRender<T>> crate::style::PaintTarget for VirtualListBuilder<T, R> {
-    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-        crate::style::StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl<T: 'static, R: RowRender<T>> WidgetLayoutExt for VirtualListBuilder<T, R> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: paint(style_accumulator), widget);
 
 #[cfg(test)]
 mod tests;

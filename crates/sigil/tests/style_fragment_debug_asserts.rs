@@ -5,8 +5,9 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, container, fragment};
-use sigil::reactive::{Runtime, signal};
-use sigil::style::{NodeStyleExt, Paint, Theme, Token};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
+use sigil::style::{Paint, Theme, Token};
 
 #[test]
 fn paint_on_container_is_allowed() {
@@ -34,7 +35,7 @@ fn theme_on_fragment_panics_in_debug() {
 #[test]
 #[should_panic(expected = "style_reactive() on a Fragment")]
 fn paint_when_on_fragment_panics_in_debug() {
-    Runtime::scope("paint_when_on_fragment", || {
+    Owner::scope("paint_when_on_fragment", || {
         let mut cx = Cx::new_root();
         let _ = cx.add(fragment().paint_when(signal(true), |s| s.opacity(0.5)));
     });

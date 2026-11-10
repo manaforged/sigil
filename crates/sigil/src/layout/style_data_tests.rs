@@ -25,16 +25,16 @@ fn default_matches_css_baseline() {
     );
     assert_eq!((s.justify_content, s.align_content), (None, None));
     assert_eq!((s.align_items, s.align_self), (None, None));
-    assert_eq!(s.overflow, Size::splat(Overflow::Visible));
-    assert_eq!(s.inset, Rect::splat(LengthPercentageAuto::Auto));
-    assert_eq!(s.size, Size::splat(Dimension::Auto));
+    assert_eq!(s.overflow, Axes::splat(Overflow::Visible));
+    assert_eq!(s.inset, Edges::splat(Dimension::Auto));
+    assert_eq!(s.size, Axes::splat(Dimension::Auto));
 }
 
 #[test]
 fn size_and_rect_splat_fill_every_field() {
-    let r: Rect<f32> = Rect::splat(7.0);
+    let r: Edges<f32> = Edges::splat(7.0);
     assert_eq!([r.left, r.right, r.top, r.bottom], [7.0; 4]);
-    let s: Size<i32> = Size::splat(3);
+    let s: Axes<i32> = Axes::splat(3);
     assert_eq!((s.width, s.height), (3, 3));
 }
 

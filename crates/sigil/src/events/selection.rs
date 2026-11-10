@@ -13,7 +13,7 @@ use super::selection_walk::{
     cell_bounds, endpoint_at, node_text, selected_ranges, selected_text, snap_focus, word_bounds,
 };
 
-pub struct SelectableText;
+pub(crate) struct SelectableText;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct Endpoint {
@@ -43,13 +43,15 @@ thread_local! {
     static LAST_DOWN: RefCell<Option<(Instant, Point)>> = const { RefCell::new(None) };
 }
 
-fn clear() {
+pub(crate) fn clear() {
     STATE.set(None);
 }
 
-pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
-    if matches!(event.phase, PointerPhase::Move | PointerPhase::Up) {
-        extend(cx, layout, event);
+pub(crate) fn drag(cx: &Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
+    match event.phase {
+        PointerPhase::Move | PointerPhase::Up => extend(cx, layout, event),
+        PointerPhase::Cancel => end_drag(),
+        _ => {}
     }
 }
 
@@ -65,10 +67,10 @@ pub(crate) fn drag_active() -> bool {
     STATE.with_borrow(|state| state.is_some_and(|sel| sel.dragging))
 }
 
-pub(crate) fn escape(cx: &mut Cx) -> bool {
+pub(crate) fn escape() -> bool {
     let had = STATE.take().is_some();
     if had {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
     had
 }
@@ -93,7 +95,7 @@ fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
     }
 }
 
-pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
+pub(crate) fn down(cx: &Cx, path: &[NodeId], event: &PointerEvent) {
     let shift_only = event.modifiers == ModifiersState::SHIFT;
     let plain =
         event.button == Some(MouseButton::Left) && (event.modifiers.is_empty() || shift_only);
@@ -102,7 +104,7 @@ pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
         .flatten()
         .and_then(|region| Some((region, endpoint_at(cx, region, event.position)?)));
     let Some((region, endpoint)) = hit else {
-        escape(cx);
+        escape();
         return;
     };
     if shift_only {
@@ -110,7 +112,7 @@ pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
         return;
     }
     if STATE.with_borrow(Option::is_some) {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
     let (span, unit) = press_span(cx, region, endpoint, event.position);
     let (anchor, focus) =
@@ -162,7 +164,7 @@ fn note_down(point: Point) -> bool {
         })
 }
 
-fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
+fn shift_extend(cx: &Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     let existing = STATE
         .with_borrow(|state| *state)
         .filter(|sel| sel.region == region && live(cx, *sel));
@@ -189,11 +191,11 @@ fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     );
     STATE.set(Some(next));
     if existing.is_some() {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
 }
 
-fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
+fn extend(cx: &Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     let Some(mut selection) = STATE.with_borrow(|state| state.filter(|sel| sel.dragging)) else {
         return;
     };
@@ -204,7 +206,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
             selection.focus = focus;
             selection.moved = true;
             crate::events::focus::reveal_focus(cx, layout, focus.node);
-            cx.mark_mutated();
+            crate::reactive::Runtime::mark_frame_dirty();
         }
     }
     if event.phase == PointerPhase::Move {
@@ -214,7 +216,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     selection.dragging = false;
     if !selection.moved {
         clear();
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
         return;
     }
     event.stop_propagation();
@@ -231,9 +233,13 @@ fn deliver(cx: &Cx, region: NodeId, text: &str) {
     let result = crate::clipboard::copy(text);
     let mut at = Some(region);
     while let Some(id) = at {
-        if crate::events::handlers::dispatch(cx, id, |handlers| {
-            handlers.invoke_selection_copy(text, &result)
-        }) == Some(true)
+        if crate::events::handlers::fire(
+            cx,
+            id,
+            crate::events::handlers::EventKind::SelectionCopy,
+            crate::events::handlers::Phase::Bubble,
+            crate::events::handlers::EventArg::SelectionCopy(text, &result),
+        ) == Some(true)
         {
             return;
         }

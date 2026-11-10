@@ -1,36 +1,43 @@
 use accesskit::ActionRequest;
 
-use crate::events::ShellEvent;
+use crate::events::Event;
 use crate::events::hit_test::HitTestCache;
 use crate::events::{EventRouter, FocusIntent};
 use crate::geometry::{Point, Rect, Size};
 use crate::reactive::Runtime;
 use std::rc::Rc;
 
+use crate::Error;
 use crate::kernel::{Cx, HostMode, Node, NodeId, Surface};
-use crate::layout::{LayoutEngine, LayoutError, LayoutResult, TextGeometry, TextMeasure};
+use crate::layout::{LayoutEngine, LayoutResult, TextMeasure};
 use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
+mod access;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 mod emit;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
 use super::host_env::{EnvGuard, HostEnv};
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 use crate::scene::emit::EmitMemo;
-use crate::scene::{CommandScene, emit_scene_clipped};
+use crate::scene::{CommandScene, emit_scene};
 
-pub type AccessibilityTree = accesskit::TreeUpdate;
+type AccessibilityTree = accesskit::TreeUpdate;
 
 const LAYOUT_PASSES: usize = 4;
 
+#[doc = include_str!("../../docs/host.md")]
 pub struct Host {
     cx: Cx,
     layout: LayoutEngine,
+    router: EventRouter,
     root: Option<NodeId>,
     fill_root: bool,
     theme: Theme,
     visual_transforms: bool,
     hits: HitTestCache,
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     emitted: EmitMemo,
     env: HostEnv,
     #[cfg(feature = "dialog")]
@@ -52,43 +59,41 @@ pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
     out
 }
 
-impl Default for Host {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Host {
+    /// Creates a host for pixel or cell layout.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(mode: HostMode) -> Self {
+        match mode {
+            HostMode::Pixel => Self::pixels(),
+            HostMode::Cell => Self::with_env(
+                HostMode::Cell,
+                (Self::CELL, Rc::new(CellGeometry::new(Self::CELL))),
+                Box::new(CellGeometry::new(Self::CELL)),
+                false,
+            ),
+        }
+    }
+
+    fn pixels() -> Self {
         #[cfg(feature = "scene")]
-        let (geometry, measure): (Rc<dyn TextGeometry>, Box<dyn TextMeasure>) = (
-            Rc::new(crate::app::EngineGeometry::new()),
+        let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
+            Rc::new(crate::app::DefaultTextMeasure::new()),
             Box::new(crate::app::DefaultTextMeasure::new()),
         );
         #[cfg(not(feature = "scene"))]
-        let (geometry, measure): (Rc<dyn TextGeometry>, Box<dyn TextMeasure>) = (
+        let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
             Rc::new(CellGeometry::new(Self::CELL)),
             Box::new(CellGeometry::new(Self::CELL)),
         );
         Self::with_env(HostMode::Pixel, (0.0, geometry), measure, true)
     }
 
+    /// The width of one terminal cell in layout units.
     pub const CELL: f32 = 8.0;
-
-    #[must_use]
-    pub fn cells() -> Self {
-        Self::with_env(
-            HostMode::Cell,
-            (Self::CELL, Rc::new(CellGeometry::new(Self::CELL))),
-            Box::new(CellGeometry::new(Self::CELL)),
-            false,
-        )
-    }
 
     fn with_env(
         mode: HostMode,
-        (cell, geometry): (f32, Rc<dyn TextGeometry>),
+        (cell, geometry): (f32, Rc<dyn TextMeasure>),
         measure: Box<dyn TextMeasure>,
         visual_transforms: bool,
     ) -> Self {
@@ -98,11 +103,13 @@ impl Host {
         Self {
             cx,
             layout: LayoutEngine::with_text_measure(measure),
+            router: EventRouter::new(),
             root: None,
             fill_root: false,
             theme: Theme::default(),
             visual_transforms,
             hits: HitTestCache::default(),
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             emitted: EmitMemo::default(),
             env,
             #[cfg(feature = "dialog")]
@@ -112,8 +119,9 @@ impl Host {
         }
     }
 
-    pub const fn set_caps(&mut self, caps: super::HostCaps) {
-        self.env.caps = caps;
+    /// Tells widgets whether the host can show hyperlinks.
+    pub const fn set_hyperlinks(&mut self, yes: bool) {
+        self.env.caps.hyperlinks = yes;
     }
 
     pub(crate) fn enter(&self) -> EnvGuard {
@@ -122,18 +130,20 @@ impl Host {
 
     pub(crate) fn publish_viewport(&self, viewport: (f32, f32)) {
         self.env.publish_viewport(viewport);
-        self.env.publish_scale(self.cx.scale().factor());
     }
 
+    /// Returns the host mode.
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.cx.host_mode()
     }
 
+    /// Returns whether take exit is set.
     pub fn take_exit(&self) -> bool {
         self.env.exit.replace(false)
     }
 
+    /// Builds `app` and makes it the root of the tree.
     pub fn mount(&mut self, app: impl crate::kernel::IntoNode) {
         #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
         {
@@ -181,7 +191,7 @@ impl Host {
         super::dialog::layer::sync(&mut self.cx, self.root, &mut self.dialogs);
     }
 
-    fn attach_theme(&mut self, theme: Theme) {
+    pub(crate) fn attach_theme(&mut self, theme: Theme) {
         if let Some(root) = self.root
             && let Some(node) = self.cx.get_mut(root)
         {
@@ -199,6 +209,7 @@ impl Host {
         }
     }
 
+    /// Returns the nodes under the point, from the deepest node up.
     pub fn hit_path(&mut self, x: f32, y: f32) -> Vec<NodeId> {
         let _env = self.enter();
         if self.root.is_none() {
@@ -209,98 +220,117 @@ impl Host {
             .map_or_else(Vec::new, smallvec::SmallVec::into_vec)
     }
 
+    /// Returns the node tree context.
     pub const fn cx(&mut self) -> &mut Cx {
         &mut self.cx
     }
 
+    /// Returns the root.
     #[must_use]
     pub const fn root(&self) -> Option<NodeId> {
         self.root
     }
 
+    #[cfg(debug_assertions)]
+    pub(crate) fn report_flaws(&self) {
+        use crate::layout::audit::Tolerance;
+        thread_local! {
+            static SEEN: std::cell::RefCell<std::collections::HashSet<String>> = std::cell::RefCell::default();
+        }
+        let flaws = self.flaws(Tolerance::for_mode(self.host_mode()));
+        SEEN.with_borrow_mut(|seen| {
+            for flaw in flaws.iter().map(ToString::to_string) {
+                if seen.insert(flaw.clone()) {
+                    tracing::warn!(target: "sigil::design", "{flaw}");
+                    if matches!(self.host_mode(), crate::kernel::HostMode::Pixel) {
+                        eprintln!("sigil design flaw: {flaw}");
+                    }
+                }
+            }
+        });
+    }
+
+    #[cfg(any(
+        test,
+        debug_assertions,
+        feature = "kittest",
+        all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
+    ))]
     #[must_use]
-    pub fn misalignments(
+    pub(crate) fn flaws(
         &self,
-        tolerance: crate::layout::align::Tolerance,
-    ) -> Vec<crate::layout::align::Misalignment> {
+        tolerance: crate::layout::audit::Tolerance,
+    ) -> Vec<crate::layout::audit::Flaw> {
         let _env = self.enter();
         self.root.map_or_else(Vec::new, |root| {
-            crate::layout::align::misalignments(&self.cx, &self.layout, root, tolerance)
+            crate::layout::audit::flaws(&self.cx, &self.layout, (root, self.theme()), tolerance)
         })
     }
 
     #[cfg(feature = "desktop")]
-    pub(crate) fn tree(&mut self) -> Option<(&mut Cx, &LayoutEngine, NodeId)> {
+    pub(crate) fn tree(&mut self) -> Option<(&mut Cx, &LayoutEngine, &mut EventRouter, NodeId)> {
         let root = self.root?;
-        Some((&mut self.cx, &self.layout, root))
+        Some((&mut self.cx, &self.layout, &mut self.router, root))
     }
 
-    pub fn route(&mut self, router: &mut EventRouter, event: ShellEvent) {
+    /// Sends an input event through the tree.
+    pub fn route(&mut self, event: Event) {
         let _env = self.enter();
-        router.set_visual_transforms(self.visual_transforms);
+        self.router.set_visual_transforms(self.visual_transforms);
         if self.root.is_some() {
-            router.route(&mut self.cx, &self.layout, event);
+            self.router.route(&mut self.cx, &self.layout, event);
         }
         crate::reactive::run_dispatch_deferred();
     }
 
-    fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine)) {
+    fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine, &mut EventRouter)) {
         let _env = self.enter();
         if self.root.is_some() {
-            run(&mut self.cx, &self.layout);
+            run(&mut self.cx, &self.layout, &mut self.router);
         }
     }
 
-    pub fn apply_focus_requests(&mut self, router: &mut EventRouter) {
-        self.on_tree(|cx, layout| router.flush_focus_requests(cx, layout));
+    pub(crate) fn apply_focus_requests(&mut self) {
+        self.on_tree(|cx, layout, router| router.flush_focus_requests(cx, layout));
     }
 
-    pub fn repair_focus(&mut self, router: &mut EventRouter) {
-        self.on_tree(|cx, layout| {
+    /// Moves focus off a node that can no longer hold it.
+    pub fn repair_focus(&mut self) {
+        self.on_tree(|cx, layout, router| {
             router.flush_focus_requests(cx, layout);
             router.focus_if_needed(cx, layout);
         });
     }
 
-    pub fn sync_hover(&mut self, router: &mut EventRouter) {
-        self.on_tree(|cx, layout| router.reconcile_hover(cx, layout));
+    pub(crate) fn sync_hover(&mut self) {
+        self.on_tree(|cx, layout, router| router.reconcile_hover(cx, layout));
     }
 
-    pub fn perform(&mut self, router: &mut EventRouter, target: NodeId, request: &ActionRequest) {
-        self.on_tree(|cx, layout| {
+    /// Runs an accessibility action on `target`.
+    pub fn perform(&mut self, target: NodeId, request: &ActionRequest) {
+        self.on_tree(|cx, layout, router| {
             crate::a11y::actions::apply(cx, router, layout, target, request);
         });
     }
 
+    /// Applies a focus request.
+    pub fn focus_intent(&mut self, intent: FocusIntent) {
+        self.on_tree(|cx, layout, router| router.focus_intent(cx, layout, intent));
+    }
+
+    /// Returns the focus.
     #[must_use]
-    pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
-        self.accessibility_tree_scoped(router, crate::a11y::mapping::TreeScope::Full)
+    pub const fn focus(&self) -> Option<NodeId> {
+        self.router.focus()
     }
 
-    #[must_use]
-    pub(crate) fn accessibility_tree_scoped(
-        &self,
-        router: &EventRouter,
-        scope: crate::a11y::mapping::TreeScope,
-    ) -> AccessibilityTree {
-        let _env = self.enter();
-        crate::a11y::mapping::tree_scoped(
-            &self.cx,
-            router.focus(),
-            &|id| {
-                self.layout.result(id).map(|result| {
-                    crate::events::hit_test::visual_bounds(&self.cx, id, result.rect())
-                })
-            },
-            scope,
-        )
+    #[cfg(any(test, feature = "kittest"))]
+    pub const fn parts(&mut self) -> (&mut Cx, &LayoutEngine, &mut EventRouter) {
+        (&mut self.cx, &self.layout, &mut self.router)
     }
 
-    pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {
-        self.on_tree(|cx, layout| router.focus_intent(cx, layout, intent));
-    }
-
-    pub fn layout(&mut self, viewport: (f32, f32)) -> Result<Option<NodeId>, LayoutError> {
+    /// Lays out the tree for `viewport` and returns the root.
+    pub fn layout(&mut self, viewport: (f32, f32)) -> Result<Option<NodeId>, Error> {
         let _env = self.enter();
         let Some(root) = self.root else {
             return Ok(None);
@@ -310,7 +340,7 @@ impl Host {
         Ok(Some(root))
     }
 
-    pub(crate) fn settle_layout(&mut self, viewport: (f32, f32)) -> Result<(), LayoutError> {
+    pub(crate) fn settle_layout(&mut self, viewport: (f32, f32)) -> Result<(), Error> {
         for _ in 1..LAYOUT_PASSES {
             self.layout(viewport)?;
             if !self.layout.take_republished() {
@@ -320,6 +350,7 @@ impl Host {
         self.layout(viewport).map(|_| ())
     }
 
+    /// Returns the surfaces.
     #[must_use]
     pub fn surfaces(&self) -> Vec<(u64, Rect)> {
         let _env = self.enter();
@@ -329,6 +360,7 @@ impl Host {
         surface_holes(&self.cx, root)
     }
 
+    /// Returns the theme.
     #[must_use]
     pub fn theme(&self) -> &Theme {
         self.root
@@ -337,6 +369,7 @@ impl Host {
             .unwrap_or(&self.theme)
     }
 
+    /// Paints the laid-out tree into a new scene.
     #[must_use]
     pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
         let _env = self.enter();
@@ -346,7 +379,8 @@ impl Host {
         })
     }
 
-    pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {
+    /// Lays out the tree for `viewport` and paints it into a new scene.
+    pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, Error> {
         let _env = self.enter();
         let Some(root) = self.layout(viewport)? else {
             return Ok(CommandScene::default());
@@ -356,7 +390,7 @@ impl Host {
 }
 
 pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -> CommandScene {
-    emit_scene_clipped(cx, root, Some(viewport_rect(viewport)))
+    emit_scene(cx, root, Some(viewport_rect(viewport)))
 }
 
 const fn viewport_rect(viewport: (f32, f32)) -> Rect {

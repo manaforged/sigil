@@ -2,24 +2,19 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_string};
 use std::rc::Rc;
 
-use crate::events::{MouseButton, NodeEventsExt};
+use crate::events::MouseButton;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::Tone;
+use crate::widgets::Widget;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::super::interaction::InteractionState;
+use super::super::listbox::{SelectMark, mark, toggle_all};
 use super::state::TableState;
 
 pub(super) const WIDTH: f32 = 32.0;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Mark {
-    Empty,
-    Partial,
-    Full,
-}
 
 pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) -> NodeBuilder {
     let toggle = state.clone();
@@ -39,9 +34,9 @@ pub(super) fn row_cell<Row: 'static>(
     let selection = state.selection();
     let mark = derived(move || {
         if selection.get().contains(&row) {
-            Mark::Full
+            SelectMark::Full
         } else {
-            Mark::Empty
+            SelectMark::Empty
         }
     });
     let toggle = state.clone();
@@ -68,12 +63,12 @@ fn select_cell(role: Role, height: f32, check: NodeBuilder) -> NodeBuilder {
 }
 
 fn select_box(
-    mark: Signal<Mark>,
+    mark: Signal<SelectMark>,
     label: impl Into<AccessibleName>,
     toggle: impl Fn() + 'static,
 ) -> NodeBuilder {
-    let checked = derived(move || mark.get() == Mark::Full);
-    let partial = derived(move || mark.get() == Mark::Partial);
+    let checked = derived(move || mark.get() == SelectMark::Full);
+    let partial = derived(move || mark.get() == SelectMark::Partial);
     let interaction = InteractionState::new(true);
     let node = container()
         .role(Role::CheckBox)
@@ -108,19 +103,11 @@ fn select_box(
     interaction.observe_style(node)
 }
 
-fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
+fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<SelectMark> {
     derived(move || {
         let visible = state.visible().get();
         let selection = state.selection().get();
-        if selection.is_empty() {
-            return Mark::Empty;
-        }
-        let mut marks = visible.iter().map(|row| selection.contains(row));
-        match marks.next() {
-            Some(first) if marks.any(|selected| selected != first) => Mark::Partial,
-            Some(true) => Mark::Full,
-            None | Some(false) => Mark::Empty,
-        }
+        mark(&*selection, visible.as_slice())
     })
 }
 
@@ -128,16 +115,11 @@ impl<Row: 'static> TableState<Row> {
     fn toggle_all(&self) {
         let visible = self.visible().peek();
         let mut set = (*self.selection().peek()).clone();
-        if !visible.is_empty() && visible.iter().all(|row| set.contains(row)) {
-            for row in visible.iter() {
-                set.remove(row);
-            }
-        } else {
-            set.extend(visible.iter().copied());
-        }
+        toggle_all(&mut set, visible.as_slice());
         self.selection().set(Rc::new(set));
     }
 
+    /// Moves the selection by `delta` rows.
     pub fn select_by(&self, delta: i32) {
         let visible = self.visible().peek();
         let Some(last) = visible.len().checked_sub(1) else {

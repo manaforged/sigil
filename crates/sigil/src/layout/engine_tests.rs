@@ -2,10 +2,11 @@
 
 use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{Cx, NodeId, TextContent, container};
-use crate::reactive::{Runtime, effect, signal};
-use crate::style::{Dimension, Px, StyleAtom};
+use crate::reactive::{Owner, effect, signal};
+use crate::style::StyleAtom;
 
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, TextMeasure};
+use crate::layout::{LayoutStyle, TextMeasure};
+use crate::widgets::Widget;
 
 use super::LayoutEngine;
 
@@ -50,7 +51,7 @@ fn first_child(cx: &Cx, root: NodeId) -> NodeId {
 
 #[test]
 fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
-    Runtime::scope("layout-bounds-feedback", || {
+    Owner::scope("layout-bounds-feedback", || {
         let measured = signal((0.0, 0.0));
         let shifted = signal(false);
         effect(move || {
@@ -68,9 +69,9 @@ fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
                         .layout(LayoutStyle::block().fixed_size(20.0, 10.0))
                         .style_reactive(move || {
                             if shifted.get() {
-                                &[StyleAtom::MarginTop(Px(20))] as &[_]
+                                &[StyleAtom::MarginTop(20)] as &[_]
                             } else {
-                                &[StyleAtom::MarginTop(Px(0))] as &[_]
+                                &[StyleAtom::MarginTop(0)] as &[_]
                             }
                         }),
                 ),
@@ -95,7 +96,7 @@ fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
 
 #[test]
 fn repaint_reuses_layout_storage_and_preserves_geometry() {
-    Runtime::scope("layout-repaint-storage", || {
+    Owner::scope("layout-repaint-storage", || {
         let revision = signal(0);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -136,14 +137,14 @@ fn repaint_reuses_layout_storage_and_preserves_geometry() {
 
 #[test]
 fn reactive_layout_style_change_invalidates_cache() {
-    Runtime::scope("layout_reactive_style_cache", || {
+    Owner::scope("layout_reactive_style_cache", || {
         let wide = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(container().style_reactive(move || {
             if wide.get() {
-                &[StyleAtom::Width(Dimension::Px(Px(96)))] as &[_]
+                &[StyleAtom::Width(crate::style::atom::ATOM_PX, 96)] as &[_]
             } else {
-                &[StyleAtom::Width(Dimension::Px(Px(32)))] as &[_]
+                &[StyleAtom::Width(crate::style::atom::ATOM_PX, 32)] as &[_]
             }
         }));
         let mut engine = engine();
@@ -161,7 +162,7 @@ fn reactive_layout_style_change_invalidates_cache() {
 
 #[test]
 fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
-    Runtime::scope("layout-resting-seed", || {
+    Owner::scope("layout-resting-seed", || {
         let pos = signal((0.0_f32, 0.0_f32));
         let mut page = container().layout(LayoutStyle::flex_column().fixed_size(400.0, 800.0));
         for index in 0..20 {
@@ -187,7 +188,7 @@ fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
             .iter()
             .filter(|id| {
                 cx.get(**id)
-                    .is_some_and(|node| node.a11y.role == accesskit::Role::Button)
+                    .is_some_and(|node| node.a11y.role == crate::kernel::Role::Button)
             })
             .count();
         assert_eq!(buttons, 0, "resting buttons were reseeded: {dirty:?}");
@@ -196,7 +197,7 @@ fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
 
 #[test]
 fn a_reactive_label_keeps_its_size_on_its_first_change() {
-    Runtime::scope("layout-first-text-change", || {
+    Owner::scope("layout-first-text-change", || {
         let label = signal("12:00:00".to_owned());
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -225,7 +226,7 @@ fn a_reactive_label_keeps_its_size_on_its_first_change() {
 #[test]
 fn a_resized_label_is_named_in_the_profile() {
     let _gate = crate::profile::exclusive();
-    Runtime::scope("layout-attribution", || {
+    Owner::scope("layout-attribution", || {
         let label = signal("short".to_owned());
         let mut cx = Cx::new_root();
         let mut page = container().layout(LayoutStyle::flex_column().fixed_size(400.0, 800.0));
@@ -272,7 +273,7 @@ fn a_resized_label_is_named_in_the_profile() {
 
 #[test]
 fn a_reflowed_label_is_not_kept_on_a_size_measured_at_its_old_width() {
-    Runtime::scope("layout-reflowed-label", || {
+    Owner::scope("layout-reflowed-label", || {
         let label = signal("ab cd".to_owned());
         let mut cx = Cx::new_root();
         let root = cx.add(

@@ -8,6 +8,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;
@@ -49,7 +50,7 @@ fn fill_honours_parent_padding() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::block()
             .fixed_size(800.0, 600.0)
-            .padding(LengthPercentage::Px(20.0)),
+            .padding(Space::raw(20.0, "test fixture")),
     );
     let child = cx
         .get(root)

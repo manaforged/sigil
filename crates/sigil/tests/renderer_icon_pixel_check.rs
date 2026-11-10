@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -65,7 +66,6 @@ fn render_icon_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
         .render_command_scene_offscreen(
             OffscreenTarget {
                 device,
@@ -112,8 +112,8 @@ fn assert_icon_centers_are_tinted(pixels: &[u8], phys_w: u32) {
             best.is_some(),
             "icon {i}: no pixel in rect ({x0},{y0})..({x1},{y1}) had alpha ≥ \
              {CENTER_ALPHA_MIN} AND RGB within ±{TINT_TOL} of ({},{},{}). \
-             The baker either produced an empty alpha mask, mis-packed the \
-             tint, or the sprite atlas binding pointed at the wrong slot.",
+             The sprite mask came out empty, the tint was mis-packed, or the \
+             sprite atlas binding pointed at the wrong region.",
             tint[0],
             tint[1],
             tint[2],
@@ -136,7 +136,7 @@ fn assert_icon_corners_are_clear_colour(pixels: &[u8], phys_w: u32) {
              sRGB≈({CLEAR_R_SRGB},{CLEAR_G_SRGB},{CLEAR_B_SRGB}) ±{CLEAR_TOL}. \
              Got RGB=({},{},{}). dR={dr} dG={dg} dB={db}. \
              The alpha mask must be ~0 at the top-left corner for all icons. \
-             Check IconBaker::bake viewBox normalisation and raster.rs boundary.",
+             Check the sprite region placement.",
             rgba[0],
             rgba[1],
             rgba[2],
@@ -188,7 +188,7 @@ fn assert_x_icon_edge_is_sharp(pixels: &[u8], phys_w: u32) {
         "x-icon edge: empty→stroked transition spans {transition_span} pixels \
          (last_empty={last_empty_before}, first_stroked={first_stroked}) — \
          must be ≤ 4 for a sharp vector edge. R values: {reds:?}. \
-         Check raster.rs SSAA quality and the box-filter step.",
+         Check the sprite sampler.",
     );
 }
 
@@ -206,7 +206,7 @@ fn assert_heart_and_x_fingerprints_differ(pixels: &[u8], phys_w: u32) {
         "distinct-icon fingerprints: stroked-pixel-count difference between \
          'heart' ({count_heart}) and 'x' ({count_x}) is {diff}, which is less \
          than the 2%-of-area threshold {threshold}. \
-         The baker may be producing identical output for all icons.",
+         The sprite regions may all sample the same mask.",
     );
 }
 

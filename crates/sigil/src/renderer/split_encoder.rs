@@ -6,14 +6,15 @@ use crate::profile::count;
 use crate::renderer::decoration_paint::DecorationInstance;
 use crate::renderer::frame_upload::{UploadBuffer, UploadBuffers, UploadedRange};
 use crate::renderer::layer_composite::LayerInstance;
-use crate::renderer::raster_paint::RasterInstance;
+use crate::renderer::quad_paint::QuadInstance;
 use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::SceneCommand;
+use crate::renderer::scene_instance::MAX_GRADIENT_STOPS;
 use crate::renderer::scene_instance::{
-    FillInstance, GpuStop, MAX_GRADIENT_STOPS, RectInstance, SceneUniforms, ShadowInstance,
+    FillInstance, GpuStop, RectInstance, SceneUniforms, ShadowInstance,
 };
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
-use crate::renderer::sprite_paint::SpriteInstance;
+use crate::scene::command::{MAX_PIGMENTS, PatternKind};
 use crate::style::Color;
 
 pub(crate) use timing::GpuTimer;
@@ -86,19 +87,23 @@ impl SplitEncoder {
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
                     vertices += size_of::<FillInstance>() as u64;
                 }
-                SceneCommand::Pattern(_) => {
-                    storage += size_of::<GpuStop>() as u64 + self.storage_alignment;
+                SceneCommand::Pattern(draw) => {
+                    let stops = match draw.pattern {
+                        PatternKind::Wash(_) => MAX_PIGMENTS + 1,
+                        _ => 1,
+                    };
+                    storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
                     vertices += size_of::<FillInstance>() as u64;
                 }
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,
                 SceneCommand::Decoration(_) => vertices += size_of::<DecorationInstance>() as u64,
                 SceneCommand::Sprite(_) | SceneCommand::Image(_) => {
-                    vertices += size_of::<SpriteInstance>() as u64;
+                    vertices += size_of::<QuadInstance>() as u64;
                     uniforms += self.uniform_alignment;
                 }
                 SceneCommand::GlyphRun(draw) => {
-                    vertices += (draw.run.positioned_glyphs().len()
-                        * size_of::<RasterInstance>().max(SLUG_INSTANCE_BYTES))
+                    vertices += (draw.positioned_glyphs().len()
+                        * size_of::<QuadInstance>().max(SLUG_INSTANCE_BYTES))
                         as u64;
                     uniforms += self.uniform_alignment;
                 }
@@ -237,6 +242,46 @@ impl SplitEncoder {
         );
     }
 
+    pub(crate) fn copy_region(
+        &mut self,
+        source: &wgpu::Texture,
+        destination: &wgpu::Texture,
+        (x, y, width, height): (u32, u32, u32, u32),
+    ) {
+        self.end_pass();
+        self.encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                origin: wgpu::Origin3d { x, y, z: 0 },
+                ..source.as_image_copy()
+            },
+            destination.as_image_copy(),
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    pub(crate) fn submit_with<R>(
+        &mut self,
+        record: impl FnOnce(&mut wgpu::CommandEncoder) -> R,
+    ) -> R {
+        self.end_pass();
+        let result = record(&mut self.encoder);
+        let fresh = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("sigil-renderer vector submission"),
+            });
+        let full = replace(&mut self.encoder, fresh);
+        self.flush();
+        self.queue.submit(core::iter::once(full.finish()));
+        count(crate::profile::Counter::GpuSplitSubmissions);
+        self.passes = 0;
+        result
+    }
+
     pub(crate) fn submit(mut self) -> (UploadBuffers, Option<GpuTimer>) {
         self.end_pass();
         self.flush();
@@ -258,6 +303,7 @@ impl SplitEncoder {
         (self.uploads, self.timer)
     }
 
+    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
         self.end_pass();
         self.flush();

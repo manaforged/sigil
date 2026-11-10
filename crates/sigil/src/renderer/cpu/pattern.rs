@@ -11,19 +11,22 @@ use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, Spread
 
 use crate::renderer::scene_command::PatternKind;
 
-use super::bound::{Bound, corners, extent};
+use super::bound::{CpuBound, corners, extent};
 use super::shapes::rgba_table;
 
-pub(super) struct Placement {
+pub(super) struct PatternPlacement {
     pub(super) kind: PatternKind,
     pub(super) rect: Rect,
     pub(super) transform: Transform,
     pub(super) opacity: f32,
-    pub(super) bound: Bound,
+    pub(super) bound: CpuBound,
     pub(super) size: [u32; 2],
 }
 
-pub(super) fn shader<'a>(slot: &'a mut Option<Pixmap>, place: &Placement) -> Option<Shader<'a>> {
+pub(super) fn shader<'a>(
+    slot: &'a mut Option<Pixmap>,
+    place: &PatternPlacement,
+) -> Option<Shader<'a>> {
     let visible = place.bound.clip(place.rect)?;
     let [x0, y0, x1, y1] = device_span(visible, place.transform, place.size)?;
     let inverse = place.transform.invert()?;
@@ -89,6 +92,7 @@ enum Look {
         line: f64,
         aa: f64,
     },
+    Wash(crate::scene::Wash, (f32, f32)),
 }
 
 struct Field {
@@ -98,7 +102,7 @@ struct Field {
 }
 
 impl Field {
-    fn of(place: &Placement, inverse: Transform) -> Self {
+    fn of(place: &PatternPlacement, inverse: Transform) -> Self {
         let kind = place.kind.normalized();
         let look = match kind {
             PatternKind::Checker {
@@ -121,6 +125,9 @@ impl Field {
                 aa: f64::from((inverse.sx - inverse.ky).abs() + (inverse.kx - inverse.sy).abs())
                     * 0.5,
             },
+            PatternKind::Wash(wash) => {
+                Look::Wash(wash, (place.rect.width / 2.0, place.rect.height / 2.0))
+            }
         };
         Self {
             look,
@@ -151,6 +158,7 @@ impl Field {
                 let level = (mask * 255.0).round().clamp(0.0, 255.0) as usize;
                 table.get(level).copied().unwrap_or_default()
             }
+            Look::Wash(wash, centre) => wash_pixel(wash, *centre, u, v),
         }
     }
 }
@@ -178,4 +186,11 @@ fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
 
 fn full(color: Rgba8) -> [u8; 4] {
     rgba_table(color, 1.0).last().copied().unwrap_or_default()
+}
+
+fn wash_pixel(wash: &crate::scene::Wash, centre: (f32, f32), x: f64, y: f64) -> [u8; 4] {
+    let alpha = f32::from(wash.paper.a) / 255.0;
+    let [red, green, blue] = wash.shade(x as f32, y as f32, centre);
+    let byte = |channel: f32| crate::style::srgb::byte(channel * alpha * 255.0);
+    [byte(red), byte(green), byte(blue), wash.paper.a]
 }

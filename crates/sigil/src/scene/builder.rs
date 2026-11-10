@@ -1,23 +1,29 @@
 #![allow(clippy::redundant_pub_crate)]
+#[cfg(any(test, feature = "kittest"))]
+use crate::scene::command::DrawSprite;
+use crate::scene::command::{DrawPattern, PatternKind, Wash};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
-use crate::style::Rgba8;
 
+use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
-    CellRect, CommandScene, DrawDecoration, DrawGlyphRun, DrawGradient, DrawPattern, DrawRect,
-    DrawSprite, GlyphRun, LayerScope, SceneCommand, SceneDecorationStyle, SceneGradientStyle,
-    ScenePatternStyle, SceneRectStyle, SceneSpriteStyle, SpriteKind, SpriteSource, Transform,
+    CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
+    SceneCommand, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
+use crate::style::Rgba8;
+use crate::style::srgb::encode_byte;
 
+/// Appends drawing commands to a scene.
 #[derive(Debug)]
 pub struct SceneBuilder {
     commands: Vec<SceneCommand>,
 }
 
 impl SceneBuilder {
+    /// Creates a scene builder.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -25,9 +31,17 @@ impl SceneBuilder {
         }
     }
 
-    pub fn draw_rect(&mut self, rect: Rect, style: SceneRectStyle) {
-        self.commands
-            .push(SceneCommand::Rect(DrawRect::new(rect, style)));
+    /// Fills `rect` with a watercolour wash.
+    pub fn draw_wash(&mut self, rect: Rect, wash: Wash) {
+        self.commands.push(SceneCommand::Pattern(DrawPattern::new(
+            rect,
+            PatternKind::Wash(wash),
+        )));
+    }
+
+    /// Appends a rectangle.
+    pub fn draw_rect(&mut self, draw: DrawRect) {
+        self.commands.push(SceneCommand::Rect(draw));
     }
 
     pub(crate) const fn recorded(&self) -> usize {
@@ -42,28 +56,32 @@ impl SceneBuilder {
         }
     }
 
-    pub fn draw_gradient(&mut self, rect: Rect, style: SceneGradientStyle) {
-        self.commands
-            .push(SceneCommand::Gradient(DrawGradient::new(rect, style)));
+    kittest_pub! {
+    /// Appends a gradient fill.
+    #[doc(hidden)]
+    pub fn draw_gradient(&mut self, draw: DrawGradient) {
+        self.commands.push(SceneCommand::Gradient(draw));
+    }
     }
 
-    pub fn draw_pattern(&mut self, rect: Rect, style: ScenePatternStyle) {
-        self.commands
-            .push(SceneCommand::Pattern(DrawPattern::new(rect, style)));
+    #[cfg(any(test, feature = "kittest"))]
+    /// Appends a pattern fill.
+    #[doc(hidden)]
+    pub fn draw_pattern(&mut self, draw: DrawPattern) {
+        self.commands.push(SceneCommand::Pattern(draw));
     }
 
-    pub fn draw_decoration(&mut self, style: SceneDecorationStyle) {
-        self.commands.push(SceneCommand::Decoration(DrawDecoration {
-            node: None,
-            kind: style.kind,
-            band: style.band,
-            color: style.color,
-            opacity: style.opacity,
-            period: style.period,
-            line_width: style.line_width,
-        }));
+    kittest_pub! {
+    /// Appends a text decoration.
+    #[doc(hidden)]
+    pub fn draw_decoration(&mut self, draw: DrawDecoration) {
+        self.commands.push(SceneCommand::Decoration(draw));
+    }
     }
 
+    kittest_pub! {
+    /// Appends a shadow for `rect`.
+    #[doc(hidden)]
     pub fn draw_shadow(&mut self, rect: Rect, radii: CornerRadii, shadow: Shadow) {
         self.commands.push(SceneCommand::DrawShadow {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
@@ -71,93 +89,128 @@ impl SceneBuilder {
             shadow,
         });
     }
+    }
 
+    kittest_pub! {
+    /// Appends an image.
+    #[doc(hidden)]
     pub fn draw_image(&mut self, draw: crate::scene::command::DrawImage) {
         self.commands.push(SceneCommand::Image(draw));
     }
+    }
 
-    pub(crate) fn draw_rect_for_node(
-        &mut self,
-        node: NodeId,
-        rect: Rect,
-        style: SceneRectStyle,
-        cell: CellRect,
-    ) {
-        self.commands.push(SceneCommand::Rect(
-            DrawRect::new(rect, style).with_node(node).with_cell(cell),
-        ));
+    pub(crate) fn draw_path(&mut self, draw: crate::scene::command::DrawPath) {
+        self.commands.push(SceneCommand::Path(draw));
+    }
+
+    pub(crate) fn draw_rect_for_node(&mut self, node: NodeId, draw: DrawRect, cell: CellRect) {
+        self.commands
+            .push(SceneCommand::Rect(draw.with_node(node).with_cell(cell)));
     }
 
     pub(crate) fn draw_gradient_for_node(
         &mut self,
         node: NodeId,
-        rect: Rect,
-        style: SceneGradientStyle,
+        draw: DrawGradient,
         cell: CellRect,
     ) {
-        self.commands.push(SceneCommand::Gradient(
-            DrawGradient::new(rect, style)
-                .with_node(node)
-                .with_cell(cell),
-        ));
+        self.commands
+            .push(SceneCommand::Gradient(draw.with_node(node).with_cell(cell)));
     }
 
-    pub fn draw_sprite(
-        &mut self,
-        source: SpriteSource,
-        dest: Rect,
-        kind: SpriteKind,
-        color: Rgba8,
-    ) -> &mut Self {
-        let style = SceneSpriteStyle {
-            source,
-            kind,
-            destination: dest,
-            color,
-            opacity: 10_000,
-        };
-        self.commands
-            .push(SceneCommand::Sprite(DrawSprite::new(&style)));
+    #[cfg(any(test, feature = "kittest"))]
+    /// Appends a sprite.
+    #[doc(hidden)]
+    pub fn draw_sprite(&mut self, draw: DrawSprite) -> &mut Self {
+        self.commands.push(SceneCommand::Sprite(draw));
         self
     }
 
+    /// Appends a run of glyphs.
     pub fn draw_glyph_run(&mut self, run: GlyphRun) {
-        self.commands
-            .push(SceneCommand::GlyphRun(DrawGlyphRun::new(run)));
+        self.commands.push(SceneCommand::GlyphRun(run));
     }
 
+    /// Appends a run of glyphs that belongs to `node`.
     pub fn draw_glyph_run_for_node(&mut self, node: NodeId, run: GlyphRun) {
-        self.commands.push(SceneCommand::GlyphRun(DrawGlyphRun::new(
-            run.with_node(node),
-        )));
+        self.commands
+            .push(SceneCommand::GlyphRun(run.with_node(node)));
     }
 
-    pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, rect: Rect, body: F) {
-        self.with_scope(SceneCommand::PushClip(rect), SceneCommand::PopClip, body);
+    /// Draws `shadow` behind `run` like CSS `text-shadow`, with `shadow.blur` as the standard deviation; draw a run's shadows last to first, then the run.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "alpha is clamped to 0..=1 before the byte cast"
+    )]
+    pub fn draw_text_shadow(&mut self, run: &GlyphRun, shadow: Shadow) {
+        let [dx, dy] = shadow.offset;
+        let [r, g, b, a] = shadow.color;
+        let [r, g, b] = [r, g, b].map(encode_byte);
+        let alpha = (a.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let mut copy = run.tinted(Rgba8 { r, g, b, a: alpha });
+        copy.shift(dx, dy);
+        if shadow.blur <= 0.0 {
+            self.draw_glyph_run(copy);
+            return;
+        }
+        let scope = LayerScope {
+            clip: copy
+                .rect
+                .expand(shadow.blur.mul_add(3.0, copy.rect.height * 0.5)),
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Filter([Filter::Blur(shadow.blur)].into()),
+            opacity: 1.0,
+            blend: BlendMode::default(),
+        };
+        self.with_scope(
+            SceneCommand::PushLayer(scope),
+            SceneCommand::PopLayer,
+            |scene| {
+                scene.draw_glyph_run(copy);
+            },
+        );
     }
 
+    /// Clips the commands that `body` appends to `clip`.
+    pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
+        let open = SceneCommand::PushClip(clip.into());
+        self.with_scope(open, SceneCommand::PopClip, body);
+    }
+
+    /// Draw `body` under `transform`.
     pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
         let open = SceneCommand::PushTransform(transform);
         self.with_scope(open, SceneCommand::PopTransform, body);
     }
 
+    /// Draw `body` into a layer composited at `opacity`.
     pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
         let open = SceneCommand::SaveLayer { opacity };
         self.with_scope(open, SceneCommand::RestoreLayer, body);
     }
 
+    kittest_pub! {
+    /// Draws the commands that `body` appends into a layer.
+    #[doc(hidden)]
     pub fn with_composite_layer<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
         self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, body);
     }
+    }
 
+    #[cfg(any(test, feature = "kittest"))]
+    /// Opens a layer.
+    #[doc(hidden)]
     pub fn push_layer(&mut self, scope: LayerScope) {
         self.commands.push(SceneCommand::PushLayer(scope));
     }
 
+    /// Closes the last open layer.
     pub fn pop_layer(&mut self) {
         self.commands.push(SceneCommand::PopLayer);
     }
 
+    /// Returns the finish.
     #[must_use]
     pub fn finish(self) -> CommandScene {
         CommandScene::new(self.commands)

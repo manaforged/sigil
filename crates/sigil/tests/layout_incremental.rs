@@ -10,9 +10,9 @@ mod stub;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
-use sigil::style::NodeStyleExt;
-use sigil_kittest::CharMeasure;
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
+use sigil_kittest::FakeMeasure;
 use stub::{layout_rect, stub_engine};
 
 const AVAILABLE: Size = Size::fixed(120.0, 40.0);
@@ -63,10 +63,7 @@ fn layout_result(cx: &Cx, id: NodeId) -> LayoutResult {
         .expect("layout result exists")
 }
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 10.0,
-    line_height: 10.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(10.0, 10.0);
 
 #[path = "layout_incremental/cache.rs"]
 mod cache;

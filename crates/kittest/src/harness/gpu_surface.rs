@@ -4,7 +4,9 @@ use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::style::Color;
 
 use crate::Error;
-use crate::gpu::{FORMAT, Gpu, create_capture_texture, headless_renderer, shared_device};
+use crate::gpu::{
+    FORMAT, Gpu, create_capture_texture, headless_renderer, read_pixels, shared_device,
+};
 
 const CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 1.0);
 
@@ -18,7 +20,8 @@ pub(super) struct GpuSurface {
     scale: f32,
     gpu: &'static Gpu,
     renderer: WgpuRenderer,
-    _texture: wgpu::Texture,
+    size_px: (u32, u32),
+    texture: wgpu::Texture,
     view: wgpu::TextureView,
     error: Option<Error>,
 }
@@ -32,15 +35,16 @@ impl GpuSurface {
             Err(err) => return Err(err),
         };
         let size_px = |extent: u32| (crate::extent_f32(extent) * scale).round();
-        let texture =
-            create_capture_texture(&gpu.0, physical(size_px(width)), physical(size_px(height)));
+        let size = (physical(size_px(width)), physical(size_px(height)));
+        let texture = create_capture_texture(&gpu.0, size.0, size.1);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         Ok(Some(Self {
             viewport: (crate::extent_f32(width), crate::extent_f32(height)),
             scale,
             gpu,
             renderer,
-            _texture: texture,
+            size_px: size,
+            texture,
             view,
             error: None,
         }))
@@ -79,6 +83,13 @@ impl GpuSurface {
             return;
         }
         self.renderer.drain_gpu_timings();
+    }
+
+    pub(super) fn image(&self) -> Result<image::RgbaImage, Error> {
+        let (width, height) = self.size_px;
+        let rgba = read_pixels(&self.gpu.0, &self.gpu.1, &self.texture, width, height)?;
+        image::RgbaImage::from_raw(width, height, rgba)
+            .ok_or_else(|| Error::Readback(format!("readback is not {width}x{height} rgba")))
     }
 
     pub(super) fn take_error(&mut self) -> Result<(), Error> {

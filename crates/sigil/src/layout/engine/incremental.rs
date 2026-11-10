@@ -4,8 +4,9 @@ use crate::profile::Counter;
 use ahash::AHashSet;
 use smallvec::SmallVec;
 
-use crate::layout::style_data::{Dimension, Display, LengthPercentage, StyleData};
-use crate::layout::{LayoutError, LayoutResult, LayoutStyle};
+use crate::Error;
+use crate::layout::style_data::{Dimension, Display, StyleData};
+use crate::layout::{LayoutResult, LayoutStyle};
 
 use super::measure::to_available_space;
 use super::{LayoutEngine, TextProbe, attribution};
@@ -22,7 +23,7 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
         structural: bool,
-    ) -> Result<Vec<NodeId>, LayoutError> {
+    ) -> Result<Vec<NodeId>, Error> {
         let roots = {
             let _dirty = crate::profile::span(crate::profile::Phase::LayoutDirty);
             self.dirty_roots(cx, dirty, root, structural)?
@@ -44,7 +45,7 @@ impl LayoutEngine {
         dirty: &[NodeId],
         root: NodeId,
         structural: bool,
-    ) -> Result<Vec<NodeId>, LayoutError> {
+    ) -> Result<Vec<NodeId>, Error> {
         if structural {
             self.gc(cx)?;
         }
@@ -83,7 +84,7 @@ impl LayoutEngine {
         roots: &[NodeId],
         root: NodeId,
         available: Size,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let origins: SmallVec<[(f32, f32); 4]> = roots
             .iter()
             .map(|id| {
@@ -195,7 +196,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         dirty: &mut Vec<NodeId>,
-    ) -> Result<Vec<NodeId>, LayoutError> {
+    ) -> Result<Vec<NodeId>, Error> {
         let _translate = crate::profile::span(crate::profile::Phase::LayoutTranslate);
         let moved: Vec<NodeId> = dirty
             .iter()
@@ -210,10 +211,11 @@ impl LayoutEngine {
         Ok(moved)
     }
 
-    fn translate(&mut self, cx: &mut Cx, id: NodeId) -> Result<(), LayoutError> {
-        let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+    fn translate(&mut self, cx: &mut Cx, id: NodeId) -> Result<(), Error> {
+        let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         let Some(next) = node
             .get_extension::<crate::layout::ReactivePosition>()
+            .copied()
             .map(crate::layout::ReactivePosition::get)
         else {
             return Ok(());
@@ -285,7 +287,12 @@ impl LayoutEngine {
         let definite = |dim: Dimension| {
             matches!(
                 dim,
-                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
+                Dimension::Px(_)
+                    | Dimension::Percent(_)
+                    | Dimension::Fill
+                    | Dimension::Rows(_)
+                    | Dimension::Cols(_)
+                    | Dimension::Em(_)
             )
         };
         cx.get(id)
@@ -297,7 +304,7 @@ impl LayoutEngine {
 }
 
 fn width_is_own(style: &StyleData) -> bool {
-    let fixed = |edge: LengthPercentage| !matches!(edge, LengthPercentage::Percent(_));
+    let fixed = |edge: Dimension| !matches!(edge, Dimension::Percent(_));
     [style.size.width, style.min_size.width, style.max_size.width]
         .into_iter()
         .all(|dim| !matches!(dim, Dimension::Percent(_)))

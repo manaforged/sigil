@@ -209,7 +209,11 @@ impl Gen<'_, '_, '_> {
         match self.entropy.below(20) {
             0 | 1 if nest => {
                 let clip = self.rect();
-                self.nested(SceneCommand::PushClip(clip), SceneCommand::PopClip, depth);
+                self.nested(
+                    SceneCommand::PushClip(clip.into()),
+                    SceneCommand::PopClip,
+                    depth,
+                );
             }
             2 | 3 if nest => {
                 let transform = self.transform();

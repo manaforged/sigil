@@ -33,7 +33,7 @@ fn overscan_zero_mounts_the_geometric_page() {
         15
     );
     let bound = mounted(|| {
-        virtual_list_bind(signal(items()), |_, _| container())
+        virtual_list(signal(items()), |_, _| container())
             .overscan(0)
             .row_height(32.0)
             .viewport_height(480.0)
@@ -43,7 +43,7 @@ fn overscan_zero_mounts_the_geometric_page() {
 
 #[test]
 fn initial_scroll_seeds_the_signal() {
-    Runtime::scope("sigil-virtual-list-initial-scroll", || {
+    Owner::scope("sigil-virtual-list-initial-scroll", || {
         let end = signal(0.0_f32);
         let _end = seeded(
             virtual_list(hundred(), |_, _| container()).initial_scroll(ScrollAnchor::Bottom),
@@ -63,7 +63,7 @@ fn initial_scroll_seeds_the_signal() {
         );
         assert_eq!(short.get(), 100.0);
         let bound = signal(0.0_f32);
-        let list = virtual_list_bind(signal(hundred()), |_, _| container());
+        let list = virtual_list(signal(hundred()), |_, _| container());
         let _bound = seeded(list.initial_scroll(ScrollAnchor::Bottom), bound);
         assert_eq!(bound.get(), 2800.0);
     });
@@ -71,12 +71,12 @@ fn initial_scroll_seeds_the_signal() {
 
 #[test]
 fn auto_pin_follows_grow_only_while_at_bottom() {
-    Runtime::scope("sigil-vlist-auto-pin", || {
+    Owner::scope("sigil-vlist-auto-pin", || {
         for (scrolled_up, expected) in [(false, 3400.0), (true, 0.0)] {
             let scroll_y = signal(0.0_f32);
             let items = signal(hundred());
             let _cx = seeded(
-                virtual_list_bind(items, |_, _| container()).follow_end(true),
+                virtual_list(items, |_, _| container()).follow_end(true),
                 scroll_y,
             );
             assert_eq!(scroll_y.get(), 2800.0);

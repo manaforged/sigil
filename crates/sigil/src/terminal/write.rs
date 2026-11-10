@@ -15,17 +15,17 @@ use smol_str::SmolStr;
 mod diff;
 mod inline;
 
-pub(crate) use diff::{Damage, dirty, unchanged};
+pub(crate) use diff::{RowDamage, dirty, unchanged};
 
 pub(crate) use inline::inline;
 
-pub(crate) struct Measured<'a, W> {
+pub(crate) struct CountingWriter<'a, W> {
     inner: &'a mut W,
     pub(crate) bytes: u64,
     pub(crate) writes: u64,
 }
 
-impl<'a, W: Write> Measured<'a, W> {
+impl<'a, W: Write> CountingWriter<'a, W> {
     pub(crate) const fn new(inner: &'a mut W) -> Self {
         Self {
             inner,
@@ -35,7 +35,7 @@ impl<'a, W: Write> Measured<'a, W> {
     }
 }
 
-impl<W: Write> Write for Measured<'_, W> {
+impl<W: Write> Write for CountingWriter<'_, W> {
     fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
         let written = self.inner.write(buffer)?;
         self.bytes += written as u64;
@@ -48,20 +48,25 @@ impl<W: Write> Write for Measured<'_, W> {
     }
 }
 
-pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid, depth: ColorDepth) -> io::Result<()> {
+pub(crate) fn render(
+    out: &mut impl Write,
+    prev: &Grid,
+    next: &Grid,
+    depth: ColorDepth,
+) -> Result<(), crate::Error> {
     let caps = Caps {
         color: depth,
         ..Caps::default()
     };
     if prev.cols() == next.cols() && prev.rows() == next.rows() {
-        dirty(out, prev, next, &caps, None)
+        dirty(out, prev, next, &caps, None).map_err(Into::into)
     } else {
-        all(out, next, &caps)
+        all(out, next, &caps).map_err(Into::into)
     }
 }
 
 pub(crate) fn all(out: &mut impl Write, grid: &Grid, caps: &Caps) -> io::Result<()> {
-    let mut pen = Pen::default();
+    let mut pen = AnsiPen::default();
     for row in 0..grid.rows() {
         row_bytes(out, grid, row, &mut pen, caps)?;
     }
@@ -77,7 +82,7 @@ pub(crate) fn same_row(prev: &[Cell], next: &[Cell], caps: &Caps) -> bool {
 }
 
 fn same_cell(old: &Cell, new: &Cell, caps: &Caps) -> bool {
-    old == new || (old.text == new.text && Style::of(old, caps) == Style::of(new, caps))
+    old == new || (old.text == new.text && AnsiStyle::of(old, caps) == AnsiStyle::of(new, caps))
 }
 
 pub(crate) fn cursor(
@@ -99,7 +104,7 @@ pub(crate) fn cursor(
 }
 
 #[derive(Clone, PartialEq, Eq)]
-struct Style {
+struct AnsiStyle {
     fg: Color,
     bg: Color,
     intensity: Attribute,
@@ -110,7 +115,7 @@ struct Style {
     link: Option<SmolStr>,
 }
 
-impl Style {
+impl AnsiStyle {
     fn of(cell: &Cell, caps: &Caps) -> Self {
         let (foreground, background) = terminal_inks(cell);
         let underline = match cell.lines.underline {
@@ -156,12 +161,12 @@ impl Style {
 }
 
 #[derive(Default)]
-struct Pen {
+struct AnsiPen {
     line: String,
-    style: Option<Style>,
+    style: Option<AnsiStyle>,
 }
 
-impl Pen {
+impl AnsiPen {
     fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
         if !self.line.is_empty() {
             queue!(out, Print(&*self.line))?;
@@ -170,7 +175,7 @@ impl Pen {
         Ok(())
     }
 
-    fn pick(&mut self, out: &mut impl Write, next: Style) -> io::Result<()> {
+    fn pick(&mut self, out: &mut impl Write, next: AnsiStyle) -> io::Result<()> {
         if self.style.as_ref() != Some(&next) {
             self.flush(out)?;
             switch(out, self.style.as_ref(), &next)?;
@@ -180,13 +185,13 @@ impl Pen {
     }
 
     fn rest(&mut self, out: &mut impl Write) -> io::Result<()> {
-        let Some(style) = self.style.take_if(|style| *style != Style::plain()) else {
+        let Some(style) = self.style.take_if(|style| *style != AnsiStyle::plain()) else {
             return Ok(());
         };
         if style.link.is_some() {
             queue!(out, Print(CLOSE_LINK))?;
         }
-        self.style = Some(Style::plain());
+        self.style = Some(AnsiStyle::plain());
         queue!(out, SetAttribute(Attribute::Reset))
     }
 }
@@ -195,7 +200,7 @@ fn row_bytes(
     out: &mut impl Write,
     grid: &Grid,
     row: usize,
-    pen: &mut Pen,
+    pen: &mut AnsiPen,
     caps: &Caps,
 ) -> io::Result<()> {
     let end = grid.painted_width(row);
@@ -206,7 +211,7 @@ fn cells(
     out: &mut impl Write,
     row_cells: &[Cell],
     (row, start, end, tail): (usize, usize, usize, bool),
-    pen: &mut Pen,
+    pen: &mut AnsiPen,
     caps: &Caps,
 ) -> io::Result<()> {
     queue!(out, cursor::MoveTo(clip(start), clip(row)))?;
@@ -217,7 +222,7 @@ fn cells(
     };
     let stop = fill.as_ref().map_or(end, |(from, _)| *from);
     for cell in row_cells.iter().take(stop).skip(start) {
-        pen.pick(out, Style::of(cell, caps))?;
+        pen.pick(out, AnsiStyle::of(cell, caps))?;
         pen.line.push_str(&cell.text);
     }
     pen.flush(out)?;
@@ -234,9 +239,13 @@ fn cells(
     Ok(())
 }
 
-fn filled(row_cells: &[Cell], (start, end): (usize, usize), caps: &Caps) -> Option<(usize, Style)> {
+fn filled(
+    row_cells: &[Cell],
+    (start, end): (usize, usize),
+    caps: &Caps,
+) -> Option<(usize, AnsiStyle)> {
     let span = row_cells.get(start..end)?;
-    let paint = Style::of(span.last()?, caps);
+    let paint = AnsiStyle::of(span.last()?, caps);
     if caps.erase == Erase::Default && paint.bg != Color::Reset {
         return None;
     }
@@ -244,7 +253,7 @@ fn filled(row_cells: &[Cell], (start, end): (usize, usize), caps: &Caps) -> Opti
     if !reaches || paint.underline != Underline::None || paint.strike || paint.link.is_some() {
         return None;
     }
-    let blank = |cell: &Cell| cell.text == " " && Style::of(cell, caps) == paint;
+    let blank = |cell: &Cell| cell.text == " " && AnsiStyle::of(cell, caps) == paint;
     let from = span
         .iter()
         .rposition(|cell| !blank(cell))
@@ -256,11 +265,11 @@ const FILL_MIN: usize = 4;
 
 const CLOSE_LINK: &str = "\x1b]8;;\x1b\\";
 
-fn switch(out: &mut impl Write, prev: Option<&Style>, next: &Style) -> io::Result<()> {
+fn switch(out: &mut impl Write, prev: Option<&AnsiStyle>, next: &AnsiStyle) -> io::Result<()> {
     if prev.is_none() {
         queue!(out, SetAttribute(Attribute::Reset))?;
     }
-    let prev = prev.cloned().unwrap_or_else(Style::plain);
+    let prev = prev.cloned().unwrap_or_else(AnsiStyle::plain);
     if prev.intensity != next.intensity {
         if prev.intensity != Attribute::NormalIntensity {
             queue!(out, SetAttribute(Attribute::NormalIntensity))?;
@@ -284,7 +293,7 @@ fn switch(out: &mut impl Write, prev: Option<&Style>, next: &Style) -> io::Resul
     lines(out, &prev, next)
 }
 
-fn lines(out: &mut impl Write, prev: &Style, next: &Style) -> io::Result<()> {
+fn lines(out: &mut impl Write, prev: &AnsiStyle, next: &AnsiStyle) -> io::Result<()> {
     if prev.strike != next.strike {
         queue!(
             out,

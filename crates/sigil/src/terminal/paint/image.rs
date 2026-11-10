@@ -9,7 +9,7 @@ const SOLID: u32 = 51;
 const PEAK: u32 = 128;
 const INK: u8 = 64;
 
-type Window = (usize, usize, usize);
+type ImageWindow = (usize, usize, usize);
 
 impl Grid {
     pub(super) fn place(
@@ -20,11 +20,17 @@ impl Grid {
         size: (usize, usize),
     ) {
         let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
+        let cols = clip(size.0);
+        let rows = clip(size.1);
         self.images.push(Placement {
             col: clip(at.0),
             row: clip(at.1),
-            cols: clip(size.0),
-            rows: clip(size.1),
+            cols,
+            rows,
+            mark_col: 0,
+            mark_row: 0,
+            span_cols: cols,
+            span_rows: rows,
             source: source.clone(),
             crop,
         });
@@ -36,6 +42,38 @@ impl Grid {
             self.sextants(source, window, at, size);
         } else {
             self.overlay(source, window, at, size);
+        }
+    }
+
+    pub(crate) fn stamp_placeholders(&mut self) {
+        let places = self.images.clone();
+        for place in places {
+            if place.span_rows > 256 || place.span_cols > 256 {
+                continue;
+            }
+            let id = crate::terminal::graphics::kitty_id(&place.source);
+            let [extra, r, g, b] = id.to_be_bytes();
+            let fg = Ink::Exact(Rgba8 { r, g, b, a: 255 });
+            let origin_col = usize::from(place.col);
+            let origin_row = usize::from(place.row);
+            for y in 0..place.rows {
+                for x in 0..place.cols {
+                    let Some(text) = crate::terminal::placeholder::grapheme(
+                        place.mark_row.saturating_add(y),
+                        place.mark_col.saturating_add(x),
+                        extra,
+                    ) else {
+                        continue;
+                    };
+                    let Some(cell) =
+                        self.cell_mut(origin_col + usize::from(x), origin_row + usize::from(y))
+                    else {
+                        continue;
+                    };
+                    cell.text = SmolStr::new(&text);
+                    cell.fg = fg;
+                }
+            }
         }
     }
 
@@ -107,7 +145,7 @@ fn opaque(source: &ImageSource) -> bool {
         .all(|[.., alpha]| *alpha == 255)
 }
 
-fn pixels(source: &ImageSource, window: (u32, u32)) -> Window {
+fn pixels(source: &ImageSource, window: (u32, u32)) -> ImageWindow {
     let width = source.width() as usize;
     let full = source.height() as usize;
     let top = (window.0 as usize).min(full);
@@ -130,7 +168,11 @@ struct Sums {
 }
 
 impl Sums {
-    fn sample(source: &ImageSource, (width, top, height): Window, cells: (usize, usize)) -> Self {
+    fn sample(
+        source: &ImageSource,
+        (width, top, height): ImageWindow,
+        cells: (usize, usize),
+    ) -> Self {
         let cols = cells.0 * 2;
         let rows = cells.1 * 3;
         let mut slots = vec![[0_u32; 6]; cols * rows];
@@ -188,7 +230,7 @@ fn colour([r, g, b, a]: [u32; 4]) -> Rgba8 {
 
 type Icon = (char, Rgba8, (usize, usize));
 
-fn icon(source: &ImageSource, (width, top, height): Window) -> Option<Icon> {
+fn icon(source: &ImageSource, (width, top, height): ImageWindow) -> Option<Icon> {
     let inked: Vec<(usize, usize, [u8; 4])> = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .map(|(x, y)| (x, y, texel(source, x, top + y)))
@@ -243,3 +285,7 @@ fn arrow(across: [Option<usize>; 3], down: [Option<usize>; 3]) -> Option<char> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+#[path = "image_tests.rs"]
+mod tests;

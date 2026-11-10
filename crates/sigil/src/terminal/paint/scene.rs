@@ -1,35 +1,43 @@
-use crate::geometry::Rect;
+use crate::geometry::{Point, Rect};
+use crate::kernel::ObjectFit;
+use crate::scene::command::effects::transform_rect;
+use crate::scene::command::image_fit::fit;
+use crate::scene::geometry::IDENTITY;
+use crate::scene::state::SceneState;
 use crate::scene::{
-    CellBorder, CommandScene, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawRect,
-    LinearGradient, SceneCommand,
+    CellBorder, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawRect, GlyphRun,
+    Gradient, LayerEffect, SceneCommand,
 };
-use crate::style::{Rgba8, Theme, Tone};
-use crate::terminal::caps::{Caps, ColorDepth, Fills};
+use crate::style::{Rgba8, Theme};
+use crate::terminal::caps::{Caps, Fills};
 
-use super::decoration::{self, Edge};
-use super::fill::{self, Surface};
+use super::decoration::{self, BorderEdge};
+use super::fill::{self, FillSurface};
 use super::marks::Marks;
 use super::paint_clip::{Text, image_crop, paint_text};
-use super::transform::Space;
 use super::{Face, Grid, Ink, Underline, cell_edge, floor_cell};
 
-pub struct Paint<'a> {
+mod image;
+mod path;
+
+pub(crate) struct CellPaint<'a> {
     pub theme: &'a Theme,
     pub cell: f32,
     pub caps: Caps,
     pub marks: &'a Marks,
 }
 
+#[cfg(test)]
 #[must_use]
-pub fn raster(scene: &CommandScene, theme: &Theme, cols: u16, rows: u16, cell: f32) -> Grid {
+pub(crate) fn raster(scene: &CommandScene, theme: &Theme, cols: u16, rows: u16, cell: f32) -> Grid {
     let mut grid = Grid::new(cols, rows);
     raster_into(&mut grid, scene, theme, cell);
     grid
 }
 
-pub fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32) {
+pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32) {
     let marks = Marks::default();
-    let paint = Paint {
+    let paint = CellPaint {
         theme,
         cell,
         caps: Caps::default(),
@@ -38,7 +46,7 @@ pub fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f
     raster_with(grid, scene, &paint);
 }
 
-pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
+pub(crate) fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &CellPaint<'_>) {
     grid.reset();
     walk(grid, scene, paint, None);
     grid.map_glyphs(paint.caps.glyphs);
@@ -47,18 +55,16 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
 pub(super) fn walk(
     grid: &mut Grid,
     scene: &CommandScene,
-    paint: &Paint<'_>,
+    paint: &CellPaint<'_>,
     only: Option<&[Rect]>,
 ) {
-    let mut walk = Walk {
+    let mut walk = CellWalk {
         grid,
         paint,
         only,
         hull: only.and_then(hull),
         cell: if paint.cell <= 0.0 { 1.0 } else { paint.cell },
-        clips: Vec::new(),
-        alphas: Vec::new(),
-        space: Space::default(),
+        state: SceneState::default(),
     };
     for command in &scene.commands {
         walk.command(command);
@@ -84,44 +90,19 @@ fn hull(regions: &[Rect]) -> Option<[f32; 4]> {
     })
 }
 
-fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
-    let mut stops = gradient.stops.iter();
-    let Some(first) = stops.next() else {
-        return Rgba8 {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 0,
-        };
-    };
-    if first.offset >= 0.5 {
-        return first.color;
-    }
-    let mut prev = first;
-    for next in stops {
-        if next.offset >= 0.5 {
-            let span = (next.offset - prev.offset).max(f32::EPSILON);
-            let t = ((0.5 - prev.offset) / span).clamp(0.0, 1.0);
-            return blend(prev.color, next.color, t);
-        }
-        prev = next;
-    }
-    prev.color
+fn gradient_flat(gradient: &Gradient) -> Rgba8 {
+    crate::scene::command::fills::color_at(&gradient.stops, 0.5)
 }
 
 #[allow(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "channels are clamped to the u8 range before the cast"
+    reason = "cell coordinates fit an i32 and the cast saturates beyond it"
 )]
-fn blend(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
-    let mix = |x: u8, y: u8| (f32::from(x).mul_add(1.0 - t, f32::from(y) * t)).round() as u8;
-    Rgba8 {
-        r: mix(a.r, b.r),
-        g: mix(a.g, b.g),
-        b: mix(a.b, b.b),
-        a: mix(a.a, b.a),
-    }
+fn signed_span(start: f32, extent: f32) -> (i32, u16) {
+    let first = (start + 0.5).floor() as i32;
+    let end = (start + extent + 0.5).floor() as i32;
+    let width = end.saturating_sub(first).clamp(1, 256);
+    (first, u16::try_from(width).unwrap_or(256))
 }
 
 fn span(start: f32, extent: f32) -> (usize, usize) {
@@ -138,49 +119,23 @@ fn reach(rect: Rect, border: Option<CellBorder>) -> Rect {
     border.map_or(rect, |border| rect.union(border.rect))
 }
 
-struct Walk<'a> {
+struct CellWalk<'a> {
     grid: &'a mut Grid,
-    paint: &'a Paint<'a>,
+    paint: &'a CellPaint<'a>,
     only: Option<&'a [Rect]>,
     hull: Option<[f32; 4]>,
     cell: f32,
-    clips: Vec<Rect>,
-    alphas: Vec<f32>,
-    space: Space,
+    state: SceneState,
 }
 
-type Area = (Rect, (usize, usize), (usize, usize));
+type SceneArea = (Rect, (usize, usize), (usize, usize));
 
-impl Walk<'_> {
-    const fn ink(&self, colour: Rgba8, tone: Option<Tone>) -> Ink {
-        match (self.paint.caps.color, tone) {
-            (ColorDepth::Ansi16 | ColorDepth::Monochrome, Some(tone)) => Ink::Of(tone),
-            _ => Ink::pick(colour, tone),
-        }
-    }
-
+impl CellWalk<'_> {
     fn command(&mut self, command: &SceneCommand) {
+        if self.state.apply(command) || self.layer(command) || self.state.clipped_out() {
+            return;
+        }
         match command {
-            SceneCommand::PushClip(rect) => self.push_clip(*rect),
-            SceneCommand::PopClip => {
-                self.clips.pop();
-            }
-            SceneCommand::SaveLayer { opacity } => self.alphas.push(*opacity),
-            SceneCommand::RestoreLayer => {
-                self.alphas.pop();
-            }
-            SceneCommand::PushLayer(scope) => {
-                self.push_clip(scope.clip);
-                self.alphas.push(scope.opacity);
-                self.space.push_effect(scope.effect);
-            }
-            SceneCommand::PopLayer => {
-                self.clips.pop();
-                self.alphas.pop();
-                self.space.pop();
-            }
-            SceneCommand::PushTransform(transform) => self.space.push(*transform),
-            SceneCommand::PopTransform => self.space.pop(),
             SceneCommand::Rect(draw) => {
                 let caret = self.paint.marks.caret(draw.node);
                 if caret || self.wanted(reach(draw.rect, draw.border)) {
@@ -193,11 +148,12 @@ impl Walk<'_> {
                 }
             }
             SceneCommand::GlyphRun(draw) => {
-                if self.wanted(draw.run.rect) {
+                if self.wanted(draw.rect) {
                     self.text(draw);
                 }
             }
             SceneCommand::Image(draw) => self.image(draw),
+            SceneCommand::Path(draw) => self.path(draw),
             SceneCommand::Decoration(draw) => {
                 if self.wanted(draw.band) {
                     self.decoration(draw);
@@ -205,8 +161,49 @@ impl Walk<'_> {
             }
             SceneCommand::Pattern(_)
             | SceneCommand::DrawShadow { .. }
-            | SceneCommand::Sprite(_) => {}
+            | SceneCommand::Sprite(_)
+            | SceneCommand::PushClip(_)
+            | SceneCommand::PopClip
+            | SceneCommand::PushTransform(_)
+            | SceneCommand::PopTransform
+            | SceneCommand::SaveLayer { .. }
+            | SceneCommand::RestoreLayer
+            | SceneCommand::PushLayer(_)
+            | SceneCommand::PopLayer => {}
         }
+    }
+
+    fn layer(&mut self, command: &SceneCommand) -> bool {
+        match command {
+            SceneCommand::PushLayer(scope) => {
+                self.state.push_clip(match scope.effect {
+                    LayerEffect::Projected {
+                        transform,
+                        hide_backface,
+                    } if transform.visible(hide_backface).is_none() => {
+                        Rect::new(scope.clip.origin, 0.0, 0.0)
+                    }
+                    _ => scope.clip,
+                });
+                self.state.apply(&SceneCommand::SaveLayer {
+                    opacity: scope.opacity,
+                });
+                self.state.push_transform(match scope.effect {
+                    LayerEffect::Transform(transform) => transform,
+                    LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
+                    LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => {
+                        IDENTITY
+                    }
+                });
+            }
+            SceneCommand::PopLayer => {
+                self.state.pop_clip();
+                self.state.apply(&SceneCommand::RestoreLayer);
+                self.state.pop_transform();
+            }
+            _ => return false,
+        }
+        true
     }
 
     fn wanted(&self, rect: Rect) -> bool {
@@ -216,7 +213,7 @@ impl Walk<'_> {
         let Some([left, top, right, bottom]) = self.hull else {
             return false;
         };
-        let rect = self.space.map(rect);
+        let rect = self.map(rect);
         rect.origin.x < right
             && left < rect.origin.x + rect.width
             && rect.origin.y < bottom
@@ -225,17 +222,11 @@ impl Walk<'_> {
     }
 
     fn clip(&self) -> Option<Rect> {
-        self.clips.last().copied()
+        self.state.current_clip()
     }
 
-    fn push_clip(&mut self, rect: Rect) {
-        let rect = self.space.map(rect);
-        let next = self.clip().map_or(rect, |outer| {
-            outer
-                .intersection(rect)
-                .unwrap_or_else(|| Rect::new(rect.origin, 0.0, 0.0))
-        });
-        self.clips.push(next);
+    fn map(&self, rect: Rect) -> Rect {
+        transform_rect(self.state.current_transform(), rect)
     }
 
     #[allow(
@@ -244,7 +235,7 @@ impl Walk<'_> {
         reason = "alpha is clamped to the u8 range before the cast"
     )]
     fn fade(&self, color: Rgba8, opacity: u16) -> Rgba8 {
-        let layers: f32 = self.alphas.iter().product();
+        let layers = self.state.current_opacity();
         let scale = layers * f32::from(opacity.min(10_000)) / 10_000.0;
         if scale >= 1.0 {
             return color;
@@ -255,8 +246,8 @@ impl Walk<'_> {
         Rgba8 { a, ..color }
     }
 
-    fn area(&self, rect: Rect) -> Option<Area> {
-        let rect = self.space.map(rect);
+    fn area(&self, rect: Rect) -> Option<SceneArea> {
+        let rect = self.map(rect);
         let visible = match self.clip() {
             Some(clip) => rect.intersection(clip)?,
             None => rect,
@@ -278,10 +269,10 @@ impl Walk<'_> {
         }
         if !draw.outline {
             let color = self.fade(draw.color, draw.opacity);
-            let ink = self.ink(color, draw.tone);
+            let ink = Ink::pick(color, draw.tone);
             if ink.set() {
-                let surface = Surface {
-                    rect: self.space.map(draw.rect),
+                let surface = FillSurface {
+                    rect: self.map(draw.rect),
                     visible,
                     origin,
                     size,
@@ -296,11 +287,11 @@ impl Walk<'_> {
         }
         if let Some(border) = draw.border {
             let border = CellBorder {
-                rect: self.space.map(border.rect),
+                rect: self.map(border.rect),
                 color: self.fade(border.color, draw.opacity),
                 ..border
             };
-            let edge = Edge {
+            let edge = BorderEdge {
                 clip: self.clip(),
                 theme: self.paint.theme,
                 borders: self.paint.caps.borders,
@@ -327,17 +318,17 @@ impl Walk<'_> {
         self.rect(&draw_rect);
     }
 
-    fn text(&mut self, draw: &DrawGlyphRun) {
-        let run = &draw.run;
+    fn text(&mut self, draw: &GlyphRun) {
+        let run = draw;
         let Some((visible, ..)) = self.area(run.rect) else {
             return;
         };
         let text = Text {
-            rect: self.space.map(run.rect),
+            rect: self.map(run.rect),
             clip: self.clip(),
             content: &run.text,
             flow: run.flow,
-            ink: self.ink(self.fade(run.color, run.opacity), run.tone),
+            ink: Ink::pick(self.fade(run.color, run.opacity), run.tone),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
             theme: self.paint.theme,
@@ -347,13 +338,14 @@ impl Walk<'_> {
         paint_text(self.grid, &text, visible, self.cell);
     }
 
-    fn face(&self, draw: &DrawGlyphRun) -> Face {
-        let style = &draw.run.style;
-        let linked = self.paint.marks.link(draw.run.node).is_some();
+    fn face(&self, draw: &GlyphRun) -> Face {
+        let style = &draw.style;
+        let linked = self.paint.marks.link(draw.node).is_some();
         Face {
             bold: style.font_weight >= 700,
             italic: style.italic,
             dim: style.font_weight < 400,
+            strike: false,
             underline: if linked && !self.paint.caps.hyperlinks {
                 Underline::Straight
             } else {
@@ -368,22 +360,10 @@ impl Walk<'_> {
             return;
         }
         let line = DrawDecoration {
-            band: self.space.map(draw.band),
+            band: self.map(draw.band),
             color,
             ..*draw
         };
         super::marks::decorate(self.grid, &line, self.clip(), self.cell);
-    }
-
-    fn image(&mut self, draw: &DrawImage) {
-        let Some((visible, origin, size)) = self.area(draw.destination) else {
-            return;
-        };
-        let crop = image_crop(
-            (self.space.map(draw.destination), draw.crop),
-            visible,
-            &draw.source,
-        );
-        self.grid.place(&draw.source, crop, origin, size);
     }
 }

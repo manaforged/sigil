@@ -4,21 +4,17 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::kernel::{Cx, NodeId, container};
-use crate::reactive::{Runtime, signal};
-use crate::style::{ColorAtom, ColorKey, Px, Rgba8, StyleAtom, StyleBinding, Token};
+use crate::reactive::{Owner, signal};
+use crate::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding, Token};
 
-static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Surface,
-))];
-static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Accent,
-))];
-static PADDING_ON: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(16))];
-static PADDING_OFF: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(4))];
+static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
+static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))];
+static PADDING_ON: &[StyleAtom] = &[StyleAtom::PaddingAll(16)];
+static PADDING_OFF: &[StyleAtom] = &[StyleAtom::PaddingAll(4)];
 
 #[test]
 fn reactive_reapplies_on_signal_change() {
-    Runtime::scope("sigil_style_reactive_reapplies", || {
+    Owner::scope("sigil_style_reactive_reapplies", || {
         let active = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(
@@ -38,7 +34,7 @@ fn reactive_reapplies_on_signal_change() {
 fn dispose_drops_effect() {
     let runs = Rc::new(Cell::new(0_u32));
 
-    Runtime::scope("sigil_style_reactive_dispose", || {
+    Owner::scope("sigil_style_reactive_dispose", || {
         let active = signal(false);
         let runs_for_effect = Rc::clone(&runs);
         let mut cx = Cx::new_root();
@@ -59,7 +55,7 @@ fn dispose_drops_effect() {
 
 #[test]
 fn reactive_toggle_is_alloc_free() {
-    Runtime::scope("sigil_style_reactive_alloc_free", || {
+    Owner::scope("sigil_style_reactive_alloc_free", || {
         let active = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(move || {
@@ -86,7 +82,7 @@ fn reactive_toggle_is_alloc_free() {
 
 #[test]
 fn pillar_call_site_compiles() {
-    Runtime::scope("sigil_style_pillar_call_site", || {
+    Owner::scope("sigil_style_pillar_call_site", || {
         let danger = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(move || {

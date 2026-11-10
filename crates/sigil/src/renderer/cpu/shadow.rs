@@ -14,7 +14,7 @@ use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::expanded_shadow_rect;
-use crate::style::srgb;
+use crate::style::srgb::{decode, decode_unit, encode, encode_byte};
 
 use super::shadow_field::ShadowField;
 use super::shapes::{blit, coverage_table};
@@ -109,6 +109,7 @@ pub(super) fn shadow(target: &mut Pixmap, shadow: &Shadow, place: &ShadowPlaceme
         &scratch,
         Transform::from_translate(origin.x, origin.y),
         mask,
+        tiny_skia::BlendMode::SourceOver,
     );
 }
 
@@ -123,7 +124,7 @@ pub(super) fn blur(pixmap: &mut Pixmap, sigma: f32) {
         radius,
     };
     let (pixels, _) = pixmap.data_mut().as_chunks_mut::<4>();
-    let mut light: Vec<[f32; 4]> = pixels.iter().map(|p| to_linear(*p)).collect();
+    let mut light: Vec<[f32; 4]> = pixels.iter().map(|p| to_premultiplied(*p)).collect();
     let mut scratch = vec![[0.0_f32; 4]; light.len()];
     for _ in 0..BLUR_PASSES {
         box_pass(&light, &mut scratch, dims, true);
@@ -134,15 +135,32 @@ pub(super) fn blur(pixmap: &mut Pixmap, sigma: f32) {
     }
 }
 
-fn to_linear([r, g, b, a]: [u8; 4]) -> [f32; 4] {
-    let [r, g, b] = [r, g, b].map(srgb::decode);
-    [r, g, b, f32::from(a) / 255.0]
+fn to_premultiplied(pixel: [u8; 4]) -> [f32; 4] {
+    let alpha = f32::from(pixel[3]) / 255.0;
+    if alpha <= 0.0 {
+        return [0.0; 4];
+    }
+    let channel = |stored: u8| encode((decode(stored) / alpha).min(1.0)) * alpha;
+    [
+        channel(pixel[0]),
+        channel(pixel[1]),
+        channel(pixel[2]),
+        alpha,
+    ]
 }
 
-fn to_encoded([r, g, b, a]: [f32; 4]) -> [u8; 4] {
-    let byte = |v: f32| (v * 255.0).round().clamp(0.0, 255.0) as u8;
-    let [r, g, b] = [r, g, b].map(|v| byte(srgb::encode(v)));
-    [r, g, b, byte(a)]
+fn to_encoded(value: [f32; 4]) -> [u8; 4] {
+    let alpha = value[3].clamp(0.0, 1.0);
+    if alpha <= 0.0 {
+        return [0; 4];
+    }
+    let channel = |srgb: f32| encode_byte(decode_unit((srgb / alpha).min(1.0)) * alpha);
+    [
+        channel(value[0]),
+        channel(value[1]),
+        channel(value[2]),
+        (alpha * 255.0).round() as u8,
+    ]
 }
 
 #[derive(Clone, Copy)]

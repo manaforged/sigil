@@ -1,5 +1,7 @@
 use std::sync::MutexGuard;
 
+use super::attr::Attribution;
+use super::key::Category;
 use super::*;
 
 fn recording(backend: Option<BackendKind>) -> MutexGuard<'static, ()> {
@@ -137,8 +139,8 @@ fn summary_names_who_caused_the_cost_and_the_gpu_passes() {
             kind: BackendKind::Gpu,
             fallback: FallbackCause::None,
         });
-        attribute(Hotspot::LayoutDirtySeed, 1, subject);
-        attribute(Hotspot::LayoutDirtySeed, 1, subject);
+        attribute(Hotspot::LayoutDirtySeed, 1, 7, subject);
+        attribute(Hotspot::LayoutDirtySeed, 1, 8, subject);
         gpu_pass("scene paint pass", 2_000_000);
         tick_frame();
     }

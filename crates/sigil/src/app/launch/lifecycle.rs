@@ -1,6 +1,6 @@
 use crate::app::WindowCommand;
-use crate::app::error::AppResult;
 use crate::app::window::{WindowId, take_open_requests};
+use crate::error::AppResult;
 use crate::hal::Shell as _;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
@@ -9,18 +9,23 @@ use super::logical_size_from_config;
 use super::record::{CloseOutcome, Routed, WindowRecord, Windows};
 
 pub(super) fn open_requested(shell: &mut WinitShell, windows: &mut Windows) -> AppResult<()> {
-    for request in take_open_requests() {
-        let logical = logical_size_from_config(request.config.size);
-        let handle = create_initial_window(shell, &request.config, logical)?;
-        windows.insert(WindowRecord::new(
-            request.id,
-            handle,
-            request.config,
-            request.mount,
-        )?);
-        shell.request_redraws();
+    loop {
+        let requests = take_open_requests();
+        if requests.is_empty() {
+            return Ok(());
+        }
+        for request in requests {
+            let logical = logical_size_from_config(request.config.size);
+            let handle = create_initial_window(shell, &request.config, logical)?;
+            windows.insert(WindowRecord::new(
+                request.id,
+                handle,
+                request.config,
+                request.mount,
+            )?);
+            shell.request_redraws();
+        }
     }
-    Ok(())
 }
 
 pub(super) fn dispatch_events(shell: &mut WinitShell, windows: &mut Windows) {

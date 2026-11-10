@@ -1,6 +1,6 @@
 use core::fmt;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::geometry::Rect;
 use crate::hal::RenderedGlyph;
@@ -9,11 +9,15 @@ use crate::style::{Rgba8, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
+/// The direction of a run of text.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TextFlow {
+    /// The line text flow.
     #[default]
     Line,
+    /// The wrap text flow.
     Wrap,
+    /// The ellipsis text flow.
     Ellipsis,
 }
 
@@ -35,16 +39,21 @@ pub struct SharedGlyph {
     positioned_glyphs: Vec<RenderedGlyph>,
     #[cfg(feature = "scene")]
     paragraph: Option<Paragraph>,
+    fill: Option<super::DrawPath>,
 }
 
+/// Shaped glyphs with one style and origin.
 #[derive(Clone)]
 pub struct GlyphRun {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The rect.
     pub rect: Rect,
-    shared: Rc<SharedGlyph>,
+    shared: Arc<SharedGlyph>,
 }
 
 impl GlyphRun {
+    /// Creates a glyph run.
     #[must_use]
     pub fn new(
         rect: Rect,
@@ -56,7 +65,7 @@ impl GlyphRun {
         Self {
             node: None,
             rect,
-            shared: Rc::new(SharedGlyph {
+            shared: Arc::new(SharedGlyph {
                 text: text.into(),
                 color,
                 style,
@@ -67,16 +76,27 @@ impl GlyphRun {
                 positioned_glyphs: Vec::new(),
                 #[cfg(feature = "scene")]
                 paragraph: None,
+                fill: None,
             }),
         }
     }
 
+    /// Returns the number of positioned glyphs in this run.
     #[must_use]
-    pub fn positioned_glyphs(&self) -> &[RenderedGlyph] {
-        &self.shared.positioned_glyphs
+    pub fn glyph_count(&self) -> usize {
+        self.shared.positioned_glyphs.len()
     }
 
     #[cfg(feature = "scene")]
+    #[must_use]
+    pub(crate) fn positioned_glyphs(&self) -> &[RenderedGlyph] {
+        &self.shared.positioned_glyphs
+    }
+
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) fn ink_rect(&self) -> Option<Rect> {
         let Some(paragraph) = self.paragraph() else {
             return Some(self.rect);
@@ -107,7 +127,7 @@ impl GlyphRun {
 
     #[cfg(feature = "scene")]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.positioned_glyphs = paragraph.rendered_glyphs();
         shared.paragraph = Some(paragraph);
         self
@@ -115,14 +135,14 @@ impl GlyphRun {
 
     #[cfg(feature = "scene")]
     pub(crate) fn with_glyphs(mut self, color: Rgba8, glyphs: Vec<RenderedGlyph>) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.color = color;
         shared.positioned_glyphs = glyphs;
         self
     }
 
     pub(crate) fn with_inks(mut self, inks: Vec<RunInk>) -> Self {
-        Rc::make_mut(&mut self.shared).inks = inks;
+        Arc::make_mut(&mut self.shared).inks = inks;
         self
     }
 
@@ -132,7 +152,7 @@ impl GlyphRun {
     }
 
     pub(crate) fn with_cell(mut self, flow: TextFlow, tone: Option<Tone>) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.flow = flow;
         shared.tone = tone;
         self
@@ -141,6 +161,40 @@ impl GlyphRun {
     pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
         self.node = Some(node);
         self
+    }
+
+    #[cfg(feature = "scene")]
+    pub(crate) fn with_fill(mut self, fill: super::DrawPath) -> Self {
+        Arc::make_mut(&mut self.shared).fill = Some(fill);
+        self
+    }
+
+    #[cfg(feature = "scene")]
+    pub(crate) fn fill(&self) -> Option<&super::DrawPath> {
+        self.shared.fill.as_ref()
+    }
+
+    pub(crate) fn tinted(&self, color: Rgba8) -> Self {
+        let mut run = self.clone();
+        run.node = None;
+        let shared = Arc::make_mut(&mut run.shared);
+        shared.color = color;
+        shared.fill = None;
+        for ink in &mut shared.inks {
+            ink.color = ink.color.map(|_| color);
+            ink.background = None;
+        }
+        run
+    }
+
+    pub(crate) fn shift(&mut self, dx: f32, dy: f32) {
+        self.rect.origin.x += dx;
+        self.rect.origin.y += dy;
+        if self.shared.fill.is_some()
+            && let Some(fill) = Arc::make_mut(&mut self.shared).fill.as_mut()
+        {
+            fill.shift(dx, dy);
+        }
     }
 }
 
@@ -184,7 +238,8 @@ impl PartialEq for GlyphRun {
     fn eq(&self, other: &Self) -> bool {
         self.rect == other.rect
             && self.node == other.node
-            && (Rc::ptr_eq(&self.shared, &other.shared) || same_shared(&self.shared, &other.shared))
+            && (Arc::ptr_eq(&self.shared, &other.shared)
+                || same_shared(&self.shared, &other.shared))
     }
 }
 
@@ -197,22 +252,15 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && this.tone == other.tone
         && this.inks == other.inks
         && this.positioned_glyphs == other.positioned_glyphs
+        && this.fill == other.fill
         && same_paragraph(this, other)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DrawGlyphRun {
-    pub run: GlyphRun,
-}
-
-impl DrawGlyphRun {
-    #[must_use]
-    pub const fn new(run: GlyphRun) -> Self {
-        Self { run }
-    }
-}
-
-#[cfg(feature = "scene")]
+/// A shaped `GlyphRun`, which `SceneCommand::GlyphRun` holds.
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 #[must_use]
 pub fn shape_glyph_run(
     rect: Rect,
@@ -239,6 +287,7 @@ const fn shape_paragraph(run: GlyphRun) -> GlyphRun {
 
 #[cfg(feature = "scene")]
 fn shape_paragraph(run: GlyphRun) -> GlyphRun {
+    use crate::style::StyledTextEngine as _;
     let max_width = run.rect.width.max(1.0);
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = match run.flow {

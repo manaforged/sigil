@@ -4,6 +4,7 @@ use super::Cx;
 use crate::kernel::{NodeId, NodeType, TextContent};
 
 impl Cx {
+    /// Indented text of the node tree below `root`, for debugging.
     #[must_use]
     pub fn dump_tree(&self, root: NodeId) -> String {
         let mut out = String::new();

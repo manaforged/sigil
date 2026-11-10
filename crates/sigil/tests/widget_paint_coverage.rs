@@ -14,7 +14,7 @@ use sigil::widgets::{
     number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
     toggle, virtual_list,
 };
-use sigil_kittest::{InteractionMode, render_widget_to_png_stub};
+use sigil_kittest::{Harness, InteractionMode};
 
 type Case = (&'static str, Box<dyn IntoNode>);
 
@@ -203,7 +203,12 @@ fn run(cases: Vec<Case>) {
     for (stem, build) in cases {
         assert_painted(
             stem,
-            render_widget_to_png_stub(build, InteractionMode::Default, [240, 96], (0.0, 0.0))
+            Harness::render(build)
+                .stub()
+                .mode(InteractionMode::Default)
+                .size([240, 96])
+                .hit((0.0, 0.0))
+                .image()
                 .expect("sigil-kittest"),
         );
     }

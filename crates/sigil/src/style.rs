@@ -1,9 +1,13 @@
 pub(crate) mod presence;
+pub(crate) mod projection;
 pub(crate) mod srgb;
 pub(crate) mod transform;
 use phf as _;
 use smallvec as _;
-pub use transform::Transform2D;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use transform::Transform2D;
+}
 
 #[cfg(test)]
 use allocation_counter as _;
@@ -19,6 +23,7 @@ pub(crate) mod engine;
 pub(crate) mod focus_ring;
 pub(crate) mod font_family;
 mod grid;
+pub(crate) mod image_paint;
 mod install;
 pub(crate) mod intern;
 pub(crate) mod locale;
@@ -26,11 +31,16 @@ pub(crate) mod merge;
 pub(crate) mod metrics;
 pub(crate) mod overlay;
 mod paint;
-pub mod palette;
+pub(crate) mod palette;
 pub(crate) mod parser;
 pub(crate) mod reactive;
 pub(crate) mod resolve;
-pub mod scale;
+mod text_scale;
+kittest_pub! {
+    /// The color scales of the default themes.
+    #[doc(hidden)]
+    pub mod scale;
+}
 pub(crate) mod size;
 pub(crate) mod state;
 pub(crate) mod strings;
@@ -41,56 +51,114 @@ pub(crate) mod text_style;
 pub(crate) mod theme;
 pub(crate) mod token;
 pub(crate) mod tone;
-pub mod variant;
+pub(crate) mod variant;
 pub(crate) mod variant_kit;
 
-pub use animator_overlay::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
+pub(crate) use animator_overlay::AnimatorOverlay;
+pub(crate) use animator_overlay::{ColorAtomKind, Family, NumericAtomKind};
+pub(crate) use atom::Px;
+pub(crate) use atom::SPACING_STEP;
+pub(crate) use atom::TextDecoration;
 pub use atom::{
-    AlignKind, BgGradient, ColorAtom, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind,
-    GradientAxis, GradientStopKey, JustifyKind, MillisU16, OverflowKind, Px, RenderStyle, Rgba8,
-    SPACING_STEP, StyleAtom, TextDecoration, TransitionId,
+    ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial,
+    RadialExtent, Rgba8,
 };
-pub use binding::{ReactiveStateSlot, ReactiveStyleAtoms, StyleBinding};
-pub(crate) use builder_ext::ClassSource;
-pub use builder_ext::NodeStyleExt;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, FilterAtom, MaskAtom, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
+}
+pub(crate) use binding::ReactiveStateSlot;
+#[cfg(not(feature = "kittest"))]
+pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub use binding::{ReactiveStyleAtoms, StyleBinding};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use builder_ext::ClassSource;
+}
 pub(crate) use class_parse::parse_classes;
-pub use engine::StyleEngine;
-pub use focus_ring::FocusRing;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use engine::StyleEngine;
+}
+kittest_pub! {
+    #[doc(hidden)]
+    pub use focus_ring::FocusRing;
+}
 pub use font_family::FontFamily;
 pub use grid::grid;
 pub(crate) use grid::{cell_size, swap_cell};
-pub use locale::{DateOrder, Direction, Locale};
+pub use locale::Direction;
+pub use text_scale::text_scale;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use locale::{DateOrder, Locale};
+}
 pub(crate) use merge::merge_classes;
+#[cfg(test)]
 pub(crate) use merge::merge_warning_count_for_component;
-pub use merge::{ComponentId, unknown_class_warning_count};
-pub use metrics::{
-    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Metrics, OVERLAY_SHADOW, Radius, space,
-};
-pub use overlay::StyleOverlay;
+#[cfg(any(test, feature = "kittest"))]
+#[doc(hidden)]
+pub use merge::unknown_class_warning_count;
+pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
+pub(crate) use metrics::{DISABLED_OPACITY, ICON_SIZE};
+pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;
-pub(crate) use paint::{PaintTarget, StateHost, StyleSlot};
+pub(crate) use paint::{PaintTarget, StyleSlot};
 pub(crate) use parser::parse_class_string;
 #[cfg(any(test, fuzzing))]
 pub(crate) use parser::parse_stateful_token;
-pub use reactive::StyleReactiveEffect;
+pub(crate) use reactive::StyleReactiveEffect;
 #[cfg(any(test, feature = "kittest"))]
 pub use resolve::unsupported_style_warning_count_for;
-pub use resolve::{render_style_for, text_style_for};
-pub use size::{ControlSize, LengthPercentage};
-pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
-pub use strings::{StringKey, Strings};
+pub use text_scale::TextRole;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use resolve::{render_style_for, text_style_for};
+}
+pub use size::ControlSize;
+pub(crate) use state::StyleVariant;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use state::{StateSlot, StateStyle, StyleState};
+}
+pub use strings::StringKey;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use strings::Strings;
+}
 pub(crate) use struct_api::Style;
+pub use styled::StateVariants;
 pub(crate) use styled::node::attach_style;
-pub use styled::{ColorOrToken, StateStyleBuilder, StateVariants};
-pub use text_style::{
-    StyledTextEngine, TextFace, TextLineHeight, TextRun, TextRuns, TextStyle, is_typography_atom,
-};
-pub use theme::{Theme, ThemeBuilder, ThemeValue, TokenLayer, TokenTable, font_family_hint};
-pub use token::{ColorKey, Token};
-pub use tone::{Tone, ToneContext};
-pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use styled::StateStyleBuilder;
+}
+#[cfg(all(feature = "scene", not(feature = "kittest")))]
+#[allow(unused_imports, reason = "public only under kittest")]
+pub(crate) use text_style::StyledTextEngine;
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub use text_style::StyledTextEngine;
+pub use text_style::TextStyle;
+pub(crate) use text_style::is_typography_atom;
+pub(crate) use text_style::{TextFace, TextRuns};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use text_style::{TextLineHeight, TextRun};
+}
+pub use theme::{Theme, ThemeValue};
+pub use token::Token;
+pub use tone::Tone;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use tone::ToneContext;
+}
+pub(crate) use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
-pub const SELECTION_FILL: Rgba8 = Rgba8 {
+/// Gives the fill color for selected text.
+pub(crate) const SELECTION_FILL: Rgba8 = Rgba8 {
     r: 56,
     g: 118,
     b: 224,

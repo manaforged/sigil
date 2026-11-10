@@ -9,9 +9,7 @@ mod scene_support;
 
 use scene_support::{color, rect};
 use sigil::geometry::Rect;
-use sigil::scene::{
-    CommandScene, DecorationKind, SceneBuilder, SceneCommand, SceneDecorationStyle,
-};
+use sigil::scene::{CommandScene, DecorationKind, DrawDecoration, SceneBuilder, SceneCommand};
 use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::{Capture, render_capture};
 
@@ -113,8 +111,9 @@ const fn decoration_style(
     color: Rgba8,
     line_width: f32,
     period: f32,
-) -> SceneDecorationStyle {
-    SceneDecorationStyle {
+) -> DrawDecoration {
+    DrawDecoration {
+        node: None,
         kind,
         band,
         color,

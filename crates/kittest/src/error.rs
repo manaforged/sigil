@@ -21,10 +21,16 @@ impl fmt::Display for Error {
             Self::Layout(detail) => write!(f, "layout failed: {detail}"),
             Self::Render(detail) => write!(f, "offscreen render failed: {detail}"),
             Self::Readback(detail) => write!(f, "pixel readback failed: {detail}"),
+            Self::Unsettled { frames, active: 0 } => write!(
+                f,
+                "the frame stayed dirty for SETTLE_SAFETY_CAP ({frames}) frames with no \
+                 finite animation running, so an effect or a signal write under test \
+                 likely marks every frame dirty"
+            ),
             Self::Unsettled { frames, active } => write!(
                 f,
                 "animation runtime did not settle within SETTLE_SAFETY_CAP ({frames}) frames; \
-                 {active} animators remain, so a widget under test likely \
+                 {active} finite animators remain, so a widget under test likely \
                  retargets every frame"
             ),
         }

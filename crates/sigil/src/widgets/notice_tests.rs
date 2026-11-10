@@ -1,6 +1,6 @@
 use super::*;
 use crate::kernel::{AccessibleName, Cx, IntoNode};
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 fn spoken(name: &AccessibleName) -> String {
     match name {
@@ -12,7 +12,7 @@ fn spoken(name: &AccessibleName) -> String {
 
 #[test]
 fn a_notice_announces_its_message() {
-    Runtime::scope("notice-label", || {
+    Owner::scope("notice-label", || {
         let mut cx = Cx::new_root();
         let id = notice_band("Saved to disk", Tone::Info).build(&mut cx);
         let node = cx.get(id).expect("notice node");

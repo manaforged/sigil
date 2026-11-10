@@ -38,7 +38,7 @@ impl LayoutEngine {
         let cx_instance = cx.instance_id();
         let cx_generation = cx.mutation_generation();
         let available_key = AvailableKey::from_size(available);
-        let scale_bits = cx.scale().factor().to_bits();
+        let scale_bits = cx.scale().to_bits();
         let fonts = self.drive.font_generation();
         let key = |input_signature| LayoutCacheKey {
             cx_instance,

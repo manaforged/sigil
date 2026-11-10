@@ -18,21 +18,20 @@ mod input;
 
 use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
-use sigil_kittest::CharMeasure;
+use sigil_kittest::FakeMeasure;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PointerEventInit};
+use sigil::events::Event;
 use sigil::geometry::Point;
-use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil::layout::set_text_geometry;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
 struct CutMemory(RefCell<Option<String>>);
 
 impl sigil::clipboard::Clipboard for CutMemory {
-    fn set(&self, text: &str) -> Result<sigil::clipboard::Delivery, sigil::clipboard::ClipError> {
+    fn set(&self, text: &str) -> Result<sigil::clipboard::Delivery, sigil::Error> {
         *self.0.borrow_mut() = Some(text.to_owned());
         Ok(sigil::clipboard::Delivery::Confirmed)
     }
@@ -40,56 +39,9 @@ impl sigil::clipboard::Clipboard for CutMemory {
         self.0.borrow().clone()
     }
 }
-use input::type_char;
-use sigil::style::TextStyle;
 use widget_support::{assert_approx, rect_colors};
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 7.0,
-    line_height: 16.0,
-};
-
-struct StubGeometry;
-
-impl TextGeometry for StubGeometry {
-    fn hit(
-        &self,
-        text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        point: sigil::geometry::Point,
-    ) -> sigil::hal::HitPosition {
-        sigil::hal::HitPosition {
-            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
-            affinity: sigil::hal::TextAffinity::Downstream,
-        }
-    }
-
-    fn caret(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        position: sigil::hal::HitPosition,
-    ) -> CaretGeometry {
-        let byte = position.byte_index;
-        CaretGeometry {
-            x: byte as f32 * 10.0,
-            top: 0.0,
-            height: 16.0,
-        }
-    }
-
-    fn selection_rects(
-        &self,
-        _text: &str,
-        _style: &TextStyle,
-        _width: Option<f32>,
-        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::geometry::Rect> {
-        Vec::new()
-    }
-}
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 #[path = "widgets/binary.rs"]
 mod binary;
@@ -104,30 +56,20 @@ mod text_edit;
 #[path = "widgets/text_field.rs"]
 mod text_field;
 
-fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::CONTROL | ModifiersState::SHIFT,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> Event {
+    Event::key(LogicalKey::character(ch), KeyPhase::Down)
+        .physical(physical)
+        .modifiers(ModifiersState::CONTROL | ModifiersState::SHIFT)
 }
 
-fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch.as_str()),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.into()),
-    }))
+fn type_char_owned(ch: String, physical: PhysicalKey) -> Event {
+    Event::key(LogicalKey::character(ch.as_str()), KeyPhase::Down)
+        .physical(physical)
+        .text(Some(ch))
 }
 
 fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Rgba8) -> f32 {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .find_map(|command| match command {
@@ -138,10 +80,10 @@ fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Rgba8) -> 
 }
 
 fn scene_has_text(cx: &Cx, root: NodeId, expected: &str) -> bool {
-    emit_scene(cx, root).find_text(expected).is_some()
+    emit_scene(cx, root, None).find_text(expected).is_some()
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down(x: f32, y: f32) -> Event {
     pointer_event(
         x,
         y,
@@ -151,11 +93,11 @@ const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     )
 }
 
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
+const fn pointer_move(x: f32, y: f32) -> Event {
     pointer_event(x, y, PointerPhase::Move, None, MouseButtons::LEFT)
 }
 
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
+const fn pointer_up(x: f32, y: f32) -> Event {
     pointer_event(
         x,
         y,
@@ -171,104 +113,48 @@ const fn pointer_event(
     phase: PointerPhase,
     button: Option<MouseButton>,
     buttons: MouseButtons,
-) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+) -> Event {
+    Event::pointer(phase, Point::new(x, y))
+        .button(button)
+        .buttons(buttons)
 }
 
-fn text_down(text: &str) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(text),
-        physical: PhysicalKey::KeyA,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(text.into()),
-    }))
+fn text_down(text: &str) -> Event {
+    Event::key(LogicalKey::character(text), KeyPhase::Down)
+        .physical(PhysicalKey::KeyA)
+        .text(Some(text.into()))
 }
 
-fn backspace_down() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::Backspace.into(),
-        physical: PhysicalKey::Backspace,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn backspace_down() -> Event {
+    Event::key(Key::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
 }
 
-fn enter_down() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::Enter.into(),
-        physical: PhysicalKey::Enter,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn enter_down() -> Event {
+    Event::key(Key::Enter, KeyPhase::Down).physical(PhysicalKey::Enter)
 }
 
-fn space_down() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(" "),
-        physical: PhysicalKey::Space,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn space_down() -> Event {
+    Event::key(LogicalKey::character(" "), KeyPhase::Down).physical(PhysicalKey::Space)
 }
 
-fn arrow_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn arrow_down(key: Key, physical: PhysicalKey) -> Event {
+    Event::key(key, KeyPhase::Down).physical(physical)
 }
 
 const SLIDER_TRACK: f32 = 180.0;
 
-fn named_key(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn named_key(key: Key, physical: PhysicalKey) -> Event {
+    Event::key(key, KeyPhase::Down).physical(physical)
 }
 
-fn shift_arrow(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::SHIFT,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn shift_arrow(key: Key, physical: PhysicalKey) -> Event {
+    Event::key(key, KeyPhase::Down)
+        .physical(physical)
+        .modifiers(ModifiersState::SHIFT)
 }
 
-fn ctrl_key(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
+    Event::key(LogicalKey::character(ch), KeyPhase::Down)
+        .physical(physical)
+        .modifiers(ModifiersState::CONTROL)
 }

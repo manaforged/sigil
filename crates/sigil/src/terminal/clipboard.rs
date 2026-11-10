@@ -1,14 +1,15 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use crate::clipboard::{ClipError, Clipboard, Delivery};
+use crate::Error;
+use crate::clipboard::{Clipboard, Delivery};
 use crate::terminal::caps::{Caps, ClipRoute};
 use crate::terminal::graphics::{Mux, base64, write_mux};
 
 struct Osc52(Caps, std::cell::Cell<bool>);
 
 impl Clipboard for Osc52 {
-    fn set(&self, text: &str) -> Result<Delivery, ClipError> {
+    fn set(&self, text: &str) -> Result<Delivery, Error> {
         if self.0.clipboard == ClipRoute::Pbcopy && pbcopy(text) {
             return Ok(Delivery::Confirmed);
         }
@@ -17,7 +18,7 @@ impl Clipboard for Osc52 {
         send(&mut out, &seq, self.0.mux)
             .and_then(|()| out.flush())
             .map(|()| Delivery::Requested)
-            .map_err(ClipError::new)
+            .map_err(Error::io)
     }
 
     fn get(&self) -> Option<String> {
@@ -47,7 +48,7 @@ fn send(out: &mut impl Write, seq: &str, mux: Option<Mux>) -> std::io::Result<()
 fn osc52_read(mux: Option<Mux>) -> Option<String> {
     use base64::Engine;
     const REPLY: &str = "\x1b]52;c;";
-    if !crate::terminal::term::live() {
+    if !crate::terminal::term::applied() {
         return None;
     }
     let reply = crate::terminal::caps::exchange(
@@ -99,6 +100,7 @@ fn pbcopy(text: &str) -> bool {
     child.wait().is_ok_and(|status| status.success()) && written
 }
 
-pub fn install_clipboard(caps: Caps) {
+/// Install the process clipboard for the terminal host, routed by `caps.clipboard`.
+pub(crate) fn install_clipboard(caps: Caps) {
     crate::clipboard::install(Osc52(caps, std::cell::Cell::new(true)));
 }

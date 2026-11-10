@@ -1,0 +1,114 @@
+use wgpu::util::DeviceExt as _;
+
+use super::AtlasPipeline;
+use crate::renderer::fill_paint::setup::texture_group;
+
+pub(super) const MAX_ATLASES: usize = 16;
+
+pub(crate) struct AtlasDesc<'a> {
+    pub(crate) bytes: &'a [u8],
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) format: wgpu::TextureFormat,
+}
+
+pub(crate) struct AtlasEntry {
+    pub(super) texture: wgpu::Texture,
+    pub(super) width: u32,
+    pub(super) height: u32,
+}
+
+impl AtlasPipeline {
+    pub(super) fn push_atlas(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        desc: &AtlasDesc<'_>,
+    ) {
+        let (entry, bind_group) =
+            build_atlas(device, queue, &self.atlas_layout, &self.sampler, desc);
+        self.atlases.push(entry);
+        self.atlas_bind_groups.push(bind_group);
+    }
+}
+
+pub(super) fn build_atlas(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    sampler: &wgpu::Sampler,
+    desc: &AtlasDesc<'_>,
+) -> (AtlasEntry, wgpu::BindGroup) {
+    let texture = device.create_texture_with_data(
+        queue,
+        &wgpu::TextureDescriptor {
+            label: Some("sigil-renderer sprite atlas"),
+            size: wgpu::Extent3d {
+                width: desc.width,
+                height: desc.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: desc.format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        },
+        wgpu::util::TextureDataOrder::LayerMajor,
+        desc.bytes,
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let bind_group = texture_group(
+        device,
+        "sigil-renderer sprite atlas bind group",
+        layout,
+        &view,
+        sampler,
+    );
+    let entry = AtlasEntry {
+        texture,
+        width: desc.width,
+        height: desc.height,
+    };
+    (entry, bind_group)
+}
+
+pub(super) fn valid_atlas_desc(desc: &AtlasDesc<'_>) -> bool {
+    let AtlasDesc {
+        bytes,
+        width,
+        height,
+        format,
+    } = *desc;
+    if bytes.is_empty()
+        || width == 0
+        || height == 0
+        || width > MAX_ATLAS_AXIS
+        || height > MAX_ATLAS_AXIS
+    {
+        return false;
+    }
+    let bytes_per_pixel = bytes_per_pixel(format);
+    if bytes_per_pixel == 0 {
+        return false;
+    }
+    let Some(expected_len) = width
+        .checked_mul(height)
+        .and_then(|texels| texels.checked_mul(bytes_per_pixel))
+        .and_then(|len| usize::try_from(len).ok())
+    else {
+        return false;
+    };
+    bytes.len() == expected_len
+}
+
+const MAX_ATLAS_AXIS: u32 = 8192;
+
+const fn bytes_per_pixel(format: wgpu::TextureFormat) -> u32 {
+    match format {
+        wgpu::TextureFormat::Rgba8UnormSrgb | wgpu::TextureFormat::Rgba8Unorm => 4,
+        wgpu::TextureFormat::R8Unorm => 1,
+        _ => 0,
+    }
+}

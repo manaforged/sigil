@@ -1,9 +1,9 @@
+use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ControlSize, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, Paint, Token, Tone,
-    button, card, chip, container, dot, dropdown, scroll, spacer, text,
+    AlignItems, ControlSize, Icon, LayoutStyle, NodeBuilder, Paint, Token, Tone, button, card,
+    chip, container, dot, dropdown, scroll, spacer, text,
 };
-use sigil::style::space;
-use sigil::widgets::ScrollBuilder;
+use sigil::prelude::{IntoNode, Widget};
 
 use super::data::{
     Bucket, ENV_FILTER_LABELS, ENV_FILTERS, GROUP_WIDTH, Service, TEXT_SMALL, WEIGHT_STRONG,
@@ -23,8 +23,8 @@ pub(crate) fn column(console: Console) -> NodeBuilder {
                 .fill_height()
                 .shrink(0.0)
                 .min_size(0.0, 0.0)
-                .padding(space(3))
-                .gap(space(3)),
+                .padding(Space::Md)
+                .gap(Space::Md),
         )
         .child(header(console))
         .child(dropdown(console.env_filter, filters).label("Environment"))
@@ -36,7 +36,7 @@ fn header(console: Console) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(text("Services").nowrap().font_weight(WEIGHT_STRONG))
@@ -50,10 +50,10 @@ fn header(console: Console) -> NodeBuilder {
         )
 }
 
-fn cards(console: Console) -> ScrollBuilder {
+fn cards(console: Console) -> impl IntoNode {
     scroll(
         container()
-            .layout(LayoutStyle::flex_column().fill_width().gap(space(2)))
+            .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
             .children_reactive(move || {
                 let filter = ENV_FILTERS.get(console.env_filter.get()).copied().flatten();
                 Service::ALL
@@ -69,13 +69,13 @@ fn cards(console: Console) -> ScrollBuilder {
 fn service_card(console: Console, service: Service) -> NodeBuilder {
     let env = service.env();
     let body = container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(2)))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
         .child(
             container()
                 .layout(
                     LayoutStyle::flex_row()
                         .fill_width()
-                        .gap(space(2))
+                        .gap(Space::Sm)
                         .align_items(AlignItems::Center),
                 )
                 .child(
@@ -91,7 +91,7 @@ fn service_card(console: Console, service: Service) -> NodeBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .fill_width()
-                        .gap(space(3))
+                        .gap(Space::Md)
                         .align_items(AlignItems::Center),
                 )
                 .child(counter(console, service, Bucket::Running, Tone::Info))
@@ -109,7 +109,7 @@ fn counter(console: Console, service: Service, bucket: Bucket, tone: Tone) -> No
     container()
         .layout(
             LayoutStyle::flex_row()
-                .gap(space(1))
+                .gap(Space::Xs)
                 .align_items(AlignItems::Center),
         )
         .child(dot(tone).size(ControlSize::Compact))
@@ -119,7 +119,7 @@ fn counter(console: Console, service: Service, bucket: Bucket, tone: Tone) -> No
                 count.to_string()
             })
             .nowrap()
-            .font_size(TEXT_SMALL)
+            .font_size(TEXT_SMALL, "example layout")
             .tabular_nums(true)
             .text_color(Token::OnSurfaceMuted),
         )

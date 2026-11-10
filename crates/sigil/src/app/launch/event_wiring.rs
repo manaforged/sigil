@@ -1,6 +1,6 @@
 use crate::events::EventRouter;
-use crate::events::{Key, KeyPhase, ShellEvent, WindowEvent};
-use crate::geometry::PhysicalSize;
+use crate::events::{Event, Key, KeyPhase, WindowEvent};
+use crate::geometry::{PhysicalSize, Scale};
 use crate::hal::Shell as _;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -8,10 +8,10 @@ use crate::profile::Cause;
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
-use crate::app::error::AppResult;
+use crate::error::AppResult;
 use std::sync::Arc;
 
-use super::backend::{Backend, Surface};
+use super::backend::{Backend, RenderSurface};
 use super::record::WindowView;
 use super::{clamp_physical_size, resize_surface, scale_from_f64};
 use crate::geometry::LogicalSize;
@@ -30,7 +30,7 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
     pub(super) renderer: &'a mut Backend,
-    pub(super) surface: &'a mut Option<Surface>,
+    pub(super) surface: &'a mut Option<RenderSurface>,
     pub(super) viewport: &'a mut (f32, f32),
     pub(super) user_zoom: f32,
 }
@@ -50,6 +50,10 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
         *surface = None;
         return Ok(());
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    if renderer.recover(surface)? {
+        Runtime::mark_frame_dirty();
+    }
     if surface.is_some() {
         return Ok(());
     }
@@ -58,7 +62,7 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     };
 
     let scale = scale_from_f64(window.scale_factor() * f64::from(user_zoom));
-    cx.set_scale(scale);
+    cx.set_scale(scale.factor());
     let inner = window.inner_size();
     if inner.width > 0 && inner.height > 0 {
         let physical = clamp_physical_size(PhysicalSize::new(inner.width, inner.height));
@@ -67,6 +71,8 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     }
     let logical = LogicalSize::new(viewport.0, viewport.1);
 
+    #[cfg(not(target_arch = "wasm32"))]
+    renderer.set_wake(super::wake_fn(shell));
     let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;
     tracing::info!(
         "sigil-app: rendering with the {} backend",
@@ -107,7 +113,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     } = ctx;
     for event in core::mem::take(&mut view.inbox) {
         crate::profile::note_input(&event);
-        if let ShellEvent::Window(window_event) = &event {
+        if let Event::Window(window_event) = &event {
             let mut window_ctx = WindowEventCtx {
                 cx,
                 renderer,
@@ -116,7 +122,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
             };
             window_ctx.handle(window_event);
         }
-        if let ShellEvent::Key(key_event) = &event
+        if let Event::Key(key_event) = &event
             && view.config.quit.esc
             && key_event.key == Key::Escape.into()
             && key_event.phase == KeyPhase::Down
@@ -171,7 +177,7 @@ pub(super) fn drain_a11y_actions(
 struct WindowEventCtx<'a> {
     cx: &'a mut Cx,
     renderer: &'a mut Backend,
-    surface: &'a mut Option<Surface>,
+    surface: &'a mut Option<RenderSurface>,
     viewport: &'a mut (f32, f32),
 }
 
@@ -180,11 +186,11 @@ impl WindowEventCtx<'_> {
         match *event {
             WindowEvent::Resized(physical) => {
                 resize_surface(self.renderer, self.surface, physical);
-                let logical = self.cx.scale().to_logical(clamp_physical_size(physical));
+                let logical = Scale::new(self.cx.scale()).to_logical(clamp_physical_size(physical));
                 *self.viewport = (logical.width, logical.height);
             }
             WindowEvent::ScaleFactorChanged(scale) => {
-                self.cx.set_scale(scale);
+                self.cx.set_scale(scale.factor());
                 let logical = LogicalSize::new(self.viewport.0, self.viewport.1);
                 resize_surface(self.renderer, self.surface, scale.to_physical(logical));
             }

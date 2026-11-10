@@ -8,7 +8,7 @@
 )]
 
 use crate::text::glyph::GlyphId;
-use crate::text::shaper::{Font, Shaper, Style, TextSegment};
+use crate::text::shaper::{FaceStyle, Font, Shaper, TextSegment};
 use crate::text::shaping_complex;
 
 const NOTO_ARABIC: &[u8] =
@@ -21,15 +21,15 @@ fn font(bytes: &[u8]) -> Font {
     Font::from_bytes(bytes.to_vec(), 0).expect("font fixture must parse")
 }
 
-fn shape_ltr(text: &str, font: &Font) -> crate::text::glyph::GlyphRun {
-    shaping_complex::shape(&TextSegment::ltr(text), &Style::regular(16.0), font)
+fn shape_ltr(text: &str, font: &Font) -> crate::text::glyph::ShapedRun {
+    shaping_complex::shape(&TextSegment::ltr(text), &FaceStyle::regular(16.0), font)
         .expect("latin text must shape")
 }
 
 #[test]
 fn arabic_alef_lam_ain_shapes_with_multiple_glyphs() {
     let font = font(NOTO_ARABIC);
-    let style = Style::regular(16.0);
+    let style = FaceStyle::regular(16.0);
     let segment = TextSegment {
         text: "\u{0627}\u{0644}\u{0639}",
         level: 1,
@@ -54,7 +54,7 @@ fn arabic_alef_lam_ain_shapes_with_multiple_glyphs() {
 #[test]
 fn hebrew_shalom_shapes_rtl_with_glyph_per_consonant() {
     let font = font(NOTO_HEBREW);
-    let style = Style::regular(16.0);
+    let style = FaceStyle::regular(16.0);
     let segment = TextSegment {
         text: "\u{05E9}\u{05DC}\u{05D5}\u{05DD}",
         level: 1,
@@ -90,7 +90,7 @@ fn hebrew_shalom_shapes_rtl_with_glyph_per_consonant() {
 fn arabic_via_shaper_dispatch_routes_through_harfrust() {
     let font = font(NOTO_ARABIC);
     let shaper = Shaper::new(&font);
-    let style = Style::regular(16.0);
+    let style = FaceStyle::regular(16.0);
     let segment = TextSegment {
         text: "\u{0627}\u{0644}\u{0639}",
         level: 1,
@@ -109,7 +109,7 @@ fn arabic_via_shaper_dispatch_routes_through_harfrust() {
 fn empty_segment_returns_empty_run() {
     let font = font(NOTO_ARABIC);
     let segment = TextSegment::ltr("");
-    let style = Style::regular(16.0);
+    let style = FaceStyle::regular(16.0);
     let run = shaping_complex::shape(&segment, &style, &font)
         .expect("empty segment must short-circuit cleanly");
     assert!(run.glyphs.is_empty());

@@ -2,30 +2,30 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 #[test]
 fn visible_keeps_push_order_and_caps_at_max_visible() {
-    Runtime::scope("toast-queue-push-order", || {
+    Owner::scope("toast-queue-push-order", || {
         let queue = ToastQueue::new();
         queue.info("toast 0");
         queue.error("toast 1");
         for n in 2..6 {
-            queue.push(ToastLevel::Info, format!("toast {n}"));
+            queue.push(Tone::Info, format!("toast {n}"));
         }
         queue.error("toast 6");
         let visible = queue.visible();
-        let summary: Vec<(ToastLevel, &str)> = visible
+        let summary: Vec<(Tone, &str)> = visible
             .iter()
-            .map(|e| (e.level, e.message.as_str()))
+            .map(|e| (e.tone, e.message.as_str()))
             .collect();
         assert_eq!(
             summary,
             [
-                (ToastLevel::Info, "toast 3"),
-                (ToastLevel::Info, "toast 4"),
-                (ToastLevel::Info, "toast 5"),
-                (ToastLevel::Error, "toast 6"),
+                (Tone::Info, "toast 3"),
+                (Tone::Info, "toast 4"),
+                (Tone::Info, "toast 5"),
+                (Tone::Error, "toast 6"),
             ],
             "oldest dropped, newest kept last"
         );
@@ -34,7 +34,7 @@ fn visible_keeps_push_order_and_caps_at_max_visible() {
 
 #[test]
 fn entries_expire_after_ttl() {
-    Runtime::scope("toast-queue-expiry", || {
+    Owner::scope("toast-queue-expiry", || {
         let queue = ToastQueue::new();
         queue.success("saved");
         let now = Instant::now();
@@ -46,16 +46,8 @@ fn entries_expire_after_ttl() {
 }
 
 #[test]
-fn levels_map_to_indicator_tones() {
-    assert_eq!(ToastLevel::Info.tone(), Tone::Info);
-    assert_eq!(ToastLevel::Success.tone(), Tone::Success);
-    assert_eq!(ToastLevel::Warning.tone(), Tone::Warn);
-    assert_eq!(ToastLevel::Error.tone(), Tone::Error);
-}
-
-#[test]
 fn widget_renders_visible_stack_and_hides_overflow() {
-    Runtime::scope("toast-queue-build", || {
+    Owner::scope("toast-queue-build", || {
         let queue = ToastQueue::new();
         queue.warning("one");
         queue.warning("two");

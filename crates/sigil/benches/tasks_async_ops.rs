@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(clippy::panic)]
 
 #[path = "tasks_async_ops_sustained.rs"]
@@ -13,8 +14,8 @@ use async_ops_sustained::{
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::hal::Scheduler;
-use sigil::reactive::{Runtime, effect, signal};
-use sigil::tasks::{AsyncRuntime, OwnerHandle, signal_writer};
+use sigil::reactive::{Owner, effect, signal};
+use sigil::tasks::{AsyncRuntime, signal_writer};
 
 pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = Instant::now();
@@ -29,9 +30,9 @@ pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> 
 
 fn bench_enqueue_main_latency(c: &mut Criterion) {
     c.bench_function("enqueue_main_latency", |b| {
-        Runtime::scope("bench_enqueue_main", || {
+        Owner::scope("bench_enqueue_main", || {
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
+            let handle = Owner::current().expect("inside a reactive scope");
             b.iter(|| {
                 scheduler
                     .enqueue_main(handle, Box::new(|| {}))
@@ -44,9 +45,9 @@ fn bench_enqueue_main_latency(c: &mut Criterion) {
 
 fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
     c.bench_function("signal_writer_roundtrip_single", |b| {
-        Runtime::scope("bench_writer_roundtrip", || {
+        Owner::scope("bench_writer_roundtrip", || {
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
+            let handle = Owner::current().expect("inside a reactive scope");
             let woke = Arc::new(AtomicBool::new(false));
             {
                 let woke = Arc::clone(&woke);
@@ -80,10 +81,10 @@ fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
 
 fn bench_drain_100_empty_callbacks(c: &mut Criterion) {
     c.bench_function("drain_100_empty_callbacks", |b| {
-        Runtime::scope("bench_drain_100_empty", || {
+        Owner::scope("bench_drain_100_empty", || {
             let scheduler_cell =
                 std::cell::RefCell::new(AsyncRuntime::new().expect("build tokio runtime"));
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
+            let handle = Owner::current().expect("inside a reactive scope");
             b.iter_batched(
                 || {
                     let sched = scheduler_cell.borrow();
@@ -107,10 +108,10 @@ fn bench_drain_100_empty_callbacks(c: &mut Criterion) {
 
 fn bench_drain_1000_empty_callbacks(c: &mut Criterion) {
     c.bench_function("drain_1000_empty_callbacks", |b| {
-        Runtime::scope("bench_drain_1000_empty", || {
+        Owner::scope("bench_drain_1000_empty", || {
             let scheduler_cell =
                 std::cell::RefCell::new(AsyncRuntime::new().expect("build tokio runtime"));
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
+            let handle = Owner::current().expect("inside a reactive scope");
             b.iter_batched(
                 || {
                     let sched = scheduler_cell.borrow();
@@ -134,7 +135,7 @@ fn bench_drain_1000_empty_callbacks(c: &mut Criterion) {
 
 fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
     c.bench_function("drain_100_callbacks_each_writing_signal", |b| {
-        Runtime::scope("bench_drain_100_signals", || {
+        Owner::scope("bench_drain_100_signals", || {
             let signals: Vec<_> = (0..100).map(|_| signal(0_i32)).collect();
             for s in &signals {
                 let s = *s;

@@ -1,194 +1,203 @@
-use super::chart_parse::{ChartData, fence_block};
+use std::ops::Range;
+
+use pulldown_cmark::BlockQuoteKind;
+
+use super::chart_parse::ChartData;
 pub(crate) use super::containers::{List, ListItem};
-use super::containers::{
-    heading, image_line, list_marker, rule, take_list, take_quote, take_table,
-};
+use super::events::{located, scan};
+use super::refs::{Refs, Report};
+pub(crate) use super::table_data::Table;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Block {
-    Heading { level: u8, text: String },
-    Paragraph(String),
+    Heading {
+        level: u8,
+        body: Vec<Inline>,
+    },
+    Paragraph(Vec<Inline>),
     Quote(Vec<Self>),
+    Alert {
+        kind: BlockQuoteKind,
+        blocks: Vec<Self>,
+    },
+    Details {
+        summary: Vec<Inline>,
+        blocks: Vec<Self>,
+    },
     List(List),
-    Code { lang: String, body: String },
+    Code {
+        lang: String,
+        body: String,
+    },
+    Math(String),
     Mermaid(String),
+    VegaLite(String),
+    Graphviz(String),
     Chart(ChartData),
-    Image { alt: String, src: String },
-    Table(Vec<Vec<String>>),
+    Image {
+        alt: String,
+        src: String,
+    },
+    Table(Table),
+    Footnotes(Vec<Note>),
+    Html(String),
     Rule,
 }
 
 impl Eq for Block {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum Span {
-    Text(String),
-    Bold(String),
-    Italic(String),
-    Code(String),
-    Link { text: String, href: String },
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Note {
+    pub(crate) label: String,
+    pub(crate) blocks: Vec<Block>,
 }
 
-#[cfg(test)]
-pub(crate) use super::inline::parse_inlines;
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum Inline {
+    Text(String),
+    Strong(Vec<Self>),
+    Em(Vec<Self>),
+    Strike(Vec<Self>),
+    Code(String),
+    Math(String),
+    Note(String),
+    Image {
+        alt: String,
+        src: String,
+    },
+    Link {
+        href: String,
+        body: Vec<Self>,
+        label_is_href: bool,
+    },
+}
 
-const MAX_NESTING: usize = 16;
+impl Inline {
+    pub(crate) fn plain(body: &[Self]) -> String {
+        let mut out = String::new();
+        for inline in body {
+            match inline {
+                Self::Text(text) | Self::Code(text) | Self::Math(text) | Self::Note(text) => {
+                    out.push_str(text);
+                }
+                Self::Image { alt, .. } => out.push_str(alt),
+                Self::Strong(inner)
+                | Self::Em(inner)
+                | Self::Strike(inner)
+                | Self::Link { body: inner, .. } => {
+                    out.push_str(&Self::plain(inner));
+                }
+            }
+        }
+        out
+    }
 
-#[derive(Default)]
-struct Blocks {
-    out: Vec<Block>,
-    para: String,
-    fence: Option<(String, String)>,
-    depth: usize,
+    pub(crate) fn push_text(out: &mut Vec<Self>, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        if let Some(Self::Text(last)) = out.last_mut() {
+            last.push_str(text);
+        } else {
+            out.push(Self::Text(text.to_string()));
+        }
+    }
+
+    pub(crate) fn finish(mut out: Vec<Self>) -> Vec<Self> {
+        if out.is_empty() {
+            out.push(Self::Text(String::new()));
+        }
+        out
+    }
 }
 
 #[cfg(test)]
 pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
-    parse_tail(source).0
+    parse_tail(source, &Refs::default()).blocks
 }
 
-pub(crate) fn parse_tail(source: &str) -> (Vec<Block>, Option<(usize, usize)>) {
-    parse_at_depth(source, 0)
+pub(super) struct Tail {
+    pub(super) blocks: Vec<Block>,
+    pub(super) cut: Option<(usize, usize)>,
+    pub(super) report: Report,
 }
 
-fn parse_at_depth(source: &str, depth: usize) -> (Vec<Block>, Option<(usize, usize)>) {
+pub(super) fn parse_tail(source: &str, refs: &Refs) -> Tail {
     if crate::widgets::source_too_large(source) {
-        return (vec![crate::widgets::oversize_block()], None);
+        return Tail {
+            blocks: vec![crate::widgets::oversize_block()],
+            cut: None,
+            report: Report::default(),
+        };
     }
-    let mut lines = Vec::new();
-    let mut ends = Vec::new();
-    let mut offset = 0;
-    for raw in source.split_inclusive('\n') {
-        offset += raw.len();
-        lines.push(raw.trim_end());
-        ends.push(raw.ends_with('\n').then_some(offset));
+    let source = super::latex::delimiters(source);
+    let (top, report) = scan(&source, refs);
+    let cut = cut(&source, &top);
+    let blocks = top.into_iter().map(|(_, block)| block).collect();
+    Tail {
+        blocks,
+        cut,
+        report,
     }
-    let mut blocks = Blocks {
-        depth,
-        ..Blocks::default()
-    };
-    let mut boundary = None;
-    let mut i = 0;
-    while i < lines.len() {
-        let eaten = blocks.step(&lines, i).max(1);
-        if eaten == 1
-            && blocks.fence.is_none()
-            && lines.get(i).is_some_and(|line| line.trim().is_empty())
-            && let Some(Some(end)) = ends.get(i)
-        {
-            boundary = Some((*end, blocks.out.len()));
-        }
-        i += eaten;
-    }
-    (blocks.finish(), boundary)
 }
 
-pub(super) fn parse_nested(source: &str, depth: usize) -> Vec<Block> {
-    if depth < MAX_NESTING {
-        return parse_at_depth(source, depth).0;
-    }
-    let text = source.split_whitespace().collect::<Vec<_>>().join(" ");
-    vec![Block::Paragraph(text)]
+pub(super) fn nested(source: &str) -> Vec<Block> {
+    located(source)
+        .into_iter()
+        .map(|(_, block)| block)
+        .collect()
 }
 
-fn fence_open(line: &str) -> Option<String> {
-    let rest = line.trim_start().strip_prefix("```")?;
-    Some(rest.trim_start_matches('`').trim().to_string())
+fn cut(source: &str, top: &[(Range<usize>, Block)]) -> Option<(usize, usize)> {
+    let last_at = top.len().checked_sub(1)?;
+    let at = top
+        .iter()
+        .position(|(_, block)| matches!(block, Block::Footnotes(_)))
+        .map_or(last_at, |note| note.min(last_at));
+    let (prev, block) = top.get(at.checked_sub(1)?)?;
+    let (last, _) = top.get(at)?;
+    if continues(source, prev, block) {
+        return None;
+    }
+    let gap = source.get(prev.end..last.start)?;
+    let head = source.get(..last.start)?.trim_end_matches([' ', '\t']);
+    let blank = head
+        .strip_suffix('\n')?
+        .trim_end_matches([' ', '\t', '\r'])
+        .ends_with('\n');
+    (blank && gap.trim().is_empty()).then_some((last.start, at))
 }
 
-impl Blocks {
-    fn step(&mut self, lines: &[&str], i: usize) -> usize {
-        let Some(&line) = lines.get(i) else {
-            return 1;
-        };
-        if self.feed_fence(line) {
-            return 1;
-        }
-        if let Some(lang) = fence_open(line) {
-            self.flush();
-            self.fence = Some((lang, String::new()));
-            return 1;
-        }
-        if rule(line) {
-            self.flush();
-            self.out.push(Block::Rule);
-            return 1;
-        }
-        if let Some(eaten) = self.container(lines, i) {
-            return eaten;
-        }
-        if let Some((level, heading)) = heading(line) {
-            self.flush();
-            self.out.push(Block::Heading {
-                level,
-                text: heading.to_string(),
-            });
-            return 1;
-        }
-        if line.trim().is_empty() {
-            self.flush();
-            return 1;
-        }
-        if !self.para.is_empty() {
-            self.para.push(' ');
-        }
-        self.para.push_str(line.trim());
-        1
+fn continues(source: &str, range: &Range<usize>, block: &Block) -> bool {
+    match block {
+        Block::List(_) | Block::Footnotes(_) => true,
+        Block::Code { .. } => !source.get(range.clone()).is_some_and(|code| {
+            let code = code.trim_start();
+            code.starts_with("```") || code.starts_with("~~~")
+        }),
+        _ => false,
     }
+}
 
-    fn container(&mut self, lines: &[&str], i: usize) -> Option<usize> {
-        let line = lines.get(i).copied()?;
-        let (block, eaten) = if let Some((quote, eaten)) = take_quote(lines, i) {
-            (Block::Quote(parse_nested(&quote, self.depth + 1)), eaten)
-        } else if let Some((rows, eaten)) = take_table(lines, i) {
-            (Block::Table(rows), eaten)
-        } else if let Some((alt, src)) = image_line(line) {
-            let (alt, src) = (alt.to_string(), src.to_string());
-            (Block::Image { alt, src }, 1)
-        } else if list_marker(line).is_some() {
-            let (list, eaten) = take_list(lines, i, self.depth + 1)?;
-            (Block::List(list), eaten)
-        } else {
-            return None;
+pub(crate) fn parse_inlines(source: &str) -> Vec<Inline> {
+    let mut out = Vec::new();
+    for block in nested(&super::latex::delimiters(source)) {
+        let body = match block {
+            Block::Paragraph(body) | Block::Heading { body, .. } => body,
+            Block::Html(html) => vec![Inline::Text(html.trim_end().to_string())],
+            _ => return vec![Inline::Text(source.to_string())],
         };
-        self.flush();
-        self.out.push(block);
-        Some(eaten)
-    }
-
-    fn feed_fence(&mut self, line: &str) -> bool {
-        let Some((lang, buf)) = self.fence.as_mut() else {
-            return false;
-        };
-        if line.trim_start().starts_with("```") {
-            let body = std::mem::take(buf);
-            let lang = std::mem::take(lang);
-            self.out.push(fence_block(&lang, body));
-            self.fence = None;
-        } else {
-            if !buf.is_empty() {
-                buf.push('\n');
+        if !out.is_empty() {
+            Inline::push_text(&mut out, "\n");
+        }
+        for inline in body {
+            match inline {
+                Inline::Text(text) => Inline::push_text(&mut out, &text),
+                other => out.push(other),
             }
-            buf.push_str(line);
         }
-        true
     }
-
-    fn flush(&mut self) {
-        let trimmed = self.para.trim();
-        if !trimmed.is_empty() {
-            self.out.push(Block::Paragraph(trimmed.to_string()));
-        }
-        self.para.clear();
-    }
-
-    fn finish(mut self) -> Vec<Block> {
-        if let Some((lang, buf)) = self.fence.take() {
-            self.out.push(fence_block(&lang, buf));
-        }
-        self.flush();
-        self.out
-    }
+    Inline::finish(out)
 }
 
 #[cfg(test)]

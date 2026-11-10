@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::TableBuilder;
 
 pub(crate) struct Repo {
     name: &'static str,
@@ -33,7 +32,7 @@ fn repo_columns() -> Vec<TableColumn<Repo>> {
     ]
 }
 
-pub(crate) fn table_demo(selected: bool) -> TableBuilder<Repo> {
+pub(crate) fn table_demo(selected: bool, disabled: Signal<bool>) -> impl IntoNode {
     let rows = TableState::new(
         vec![
             repo("sigil", "Rust", 4210),
@@ -45,13 +44,23 @@ pub(crate) fn table_demo(selected: bool) -> TableBuilder<Repo> {
     if selected {
         rows.select_only(1);
     }
-    table(rows).striped().viewport_height(160.0)
+    table(rows)
+        .striped()
+        .viewport_height(160.0)
+        .disabled(disabled)
 }
 
 pub(crate) fn virtual_list_demo(selected: bool) -> impl IntoNode + 'static {
     let items: Vec<String> = (1..=20).map(|i| format!("Item {i}")).collect();
     virtual_list(items, move |index, item| {
-        list_row(selected && index == 1, item.clone(), format!("{index}"))
+        list_row(
+            selected && index == 1,
+            item.clone(),
+            ListRowSlots {
+                status: Some(format!("{index}").into()),
+                ..ListRowSlots::default()
+            },
+        )
     })
     .selection(SelectionMode::Single)
     .viewport_height(140.0)
@@ -67,7 +76,14 @@ pub(crate) fn virtual_list_fill_demo() -> NodeBuilder {
                 .layout(LayoutStyle::flex_column().fill_width().grow(1.0))
                 .child(
                     virtual_list(items, |index, item| {
-                        list_row(false, item.clone(), format!("{index}"))
+                        list_row(
+                            false,
+                            item.clone(),
+                            ListRowSlots {
+                                status: Some(format!("{index}").into()),
+                                ..ListRowSlots::default()
+                            },
+                        )
                     })
                     .viewport_fill(),
                 ),
@@ -87,12 +103,19 @@ pub(crate) fn heatmap_demo() -> NodeBuilder {
 }
 
 pub(crate) fn list_row_demo(selected: bool) -> NodeBuilder {
-    list_row(selected, "Build finished", "now")
+    list_row(
+        selected,
+        "Build finished",
+        ListRowSlots {
+            status: Some("now".into()),
+            ..ListRowSlots::default()
+        },
+    )
 }
 
 pub(crate) fn list_row_tree_demo(selected: bool) -> NodeBuilder {
     let entry = |depth, disclosure, title: &'static str, on: bool| {
-        list_row_with(
+        list_row(
             on,
             title,
             ListRowSlots {
@@ -103,7 +126,7 @@ pub(crate) fn list_row_tree_demo(selected: bool) -> NodeBuilder {
         )
     };
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(2.0))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xxs))
         .child(entry(0, Disclosure::Expanded, "src", false))
         .child(entry(1, Disclosure::Collapsed, "widgets", selected))
         .child(entry(1, Disclosure::Leaf, "lib.rs", false))
@@ -123,7 +146,7 @@ fn build() -> impl IntoNode {
         container()
             .role(Role::Main)
             .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-            .child(table_demo(false))
+            .child(table_demo(false, signal(false)))
             .child(virtual_list_demo(false))
             .child(virtual_list_fill_demo())
             .child(heatmap_demo())

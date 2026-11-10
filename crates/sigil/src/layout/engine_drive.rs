@@ -1,17 +1,16 @@
 #![allow(clippy::redundant_pub_crate)]
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
 use crate::kernel::NodeId;
 use smallvec::SmallVec;
 
+use crate::Error;
 use crate::layout::block::BlockSolver;
-use crate::layout::error::LayoutError;
 use crate::layout::flex::FlexSolver;
 use crate::layout::forest::{
     AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope, NodeRef,
 };
 use crate::layout::measure::TextMeasure;
-use crate::layout::style_data::{Display, Overflow, Size, StyleData};
+use crate::layout::style_data::{Axes, Display, Overflow, StyleData};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ResolvedBox {
@@ -51,7 +50,7 @@ impl LayoutDrive {
         self.forest.refer(handle.0)?.kernel()
     }
 
-    pub fn set_style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), LayoutError> {
+    pub fn set_style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), Error> {
         self.forest.set_style(node.0, style)
     }
 
@@ -63,7 +62,7 @@ impl LayoutDrive {
         &mut self,
         node: NodeHandle,
         text: Option<LayoutText>,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         self.forest.set_text(node.0, text)
     }
 
@@ -72,7 +71,7 @@ impl LayoutDrive {
     }
 
     #[cfg(any(test, feature = "kittest"))]
-    pub fn attach(&mut self, parent: NodeHandle, child: NodeHandle) -> Result<(), LayoutError> {
+    pub fn attach(&mut self, parent: NodeHandle, child: NodeHandle) -> Result<(), Error> {
         self.forest.attach(parent.0, child.0)
     }
 
@@ -80,18 +79,18 @@ impl LayoutDrive {
         &mut self,
         parent: NodeHandle,
         children: &[NodeHandle],
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let local: SmallVec<[_; 8]> = children.iter().map(|child| child.0).collect();
         self.forest.set_children(parent.0, &local)
     }
 
-    pub(crate) fn subtree_handles(&self, root: NodeHandle) -> Result<Vec<NodeHandle>, LayoutError> {
+    pub(crate) fn subtree_handles(&self, root: NodeHandle) -> Result<Vec<NodeHandle>, Error> {
         let mut out = Vec::new();
         self.collect_subtree(root, &mut out)?;
         Ok(out)
     }
 
-    pub fn remove(&mut self, root: NodeHandle) -> Result<(), LayoutError> {
+    pub fn remove(&mut self, root: NodeHandle) -> Result<(), Error> {
         let subtree = self.subtree_handles(root)?;
         for handle in subtree.into_iter().rev() {
             self.forest.free(handle.0)?;
@@ -122,7 +121,7 @@ impl LayoutDrive {
     }
 
     #[cfg(any(test, feature = "kittest"))]
-    pub fn measure(&mut self, root: NodeHandle, viewport: Size<f32>) -> Result<(), LayoutError> {
+    pub fn measure(&mut self, root: NodeHandle, viewport: Axes<f32>) -> Result<(), Error> {
         self.measure_with_constraints(
             root,
             AvailableSpace::definite(viewport.width, viewport.height),
@@ -133,7 +132,7 @@ impl LayoutDrive {
         &mut self,
         root: NodeHandle,
         avail: AvailableSpace,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         self.begin_measure_frame();
         self.measure_keep_frame(root, avail)
     }
@@ -148,7 +147,7 @@ impl LayoutDrive {
         avail: AvailableSpace,
         width: f32,
         height: f32,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let handle = self.measure_root(root)?;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
         let origin = crate::layout::block::Position2 { x: 0.0, y: 0.0 };
@@ -166,9 +165,9 @@ impl LayoutDrive {
             }
             Display::Block | Display::None => BlockSolver::new(scope).solve_at_assigned(
                 handle,
-                Size { width, height },
+                Axes { width, height },
                 origin,
-                Size {
+                Axes {
                     width: Some(width),
                     height: None,
                 },
@@ -180,7 +179,7 @@ impl LayoutDrive {
         &self,
         root: NodeHandle,
         avail: AvailableSpace,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let handle = self.measure_root(root)?;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
         match handle.style().display {
@@ -194,10 +193,10 @@ impl LayoutDrive {
         }
     }
 
-    fn measure_root(&self, root: NodeHandle) -> Result<NodeRef<'_>, LayoutError> {
+    fn measure_root(&self, root: NodeHandle) -> Result<NodeRef<'_>, Error> {
         self.forest
             .refer(root.0)
-            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {:?}", root.0)))
+            .ok_or_else(|| Error::layout(format!("stale measure root {:?}", root.0)))
     }
 
     #[must_use]
@@ -205,11 +204,7 @@ impl LayoutDrive {
         self.forest.boxed(node.0).map(resolved)
     }
 
-    pub(crate) fn write_box(
-        &mut self,
-        node: NodeHandle,
-        cb: ResolvedBox,
-    ) -> Result<(), LayoutError> {
+    pub(crate) fn write_box(&mut self, node: NodeHandle, cb: ResolvedBox) -> Result<(), Error> {
         self.forest.write(node.0, computed(cb))
     }
 
@@ -233,7 +228,7 @@ impl LayoutDrive {
         root: NodeHandle,
         dx: f32,
         dy: f32,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         if dx == 0.0 && dy == 0.0 {
             return Ok(());
         }
@@ -257,11 +252,7 @@ impl LayoutDrive {
         Ok(())
     }
 
-    fn collect_subtree(
-        &self,
-        root: NodeHandle,
-        out: &mut Vec<NodeHandle>,
-    ) -> Result<(), LayoutError> {
+    fn collect_subtree(&self, root: NodeHandle, out: &mut Vec<NodeHandle>) -> Result<(), Error> {
         let Some(node) = self.forest.refer(root.0) else {
             return Ok(());
         };

@@ -4,18 +4,17 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::PointerEventInit;
-use sigil::events::ShellEvent;
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
 fn click_at(x: f32, width: f32) -> f32 {
     let mut result = 0.0;
-    sigil::reactive::Runtime::scope("slider-extent", || {
+    sigil::reactive::Owner::scope("slider-extent", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -23,7 +22,7 @@ fn click_at(x: f32, width: f32) -> f32 {
                 .layout(LayoutStyle::flex_row().fixed_size(width, 40.0))
                 .child(slider(value, 0.0..=100.0).length(width)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(width, 40.0))
             .expect("layout");
@@ -32,15 +31,9 @@ fn click_at(x: f32, width: f32) -> f32 {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: Point::new(x, 20.0),
-                delta: Point::new(0.0, 0.0),
-                kind: PointerKind::Mouse,
-                button: Some(MouseButton::Left),
-                buttons: MouseButtons::LEFT,
-                modifiers: ModifiersState::empty(),
-                phase: PointerPhase::Down,
-            })),
+            Event::pointer(PointerPhase::Down, Point::new(x, 20.0))
+                .button(Some(MouseButton::Left))
+                .buttons(MouseButtons::LEFT),
         );
         result = value.peek();
     });
@@ -59,7 +52,7 @@ fn click_maps_through_the_measured_track_width() {
 #[test]
 fn filled_slider_maps_clicks_through_its_parent_width() {
     let mut got = 0.0;
-    sigil::reactive::Runtime::scope("slider-fill", || {
+    sigil::reactive::Owner::scope("slider-fill", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -67,7 +60,7 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 40.0))
                 .child(slider(value, 0.0..=100.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 40.0))
             .expect("layout");
@@ -75,15 +68,9 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: Point::new(300.0, 20.0),
-                delta: Point::new(0.0, 0.0),
-                kind: PointerKind::Mouse,
-                button: Some(MouseButton::Left),
-                buttons: MouseButtons::LEFT,
-                modifiers: ModifiersState::empty(),
-                phase: PointerPhase::Down,
-            })),
+            Event::pointer(PointerPhase::Down, Point::new(300.0, 20.0))
+                .button(Some(MouseButton::Left))
+                .buttons(MouseButtons::LEFT),
         );
         got = value.peek();
     });

@@ -22,7 +22,6 @@ path = "src/bin/sigil-pack.rs"
 [dependencies]
 minisign = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 
 [lints]
 workspace = true

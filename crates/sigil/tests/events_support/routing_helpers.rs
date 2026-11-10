@@ -1,6 +1,7 @@
 #![allow(clippy::redundant_pub_crate, dead_code)]
 
-use sigil_kittest::FixedMeasure;
+use sigil::widgets::Widget;
+use sigil_kittest::FakeMeasure;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -16,7 +17,7 @@ pub(crate) fn route_event(
     router: &mut EventRouter,
     cx: &mut Cx,
     layout: &LayoutEngine,
-    input_event: ShellEvent,
+    input_event: Event,
 ) {
     let mut shell = MockShell::new();
     shell.push_event(input_event);
@@ -26,7 +27,7 @@ pub(crate) fn route_event(
 }
 
 pub(crate) fn compute_layout(cx: &mut Cx, root: NodeId, width: f32, height: f32) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(width, height))
         .unwrap();
@@ -37,10 +38,8 @@ pub(crate) fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
         .position(Position::Absolute)
-        .with_layout(move |style| {
-            style.inset.left = LengthPercentageAuto::Px(x);
-            style.inset.top = LengthPercentageAuto::Px(y);
-        })
+        .inset_left(x)
+        .inset_top(y)
 }
 
 pub(crate) fn record(

@@ -16,11 +16,11 @@ use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string;
 
-type Wake = Box<dyn Fn()>;
+type SessionWake = Box<dyn Fn()>;
 
 const SUBCLASS_ID: usize = 1;
 
-pub(crate) fn watch(window: &winit::window::Window, wake: Wake) {
+pub(crate) fn watch(window: &winit::window::Window, wake: SessionWake) {
     let Some(hwnd) = hwnd(window) else {
         tracing::warn!(target: "sigil::shell", "window has no Win32 handle; session end is not watched");
         return;
@@ -30,7 +30,7 @@ pub(crate) fn watch(window: &winit::window::Window, wake: Wake) {
     let installed = unsafe { SetWindowSubclass(hwnd, Some(session_proc), SUBCLASS_ID, data) };
     if installed == 0 {
         // SAFETY: the subclass was not installed, so nothing else holds `data`.
-        drop(unsafe { Box::from_raw(data as *mut Wake) });
+        drop(unsafe { Box::from_raw(data as *mut SessionWake) });
         tracing::warn!(target: "sigil::shell", "session end subclass install failed");
     }
 }
@@ -50,11 +50,14 @@ unsafe extern "system" fn session_proc(
     id: usize,
     data: usize,
 ) -> LRESULT {
-    match msg {
+    let handled = catch_unwind(AssertUnwindSafe(|| match msg {
         WM_QUERYENDSESSION if super::exit_hook::pending() => block_shutdown(hwnd),
         WM_ENDSESSION => end_session(hwnd, wparam != 0, data),
         WM_NCDESTROY => release(hwnd, id, data),
         _ => {}
+    }));
+    if handled.is_err() {
+        tracing::error!(target: "sigil::shell", "session message handler panicked");
     }
     // SAFETY: Windows calls this procedure with the arguments of a live message for `hwnd`, which go on unchanged to the next procedure in the chain.
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
@@ -78,7 +81,7 @@ fn end_session(hwnd: HWND, ending: bool, data: usize) {
         }
         crate::app::exit::request_exit();
         // SAFETY: `data` is the wake closure `watch` boxed for this subclass; WM_NCDESTROY has not freed it while the window still receives messages.
-        let wake = unsafe { &*(data as *const Wake) };
+        let wake = unsafe { &*(data as *const SessionWake) };
         wake();
     }
     // SAFETY: `hwnd` is the window receiving this message; destroying a reason that was never created is a harmless failure.
@@ -89,5 +92,5 @@ fn release(hwnd: HWND, id: usize, data: usize) {
     // SAFETY: the window is being destroyed; this removes the subclass `watch` installed with the same procedure and id.
     unsafe { RemoveWindowSubclass(hwnd, Some(session_proc), id) };
     // SAFETY: `data` came from `Box::into_raw` in `watch`, and this is the last message the window receives.
-    drop(unsafe { Box::from_raw(data as *mut Wake) });
+    drop(unsafe { Box::from_raw(data as *mut SessionWake) });
 }

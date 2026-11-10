@@ -1,15 +1,16 @@
-use crossterm::event::{Event, KeyCode, KeyEvent as TerminalKeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent as TerminalKeyEvent, KeyModifiers};
 
 use super::*;
+use crate::events::KeyEvent;
 
 fn mapped(code: KeyCode, modifiers: KeyModifiers) -> Option<KeyEvent> {
     match map_key(&TerminalKeyEvent::new(code, modifiers))? {
-        ShellEvent::Key(key) => Some(key),
+        Event::Key(key) => Some(key),
         _ => None,
     }
 }
 
-fn typed_keys(text: &str) -> Vec<Event> {
+fn typed_keys(text: &str) -> Vec<super::TermEvent> {
     text.chars()
         .map(|ch| match ch {
             '\n' => key(KeyCode::Enter, KeyModifiers::NONE),
@@ -18,8 +19,8 @@ fn typed_keys(text: &str) -> Vec<Event> {
         .collect()
 }
 
-fn key(code: KeyCode, modifiers: KeyModifiers) -> Event {
-    Event::Key(TerminalKeyEvent::new(code, modifiers))
+fn key(code: KeyCode, modifiers: KeyModifiers) -> super::TermEvent {
+    super::TermEvent::Key(TerminalKeyEvent::new(code, modifiers))
 }
 
 #[test]

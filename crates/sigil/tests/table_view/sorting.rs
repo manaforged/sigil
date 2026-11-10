@@ -4,7 +4,7 @@ use sigil::kernel::Cx;
 
 #[test]
 fn header_click_cycles_sort_and_reorders_rows() {
-    sigil::reactive::Runtime::scope("table-view-sort-cycle", || {
+    sigil::reactive::Owner::scope("table-view-sort-cycle", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -22,7 +22,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
             state.sort_key().get(),
             Some(SortKey {
                 column: "name",
-                dir: SortDir::Ascending,
+                dir: SortDirection::Ascending,
             }),
             "first click sorts ascending",
         );
@@ -33,7 +33,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
             state.sort_key().get(),
             Some(SortKey {
                 column: "name",
-                dir: SortDir::Descending,
+                dir: SortDirection::Descending,
             })
         );
         assert_eq!(visible_names(&state), ["gamma", "delta", "beta", "alpha"]);
@@ -47,7 +47,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
             state.sort_key().get(),
             Some(SortKey {
                 column: "count",
-                dir: SortDir::Ascending,
+                dir: SortDirection::Ascending,
             })
         );
     });
@@ -55,7 +55,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
 
 #[test]
 fn row_click_drives_selection_with_modifiers() {
-    sigil::reactive::Runtime::scope("table-view-selection", || {
+    sigil::reactive::Owner::scope("table-view-selection", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -100,7 +100,7 @@ fn row_click_drives_selection_with_modifiers() {
 
 #[test]
 fn selected_row_paints_selection_bg() {
-    sigil::reactive::Runtime::scope("table-view-selected-pixel", || {
+    sigil::reactive::Owner::scope("table-view-selected-pixel", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -133,7 +133,7 @@ fn selected_row_paints_selection_bg() {
 
 #[test]
 fn hover_row_paints_hover_slice() {
-    sigil::reactive::Runtime::scope("table-view-hover-pixel", || {
+    sigil::reactive::Owner::scope("table-view-hover-pixel", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -190,7 +190,7 @@ fn hover_row_paints_hover_slice() {
 
 #[test]
 fn hundred_thousand_rows_window_and_sort_without_rebuild() {
-    sigil::reactive::Runtime::scope("table-view-100k", || {
+    sigil::reactive::Owner::scope("table-view-100k", || {
         let rows = (0..100_000_u32)
             .map(|i| item(&format!("r{:07}", 99_999 - i), i64::from(i)))
             .collect::<Vec<_>>();

@@ -9,19 +9,16 @@
 #[path = "events_support/input.rs"]
 mod input;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::CommandMenuBuilder;
 
-use input::key_down;
-use sigil_kittest::{
-    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
-    stub_text_measure,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode, stub_text_measure};
 
 const VIEWPORT: (f32, f32) = (420.0, 260.0);
 
@@ -58,7 +55,7 @@ fn press(
     root: NodeId,
     key: (Key, PhysicalKey),
 ) {
-    router.route(cx, layout, key_down(key.0, key.1));
+    router.route(cx, layout, Event::key_down(key.0).physical(key.1));
     layout
         .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout after key");
@@ -70,7 +67,7 @@ fn panel_count(cx: &Cx, root: NodeId) -> usize {
 
 #[test]
 fn nested_submenu_opens_and_esc_ascends() {
-    Runtime::scope("cmd-menu-nested-esc", || {
+    Owner::scope("cmd-menu-nested-esc", || {
         let (mut cx, mut layout, mut router, root) = setup(|| {
             command_menu()
                 .item("Attack", || {})
@@ -116,7 +113,7 @@ fn nested_submenu_opens_and_esc_ascends() {
 
 #[test]
 fn disabled_item_skipped_by_navigation() {
-    Runtime::scope("cmd-menu-disabled-skip", || {
+    Owner::scope("cmd-menu-disabled-skip", || {
         let selected: Signal<Vec<String>> = signal(Vec::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
             command_menu()
@@ -147,7 +144,7 @@ fn disabled_item_skipped_by_navigation() {
 
 #[test]
 fn cancel_fires_on_root_esc() {
-    Runtime::scope("cmd-menu-cancel", || {
+    Owner::scope("cmd-menu-cancel", || {
         let cancelled = signal(false);
         let (mut cx, mut layout, mut router, root) = setup(move || {
             command_menu()
@@ -168,7 +165,7 @@ fn cancel_fires_on_root_esc() {
 
 #[test]
 fn leaf_select_fires_observer_and_closes() {
-    Runtime::scope("cmd-menu-select-closes", || {
+    Owner::scope("cmd-menu-select-closes", || {
         let fired = signal(false);
         let selected_label: Signal<String> = signal(String::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
@@ -228,7 +225,7 @@ fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
     let mut router = EventRouter::new();
     router.set_focus(cx, Some(query_field(cx, root)));
     for (key, physical) in keys {
-        router.route(cx, &layout, key_down(*key, *physical));
+        router.route(cx, &layout, Event::key_down(*key).physical(*physical));
     }
 }
 
@@ -244,55 +241,61 @@ fn query_field(cx: &Cx, root: NodeId) -> NodeId {
 
 #[test]
 fn command_menu_open() {
-    let img = render_widget_to_png_stub(
-        || sample_menu(|_| {})(),
-        InteractionMode::Default,
-        [432, 176],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("command_menu_open"), DELTA_PCT);
+    let img = Harness::render(|| sample_menu(|_| {})())
+        .stub()
+        .mode(InteractionMode::Default)
+        .size([432, 176])
+        .hit((1.0, 1.0))
+        .image();
+    Golden::new("command_menu_open")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn command_menu_nested() {
-    let img = render_widget_to_png_stub(
-        sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
-            let root = cx.add(sample_menu(|_| {})());
-            navigate(
-                cx,
-                root,
-                &[
-                    (Key::ArrowDown, PhysicalKey::ArrowDown),
-                    (Key::Enter, PhysicalKey::Enter),
-                ],
-            );
-            root
-        }),
-        InteractionMode::Default,
-        [432, 176],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("command_menu_nested"), DELTA_PCT);
+    let img = Harness::render(sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
+        let root = cx.add(sample_menu(|_| {})());
+        navigate(
+            cx,
+            root,
+            &[
+                (Key::ArrowDown, PhysicalKey::ArrowDown),
+                (Key::Enter, PhysicalKey::Enter),
+            ],
+        );
+        root
+    }))
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([432, 176])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("command_menu_nested")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn command_menu_disabled_item() {
-    let img = render_widget_to_png_stub(
-        sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
-            let root = cx.add(sample_menu(|_| {})());
-            navigate(
-                cx,
-                root,
-                &[
-                    (Key::ArrowDown, PhysicalKey::ArrowDown),
-                    (Key::ArrowDown, PhysicalKey::ArrowDown),
-                ],
-            );
-            root
-        }),
-        InteractionMode::Default,
-        [432, 176],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("command_menu_disabled_item"), DELTA_PCT);
+    let img = Harness::render(sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
+        let root = cx.add(sample_menu(|_| {})());
+        navigate(
+            cx,
+            root,
+            &[
+                (Key::ArrowDown, PhysicalKey::ArrowDown),
+                (Key::ArrowDown, PhysicalKey::ArrowDown),
+            ],
+        );
+        root
+    }))
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([432, 176])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("command_menu_disabled_item")
+        .delta(DELTA_PCT)
+        .assert(img);
 }

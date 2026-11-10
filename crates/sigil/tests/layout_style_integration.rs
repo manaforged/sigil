@@ -9,8 +9,10 @@ mod stub;
 
 use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::{TextContent, *};
+use sigil::layout::Space;
 use sigil::layout::*;
 use sigil::style::{Paint, TextLineHeight, TextStyle};
+use sigil::widgets::Widget;
 
 use stub::{first_child, layout_rect, stub_engine};
 
@@ -19,7 +21,11 @@ fn p_4_applies_sixteen_px_padding() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(16.0))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(100.0, 50.0)
+                    .padding(Space::Lg),
+            )
             .child(
                 container().layout(
                     LayoutStyle::default()
@@ -63,8 +69,12 @@ fn padded_child_origin(root: NodeBuilder) -> f32 {
 fn a_class_written_after_layout_wins() {
     let origin = padded_child_origin(
         container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
-            .layout(LayoutStyle::default().padding(16.0)),
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(100.0, 50.0)
+                    .padding(Space::Xl),
+            )
+            .layout(LayoutStyle::default().padding(Space::Lg)),
     );
     assert_eq!(origin, 16.0);
 }
@@ -73,8 +83,12 @@ fn a_class_written_after_layout_wins() {
 fn a_layout_written_after_class_wins() {
     let origin = padded_child_origin(
         container()
-            .layout(LayoutStyle::default().padding(16.0))
-            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0)),
+            .layout(LayoutStyle::default().padding(Space::Lg))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(100.0, 50.0)
+                    .padding(Space::Xl),
+            ),
     );
     assert_eq!(origin, 24.0);
 }
@@ -137,7 +151,7 @@ fn typography_atoms_drive_text_measurement() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         text("Type")
-            .font_size(20.0)
+            .font_size(20.0, "test fixture")
             .font_weight(700)
             .line_height_px(32.0),
     );

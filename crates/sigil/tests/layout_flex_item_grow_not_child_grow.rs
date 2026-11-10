@@ -6,8 +6,9 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn row_widths() -> Vec<f32> {
     let mut cx = Cx::new_root();
@@ -23,7 +24,7 @@ fn row_widths() -> Vec<f32> {
             .child(cell(0.8))
             .child(container().layout(LayoutStyle::block().width(96.0).height(20.0))),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(778.0, 300.0))
         .unwrap();

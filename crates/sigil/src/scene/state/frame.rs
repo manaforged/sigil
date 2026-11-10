@@ -6,7 +6,7 @@ use crate::scene::geometry::compose;
 
 use super::{MAX_LAYER_EXTENT, SceneState};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct TransformFrame {
     pub(crate) scope: LayerScope,
     pub(crate) bounds: Rect,
@@ -34,7 +34,7 @@ impl SceneState {
             scope: LayerScope {
                 clip: transform_rect(shrink, scope.clip),
                 clip_radii: CornerRadii(scope.clip_radii.0.map(|r| r * radius)),
-                ..*scope
+                ..scope.clone()
             },
             bounds: transform_rect(shrink, bounds),
             content: shrink,

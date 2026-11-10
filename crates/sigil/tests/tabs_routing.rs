@@ -21,9 +21,9 @@ use sigil::kernel::{Cx, NodeId};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::events::{MouseButton, MouseButtons};
 use sigil::geometry::Point;
 use sigil::prelude::*;
 use widget_support::compute;
@@ -36,19 +36,13 @@ const fn pointer_event(
     phase: PointerPhase,
     button: Option<MouseButton>,
     buttons: MouseButtons,
-) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+) -> Event {
+    Event::pointer(phase, Point::new(x, y))
+        .button(button)
+        .buttons(buttons)
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down(x: f32, y: f32) -> Event {
     pointer_event(
         x,
         y,
@@ -58,11 +52,11 @@ const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     )
 }
 
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
+const fn pointer_move(x: f32, y: f32) -> Event {
     pointer_event(x, y, PointerPhase::Move, None, MouseButtons::LEFT)
 }
 
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
+const fn pointer_up(x: f32, y: f32) -> Event {
     pointer_event(
         x,
         y,
@@ -111,7 +105,7 @@ fn ancestor_role(cx: &Cx, id: NodeId, role: Role) -> Option<NodeId> {
 
 #[test]
 fn routing_only_materialises_active_content() {
-    sigil::reactive::Runtime::scope("sigil-tabs-routing-content", || {
+    sigil::reactive::Owner::scope("sigil-tabs-routing-content", || {
         let active = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -180,7 +174,7 @@ fn routing_only_materialises_active_content() {
 
 #[test]
 fn close_button_wired_into_each_tab() {
-    sigil::reactive::Runtime::scope("sigil-tabs-routing-close-wiring", || {
+    sigil::reactive::Owner::scope("sigil-tabs-routing-close-wiring", || {
         let active = signal(0_usize);
         let received = Rc::new(RefCell::new(Vec::<usize>::new()));
         let recorder = {
@@ -222,7 +216,7 @@ fn close_button_wired_into_each_tab() {
 
 #[test]
 fn non_reorderable_ignores_drag() {
-    sigil::reactive::Runtime::scope("sigil-tabs-routing-non-reorderable", || {
+    sigil::reactive::Owner::scope("sigil-tabs-routing-non-reorderable", || {
         let active = signal(0_usize);
         let order = signal(vec![0_usize, 1, 2]);
         let mut cx = Cx::new_root();
@@ -257,7 +251,7 @@ fn non_reorderable_ignores_drag() {
 
 #[test]
 fn reorder_swaps_tab_indices_on_drag() {
-    sigil::reactive::Runtime::scope("sigil-tabs-routing-reorder", || {
+    sigil::reactive::Owner::scope("sigil-tabs-routing-reorder", || {
         let active = signal(0_usize);
         let order = signal(vec![0_usize, 1, 2]);
         let mut cx = Cx::new_root();
@@ -298,7 +292,7 @@ fn reorder_swaps_tab_indices_on_drag() {
 
 #[test]
 fn close_button_fires_callback_with_index() {
-    sigil::reactive::Runtime::scope("sigil-tabs-routing-close", || {
+    sigil::reactive::Owner::scope("sigil-tabs-routing-close", || {
         let active = signal(0_usize);
         let received = Rc::new(RefCell::new(Vec::<usize>::new()));
         let recorder = {

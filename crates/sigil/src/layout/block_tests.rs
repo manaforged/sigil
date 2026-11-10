@@ -6,27 +6,19 @@
 )]
 
 use super::*;
-use crate::geometry::{LogicalSize, Size as HalSize};
-use crate::kernel::TextContent;
 use crate::layout::forest::{AvailableSpace, LayoutForest, LocalId, MeasureScope};
 use crate::layout::style_data::{
-    BoxSizing, Dimension, Display, LengthPercentage, LengthPercentageAuto, Position, Rect,
-    Size as StyleSize, StyleData,
+    Axes as StyleSize, BoxSizing, Dimension, Display, Edges, Position, StyleData,
 };
 
-struct NullText;
-impl crate::layout::TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
+const NO_TEXT: crate::layout::FakeMeasure = crate::layout::FakeMeasure::fixed(0.0, 0.0);
 
 fn near(a: f32, b: f32) -> bool {
     (a - b).abs() <= 0.001
 }
 
 fn run(forest: &LayoutForest, root: LocalId, w: f32, h: f32) -> BlockSolver<'_> {
-    let measurer: &'static NullText = &NullText;
+    let measurer: &'static crate::layout::FakeMeasure = &NO_TEXT;
     let scope = MeasureScope::new(forest, measurer, AvailableSpace::definite(w, h));
     let solver = BlockSolver::new(scope);
     solver.solve(forest.refer(root).unwrap()).unwrap();
@@ -44,12 +36,12 @@ fn px(w: f32, h: f32) -> StyleData {
     sized(Dimension::Px(w), Dimension::Px(h))
 }
 
-fn margin(left: f32, top: f32, bottom: f32) -> Rect<LengthPercentageAuto> {
-    Rect {
-        left: LengthPercentageAuto::Px(left),
-        right: LengthPercentageAuto::Px(0.0),
-        top: LengthPercentageAuto::Px(top),
-        bottom: LengthPercentageAuto::Px(bottom),
+fn margin(left: f32, top: f32, bottom: f32) -> Edges<Dimension> {
+    Edges {
+        left: Dimension::Px(left),
+        right: Dimension::Px(0.0),
+        top: Dimension::Px(top),
+        bottom: Dimension::Px(bottom),
     }
 }
 
@@ -106,11 +98,11 @@ fn auto_width_fills_containing_block() {
 fn padding_contributes_to_auto_height() {
     let mut f = LayoutForest::new();
     let style = StyleData {
-        padding: Rect {
-            left: LengthPercentage::Px(8.0),
-            right: LengthPercentage::Px(8.0),
-            top: LengthPercentage::Px(12.0),
-            bottom: LengthPercentage::Px(4.0),
+        padding: Edges {
+            left: Dimension::Px(8.0),
+            right: Dimension::Px(8.0),
+            top: Dimension::Px(12.0),
+            bottom: Dimension::Px(4.0),
         },
         ..StyleData::default()
     };
@@ -128,8 +120,8 @@ fn padding_and_border_offset_child_origin() {
         let parent = f.insert(
             None,
             StyleData {
-                border: Rect::splat(LengthPercentage::Px(border)),
-                padding: Rect::splat(LengthPercentage::Px(padding)),
+                border: Edges::splat(Dimension::Px(border)),
+                padding: Edges::splat(Dimension::Px(padding)),
                 ..px(200.0, 200.0)
             },
         );
@@ -217,7 +209,7 @@ fn absolute_pinned_to_padding_box() {
     let parent = f.insert(
         None,
         StyleData {
-            padding: Rect::splat(LengthPercentage::Px(8.0)),
+            padding: Edges::splat(Dimension::Px(8.0)),
             ..px(200.0, 200.0)
         },
     );

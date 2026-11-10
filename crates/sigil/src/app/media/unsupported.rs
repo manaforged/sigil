@@ -1,5 +1,5 @@
 use super::types::{MediaKey, Track};
-use crate::app::error::{AppResult, Error};
+use crate::error::{AppResult, Error};
 
 pub(super) type Controls = ();
 

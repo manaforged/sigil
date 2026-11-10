@@ -3,26 +3,45 @@ use std::cell::Cell;
 use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
-use crate::layout::{CaretGeometry, TextGeometry, TextMeasure};
+use crate::layout::{CaretGeometry, TextMeasure};
 use crate::style::TextStyle;
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+use unicode_width::UnicodeWidthChar;
+use unicode_width::UnicodeWidthStr;
 
+mod wrap;
+
+#[cfg(any(test, feature = "terminal"))]
+pub(crate) use wrap::cell_text_lines;
+use wrap::{hard_break_at, ranges};
+
+/// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
 #[derive(Clone, Copy, Default)]
 pub enum CellWidth {
+    /// The unicode cell width.
     #[default]
     Unicode,
+    /// The scalar cell width.
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     Scalar {
+        /// The joiner.
         joiner: usize,
+        /// The nonjoiner.
         nonjoiner: usize,
+        /// The keycap.
         keycap: usize,
     },
 }
 
+/// How wide East Asian ambiguous characters are in cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Ambiguous {
+    /// The narrow ambiguous.
     #[default]
     Narrow,
+    /// The wide ambiguous.
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     Wide,
 }
 
@@ -31,17 +50,29 @@ thread_local! {
     static AMBIGUOUS: Cell<Ambiguous> = const { Cell::new(Ambiguous::Narrow) };
 }
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+kittest_pub! {
+/// Sets how text width in cells is measured.
+#[doc(hidden)]
 pub fn set_cell_width(width: CellWidth) {
     CELL_WIDTH.set(width);
 }
+}
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+kittest_pub! {
+/// Sets the width of East Asian ambiguous characters.
+#[doc(hidden)]
 pub fn set_ambiguous(width: Ambiguous) {
     AMBIGUOUS.set(width);
 }
+}
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 fn char_width(ch: char) -> usize {
     match AMBIGUOUS.get() {
         Ambiguous::Narrow => UnicodeWidthChar::width(ch),
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
         Ambiguous::Wide => UnicodeWidthChar::width_cjk(ch),
     }
     .unwrap_or(0)
@@ -57,13 +88,16 @@ pub(crate) fn cell_glyph(text: &str) -> &str {
     }
 }
 
+/// Returns the width of `text` in terminal cells.
 #[must_use]
 pub fn cell_width(text: &str) -> usize {
     match CELL_WIDTH.get() {
         CellWidth::Unicode => match AMBIGUOUS.get() {
             Ambiguous::Narrow => UnicodeWidthStr::width(text),
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             Ambiguous::Wide => UnicodeWidthStr::width_cjk(text),
         },
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
         CellWidth::Scalar {
             joiner,
             nonjoiner,
@@ -182,6 +216,10 @@ impl CellGeometry {
 impl TextMeasure for CellGeometry {
     fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
         let text = content.resolve();
+        if matches!(space.width, Dim::MinContent) {
+            let longest = text.split_whitespace().map(cell_width).max().unwrap_or(0);
+            return LogicalSize::new(cells_to_px(longest, self.px), self.px);
+        }
         let width = match space.width {
             Dim::Fixed(width) => Some(width),
             Dim::MinContent | Dim::MaxContent => None,
@@ -198,9 +236,7 @@ impl TextMeasure for CellGeometry {
             cells_to_px(ranges.len().max(1), self.px),
         )
     }
-}
 
-impl TextGeometry for CellGeometry {
     fn hit(&self, text: &str, _style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition {
         self.hit_wrapped_at(text, &self.ranges(text, width), point.x, point.y)
     }
@@ -256,101 +292,53 @@ impl TextGeometry for CellGeometry {
     }
 }
 
-pub fn cell_text_lines(text: &str, max_cells: usize) -> Vec<(usize, usize)> {
-    ranges(text, (max_cells > 0).then_some(max_cells))
+/// Shortens `text` to `width` cells with an ellipsis at the end.
+#[must_use]
+#[cfg(test)]
+pub(crate) fn ellipsize_cells(text: &str, width: usize) -> String {
+    if cell_width(text) <= width {
+        return text.to_string();
+    }
+    if width == 0 {
+        return String::new();
+    }
+    let mut used = 0;
+    let end = text.grapheme_indices(true).find_map(|(index, grapheme)| {
+        used += cell_width(grapheme);
+        (used > width - 1).then_some(index)
+    });
+    format!("{}…", &text[..end.unwrap_or(text.len())])
 }
 
-fn ranges(text: &str, max_cells: Option<usize>) -> Vec<(usize, usize)> {
-    let breaks = break_positions(text);
-    let mut lines = Vec::new();
-    for (start, end) in hard_lines(text) {
-        lines.extend(wrap_range(text, start, end, max_cells, &breaks));
+/// Shortens `text` to `width` cells with an ellipsis at the start.
+#[must_use]
+#[cfg(test)]
+pub(crate) fn ellipsize_cells_start(text: &str, width: usize) -> String {
+    if cell_width(text) <= width {
+        return text.to_string();
     }
-    lines
+    if width == 0 {
+        return String::new();
+    }
+    let mut used = 0;
+    let start = text
+        .grapheme_indices(true)
+        .rev()
+        .find_map(|(index, grapheme)| {
+            used += cell_width(grapheme);
+            (used > width - 1).then_some(index + grapheme.len())
+        });
+    format!("…{}", &text[start.unwrap_or(0)..])
 }
 
-fn hard_lines(text: &str) -> Vec<(usize, usize)> {
-    let mut out = Vec::new();
-    let mut start = 0;
-    let mut index = 0;
-    while let Some(ch) = text.get(index..).and_then(|rest| rest.chars().next()) {
-        if HARD_BREAKS.contains(&ch) {
-            out.push((start, index));
-            index += ch.len_utf8();
-            if ch == '\r' && text.get(index..).is_some_and(|rest| rest.starts_with('\n')) {
-                index += 1;
-            }
-            start = index;
-        } else {
-            index += ch.len_utf8();
-        }
-    }
-    out.push((start, text.len()));
+/// Cuts or pads `text` to exactly `width` cells.
+#[must_use]
+#[cfg(test)]
+pub(crate) fn fit_cells(text: &str, width: usize) -> String {
+    let mut out = ellipsize_cells(text, width);
+    let pad = width.saturating_sub(cell_width(&out));
+    out.extend(std::iter::repeat_n(' ', pad));
     out
-}
-
-fn wrap_range(
-    text: &str,
-    start: usize,
-    end: usize,
-    max_cells: Option<usize>,
-    breaks: &[usize],
-) -> Vec<(usize, usize)> {
-    let Some(max_cells) = max_cells.filter(|_| start != end) else {
-        return vec![(start, end)];
-    };
-    let mut out = Vec::new();
-    let mut line_start = start;
-    while line_start < end {
-        let mut width = 0_usize;
-        let mut fit_end = line_start;
-        let mut break_end = None;
-        for (offset, grapheme) in text[line_start..end].grapheme_indices(true) {
-            let grapheme_end = line_start + offset + grapheme.len();
-            let next = width.saturating_add(cell_width(grapheme));
-            if fit_end > line_start && next > max_cells {
-                break;
-            }
-            width = next;
-            fit_end = grapheme_end;
-            if breaks.binary_search(&grapheme_end).is_ok() {
-                break_end = Some(grapheme_end);
-            }
-        }
-        if fit_end == line_start {
-            fit_end = text[line_start..end]
-                .graphemes(true)
-                .next()
-                .map_or(end, |grapheme| line_start + grapheme.len());
-        }
-        let cut = if fit_end < end {
-            break_end
-                .filter(|value| *value > line_start)
-                .unwrap_or(fit_end)
-        } else {
-            end
-        };
-        let rest = &text[cut..end];
-        let cut = cut + rest.len() - rest.trim_start_matches(' ').len();
-        out.push((line_start, cut));
-        line_start = cut;
-    }
-    out
-}
-
-fn break_positions(text: &str) -> Vec<usize> {
-    unicode_linebreak::linebreaks(text)
-        .filter_map(|(index, opportunity)| {
-            matches!(opportunity, unicode_linebreak::BreakOpportunity::Allowed).then_some(index)
-        })
-        .collect()
-}
-
-const HARD_BREAKS: [char; 4] = ['\n', '\r', '\u{2028}', '\u{2029}'];
-
-fn hard_break_at(text: &str, byte: usize) -> bool {
-    text.get(byte..)
-        .is_some_and(|rest| rest.starts_with(HARD_BREAKS))
 }
 
 fn cells_to_px(cells: usize, px: f32) -> f32 {

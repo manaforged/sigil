@@ -164,3 +164,29 @@ fn sigil_fills_overrides_the_detected_fills() {
         Fills::Whole
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn an_osc_7501_reply_turns_on_activity_reports() {
+    let env = |key: &str| (key == "TERM").then(|| "xterm-ghostty".to_string());
+    let herdr =
+        "\x1b]7501;?:states=idle,working,done,blocked,error:kinds=permission\x1b\\\x1b[?62;22c";
+    assert!(
+        super::draft(&env)
+            .settle(&super::probe::parse(herdr))
+            .notices
+            .activity
+    );
+    let plain = super::probe::parse("\x1b[?62;22c");
+    assert!(!super::draft(&env).settle(&plain).notices.activity);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_cell_size_reply_records_the_cell_in_pixels() {
+    let env = |key: &str| (key == "TERM").then(|| "xterm-ghostty".to_string());
+    let sized = super::probe::parse("\x1b[6;20;10t\x1b[?62;22c");
+    assert_eq!(super::draft(&env).settle(&sized).cell, Some([10, 20]));
+    let silent = super::probe::parse("\x1b[6;0;0t\x1b[?62;22c");
+    assert_eq!(super::draft(&env).settle(&silent).cell, None);
+}
