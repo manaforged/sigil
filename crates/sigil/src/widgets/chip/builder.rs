@@ -8,10 +8,8 @@ use crate::reactive::{Reactive, Signal};
 use crate::style::{Radius, Tone, space};
 use crate::widgets::Layout;
 
-use crate::widgets::interaction::InteractionState;
-
 use super::super::dot::dot;
-use super::super::shared::{Activate, Press, RELEASE_ENTER, press};
+use super::super::shared::Activate;
 use super::chip_class;
 
 /// Builder of a chip.
@@ -112,15 +110,7 @@ impl ChipBuilder {
         }
         node = node.child(crate::kernel::text(self.label).nowrap());
         if let Some(activate) = activate {
-            let interaction = InteractionState::new(true);
-            node = press(
-                node,
-                interaction,
-                None,
-                Press::Activate(activate),
-                RELEASE_ENTER,
-            );
-            node = interaction.install(node);
+            node = node.activate_with(activate);
         }
         match self.tone_signal {
             Some(tone) => node.style_reactive(move || chip_class(tone.get())),

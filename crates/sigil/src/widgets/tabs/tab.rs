@@ -5,7 +5,6 @@ use std::rc::Rc;
 use crate::animation::runtime::presets;
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::prelude::PointerEvent;
 use crate::reactive::{Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
@@ -13,9 +12,9 @@ use crate::style::{
     ClassSource, Color, ColorAtom, DISABLED_OPACITY, Radius, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, Token, space,
 };
+use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{Activate, Press, RELEASE, RELEASE_ENTER, press};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::shared::{Activate, Press, RELEASE_ENTER, press};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{TabDrag, install_label_drag_hooks};
@@ -117,34 +116,23 @@ fn tab_label(label: String, selected: Signal<bool>) -> TextBuilder {
 }
 
 fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
-    let interaction = InteractionState::new(true);
-    let activate: Activate = Rc::new(move || {
-        if let Some(cb) = handler.as_ref() {
-            cb(index);
-        }
-    });
-    let node = interaction.install(
-        container()
-            .role(Role::Button)
-            .label(AccessibleName::Static(theme_string_once(
-                StringKey::CloseTab,
-            )))
-            .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
-            .class(Radius::Sm.atom())
-            .child(
-                text("\u{00D7}")
-                    .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
-                    .class(Token::OnSurface.text()),
-            ),
-    );
-    press(
-        node.pointer_down(PointerEvent::stop_propagation),
-        interaction,
-        None,
-        Press::Activate(activate),
-        RELEASE,
-    )
-    .pointer_up(PointerEvent::stop_propagation)
+    container()
+        .role(Role::Button)
+        .label(AccessibleName::Static(theme_string_once(
+            StringKey::CloseTab,
+        )))
+        .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
+        .class(Radius::Sm.atom())
+        .child(
+            text("\u{00D7}")
+                .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
+                .class(Token::OnSurface.text()),
+        )
+        .activate(move || {
+            if let Some(cb) = handler.as_ref() {
+                cb(index);
+            }
+        })
 }
 
 fn tab_frame(
