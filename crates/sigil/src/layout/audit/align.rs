@@ -1,7 +1,7 @@
 use crate::geometry::Rect;
 use crate::kernel::{Cx, Node, NodeId, NodeType};
+use crate::layout::Orientation;
 use crate::layout::{Display, FlexDirection, FlexWrap, LayoutEngine, LayoutStyle, StyleData};
-use crate::widgets::Orientation;
 
 use super::{Issue, Tolerance, is_row, label, style};
 

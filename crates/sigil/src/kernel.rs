@@ -12,6 +12,7 @@ mod control_flow;
 mod cx;
 mod delta;
 mod describe;
+pub(crate) mod hooks;
 mod id;
 mod image;
 mod image_cache;
@@ -29,6 +30,7 @@ pub(crate) use component::WithCx;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use component::WithCx;
+pub(crate) use component::into_node_builder;
 pub use component::{IntoNode, node};
 pub use control_flow::{SwitchBuilder, for_each, show, switch};
 pub use cx::{Cx, HostMode};

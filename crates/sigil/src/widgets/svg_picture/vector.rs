@@ -5,10 +5,11 @@ use std::sync::Arc;
 use crate::geometry::Rect;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
+use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache::shift_command;
 use crate::style::Theme;
-use crate::widgets::{CanvasPaint, Layout};
+use crate::widgets::Layout;
 
 use super::Picture;
 use super::lower::lower;

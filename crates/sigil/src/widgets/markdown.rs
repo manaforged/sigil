@@ -112,9 +112,9 @@ impl MarkdownEditBuilder {
     }
 
     fn root(self) -> NodeBuilder {
-        use super::orientation::Orientation;
         use super::splitter::splitter;
         use super::text_edit::text_edit;
+        use crate::layout::Orientation;
 
         let editor = text_edit(self.source);
         let editor = match self.disabled {

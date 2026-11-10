@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use crate::events::PointerEvent;
 use crate::kernel::NodeBuilder;
+use crate::layout::Orientation;
 use crate::widgets::Widget;
-use crate::widgets::orientation::Orientation;
 
 use super::{is_cancel, is_primary};
 

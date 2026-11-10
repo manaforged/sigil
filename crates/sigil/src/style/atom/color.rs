@@ -35,7 +35,7 @@ impl std::str::FromStr for Color {
     type Err = crate::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        crate::widgets::parse_color_hex(input).ok_or_else(|| {
+        parse_hex(input).ok_or_else(|| {
             crate::Error::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "hex color",
@@ -124,5 +124,33 @@ impl BgGradient {
     #[must_use]
     pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
         Self::new(axis, crate::style::intern::intern(stops))
+    }
+}
+
+fn parse_hex(input: &str) -> Option<Color> {
+    let trimmed = input.trim();
+    let hex = trimmed
+        .strip_prefix('#')
+        .or_else(|| trimmed.strip_prefix("0x"))
+        .unwrap_or(trimmed);
+    let digits = hex.bytes().map(nibble).collect::<Option<Vec<u8>>>()?;
+    let pair = |high: u8, low: u8| high * 16 + low;
+    let (r, g, b, a) = match *digits.as_slice() {
+        [r, g, b] => (r * 17, g * 17, b * 17, 255),
+        [r1, r0, g1, g0, b1, b0] => (pair(r1, r0), pair(g1, g0), pair(b1, b0), 255),
+        [r1, r0, g1, g0, b1, b0, a1, a0] => {
+            (pair(r1, r0), pair(g1, g0), pair(b1, b0), pair(a1, a0))
+        }
+        _ => return None,
+    };
+    Some(Color { r, g, b, a })
+}
+
+const fn nibble(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
 }

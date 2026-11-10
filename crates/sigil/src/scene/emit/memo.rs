@@ -7,10 +7,10 @@ use slotmap::{DefaultKey, SecondaryMap};
 use crate::geometry::Rect;
 use crate::kernel::{Cx, FrameDelta, Node, NodeId};
 use crate::layout::LayoutResult;
+use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache;
 use crate::style::{FocusRing, StyleBinding};
-use crate::widgets::CanvasPaint;
 
 use super::subtree::{Copied, EmitDiff, SubtreeSpan, rect_bits};
 

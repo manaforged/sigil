@@ -7,11 +7,9 @@ use crate::reactive::{Signal, derived, effect_named};
 
 use crate::kernel::NodeBuilder;
 use crate::kernel::component::Patch;
+use crate::kernel::hooks::NodeHooks;
 use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, NodeId, NodeType};
-use crate::style::{PaintTarget, StateSlot, StyleAtom, StyleSlot};
-use crate::widgets::layout_ext::NodeHooks;
-use crate::widgets::{Edit, Sealed, StateTarget, Widget};
-use smallvec::SmallVec;
+use crate::style::{PaintTarget, StyleSlot};
 
 /// Static, signal, or computed text.
 #[derive(Clone)]
@@ -117,8 +115,8 @@ impl<F: Fn() -> String + 'static> From<F> for TextContent {
 /// Builder of a text node.
 #[derive(Debug)]
 pub struct TextBuilder {
-    node: NodeBuilder,
-    hooks: NodeHooks,
+    pub(crate) node: NodeBuilder,
+    pub(crate) hooks: NodeHooks,
 }
 
 /// The one text node.
@@ -250,32 +248,6 @@ impl TextBuilder {
 impl PaintTarget for TextBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
         self.node.style_slot()
-    }
-}
-
-impl Sealed for TextBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
-        self.node = edit.apply(self.node);
-        self
-    }
-
-    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.map_node(f)
-    }
-}
-
-impl StateTarget for TextBuilder {
-    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-        self.node = self.node.set_state(slot, atoms);
-        self
-    }
-}
-
-impl Widget for TextBuilder {
-    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.hooks
-            .push(Box::new(move |node| node.map_keeping_kind(f)));
-        self
     }
 }
 

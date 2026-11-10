@@ -14,7 +14,7 @@ use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
 use super::builder::SliderRuntime;
-use crate::widgets::orientation::Orientation;
+use crate::layout::Orientation;
 
 static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 

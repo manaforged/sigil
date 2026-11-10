@@ -1,9 +1,9 @@
 use crate::kernel::{NodeBuilder, container, text};
+use crate::layout::Orientation;
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::style::{ControlSize, Metrics};
 use crate::widgets::Layout;
-use crate::widgets::orientation::Orientation;
 
 pub(super) fn with_caption(
     slider: NodeBuilder,

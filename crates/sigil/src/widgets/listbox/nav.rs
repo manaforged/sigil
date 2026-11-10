@@ -1,5 +1,5 @@
 use crate::events::Key;
-use crate::widgets::orientation::Orientation;
+use crate::layout::Orientation;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Move {

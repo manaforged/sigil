@@ -1,9 +1,9 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
+use crate::layout::Orientation;
 use crate::style::StyleAtom;
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::widgets::Layout;
-use crate::widgets::orientation::Orientation;
 use crate::widgets::scroll::to_i16;
 
 use super::drag::SplitterState;

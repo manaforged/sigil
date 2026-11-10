@@ -6,12 +6,13 @@ use crate::geometry::Rect;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::scene::SceneBuilder;
+use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::{
     DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
 use crate::style::{Color, ColorAtom, Theme};
+use crate::widgets::Layout;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{CanvasPaint, Layout};
 
 mod key;
 mod paint;

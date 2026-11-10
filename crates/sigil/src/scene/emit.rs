@@ -6,8 +6,8 @@ use crate::geometry::Rect;
 use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
+use crate::scene::canvas::CanvasPaint;
 use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
-use crate::widgets::CanvasPaint;
 
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{BlendMode, CommandScene, LayerEffect, LayerScope};

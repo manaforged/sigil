@@ -26,6 +26,7 @@ mod grid;
 mod grid_tracks;
 mod intent;
 mod measure;
+mod orientation;
 pub(crate) mod reactive_position;
 mod resolve;
 mod result;
@@ -49,6 +50,7 @@ pub use intent::LayoutStyle;
 #[doc(hidden)]
 pub use measure::FakeMeasure;
 pub use measure::TextMeasure;
+pub use orientation::Orientation;
 pub(crate) use reactive_position::SizeReactive;
 pub use reactive_position::{BoundsReactive, ReactivePosition};
 pub use result::LayoutResult;

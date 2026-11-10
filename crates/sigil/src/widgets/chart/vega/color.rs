@@ -1,5 +1,4 @@
 use crate::style::Color;
-use crate::widgets::parse_color_hex;
 
 const NAMED: [(&str, u32); 24] = [
     ("black", 0x00_00_00),
@@ -31,7 +30,7 @@ const NAMED: [(&str, u32); 24] = [
 pub(super) fn css(name: &str) -> Option<Color> {
     let name = name.trim();
     if name.starts_with('#') {
-        return parse_color_hex(name);
+        return name.parse().ok();
     }
     let lower = name.to_ascii_lowercase();
     let (_, rgb) = NAMED.iter().find(|(known, _)| *known == lower)?;

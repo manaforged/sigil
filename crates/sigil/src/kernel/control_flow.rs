@@ -5,7 +5,6 @@ use std::rc::Rc;
 use crate::kernel::{Cx, NodeId};
 use crate::kernel::{IntoNode, NodeBuilder, container, fragment, node};
 use crate::reactive::{Reactive, Signal, derived};
-use crate::widgets::Widget;
 
 /// Mounts `then()` while `cond` is true and `otherwise()` while it is false.
 #[must_use]
@@ -143,9 +142,10 @@ fn mount_kept(views: Vec<ViewFn>, slot: Signal<Option<usize>>) -> NodeBuilder {
         seen.iter()
             .filter_map(|&i| views.get(i).map(|view| (i, Rc::clone(view))))
             .map(|(i, view)| {
-                let page = container()
-                    .child(move || view())
-                    .visible_when(move || slot.get() == Some(i));
+                let page = crate::style::builder_ext::visible_when(
+                    container().child(move || view()),
+                    move || slot.get() == Some(i),
+                );
                 (i, page)
             })
             .collect::<Vec<_>>()
