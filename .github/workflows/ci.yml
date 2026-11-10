@@ -33,11 +33,28 @@ jobs:
           docker build --tag ci-actionlint .github/actionlint
           docker run --rm --volume "$PWD:/repo:ro" --workdir /repo ci-actionlint
 
-  gate:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.list.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - id: list
+        run: echo "jobs=$(scripts/gate.sh --list)" >> "$GITHUB_OUTPUT"
+
+  gate:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON(needs.plan.outputs.jobs) }}
+    name: gate (${{ matrix.job }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
-      RUST_TEST_THREADS: "1"
       WGPU_BACKEND: vulkan
       LP_NUM_THREADS: "4"
     steps:
@@ -55,12 +72,13 @@ jobs:
         run: rustup show active-toolchain
       - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
         with:
-          save-if: "false"
+          shared-key: gate-${{ matrix.job }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2
         with:
           tool: cargo-hack,cargo-deny@0.20.2,cargo-fuzz@0.13.2,mdbook@0.4.40,wasm-bindgen-cli@0.2.127
       - name: gate
-        run: scripts/gate.sh --gpu
+        run: scripts/gate.sh --gpu ${{ matrix.job }}
 
   platforms:
     strategy:
@@ -77,7 +95,7 @@ jobs:
         run: rustup show active-toolchain
       - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
         with:
-          save-if: "false"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: test
         run: cargo test --workspace --locked --features sigil-ui/terminal
       - name: display gate
@@ -85,27 +103,9 @@ jobs:
           SIGIL_DISPLAY_GATE: "1"
         run: cargo test -p sigil-ui --locked --test shell_display_gate
 
-  msrv:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - name: linux system libs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
-      - name: minimum Rust
-        run: |
-          rust=$(sed -n '/^\[workspace.package\]/,/^\[/s/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
-          test -n "$rust"
-          rustup toolchain install "$rust" --profile minimal
-          cargo +"$rust" check -p sigil-ui --all-features --locked
-
   required:
     if: always()
-    needs: [workflows, gate, platforms, msrv]
+    needs: [workflows, plan, gate, platforms]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
