@@ -10,7 +10,7 @@ The internal `kernel` module owns the UI tree. `Cx` is the tree context. `NodeId
 
 ## Layout
 
-The internal `LayoutEngine` is the only production layout. It mirrors a kernel subtree, solves flex, block, and grid, and writes `LayoutResult` back onto the same `NodeId`s. `LayoutStyle` is the only layout API. `scroll()` is sugar for `Overflow::Scroll`.
+The internal `LayoutEngine` is the only production layout. It mirrors a kernel subtree, solves flex, block, and grid, and writes `LayoutResult` back onto the same `NodeId`s. The layout setters on `Widget` are the layout API. `scroll()` is sugar for `Overflow::Scroll`.
 
 The internal `LayoutEngine::compute(cx, root, available)` runs in the Layout phase when the frame is dirty. A cache key of (signature, available, scale) skips the solve on a hit. The engine asks a `TextMeasure` for sizes; it does not shape. Production uses `OwnedTextEngine::thread()`.
 

@@ -221,6 +221,21 @@ First public release.
 | `Theme::padding(size)`, `Theme::gap(size)` | `Theme::control_padding(size)`, `Theme::control_gap(size)` |
 | exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `ChangeKind`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
 | under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
+| `.layout(LayoutStyle::default().fixed_size(w, h))` | `.width(w).height(h)` |
+| `.layout(LayoutStyle::default().fill_width())` | `.fill_width()` |
+| `.layout(LayoutStyle::default().gap(space))` | `.gap(space)` |
+| `.layout(LayoutStyle::default().height(px))` | `.height(px)` |
+| `.layout(LayoutStyle::default().width(px))` | `.width(px)`, which also lowers a larger minimum width |
+| `.layout(LayoutStyle::default().align_items(align))` | `.align_items(align)` |
+| `.layout(LayoutStyle::default().padding(space))` | `.padding(space)` |
+| `.layout(LayoutStyle::default().shrink(factor))` | `.shrink(factor)` |
+| `.layout(LayoutStyle::default().grow(factor))` | `.grow(factor)`, which keeps a minimum size that the node already has |
+| `.layout(LayoutStyle::default().min_size(w, h))` | `.min_width(w).min_height(h)` |
+| `.layout(LayoutStyle::default().fill())` | `.fill()` |
+| `.layout(LayoutStyle::default().position(position))` | `.position(position)` |
+| `.layout(LayoutStyle::default().padding_x(space))` | `.padding_x(space)` |
+| `.layout(LayoutStyle::default().justify_content(justify))` | `.justify_content(justify)` |
+| `.layout(LayoutStyle::default().inset_top(top))` | `.inset_top(top)` |
 
 ### Changed
 
@@ -240,6 +255,7 @@ First public release.
 - A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
 - Gradient text draws conic, elliptical radial and repeating gradients.
 - A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
+- Layout setters on widgets (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest of `Widget`) are the supported way to set layout; `LayoutStyle` and `Widget::layout` will become private, and the migration table maps the 15 most used `LayoutStyle` methods.
 
 ### Fixed
 

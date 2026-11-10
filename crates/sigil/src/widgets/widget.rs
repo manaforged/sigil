@@ -7,7 +7,7 @@ use crate::events::{
 };
 use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, FlawKind};
-use crate::layout::builder_ext::asymmetric;
+use crate::layout::builder_ext::{asymmetric, layout_methods};
 use crate::layout::reactive_position;
 use crate::layout::{IntoPx, LayoutStyle, Space};
 use crate::reactive::{Reactive, Signal};
@@ -175,6 +175,8 @@ pub trait Widget: Sealed {
     fn grow(self, factor: f32) -> Self {
         self.edit(Edit::Layout(LayoutEdit::Grow(factor)))
     }
+
+    layout_methods!();
 
     /// Writes the node's laid-out position into `pos` after each layout.
     #[must_use]

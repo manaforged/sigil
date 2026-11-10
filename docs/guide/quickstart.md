@@ -26,7 +26,7 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(Space::Xxl))
+        .padding(Space::Xxl)
         .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
@@ -76,13 +76,14 @@ The tree is the same. The host changes.
 
 ## Styling
 
-Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes through `LayoutStyle`. A misspelt name does not compile.
+Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes through the layout setters that every builder has, such as `padding`, `gap`, and `width`. A misspelt name does not compile.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 container()
-    .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Sm))
+    .padding(Space::Lg)
+    .gap(Space::Sm)
     .bg(Token::Overlay)
     .border_w(1)
     .border_color(Token::OverlayBorder)
@@ -111,7 +112,7 @@ container()
 
 `class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 
-Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap. Put all layout for one node in one `LayoutStyle` chain.
+Spacing and size numbers are pixels. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
 
 ### Typed theme tokens
 

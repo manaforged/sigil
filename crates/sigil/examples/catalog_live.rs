@@ -107,7 +107,7 @@ impl Pick {
 fn widget(pick: &Pick) -> NodeBuilder {
     builders::builder(&pick.build).map_or_else(
         || spec::node(text(format!("No builder {}", pick.build))),
-        |build| build(pick.state).layout(LayoutStyle::default().align_items(AlignItems::Center)),
+        |build| build(pick.state).align_items(AlignItems::Center),
     )
 }
 
@@ -125,12 +125,9 @@ fn sandbox(first: Pick) -> impl IntoNode {
         || {},
     );
     column()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .fill_height()
-                .padding(Space::Xl),
-        )
+        .fill_width()
+        .fill_height()
+        .padding(Space::Xl)
         .bg(Token::Surface)
         .child(for_each(
             picks,
