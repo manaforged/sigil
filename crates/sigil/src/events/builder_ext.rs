@@ -140,7 +140,14 @@ pub(crate) fn pointer_up<H>(node: NodeBuilder, h: H) -> NodeBuilder
 where
     H: Fn(&mut PointerEvent) + 'static,
 {
-    with_handlers(node.action(Action::Click), move |handlers| {
+    pointer_release(node.action(Action::Click), h)
+}
+
+pub(crate) fn pointer_release<H>(node: NodeBuilder, h: H) -> NodeBuilder
+where
+    H: Fn(&mut PointerEvent) + 'static,
+{
+    with_handlers(node, move |handlers| {
         handlers.push(
             EventKind::PointerUp,
             Phase::Bubble,

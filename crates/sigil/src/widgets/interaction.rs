@@ -13,7 +13,7 @@ pub(crate) use steps::{ValueStep, step_keys};
 /// Hover, press, and focus signals.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InteractionState {
-    disabled: Option<Signal<bool>>,
+    disabled: Signal<Option<Signal<bool>>>,
     hovered: Signal<bool>,
     pressed: Signal<bool>,
     dragging: Signal<bool>,
@@ -26,7 +26,7 @@ impl InteractionState {
     #[must_use]
     pub(crate) fn new(enabled: bool) -> Self {
         Self {
-            disabled: (!enabled).then(|| signal(true)),
+            disabled: signal((!enabled).then(|| signal(true))),
             hovered: signal(false),
             pressed: signal(false),
             dragging: signal(false),
@@ -37,20 +37,20 @@ impl InteractionState {
 
     /// Makes the state follow `disabled` instead of the flag given to `new`.
     #[must_use]
-    pub(crate) const fn disabled(mut self, disabled: Option<Signal<bool>>) -> Self {
-        self.disabled = disabled;
+    pub(crate) fn disabled(self, disabled: Option<Signal<bool>>) -> Self {
+        self.disabled.set(disabled);
         self
     }
 
     fn is_enabled(self) -> bool {
-        !self.disabled.is_some_and(Signal::peek)
+        !self.disabled.peek().is_some_and(Signal::peek)
     }
 
     /// Returns the style state.
     #[must_use]
     pub(crate) fn style_state(self) -> StyleState {
         StyleState {
-            disabled: self.disabled.is_some_and(Signal::get),
+            disabled: self.disabled.get().is_some_and(Signal::get),
             hovered: self.hovered.get(),
             pressed: self.pressed.get() || self.dragging.get(),
             focused: self.focused.get(),
@@ -71,7 +71,7 @@ impl InteractionState {
     /// Attaches the state's handlers to `node`.
     #[must_use]
     pub(crate) fn install(self, node: NodeBuilder) -> NodeBuilder {
-        let node = match self.disabled {
+        let node = match self.disabled.peek() {
             Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
             None => node,
         };
@@ -92,7 +92,8 @@ impl InteractionState {
     }
 
     pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {
-        node.focus_in(move || self.on_focus_in())
+        let node = node
+            .focus_in(move || self.on_focus_in())
             .focus_out(move || self.on_focus_out())
             .pointer_enter(move |_| set_if_changed(self.hovered, true))
             .pointer_leave(move |_| self.leave())
@@ -100,12 +101,12 @@ impl InteractionState {
                 if is_primary(event) {
                     set_if_changed(self.pressed, true);
                 }
-            })
-            .pointer_up(move |event| {
-                if is_primary(event) || is_cancel(event) {
-                    set_if_changed(self.pressed, false);
-                }
-            })
+            });
+        crate::events::builder_ext::pointer_release(node, move |event| {
+            if is_primary(event) || is_cancel(event) {
+                set_if_changed(self.pressed, false);
+            }
+        })
     }
 
     /// Handles a pointer release and returns whether it activates.

@@ -30,7 +30,7 @@ impl Wiring {
 }
 
 impl NodeBuilder {
-    /// Disables the node: it dims, ignores pointer and keys, and reads as disabled.
+    /// Disables the node: it dims, its press, key, and action handlers stop running, and it reads as disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.wiring_mut().disabled = Some(disabled.into_signal());
@@ -86,11 +86,7 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
         overlay,
         move || reactive_style_state(interaction, disabled),
     );
-    let node = if variant.is_some() {
-        node.seal_style()
-    } else {
-        node
-    };
+    let node = node.seal_style();
     match activate {
         Some(activate) => interaction.install(press(
             node,

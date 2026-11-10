@@ -1,5 +1,5 @@
 use crate::events::MouseButton;
-use crate::kernel::{NodeBuilder, Role};
+use crate::kernel::{Action, NodeBuilder, Role};
 use crate::reactive::signal;
 use crate::widgets::Widget;
 
@@ -37,6 +37,7 @@ pub(super) fn render<K: Clone + Eq + Hash + 'static>(
         .label(accessible_name(&node.label))
         .selected(signal(row.selected))
         .mutate(move |built| built.a11y.level = Some(level))
+        .action(Action::Click)
         .pointer_down(move |event| {
             if event
                 .button
