@@ -2,7 +2,7 @@ use crate::animation::Motion;
 use crate::reactive::frame::{FrameSource, SourceId, Sources, with_sources};
 use crate::reactive::{Runtime, Signal, batch};
 
-use crate::animation_runtime::{AnimationConfig, MotionPrefs};
+use crate::animation::runtime::{AnimationConfig, MotionPrefs};
 
 #[derive(Clone, Copy)]
 pub(crate) struct AnimatorId(SourceId);

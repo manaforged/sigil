@@ -8,7 +8,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sigil::animation::SpringPreset;
-use sigil::animation_runtime::{Animator, tick};
+use sigil::animation::{Animator, tick};
 use sigil::reactive::{Owner, signal};
 
 const DT_60HZ: f32 = 1.0 / 60.0;

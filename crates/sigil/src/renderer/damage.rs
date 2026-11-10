@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 pub(crate) use crate::scene::damage::FullReason;
 
-use crate::animation_runtime::linear_channel_to_srgb;
+use crate::animation::runtime::linear_channel_to_srgb;
 use crate::geometry::{Point, Rect};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::intersect_rect;

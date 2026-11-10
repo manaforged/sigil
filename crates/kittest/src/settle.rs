@@ -1,4 +1,4 @@
-use sigil::animation_runtime::active_count;
+use sigil::animation::active_count;
 
 use crate::{Error, SETTLE_SAFETY_CAP};
 

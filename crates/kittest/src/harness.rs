@@ -354,12 +354,12 @@ fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_
 }
 
 fn busy() -> bool {
-    Runtime::frame_dirty() || sigil::animation_runtime::active_count() > 0
+    Runtime::frame_dirty() || sigil::animation::active_count() > 0
 }
 
 fn settle_dt() -> f32 {
-    let perpetual_only = sigil::animation_runtime::active_count() == 0
-        && sigil::animation_runtime::running_clocks() > 0;
+    let perpetual_only =
+        sigil::animation::active_count() == 0 && sigil::animation::running_clocks() > 0;
     if perpetual_only { 0.0 } else { FRAME_DT }
 }
 

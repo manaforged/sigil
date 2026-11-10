@@ -89,7 +89,7 @@ pub trait Widget: Sealed {
             look::presence(
                 node,
                 shown,
-                crate::animation_runtime::AnimationConfig::Tween {
+                crate::animation::runtime::AnimationConfig::Tween {
                     ms,
                     easing,
                     delay_ms: 0,

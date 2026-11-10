@@ -263,7 +263,7 @@ fn toggle_scene_emits_on_and_off_variants() {
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout recomputes");
         for _ in 0..120 {
-            sigil::animation_runtime::tick(1.0 / 60.0);
+            sigil::animation::tick(1.0 / 60.0);
         }
         let on_colors = rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);

@@ -5,7 +5,7 @@ use crate::reactive::Owner;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::animation_runtime::tick;
+use crate::animation::runtime::tick;
 use crate::events::EventRouter;
 use crate::events::{Event, MouseButton, MouseButtons, PointerEvent, PointerPhase};
 use crate::geometry::Point;

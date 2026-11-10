@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use sigil::animation::{Easing, Keyframes, Property, Transition};
-use sigil::animation_runtime::{running_clocks, tick};
+use sigil::animation::{running_clocks, tick};
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;

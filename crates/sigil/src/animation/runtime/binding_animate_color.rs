@@ -2,7 +2,7 @@ use crate::reactive::signal;
 use crate::style::srgb::byte;
 use crate::style::{ColorAtomKind, Rgba8};
 
-use crate::animation_runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, Animator};
 
 use super::binding_animate::AttachedColorAnimator;
 

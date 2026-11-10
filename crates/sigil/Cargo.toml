@@ -267,7 +267,7 @@ name = "widget_render"
 harness = false
 
 [[bench]]
-name = "animation_runtime_animator_ticks"
+name = "animation_animator_ticks"
 harness = false
 
 [[bench]]

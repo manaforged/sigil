@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::events::Key;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;

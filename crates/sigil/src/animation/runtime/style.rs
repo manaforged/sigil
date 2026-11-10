@@ -3,14 +3,14 @@ use std::sync::OnceLock;
 
 use smallvec::SmallVec;
 
-use crate::animation_runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
-use crate::animation_runtime::binding_animate_color::{
+use crate::animation::runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
+use crate::animation::runtime::binding_animate_color::{
     build_color_entry, read_color, retarget_color_entry,
 };
-use crate::animation_runtime::playback::{Player, animation};
-use crate::animation_runtime::registry::{Transitioned, transition_config};
-use crate::animation_runtime::targets::{Change, Targets, targets};
-use crate::animation_runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::playback::{Player, animation};
+use crate::animation::runtime::registry::{Transitioned, transition_config};
+use crate::animation::runtime::targets::{Change, Targets, targets};
+use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Signal, effect_named, owner_by_id, signal};
 use crate::style::{

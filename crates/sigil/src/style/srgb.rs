@@ -33,7 +33,7 @@ static ENCODED: std::sync::LazyLock<Box<[u8; STEPS as usize + 1]>> =
     std::sync::LazyLock::new(|| {
         let mut table = Box::new([0; STEPS as usize + 1]);
         for (step, byte) in (0..=STEPS).zip(table.iter_mut()) {
-            *byte = crate::animation_runtime::linear_channel_to_srgb(
+            *byte = crate::animation::runtime::linear_channel_to_srgb(
                 f32::from(step) / f32::from(STEPS),
             );
         }

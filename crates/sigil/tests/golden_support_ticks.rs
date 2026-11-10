@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::animation::SpringPreset;
-use sigil::animation_runtime::{Animator, MotionPrefs, active_count, tick};
+use sigil::animation::{Animator, MotionPrefs, active_count, tick};
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
 

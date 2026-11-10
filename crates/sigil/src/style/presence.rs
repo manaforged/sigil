@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::animation_runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::kernel::Node;
 use crate::reactive::{Signal, batch, effect_named, signal};
 

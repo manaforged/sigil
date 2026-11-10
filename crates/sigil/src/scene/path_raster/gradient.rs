@@ -3,7 +3,7 @@ use tiny_skia::{
     Point as TsPoint, RadialGradient, Shader, SpreadMode, SweepGradient, Transform as TsTransform,
 };
 
-use crate::animation_runtime::binding_animate_color::mix;
+use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop};
 use crate::style::Rgba8;

@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use super::{Keyframes, Property};
 use crate::animation::Easing;
-use crate::animation_runtime::binding_animate_color::mix;
+use crate::animation::runtime::binding_animate_color::mix;
 use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind, Rgba8};
 
 type Stops<V> = SmallVec<[(f32, V); 8]>;

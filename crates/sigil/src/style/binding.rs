@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::animation_runtime::style::StyleAnimator;
+use crate::animation::runtime::style::StyleAnimator;
 use crate::kernel::NodeTag;
 use crate::reactive::Signal;
 use crate::style::merge::SlotSet;

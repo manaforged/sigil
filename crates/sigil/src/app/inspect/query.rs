@@ -51,7 +51,7 @@ pub(super) fn answer(request: &Value, host: &mut Host, view: &mut InspectView<'_
         InspectQuery::Settle => json!({
             "ok": true,
             "settled": !crate::reactive::Runtime::frame_dirty()
-                && crate::animation_runtime::active_count() == 0,
+                && crate::animation::runtime::active_count() == 0,
         }),
         InspectQuery::Profile => profile_json(request),
         InspectQuery::ProfileDump => dump_json(request),

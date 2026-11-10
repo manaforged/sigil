@@ -1,4 +1,4 @@
-use crate::animation_runtime::Animator;
+use crate::animation::runtime::Animator;
 use crate::reactive::Signal;
 use crate::style::{ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom};
 

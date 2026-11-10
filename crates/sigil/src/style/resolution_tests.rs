@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
+use crate::animation::runtime::registry::{config, presets, timing, transition_config};
 use crate::animation::{Easing, Transition};
-use crate::animation_runtime::registry::{config, presets, timing, transition_config};
 use crate::kernel::{Cx, container, text};
 use crate::style::atom::NO_GRADIENT;
 use crate::style::{

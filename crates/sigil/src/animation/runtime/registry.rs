@@ -1,7 +1,7 @@
 use crate::animation::{Easing, SpringPreset};
 use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, TransitionId};
 
-use crate::animation_runtime::config::AnimationConfig;
+use crate::animation::runtime::config::AnimationConfig;
 
 pub mod presets {
     use crate::style::TransitionId;

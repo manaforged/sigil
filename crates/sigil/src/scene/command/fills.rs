@@ -1,4 +1,4 @@
-use crate::animation_runtime::binding_animate_color::mix;
+use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::style::Rgba8;
 use smallvec::SmallVec;

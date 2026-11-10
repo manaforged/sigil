@@ -3,7 +3,7 @@ use super::install::{
     install_theme, install_tone,
 };
 use super::presence::install_presence;
-use crate::animation_runtime::AnimationConfig;
+use crate::animation::runtime::AnimationConfig;
 use crate::kernel::{NodeBuilder, TextBuilder};
 use crate::reactive::{Reactive, Signal};
 use crate::widgets::Widget;

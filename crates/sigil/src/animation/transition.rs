@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use super::Easing;
-use crate::animation_runtime::presets;
-use crate::animation_runtime::registry::timing;
+use crate::animation::runtime::presets;
+use crate::animation::runtime::registry::timing;
 use crate::style::{MillisU16, StyleAtom, TransitionId};
 
 /// The properties a node animates when its style changes, with the duration, easing, and delay.

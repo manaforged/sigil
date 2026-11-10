@@ -46,12 +46,6 @@ pub mod a11y;
 pub(crate) mod a11y;
 /// Tweens, springs, and animators.
 pub mod animation;
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
-pub mod animation_runtime;
-#[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
-pub(crate) mod animation_runtime;
 /// Windows, the frame loop, dialogs, menus, and other platform services.
 pub mod app;
 pub(crate) mod bidi;

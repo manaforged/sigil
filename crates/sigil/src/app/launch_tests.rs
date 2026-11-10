@@ -5,7 +5,7 @@ use crate::reactive::Owner;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use crate::animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
+use crate::animation::runtime::{Animator, MotionPrefs, active_count, config, presets};
 use crate::events::Event;
 use crate::geometry::{LogicalSize, PhysicalSize};
 use crate::hal::Shell;

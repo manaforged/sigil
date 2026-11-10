@@ -7,7 +7,7 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::animation_runtime::{MotionPrefs, presets, tick};
+use sigil::animation::{MotionPrefs, presets, tick};
 use sigil::events::{Event, EventRouter};
 use sigil::geometry::{Point, Size};
 use sigil::kernel::{Cx, NodeId};

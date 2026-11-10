@@ -19,7 +19,7 @@ The public modules are `animation`, `app`, `clipboard`, `events`, `geometry`, `i
 | `shell` | winit window and event loop. |
 | `a11y` | AccessKit projection. |
 | `tasks` | Tokio runtime, `task`, `spawn`, `signal_writer`, `on_message`, `Status`. |
-| `animation` and `animation_runtime` | Transitions; `config(id)` for presets. |
+| `animation` | Easing, keyframes, transitions, and the private runtime that plays them. |
 | `app` | `run`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |
 | `widgets` | The widget catalog and the `Widget` setter trait. No window, no GPU. |
 | `profile` | `SIGIL_PROFILE`, trace output, phase table. |
