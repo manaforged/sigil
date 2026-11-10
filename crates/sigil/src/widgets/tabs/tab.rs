@@ -14,7 +14,7 @@ use crate::style::{
 };
 use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{Activate, Press, RELEASE_ENTER, press};
+use crate::widgets::shared::{Activate, RELEASE_ENTER, press};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{TabDrag, install_label_drag_hooks};
@@ -208,7 +208,7 @@ pub(super) fn build_tab(
             .selected(selected),
         interaction,
         None,
-        Press::Activate(activate),
+        &activate,
         RELEASE_ENTER,
     );
     if let Some(drag_state) = drag {

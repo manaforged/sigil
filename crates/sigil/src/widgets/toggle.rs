@@ -10,7 +10,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
 use crate::style::TransitionId;
 use crate::style::{
-    ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
+    ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, space,
 };
 use crate::widgets::Layout;
 
@@ -18,8 +18,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, CONTROL_INSET, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state,
-    control_root, control_row, control_surface, noop_bool_change, press,
+    BoolChange, CONTROL_INSET, accessible_name_or, binary_style_state, caller_style, control,
+    control_row, flip, noop_bool_change,
 };
 
 /// Builder of a switch.
@@ -141,44 +141,32 @@ impl ToggleBuilder {
     fn root(mut self) -> NodeBuilder {
         let on_change = self.on_change.clone().unwrap_or_else(noop_bool_change);
         let style = std::mem::take(&mut self.style);
-        control_root(self.disabled, style, |interaction, overlay| {
-            self.base_node(interaction, on_change, overlay)
-        })
-    }
-
-    fn base_node(
-        &self,
-        interaction: InteractionState,
-        on_change: BoolChange,
-        user_overlay: StyleOverlay,
-    ) -> NodeBuilder {
         let on = self.on;
         let disabled = self.disabled;
-        let accessible = self.accessible.clone().map(TextContent::Static);
-        let node = container()
-            .role(Role::Switch)
-            .label(accessible_name_or(
-                accessible.as_ref().or(self.label.as_ref()),
-                StringKey::Toggle,
-            ))
-            .checked(on)
-            .layout(toggle_layout(self.label.is_some()));
-        let mut node = press(
-            node,
-            interaction,
+        let accessible = self.accessible.map(TextContent::Static);
+        let mut node = control(
+            container()
+                .role(Role::Switch)
+                .label(accessible_name_or(
+                    accessible.as_ref().or(self.label.as_ref()),
+                    StringKey::Toggle,
+                ))
+                .checked(on)
+                .layout(toggle_layout(self.label.is_some())),
             disabled,
-            Press::Flip(on, on_change),
-            RELEASE_ENTER_SPACE,
-        )
-        .child(if CellForm::new(false, true).pick() {
-            cell_track(on)
-        } else {
-            toggle_track(on, disabled, interaction)
-        });
-        if let Some(label) = self.label.clone() {
+        );
+        let interaction = node.interaction();
+        node =
+            node.activate_with(flip(on, on_change))
+                .child(if CellForm::new(false, true).pick() {
+                    cell_track(on)
+                } else {
+                    toggle_track(on, disabled, interaction)
+                });
+        if let Some(label) = self.label {
             node = node.child(text(label).nowrap());
         }
-        interaction.install(control_surface(node, interaction, disabled, user_overlay))
+        caller_style(node, style)
     }
 }
 

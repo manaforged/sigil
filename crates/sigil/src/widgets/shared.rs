@@ -15,7 +15,7 @@ use crate::style::{
 
 use crate::widgets::interaction::InteractionState;
 
-pub(crate) use press::{Press, RELEASE, RELEASE_ENTER, RELEASE_ENTER_SPACE, press};
+pub(crate) use press::{RELEASE, RELEASE_ENTER, RELEASE_ENTER_SPACE, flip, press};
 
 pub(crate) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
@@ -83,6 +83,12 @@ pub(crate) const CONTROL_INSET: f32 = space(1);
 
 pub(crate) fn control_row(layout: LayoutStyle) -> LayoutStyle {
     layout.padding_x(Space::px(CONTROL_INSET))
+}
+
+pub(crate) fn control(node: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
+    node.class(CONTROL_BASE)
+        .variant(CONTROL_VARIANT)
+        .disabled_by(disabled)
 }
 
 pub(crate) fn control_surface(
