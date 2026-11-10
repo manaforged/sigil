@@ -21,6 +21,7 @@ fn regen_mode() -> Option<Regen> {
 }
 
 /// A reference image under `tests/goldens` of the crate under test.
+#[must_use]
 #[derive(Clone, Debug)]
 pub struct Golden {
     path: PathBuf,
@@ -29,7 +30,6 @@ pub struct Golden {
 
 impl Golden {
     /// Names the golden `tests/goldens/<stem>.png`.
-    #[must_use]
     pub fn new(stem: &str) -> Self {
         let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
         let path = [dir.as_str(), "tests", "goldens", &format!("{stem}.png")]
@@ -42,7 +42,6 @@ impl Golden {
     }
 
     /// Sets the percent of pixels allowed to differ.
-    #[must_use]
     pub const fn delta(mut self, max_delta_pct: f32) -> Self {
         self.max_delta_pct = max_delta_pct;
         self

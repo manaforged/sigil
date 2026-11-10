@@ -2,6 +2,7 @@ use std::sync::{PoisonError, RwLock};
 
 /// The script a web fallback font covers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum WebFontScript {
     /// The cjk web font script.
     Cjk,

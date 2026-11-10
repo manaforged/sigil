@@ -17,7 +17,7 @@ pub(crate) use wrap::cell_text_lines;
 use wrap::{hard_break_at, ranges};
 
 /// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CellWidth {
     /// The unicode cell width.
     #[default]
@@ -350,7 +350,7 @@ fn cells_to_px(cells: usize, px: f32) -> f32 {
     cells * px
 }
 
-pub(super) fn floor_boundary(text: &str, byte: usize) -> usize {
+pub(crate) fn floor_boundary(text: &str, byte: usize) -> usize {
     let mut byte = byte.min(text.len());
     while byte > 0 && !text.is_char_boundary(byte) {
         byte -= 1;

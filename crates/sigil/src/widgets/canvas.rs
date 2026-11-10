@@ -42,6 +42,15 @@ pub struct CanvasBuilder {
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+impl core::fmt::Debug for CanvasBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CanvasBuilder")
+            .field("version", &self.version)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Creates a canvas widget.
 #[must_use]
 pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder {

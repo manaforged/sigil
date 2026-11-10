@@ -1,4 +1,4 @@
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::widgets::parse_color_hex;
 
 const NAMED: [(&str, u32); 24] = [
@@ -28,7 +28,7 @@ const NAMED: [(&str, u32); 24] = [
     ("steelblue", 0x46_82_b4),
 ];
 
-pub(super) fn css(name: &str) -> Option<Rgba8> {
+pub(super) fn css(name: &str) -> Option<Color> {
     let name = name.trim();
     if name.starts_with('#') {
         return parse_color_hex(name);
@@ -36,5 +36,5 @@ pub(super) fn css(name: &str) -> Option<Rgba8> {
     let lower = name.to_ascii_lowercase();
     let (_, rgb) = NAMED.iter().find(|(known, _)| *known == lower)?;
     let [_, r, g, b] = rgb.to_be_bytes();
-    Some(Rgba8 { r, g, b, a: 255 })
+    Some(Color { r, g, b, a: 255 })
 }

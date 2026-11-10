@@ -191,7 +191,7 @@ fn highlight_marks_markdown_headings_and_typescript_keywords() {
 
 #[test]
 fn every_bundled_icon_draws_visible_pixels() {
-    const BLACK: Rgba8 = Rgba8 {
+    const BLACK: Color = Color {
         r: 0,
         g: 0,
         b: 0,
@@ -201,7 +201,7 @@ fn every_bundled_icon_draws_visible_pixels() {
         let mut ui = Harness::new(|| {
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-                .bg(BLACK)
+                .background(BLACK)
                 .child(icon(*bundled).px(24.0))
         })
         .pixels(32, 32);
@@ -230,7 +230,7 @@ fn divider_vertical_takes_a_fixed_height() {
         let root = cx.add(
             row()
                 .layout(LayoutStyle::flex_row().fixed_size(200.0, 100.0))
-                .child(divider_vertical().height(16.0)),
+                .child(divider(Orientation::Vertical).height(16.0)),
         );
         let mut layout = sigil::layout::LayoutEngine::with_text_measure(Box::new(
             sigil_kittest::FakeMeasure::fixed(10.0, 16.0),

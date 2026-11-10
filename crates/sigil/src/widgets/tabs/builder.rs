@@ -6,9 +6,10 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived, signal};
 use crate::style::{Radius, Style, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::layout_ext::LayoutOverrides;
+use super::super::shared::caller_style;
 use super::content::wrap_with_content;
 use super::drag::TabDrag;
 use super::list::{StripSpec, build_tab_list};
@@ -43,6 +44,23 @@ pub struct TabsBuilder {
     list_justify: Option<JustifyContent>,
     chrome: StripChrome,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for TabsBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TabsBuilder")
+            .field("active", &self.active)
+            .field("labels", &self.labels)
+            .field("disabled", &self.disabled)
+            .field("aria_label", &self.aria_label)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("reorderable", &self.reorderable)
+            .field("order", &self.order)
+            .field("closeable", &self.closeable)
+            .field("list_justify", &self.list_justify)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Creates a tabs widget.
@@ -185,15 +203,12 @@ impl TabsBuilder {
             self.list_justify,
             build_tab_list(labels, &self.aria_label, spec),
         );
-        let mut root = if self.contents.is_empty() {
+        let root = if self.contents.is_empty() {
             tab_list
         } else {
             wrap_with_content(tab_list, active, self.contents)
         };
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 
@@ -267,7 +282,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                         .padding(Space::Xs)
                         .align_items(AlignItems::Center),
                 )
-                .class([Radius::Md.atom(), Token::SurfacePressed.bg()])
+                .class([Radius::Md.atom(), Token::SurfacePressed.background()])
                 .child(strip),
         )
 }

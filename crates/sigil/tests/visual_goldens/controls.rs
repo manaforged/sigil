@@ -72,7 +72,9 @@ fn button_disabled() {
 fn checkbox_checked() {
     let img = Harness::render(|| {
         let checked = signal(true);
-        checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+        checkbox(checked)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -86,7 +88,9 @@ fn checkbox_checked() {
 fn checkbox_default() {
     let img = Harness::render(|| {
         let checked = signal(false);
-        checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+        checkbox(checked)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -100,7 +104,9 @@ fn checkbox_default() {
 fn checkbox_hover() {
     let img = Harness::render(|| {
         let checked = signal(false);
-        checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+        checkbox(checked)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Hover)
@@ -114,7 +120,9 @@ fn checkbox_hover() {
 fn checkbox_pressed() {
     let img = Harness::render(|| {
         let checked = signal(false);
-        checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+        checkbox(checked)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Pressed)
@@ -128,7 +136,9 @@ fn checkbox_pressed() {
 fn checkbox_focused() {
     let img = Harness::render(|| {
         let checked = signal(false);
-        checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+        checkbox(checked)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Focused)
@@ -144,8 +154,8 @@ fn checkbox_disabled() {
         let checked = signal(false);
         let dis = signal(true);
         checkbox(checked)
-            .bg(Token::Surface)
-            .rounded(Radius::Sm)
+            .background(Token::Surface)
+            .radius(Radius::Sm)
             .disabled(dis)
     })
     .stub()

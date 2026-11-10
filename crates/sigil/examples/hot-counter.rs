@@ -13,13 +13,10 @@ fn main() -> sigil::AppResult<()> {
 
 fn counter(count: Signal<i32>) -> NodeBuilder {
     let label = derived(move || format!("Count: {}", count.get()));
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .gap(Space::Lg)
-                .padding(Space::Xxl),
-        )
-        .bg(Token::Surface)
+    column()
+        .gap(Space::Lg)
+        .padding(Space::Xxl)
+        .background(Token::Surface)
         .child(text(label).text_color(Token::OnSurface))
         .child(button("Increment").primary().activate(move || {
             count.set(count.peek() + 1);

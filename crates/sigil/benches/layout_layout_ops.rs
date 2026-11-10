@@ -14,7 +14,7 @@ use rayon::{ThreadPool, ThreadPoolBuilder};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container, text};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 const ROOT_WIDTH: f32 = 1280.0;

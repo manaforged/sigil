@@ -1,7 +1,7 @@
 use crate::animation::{Easing, SpringPreset};
 use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, TransitionId};
 
-use crate::animation_runtime::config::AnimationConfig;
+use crate::animation::runtime::config::AnimationConfig;
 
 pub mod presets {
     use crate::style::TransitionId;
@@ -102,6 +102,17 @@ pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
         _ => return None,
     };
     Some(AnimationConfig::Spring { preset })
+}
+
+pub(crate) const fn timing(id: TransitionId) -> (u16, Easing, u16) {
+    match config(id) {
+        Some(AnimationConfig::Tween {
+            ms,
+            easing,
+            delay_ms,
+        }) => (ms, easing, delay_ms),
+        _ => timing(presets::TRANSITION),
+    }
 }
 
 const fn cubic_in_out(ms: u16) -> AnimationConfig {

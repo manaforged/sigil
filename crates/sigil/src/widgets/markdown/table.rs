@@ -4,10 +4,10 @@ use std::rc::Rc;
 use crate::app::cell_width;
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{Dimension, IntoPx, JustifyContent, LayoutStyle, cols};
+use crate::layout::{IntoPx, JustifyContent, LayoutStyle, Length, cols};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::button::button;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Press, RELEASE_ENTER_SPACE, press};
@@ -21,8 +21,6 @@ const RULE: StyleAtom = StyleAtom::BorderWidth(1);
 
 #[cfg(feature = "scene")]
 fn shaped(text: &str, style: &TextStyle) -> Option<f32> {
-    use crate::hal::ParagraphMetrics as _;
-    use crate::style::StyledTextEngine as _;
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = engine.layout_paragraph_styled(text, None, style).ok()?;
     Some(paragraph.width())
@@ -225,13 +223,13 @@ pub(super) fn table(data: Table) -> NodeBuilder {
     let table = container()
         .role(Role::Table)
         .layout(LayoutStyle::flex_column().fill_width())
-        .class([RULE, Token::Border.border(), Token::Field.bg()])
+        .class([RULE, Token::Border.border(), Token::Field.background()])
         .child(header(&grid, sortable))
         .child(body(&grid));
     let mut frame = container().layout(
         LayoutStyle::flex_column()
             .width(total)
-            .max_width(Dimension::Percent(1.0))
+            .max_width(Length::Percent(1.0))
             .gap(Space::Xs),
     );
     if CellForm::new(true, false).pick() && grid.data.rows.len() > 1 {

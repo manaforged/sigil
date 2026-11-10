@@ -20,7 +20,7 @@ fn shortcut_label_uses_symbols_on_mac_and_words_elsewhere() {
 fn tone_tokens_follow_the_scale_steps() {
     assert_eq!(Tone::Success.fill(), Token::Success9);
     assert_eq!(Tone::Error.solid(), Token::Error11);
-    assert_eq!(Tone::Warn.shade(), Token::Warn4);
+    assert_eq!(Tone::Warning.shade(), Token::Warning4);
     assert_eq!(Tone::Neutral.fill(), Token::Gray9);
     assert_eq!(Tone::Info.token(99), Token::OnSurface);
 }

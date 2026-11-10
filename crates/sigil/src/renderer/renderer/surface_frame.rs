@@ -11,13 +11,13 @@ use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::surface::WgpuSurface;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::submit::{acquire_frame, physical_pixels, surface_text_scale};
 
 pub(crate) struct SurfaceFrame<'a> {
     pub(crate) scene: &'a CommandScene,
-    pub(crate) clear: Color,
+    pub(crate) clear: Rgba,
     pub(crate) viewport: (f32, f32),
 }
 

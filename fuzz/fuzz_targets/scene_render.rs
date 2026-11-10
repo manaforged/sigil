@@ -9,7 +9,9 @@ fuzz_target!(|data: &[u8]| {
     if let Err(message) = check_cpu(&scene) {
         panic!(
             "{message}: {:?} x{} {:#?}",
-            scene.viewport, scene.scale, scene.commands
+            scene.viewport(),
+            scene.scale(),
+            scene.commands()
         );
     }
 });

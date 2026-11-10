@@ -1,9 +1,15 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+use std::time::Duration;
+
+use crate::animation::runtime::registry::{config, presets, timing, transition_config};
+use crate::animation::{Easing, Transition};
 use crate::kernel::{Cx, container, text};
+use crate::style::atom::NO_GRADIENT;
 use crate::style::{
-    ColorAtom, Elevation, FontFamily, MillisU16, Paint, Radius, RenderStyle, Rgba8, Style,
-    StyleAtom, StyleBinding, StyleEngine, TextDecoration, Theme, Token, Transform2D, TransitionId,
+    Background, Color, ColorAtom, Elevation, FontFamily, Gradient, GradientAxis, GradientShape,
+    MillisU16, Paint, Radial, Radius, RenderStyle, Style, StyleAtom, StyleBinding, StyleEngine,
+    TextDecoration, Theme, Token, Transform2D, TransitionId, merge_classes,
 };
 use crate::widgets::Widget;
 
@@ -88,7 +94,7 @@ fn apply_is_alloc_free() {
 
 #[test]
 fn concrete_color_applies() {
-    let color = Rgba8 {
+    let color = Color {
         r: 1,
         g: 2,
         b: 3,
@@ -96,7 +102,7 @@ fn concrete_color_applies() {
     };
     let render = applied(
         &Theme::default(),
-        &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(color))],
+        &[StyleAtom::BackgroundColor(ColorAtom::Color(color))],
     );
 
     assert_eq!(render.background_color, Some(color));
@@ -105,36 +111,29 @@ fn concrete_color_applies() {
 fn paint_for_atom(atom: StyleAtom) -> Style {
     let style = Style::new();
     match atom {
-        StyleAtom::BackgroundColor(color) => style.bg(color),
-        StyleAtom::BackgroundGradient(gradient) => style.background_gradient(gradient),
+        StyleAtom::BackgroundColor(color) => style.background(color),
+        StyleAtom::BackgroundGradient(gradient) => style.background(gradient),
         StyleAtom::TextColor(color) => style.text_color(color),
         StyleAtom::BorderColor(color) => style.border_color(color),
-        StyleAtom::BorderWidth(px) => style.border_w(px),
+        StyleAtom::BorderWidth(px) => style.border_width(px),
         StyleAtom::BorderTop(px) => style.border_top(px),
         StyleAtom::BorderRight(px) => style.border_right(px),
         StyleAtom::BorderBottom(px) => style.border_bottom(px),
         StyleAtom::BorderLeft(px) => style.border_left(px),
-        StyleAtom::BorderRadius(px) => style.radius(px),
-        StyleAtom::Radius(radius) => style.rounded(radius),
+        StyleAtom::BorderRadius(px) => style.radius_px(px),
+        StyleAtom::Radius(radius) => style.radius(radius),
         StyleAtom::Shadow(elevation) => style.shadow(elevation),
         StyleAtom::Opacity(units) => style.opacity(f32::from(units) / 10_000.0),
         StyleAtom::Transform(transform) => style.transform(transform),
         StyleAtom::FontSize(px) => style.font_size(f32::from(px), ""),
         StyleAtom::FontWeight(weight) => style.font_weight(weight),
         StyleAtom::FontItalic(italic) => style.font_italic(italic),
-        StyleAtom::LineHeight(px) => style.line_height_px(f32::from(px)),
-        StyleAtom::LetterSpacing(em) => style.letter_spacing_em(f32::from(em) / 1000.0),
+        StyleAtom::LineHeight(px) => style.line_height(f32::from(px)),
+        StyleAtom::LetterSpacing(em) => style.letter_spacing(f32::from(em) / 1000.0),
         StyleAtom::TabularNums(on) => style.tabular_nums(on),
         StyleAtom::TextDecoration(TextDecoration::Underline) => style.underline(),
         StyleAtom::TextDecoration(TextDecoration::LineThrough) => style.line_through(),
-        StyleAtom::Transition(transition) => style.transition_preset(transition),
-        StyleAtom::TransitionDuration(duration) => {
-            style.duration(std::time::Duration::from_millis(u64::from(duration.0)))
-        }
-        StyleAtom::TransitionEase(easing) => style.ease(easing),
-        StyleAtom::TransitionDelay(delay) => {
-            style.delay(std::time::Duration::from_millis(u64::from(delay.0)))
-        }
+        StyleAtom::Transition(transition) => style.transition(transition),
         StyleAtom::Animation(id) => {
             style.animate(crate::animation::Keyframes::clone(&id.get().unwrap()))
         }
@@ -142,16 +141,32 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
     }
 }
 
+fn lowered(atom: StyleAtom) -> Vec<StyleAtom> {
+    match atom {
+        StyleAtom::BackgroundColor(_) | StyleAtom::BackgroundGradient(_) => vec![atom, NO_GRADIENT],
+        StyleAtom::Transition(id) => {
+            let (ms, easing, delay) = timing(id);
+            vec![
+                atom,
+                StyleAtom::TransitionDuration(MillisU16(ms)),
+                StyleAtom::TransitionEase(easing),
+                StyleAtom::TransitionDelay(MillisU16(delay)),
+            ]
+        }
+        _ => vec![atom],
+    }
+}
+
 #[test]
 fn struct_api_covers_every_atom() {
-    let color = Rgba8 {
+    let color = Color {
         r: 10,
         g: 20,
         b: 30,
         a: 255,
     };
     let atoms = [
-        StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
+        StyleAtom::BackgroundColor(ColorAtom::Color(color)),
         StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
         StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
         StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
@@ -175,11 +190,10 @@ fn struct_api_covers_every_atom() {
         StyleAtom::TextDecoration(TextDecoration::Underline),
         StyleAtom::TextDecoration(TextDecoration::LineThrough),
         StyleAtom::Transition(TransitionId(1)),
-        StyleAtom::TransitionDuration(MillisU16(150)),
     ];
 
     for atom in atoms {
-        assert_eq!(paint_for_atom(atom).into_atoms().as_slice(), &[atom]);
+        assert_eq!(paint_for_atom(atom).into_atoms().as_slice(), lowered(atom));
     }
     assert_eq!(
         Style::new()
@@ -191,15 +205,96 @@ fn struct_api_covers_every_atom() {
 }
 
 #[test]
-fn struct_api_produces_same_atoms_as_raw_parse() {
-    let style = Style::new().bg(Token::Accent).radius(6);
-
+fn a_transition_carries_its_duration() {
     assert_eq!(
-        style.into_atoms().as_slice(),
-        crate::style::parse_class_string("bg-accent rounded-md")
-            .unwrap()
+        Style::new()
+            .transition(Transition::from(TransitionId(1)).duration(Duration::from_millis(300)))
+            .into_atoms()
             .as_slice(),
+        &[
+            StyleAtom::Transition(TransitionId(1)),
+            StyleAtom::TransitionDuration(MillisU16(300)),
+            StyleAtom::TransitionEase(Easing::IN_OUT),
+            StyleAtom::TransitionDelay(MillisU16(0)),
+        ],
     );
+}
+
+fn gradient() -> Gradient {
+    Background::linear(GradientAxis::LeftToRight)
+        .start(Token::Accent)
+        .end(Token::Surface)
+}
+
+#[test]
+fn a_later_background_replaces_the_earlier_one() {
+    let theme = Theme::default();
+    let base = Style::new().background(gradient()).into_atoms();
+    let hover = Style::new().background(Token::Surface).into_atoms();
+    let chained = Style::new()
+        .background(gradient())
+        .background(Token::Surface)
+        .into_atoms();
+    let cascade: Vec<StyleAtom> = base.iter().chain(&hover).copied().collect();
+    let merged = merge_classes(&base, &hover, 0);
+
+    for atoms in [chained.as_slice(), cascade.as_slice(), merged.as_slice()] {
+        let render = applied(&theme, atoms);
+        assert_eq!(render.paint.gradient, None, "{atoms:?}");
+        assert_eq!(render.paint.shape(), None, "{atoms:?}");
+        assert_eq!(
+            render.background_color,
+            Some(theme.resolve_color(Token::Surface.into())),
+        );
+    }
+}
+
+#[test]
+fn a_later_gradient_keeps_nothing_of_the_earlier_background() {
+    let theme = Theme::default();
+    let radial = Radial::new();
+    let chained = Style::new()
+        .background(Token::Surface)
+        .background(gradient())
+        .background(Background::radial(radial).start(Token::Accent))
+        .into_atoms();
+    let merged = merge_classes(&[], &chained, 0);
+
+    for atoms in [chained.as_slice(), merged.as_slice()] {
+        let render = applied(&theme, atoms);
+        let accent = theme.resolve_color(Token::Accent.into());
+        assert_eq!(render.background_color, None, "{atoms:?}");
+        assert_eq!(render.paint.gradient, Some(GradientShape::Radial(radial)));
+        assert_eq!(render.paint.stops, [Some(accent), None, None]);
+        assert_eq!(render.paint.positions, [Some(0), Some(50), Some(100)]);
+    }
+}
+
+#[test]
+fn a_later_transition_replaces_the_earlier_one() {
+    let slow = Transition::all().duration(Duration::from_secs(1));
+    let base = Style::new().transition(slow).into_atoms();
+    let hover = Style::new().transition(Transition::new()).into_atoms();
+    let chained = Style::new()
+        .transition(slow)
+        .transition(Transition::new())
+        .into_atoms();
+    let cascade: Vec<StyleAtom> = base.iter().chain(&hover).copied().collect();
+    let merged = merge_classes(&base, &hover, 0);
+
+    for atoms in [chained.as_slice(), cascade.as_slice(), merged.as_slice()] {
+        let resolved = transition_config(atoms).map(|(timing, _)| timing);
+        assert_eq!(resolved, config(presets::TRANSITION), "{atoms:?}");
+    }
+}
+
+#[test]
+fn struct_api_produces_same_atoms_as_raw_parse() {
+    let style = Style::new().background(Token::Accent).radius_px(6);
+    let mut classes = crate::style::parse_class_string("bg-accent rounded-md").unwrap();
+    classes.insert(1, NO_GRADIENT);
+
+    assert_eq!(style.into_atoms().as_slice(), classes.as_slice());
 }
 
 #[test]
@@ -235,7 +330,7 @@ fn class_string_attaches_to_text_binding() {
 #[test]
 fn style_struct_attaches_binding() {
     let mut cx = Cx::new_root();
-    let id = cx.add(container().style(Style::new().radius(8)));
+    let id = cx.add(container().style(Style::new().radius_px(8)));
     let binding = binding(&cx, id);
 
     assert_eq!(binding.static_slice(), &[]);

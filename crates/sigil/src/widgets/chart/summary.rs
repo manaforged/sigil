@@ -3,7 +3,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::Token;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_text};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::ChartSeries;
 

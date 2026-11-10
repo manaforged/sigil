@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use crate::AppConfig;
-use crate::animation_runtime::MotionPrefs;
+use crate::animation::runtime::MotionPrefs;
 use crate::events::ClickConfig;
 
 #[derive(Default)]
@@ -12,11 +12,11 @@ struct PlatformPrefs {
 
 #[cfg(feature = "scene")]
 fn apply_text(config: &AppConfig) {
-    if let Some(fonts) = &config.fonts {
+    if let Some(fonts) = &config.text.fonts {
         crate::text::fonts::set_default_fonts(fonts.clone());
     }
-    crate::text::fonts::set_fallback_fonts(&config.font_fallbacks);
-    if let Some(tuning) = config.text_tuning {
+    crate::text::fonts::set_fallback_fonts(&config.text.font_fallbacks);
+    if let Some(tuning) = config.text.text_tuning {
         crate::renderer::slug::set_text_tuning(tuning);
     }
 }

@@ -22,7 +22,7 @@ fn quick_filter_keeps_keyboard_row_count_live() {
                 TableColumn::new("name", "Name")
                     .sort_by(|row: &Item| row.name.clone())
                     .filterable(|row: &Item, query: &str| row.name.contains(query))
-                    .width(ColWidth::Fixed(WIDTH))
+                    .width(ColumnWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
             ],
         );
@@ -70,7 +70,7 @@ fn wheel_scroll_advances_the_window() {
             vec![
                 TableColumn::new("name", "Name")
                     .sort_by(|row: &Item| row.name.clone())
-                    .width(ColWidth::Fixed(WIDTH))
+                    .width(ColumnWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
             ],
         );

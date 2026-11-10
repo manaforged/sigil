@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::LayoutStyle;
 use crate::style::Token;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::palette::Hue;
 use super::scales::{Fit, Orient};

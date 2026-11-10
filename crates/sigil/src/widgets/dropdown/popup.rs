@@ -21,7 +21,7 @@ pub(super) fn trigger_height() -> f32 {
 }
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
-pub(super) static SURFACE_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
+pub(super) static SURFACE_HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
 
 #[derive(Clone, Copy)]
 pub(super) struct OptionCtx {

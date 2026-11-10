@@ -111,10 +111,10 @@ fn fraction_column_honours_min_width() {
             demo_rows(),
             vec![
                 TableColumn::new("name", "Name")
-                    .width(ColWidth::Fixed(300.0))
+                    .width(ColumnWidth::Fixed(300.0))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
                 TableColumn::new("count", "Count")
-                    .width(ColWidth::Fraction(1.0))
+                    .width(ColumnWidth::Fraction(1.0))
                     .min_width(192.0)
                     .cell(|row: &Item| container().child(text(row.count.to_string()))),
             ],

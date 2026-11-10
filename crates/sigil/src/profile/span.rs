@@ -4,6 +4,7 @@ use crate::profile::key::Phase;
 use crate::profile::store;
 
 /// Measures one phase from creation until drop.
+#[derive(Debug)]
 pub struct Span {
     phase: Phase,
     start: Option<Instant>,

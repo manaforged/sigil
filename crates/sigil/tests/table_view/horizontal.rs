@@ -6,19 +6,20 @@ use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 fn wide_state() -> TableState<Item> {
     TableState::new(
         demo_rows(),
         vec![
             TableColumn::new("name", "Name")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(row.name.clone()))),
             TableColumn::new("count", "Count")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(row.count.to_string()))),
             TableColumn::new("tag", "Tag")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
         ],
     )
@@ -209,13 +210,13 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             demo_rows(),
             vec![
                 TableColumn::new("name", "Name")
-                    .width(ColWidth::Fraction(1.4))
+                    .width(ColumnWidth::Fraction(1.4))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
                 TableColumn::new("count", "Count")
-                    .width(ColWidth::Fraction(0.8))
+                    .width(ColumnWidth::Fraction(0.8))
                     .cell(|row: &Item| container().child(text(row.count.to_string()))),
                 TableColumn::new("tag", "Tag")
-                    .width(ColWidth::Fixed(96.0))
+                    .width(ColumnWidth::Fixed(96.0))
                     .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
             ],
         );
@@ -231,7 +232,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
                     table(state)
                         .row_height(ROW_H)
                         .header_height(HEADER_H)
-                        .viewport_fill(),
+                        .fill_height(),
                 ),
         );
         let mut layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

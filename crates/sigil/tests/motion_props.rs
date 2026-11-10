@@ -20,7 +20,7 @@ use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{Filter, LayerEffect, SceneCommand, Shadow};
-use sigil::style::GradientAxis;
+use sigil::style::{Background, GradientAxis};
 use sigil_kittest::Harness;
 
 #[path = "motion_props/alloc.rs"]
@@ -32,16 +32,16 @@ pub(crate) const VIEW: (f32, f32) = (200.0, 200.0);
 pub(crate) const SIDE: f32 = 40.0;
 const STEPS_PER_SECOND: f32 = 16.0;
 pub(crate) const DISTANCE: f32 = 400.0;
-pub(crate) const GREY: Rgba8 = rgba(128, 128, 128, 255);
-pub(crate) const BLACK: Rgba8 = rgba(0, 0, 0, 255);
-pub(crate) const WHITE: Rgba8 = rgba(255, 255, 255, 255);
-pub(crate) const BLUE: Rgba8 = rgba(0, 0, 255, 255);
+pub(crate) const GREY: Color = rgba(128, 128, 128, 255);
+pub(crate) const BLACK: Color = rgba(0, 0, 0, 255);
+pub(crate) const WHITE: Color = rgba(255, 255, 255, 255);
+pub(crate) const BLUE: Color = rgba(0, 0, 255, 255);
 
-pub(crate) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+pub(crate) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
-pub(crate) fn shadow(y: f32, blur: f32, color: Rgba8) -> Shadow {
+pub(crate) fn shadow(y: f32, blur: f32, color: Color) -> Shadow {
     let linear = |byte: u8| {
         let unit = f32::from(byte) / 255.0;
         if unit <= 0.040_45 {
@@ -74,15 +74,17 @@ pub(crate) fn srgb_byte(linear: f32) -> u8 {
 
 pub(crate) fn square() -> NodeBuilder {
     container()
-        .bg(GREY)
+        .background(GREY)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
 pub(crate) fn gradient_square() -> NodeBuilder {
     container()
-        .bg_linear(GradientAxis::LeftToRight)
-        .gradient_from(BLACK)
-        .gradient_to(BLUE)
+        .background(
+            Background::linear(GradientAxis::LeftToRight)
+                .start(BLACK)
+                .end(BLUE),
+        )
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
@@ -128,7 +130,7 @@ pub(crate) fn filters(ui: &mut Harness) -> Vec<Filter> {
         .unwrap_or_default()
 }
 
-pub(crate) fn stops(ui: &mut Harness) -> Vec<(f32, Rgba8)> {
+pub(crate) fn stops(ui: &mut Harness) -> Vec<(f32, Color)> {
     let scene = ui.host().emit(VIEW);
     scene
         .commands
@@ -199,7 +201,7 @@ pub(crate) fn near(actual: f32, expected: f32, tolerance: f32, what: &str) {
 }
 
 #[track_caller]
-pub(crate) fn near_color(actual: Rgba8, expected: Rgba8, what: &str) {
+pub(crate) fn near_color(actual: Color, expected: Color, what: &str) {
     let close = [
         (actual.r, expected.r),
         (actual.g, expected.g),
@@ -224,7 +226,7 @@ pub(crate) fn drop_shadow(list: &[Filter]) -> Shadow {
         .expect("a drop shadow")
 }
 
-pub(crate) fn shadow_color(shadow: Shadow) -> Rgba8 {
+pub(crate) fn shadow_color(shadow: Shadow) -> Color {
     let [r, g, b, a] = shadow.color;
     rgba(
         srgb_byte(r),

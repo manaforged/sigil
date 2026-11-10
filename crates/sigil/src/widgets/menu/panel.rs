@@ -13,7 +13,7 @@ use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
 use super::builder::MenuItem;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) enum Row {
     Item(MenuItem),
     Separator,
@@ -128,7 +128,7 @@ fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<Owner>) -> Co
 fn build_item(item: &MenuItem, index: usize, cursor: Signal<usize>, commit: Commit) -> NodeBuilder {
     let disabled = item.disabled;
     let slots = ItemSlots {
-        shortcut: item.shortcut.clone(),
+        shortcut: item.hint.clone(),
         chevron: item.submenu_indicator,
         disabled,
         ..ItemSlots::new(item.label.clone())

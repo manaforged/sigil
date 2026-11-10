@@ -8,7 +8,7 @@ use crate::reactive::{Reactive, Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
 use crate::style::{StateSlot, StyleAtom, Token, space};
-use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use crate::widgets::{Edit, Layout, Sealed, StateTarget, Widget};
 use smallvec::SmallVec;
 
 use super::color_field::ColorFieldBuilder;
@@ -26,6 +26,7 @@ fn shown(visible: bool) -> &'static [StyleAtom] {
 }
 
 /// A labelled control; layout and `map_node` change the field root, and style, state, and focus setters change the control.
+#[derive(Debug)]
 pub struct FieldBuilder<C> {
     label: TextContent,
     control: C,

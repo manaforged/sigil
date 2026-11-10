@@ -2,19 +2,14 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use super::{AppBundle, CodeSign, PackError, macos_app, pack_cli, windows_dir};
+use super::{AppBundle, CodeSign, ErrorKind, macos_app, pack_cli, windows_dir};
 
 fn app<'a>(executable: &'a Path, profile: &'a Path) -> AppBundle<'a> {
-    AppBundle {
-        name: "Profile fixture",
-        identifier: "example.sigil.profile",
-        version: "1.0.0",
-        executable,
-        exe_name: "fixture",
-        icon: None,
-        provisioning_profile: Some(profile),
-        min_system: "10.15",
-    }
+    AppBundle::new("Profile fixture", executable)
+        .identifier("example.sigil.profile")
+        .version("1.0.0")
+        .exe_name("fixture")
+        .provisioning_profile(profile)
 }
 
 #[test]
@@ -45,7 +40,7 @@ fn cli_embeds_exact_profile_bytes_before_native_signing() -> Result<(), Box<dyn 
         .map(str::to_owned),
     );
     if cfg!(target_os = "macos") {
-        assert!(result.is_err_and(|error| error.starts_with("codesign:")));
+        assert!(result.is_err_and(|error| error.to_string().starts_with("codesign:")));
     } else {
         result?;
     }
@@ -65,14 +60,13 @@ fn invalid_profile_signing_requests_preserve_destination() -> Result<(), Box<dyn
     let marker = directory.join("keep");
     fs::write(&marker, b"existing destination")?;
     let app = app(Path::new("unused"), Path::new("unused-profile"));
-    assert!(matches!(
-        macos_app(&app, &[], &directory, &CodeSign::default()),
-        Err(PackError::Codesign(_))
-    ));
-    assert!(matches!(
-        windows_dir(&app, &[], &directory),
-        Err(PackError::Codesign(_))
-    ));
+    assert!(
+        macos_app(&app, &[], &directory, &CodeSign::default())
+            .is_err_and(|error| error.kind() == ErrorKind::Codesign)
+    );
+    assert!(
+        windows_dir(&app, &[], &directory).is_err_and(|error| error.kind() == ErrorKind::Codesign)
+    );
     assert_eq!(fs::read(&marker)?, b"existing destination");
     fs::remove_dir_all(directory)?;
     Ok(())
@@ -93,14 +87,34 @@ fn profile_symlink_is_rejected_before_signing() -> Result<(), Box<dyn Error>> {
         &app(&executable, &profile),
         &[],
         &bundle,
-        &CodeSign {
-            identity: Some("sigil-profile-fixture-identity-does-not-exist"),
-            entitlements: None,
-        },
+        &CodeSign::default().identity("sigil-profile-fixture-identity-does-not-exist"),
     );
-    assert!(matches!(result, Err(PackError::Symlink(path)) if path == profile));
+    assert!(result.is_err_and(
+        |error| error.kind() == ErrorKind::Symlink && error.path() == Some(profile.as_path())
+    ));
     assert!(!bundle.join("Contents/embedded.provisionprofile").exists());
     assert_eq!(fs::read(&original)?, b"retained profile");
     fs::remove_dir_all(directory)?;
+    Ok(())
+}
+
+#[test]
+fn a_missing_executable_keeps_the_io_error_as_its_source() -> Result<(), Box<dyn Error>> {
+    let directory = std::env::temp_dir().join(format!("sigil-io-source-{}", std::process::id()));
+    let missing = directory.join("no-such-executable");
+    let app = AppBundle::new("Fixture", &missing);
+    let error =
+        windows_dir(&app, &[], &directory.join("out")).expect_err("the executable is missing");
+    assert_eq!(error.kind(), ErrorKind::Io);
+    let cause = error
+        .source()
+        .and_then(|cause| cause.downcast_ref::<std::io::Error>());
+    assert_eq!(
+        cause.map(std::io::Error::kind),
+        Some(std::io::ErrorKind::NotFound)
+    );
+    if directory.exists() {
+        fs::remove_dir_all(directory)?;
+    }
     Ok(())
 }

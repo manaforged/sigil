@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, NodeId, container};
 use crate::reactive::{Owner, signal};
-use crate::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding, Token};
+use crate::style::{Color, ColorAtom, StyleAtom, StyleBinding, Token};
 
 static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
 static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))];
@@ -87,7 +87,7 @@ fn pillar_call_site_compiles() {
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(move || {
             if danger.get() {
-                &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
+                &[StyleAtom::BackgroundColor(ColorAtom::Color(Color {
                     r: 255,
                     g: 0,
                     b: 0,
@@ -109,4 +109,24 @@ fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
         .unwrap();
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())
+}
+
+#[test]
+fn a_later_axis_drive_wins_over_a_uniform_scale_on_that_axis_only() {
+    use crate::animation::Property;
+    use crate::style::{AnimatorOverlay, NumericAtomKind};
+
+    Owner::scope("sigil_style_driven_scale", || {
+        let mut uniform_first = StyleBinding::default();
+        uniform_first.bind_animation(Property::Scale, signal(2.0_f32));
+        uniform_first.bind_animation(Property::ScaleY, signal(3.0_f32));
+        assert_eq!(uniform_first.value_for(NumericAtomKind::ScaleX), Some(2.0));
+        assert_eq!(uniform_first.value_for(NumericAtomKind::ScaleY), Some(3.0));
+
+        let mut axis_x = StyleBinding::default();
+        axis_x.bind_animation(Property::Scale, signal(2.0_f32));
+        axis_x.bind_animation(Property::ScaleX, signal(4.0_f32));
+        assert_eq!(axis_x.value_for(NumericAtomKind::ScaleX), Some(4.0));
+        assert_eq!(axis_x.value_for(NumericAtomKind::ScaleY), Some(2.0));
+    });
 }

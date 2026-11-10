@@ -107,31 +107,28 @@ impl Pick {
 fn widget(pick: &Pick) -> NodeBuilder {
     builders::builder(&pick.build).map_or_else(
         || spec::node(text(format!("No builder {}", pick.build))),
-        |build| build(pick.state).layout(LayoutStyle::default().align_items(AlignItems::Center)),
+        |build| build(pick.state).align_items(AlignItems::Center),
     )
 }
 
 fn sandbox(first: Pick) -> impl IntoNode {
     let (sender, receiver) = unbounded_channel();
     PICKS.with(|picks| *picks.borrow_mut() = Some(sender));
-    set_theme(first.theme());
+    first.theme().apply();
     let picks = signal(vec![first]);
     on_message(
         receiver,
         move |next: Pick| {
-            set_theme(next.theme());
+            next.theme().apply();
             picks.set(vec![next]);
         },
         || {},
     );
     column()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .fill_height()
-                .padding(Space::Xl),
-        )
-        .bg(Token::Surface)
+        .fill_width()
+        .fill_height()
+        .padding(Space::Xl)
+        .background(Token::Surface)
         .child(for_each(
             picks,
             |pick| (pick.build.clone(), pick.state, pick.nonce),

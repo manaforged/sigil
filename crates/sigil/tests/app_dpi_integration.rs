@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::app::DefaultTextMeasure;
 use sigil::geometry::{LogicalSize, PhysicalSize, Scale, Size};
 use sigil::kernel::{Cx, container};
+use sigil::layout::TextEngineMeasure;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::reactive::Owner;
+use sigil::widgets::Layout;
 
 #[test]
 fn scale_change_keeps_launch_viewport_logical() {
@@ -15,7 +15,7 @@ fn scale_change_keeps_launch_viewport_logical() {
         let root = cx.add(
             container().layout(LayoutStyle::block().fixed_size(logical.width, logical.height)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new()));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TextEngineMeasure::default()));
 
         layout
             .compute(&mut cx, root, Size::fixed(logical.width, logical.height))

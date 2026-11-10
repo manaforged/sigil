@@ -7,7 +7,7 @@ use sigil::prelude::TextBuilder;
 use sigil::prelude::*;
 use sigil::widgets::{ChartBuilder, IconBuilder};
 
-const BLUE: Rgba8 = Rgba8 {
+const BLUE: Color = Color {
     r: 90,
     g: 140,
     b: 255,
@@ -27,7 +27,7 @@ pub(crate) fn label_demo() -> TextBuilder {
 }
 
 pub(crate) fn icon_demo() -> IconBuilder {
-    icon("▲").tone(Tone::Warn).label("Alert")
+    icon("▲").tone(Tone::Warning).label("Alert")
 }
 
 pub(crate) fn image_rgba_demo() -> NodeBuilder {
@@ -37,9 +37,9 @@ pub(crate) fn image_rgba_demo() -> NodeBuilder {
             [shade, 120, 255 - shade, 255]
         })
         .collect();
-    let frame = container().layout(LayoutStyle::flex_column().fill_width());
+    let frame = column().fill_width().gap(Space::None);
     match ImageSource::from_rgba8(32, 32, pixels) {
-        Some(source) => frame.child(image(source).layout(LayoutStyle::block())),
+        Some(source) => frame.child(image(source)),
         None => frame.child(text("pixels rejected").nowrap()),
     }
 }
@@ -81,20 +81,23 @@ pub(crate) fn avatar_demo() -> NodeBuilder {
 }
 
 pub(crate) fn divider_horizontal_demo() -> NodeBuilder {
-    divider_horizontal()
+    divider(Orientation::Horizontal)
 }
 
 pub(crate) fn divider_vertical_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().height(40.0))
-        .child(divider_vertical())
+    row()
+        .height(40.0)
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
+        .child(divider(Orientation::Vertical))
 }
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(text_demo())
             .child(label_demo())
             .child(icon_demo())

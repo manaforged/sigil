@@ -1,26 +1,26 @@
 #[cfg(test)]
 mod hsv;
 
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::style::scale::rgb;
 #[cfg(test)]
 use hsv::{perceived_brightness, tint_toward_hue};
 
-pub(crate) const fn is_dark(c: Rgba8) -> bool {
+pub(crate) const fn is_dark(c: Color) -> bool {
     let r = c.r as u32;
     let g = c.g as u32;
     let b = c.b as u32;
     (r * 30 + g * 59 + b * 11) < 12_800
 }
 
-pub(crate) const fn pick_higher_contrast(against: Rgba8, a: Rgba8, b: Rgba8) -> Rgba8 {
+pub(crate) const fn pick_higher_contrast(against: Color, a: Color, b: Color) -> Color {
     let target = perceived_brightness_u32(against);
     let da = perceived_brightness_u32(a).abs_diff(target);
     let db = perceived_brightness_u32(b).abs_diff(target);
     if da >= db { a } else { b }
 }
 
-pub(crate) const fn perceived_brightness_u32(c: Rgba8) -> u32 {
+pub(crate) const fn perceived_brightness_u32(c: Color) -> u32 {
     let r = c.r as u32;
     let g = c.g as u32;
     let b = c.b as u32;
@@ -28,12 +28,12 @@ pub(crate) const fn perceived_brightness_u32(c: Rgba8) -> u32 {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Palette {
-    pub(crate) background: Rgba8,
-    pub(crate) text: Rgba8,
-    pub(crate) primary: Rgba8,
-    pub(crate) success: Rgba8,
-    pub(crate) warning: Rgba8,
-    pub(crate) danger: Rgba8,
+    pub(crate) background: Color,
+    pub(crate) text: Color,
+    pub(crate) primary: Color,
+    pub(crate) success: Color,
+    pub(crate) warning: Color,
+    pub(crate) danger: Color,
 }
 
 impl Palette {
@@ -169,7 +169,7 @@ impl Palette {
     }
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn spellforge(accent: Rgba8) -> Self {
+    pub(crate) fn spellforge(accent: Color) -> Self {
         let accent_is_bright = perceived_brightness(accent) > 128;
         let (bg, fg) = if accent_is_bright {
             (rgb(0x14, 0x16, 0x1C), rgb(0xE8, 0xEA, 0xF0))

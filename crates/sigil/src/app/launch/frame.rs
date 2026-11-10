@@ -125,7 +125,6 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
             layout,
             router,
             renderer: env.renderer,
-            exit_requested: env.exit_requested,
         });
         if let Some(actions) = &actions {
             event_wiring::drain_a11y_actions(actions, cx, router, layout);

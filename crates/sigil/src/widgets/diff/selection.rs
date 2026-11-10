@@ -61,7 +61,7 @@ impl HunkPicker {
         })
         .paint_when(
             move || selection.with(|picked| picked.hunks.contains(&hunk)),
-            |paint| paint.bg(Token::Accent3),
+            |paint| paint.background(Token::Accent3),
         )
     }
 
@@ -73,7 +73,7 @@ impl HunkPicker {
         })
         .paint_when(
             move || selection.with(|picked| picked.contains(id)),
-            |paint| paint.bg(Token::Accent3),
+            |paint| paint.background(Token::Accent3),
         )
     }
 }

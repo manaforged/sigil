@@ -1,12 +1,11 @@
-use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent};
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 #[cfg(any(test, feature = "kittest"))]
 use accesskit::TreeUpdate;
-use smallvec::SmallVec;
 
-use crate::events::focus::{FocusIntent, FocusManager};
+use crate::events::focus::{FocusDirection, FocusManager};
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
@@ -15,14 +14,18 @@ use crate::events::pointer_dispatch::{
 
 mod file_drop;
 mod gesture;
+mod hover;
 mod keyboard;
 mod paste;
+mod quit;
 
 pub(crate) use gesture::GestureHandlers;
+use keyboard::ShortcutIndex;
 pub(crate) use paste::PasteHandlers;
 
 kittest_pub! {
     #[derive(Debug, Default)]
+    #[doc(hidden)]
     pub struct EventRouter {
         pub(crate) focus: FocusManager,
         pointer_capture: Option<NodeId>,
@@ -32,12 +35,14 @@ kittest_pub! {
         hit_cache: HitTestCache,
         hover_seen: Option<(u64, u64, (u32, u32))>,
         link_press: Option<std::sync::Arc<str>>,
+        quit: Option<crate::app::config::QuitKeys>,
     }
 }
 
 impl EventRouter {
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn new() -> Self {
             Self::default()
         }
@@ -48,11 +53,13 @@ impl EventRouter {
     }
 
     kittest_pub! {
-        pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: Event) {
+        /// Routes an event through the tree and returns whether a key press was consumed.
+        #[doc(hidden)]
+        pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: Event) -> bool {
             self.focus.sync_scopes(cx, Some(layout));
             match event {
                 Event::Pointer(event) => self.route_pointer(cx, layout, event),
-                Event::Key(event) => self.route_key(cx, layout, event),
+                Event::Key(event) => return self.route_quit_key(cx, layout, event),
                 Event::Window(crate::events::WindowEvent::Focused(false)) => {
                     self.focus_lost(cx, layout);
                 }
@@ -63,6 +70,7 @@ impl EventRouter {
                 Event::Paste(text) => self.route_paste(cx, layout, &text),
                 Event::Window(_) => {}
             }
+            false
         }
     }
 
@@ -100,12 +108,14 @@ impl EventRouter {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub const fn focus(&self) -> Option<NodeId> {
             self.focus.focus()
         }
     }
 
     kittest_pub! {
+        #[doc(hidden)]
         pub fn set_focus(&mut self, cx: &mut Cx, target: Option<NodeId>) {
             crate::events::note_focus_source(true);
             self.focus.set_focus(cx, target);
@@ -113,6 +123,7 @@ impl EventRouter {
     }
 
     kittest_pub! {
+        #[doc(hidden)]
         pub fn flush_focus_requests(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
             let pending = crate::events::focus::take_focus_requests();
             if pending.is_empty() {
@@ -149,6 +160,7 @@ impl EventRouter {
     }
 
     kittest_pub! {
+        #[doc(hidden)]
         pub fn focus_if_needed(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
             self.focus.sync_scopes(cx, Some(layout));
             if self.focus.holds_live_focus(cx) {
@@ -160,7 +172,8 @@ impl EventRouter {
     }
 
     kittest_pub! {
-        pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+        #[doc(hidden)]
+        pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusDirection) {
             crate::events::note_focus_source(true);
             self.focus.focus_intent(cx, layout, intent);
         }
@@ -181,6 +194,7 @@ impl EventRouter {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn is_focus_target(&mut self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
             self.focus.is_focusable_target(cx, layout, target)
         }
@@ -188,6 +202,7 @@ impl EventRouter {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn is_click_target(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
             self.focus.is_hittable_target(cx, layout, target)
         }
@@ -293,53 +308,6 @@ impl EventRouter {
         crate::events::pointer_dispatch::invoke_node(cx, layout, target, hovered);
     }
 
-    pub(crate) fn reconcile_hover(&mut self, cx: &Cx, layout: &LayoutEngine) {
-        if self.pointer_capture.is_some() {
-            return;
-        }
-        let Some(pointer) = self.last_pointer.clone() else {
-            return;
-        };
-        let seen = (
-            cx.mutation_generation(),
-            layout.generation(),
-            (pointer.position.x.to_bits(), pointer.position.y.to_bits()),
-        );
-        if self.hover_seen.replace(seen) == Some(seen) {
-            return;
-        }
-        let Some(path) = self.hit_cache.hit_path(cx, layout, pointer.position) else {
-            self.clear_hover(cx, &pointer);
-            return;
-        };
-        let next_targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
-        self.update_hover(cx, &next_targets, &pointer);
-    }
-
-    fn update_hover(&mut self, cx: &Cx, next: &PointerTargets, source: &PointerEvent) {
-        let common = self
-            .hover_targets
-            .iter()
-            .zip(next.iter())
-            .take_while(|(a, b)| a.id == b.id)
-            .count();
-        if common == next.len() && common == self.hover_targets.len() {
-            return;
-        }
-        if let Some(leaving) = self.hover_targets.get(common..) {
-            for target in leaving.iter().rev().copied() {
-                dispatch_synthetic_target(cx, target, source, PointerPhase::Leave);
-            }
-        }
-        if let Some(entering) = next.get(common..) {
-            for target in entering.iter().copied() {
-                dispatch_synthetic_target(cx, target, source, PointerPhase::Enter);
-            }
-        }
-        self.hover_targets.clear();
-        self.hover_targets.extend(next.iter().copied());
-    }
-
     fn focus_lost(&mut self, cx: &Cx, layout: &LayoutEngine) {
         let source = self
             .last_pointer
@@ -353,13 +321,6 @@ impl EventRouter {
         self.link_press = None;
         crate::events::selection::end_drag();
         self.clear_hover(cx, &source);
-    }
-
-    fn clear_hover(&mut self, cx: &Cx, source: &PointerEvent) {
-        for target in self.hover_targets.iter().rev().copied() {
-            dispatch_synthetic_target(cx, target, source, PointerPhase::Leave);
-        }
-        self.hover_targets.clear();
     }
 
     fn end_press(&mut self, phase: PointerPhase) {
@@ -383,12 +344,6 @@ impl EventRouter {
             self.focus.set_focus(cx, target);
         }
     }
-}
-
-#[derive(Debug)]
-struct ShortcutIndex {
-    generation: u64,
-    entries: SmallVec<[(Shortcut, NodeId); 8]>,
 }
 
 fn in_popup(cx: &Cx, path: &NodePath) -> bool {

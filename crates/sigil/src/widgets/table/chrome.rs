@@ -6,7 +6,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal, signal};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::menu::PANEL_INSET;
 use super::super::menu::{MenuItem, menu};

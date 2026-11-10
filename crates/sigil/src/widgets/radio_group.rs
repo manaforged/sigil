@@ -7,14 +7,15 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, StyleOverlay, Token, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
 use super::listbox::{Move, RADIO_GROUP};
-use super::shared::{control_surface, disabled_a11y, disabled_now};
+use super::shared::{caller_style, control_surface, disabled_a11y, disabled_now};
 use crate::widgets::interaction::InteractionState;
 
 /// Builder of a radio group.
+#[derive(Debug)]
 pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<(String, String)>,
@@ -110,10 +111,7 @@ impl RadioGroupBuilder {
                 group_focus,
             ));
         }
-        if !self.style_accumulator.is_empty() {
-            group = group.style(self.style_accumulator);
-        }
-        let mut group = disabled_a11y(group, disabled);
+        let mut group = disabled_a11y(caller_style(group, self.style_accumulator), disabled);
         for (key, step) in RADIO_GROUP.bindings() {
             let keys = Rc::clone(&keys);
             group = group.key(key, move |event| {
@@ -199,19 +197,19 @@ fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
     let mark_inner = container()
         .layout(LayoutStyle::flex_row().fixed_size(MARK_INNER, MARK_INNER))
         .tone_scope(tone)
-        .style(Style::new().radius(4))
+        .style(Style::new().radius_px(4))
         .style_reactive(move || selected_atoms(checked));
     let mark_core = container()
         .layout(centered_square(MARK_CORE))
-        .style(Style::new().radius(7))
-        .class(Token::Surface.bg())
+        .style(Style::new().radius_px(7))
+        .class(Token::Surface.background())
         .child(mark_inner);
     container()
         .role(Role::GenericContainer)
         .layout(centered_square(MARK_OUTER))
-        .style(Style::new().radius(8))
+        .style(Style::new().radius_px(8))
         .tone_scope(tone)
-        .class(Token::Gray7.bg())
+        .class(Token::Gray7.background())
         .style_reactive(move || selected_atoms(checked))
         .child(mark_core)
 }

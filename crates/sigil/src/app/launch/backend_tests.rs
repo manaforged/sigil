@@ -1,4 +1,5 @@
 use super::*;
+use crate::renderer::capture::ImageTarget;
 use crate::scene::SceneBuilder;
 
 const TARGET: ImageTarget = ImageTarget {
@@ -7,7 +8,7 @@ const TARGET: ImageTarget = ImageTarget {
         height: 4,
     },
     viewport: (8.0, 4.0),
-    clear: Color::BLACK,
+    clear: Rgba::BLACK,
 };
 
 fn backend_without_adapter(fallback: bool) -> Backend {
@@ -28,7 +29,7 @@ fn render_image_falls_back_to_cpu_when_no_adapter_exists() {
     assert_eq!(
         backend.status(),
         BackendStatus {
-            kind: BackendKind::Cpu,
+            kind: profile::Backend::Cpu,
             fallback: FallbackCause::NoAdapter,
         }
     );

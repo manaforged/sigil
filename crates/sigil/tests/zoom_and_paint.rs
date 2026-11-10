@@ -5,6 +5,7 @@
     clippy::cast_sign_loss
 )]
 
+use sigil::animation::Property;
 use sigil::geometry::{Point, Rect};
 use sigil::prelude::*;
 use sigil::scene::DrawRect;
@@ -12,7 +13,7 @@ use sigil::style::Transform2D;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 220,
     g: 30,
     b: 30,
@@ -21,16 +22,16 @@ const RED: Rgba8 = Rgba8 {
 
 fn zoomed(scale: f32) -> NodeBuilder {
     container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(LayoutStyle::block().width(400.0).height(200.0))
         .child(
             container()
                 .layout(LayoutStyle::block().width(100.0).height(50.0))
                 .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                .animate_scale_x(signal(scale))
-                .animate_scale_y(signal(scale))
+                .drive(Property::ScaleX, signal(scale))
+                .drive(Property::ScaleY, signal(scale))
                 .child(
-                    container().bg(Token::Accent9).layout(
+                    container().background(Token::Accent9).layout(
                         LayoutStyle::block()
                             .width(20.0)
                             .height(20.0)

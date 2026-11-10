@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::kernel::{Cx, IntoNode, NodeId, Role, container};
-use crate::layout::{Dimension, LayoutStyle};
+use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Owner, signal};
 use crate::widgets::Widget;
 
@@ -23,8 +23,8 @@ fn width_hint_reads_a_width_set_through_layout() {
 #[test]
 fn width_height_override_replaces_dimensions() {
     let mut overrides = LayoutOverrides::new();
-    overrides.edit(LayoutEdit::Width(100.0));
-    overrides.edit(LayoutEdit::Height(50.0));
+    overrides.edit(LayoutEdit::Width(Length::Px(100.0)));
+    overrides.edit(LayoutEdit::Height(Length::Px(50.0)));
     let base = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
     let result = overrides.apply(base);
     let expected = LayoutStyle::flex_row()
@@ -50,7 +50,7 @@ fn full_layout_then_partials_compose() {
     let mut overrides = LayoutOverrides::new();
     let replacement = LayoutStyle::block().fixed_size(7.0, 9.0);
     overrides.edit(LayoutEdit::Merge(replacement.clone()));
-    overrides.edit(LayoutEdit::Width(123.0));
+    overrides.edit(LayoutEdit::Width(Length::Px(123.0)));
     let mut expected = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
     let result = overrides.apply(expected.clone());
     expected.merge(&replacement.width(123.0));
@@ -63,8 +63,8 @@ fn assert_sized(cx: &Cx, id: NodeId) {
         .expect("node exists")
         .get_extension::<LayoutStyle>()
         .expect("node has LayoutStyle");
-    assert_eq!(style.data().size.width, Dimension::Px(100.0));
-    assert_eq!(style.data().size.height, Dimension::Px(50.0));
+    assert_eq!(style.data().size.width, Length::Px(100.0));
+    assert_eq!(style.data().size.height, Length::Px(50.0));
 }
 
 fn assert_root_sized<N: Widget + IntoNode>(scope: &'static str, build: impl FnOnce() -> N) {

@@ -256,10 +256,14 @@ const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
 
 const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
     match atom {
-        PaintAtom::Gradient(_) | PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
-        PaintAtom::Stop(StopSlot::From, _) => ResolvedSlot::GradientFrom,
-        PaintAtom::Stop(StopSlot::Via, _) => ResolvedSlot::GradientVia,
-        PaintAtom::Stop(StopSlot::To, _) => ResolvedSlot::GradientTo,
+        PaintAtom::Gradient(_) | PaintAtom::NoGradient => ResolvedSlot::BackgroundGradient,
+        PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
+        PaintAtom::NoColor => ResolvedSlot::BackgroundColor,
+        PaintAtom::Stop(slot, _) | PaintAtom::NoStop(slot) => match slot {
+            StopSlot::From => ResolvedSlot::GradientFrom,
+            StopSlot::Via => ResolvedSlot::GradientVia,
+            StopSlot::To => ResolvedSlot::GradientTo,
+        },
         PaintAtom::StopAt(StopSlot::From, _) => ResolvedSlot::GradientFromPosition,
         PaintAtom::StopAt(StopSlot::Via, _) => ResolvedSlot::GradientViaPosition,
         PaintAtom::StopAt(StopSlot::To, _) => ResolvedSlot::GradientToPosition,
@@ -324,6 +328,7 @@ pub(crate) enum ResolvedSlot {
     TransitionDelay,
     Animation,
     UnknownThemeRef,
+    BackgroundGradient,
     BackgroundImage,
     GradientFrom,
     GradientVia,

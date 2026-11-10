@@ -6,7 +6,7 @@ use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
 use crate::style::{Radius, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -23,6 +23,18 @@ pub struct ChipBuilder {
     leading: Option<Box<dyn IntoNode>>,
     dot: bool,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for ChipBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ChipBuilder")
+            .field("label", &self.label)
+            .field("tone", &self.tone)
+            .field("tone_signal", &self.tone_signal)
+            .field("dot", &self.dot)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ChipBuilder {

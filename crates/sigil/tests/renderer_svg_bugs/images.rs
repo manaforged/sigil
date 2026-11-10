@@ -1,7 +1,7 @@
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit};
 use sigil::scene::{CommandScene, DrawImage, SceneBuilder};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, gpu_rgba};
 
@@ -47,7 +47,7 @@ fn one_renderer_draws_every_new_image_across_many_frames() {
             scene: &scene,
             viewport: (VIEW as f32, VIEW as f32),
             size: PhysicalSize::new(VIEW, VIEW),
-            clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
         };
         let rgba = gpu_rgba(&mut renderer, &frame).expect("gpu render");
         let at = ((VIEW / 2 * VIEW + VIEW / 2) * 4) as usize;

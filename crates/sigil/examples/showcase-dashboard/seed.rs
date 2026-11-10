@@ -226,7 +226,7 @@ pub(crate) const LOG_SEED: [LogLine; 20] = [
     line(7, "09:12:47", "job accepted by runner-05", Tone::Neutral),
     line(7, "09:15:40", "canary 25% in eu-west", Tone::Info),
     line(7, "09:16:31", "health check failed 2/3", Tone::Error),
-    line(7, "09:16:52", "rolled back to 3e6f2a9", Tone::Warn),
+    line(7, "09:16:52", "rolled back to 3e6f2a9", Tone::Warning),
     line(3, "10:25:53", "ledger-api 5d17f60 is live", Tone::Success),
 ];
 

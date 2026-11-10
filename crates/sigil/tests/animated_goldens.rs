@@ -53,7 +53,9 @@ fn button_hover_filmstrip() {
 
 fn checkbox_widget() -> impl IntoNode {
     let checked = signal(false);
-    checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+    checkbox(checked)
+        .background(Token::Surface)
+        .radius(Radius::Sm)
 }
 
 #[test]

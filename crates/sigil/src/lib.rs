@@ -46,12 +46,6 @@ pub mod a11y;
 pub(crate) mod a11y;
 /// Tweens, springs, and animators.
 pub mod animation;
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
-pub mod animation_runtime;
-#[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
-pub(crate) mod animation_runtime;
 /// Windows, the frame loop, dialogs, menus, and other platform services.
 pub mod app;
 pub(crate) mod bidi;
@@ -125,23 +119,6 @@ pub use crate::app::exit::request_exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
 pub use crate::view::View;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::kernel::NodeType;
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::kernel::{AccessibleName, FocusScopeKind, ImageCrop, NodeExtensions};
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::layout::{CaretGeometry, TextMeasure};
-}
-#[cfg(feature = "scene")]
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::text::{HitPosition, TextAffinity};
-}
 
 /// Run the app component on the host that `config` selects.
 #[cfg(any(feature = "desktop", feature = "terminal"))]
@@ -208,13 +185,12 @@ pub mod fuzzing {
 pub mod prelude {
     #[cfg(feature = "desktop")]
     pub use crate::app::open;
-    pub use crate::app::set_theme;
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::request_focus;
     pub use crate::events::{
         Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-        PointerEvent, PointerKind, PointerPhase, Shortcut,
+        PointerEvent, PointerPhase, PointerType, Shortcut,
     };
     pub use crate::geometry::{Point, Size};
     #[cfg(feature = "scene")]
@@ -224,33 +200,41 @@ pub mod prelude {
         TextBuilder, TextContent, TextCursor, container, for_each, fragment, image, node, show,
         switch, text,
     };
-    pub use crate::layout::audit::FlawKind;
+    pub use crate::layout::audit::Flaw;
+    kittest_pub! {
+        #[doc(hidden)]
+        pub use crate::layout::LayoutStyle;
+    }
+    kittest_pub! {
+        #[doc(hidden)]
+        pub use crate::widgets::Layout;
+    }
     pub use crate::layout::{
-        AlignItems, Dimension, Display, FlexWrap, JustifyContent, LayoutStyle, Overflow, Position,
-        Space, TrackSize, cols, column, em, row, rows,
+        AlignItems, FlexWrap, JustifyContent, Length, Overflow, Position, Space, TrackSize, cols,
+        column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, Rgba8, StateVariants,
-        TextRole, Theme, Token, Tone,
+        Color, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States, TextRole, Theme,
+        Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::view::View;
     pub use crate::widgets::{
-        ColWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
+        ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
         ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
         SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, a2ui, app_shell,
         avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
-        command_menu, context_menu, date_field, diff, divider_horizontal, divider_vertical, dot,
-        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight,
-        hint_bar, hint_overlay, html, icon, icon_button, interactive, kv_grid, kv_row, list_row,
-        markdown, markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal,
-        notice_band, number_field, panel, path, progress, radio_group, scroll, section_label,
-        segmented, sheet, sidebar, slider, spacer, sparkline, spinner, splitter, stat, status_bar,
-        surface, table, tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip,
-        tree, virtual_list,
+        command_menu, context_menu, date_field, diff, divider, dot, drag_ghost, dropdown,
+        empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
+        hint_overlay, html, icon, icon_button, interactive, kv_grid, kv_row, list_row, markdown,
+        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
+        number_field, panel, path, progress, radio_group, scroll, section_label, segmented, sheet,
+        sidebar, slider, spacer, sparkline, spinner, splitter, stat, status_bar, surface, table,
+        tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip, tree,
+        virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

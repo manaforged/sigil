@@ -3,7 +3,6 @@
 use sigil::Host;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::SceneCommand;
 
 fn main() {
     Owner::scope("hello-host", || {
@@ -11,12 +10,10 @@ fn main() {
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fixed_size(480.0, 240.0)
-                        .gap(Space::Lg),
-                )
+            column()
+                .width(480.0)
+                .height(240.0)
+                .gap(Space::Lg)
                 .child(text(label_text))
                 .child(button("Increment").primary().activate(move || {
                     count.set(count.peek() + 1);
@@ -31,14 +28,12 @@ fn main() {
                 return;
             }
         };
-        for command in &scene.commands {
-            if let SceneCommand::GlyphRun(draw) = command {
-                let rect = draw.rect;
-                println!(
-                    "{} @ ({:.0},{:.0}) {}x{}",
-                    draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
-                );
-            }
+        for draw in scene.glyph_runs() {
+            let rect = draw.rect;
+            println!(
+                "{} @ ({:.0},{:.0}) {}x{}",
+                draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
+            );
         }
         for (key, rect) in host.surfaces() {
             println!(

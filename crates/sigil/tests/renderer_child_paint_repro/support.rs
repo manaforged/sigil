@@ -10,7 +10,7 @@ use sigil_kittest::FakeMeasure;
 
 pub(super) const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(40.0, 16.0);
 
-pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil::style::Rgba8, tolerance: i32) -> bool {
+pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil::style::Color, tolerance: i32) -> bool {
     (i32::from(r) - i32::from(expected.r)).abs() <= tolerance
         && (i32::from(g) - i32::from(expected.g)).abs() <= tolerance
         && (i32::from(b) - i32::from(expected.b)).abs() <= tolerance
@@ -27,7 +27,7 @@ pub(super) struct InkWindow {
 pub(super) fn count_ink(
     img: &image::RgbaImage,
     window: InkWindow,
-    background: sigil::style::Rgba8,
+    background: sigil::style::Color,
 ) -> u32 {
     let bg_sum = u32::from(background.r) + u32::from(background.g) + u32::from(background.b);
     let threshold = bg_sum.saturating_sub(150);

@@ -18,7 +18,7 @@ fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
     sigil::reactive::Owner::scope("ds2-button-pressed-overlay", || {
         let mut cx = Cx::new_root();
         let ruby_10 = ruby_light().step(10);
-        let root = cx.add(button("Delete").pressed(|s| s.bg(ruby_10)));
+        let root = cx.add(button("Delete").pressed(|s| s.background(ruby_10)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.route(
@@ -48,7 +48,7 @@ fn button_user_rest_overlay_overrides_widget_rest_bg() {
     sigil::reactive::Owner::scope("ds2-button-rest-overlay", || {
         let mut cx = Cx::new_root();
         let ruby_3 = ruby_light().step(3);
-        let root = cx.add(button("Cancel").rest(|s| s.bg(ruby_3)));
+        let root = cx.add(button("Cancel").rest(|s| s.background(ruby_3)));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let colors = rect_colors(&cx, root);

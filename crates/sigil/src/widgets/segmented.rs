@@ -8,6 +8,7 @@ use crate::widgets::Widget;
 
 use super::button::button;
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 static SEGMENTED_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
@@ -17,6 +18,7 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
 const SEGMENTED_HEIGHT: f32 = 32.0;
 
 /// Builder of a segmented control.
+#[derive(Debug)]
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,
@@ -76,10 +78,7 @@ impl SegmentedBuilder {
         if let Some(name) = self.name {
             node = node.label(name);
         }
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node
+        caller_style(node, self.style_accumulator)
     }
 }
 

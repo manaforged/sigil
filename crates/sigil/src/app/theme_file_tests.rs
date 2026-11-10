@@ -1,12 +1,12 @@
 use super::*;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 fn color(theme: &Theme, token: &str) -> Option<ThemeValue> {
     theme.tokens.overrides.value(token)
 }
 
 const fn rgba(r: u8, g: u8, b: u8, a: u8) -> ThemeValue {
-    ThemeValue::Color(Rgba8 { r, g, b, a })
+    ThemeValue::Color(Color { r, g, b, a })
 }
 
 #[test]

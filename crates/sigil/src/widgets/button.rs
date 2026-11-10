@@ -5,14 +5,14 @@ use crate::kernel::{AccessibleName, TextContent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, noop_activate, or_disabled, press,
-    reactive_style_state,
+    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, control_root, noop_activate,
+    or_disabled, press, reactive_style_state,
 };
 
 /// Builder of a button.
@@ -35,6 +35,25 @@ pub struct ButtonBuilder {
     #[cfg(feature = "scene")]
     trailing: Option<std::sync::Arc<str>>,
     shortcut: Option<String>,
+}
+
+impl core::fmt::Debug for ButtonBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ButtonBuilder")
+            .field("label", &self.label)
+            .field("tone", &self.tone)
+            .field("fill", &self.fill)
+            .field("height", &self.height)
+            .field("padding_x", &self.padding_x)
+            .field("disabled", &self.disabled)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("accessible", &self.accessible)
+            .field("pending", &self.pending)
+            .field("square", &self.square)
+            .field("shortcut", &self.shortcut)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A push button.
@@ -62,7 +81,7 @@ impl ButtonBuilder {
             fill: None,
             width: ButtonWidth::Hug,
             height: metrics.control_height(ControlSize::Default),
-            padding_x: metrics.padding(ControlSize::Default),
+            padding_x: metrics.control_padding(ControlSize::Default),
             disabled: None,
             activate: None,
             style_accumulator: Style::new(),
@@ -139,10 +158,10 @@ impl ButtonBuilder {
         self
     }
 
-    /// Sets the key that triggers this button, shown faint after the label.
+    /// Sets the hint text shown faint after the label, such as a key name.
     #[must_use]
-    pub fn shortcut(mut self, key: impl Into<String>) -> Self {
-        self.shortcut = Some(key.into());
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.shortcut = Some(hint.into());
         self
     }
 
@@ -202,15 +221,9 @@ impl ButtonBuilder {
     #[must_use]
     pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
-        let size = if size == ControlSize::Grow {
-            self.width = ButtonWidth::Fill;
-            ControlSize::Default
-        } else {
-            self.width = ButtonWidth::Hug;
-            size
-        };
+        self.width = ButtonWidth::Hug;
         self.height = metrics.control_height(size);
-        self.padding_x = metrics.padding(size);
+        self.padding_x = metrics.control_padding(size);
         self
     }
 
@@ -227,15 +240,14 @@ impl ButtonBuilder {
         if self.square {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
+        } else if self.layout_overrides.fills_width() {
+            self.width = ButtonWidth::Fill;
         }
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(interaction, activate, user_overlay, look_disabled);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node.with(button_layout(self.width, self.height, self.padding_x))
+        let style = std::mem::take(&mut self.style_accumulator);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, activate, overlay, look_disabled)
+        })
     }
 
     fn base_node(

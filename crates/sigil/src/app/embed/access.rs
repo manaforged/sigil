@@ -31,3 +31,13 @@ impl Host {
         )
     }
 }
+
+impl core::fmt::Debug for Host {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Host")
+            .field("root", &self.root)
+            .field("fill_root", &self.fill_root)
+            .field("visual_transforms", &self.visual_transforms)
+            .finish_non_exhaustive()
+    }
+}

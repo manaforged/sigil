@@ -6,13 +6,14 @@ use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
 use crate::style::Tone;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Widget, markdown, notice_band};
+use crate::widgets::{Layout, markdown, notice_band};
 
 mod document;
 mod glyph;
 mod inputs;
 mod media;
 mod model;
+mod pieces;
 mod prose;
 mod render;
 mod spec;
@@ -21,14 +22,26 @@ use render::{Handler, Render};
 
 const MAX_SHOWN_SOURCE: usize = 16 << 10;
 
-/// Builder of an A2UI v0.9 surface rendered with native widgets.
+/// The A2UI 1.0 catalog of Sigil components (Chart, Stat, Table, Markdown, Mermaid, Diff, Item), as JSON.
+pub const A2UI_CATALOG: &str = include_str!("a2ui/catalog.json");
+
+/// Builder of an A2UI 1.0 or v0.9 surface rendered with native widgets.
 pub struct A2uiBuilder {
     source: Signal<String>,
     handler: Option<Handler>,
     layout_overrides: LayoutOverrides,
 }
 
-/// An A2UI v0.9 surface from JSON: one message, an array of messages, or `{"messages": [..]}`.
+impl core::fmt::Debug for A2uiBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("A2uiBuilder")
+            .field("source", &self.source)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
+/// An A2UI surface from JSON: one message, an array of messages, or `{"messages": [..]}`.
 #[must_use]
 pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {
     A2uiBuilder {
@@ -61,7 +74,7 @@ fn fence(source: &str) -> String {
 fn invalid(message: &str, source: &str) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
-        .child(notice_band(message.to_string(), Tone::Warn))
+        .child(notice_band(message.to_string(), Tone::Warning))
         .child(markdown(signal(fence(source))))
 }
 

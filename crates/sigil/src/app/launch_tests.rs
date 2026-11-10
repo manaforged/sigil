@@ -5,7 +5,7 @@ use crate::reactive::Owner;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use crate::animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
+use crate::animation::runtime::{Animator, MotionPrefs, active_count, config, presets};
 use crate::events::Event;
 use crate::geometry::{LogicalSize, PhysicalSize};
 use crate::hal::Shell;
@@ -13,7 +13,7 @@ use crate::kernel::container;
 use crate::layout::LayoutStyle;
 use crate::reactive::{Runtime, signal};
 use crate::tasks::{AsyncRuntime, signal_writer};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::Host;
 use crate::app::config::AppConfig;

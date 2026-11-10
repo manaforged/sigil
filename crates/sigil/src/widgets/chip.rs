@@ -9,7 +9,7 @@ pub(crate) use builder::ChipBuilder;
 
 pub(crate) fn chip_class(tone: Tone) -> &'static [StyleAtom] {
     intern_atoms(smallvec![
-        tone.token(3).bg(),
+        tone.token(3).background(),
         tone.token(12).text(),
         StyleAtom::BorderWidth(BORDER_WIDTH),
         tone.token(6).border(),

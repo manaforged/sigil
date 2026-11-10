@@ -2,9 +2,9 @@ use crate::layout::Space;
 use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{AlignItems, Dimension, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, LayoutStyle, Length, Overflow};
 use crate::style::{BORDER_WIDTH, Paint, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::highlight::{byte_marks, text_runs};
 
 use super::model::{DiffCell, DiffRow};
@@ -24,7 +24,7 @@ const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
         LineKind::Removed => (Some(Token::Error3), Token::Error12, "removed", '-'),
         LineKind::Added => (Some(Token::Success3), Token::Success12, "added", '+'),
-        LineKind::Context | LineKind::Note => (None, Token::Gray11, "unchanged", ' '),
+        LineKind::Context | LineKind::Note => (None, Token::Gray12, "unchanged", ' '),
     }
 }
 
@@ -125,7 +125,7 @@ pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
             .gap(Space::None),
     );
     let row = match bg {
-        Some(bg) => row.class(bg.bg()),
+        Some(bg) => row.class(bg.background()),
         None => row,
     };
     let row = row.role(Role::ListItem).description(state).child(
@@ -148,7 +148,7 @@ fn half(cell: Option<&DiffCell>, draw: Draw, ruled: bool) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
             .grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
             .overflow_x(Overflow::Hidden),
     );

@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
+#[cfg(any(feature = "terminal", debug_assertions))]
 use crate::kernel::FrameDelta;
 use crate::reactive::{Runtime, tick_frame};
 
@@ -8,6 +9,7 @@ const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
 /// State of the current frame that `Host::frame` passes to the paint hook, with the frame's `FrameDelta` for `Host::emit_since`.
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct FrameInfo {
     /// Whether dirty.
     pub dirty: bool,
@@ -15,14 +17,12 @@ pub struct FrameInfo {
     pub animating: bool,
     /// Whether layout ok.
     pub layout_ok: bool,
-    #[cfg_attr(
-        not(feature = "terminal"),
-        allow(dead_code, reason = "only the terminal host reads the delta")
-    )]
+    #[cfg(any(feature = "terminal", debug_assertions))]
     pub(crate) delta: FrameDelta,
 }
 
 /// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
+#[derive(Debug)]
 pub struct FrameOutput {
     /// Whether exit.
     pub exit: bool,
@@ -54,6 +54,12 @@ pub struct FrameHooks<'a> {
     pub paint: Option<FramePaintHook<'a>>,
 }
 
+impl core::fmt::Debug for FrameHooks<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("FrameHooks").finish_non_exhaustive()
+    }
+}
+
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
     pub fn frame(
@@ -80,11 +86,16 @@ impl Host {
         let layout_ok = layout.is_ok();
         self.cx().flush_announcements();
         Runtime::begin_paint();
+        let dirty = Runtime::frame_dirty();
+        let delta = self.cx().take_delta();
+        #[cfg(not(any(feature = "terminal", debug_assertions)))]
+        drop(delta);
         let info = FrameInfo {
-            dirty: Runtime::frame_dirty(),
+            dirty,
             animating,
             layout_ok,
-            delta: self.cx().take_delta(),
+            #[cfg(any(feature = "terminal", debug_assertions))]
+            delta,
         };
         if let Some(paint) = hooks.paint {
             paint(self, &info);

@@ -7,7 +7,7 @@ use crate::kernel::{
 };
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::RowRender;
 use super::measure::{Measure, Tops, row_key_of};

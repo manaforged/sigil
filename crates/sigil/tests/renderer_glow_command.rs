@@ -5,7 +5,7 @@ use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
     CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
 };
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 
 #[test]
 fn glow_command_keeps_shadow_kind_glow() {
@@ -64,13 +64,13 @@ type RenderCommandScene = fn(
     &mut WgpuRenderer,
     &mut WgpuSurface,
     &CommandScene,
-    Color,
+    Rgba,
     (f32, f32),
 ) -> Result<(), sigil::Error>;
 
 fn glow_shadow() -> Shadow {
     Shadow::glow(
-        Rgba8 {
+        Color {
             r: 80,
             g: 200,
             b: 255,
@@ -93,8 +93,8 @@ const fn surface_rect() -> Rect {
     Rect::new(Point::new(100.0, 80.0), 200.0, 200.0)
 }
 
-const fn fill_color() -> Rgba8 {
-    Rgba8 {
+const fn fill_color() -> Color {
+    Color {
         r: 245,
         g: 245,
         b: 250,

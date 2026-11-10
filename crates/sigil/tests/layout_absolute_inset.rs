@@ -6,7 +6,7 @@ use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::*;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use stub::{first_child, layout_rect, stub_engine};
 

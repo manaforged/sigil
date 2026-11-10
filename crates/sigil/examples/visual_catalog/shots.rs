@@ -119,9 +119,19 @@ fn rendered(render: &impl Fn(f32) -> Capture, scale: f32) -> Result<Captured, St
     match std::panic::catch_unwind(AssertUnwindSafe(|| render(scale))) {
         Ok(Ok(Some(captured))) => Ok(captured),
         Ok(Ok(None)) => Err(String::from("render error: no wgpu adapter")),
-        Ok(Err(err)) => Err(format!("render error: {err}")),
+        Ok(Err(err)) => Err(with_causes(format!("render error: {err}"), &err)),
         Err(_) => Err(String::from("render error: capture panicked")),
     }
+}
+
+fn with_causes(mut text: String, error: &dyn std::error::Error) -> String {
+    let mut cause = error.source();
+    while let Some(inner) = cause {
+        text.push_str(": ");
+        text.push_str(&inner.to_string());
+        cause = inner.source();
+    }
+    text
 }
 
 fn content_rect(image: &RgbaImage, pad: u32) -> (Rect, Rect) {

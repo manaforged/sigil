@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::kernel::NodeBuilder;
-use crate::layout::{Dimension, LayoutStyle};
+use crate::layout::{LayoutStyle, Length};
 use crate::widgets::LayoutEdit;
 
 type NodeHook = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
@@ -24,7 +24,7 @@ thread_local! {
     });
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct NodeHooks {
     id: Option<u64>,
 }
@@ -117,7 +117,7 @@ fn release(id: u64) {
     });
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutOverrides {
     edits: Vec<LayoutEdit>,
     hooks: NodeHooks,
@@ -153,18 +153,22 @@ impl LayoutOverrides {
 
     #[must_use]
     pub(crate) fn width_hint(&self) -> Option<f32> {
-        match self.apply(LayoutStyle::default()).0.size.width {
-            Dimension::Px(px) => Some(px),
-            _ => None,
-        }
+        self.apply(LayoutStyle::default()).0.size.width.px()
     }
 
     #[must_use]
     pub(crate) fn height_hint(&self) -> Option<f32> {
-        match self.apply(LayoutStyle::default()).0.size.height {
-            Dimension::Px(px) => Some(px),
-            _ => None,
-        }
+        self.apply(LayoutStyle::default()).0.size.height.px()
+    }
+
+    #[must_use]
+    pub(crate) fn fills_height(&self) -> bool {
+        fills(self.apply(LayoutStyle::default()).data().size.height)
+    }
+
+    #[must_use]
+    pub(crate) fn fills_width(&self) -> bool {
+        fills(self.apply(LayoutStyle::default()).data().size.width)
     }
 
     #[must_use]
@@ -180,3 +184,7 @@ impl LayoutOverrides {
 #[cfg(test)]
 #[path = "layout_ext_tests.rs"]
 mod tests;
+
+const fn fills(length: Length) -> bool {
+    matches!(length, Length::Fill | Length::Percent(_))
+}

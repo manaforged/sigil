@@ -1,7 +1,6 @@
-use std::cell::RefCell;
-
+use crate::app::Wake;
+use crate::app::bridge::Native;
 use crate::app::menu::Menu;
-use crate::app::platform::{Bridge, Wake};
 use crate::error::{AppResult, Error, ErrorKind};
 use crate::events::MouseButton;
 use crate::geometry::Point;
@@ -9,10 +8,7 @@ use crate::reactive::EventChannel;
 use tray_icon::{Icon, MouseButton as NativeButton, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 thread_local! {
-    static PENDING: RefCell<Option<Tray>> = const { RefCell::new(None) };
-    static INSTALLED: RefCell<Option<TrayIcon>> = const { RefCell::new(None) };
-    static EVENTS: EventChannel<TrayEvent> = EventChannel::new();
-    static BRIDGE: Bridge<TrayEvent> = Bridge::new();
+    static NATIVE: Native<Tray, TrayIcon, TrayEvent> = Native::new();
 }
 
 #[derive(Clone, Debug, Default)]
@@ -104,27 +100,28 @@ impl Tray {
     pub fn install(self) -> AppResult<()> {
         self.native_icon()
             .map_err(|error| Error::message(ErrorKind::Other, error))?;
-        PENDING.with(|slot| *slot.borrow_mut() = Some(self));
+        NATIVE.with(|native| native.queue(self));
         Ok(())
     }
 
     /// Applies the set and cleared fields to the installed icon; `Ok(false)` before it is installed.
     pub fn update(&self) -> AppResult<bool> {
-        INSTALLED.with(|slot| {
-            let installed = slot.borrow();
-            let Some(native) = installed.as_ref() else {
-                return Ok(false);
-            };
-            self.apply(native)
-                .map_err(|error| Error::message(ErrorKind::Other, error))?;
-            Ok(true)
+        NATIVE.with(|native| {
+            native.installed(|slot| -> AppResult<bool> {
+                let Some(icon) = slot.as_ref() else {
+                    return Ok(false);
+                };
+                self.apply(icon)
+                    .map_err(|error| Error::message(ErrorKind::Other, error))?;
+                Ok(true)
+            })
         })
     }
 
     /// The pointer events on the tray icon.
     #[must_use]
     pub fn events() -> EventChannel<TrayEvent> {
-        EVENTS.with(Clone::clone)
+        NATIVE.with(Native::events)
     }
 
     fn apply(&self, native: &TrayIcon) -> Result<(), String> {
@@ -229,7 +226,7 @@ pub fn simulate(event: TrayEvent) {
 }
 
 pub(crate) fn has_pending() -> bool {
-    PENDING.with(|slot| slot.borrow().is_some())
+    NATIVE.with(Native::has_pending)
 }
 
 pub(crate) fn install(wake: Wake) {
@@ -239,23 +236,26 @@ pub(crate) fn install(wake: Wake) {
 }
 
 pub(crate) fn pump() {
-    BRIDGE.with(|bridge| EVENTS.with(|channel| bridge.forward(channel)));
+    NATIVE.with(Native::pump);
 }
 
 fn install_tray(wake: Wake) {
-    let Some(tray) = PENDING.with(|slot| slot.borrow_mut().take()) else {
-        return;
-    };
-    crate::app::menu::connect(std::sync::Arc::clone(&wake));
-    match tray.native() {
-        Ok(tray) => INSTALLED.with(|slot| *slot.borrow_mut() = Some(tray)),
+    let built = NATIVE.with(|native| {
+        native.install(|tray| {
+            crate::app::menu::connect(std::sync::Arc::clone(&wake));
+            tray.native()
+        })
+    });
+    match built {
+        Ok(true) => {}
+        Ok(false) => return,
         Err(error) => {
             tracing::warn!(target: "sigil::tray", %error, "tray icon build failed");
             return;
         }
     }
 
-    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    let sink = NATIVE.with(|native| native.sink(wake));
     TrayIconEvent::set_event_handler(Some(move |event: TrayIconEvent| {
         if let Some(event) = map_event(&event) {
             sink(event);

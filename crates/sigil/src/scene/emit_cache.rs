@@ -8,7 +8,7 @@ use crate::fnv::mix;
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
 use crate::style::text_identity::DiscreteTextStyle;
-use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
+use crate::style::{Color, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;
 
 use crate::scene::builder::SceneBuilder;
@@ -153,7 +153,7 @@ pub(crate) fn content_key(node: &Node) -> u64 {
     if let NodeType::Text { content, .. } = &node.kind
         && !matches!(content, TextContent::Static(_))
     {
-        content.resolve().hash(&mut hasher);
+        content.hash_into(&mut hasher);
         wrote = true;
     }
     if let Some(binding) = node.get_extension::<StyleBinding>() {
@@ -180,8 +180,12 @@ pub(crate) fn theme_changed() {
     THEME_EPOCH.with(|epoch| epoch.set(epoch.get().wrapping_add(1)));
 }
 
-pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: &TextStyle) -> u64 {
-    let theme_p = std::ptr::from_ref(theme) as u64 ^ theme_epoch().rotate_left(37);
+pub(crate) fn theme_stamp() -> u64 {
+    theme_epoch().rotate_left(37)
+}
+
+pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Color>, text_style: &TextStyle) -> u64 {
+    let theme_p = std::ptr::from_ref(theme) as u64 ^ theme_stamp();
     let color = text_color.map_or(0, |c| u64::from(u32::from_le_bytes([c.r, c.g, c.b, c.a])));
     let size = u64::from(text_style.font_size.to_bits());
     let weight = u64::from(text_style.font_weight);

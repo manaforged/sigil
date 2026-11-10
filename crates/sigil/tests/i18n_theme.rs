@@ -8,7 +8,7 @@ use sigil_kittest::{Harness, Query};
 
 fn first_button_x(direction: Direction) -> f32 {
     let mut ui = Harness::new(move || {
-        sigil::app::set_theme(Theme::light().with_direction(direction));
+        Theme::light().with_direction(direction).apply();
         column()
             .layout(LayoutStyle::flex_column().fill())
             .child(row().child(button("Back")).child(button("Next")))
@@ -34,7 +34,7 @@ fn a_number_field_reads_the_theme_locale() {
     let value = Rc::new(Cell::new(None::<Signal<f64>>));
     let export = Rc::clone(&value);
     let mut ui = Harness::new(move || {
-        sigil::app::set_theme(Theme::light().with_locale(Locale::de()));
+        Theme::light().with_locale(Locale::de()).apply();
         let amount = signal(0.0_f64);
         export.set(Some(amount));
         number_field(amount, 0.0..=1_000_000.0)
@@ -53,12 +53,12 @@ fn a_number_field_reads_the_theme_locale() {
 #[test]
 fn built_in_labels_come_from_the_theme_strings() {
     let mut ui = Harness::new(|| {
-        sigil::app::set_theme(
-            Theme::light().with_strings(Strings::english().with(StringKey::Close, "Schließen")),
-        );
+        Theme::light()
+            .with_strings(Strings::english().with(StringKey::Close, "Schließen"))
+            .apply();
         modal(signal(true)).title("Dialog").child(text("body"))
     })
-    .pixels(400, 300);
+    .pixels(480, 300);
     ui.settle();
     let names: Vec<String> = ui
         .find_all(&Query::role(Role::Button))

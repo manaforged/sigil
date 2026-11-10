@@ -1,7 +1,6 @@
-use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ColWidth, FontFamily, Identifiable, LayoutStyle, MenuItem, NodeBuilder, Paint,
-    TableColumn, TableState, Token, Tone, chip, container, effect, table, text,
+    AlignItems, ColumnWidth, FontFamily, Identifiable, MenuItem, NodeBuilder, Paint, Space,
+    TableColumn, TableState, Token, Tone, chip, effect, row, table, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
@@ -62,7 +61,7 @@ pub(crate) fn job_state(console: Console) -> TableState<JobRow> {
 pub(crate) fn job_table(console: Console, state: TableState<JobRow>) -> impl IntoNode {
     table(state)
         .selectable_checkboxes()
-        .viewport_fill()
+        .fill_height()
         .row_menu(move |row: &JobRow| {
             let slot = row.slot;
             vec![
@@ -82,28 +81,28 @@ fn contains_query(fields: &[&str], query: &str) -> bool {
 fn columns(console: Console) -> Vec<TableColumn<JobRow>> {
     vec![
         TableColumn::new("commit", "Commit")
-            .width(ColWidth::Fraction(1.0))
+            .width(ColumnWidth::Fraction(1.0))
             .min_width(COMMIT_MIN_WIDTH)
             .filterable(|row: &JobRow, query: &str| {
                 contains_query(&[row.job.sha, row.job.message, row.job.author], query)
             })
             .cell(|row: &JobRow| commit_cell(row.job)),
         TableColumn::new("branch", "Branch")
-            .width(ColWidth::Fixed(BRANCH_WIDTH))
+            .width(ColumnWidth::Fixed(BRANCH_WIDTH))
             .sort_by(|row: &JobRow| row.job.branch)
             .filterable(|row: &JobRow, query: &str| contains_query(&[row.job.branch], query))
             .cell(|row: &JobRow| plain(row.job.branch)),
         TableColumn::new("region", "Region")
-            .width(ColWidth::Fixed(REGION_WIDTH))
+            .width(ColumnWidth::Fixed(REGION_WIDTH))
             .sort_by(|row: &JobRow| row.job.region)
             .cell(|row: &JobRow| plain(row.job.region.label())),
         TableColumn::new("duration", "Duration")
             .numeric()
-            .width(ColWidth::Fixed(DURATION_WIDTH))
+            .width(ColumnWidth::Fixed(DURATION_WIDTH))
             .sort_by(|row: &JobRow| row.job.secs)
             .cell(move |row: &JobRow| duration_cell(console, row.slot, row.job.secs)),
         TableColumn::new("status", "Status")
-            .width(ColWidth::Fixed(STATUS_WIDTH))
+            .width(ColumnWidth::Fixed(STATUS_WIDTH))
             .sort_by(move |row: &JobRow| console.status_of(row.slot))
             .cell(move |row: &JobRow| status_chip(console, row.slot)),
     ]
@@ -114,26 +113,25 @@ fn plain(value: &'static str) -> sigil::prelude::TextBuilder {
 }
 
 fn commit_cell(job: &'static Job) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .min_width(0.0)
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .min_width(0.0)
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(
             text(job.sha)
                 .nowrap()
                 .font_family(FontFamily::Mono)
                 .text_color(Token::Accent11)
-                .layout(LayoutStyle::block().width(SHA_WIDTH).shrink(0.0)),
+                .width(SHA_WIDTH)
+                .shrink(0.0),
         )
         .child(
             text(job.message)
                 .nowrap()
                 .ellipsize()
-                .layout(LayoutStyle::block().grow(1.0).min_width(0.0)),
+                .grow(1.0)
+                .min_width(0.0),
         )
 }
 

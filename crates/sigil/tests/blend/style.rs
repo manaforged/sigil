@@ -10,12 +10,12 @@ use super::{
 fn blended_cell(mode: BlendMode) -> impl IntoNode {
     container()
         .layout(LayoutStyle::block().fixed_size(CELL, CELL))
-        .bg(rgba(BACKDROP, 255))
+        .background(rgba(BACKDROP, 255))
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(CELL, CELL))
-                .bg(rgba(SOURCE, 255))
-                .mix_blend(mode),
+                .background(rgba(SOURCE, 255))
+                .blend(mode),
         )
 }
 

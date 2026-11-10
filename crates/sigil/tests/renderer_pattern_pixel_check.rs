@@ -8,7 +8,7 @@
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{DrawPattern, PatternKind, SceneBuilder};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba, read_pixels, shared_device};
 
 const SCALE: u32 = 1;
@@ -41,7 +41,7 @@ fn pattern_pixels_match_slash_and_checker_contracts() {
 
 fn build_pattern_scene() -> sigil::scene::CommandScene {
     let slash = PatternKind::Slash {
-        color: Rgba8 {
+        color: Color {
             r: 255,
             g: 255,
             b: 255,
@@ -51,13 +51,13 @@ fn build_pattern_scene() -> sigil::scene::CommandScene {
         line_width: 16.0,
     };
     let checker = PatternKind::Checker {
-        color_a: Rgba8 {
+        color_a: Color {
             r: 220,
             g: 60,
             b: 60,
             a: 255,
         },
-        color_b: Rgba8 {
+        color_b: Color {
             r: 245,
             g: 245,
             b: 250,
@@ -94,7 +94,7 @@ fn render_pattern_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
                 scale: 1.0,
             },
             &scene,
-            Color::rgba(0.06, 0.07, 0.10, 1.0),
+            Rgba::new(0.06, 0.07, 0.10, 1.0),
         )
         .expect("render_command_scene_offscreen");
     read_pixels(device, queue, &texture, phys_w, phys_h).expect("sigil-kittest")

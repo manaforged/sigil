@@ -38,10 +38,10 @@ macro_rules! handler_methods {
             /// Runs `h` with the target when a link inside the node is activated.
             link => Link, Bubble, Link: [Fn(&str)],
             /// Runs `h` with the copied text and the clipboard result after a selection copy.
-            on_selection_copy => SelectionCopy, Bubble, SelectionCopy:
+            selection_copy => SelectionCopy, Bubble, SelectionCopy:
                 [Fn(&str, &crate::AppResult<crate::clipboard::Delivery>)],
             /// Runs `h` when the node receives a scroll event.
-            on_scroll => Scroll, Bubble, Scroll: [Fn(&mut ScrollEvent)],
+            scroll => Scroll, Bubble, Scroll: [Fn(&mut ScrollEvent)],
             /// Runs `h` when focus enters the node or one of its children.
             focus_in => FocusIn, Bubble, Focus: [Fn()],
             /// Runs `h` when focus leaves the node or one of its children.
@@ -50,11 +50,11 @@ macro_rules! handler_methods {
         $m! {
             @ext
             /// Runs `h` for each input method event sent to the node.
-            on_ime => ImeHandlers.handlers: [Fn(&ImeEvent)],
+            ime => ImeHandlers.handlers: [Fn(&ImeEvent)],
             /// Runs `h` with pasted text; returning true stops the paste from reaching ancestors.
-            on_paste => PasteHandlers.handlers: [Fn(&str) -> bool],
+            paste => PasteHandlers.handlers: [Fn(&str) -> bool],
             /// Runs `h` for each touchpad gesture over the node.
-            on_gesture => GestureHandlers.handlers: [Fn(&mut GestureEvent)],
+            gesture => GestureHandlers.handlers: [Fn(&mut GestureEvent)],
         }
         $m! {
             @keyed

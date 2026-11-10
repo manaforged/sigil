@@ -3,7 +3,7 @@ use crate::style::{NumericAtomKind, StyleBinding, StyleEngine, TextStyle};
 
 use crate::layout::LayoutStyle;
 use crate::layout::style_adapter::apply_style_atoms;
-use crate::layout::style_data::Dimension;
+use crate::layout::style_data::Length;
 use crate::layout::text_style::{apply_text_binding, theme_for};
 
 type Overlay = (NumericAtomKind, fn(LayoutStyle, f32) -> LayoutStyle);
@@ -62,11 +62,11 @@ pub(super) fn apply_intrinsic_image_size(
     width: u32,
     height: u32,
 ) -> LayoutStyle {
-    if intent.data().size.width == Dimension::Auto {
-        intent = intent.width(Dimension::Px(width as f32));
+    if intent.data().size.width == Length::Auto {
+        intent = intent.width(Length::Px(width as f32));
     }
-    if intent.data().size.height == Dimension::Auto {
-        intent = intent.height(Dimension::Px(height as f32));
+    if intent.data().size.height == Length::Auto {
+        intent = intent.height(Length::Px(height as f32));
     }
     intent
 }

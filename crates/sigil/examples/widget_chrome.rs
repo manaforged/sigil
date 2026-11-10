@@ -10,8 +10,10 @@ fn main() -> sigil::AppResult<()> {
 }
 
 pub(crate) fn app_shell_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(200.0))
+    column()
+        .fill_width()
+        .height(200.0)
+        .gap(Space::None)
         .child(app_shell(
             text("Top bar").nowrap(),
             text("Work area").nowrap(),
@@ -29,15 +31,15 @@ pub(crate) fn card_demo() -> impl IntoNode {
 }
 
 pub(crate) fn sidebar_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().fill_width().height(144.0))
+    row()
+        .fill_width()
+        .height(144.0)
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
         .child(sidebar(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .padding(Space::Sm)
-                        .gap(Space::Xxs),
-                )
+            column()
+                .padding(Space::Sm)
+                .gap(Space::Xxs)
                 .child(section_label("Widgets"))
                 .child(list_row(true, "Controls", ListRowSlots::default()))
                 .child(list_row(false, "Inputs", ListRowSlots::default())),
@@ -71,26 +73,29 @@ pub(crate) fn splitter_demo() -> impl IntoNode {
 }
 
 fn scroll_lines() -> NodeBuilder {
-    (1..=12).fold(
-        container().layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs)),
-        |column, index| column.child(text(format!("Scrolled line {index}")).nowrap()),
-    )
+    (1..=12).fold(column().fill_width().gap(Space::Xs), |column, index| {
+        column.child(text(format!("Scrolled line {index}")).nowrap())
+    })
 }
 
 pub(crate) fn scroll_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+    column()
+        .fill_width()
+        .height(120.0)
+        .gap(Space::None)
         .child(scroll(scroll_lines()).extent(280.0).fill())
 }
 
 pub(crate) fn scroll_auto_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+    column()
+        .fill_width()
+        .height(120.0)
+        .gap(Space::None)
         .child(scroll(scroll_lines()).fill())
 }
 
 pub(crate) fn surface_demo() -> NodeBuilder {
-    surface(7).layout(LayoutStyle::flex_column().fixed_size(160.0, 48.0))
+    surface(7).width(160.0).height(48.0)
 }
 
 pub(crate) fn status_bar_demo() -> NodeBuilder {
@@ -103,13 +108,15 @@ pub(crate) fn status_bar_demo() -> NodeBuilder {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(app_shell_demo())
             .child(
-                container()
-                    .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+                row()
+                    .gap(cols(1.0))
+                    .align_items(AlignItems::Stretch)
                     .child(sidebar_demo())
                     .child(tabs_demo(signal(0_usize), &[])),
             )

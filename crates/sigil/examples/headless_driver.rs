@@ -5,7 +5,7 @@ use sigil::Host;
 use sigil::events::Event;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::{CommandScene, SceneCommand};
+use sigil::scene::CommandScene;
 
 const fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
     let (button, buttons) = match phase {
@@ -44,12 +44,10 @@ fn main() {
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fixed_size(480.0, 240.0)
-                        .gap(Space::Lg),
-                )
+            column()
+                .width(480.0)
+                .height(240.0)
+                .gap(Space::Lg)
                 .child(text(label_text))
                 .child(button("Increment").activate(move || {
                     count.set(count.peek() + 1);
@@ -75,12 +73,5 @@ fn main() {
 }
 
 fn scene_text(scene: &CommandScene) -> Vec<&str> {
-    scene
-        .commands
-        .iter()
-        .filter_map(|command| match command {
-            SceneCommand::GlyphRun(draw) => Some(draw.text.as_str()),
-            _ => None,
-        })
-        .collect()
+    scene.glyph_runs().map(|draw| draw.text.as_str()).collect()
 }

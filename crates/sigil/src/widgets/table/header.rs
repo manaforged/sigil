@@ -6,15 +6,17 @@ use crate::events::{Key, LogicalKey, MouseButton, PointerEvent, Shortcut};
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::drag::axis_drag;
 use super::super::interaction::InteractionState;
 use super::super::orientation::Orientation;
 use super::super::patterns::row_states;
 use super::chrome::{ContextKind, TableChrome};
-use super::columns::{ColAlign, TableColumn};
+use super::columns::{ColumnAlign, TableColumn};
 use super::hscroll::HScroll;
 use super::select;
 use super::sort_mark::sort_mark;
@@ -73,7 +75,7 @@ pub(super) fn header_row<Row: 'static>(
                 .padding_x(Space::px(spec.pad_x)),
         )
         .class("border-b")
-        .class([Token::TableHeader.bg(), Token::Border.border()])
+        .class([Token::TableHeader.background(), Token::Border.border()])
         .child(hscroll.shifted(track))
 }
 
@@ -124,7 +126,7 @@ fn resize_handle<Row: 'static>(
 ) -> NodeBuilder {
     let handle = container()
         .role(Role::Splitter)
-        .label(format!("Resize {column}"))
+        .label(theme_fill_once(StringKey::ResizeColumn, &[&column]))
         .hittable(true)
         .layout(
             LayoutStyle::block()
@@ -148,7 +150,7 @@ fn header_title<Row: 'static>(
     pad_x: f32,
     mark: NodeBuilder,
 ) -> NodeBuilder {
-    let justify = if column.alignment() == ColAlign::End {
+    let justify = if column.alignment() == ColumnAlign::End {
         JustifyContent::End
     } else {
         JustifyContent::Start

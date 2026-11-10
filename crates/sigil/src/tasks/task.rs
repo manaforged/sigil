@@ -11,7 +11,7 @@ struct TaskState {
     waker: Mutex<Option<Waker>>,
 }
 
-/// A task from `Scheduler::spawn` on `AsyncRuntime`.
+/// A task spawned on `AsyncRuntime`.
 #[derive(Clone, Debug)]
 pub struct TaskHandle {
     state: Arc<TaskState>,

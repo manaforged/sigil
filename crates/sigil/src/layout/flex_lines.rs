@@ -7,6 +7,7 @@ use crate::layout::flex_algorithm::{
 use crate::layout::forest::{LocalId, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp};
 use crate::layout::style_data::{AlignItems, FlexWrap, StyleData};
+use smallvec::{SmallVec, smallvec};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct FlexItem {
@@ -50,10 +51,7 @@ impl FlexItem {
         let (min_cross, max_cross) = item_min_max_main(style, ctx.axes.cross(), cb_cross, &edges);
         let content_min = ctx.axes.row
             && min_main.is_none()
-            && !matches!(
-                style.size.width,
-                crate::layout::style_data::Dimension::Px(_)
-            )
+            && !matches!(style.size.width, crate::layout::style_data::Length::Px(_))
             && style.overflow.width == crate::layout::style_data::Overflow::Visible;
         let min_main = min_main.or_else(|| {
             let ellipsizes = node.text().is_some_and(|text| text.ellipsis);
@@ -105,12 +103,14 @@ pub(crate) struct FlexLine {
     pub(crate) cross: f32,
 }
 
+pub(crate) type FlexLines = SmallVec<[FlexLine; 1]>;
+
 pub(crate) fn collect_lines(
     ctx: &FlexCtx<'_, '_>,
     items: Vec<FlexItem>,
     style: &StyleData,
     container_main: f32,
-) -> Vec<FlexLine> {
+) -> FlexLines {
     let gap = gap_along(ctx, style, ctx.axes.row);
     let line = |members| FlexLine {
         items: members,
@@ -118,9 +118,9 @@ pub(crate) fn collect_lines(
         cross: 0.0,
     };
     if matches!(style.flex_wrap, FlexWrap::NoWrap) || items.is_empty() {
-        return vec![line(items)];
+        return smallvec![line(items)];
     }
-    let mut lines = Vec::new();
+    let mut lines = FlexLines::new();
     let mut current = line(Vec::new());
     let mut used = 0.0_f32;
     for item in items {

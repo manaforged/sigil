@@ -212,12 +212,21 @@ harness = false
 name = "tasks_wasm"
 
 [[bench]]
+name = "frame_cells"
+harness = false
+required-features = ["terminal"]
+
+[[bench]]
 name = "terminal_frame"
 harness = false
 required-features = ["terminal"]
 
 [[bench]]
 name = "frame_phases"
+harness = false
+
+[[bench]]
+name = "sparse_edit"
 harness = false
 
 [[bench]]
@@ -237,11 +246,15 @@ name = "widget_render"
 harness = false
 
 [[bench]]
-name = "animation_runtime_animator_ticks"
+name = "animation_animator_ticks"
 harness = false
 
 [[bench]]
 name = "events_events_ops"
+harness = false
+
+[[bench]]
+name = "kernel_list_append"
 harness = false
 
 [[bench]]

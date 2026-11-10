@@ -10,6 +10,7 @@ use sigil::scene::{
     CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
 use sigil::style::{Elevation, FontFamily, Paint, Radius, TextLineHeight, Theme, Token};
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 #[test]
@@ -18,7 +19,7 @@ fn theme_accent_rect_emits_in_scene() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .bg(Token::Accent),
+            .background(Token::Accent),
     );
 
     layout(&mut cx, root);
@@ -67,7 +68,7 @@ fn styled_text_typography_emits_in_scene() {
         text("Large")
             .font_size(20.0, "test fixture")
             .font_weight(700)
-            .line_height_px(32.0),
+            .line_height(32.0),
     );
 
     layout(&mut cx, root);
@@ -90,7 +91,7 @@ fn visible_focus_ring_stroke() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-            .rounded(Radius::Lg)
+            .radius(Radius::Lg)
             .focus_ring(signal(true)),
     );
 
@@ -152,7 +153,7 @@ fn shadow_class_parses_cleanly_and_paints() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .shadow(Elevation::Xl),
     );
 
@@ -238,7 +239,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
             .font_size(18.0, "test fixture")
             .font_weight(700)
             .font_family(FontFamily::Mono)
-            .line_height_px(24.0)
+            .line_height(24.0)
             .child(text("Doom")),
     );
 
@@ -343,10 +344,10 @@ fn top_layer_subtree_paints_after_later_siblings() {
     let floating = container()
         .with(TopLayer)
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-        .bg(Token::Accent);
+        .background(Token::Accent);
     let sibling = container()
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-        .bg(Token::Error9);
+        .background(Token::Error9);
     let root = cx.add(container().child(floating).child(sibling));
 
     layout(&mut cx, root);

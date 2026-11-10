@@ -1,7 +1,7 @@
 use crate::kernel::{ImageSource, NodeBuilder, ObjectFit, image};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::render::note;
 use super::spec::ImageSize;

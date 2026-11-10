@@ -11,6 +11,7 @@ use sigil::prelude::Widget;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
 use sigil::reactive::{Owner, derived, signal};
 use sigil::style::Paint;
+use sigil::widgets::Layout;
 
 #[test]
 fn compute_records_layout_miss() {
@@ -341,8 +342,8 @@ fn letter_spacing_change_remeasures_text() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
-                .letter_spacing_em(0.0)
-                .paint_when(loose, |s| s.letter_spacing_em(0.2))
+                .letter_spacing(0.0)
+                .paint_when(loose, |s| s.letter_spacing(0.2))
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 24.0)),
         );
         let label = cx.add_child(root, text("hello"));

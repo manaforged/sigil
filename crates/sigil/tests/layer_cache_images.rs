@@ -11,38 +11,38 @@ use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawImage, DrawRect, Filter, LayerEffect, LayerScope,
     SceneBuilder,
 };
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
 
 const SIDE: u32 = 64;
 const SCALE: u32 = 2;
 const FILLER: usize = 12;
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 230,
     g: 20,
     b: 20,
     a: 255,
 };
-const BLUE: Rgba8 = Rgba8 {
+const BLUE: Color = Color {
     r: 20,
     g: 20,
     b: 230,
     a: 255,
 };
-const GRAY: Rgba8 = Rgba8 {
+const GRAY: Color = Color {
     r: 90,
     g: 90,
     b: 90,
     a: 255,
 };
 
-fn solid(color: Rgba8) -> ImageSource {
+fn solid(color: Color) -> ImageSource {
     let rgba = [color.r, color.g, color.b, color.a].repeat((SIDE * SIDE) as usize);
     ImageSource::from_rgba8(SIDE, SIDE, rgba).expect("image")
 }
 
-fn scene(color: Rgba8) -> CommandScene {
+fn scene(color: Color) -> CommandScene {
     let area = Rect::new(Point::new(0.0, 0.0), SIDE as f32, SIDE as f32);
     let scope = LayerScope {
         clip: area,
@@ -75,7 +75,7 @@ const fn frame(scene: &CommandScene) -> Frame<'_> {
         scene,
         viewport: (SIDE as f32, SIDE as f32),
         size: PhysicalSize::new(SIDE * SCALE, SIDE * SCALE),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     }
 }
 

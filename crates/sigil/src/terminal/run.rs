@@ -7,7 +7,7 @@ use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
 
 use crate::profile;
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::input::{Incoming, InputWake, gather_input, limit};
 use crate::terminal::paint::Grid;
 use crate::terminal::pixels::Pixels;
@@ -40,6 +40,12 @@ pub struct Hooks<'a> {
     pub after_frame: Option<AfterFrame<'a>>,
     /// The region rows, if any.
     pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
+}
+
+impl core::fmt::Debug for Hooks<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Hooks").finish_non_exhaustive()
+    }
 }
 
 pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
@@ -190,6 +196,7 @@ fn live<N: IntoNode>(
     let tree = std::rc::Rc::new(tree);
     let _follow = crate::terminal::backdrop::Follow::start(term.caps().backdrop);
     let mut host = mount_cell(&tree, &term, (cols, rows))?;
+    host.set_quit(config.quit);
     let mut screen = open_screen(config, (cols, rows), term.caps());
     let mut pixels = Pixels::open(config, term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
@@ -205,7 +212,6 @@ fn live<N: IntoNode>(
         let timing = turn_wait(config.frame_interval, woke, last, deadline);
         let pending = inspect_pending() || due(deadline);
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
-            Incoming::Quit => break,
             Incoming::Idle if idle(settle, woke, &term, pending) => continue,
             Incoming::Idle => Vec::new(),
             Incoming::Events(events) => events,
@@ -281,7 +287,7 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
     }
 }
 
-fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Screen {
+fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Capabilities) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
     screen.set_access(config.terminal.access);
     screen.speak_above(config.inline);
@@ -303,8 +309,8 @@ fn due(deadline: Option<Instant>) -> bool {
 
 fn frame_due() -> bool {
     Runtime::frame_dirty()
-        || crate::animation_runtime::active_count() > 0
-        || crate::animation_runtime::running_clocks() > 0
+        || crate::animation::runtime::active_count() > 0
+        || crate::animation::runtime::running_clocks() > 0
         || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
@@ -343,9 +349,10 @@ fn enter(config: &AppConfig) -> AppResult<Term> {
 
 fn default_theme(config: &AppConfig, backdrop: crate::terminal::Backdrop) {
     if config.theme_file.is_none() {
-        crate::app::set_theme(match backdrop {
+        (match backdrop {
             crate::terminal::Backdrop::Dark => crate::style::Theme::dark(),
             crate::terminal::Backdrop::Light => crate::style::Theme::light(),
-        });
+        })
+        .apply();
     }
 }

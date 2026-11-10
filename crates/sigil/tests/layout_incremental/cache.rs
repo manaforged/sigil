@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 #[test]
 fn cached_compute_returns_immediately_without_recomputing() {

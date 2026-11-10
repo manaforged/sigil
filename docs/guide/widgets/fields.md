@@ -70,7 +70,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## color_field
 
-`color_field(Signal<Rgba8>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Rgba8>()` and `Rgba8::to_hex`.
+`color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
 
 ## combobox
 

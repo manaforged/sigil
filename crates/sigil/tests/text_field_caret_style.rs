@@ -23,7 +23,7 @@ fn caret_uses_the_fields_resolved_typography() {
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
-        let expected = sigil::app::DefaultTextMeasure::new().caret(
+        let expected = sigil::layout::TextEngineMeasure::default().caret(
             VALUE,
             &text.style,
             None,
@@ -50,7 +50,7 @@ fn caret_uses_the_fields_resolved_typography() {
 }
 
 fn focused_field_scene() -> CommandScene {
-    set_text_geometry(Rc::new(sigil::app::DefaultTextMeasure::new()));
+    set_text_geometry(Rc::new(sigil::layout::TextEngineMeasure::default()));
     let mut cx = Cx::new_root();
     let root = cx.add(
         text_field(signal(VALUE.to_owned()))
@@ -59,7 +59,7 @@ fn focused_field_scene() -> CommandScene {
             .font_size(14.0, "test fixture"),
     );
     let mut layout =
-        LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
+        LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(500.0, 100.0))
         .expect("initial layout");

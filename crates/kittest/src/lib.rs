@@ -7,7 +7,7 @@ pub use compare::Golden;
 pub use sigil::kernel::WithCx;
 mod error;
 mod explore;
-pub use error::Error;
+pub use error::{Error, ErrorKind};
 pub use explore::Step;
 pub mod gpu;
 mod harness;
@@ -20,8 +20,10 @@ pub mod scene_gen;
 mod settle;
 pub use sigil::layout::FakeMeasure;
 
+/// Most frames a harness runs while it waits for the UI to settle.
 pub const SETTLE_SAFETY_CAP: u32 = 600;
 
+/// Longest wait for a node that a harness step expects.
 pub const EXPECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 #[allow(clippy::cast_precision_loss)]
@@ -29,8 +31,11 @@ pub(crate) const fn extent_f32(value: u32) -> f32 {
     value as f32
 }
 
+/// A rendered image, or `None` when no GPU adapter exists and skipping is allowed.
 pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 
+/// Interaction state that a `Render` drives the widget into.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
     Default,
@@ -67,13 +72,15 @@ pub fn stub_text_measure() -> Box<dyn TextMeasure> {
 
 #[must_use]
 pub fn real_text_measure() -> Box<dyn TextMeasure> {
-    Box::new(sigil::app::DefaultTextMeasure::new())
+    Box::new(sigil::layout::TextEngineMeasure::default())
 }
 
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/automation.md")]
+#[derive(Debug)]
 pub struct AutomationGuide;
 
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/testing.md")]
+#[derive(Debug)]
 pub struct TestingGuide;

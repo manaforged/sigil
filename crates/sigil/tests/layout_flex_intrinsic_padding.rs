@@ -4,7 +4,7 @@
 
 use crate::layout_stub as stub;
 use sigil::layout::Space;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;

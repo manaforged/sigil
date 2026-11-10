@@ -1,6 +1,6 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
-use crate::layout::{Dimension, LayoutStyle, Overflow};
-use crate::widgets::Widget;
+use crate::layout::{LayoutStyle, Length, Overflow};
+use crate::widgets::{Layout, Widget};
 
 use super::selection::SelectionRuntime;
 
@@ -57,7 +57,7 @@ impl WidthSpec {
     pub(super) fn apply(self, style: LayoutStyle) -> LayoutStyle {
         match self {
             Self::Fixed(px) => style.width(px),
-            Self::Stretch => style.width(Dimension::Percent(1.0)),
+            Self::Stretch => style.width(Length::Percent(1.0)),
         }
     }
 }

@@ -62,11 +62,11 @@ pub(crate) fn advance(
         InteractionMode::Default | InteractionMode::Disabled => return Ok(()),
     };
     let mut frame = || {
-        sigil::animation_runtime::tick(dt);
+        sigil::animation::tick(dt);
         layout()
     };
     if frames != u32::MAX {
         return (0..frames).try_for_each(|_| frame());
     }
-    crate::settle::settle(|| sigil::animation_runtime::active_count() > 0, frame)
+    crate::settle::settle(|| sigil::animation::active_count() > 0, frame)
 }

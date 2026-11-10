@@ -1,6 +1,6 @@
 use sigil::layout::{
-    AlignItems, Axes, BoxSizing, Dimension, Display, Edges, FlexDirection, JustifyContent,
-    Position, StyleData,
+    AlignItems, Axes, BoxSizing, Display, Edges, FlexDirection, JustifyContent, Length, Position,
+    StyleData,
 };
 
 #[test]
@@ -17,25 +17,25 @@ fn public_style_data_is_constructible_with_block_subset() {
         display: Display::Block,
         position: Position::Relative,
         flex_direction: FlexDirection::Row,
-        size: Axes::new(Dimension::Px(100.0), Dimension::Px(50.0)),
-        padding: Edges::splat(Dimension::Px(4.0)),
-        margin: Edges::splat(Dimension::Px(2.0)),
+        size: Axes::new(Length::Px(100.0), Length::Px(50.0)),
+        padding: Edges::splat(Length::Px(4.0)),
+        margin: Edges::splat(Length::Px(2.0)),
         box_sizing: BoxSizing::BorderBox,
         ..StyleData::default()
     };
-    assert_eq!(style.size.width, Dimension::Px(100.0));
+    assert_eq!(style.size.width, Length::Px(100.0));
     assert_eq!(style.box_sizing, BoxSizing::BorderBox);
 }
 
 #[test]
 fn public_style_data_carries_min_max_clamps() {
     let style = StyleData {
-        min_size: Axes::new(Dimension::Px(20.0), Dimension::Auto),
-        max_size: Axes::new(Dimension::Px(200.0), Dimension::Px(400.0)),
+        min_size: Axes::new(Length::Px(20.0), Length::Auto),
+        max_size: Axes::new(Length::Px(200.0), Length::Px(400.0)),
         ..StyleData::default()
     };
-    assert_eq!(style.min_size.width, Dimension::Px(20.0));
-    assert_eq!(style.max_size.height, Dimension::Px(400.0));
+    assert_eq!(style.min_size.width, Length::Px(20.0));
+    assert_eq!(style.max_size.height, Length::Px(400.0));
 }
 
 #[test]

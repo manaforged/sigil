@@ -92,18 +92,18 @@ tokens! {
     Success10 => "success-10",
     Success11 => "success-11",
     Success12 => "success-12",
-    Warn1 => "warn-1",
-    Warn2 => "warn-2",
-    Warn3 => "warn-3",
-    Warn4 => "warn-4",
-    Warn5 => "warn-5",
-    Warn6 => "warn-6",
-    Warn7 => "warn-7",
-    Warn8 => "warn-8",
-    Warn9 => "warn-9",
-    Warn10 => "warn-10",
-    Warn11 => "warn-11",
-    Warn12 => "warn-12",
+    Warning1 => "warn-1",
+    Warning2 => "warn-2",
+    Warning3 => "warn-3",
+    Warning4 => "warn-4",
+    Warning5 => "warn-5",
+    Warning6 => "warn-6",
+    Warning7 => "warn-7",
+    Warning8 => "warn-8",
+    Warning9 => "warn-9",
+    Warning10 => "warn-10",
+    Warning11 => "warn-11",
+    Warning12 => "warn-12",
     Error1 => "error-1",
     Error2 => "error-2",
     Error3 => "error-3",
@@ -136,7 +136,7 @@ const ROLES: [ScaleRole; 6] = [
     ScaleRole::Gray,
     ScaleRole::Accent,
     ScaleRole::Success,
-    ScaleRole::Warn,
+    ScaleRole::Warning,
     ScaleRole::Error,
     ScaleRole::Info,
 ];
@@ -178,7 +178,7 @@ impl Token {
     }
 
     #[must_use]
-    pub(crate) const fn bg(self) -> StyleAtom {
+    pub(crate) const fn background(self) -> StyleAtom {
         StyleAtom::BackgroundColor(ColorAtom::Token(self))
     }
 

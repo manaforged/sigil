@@ -7,7 +7,7 @@ use sigil::kernel::{TextContent, *};
 use sigil::layout::Space;
 use sigil::layout::*;
 use sigil::style::{Paint, TextLineHeight, TextStyle};
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use stub::{first_child, layout_rect, stub_engine};
 
@@ -24,8 +24,8 @@ fn p_4_applies_sixteen_px_padding() {
             .child(
                 container().layout(
                     LayoutStyle::default()
-                        .width(Dimension::Percent(1.0))
-                        .height(Dimension::Percent(1.0)),
+                        .width(Length::Percent(1.0))
+                        .height(Length::Percent(1.0)),
                 ),
             ),
     );
@@ -48,8 +48,8 @@ fn padded_child_origin(root: NodeBuilder) -> f32 {
         root.child(
             container().layout(
                 LayoutStyle::default()
-                    .width(Dimension::Percent(1.0))
-                    .height(Dimension::Percent(1.0)),
+                    .width(Length::Percent(1.0))
+                    .height(Length::Percent(1.0)),
             ),
         ),
     );
@@ -98,7 +98,7 @@ fn w_full_is_percent_100() {
                 container().layout(
                     LayoutStyle::default()
                         .height(10.0)
-                        .width(Dimension::Percent(1.0)),
+                        .width(Length::Percent(1.0)),
                 ),
             ),
     );
@@ -148,7 +148,7 @@ fn typography_atoms_drive_text_measurement() {
         text("Type")
             .font_size(20.0, "test fixture")
             .font_weight(700)
-            .line_height_px(32.0),
+            .line_height(32.0),
     );
 
     LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))

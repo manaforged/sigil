@@ -9,12 +9,12 @@ use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
-use sigil::style::{StateVariants, Token};
+use sigil::style::{States, Token};
 use std::fmt::Write as _;
 use std::time::Duration;
 
 use sigil::terminal::{Access, ColorDepth, Grid, Screen};
-use sigil::widgets::{button, modal, text_edit, virtual_list};
+use sigil::widgets::{Layout, button, modal, text_edit, virtual_list};
 
 const CELL: f32 = Host::CELL;
 
@@ -69,7 +69,7 @@ fn tree(state: State) -> impl IntoNode {
                 .child(button("second"))
                 .child(
                     sigil::widgets::interactive(container().child(text("hover me")))
-                        .hover(|style| style.bg(Token::Accent)),
+                        .hover(|style| style.background(Token::Accent)),
                 ),
         )
         .child(text_edit(signal(String::from("edit"))))

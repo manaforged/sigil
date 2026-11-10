@@ -4,6 +4,7 @@ use crate::style::{AnimatorOverlay, NumericAtomKind};
 
 /// The image whose alpha or luminance shows the node, like CSS `mask-image`.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum MaskImage {
     /// A linear gradient from opaque to clear at `degrees` clockwise from up, like Tailwind `mask-linear-<n>`.
     Linear(i16),

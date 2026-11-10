@@ -5,7 +5,8 @@ use crate::reactive::Owner;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::animation_runtime::tick;
+use crate::animation::Property;
+use crate::animation::runtime::tick;
 use crate::events::EventRouter;
 use crate::events::{Event, MouseButton, MouseButtons, PointerEvent, PointerPhase};
 use crate::geometry::Point;
@@ -51,7 +52,7 @@ fn transformed_input_tracks_motion_without_rebuilding_the_layout_cache() {
         let sink = Rc::clone(&positions);
         let child = container()
             .layout(LayoutStyle::block().fixed_size(50.0, 20.0))
-            .animate_translate_x(shift)
+            .drive(Property::TranslateX, shift)
             .pointer_down(move |event| sink.borrow_mut().push(event.position));
         let mut cx = Cx::new_root();
         let root = cx.add(transformed(child));

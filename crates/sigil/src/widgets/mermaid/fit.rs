@@ -1,8 +1,9 @@
+use crate::animation::Property;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{JustifyContent, LayoutStyle};
 use crate::reactive::{derived, effect, signal};
-use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
+use crate::widgets::{Layout, Widget};
 
 const MIN_SCALE: f32 = 0.6;
 
@@ -22,8 +23,8 @@ pub(super) fn fitted(picture: NodeBuilder, (width, height): (f32, f32)) -> NodeB
         )
         .child(
             picture
-                .animate_width(drawn_width)
-                .animate_height(drawn_height),
+                .drive(Property::Width, drawn_width)
+                .drive(Property::Height, drawn_height),
         );
     scroll.wrap(centred)
 }

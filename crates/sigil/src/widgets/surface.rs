@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, Surface, container};
 use crate::layout::LayoutStyle;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 /// A rectangle that the embed host draws.
 #[must_use]

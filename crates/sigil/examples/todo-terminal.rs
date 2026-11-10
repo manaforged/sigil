@@ -148,8 +148,9 @@ fn filter_strip(active: usize) -> String {
 fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
     let cursor = todos.cursor;
     let entries = scroll(
-        container()
-            .layout(LayoutStyle::flex_column().fill_width())
+        column()
+            .fill_width()
+            .gap(Space::None)
             .children_reactive(move || {
                 let at = cursor.get();
                 todos
@@ -159,10 +160,13 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
                     .enumerate()
                     .map(move |(index, todo)| {
                         let mark = if todo.done { "[x]" } else { "[ ]" };
-                        let row = container()
-                            .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)));
+                        let row = row()
+                            .fill_width()
+                            .padding_x(cols(1.0))
+                            .gap(Space::None)
+                            .align_items(AlignItems::Stretch);
                         let row = if index == at {
-                            row.bg(Token::Accent5)
+                            row.background(Token::Accent5)
                         } else {
                             row
                         };
@@ -172,16 +176,14 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
             }),
     )
     .fill();
-    container()
+    column()
         .role(Role::List)
         .label("Todo items")
         .focusable(true)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .grow(1.0)
-                .min_height(rows(0.0)),
-        )
+        .fill_width()
+        .grow(1.0)
+        .min_height(rows(0.0))
+        .gap(Space::None)
         .on_added(move |_, id| list_id.set(Some(id)))
         .key(Key::Enter, move |_| todos.toggle())
         .key(LogicalKey::character(" "), move |_| todos.toggle())
@@ -217,8 +219,9 @@ pub(crate) fn app() -> impl IntoNode {
     let draft = signal(String::new());
     let list_id = signal(None::<NodeId>);
     let quit = Shortcut::plain(LogicalKey::character("q"));
-    container()
-        .layout(LayoutStyle::flex_column().fill())
+    column()
+        .fill()
+        .gap(Space::None)
         .keyboard_shortcut(quit.clone())
         .key(quit, |_| sigil::request_exit())
         .key_capture(Key::Escape, move |event| {
@@ -228,8 +231,10 @@ pub(crate) fn app() -> impl IntoNode {
             }
         })
         .child(
-            container()
-                .layout(LayoutStyle::flex_row().fill_width().gap(cols(2.0)))
+            row()
+                .fill_width()
+                .gap(cols(2.0))
+                .align_items(AlignItems::Stretch)
                 .child(text("Todo").nowrap().text_color(Token::Accent))
                 .child(text(move || filter_strip(todos.filter.get())).nowrap()),
         )

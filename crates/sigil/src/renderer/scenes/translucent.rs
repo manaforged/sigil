@@ -1,10 +1,10 @@
 use crate::scene::{CommandScene, CornerRadii, DrawRect, SceneBuilder};
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::helpers::{draw_fill, linear_gradient, rect, rgba};
 
 #[must_use]
-pub fn translucent() -> (CommandScene, (f32, f32), Color) {
+pub fn translucent() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 760.0, 320.0),
@@ -35,6 +35,6 @@ pub fn translucent() -> (CommandScene, (f32, f32), Color) {
     (
         scene.finish(),
         (760.0, 320.0),
-        Color::rgba(0.02, 0.1, 0.3, 1.0),
+        Rgba::new(0.02, 0.1, 0.3, 1.0),
     )
 }

@@ -1,17 +1,14 @@
 use sigil::Host;
-use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause, Phase};
+use sigil::profile::{self, Backend, BackendStatus, FallbackCause, Phase};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
-use sigil::style::Color;
 
-use crate::Error;
 use crate::gpu::{
-    FORMAT, Gpu, create_capture_texture, headless_renderer, read_pixels, shared_device,
+    CLEAR, FORMAT, Gpu, create_capture_texture, headless_renderer, read_pixels, shared_device,
 };
-
-const CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 1.0);
+use crate::{Error, ErrorKind};
 
 pub(super) const GPU_STATUS: BackendStatus = BackendStatus {
-    kind: BackendKind::Gpu,
+    kind: Backend::Gpu,
     fallback: FallbackCause::None,
 };
 
@@ -31,7 +28,8 @@ impl GpuSurface {
         let opened = headless_renderer().and_then(|renderer| Ok((renderer, shared_device()?)));
         let (renderer, gpu) = match opened {
             Ok((Some(renderer), Some(gpu))) => (renderer, gpu),
-            Ok(_) | Err(Error::NoAdapter(_)) => return Ok(None),
+            Ok(_) => return Ok(None),
+            Err(err) if err.is_no_adapter() => return Ok(None),
             Err(err) => return Err(err),
         };
         let size_px = |extent: u32| (crate::extent_f32(extent) * scale).round();
@@ -71,7 +69,7 @@ impl GpuSurface {
             self.renderer.submit_screen(&target, &scene)
         };
         if let Err(err) = submitted {
-            self.error = Some(Error::Render(err.to_string()));
+            self.error = Some(Error::caused(ErrorKind::Render, err));
             return;
         }
         let waited = {
@@ -79,7 +77,7 @@ impl GpuSurface {
             device.poll(wgpu::PollType::wait_indefinitely())
         };
         if let Err(err) = waited {
-            self.error = Some(Error::Render(err.to_string()));
+            self.error = Some(Error::caused(ErrorKind::Render, err));
             return;
         }
         self.renderer.drain_gpu_timings();
@@ -88,8 +86,12 @@ impl GpuSurface {
     pub(super) fn image(&self) -> Result<image::RgbaImage, Error> {
         let (width, height) = self.size_px;
         let rgba = read_pixels(&self.gpu.0, &self.gpu.1, &self.texture, width, height)?;
-        image::RgbaImage::from_raw(width, height, rgba)
-            .ok_or_else(|| Error::Readback(format!("readback is not {width}x{height} rgba")))
+        image::RgbaImage::from_raw(width, height, rgba).ok_or_else(|| {
+            Error::text(
+                ErrorKind::Readback,
+                format_args!("readback is not {width}x{height} rgba"),
+            )
+        })
     }
 
     pub(super) fn take_error(&mut self) -> Result<(), Error> {

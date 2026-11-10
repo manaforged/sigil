@@ -41,10 +41,10 @@ fn hud_stays_blank_without_frames() {
 
 #[test]
 fn hud_names_the_backend_fallback() {
-    use crate::profile::{BackendKind, BackendStatus, FallbackCause};
+    use crate::profile::{Backend, BackendStatus, FallbackCause};
     let _alone = hud_on();
     profile::begin_frame(BackendStatus {
-        kind: BackendKind::Cpu,
+        kind: Backend::Cpu,
         fallback: FallbackCause::NoAdapter,
     });
     profile::tick_frame();

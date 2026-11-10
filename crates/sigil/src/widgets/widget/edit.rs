@@ -5,12 +5,12 @@ use smallvec::SmallVec;
 use crate::events::builder_ext as on;
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::builder_ext::install_layout;
-use crate::layout::{Axes, Dimension, LayoutStyle};
+use crate::layout::{Axes, LayoutStyle, Length};
 use crate::reactive::Signal;
 use crate::style::{StateSlot, StyleAtom};
 
 mod sealed {
-    use super::{LayoutStyle, NodeBuilder, Signal, SmallVec, StateSlot, StyleAtom};
+    use super::{LayoutStyle, Length, NodeBuilder, Signal, SmallVec, StateSlot, StyleAtom};
 
     pub trait Sealed: Sized {
         fn edit(self, edit: Edit) -> Self;
@@ -26,6 +26,7 @@ mod sealed {
         clippy::large_enum_variant,
         reason = "an edit is built and consumed within one setter call"
     )]
+    #[derive(Debug)]
     pub enum Edit {
         Layout(LayoutEdit),
         Autofocus,
@@ -36,11 +37,11 @@ mod sealed {
         clippy::large_enum_variant,
         reason = "an edit is built and consumed within one setter call"
     )]
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub enum LayoutEdit {
         Merge(LayoutStyle),
-        Width(f32),
-        Height(f32),
+        Width(Length),
+        Height(Length),
         Grow(f32),
     }
 }
@@ -66,33 +67,34 @@ impl LayoutEdit {
     pub(crate) fn install(&self, node: &mut Node) {
         let min = node
             .get_extension::<LayoutStyle>()
-            .map_or_else(|| Axes::splat(Dimension::Auto), |style| style.0.min_size);
+            .map_or_else(|| Axes::splat(Length::Auto), |style| style.0.min_size);
         install_layout(node, &self.delta(min));
     }
 
-    fn delta(&self, min: Axes<Dimension>) -> Cow<'_, LayoutStyle> {
+    fn delta(&self, min: Axes<Length>) -> Cow<'_, LayoutStyle> {
         let delta = match self {
             Self::Merge(style) => return Cow::Borrowed(style),
-            Self::Width(px) => match min.width {
-                Dimension::Px(floor) if floor > *px => {
-                    LayoutStyle::default().width(*px).min_width(*px)
+            Self::Width(width) => {
+                let delta = LayoutStyle::default().width(*width);
+                match (min.width, width.px()) {
+                    (Length::Px(floor), Some(px)) if floor > px => delta.min_width(*width),
+                    _ => delta,
                 }
-                _ => LayoutStyle::default().width(*px),
-            },
-            Self::Height(px) => LayoutStyle::default().height(*px),
+            }
+            Self::Height(height) => LayoutStyle::default().height(*height),
             Self::Grow(factor) => keep_min(LayoutStyle::default().grow(*factor), min),
         };
         Cow::Owned(delta)
     }
 }
 
-fn keep_min(delta: LayoutStyle, min: Axes<Dimension>) -> LayoutStyle {
+fn keep_min(delta: LayoutStyle, min: Axes<Length>) -> LayoutStyle {
     let delta = match min.width {
-        Dimension::Auto => delta,
+        Length::Auto => delta,
         width => delta.min_width(width),
     };
     match min.height {
-        Dimension::Auto => delta,
+        Length::Auto => delta,
         height => delta.min_height(height),
     }
 }

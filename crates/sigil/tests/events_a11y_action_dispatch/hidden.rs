@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (NodeId, NodeId) {
     let root = cx.add(

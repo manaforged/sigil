@@ -13,7 +13,6 @@ use async_ops_sustained::{
     bench_spawn_smoke_latency, bench_sustained_cross_thread_writes_1k_per_sec,
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::hal::Scheduler;
 use sigil::reactive::{Owner, effect, signal};
 use sigil::tasks::{AsyncRuntime, signal_writer};
 
@@ -37,7 +36,7 @@ fn bench_enqueue_main_latency(c: &mut Criterion) {
                 scheduler
                     .enqueue_main(handle, Box::new(|| {}))
                     .expect("enqueue");
-                let _ = scheduler.drain();
+                let _ = scheduler.pump();
             });
         });
     });
@@ -68,7 +67,7 @@ fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
                     spin_until(Duration::from_millis(50), || woke.load(Ordering::Acquire)),
                     "dispatch did not land within 50ms"
                 );
-                let drained = scheduler.drain();
+                let drained = scheduler.pump();
                 black_box(drained);
             });
             assert!(
@@ -97,7 +96,7 @@ fn bench_drain_100_empty_callbacks(c: &mut Criterion) {
                 },
                 |()| {
                     let mut sched = scheduler_cell.borrow_mut();
-                    let drained = sched.drain();
+                    let drained = sched.pump();
                     black_box(drained);
                 },
                 BatchSize::SmallInput,
@@ -124,7 +123,7 @@ fn bench_drain_1000_empty_callbacks(c: &mut Criterion) {
                 },
                 |()| {
                     let mut sched = scheduler_cell.borrow_mut();
-                    let drained = sched.drain();
+                    let drained = sched.pump();
                     black_box(drained);
                 },
                 BatchSize::SmallInput,
@@ -153,7 +152,7 @@ fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
                         writer.set(value).expect("pre-enqueue");
                     }
                 },
-                |()| black_box(scheduler.drain()),
+                |()| black_box(scheduler.pump()),
                 BatchSize::SmallInput,
             );
         });

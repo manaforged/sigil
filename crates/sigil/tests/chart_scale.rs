@@ -146,7 +146,7 @@ fn markdown_charts_keep_nonfinite_rows_readable() {
 #[ignore = "needs a wgpu adapter"]
 fn rising_and_falling_candles_draw_in_two_colours() {
     let mut ui = Harness::new(|| {
-        column().bg(Token::Surface).child(
+        column().background(Token::Surface).child(
             ChartBuilder::candles(vec![(1.0, 4.0, 0.5, 3.5), (3.5, 4.0, 1.0, 1.5)])
                 .height(200.0)
                 .width(300.0),

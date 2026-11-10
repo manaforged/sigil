@@ -4,7 +4,16 @@ use windows_core as _;
 mod appearance;
 #[cfg(feature = "audio")]
 pub(crate) mod audio;
+#[cfg(any(
+    feature = "menu",
+    feature = "tray",
+    all(feature = "hotkey", not(target_arch = "wasm32")),
+    feature = "media"
+))]
+mod bridge;
 mod cell_text;
+#[cfg(feature = "scene")]
+pub(crate) use cell_text::floor_boundary;
 pub(crate) mod config;
 /// Native file and message dialogs.
 #[cfg(feature = "dialog")]
@@ -35,13 +44,6 @@ mod open;
     feature = "menu",
     feature = "tray",
     all(feature = "hotkey", not(target_arch = "wasm32")),
-    feature = "media"
-))]
-pub(crate) mod platform;
-#[cfg(any(
-    feature = "menu",
-    feature = "tray",
-    all(feature = "hotkey", not(target_arch = "wasm32")),
     feature = "media",
     all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
 ))]
@@ -50,9 +52,6 @@ pub(crate) type Wake = std::sync::Arc<dyn Fn() + Send + Sync + 'static>;
 pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]
 pub(crate) mod pty;
-#[cfg(feature = "scene")]
-#[cfg(feature = "scene")]
-mod text_measure;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 mod theme_file;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
@@ -84,7 +83,6 @@ pub use crate::text::load_font_url;
 pub use crate::text::web_fallbacks;
 #[cfg(feature = "scene")]
 pub use crate::text::{WebFont, WebFontScript, set_web_fallbacks};
-pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
 #[cfg(feature = "terminal")]
@@ -117,12 +115,6 @@ pub(crate) use launch::launch;
 pub use open::open;
 #[cfg(feature = "pty")]
 pub use pty::Session;
-#[cfg(feature = "scene")]
-#[cfg(feature = "scene")]
-kittest_pub! {
-    #[doc(hidden)]
-    pub use text_measure::DefaultTextMeasure;
-}
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use theme_file::launch as launch_theme;
 #[cfg(any(feature = "desktop", feature = "terminal"))]

@@ -1,6 +1,6 @@
 use crate::geometry::Rect;
 use crate::scene::CellBorder;
-use crate::style::{Rgba8, Theme};
+use crate::style::{Color, Theme};
 use crate::terminal::caps::Borders;
 use smol_str::SmolStr;
 
@@ -32,7 +32,7 @@ pub(super) fn over(under: Ink, ink: Ink, theme: &Theme) -> Ink {
     }
 }
 
-fn blend(ink: Ink, over: Rgba8, foreground: bool, theme: &Theme) -> Ink {
+fn blend(ink: Ink, over: Color, foreground: bool, theme: &Theme) -> Ink {
     let under = match ink {
         Ink::Exact(color) => color,
         Ink::Of(tone) => theme.scale(tone.scale_role()).step(11),
@@ -132,7 +132,7 @@ struct BorderStroke {
     full: bool,
 }
 
-fn join(grid: &mut Grid, stroke: &BorderStroke, (color, theme): (Rgba8, &Theme), rect: Rect) {
+fn join(grid: &mut Grid, stroke: &BorderStroke, (color, theme): (Color, &Theme), rect: Rect) {
     let (x, y) = stroke.at;
     let [.., across, down] = stroke.set;
     let under = grid.get(x, y);

@@ -1,11 +1,11 @@
 use ratex_layout::{LayoutOptions, layout, to_display_list, validate_layout};
 use ratex_parser::{ParseNode, parse};
 use ratex_svg::{SvgOptions, render_to_svg};
-use ratex_types::color::Color;
+use ratex_types::color::Color as MathColor;
 use ratex_types::math_style::MathStyle;
 
 use crate::kernel::NodeBuilder;
-use crate::style::{Rgba8, Theme, Token};
+use crate::style::{Color, Theme, Token};
 use crate::widgets::svg_picture::picture;
 
 const EM_PX: f64 = 12.75;
@@ -18,8 +18,8 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
 }
 
 fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
-    let Rgba8 { r, g, b, .. } = theme.color(Token::OnSurface);
-    let color = Color::rgb(unit(r), unit(g), unit(b));
+    let Color { r, g, b, .. } = theme.color(Token::OnSurface);
+    let color = MathColor::rgb(unit(r), unit(g), unit(b));
     let options = LayoutOptions::default()
         .with_style(MathStyle::Display)
         .with_color(color);

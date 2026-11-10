@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use sigil::animation::{Easing, Keyframes, Property};
+use sigil::animation::{Easing, Keyframes, Property, Transition};
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -19,19 +19,19 @@ use sigil_kittest::Harness;
 const VIEW: (f32, f32) = (200.0, 200.0);
 const SIDE: f32 = 40.0;
 const STEPS_PER_SECOND: f32 = 16.0;
-const GREY: Rgba8 = Rgba8 {
+const GREY: Color = Color {
     r: 128,
     g: 128,
     b: 128,
     a: 255,
 };
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
     a: 255,
 };
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -41,7 +41,7 @@ const WHITE: Rgba8 = Rgba8 {
 #[derive(Clone, Copy, Debug)]
 struct Seen {
     opacity: f32,
-    color: Rgba8,
+    color: Color,
     matrix: [[f32; 3]; 2],
 }
 
@@ -65,7 +65,7 @@ impl Seen {
 
 fn square() -> NodeBuilder {
     container()
-        .bg(GREY)
+        .background(GREY)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
@@ -300,11 +300,11 @@ fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight(
     let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-retarget", || {
         let flags = [signal(false), signal(false)];
-        let node = square()
-            .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::from_secs(1))
-            .ease(Easing::Linear);
+        let node = square().opacity(0.2).transition(
+            Transition::opacity()
+                .duration(Duration::from_secs(1))
+                .ease(Easing::Linear),
+        );
         let mut ui = mount(transitioned(flags, node));
         start(&mut ui, flags[0]);
         run(&mut ui, 0.5);
@@ -332,12 +332,12 @@ fn a_transition_delay_holds_the_start_value() {
     let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-delay", || {
         let flags = [signal(false), signal(false)];
-        let node = square()
-            .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::from_millis(500))
-            .delay(Duration::from_millis(250))
-            .ease(Easing::Linear);
+        let node = square().opacity(0.2).transition(
+            Transition::opacity()
+                .duration(Duration::from_millis(500))
+                .delay(Duration::from_millis(250))
+                .ease(Easing::Linear),
+        );
         let mut ui = mount(transitioned(flags, node));
         start(&mut ui, flags[0]);
         run(&mut ui, 0.125);

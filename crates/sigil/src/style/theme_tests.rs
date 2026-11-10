@@ -55,7 +55,7 @@ fn every_palette_composes_with_every_variant() {
             assert_ne!(theme.surface, theme.on_surface);
             assert_ne!(
                 theme.accent,
-                Rgba8 {
+                Color {
                     r: 0,
                     g: 0,
                     b: 0,
@@ -94,7 +94,7 @@ fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
         ("accent", rgb(38, 38, 38)),
         (
             "border",
-            Rgba8 {
+            Color {
                 r: 245,
                 g: 255,
                 b: 255,

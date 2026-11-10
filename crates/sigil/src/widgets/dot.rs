@@ -3,11 +3,13 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::style::ControlSize;
 use crate::style::{StyleAtom, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 /// Builder of a status dot.
+#[derive(Debug)]
 pub struct DotBuilder {
     tone: Tone,
     size: ControlSize,
@@ -47,10 +49,7 @@ impl DotBuilder {
             )
             .pick()(self.tone, self.size);
         node = node.role(Role::GenericContainer).with(layout);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node
+        caller_style(node, self.style_accumulator)
     }
 }
 
@@ -67,17 +66,17 @@ fn round_dot(tone: Tone, size: ControlSize) -> (LayoutStyle, NodeBuilder) {
     let extent: i16 = match size {
         ControlSize::Compact => 8,
         ControlSize::Default => 12,
-        ControlSize::Wide | ControlSize::Grow => 16,
+        ControlSize::Wide => 16,
     };
     let (outer, inner) = (f32::from(extent), f32::from(extent - 2));
     let node = container()
-        .style(crate::style::Style::new().radius(extent / 2))
+        .style(crate::style::Style::new().radius_px(extent / 2))
         .tone_scope(tone)
         .class(DOT_RING_ATOMS)
         .child(
             container()
                 .layout(LayoutStyle::flex_row().fixed_size(inner, inner))
-                .style(crate::style::Style::new().radius((extent - 2) / 2))
+                .style(crate::style::Style::new().radius_px((extent - 2) / 2))
                 .tone_scope(tone)
                 .class(DOT_FILL_ATOMS),
         );

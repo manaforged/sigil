@@ -1,4 +1,4 @@
-use super::{ColorAtom, GradientAxis, Rgba8};
+use super::{Color, ColorAtom, GradientAxis};
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
@@ -111,7 +111,7 @@ impl From<i16> for Conic {
     }
 }
 
-const fn percent(value: u8) -> u8 {
+pub(super) const fn percent(value: u8) -> u8 {
     if value > 100 { 100 } else { value }
 }
 
@@ -154,10 +154,16 @@ pub enum BorderStyle {
 pub enum PaintAtom {
     /// The background gradient geometry.
     Gradient(GradientShape),
+    /// No background gradient.
+    NoGradient,
     /// A gradient stop color.
     Stop(StopSlot, ColorAtom),
+    /// No color at a gradient stop.
+    NoStop(StopSlot),
     /// A gradient stop position in percent.
     StopAt(StopSlot, u8),
+    /// No background color and no stop-list gradient.
+    NoColor,
     /// Paints the background only inside the text glyphs.
     ClipText,
     /// A tiled background image, by image id.
@@ -172,7 +178,7 @@ pub struct PaintStyle {
     /// The background gradient geometry, if any.
     pub gradient: Option<GradientShape>,
     /// The from, via, and to colors.
-    pub stops: [Option<Rgba8>; 3],
+    pub stops: [Option<Color>; 3],
     /// The from, via, and to positions in percent.
     pub positions: [Option<u8>; 3],
     /// Whether the background shows only inside text.
@@ -191,6 +197,10 @@ impl StopSlot {
             Self::To => 2,
         }
     }
+
+    pub(crate) fn default_at(self) -> u8 {
+        PaintStyle::default().at(self.index())
+    }
 }
 
 const STOPS: [(NumericAtomKind, ColorAtomKind); 3] = [
@@ -199,7 +209,7 @@ const STOPS: [(NumericAtomKind, ColorAtomKind); 3] = [
     (NumericAtomKind::StopTo, ColorAtomKind::StopTo),
 ];
 
-const CLEAR: Rgba8 = Rgba8 {
+const CLEAR: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -231,10 +241,18 @@ impl PaintStyle {
             .then(|| position.map_or_else(|| kind.initial(), f32::from))
     }
 
-    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Color> {
         let index = STOPS.iter().position(|(_, owner)| *owner == kind)?;
         let stop = self.stops.get(index).copied().flatten();
         self.drawn(index).then(|| stop.unwrap_or(CLEAR))
+    }
+
+    pub(crate) fn at(&self, index: usize) -> u8 {
+        let set = self.positions.get(index).copied().flatten();
+        let default = STOPS
+            .get(index)
+            .map(|(kind, _)| percent_units(kind.initial()));
+        set.or(default).unwrap_or_default()
     }
 
     pub(crate) const fn shape(&self) -> Option<(GradientShape, bool)> {

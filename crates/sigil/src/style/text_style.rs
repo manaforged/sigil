@@ -1,6 +1,3 @@
-#[cfg(any(test, feature = "kittest", feature = "scene"))]
-use crate::hal::TextEngine;
-
 /// Gives line height as a multiple of font size or in pixels.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TextLineHeight {
@@ -59,9 +56,9 @@ pub struct TextFace {
     /// The background, if any.
     pub background: Option<crate::style::Token>,
     /// The exact color, if any; it wins over `color`.
-    pub ink: Option<crate::style::Rgba8>,
+    pub ink: Option<crate::style::Color>,
     /// The exact background, if any; it wins over `background`.
-    pub fill: Option<crate::style::Rgba8>,
+    pub fill: Option<crate::style::Color>,
     /// Whether underlined.
     pub underline: bool,
     /// Whether drawn fainter.
@@ -173,21 +170,5 @@ impl TextStyle {
             crate::style::StyleEngine::overlay_text(overlay, &mut layered);
         }
         Some(layered)
-    }
-}
-
-kittest_pub! {
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
-    pub trait StyledTextEngine: TextEngine {
-        fn layout_paragraph_styled(
-            &self,
-            text: &str,
-            max_width: Option<f32>,
-            style: &TextStyle,
-        ) -> Result<Self::Paragraph, Self::Error>;
-
-        fn font_generation(&self) -> u64 {
-            0
-        }
     }
 }

@@ -1,4 +1,4 @@
-use sigil::layout::Dimension;
+use sigil::layout::Length;
 use sigil::prelude::*;
 use sigil::testing::with_cx;
 use sigil::widgets::{TextEditBuilder, text_edit};
@@ -60,11 +60,11 @@ fn widget_layout_ext_overrides_reach_root_node() {
             .clone();
         assert_eq!(
             sigil::testing::style_data(&style).size.width,
-            Dimension::Px(200.0)
+            Length::Px(200.0)
         );
         assert_eq!(
             sigil::testing::style_data(&style).size.height,
-            Dimension::Px(150.0)
+            Length::Px(150.0)
         );
     });
 }

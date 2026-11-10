@@ -1,18 +1,27 @@
+use crate::animation::Property;
 use crate::kernel::{DeltaKind, Node};
 use crate::reactive::{Runtime, Signal, effect_named};
 
 use crate::style::merge::SlotSet;
 use crate::style::{
-    ClassSource, FocusRing, NumericAtomKind, ReactiveStateSlot, StyleAtom, StyleBinding,
-    StyleOverlay, StyleReactiveEffect, Theme, Tone, ToneContext, merge_classes, parse_classes,
+    ClassSource, FocusRing, ReactiveStateSlot, StyleAtom, StyleBinding, StyleOverlay,
+    StyleReactiveEffect, Theme, Tone, ToneContext, merge_classes, parse_classes,
 };
 
-pub(super) fn install_animation(node: &mut Node, kind: NumericAtomKind, value: Signal<f32>) {
+pub(super) fn install_animation(
+    node: &mut Node,
+    property: fn(f32) -> Property,
+    value: Signal<f32>,
+) {
+    let Some(kind) = property(0.0).kind() else {
+        property(0.0).refuse("Widget::drive");
+        return;
+    };
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
-        binding.bind_animation(kind, value);
+        binding.bind_animation(property, value);
     } else {
         let mut binding = StyleBinding::default();
-        binding.bind_animation(kind, value);
+        binding.bind_animation(property, value);
         let _previous = node.attach(binding);
     }
     let tag = node.tag();

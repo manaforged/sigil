@@ -35,7 +35,7 @@ pub(crate) fn date_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> 
 }
 
 pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
-    color_field(signal(Rgba8 {
+    color_field(signal(Color {
         r: 90,
         g: 140,
         b: 255,
@@ -82,9 +82,10 @@ pub(crate) fn validated_field_demo(error: Option<String>) -> impl IntoNode {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(text_field_demo())
             .child(text_edit_demo())
             .child(number_field_demo(signal(false), signal(false)))

@@ -1,8 +1,7 @@
-use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, Icon, IntoNode, LayoutStyle, ListRowSlots, NodeBuilder, Paint, Radius, TextContent,
-    Token, Tone, container, divider_horizontal, icon, list_row, section_label, sidebar, spacer,
+    AlignItems, Icon, IntoNode, ListRowSlots, NodeBuilder, Orientation, Paint, Radius, Space,
+    TextContent, Token, Tone, column, divider, icon, list_row, row, section_label, sidebar, spacer,
     text,
 };
 
@@ -11,36 +10,30 @@ use super::live::Console;
 
 pub(crate) fn rail(console: Console) -> impl IntoNode {
     sidebar(
-        container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill()
-                    .padding(Space::Sm)
-                    .gap(Space::Xs),
-            )
+        column()
+            .fill()
+            .padding(Space::Sm)
+            .gap(Space::Xs)
             .child(wordmark())
             .child(section_label("Workspace"))
             .child(sections(console))
             .child(spacer())
-            .child(divider_horizontal())
+            .child(divider(Orientation::Horizontal))
             .child(footer(console)),
     )
     .width(RAIL_WIDTH)
-    .border_w(1)
+    .border_width(1)
     .border_color(Token::Border)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
 }
 
 fn wordmark() -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .padding_x(Space::Sm)
-                .padding_y(Space::Md)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .padding_x(Space::Sm)
+        .padding_y(Space::Md)
+        .align_items(AlignItems::Center)
         .child(icon(Icon::Rocket).tone(Tone::Primary))
         .child(
             text("fleet")
@@ -51,8 +44,9 @@ fn wordmark() -> NodeBuilder {
 }
 
 fn sections(console: Console) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
+    column()
+        .fill_width()
+        .gap(Space::Xs)
         .children_reactive(move || {
             let active = console.section.get();
             Section::ALL
@@ -74,14 +68,11 @@ fn nav_row(console: Console, section: Section, active: bool) -> NodeBuilder {
 }
 
 fn footer(console: Console) -> impl IntoNode {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .gap(Space::Xs)
-                .padding_x(Space::Sm)
-                .padding_y(Space::Sm),
-        )
+    column()
+        .fill_width()
+        .gap(Space::Xs)
+        .padding_x(Space::Sm)
+        .padding_y(Space::Sm)
         .child(
             text(move || format!("{} UTC · last event", console.clock.get()))
                 .nowrap()

@@ -6,7 +6,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, interval, signal};
 use crate::style::{Token, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::dot::dot;
 use super::popup::SURFACE;
@@ -70,7 +70,7 @@ impl ToastQueue {
 
     /// Shows a warning toast.
     pub fn warning(self, message: impl Into<String>) {
-        self.push(Tone::Warn, message);
+        self.push(Tone::Warning, message);
     }
 
     /// Shows an error toast.

@@ -53,6 +53,12 @@ pub struct SubmenuBuilder {
     level: LevelDef,
 }
 
+impl core::fmt::Debug for SubmenuBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SubmenuBuilder").finish_non_exhaustive()
+    }
+}
+
 impl SubmenuBuilder {
     /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
     #[must_use]
@@ -94,6 +100,17 @@ pub struct CommandMenuBuilder {
     pub(super) style_accumulator: Style,
     pub(super) panel_layout: LayoutOverrides,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for CommandMenuBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CommandMenuBuilder")
+            .field("placeholder", &self.placeholder)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("panel_layout", &self.panel_layout)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A command palette.

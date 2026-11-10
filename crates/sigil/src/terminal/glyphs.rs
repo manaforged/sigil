@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 #[cfg(any(test, feature = "kittest"))]
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 
 /// The character set the terminal can show.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -21,7 +21,7 @@ const BRAILLE: std::ops::RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 #[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn glyphs() -> Glyphs {
-    Caps::detect(|key: &str| std::env::var(key).ok()).glyphs
+    Capabilities::detect(|key: &str| std::env::var(key).ok()).glyphs
 }
 
 impl Glyphs {

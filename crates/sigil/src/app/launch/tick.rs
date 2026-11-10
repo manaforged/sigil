@@ -1,6 +1,6 @@
 #[cfg(test)]
-use crate::animation_runtime::tick as tick_animations;
-use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
+use crate::animation::runtime::tick as tick_animations;
+use crate::animation::runtime::{active_count as active_animation_count, running_clocks};
 
 use web_time::Instant;
 

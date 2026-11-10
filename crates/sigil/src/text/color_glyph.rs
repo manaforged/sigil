@@ -28,7 +28,7 @@ pub(crate) fn rasterize(
     font: &FontRef<'_>,
     gid: GlyphId,
     px_per_em: f32,
-    foreground: crate::style::Color,
+    foreground: crate::style::Rgba,
 ) -> Option<ColorGlyphRaster> {
     let Some(glyph) = font
         .bitmap_strikes()

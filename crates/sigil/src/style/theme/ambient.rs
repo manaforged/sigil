@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::fmt::Display;
 use std::sync::OnceLock;
 
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, derived, untrack};
 use crate::style::locale::Locale;
 use crate::style::strings::StringKey;
 
@@ -13,7 +13,7 @@ thread_local! {
 }
 
 pub(crate) fn swap_active_theme(theme: Option<Signal<Theme>>) -> Option<Signal<Theme>> {
-    ACTIVE.with(|slot| slot.replace(theme))
+    ACTIVE.replace(theme)
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -31,7 +31,7 @@ impl ActiveTheme {
     pub(crate) fn with<R>(self, read: impl FnOnce(&Theme) -> R) -> R {
         match self.source {
             Some(theme) => theme.with(read),
-            None => read(fallback()),
+            None => read(fallback_theme()),
         }
     }
 
@@ -56,13 +56,21 @@ impl ActiveTheme {
     }
 }
 
-fn fallback() -> &'static Theme {
+pub(crate) fn fallback_theme<'a>() -> &'a Theme {
     static DEFAULT: OnceLock<Theme> = OnceLock::new();
     DEFAULT.get_or_init(Theme::default)
 }
 
 pub(crate) fn theme_string(key: StringKey) -> String {
     ActiveTheme::capture().string(key)
+}
+
+pub(crate) fn theme_string_once(key: StringKey) -> String {
+    untrack(|| theme_string(key))
+}
+
+pub(crate) fn theme_fill_once(key: StringKey, args: &[&dyn Display]) -> String {
+    untrack(|| ActiveTheme::capture().fill(key, args))
 }
 
 pub(crate) fn theme_label(key: StringKey) -> Signal<String> {

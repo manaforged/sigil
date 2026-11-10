@@ -9,6 +9,7 @@ use crate::kernel::{
 };
 use crate::style::{PaintTarget, Style, StyleSlot};
 
+mod keyed;
 mod patch;
 
 pub(crate) use patch::Fate;
@@ -28,6 +29,16 @@ pub struct NodeBuilder {
     pub(super) on_added: Vec<AddedHook>,
     style: Style,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
+}
+
+impl core::fmt::Debug for NodeBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("NodeBuilder")
+            .field("a11y", &self.a11y)
+            .field("kind", &self.kind)
+            .field("style", &self.style)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A box that holds children.
@@ -303,22 +314,6 @@ impl NodeBuilder {
         N: IntoNode + 'static,
     {
         self.keyed_children(f)
-    }
-
-    #[must_use]
-    #[track_caller]
-    pub(crate) fn keyed_children<F, I, K, N>(mut self, f: F) -> Self
-    where
-        F: Fn() -> I + 'static,
-        I: IntoIterator<Item = (K, N)>,
-        K: Clone + Eq + std::hash::Hash + 'static,
-        N: IntoNode + 'static,
-    {
-        let location = core::panic::Location::caller();
-        self.reactive_children = Some(Box::new(move |parent| {
-            reactive_children::install_keyed(parent, location, f);
-        }));
-        self
     }
 
     /// Sets the with.

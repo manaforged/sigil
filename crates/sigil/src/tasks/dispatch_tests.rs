@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use crate::hal::Scheduler;
 use crate::reactive::Owner;
 use crate::tasks::AsyncRuntime;
 use crate::tasks::dispatch::dispatch_to_owner;
@@ -50,7 +49,7 @@ fn drain_preserves_enqueue_order() {
             spin_until(Duration::from_secs(5), || done.load(Ordering::SeqCst)),
             "the task should enqueue a, b, and c"
         );
-        assert_eq!(scheduler.drain(), 3, "three callbacks should have drained");
+        assert_eq!(scheduler.pump(), 3, "three callbacks should have drained");
         assert_eq!(
             *order.lock().expect("mutex"),
             vec!["a", "b", "c"],
@@ -75,7 +74,7 @@ fn dispatch_to_owner_sets_current_owner_during_callback() {
                 *observed_cb.lock().expect("mutex") = Owner::current();
             });
 
-            scheduler.drain();
+            scheduler.pump();
 
             let observed_id = *observed.lock().expect("mutex");
             assert_eq!(
@@ -111,7 +110,7 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
                 )
                 .expect("enqueue A");
 
-            let ran_first = scheduler.drain();
+            let ran_first = scheduler.pump();
             assert_eq!(ran_first, 1, "first drain runs exactly A (budget == 1)");
             assert!(a_ran.load(Ordering::SeqCst), "A ran");
             assert!(
@@ -119,7 +118,7 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
                 "B was enqueued during drain and must defer to the next cycle"
             );
 
-            let ran_second = scheduler.drain();
+            let ran_second = scheduler.pump();
             assert_eq!(ran_second, 1, "second drain runs exactly B");
             assert!(
                 b_ran.load(Ordering::SeqCst),

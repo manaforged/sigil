@@ -45,6 +45,7 @@ pub trait Clipboard {
 kittest_pub! {
     /// `Clipboard` implementation used when no clipboard is installed.
     #[doc(hidden)]
+    #[derive(Debug)]
     pub struct NoopClipboard;
 }
 

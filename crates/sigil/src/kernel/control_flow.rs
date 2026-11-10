@@ -29,7 +29,7 @@ where
     })
 }
 
-/// One child per item, reconciled by key.
+/// One child per item, reconciled by key; `render` runs once for each new key.
 #[must_use]
 pub fn for_each<T, K, N>(
     items: Signal<Vec<T>>,
@@ -41,10 +41,14 @@ where
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
-    fragment().children_keyed(move || {
+    fragment().keyed_children_unmounted(move |mounted| {
         items.with(|all| {
             all.iter()
-                .map(|item| (key(item), render(item)))
+                .map(|item| {
+                    let key = key(item);
+                    let row = (!mounted(&key)).then(|| render(item));
+                    (key, row)
+                })
                 .collect::<Vec<_>>()
         })
     })
@@ -63,6 +67,14 @@ pub struct SwitchBuilder<K: 'static> {
     cases: Vec<(K, ViewFn)>,
     otherwise: Option<ViewFn>,
     keep_alive: bool,
+}
+
+impl<K: 'static> core::fmt::Debug for SwitchBuilder<K> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SwitchBuilder")
+            .field("keep_alive", &self.keep_alive)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Mounts the view of the case whose key equals `key`, or `otherwise` when no case matches.

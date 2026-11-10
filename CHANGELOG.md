@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- A signal write runs each effect that depends on it one time, in dependency order. Before, an effect that read two `derived` values ran one time with one new value and one old value, and then again.
+- A write outside `batch` follows the `batch` rules. When an effect runs because of a write, the writes it makes run their dependent effects after it returns. Before, they ran inside the write.
+- `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
+
+### Added
+
+- `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
+- The recipes have a Lists section on per-row signals.
+
 ## [0.2.0] - 2026-11-07
 
 First public release.
@@ -15,28 +26,29 @@ First public release.
 | Before | After |
 | --- | --- |
 | `Host::misalignments`, `Host::emit_since`, `Cx::take_delta`, `LayoutStyle::data` | `sigil::testing::misalignments`, `emit_since`, `take_delta`, `style_data` (feature `kittest`) |
-| `LayoutStyle::with_layout`, `events::EventRouter`, `style::StyleBinding`, `style::ReactiveStateSlot`, `style::ReactiveStyleAtoms`, `style::StyledTextEngine` | public only under feature `kittest` |
+| `LayoutStyle::with_layout`, `events::EventRouter`, `style::StyleBinding`, `style::ReactiveStateSlot`, `style::ReactiveStyleAtoms` | public only under feature `kittest` |
 | `GlyphRun::positioned_glyphs` | `GlyphRun::glyph_count` for the count; the glyphs are crate-private |
 | `Node::tag`, `TextStyle::layered_over_binding`, `FrameInfo::delta` | crate-private |
 | `sigil::kernel::*`, `sigil::layout::*` | prelude (`text`, `HostMode`, `TextBuilder`, `ImageBuilder`, `ObjectFit`, `TextCursor`, `Dimension`, `Position`, `Overflow`, `TrackSize`) or crate root (`Cx`, `NodeId`, `Node`, `NodeType`, `NodeExtensions`, `AccessibleName`, `TopLayer`, `Surface`, `ImageCrop`, `ImageRaster`, `Live`, `FocusScopeKind`, `announce`) |
 | `sigil::animation_runtime::{Animator, AnimatorStatus, Playback, clock, reduced_motion}` | `sigil::animation::*` |
-| `sigil::text::{HitPosition, TextAffinity}`, `TextMeasure`, `CaretGeometry`, `app::DefaultTextMeasure`, `profile::{note_input, FRAME_BUDGET_NS}`, `widgets::MIN_COL_WIDTH`, `DrawRect::border_radius`, `DrawRect::border` | public only under `kittest`, `#[doc(hidden)]`; the crate-root paths are `sigil::TextMeasure`, `sigil::CaretGeometry`, `sigil::HitPosition`, and `sigil::TextAffinity` |
+| `sigil::text::{HitPosition, TextAffinity}`, `TextMeasure`, `CaretGeometry`, `app::DefaultTextMeasure`, `profile::{note_input, FRAME_BUDGET_NS}`, `widgets::MIN_COL_WIDTH`, `DrawRect::border_radius`, `DrawRect::border` | public only under `kittest`, `#[doc(hidden)]`, at `sigil::layout::{TextMeasure, CaretGeometry}` and `sigil::text::{HitPosition, TextAffinity}` |
 | `sigil::text::{WebFont, WebFontScript, add_fallback_font, load_font_url, set_web_fallbacks, web_fallbacks}` | `sigil::app::*` |
 | `sigil::a11y::snapshot(&host.accessibility_tree())` | `host.accessibility_text()` |
-| `sigil::a11y`, `sigil::kernel`, `sigil::layout`, `sigil::animation_runtime`, `sigil::text`, other items in them | public only under `kittest`, `#[doc(hidden)]` |
+| `sigil::a11y`, `sigil::kernel`, `sigil::layout`, `sigil::text`, other items in them | public only under `kittest`, `#[doc(hidden)]` |
 | `layout::Rect<T>` (edges), `layout::Size<T>` (per axis) | `Edges<T>`, `Axes<T>`, under `kittest`. `geometry::Rect` stays the box |
 | `style::DisplayKind`, `FlexWrapKind`, `OverflowKind`, `AlignKind`, `JustifyKind` | `Display`, `FlexWrap`, `Overflow`, `AlignItems`, `JustifyContent`. `JustifyKind::Between`, `Around`, `Evenly` are `JustifyContent::SpaceBetween`, `SpaceAround`, `SpaceEvenly`. `AlignKind::Between` and `Around` are gone; the class grammar never produced them |
 | `AlignItems::FlexStart`, `AlignItems::FlexEnd` | `AlignItems::Start`, `AlignItems::End` |
-| `ColorOrToken`, `ColorKey`, `ColorAtom::ThemeRef(ColorKey)` | `ColorAtom::{Rgba8, Token, Custom}`. `ColorOrToken::Token(ColorKey::Custom(name))` is `ColorAtom::Custom(name)` |
+| `ColorOrToken`, `ColorKey`, `ColorAtom::ThemeRef(ColorKey)` | `ColorAtom::{Color, Token, Custom}`. `ColorOrToken::Token(ColorKey::Custom(name))` is `ColorAtom::Custom(name)` |
 | `StyleAtom::BackgroundThemeRef`, `TextThemeRef`, `BorderThemeRef` | `StyleAtom::BackgroundColor`, `TextColor`, `BorderColor` |
 | `Theme::resolve_color(ColorKey)`, `TokenLayer::color(ColorKey)` | take `ColorAtom` |
-| `.animate(NumericAtomKind::Height, value)` | `.animate_height(value)`, with one `animate_*` setter per property. `NumericAtomKind` and `ColorAtomKind` are private |
-| `Rgba8: FromStr` accepted `#` plus 3 or 6 digits | also accepts 8 digits and a `0x` or missing prefix. Theme files use it, so they also accept 3 digits |
+| `.animate(NumericAtomKind::Height, value)` | `.drive(Property::Height, value)`. `ColorAtomKind` is private |
+| `NumericAtomKind::X` in `.drive(NumericAtomKind::X, value)` | `sigil::animation::Property::X`, the enum that `Keyframes` uses: `.drive(Property::Width, value)`. `Rotation`, `RotationX`, `RotationY`, `RotationZ` are `Rotate`, `RotateX`, `RotateY`, `RotateZ`; `StopFrom`, `StopVia`, `StopTo` are `GradientFromPosition`, `GradientViaPosition`, `GradientToPosition`; `TranslateXFraction`, `TranslateYFraction` are `TranslateXPercent`, `TranslateYPercent` and take percent. `NumericAtomKind` is private. `Keyframes` ignores the layout properties (`Width`, `Height`, `Gap`, `PaddingX`, `PaddingY`, `FontSize`, `LineHeight`) with a `sigil::animation` warning |
+| `Rgba8: FromStr` accepted `#` plus 3 or 6 digits | `Color: FromStr` also accepts 8 digits and a `0x` or missing prefix. Theme files use it, so they also accept 3 digits |
 | `SceneRectStyle`, `SceneGradientStyle`, `ScenePatternStyle`, `SceneSpriteStyle`, `SceneDecorationStyle` | setters on `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawSprite`, `DrawDecoration` |
 | `scene.draw_rect(rect, SceneRectStyle::solid(color))` | `scene.draw_rect(DrawRect::new(rect, color))`. `draw_gradient`, `draw_pattern`, `draw_decoration`, and `draw_sprite` take the draw command too |
 | `DrawGlyphRun`, `draw.run.text` | `SceneCommand::GlyphRun(GlyphRun)`, `draw.text` |
 | `Axis::X`, `Axis::Y` | `Orientation::Horizontal`, `Orientation::Vertical` |
-| `ToastLevel`, `ToastEntry::level`, `ToastLevel::Warning` | `Tone`, `ToastQueue::push(tone, message)`, `Tone::Warn` |
+| `ToastLevel`, `ToastEntry::level`, `ToastLevel::Warning` | `Tone`, `ToastQueue::push(tone, message)`, `Tone::Warning` |
 | `SortDir`, `kernel::SortDirection` re-exported from `accesskit` | `SortDirection`, owned by Sigil, without an `Other` variant |
 | `HlSpan { token: &'static str }`, `hl_spans`, `highlight` byte ranges | `Highlight { token: Token }` from `highlight`, in the grapheme columns `code_edit` takes |
 | public `install_animators` | removed; no production caller |
@@ -76,7 +88,7 @@ First public release.
 | `virtual_list_bind` | `virtual_list` |
 | `ShellEvent` | `Event` |
 | `FlexDir`, public `AlignSelf` | `FlexDirection`, `AlignItems` |
-| `parse_theme`, `parse_hex` | `Theme: FromStr`, `Rgba8: FromStr`. 3 digits and surrounding whitespace are newly accepted, and `+12345` is newly rejected |
+| `parse_theme`, `parse_hex` | `Theme: FromStr`, `Color: FromStr`. 3 digits and surrounding whitespace are newly accepted, and `+12345` is newly rejected |
 | `pub use wgpu` | removed |
 | functions that returned `std::io::Result` | return `sigil::Error` |
 | `Dimension::px` | `IntoPx::into_px`. `Dimension` does not implement `Eq` or `Hash` |
@@ -94,7 +106,7 @@ First public release.
 | `PointerEvent::new(PointerEventInit { .. })`, `PointerEvent::with_contact` | `Event::pointer(phase, position)` with `delta`, `kind`, `button`, `buttons`, `modifiers` setters. `with_contact` is crate-private |
 | `ScrollEvent::new(ScrollEventInit { .. })` | `Event::scroll(position, delta, phase)` with the `modifiers` setter |
 | `GestureEvent::new(GestureEventInit { .. })` | `Event::gesture(kind, phase, position)` with the `modifiers` setter |
-| `PasteEvent`; `on_paste(Fn(&mut PasteEvent))` | `on_paste(Fn(&str) -> bool)`; return true where the handler called `stop_propagation`. `Event::paste(text)` builds the event |
+| `PasteEvent`; `on_paste(Fn(&mut PasteEvent))` | `paste(Fn(&str) -> bool)`; return true where the handler called `stop_propagation`. `Event::paste(text)` builds the event |
 | `terminal::key_down(key)`, `terminal::paste(text)` | `Event::key_down(key)`, `Event::paste(text)` |
 | `terminal::pointer(phase, col, row)`, `terminal::click(col, row)`, `terminal::wheel(col, row, lines)` | `Event::pointer_down`, `pointer_up`, `pointer_drag`, `click`, `wheel` at the layout point of the cell (`Host::CELL` points per cell). `Event::click` also sends the move before the press |
 | `sigil_kittest::input::{pointer_move, pointer_drag, pointer_down, pointer_up, click}(x, y)` | `Event::pointer_move`, `pointer_drag`, `pointer_down`, `pointer_up`, `click` with `Point::new(x, y)` |
@@ -102,7 +114,11 @@ First public release.
 | `input::press`, `type_char(text, physical)`, `type_text`, `tab`, `scroll_lines(x, y, dy)`, `window_blur`, `ime_event(event)` | `Event::press`, `Event::typed(text).physical(physical)`, `Event::type_text`, `Event::tab`, `Event::wheel(Point::new(x, y), dy)`, `Event::blur`, `Event::Ime(event)` |
 | `app::TextTuning`, `set_text_tuning`, `text_tuning` | `AppConfig::text_enhance`, `text_snap`, `text_raster`, `text_dilation`, `text_sharpen`, `text_gamma` |
 | `app::DefaultFonts`, `set_default_fonts` | `AppConfig::font_sans`, `font_sans_weight`, `font_mono`, `font_icon`, `font_display`, `font_fallback` |
-| `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation_runtime::reduced_motion()`, `AppConfig::reduced_motion` |
+| `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation::reduced_motion()`, `AppConfig::reduced_motion` |
+| `sigil::animation_runtime::{MotionPrefs, active_count, presets, running_clocks, tick}` (feature `kittest`) | `sigil::animation::*`, under `kittest`, `#[doc(hidden)]`. The `sigil::animation_runtime` module is removed |
+| `style::StyledTextEngine` (feature `kittest`) | removed; call `OwnedTextEngine::layout_paragraph_styled`, no trait import |
+| `layout::TextEngineMeasure<OwnedTextEngine>` (feature `kittest`) | `layout::TextEngineMeasure` |
+| `AsyncRuntime::drain` (feature `kittest`) | `AsyncRuntime::pump` |
 | `app::HostCaps`, `Host::set_caps(HostCaps { hyperlinks })`, `Caps::host()` | `Host::set_hyperlinks(hyperlinks)` |
 | `app::WindowOpts` | `AppConfig::overlay`, `frameless`, `anchor`, `user_zoom`, `min_size`, `resizable` |
 | `reactive::effect_named` | `reactive::effect`. Named effects are crate-private |
@@ -112,7 +128,7 @@ First public release.
 | `kernel::announce(text)`, `announce_assertive(text)` | `kernel::announce(text, Live::Polite)`, `announce(text, Live::Assertive)` |
 | `scene::emit_scene(cx, root)`, `emit_scene_clipped(cx, root, clip)` | `scene::emit_scene(cx, root, clip)`; pass `None` for no clip |
 | `list_row(selected, title, detail)`, `list_row_with(selected, title, slots)`, `ListRowSlots::row` | `list_row(selected, title, slots)`; `detail` is `ListRowSlots::status` |
-| `image_rgba(w, h, rgba)`, `image_bytes(encoded)` | `ImageSource::from_rgba8(w, h, rgba).map(image)`, `ImageSource::decode(encoded).map(image)`; add `.layout(LayoutStyle::block())` for the old layout |
+| `image_rgba(w, h, rgba)`, `image_bytes(encoded)` | `ImageSource::from_rgba8(w, h, rgba).map(image)`, `ImageSource::decode(encoded).map(image)` |
 | `app::open_window(config, view)` | `WindowId::open(config, view)` |
 | `Host::new()`, `Host::cells()`, `Host::default()` | `Host::new(HostMode::Pixel)`, `Host::new(HostMode::Cell)` |
 | `tasks::TaskWorkers`, `AsyncRuntime::with_workers`, `AppConfig::task_workers(TaskWorkers)` | `AppConfig::task_workers(NonZeroUsize)` |
@@ -132,18 +148,19 @@ First public release.
 | `events::NodeEventsExt` (event handler methods) | `Widget` |
 | `widgets::DragDropExt<T>` (`drag_source`, `drop_target`) | `Widget`; the methods are generic over `T` |
 | `widgets::layout_ext::WidgetLayoutExt` (`layout`, `width`, `height`, `grow`, `map_node`), `T: WidgetLayoutExt` bounds | `Widget`, `T: Widget` |
-| `style::StateVariants` (`rest`, `hover`, `focus`, `pressed`, `disabled_style`) | the same trait, implemented only for a builder that has state slots |
+| `style::StateVariants` (`rest`, `hover`, `focus`, `pressed`, `disabled_style`) | `style::States` (`rest`, `hover`, `focus`, `pressed`, `disabled_style`), implemented only for a builder that has state slots |
 | `NodeBuilder::tone(Tone)`, `TextBuilder::tone(Tone)` (from `NodeStyleExt`) | `Widget::tone_scope(Tone)`; `tone` stays the widget tone on button, chart, chip, checkbox, icon, progress, radio group, sparkline, and stat |
 | `TooltipBuilder::shortcut(Option<impl Into<String>>)` | `TooltipBuilder::hint(Option<impl Into<String>>)` |
 | `CodeEditBuilder::key(f)` | `CodeEditBuilder::key_handler(f)` |
-| `ChipBuilder::layout(LayoutStyle) -> NodeBuilder` | `Widget::layout(LayoutStyle) -> ChipBuilder` |
-| `CanvasBuilder::layout`, `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
-| `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider_vertical() -> NodeBuilder` |
-| `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | `Widget::layout`, which merges into it |
-| `widgets::layout_ext::LayoutOverrides` | `Widget::layout`, `width`, `height`, and `grow` |
-| A second `.layout(..)` on a widget builder replaced the first | Each `.layout(..)` merges, in call order, as on `NodeBuilder` |
+| `ChipBuilder::layout(LayoutStyle) -> NodeBuilder` | the `Widget` layout setters, which return the `ChipBuilder` |
+| `CanvasBuilder::layout` | the `Widget` layout setters |
+| `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
+| `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider(Orientation::Vertical) -> NodeBuilder` |
+| `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | the `Widget` layout setters, which merge into it |
+| `widgets::layout_ext::LayoutOverrides` | The `Widget` layout setters, such as `width`, `height`, and `grow` |
+| A second `.layout(..)` on a widget builder replaced the first | Each layout setter merges, in call order, as on `NodeBuilder` |
 | `const fn color_field` | `fn color_field` |
-| `const fn divider_vertical` | `fn divider_vertical` |
+| `const fn divider_vertical` | `fn divider(Orientation)` |
 | `widgets::layout_ext` | private; its methods are `Widget` |
 | `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, and `TextEditBuilder::focus_when` as `const fn` | the same methods, no longer `const` |
 | `Placement` without `mark_col`, `mark_row`, `span_cols`, and `span_rows` | those fields are part of `Placement` |
@@ -156,18 +173,18 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `animation::{Keyframe, Keyframes, AnimationDirection, AnimationFill, Playback, AnimatorStatus}`, `terminal::CellGrid`, `style::ThemeBuilder`, `widgets::FocusCaret`, `TextFieldBuilder::focus_caret`, `Widget::presence_spring`, `Widget::ime_caret` | removed; no caller used them |
-| `Paint::{background_gradient, transform, transition, duration}`, `LayoutStyle::{align_content, box_sizing, flex_direction}`, `SceneBuilder::{draw_gradient, draw_pattern, draw_sprite, push_layer, draw_decoration, draw_image, draw_shadow, with_composite_layer}`, `DrawRect::border_radius`, `Theme::{with_locale, with_strings, with_*_scale}`, `Date::{parse_in, render_in}`, `app::{set_ambiguous, set_cell_width}`, `style::{render_style_for, text_style_for}` | public only under `kittest` |
+| `Paint::{background_gradient, transform, transition, duration}`, `LayoutStyle::{align_content, box_sizing, flex_direction}`, `SceneBuilder::{draw_gradient, draw_pattern, draw_sprite, push_layer, draw_decoration, draw_image, draw_shadow, with_composite_layer}`, `DrawRect::border_radius`, `Theme::{with_locale, with_strings, with_*_scale}`, `app::{set_ambiguous, set_cell_width}`, `style::render_style_for` | public only under `kittest` |
 | `style::scale`, `style::{Locale, Strings, StyleAtom, StateStyle, StyleState, StyleVariant, StyleEngine, RenderStyle, Transform2D, TransitionId, MillisU16, BgGradient}` and the other style value types | public only under `kittest` or crate-private; `Token::scale` and `Tone::scale_role` still work without naming `ScaleRole` |
 | `scene::{DrawGradient, DrawImage, DrawPattern, DrawSprite, DrawDecoration, LayerEffect, LayerScope, LinearGradient, GradientStop, CornerRadii, StrokeAlign, StrokeStyle}` and the other command payloads | public only under `kittest` or crate-private; `SceneCommand` fields keep these types |
 | `AccessibleName`, `FocusScopeKind`, `NodeExtensions`, `ImageCrop`, `icons::{IconBaker, BakedIcon}` (now `icons::bake`), `events::FileDropEvent`, `reactive::DrawPhase` | public only under `kittest`; `.label("text")` and `.file_drop(\|event\| ...)` work without the names |
-| `app::{FrameOutput, FrameLayoutHook, Ambiguous, CellWidth}`, `terminal::{AfterFrame, EventPump, ClipRoute, Erase, Glyphs, Notices, Placement}`, `profile::{Attribution, PhaseTime, CounterValue}`, `tasks::TaskHandle`, `widgets::{ButtonGlyph, LineId, LineKind, PathCmd, PathColor, PathFill, TreeRow, IconSource}`, `events::PointerTilt` | no public path; functions return them and fields keep them |
+| `app::{FrameOutput, FrameLayoutHook, Ambiguous, CellWidth}`, `terminal::{AfterFrame, EventPump, ClipRoute, Erase, Glyphs, Notices, Placement}`, `profile::{Attribution, PhaseTime, CounterValue}`, `tasks::TaskHandle`, `widgets::{ButtonGlyph, LineId, LineKind, PathCmd, PathFill, TreeRow, IconSource}`, `events::PointerTilt` | no public path; functions return them and fields keep them |
 | `style::palette::Palette` | crate-private. Use `Theme` |
 | `geometry::Scale`, `Cx::scale() -> Scale`, `Cx::set_scale(Scale)` | `Cx::scale() -> f32`, `Cx::set_scale(f32)`. `Scale` is public only under `kittest` |
 | `widgets::ColumnLayout`, `TableState::column_layout` | `TableState::hide_column`, `show_column`, `visible_columns`, `column_width`; the layout is crate-private |
 | `Shadow::kind`, `DrawRect::stroke` fields | public only under `kittest` |
-| `reactive::{Runtime, next_interval_deadline, debug}`, `style::unknown_class_warning_count`, `scene::{paint_backdrop, shape_glyph_run, Stroke}`, `terminal::{map_key, map_mouse, cell_point}`, `widgets::interaction`, `A11yProps`, `Cx::new_node`, `clipboard::NoopClipboard`, `DrawRect::stroke`, `Shadow::with_kind`, `TextBuilder::runs` | public only under `kittest` |
+| `reactive::{Runtime, next_interval_deadline, debug}`, `style::unknown_class_warning_count`, `scene::{paint_backdrop, shape_glyph_run, Stroke}`, `terminal::{map_key, map_mouse, cell_point}`, `A11yProps`, `Cx::new_node`, `clipboard::NoopClipboard`, `DrawRect::stroke`, `Shadow::with_kind` | public only under `kittest` |
 | `style::{variant, Variant, is_typography_atom}`, `Theme::from_palette`, `terminal::{install_clipboard, blocks_window, png_window, sextants_window, detect_mux}`, `widgets::{listbox, ListModel, language_for_path, text_runs, ToastEntry}`, `app::{cell_text_lines, ellipsize_cells, ellipsize_cells_start, fit_cells}`, `tasks::panic_message`, `style::font_family_hint` | no public path; `Caps` reports the multiplexer and `ToastQueue` owns its entries |
-| `widgets::to_hex(color)` | `Rgba8::to_hex(self)` |
+| `widgets::to_hex(color)` | `Color::to_hex(self)` |
 | `Node::a11y.text_cursor` | `Node::text_cursor()`; the `a11y` field is public only under `kittest` |
 | `Widget::focus_ring(FocusRing)`, `style::FocusRing`, `FocusRing::{new, static_visible, color, theme_color, width, offset, opacity}` | `Widget::focus_ring(Signal<bool>)`, `focus_ring_color`, `focus_ring_width`, `focus_ring_offset`, `focus_ring_opacity`. A fixed ring is `focus_ring(signal(true))`. `style::FocusRing` is public only under `kittest` |
 | `match_status`, `StatusView` | `show` on `Task::status` |
@@ -189,6 +206,83 @@ First public release.
 | exhaustive `match` on `LayerEffect` | add arms for `Projected`, `Mask` and `Filter` |
 | `LayerEffect::LayerBlur { sigma }` | `LayerEffect::Filter(Arc::new([Filter::Blur(sigma)]))` |
 | exhaustive `match` on `BlendMode` or `Filter` | add a `_` arm; both are `#[non_exhaustive]` |
+| `NodeBuilder::class`, `TextBuilder::class` (feature `kittest`) | `Widget::class("...")`, public on every builder; it takes a `&'static str` of Tailwind classes |
+| `style::ClassSource` | crate-private; `class` takes the class string |
+| `.transition()`, `.transition_all()`, `.transition_colors()`, `.transition_opacity()`, `.transition_transform()` | `.transition(Transition::new())`, `Transition::all()`, `Transition::colors()`, `Transition::opacity()`, `Transition::transform()`, from `sigil::animation` |
+| `.duration(d)`, `.ease(e)`, `.delay(d)` on `Paint` | setters on the value: `.transition(Transition::new().duration(d).ease(e).delay(d))` |
+| `Paint::transition_preset(id)` (feature `kittest`) | `.transition(id)`; a `TransitionId` converts with `From` |
+| `Widget::animate_opacity`, `animate_radius`, `animate_font_size`, `animate_line_height`, `animate_gap`, `animate_padding_x`, `animate_padding_y`, `animate_width`, `animate_height`, `animate_translate_x`, `animate_translate_y`, `animate_scale_x`, `animate_scale_y`, `animate_rotation` | `Widget::drive(Property::X, Signal<f32>)`, for example `.drive(Property::Height, value)`; each variant documents its unit, and `Opacity` now takes 0.0 to 1.0 where `animate_opacity` took 0 to 10,000 |
+| `.bg_linear(axis)`, `.bg_radial(radial)`, `.bg_conic(conic)` | `.background(Background::linear(axis))`, `.background(Background::radial(radial))`, `.background(Background::conic(conic))`, from `sigil::style` |
+| `.gradient_from(c)`, `.gradient_via(c)`, `.gradient_to(c)` | `start(c)`, `middle(c)`, `end(c)` on the `Gradient` that `Background::linear`, `radial`, or `conic` returns; a state closure passes the whole gradient again |
+| `.gradient_from_position(p)`, `.gradient_via_position(p)`, `.gradient_to_position(p)` | `start_at(p)`, `middle_at(p)`, `end_at(p)` on the same `Gradient` |
+| `.bg(color)` with `.bg_linear(axis)` to paint a color under a gradient | `.background(Background::linear(axis).over(color))`; each `background` call replaces the whole background, color and gradient |
+| a `.duration(d)`, `.ease(e)`, or `.delay(d)` that outlived a later `.transition()` | each `transition` call replaces the whole transition; a value without a setter uses the timing of its preset |
+| exhaustive `match` on `PaintAtom` (feature `kittest`) | add arms for `NoGradient`, `NoStop` and `NoColor` |
+| `Paint::background_gradient(BgGradient)` (feature `kittest`) | `.background(gradient)`; a `BgGradient` converts with `From` |
+| `Paint::bg(impl Into<ColorAtom>)` | `Paint::background(impl Into<Background>)`; `Token`, `Color`, and `ColorAtom` convert with `From` |
+| `sigil_sign::SignError`, `sigil_sign::PackError` | `sigil_sign::Error`; branch on `error.kind()`, `error.is_password_required()`, `error.path()` |
+| `sigil_sign::pack_cli` returning `Result<(), String>` | `Result<(), sigil_sign::Error>` |
+| `AppBundle { .. }`, `ResourceCopy { .. }`, `CodeSign { .. }`, `Dmg { .. }` struct literals | `AppBundle::new(name, executable)`, `ResourceCopy::new(from, to)`, `CodeSign::default()`, `Dmg::new(app, volume)` plus setters named for the fields |
+| `sigil_kittest::Error::{NoAdapter, Device, Layout, Render, Readback, Unsettled}` | `error.kind() == ErrorKind::..`, `error.is_no_adapter()`, `error.is_unsettled()` |
+| `Harness::present` error type `sigil::Error` | `sigil_kittest::Error` |
+| `gpu::Capture { .. }` | `Capture::new(viewport, size_px).scale(..).clear(..)` |
+| `GeneratedScene` fields | getters of the same names |
+| `Host::route(event)` returning `()` | returns `bool`: whether a key press was consumed |
+| `esc_exits(true)`: Escape exited before the UI saw it | exits only when nothing consumed the press |
+| terminal `quit_on_ctrl_c(true)`: Ctrl+C exited before routing | copies a selection or reaches a focused `terminal()` first |
+| `Metrics::padding(size)`, `Metrics::gap(size)` | `Metrics::control_padding(size)`, `Metrics::control_gap(size)` |
+| `Theme::padding(size)`, `Theme::gap(size)` | `Theme::control_padding(size)`, `Theme::control_gap(size)` |
+| exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `Change`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
+| under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
+| `Dimension` | `Length` |
+| `PathNode::fill` and `stroke` took an unnameable `PathColor` | they take `impl Into<ColorAtom>`: pass a `Color`, a `Token` or a `ColorAtom` |
+| `Rgba8` | `Color` |
+| `ColorAtom::Rgba8(..)` | `ColorAtom::Color(..)` |
+| `sigil::style::Color` (f32 RGBA) | `sigil::style::Rgba`, public only under `kittest`, `#[doc(hidden)]`; app code uses `Color` or `ColorAtom` |
+| `StateVariants` | `States` |
+| `FlawKind` (the rule passed to `allow_flaw`) | `Flaw` |
+| `Flaw` (the reported record from `flaws()`) | `Issue` |
+| `events::GestureKind` | `events::Gesture` |
+| `widgets::ChangeKind` | `widgets::Change` |
+| `profile::BackendKind` | `profile::Backend` |
+| `widgets::DiagSpan` | `widgets::Diagnostic` |
+| `on_gesture`, `on_ime`, `on_paste`, `on_scroll`, `on_selection_copy` | `gesture`, `ime`, `paste`, `scroll`, `selection_copy` |
+| `Paint::bg`, `Paint::border_w`, `Paint::rounded` | `Paint::background`, `Paint::border_width`, `Paint::radius` |
+| `Tone::Warn`, `Token::Warn1`..`Token::Warn12` | `Tone::Warning`, `Token::Warning1`..`Token::Warning12`; class strings keep `warn-*` |
+| `Display` in `sigil::prelude` | `sigil::layout::Display`; the prelude no longer shadows `std::fmt::Display` |
+| `FocusIntent`, `ColAlign`, `ColWidth`, `DiagSeverity`, `PointerKind`, `terminal::Caps` | `FocusDirection`, `ColumnAlign`, `ColumnWidth`, `Severity`, `PointerType`, `terminal::Capabilities` |
+| `container().layout(LayoutStyle::flex_column())` | `column().gap(Space::None)`. `column()` alone adds the theme gap and takes the width its parent gives it |
+| `container().layout(LayoutStyle::flex_row())` | `row().gap(Space::None).align_items(AlignItems::Stretch)`. `row()` alone adds the theme gap, centres its children, and takes the width its parent gives it |
+| `container().layout(LayoutStyle::grid(columns))` | `grid(columns)` |
+| `container().layout(LayoutStyle::block())` | `container()` |
+| `container().layout(LayoutStyle::pane(w, h))` | `column().width(w).height(h).gap(Space::Xs)` |
+| `.layout(LayoutStyle::default().gap(space))`, and the same for `padding`, `padding_x`, `margin`, `fill`, `fill_width`, `height`, `min_width`, `max_width`, `shrink`, `flex_basis`, `align_items`, `align_self`, `justify_content`, `flex_wrap`, `display`, `position`, `inset_top`, `overflow`, `grid_columns`, and each other `LayoutStyle` setter | the `Widget` setter of the same name: `.gap(space)` |
+| `.layout(LayoutStyle::default().fixed_size(w, h))`, `.min_size(w, h)`, `.max_size(w, h)` | `.width(w).height(h)`, `.min_width(w).min_height(h)`, `.max_width(w).max_height(h)` |
+| `.layout(LayoutStyle::default().width(px))` | `.width(px)`, which also lowers a larger minimum width |
+| `.layout(LayoutStyle::default().grow(factor))` | `.grow(factor)`, which keeps a minimum size that the node already has |
+| `LayoutStyle`, `Widget::layout` | `LayoutStyle` and the raw `.layout(LayoutStyle)` setter are public only under feature `kittest`; `Widget` no longer has a `layout` method. Use the container functions and the `Widget` setters |
+| `Widget::width(impl IntoPx)`, `Widget::height(impl IntoPx)` | `Widget::width(impl Into<Length>)`, `Widget::height(impl Into<Length>)`. `Length::Percent`, `Length::Fill`, and `Length::Auto` keep their meaning, where each was 0 px; `rows`, `cols`, and `em` resolve at layout |
+| a node with no `LayoutStyle` constructor added padding and border to its size: `container().padding(Space::Lg).width(300.0)` was 332 px wide | a size includes padding and border on every node: the same chain is 300 px wide |
+| `style::grid(cell)` | `style::cell(cell)` |
+| `ScrollBuilder::fill` | `Widget::fill`, with the same effect. `.fill_height()`, `.height(Length::Percent(..))`, `.min_height(..)`, and `.max_height(..)` on a scroll area now also set the height that the scroll range uses |
+| `menu_bar().fill()` | `menu_bar().fill_width()` |
+| `PanelBuilder::padding`, both the method and the field | `Widget::padding`. `padding`, `padding_x`, and `padding_y` on a panel apply in call order |
+| `sparkline(..).fill(SparkFill)` | `sparkline(..).area(SparkFill)` |
+| a layout setter on a splitter pane, such as `.pane(node).width(180.0)`, set the splitter | it sets the pane. `.width(px)` on a pane of a horizontal splitter and `.height(px)` on a pane of a vertical splitter set its initial size. Call `.commit()` first to set the splitter |
+| `ControlSize::Grow` | `ControlSize::Wide` with `.fill_width()` on the control. On `button`, `Grow` used the `Default` height, so write `.size(ControlSize::Default).fill_width()` there |
+| `VirtualListBuilder::viewport_fill()` | `.fill()`. `.fill_height()` or a percent height on a virtual list also makes it take the height of its parent, grow, and measure its viewport |
+| `TableBuilder::viewport_fill()` | `.fill_height()`. A percent height on a table does the same |
+| `PaneBuilder::initial(px)` | `.width(px)` on a pane of a horizontal splitter, `.height(px)` on a pane of a vertical splitter |
+| `PaneBuilder::min(px)`, `PaneBuilder::max(px)` | `.min_width(px)` and `.max_width(px)` on a pane of a horizontal splitter, `.min_height(px)` and `.max_height(px)` on a pane of a vertical splitter. They clamp the drag and also set the pane's own limits |
+| a paint, event, or `map_node` setter after `.pane(node)`, such as `.pane(node).background(..)`, set the splitter | it sets the pane. Call it before the first `.pane(..)` or after `.commit()` to set the splitter |
+| `Paint::bg_clip_text()`, `Paint::bg_image(image)` | `Paint::background_clip_text()`, `Paint::background_image(image)`. The class string `bg-clip-text` is unchanged |
+| `ScaleRole::Warn` | `ScaleRole::Warning` |
+| `ButtonBuilder::shortcut(text)`, `MenuItem::shortcut(text)`, the `MenuItem::shortcut` field | `ButtonBuilder::hint(text)`, `MenuItem::hint(text)`, the `MenuItem::hint` field; `Widget::shortcut(shortcut, handler)` still binds a key |
+| `divider_horizontal()`, `divider_vertical()` | `divider(Orientation::Horizontal)`, `divider(Orientation::Vertical)` |
+| `Paint::line_height_px(px)`, `Paint::letter_spacing_em(em)` | `Paint::line_height(px)`, `Paint::letter_spacing(em)`; the units are unchanged |
+| `Paint::mix_blend(BlendMode)` | `Paint::blend(BlendMode)` |
+| `ColorAtom` in `sigil::prelude` | `sigil::style::ColorAtom`; setters still take `Token` and `Color` through `Into<ColorAtom>` |
+| `set_theme(theme)`, `sigil::app::set_theme(theme)` | `theme.apply()` |
 
 ### Changed
 
@@ -208,25 +302,34 @@ First public release.
 - A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
 - Gradient text draws conic, elliptical radial and repeating gradients.
 - A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
+- Layout is set with the container functions `row`, `column`, `grid`, and `container` and with the layout setters on `Widget` (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest). `LayoutStyle` and the raw `.layout(LayoutStyle)` setter are public only under feature `kittest`, and `Widget` no longer has a `layout` method; the migration table maps each constructor and method.
 
 ### Fixed
 
+- Clicking a row of a filtered `command_menu` runs that row; before, the click cleared the filter and ran the row at the same position in the full list.
+- A `command_menu` longer than twelve rows scrolls, and the arrow keys keep the selected row in view; before, rows past the window edge could not be reached.
+- Every text in `diff` meets 4.5:1 contrast in the light and dark themes: the gutter, file and hunk headers, status row and changed lines use stronger gray and hue steps.
 - Dragging a splitter handle or pressing its arrow keys resizes the panes; before, the panes did not move.
 - A splitter drag on panes below their minimum sizes no longer panics.
 - Drag-selecting text repaints only the frame instead of laying out the whole tree, so each pointer move costs about 0.42 times as much.
+- Two hosts on one thread, such as two windows or an app and a test harness, no longer take each other's focus requests, announcements, dialogs, pending theme or open popups when these are made while a host runs.
 
 ### Added
 
+- `CommandScene::glyph_runs()` returns the text runs of a scene in paint order.
+- `CommandScene::find_text` is public without feature `kittest`.
+- `Icon::Columns2`, the Lucide `columns-2` icon, for a split-pane control.
+- `Session::command` starts a `std::process::Command` in a pseudo-terminal with its arguments, environment and working directory.
 - `View` and `view!`: a widget tree in a `.sigil` file that the running app reloads on save, with no rebuild. A mistake keeps the previous screen and shows the line and column.
 - `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
-- A `Harness` runs the design rules when it is dropped. See `FlawKind`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.
+- A `Harness` runs the design rules when it is dropped. See `Flaw`, `Issue`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.
 - Keyframe animations: `Paint::animate(Keyframes)`, with `Keyframes` stops, per-stop easing, iterations, `reverse` and `alternate`, and the Tailwind `spin`, `ping`, `pulse` and `bounce` presets. `Property` names the animated value.
-- CSS-style transitions on `Paint`: `transition`, `transition_all`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease` and `delay`.
+- CSS-style transitions: `Paint::transition(Transition)`, with `Transition::new`, `all`, `colors`, `opacity` and `transform`, and the `duration`, `ease` and `delay` setters.
 - Vector paths draw on the GPU through `vello_gpu` and on the CPU through `vello_cpu` instead of a tiny-skia bitmap. `PathNode` gains `even_odd`, `cap(StrokeCap)`, `join(StrokeJoin)` and `dash`; `scene::StrokeCap` and `scene::StrokeJoin` are new.
 - Vega-Lite fences in a window render through the official vega 6.4.0 and vega-lite 6.5.0 running in an embedded QuickJS, with a 2 s deadline, a 256 MB heap cap and no network; the native mapping is the fallback and the terminal path. The figure is named by the spec title and described by its axis titles.
 - `ChartBuilder::horizontal()` lays bars along rows.
 - `Easing::CubicBezier`, `Easing::cubic_bezier` and the `Easing::IN`, `OUT` and `IN_OUT` curves.
-- Radial and conic background gradients: `Paint::bg_radial(Radial)` with `RadialExtent`, `Paint::bg_conic(Conic)`, `Paint::bg_linear(GradientAxis)`, the `from`, `via` and `to` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
+- Radial and conic background gradients: `Paint::background(Background::radial(Radial))` with `RadialExtent`, `Paint::bg(Background::conic(Conic))`, `Paint::bg(Background::linear(GradientAxis))`, the `start`, `middle` and `end` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
 - `Paint::bg_clip_text` paints the background gradient through the glyphs; `Paint::bg_image` tiles an image behind the content.
 - `Paint::border_dashed`, `border_dotted` and `border_solid`; dashes follow rounded corners.
 - `Paint::clip_path(ClipShape)` clips a node, its background and its children to an inset, circle, ellipse or polygon, and pointer hits outside the shape miss.
@@ -249,7 +352,7 @@ First public release.
 - Keyed collections through `for_each`, preserving each item's node and state while its key remains.
 - Async work through `task`, `task_with`, and `spawn`, with reactive status and cancellation for tasks. `match_status` renders loading, result, and error views.
 - `tasks::blocking` runs blocking work inside async tasks. `signal_writer` and `tasks::on_message` deliver results from other threads to the UI thread.
-- Flexbox and grid layout through `LayoutStyle`, `row`, and `column`, with pixel sizes and text units `rows`, `cols`, and `em`.
+- Flexbox and grid layout through `row`, `column`, `grid`, and the `Widget` layout setters, with pixel sizes and text units `rows`, `cols`, and `em`.
 - Keyboard, pointer, scroll, paste, and gesture handlers through `Widget`. `Shortcut` parses and displays key combinations, with `Shortcut::primary` selecting Command or Control for the platform.
 
 #### Widgets
@@ -304,15 +407,15 @@ First public release.
 
 - Static and reactive text through `text`, accepting strings, signals, or closures, with optional single-line rendering.
 - Text shaping, bidirectional text, and IME composition for text inputs.
-- Selectable text through `Widget::selectable_text`, with clipboard-result callbacks through `on_selection_copy`.
+- Selectable text through `Widget::selectable_text`, with clipboard-result callbacks through `Widget::selection_copy`.
 - Syntax highlighting through `highlight` for Rust, shell, TOML, JSON, Python, JavaScript, TypeScript, Go, C/C++, YAML, CSS, HTML, SQL, Markdown, and diffs.
 
 #### Animation
 
 - Spring and tween style transitions, chosen by `Easing`.
 - Style transitions and animated appearance or disappearance through `transition` and `presence`.
-- Continuous motion through `animation_runtime::clock`, a reactive elapsed-time clock that advances on painted frames.
-- Reduced-motion preferences through `animation_runtime::reduced_motion`, with OS defaults and an `AppConfig::reduced_motion` override.
+- Continuous motion through `animation::clock`, a reactive elapsed-time clock that advances on painted frames.
+- Reduced-motion preferences through `animation::reduced_motion`, with OS defaults and an `AppConfig::reduced_motion` override.
 
 #### Window host
 

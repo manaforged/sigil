@@ -1,25 +1,27 @@
 use super::*;
+use crate::widgets::Layout;
 
 #[test]
-fn viewport_fill_sets_root_dimensions_to_fill() {
-    use crate::layout::Dimension;
+fn fill_sets_root_dimensions_to_fill() {
+    use crate::layout::Length;
+    use crate::widgets::Widget;
     Owner::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
-        let root = cx.add(virtual_list(items, |_, _| container()).viewport_fill());
+        let root = cx.add(virtual_list(items, |_, _| container()).fill());
         let style = cx
             .get(root)
             .expect("root node")
             .get_extension::<crate::layout::LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
-        assert_eq!(style.data().size.width, Dimension::Fill);
-        assert_eq!(style.data().size.height, Dimension::Fill);
+        assert_eq!(style.data().size.width, Length::Fill);
+        assert_eq!(style.data().size.height, Length::Fill);
     });
 }
 
 #[test]
-fn viewport_fill_tracks_parent_pane_measured_size() {
+fn fill_tracks_parent_pane_measured_size() {
     use crate::geometry::Size;
     use crate::layout::LayoutStyle;
     use crate::widgets::Widget;
@@ -33,7 +35,7 @@ fn viewport_fill_tracks_parent_pane_measured_size() {
                 .child(
                     virtual_list(items, |_, _| container())
                         .row_height(24.0)
-                        .viewport_fill(),
+                        .fill(),
                 ),
         );
         let viewport = cx.first_child(parent).expect("virtual_list root");

@@ -48,7 +48,7 @@ fn button_default() -> Result<(), sigil_kittest::Error> {
 | `Disabled` | No input. |
 | `HoverAfterFrames`, `PressedAfterFrames`, `FocusedAfterFrames` | The same input, then `frames` animation ticks of `dt` seconds. |
 
-`frames: u32::MAX` ticks until every animation settles. If animations are still active after `SETTLE_SAFETY_CAP` (600) frames, the harness returns `Err(Error::Unsettled { .. })`. `InteractionMode::tag()` returns the same tag for a mode and its `AfterFrames` form, so add your own suffix to the golden name for an animated golden.
+`frames: u32::MAX` ticks until every animation settles. If animations are still active after `SETTLE_SAFETY_CAP` (600) frames, the harness returns an `Error` whose `kind()` is `ErrorKind::Unsettled`; `error.is_unsettled()` tests for it. `InteractionMode::tag()` returns the same tag for a mode and its `AfterFrames` form, so add your own suffix to the golden name for an animated golden.
 
 ## Text layout
 
@@ -58,7 +58,11 @@ Layout tests that need a deterministic measure without rendering pass `FakeMeasu
 
 ## No GPU
 
-If no wgpu adapter is available, the harness returns `Err(Error::NoAdapter(_))`. Set `SIGIL_ALLOW_NO_GPU=1` to get `Ok(None)` and skip the check instead. All calls in one test process share one wgpu device (`gpu::shared_device`).
+If no wgpu adapter is available, the harness returns an `Error` whose `kind()` is `ErrorKind::NoAdapter`; `error.is_no_adapter()` tests for it. Set `SIGIL_ALLOW_NO_GPU=1` to get `Ok(None)` and skip the check instead. All calls in one test process share one wgpu device (`gpu::shared_device`).
+
+## Errors
+
+Every fallible call returns `sigil_kittest::Error`. Branch on `error.kind()`, an `ErrorKind`, or on a predicate, and never on the message. `source()` returns the cause, such as the layout or renderer error; the message does not repeat it. A harness step that panics prints the whole chain.
 
 ## Update goldens
 
@@ -101,7 +105,7 @@ The scenarios are `page_scroll`, `modal_table_scroll`, and `hover_sweep`. `SIGIL
 
 ## Raw captures
 
-For renderer tests that inspect pixels, `gpu::render_capture` renders a `CommandScene` into a new texture described by `gpu::Capture` (viewport, pixel size, scale, clear color). `gpu::read_pixels` reads it back as RGBA8 rows, and `gpu::pixel_rgba` returns one pixel. `gpu::create_capture_texture` and `gpu::FORMAT` create a target for custom render paths.
+For renderer tests that inspect pixels, `gpu::render_capture` renders a `CommandScene` into a new texture described by `gpu::Capture`: `Capture::new(viewport, size_px)`, then `.scale(scale)` and `.clear(color)`. `gpu::read_pixels` reads it back as RGBA8 rows, and `gpu::pixel_rgba` returns one pixel. `gpu::create_capture_texture` and `gpu::FORMAT` create a target for custom render paths.
 
 ## License
 

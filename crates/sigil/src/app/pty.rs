@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::events::ModifiersState;
 use crate::reactive::{Signal, signal};
-use crate::style::{Rgba8, TextRun};
+use crate::style::{Color, TextRun};
 use crate::{AppResult, Error};
 
 mod mouse;
@@ -60,6 +60,17 @@ pub struct Session {
     parser: Arc<Mutex<Parser>>,
     colors: Colors,
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
+}
+
+impl core::fmt::Debug for Session {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Session")
+            .field("lines", &self.lines)
+            .field("title", &self.title)
+            .field("bell", &self.bell)
+            .field("exited", &self.exited)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Drop for Session {
@@ -131,7 +142,7 @@ impl Session {
             .is_some_and(|bytes| self.write(&bytes).is_ok())
     }
 
-    pub(crate) fn set_colors(&self, ink: Rgba8, background: Rgba8) {
+    pub(crate) fn set_colors(&self, ink: Color, background: Color) {
         if let Ok(mut colors) = self.colors.lock() {
             *colors = (ink, background);
         }
@@ -150,6 +161,19 @@ impl Session {
     /// Starts the user's login shell in a new pseudo-terminal with `dir` as its working directory.
     pub fn shell_in(dir: &std::path::Path) -> AppResult<Self> {
         Self::start(portable_pty::CommandBuilder::new_default_prog(), Some(dir))
+    }
+
+    /// Starts `command` in a new pseudo-terminal with its program, arguments, environment and working directory.
+    pub fn command(command: &std::process::Command) -> AppResult<Self> {
+        let mut built = portable_pty::CommandBuilder::new(command.get_program());
+        built.args(command.get_args());
+        for (key, value) in command.get_envs() {
+            match value {
+                Some(value) => built.env(key, value),
+                None => built.env_remove(key),
+            }
+        }
+        Self::start(built, command.get_current_dir())
     }
 
     fn start(
@@ -213,7 +237,7 @@ fn prepare(command: &mut portable_pty::CommandBuilder) {
     }
 }
 
-fn default_colors() -> (Rgba8, Rgba8) {
+fn default_colors() -> (Color, Color) {
     crate::style::theme::ambient::ActiveTheme::capture()
         .with(|theme| (theme.on_surface, theme.surface))
 }

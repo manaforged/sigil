@@ -9,7 +9,7 @@ use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
     SceneCommand, Stroke, StrokeAlign, StrokeStyle,
 };
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use smallvec::smallvec;
 
 #[test]
@@ -63,7 +63,7 @@ type RenderCommandScene = fn(
     &mut WgpuRenderer,
     &mut WgpuSurface,
     &CommandScene,
-    Color,
+    Rgba,
     (f32, f32),
 ) -> Result<(), sigil::Error>;
 
@@ -80,7 +80,7 @@ fn gradient() -> LinearGradient {
 
 const fn solid_stroke() -> Stroke {
     Stroke {
-        color: Rgba8 {
+        color: Color {
             r: 230,
             g: 230,
             b: 242,

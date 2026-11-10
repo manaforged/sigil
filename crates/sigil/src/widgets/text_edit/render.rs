@@ -1,4 +1,5 @@
-use crate::animation_runtime::presets;
+use crate::animation::Property;
+use crate::animation::runtime::presets;
 use crate::events::{ModifiersState, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
@@ -15,7 +16,7 @@ use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
     Token, space,
 };
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::{InteractionState, is_primary};
 
@@ -31,7 +32,7 @@ const DEFAULT_ROWS: f32 = 5.0;
 static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
-    Token::SurfaceInset.bg(),
+    Token::SurfaceInset.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
 ];
 static EDIT_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(9)];
@@ -115,7 +116,7 @@ fn edit_inner(
                 .min_size(0.0, 0.0)
                 .padding_x(Space::px(padding_x)),
         )
-        .animate_height(extent)
+        .drive(Property::Height, extent)
         .child(text_box);
     let viewport = container()
         .layout(
@@ -128,7 +129,7 @@ fn edit_inner(
         .size_reactive(runtime.viewport_size)
         .class(Radius::Sm.atom());
     if chrome {
-        viewport.class(Token::Surface.bg())
+        viewport.class(Token::Surface.background())
     } else {
         viewport
     }
@@ -140,7 +141,7 @@ fn edit_inner(
     .child(body)
 }
 
-static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
+static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.background()];
 const CARET_W: f32 = 1.5;
 const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
 
@@ -298,7 +299,7 @@ fn accessible_label(placeholder: &str) -> String {
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
-    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(0)];
+    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.background(), StyleAtom::BorderWidth(0)];
     if !chrome {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }

@@ -184,7 +184,7 @@ pub(super) fn apply_bound_scroll(axes: BuildAxes, initial: Option<ScrollAnchor>,
 pub(super) fn attach_wheel(root: NodeBuilder, axes: BuildAxes) -> NodeBuilder {
     let scroll_y = axes.scroll_y;
     let scroll_x = axes.scroll_x;
-    root.on_scroll(move |ev| {
+    root.scroll(move |ev| {
         let y = WheelAxis {
             offset: scroll_y,
             viewport: viewport_px(axes.viewport.peek(), axes.viewport_height),

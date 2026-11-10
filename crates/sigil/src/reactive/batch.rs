@@ -9,6 +9,12 @@ impl Drop for BatchGuard {
     }
 }
 
+pub(crate) fn settle() {
+    if with_rt(|rt| rt.batch_depth == 0) {
+        batch(|| ());
+    }
+}
+
 /// Group writes into one update.
 pub fn batch<R>(f: impl FnOnce() -> R) -> R {
     let depth = with_rt(|rt| {

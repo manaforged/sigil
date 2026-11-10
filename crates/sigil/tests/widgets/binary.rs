@@ -153,6 +153,44 @@ fn mark_pixels(checked: bool) -> usize {
 }
 
 #[test]
+fn a_checkbox_with_a_signal_label_is_named_by_that_label() {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-signal-label", || {
+        let label = signal(String::from("Restock alerts"));
+        let mut ui = Harness::new(move || checkbox(signal(false)).label(label));
+        assert_eq!(
+            ui.get_by_role(Role::CheckBox, "Restock alerts").name(),
+            Some("Restock alerts")
+        );
+
+        label.set(String::from("Price alerts"));
+        ui.settle();
+        assert_eq!(
+            ui.get_by_role(Role::CheckBox, "Price alerts").name(),
+            Some("Price alerts")
+        );
+    });
+}
+
+#[test]
+fn a_checkbox_with_a_closure_label_is_renamed_with_it() {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-closure-label", || {
+        let label = signal(String::from("Restock alerts"));
+        let mut ui = Harness::new(move || checkbox(signal(false)).label(move || label.get()));
+        assert_eq!(
+            ui.get_by_role(Role::CheckBox, "Restock alerts").name(),
+            Some("Restock alerts")
+        );
+
+        label.set(String::from("Price alerts"));
+        ui.settle();
+        assert_eq!(
+            ui.get_by_role(Role::CheckBox, "Price alerts").name(),
+            Some("Price alerts")
+        );
+    });
+}
+
+#[test]
 fn toggle_click_flips_signal() {
     sigil::reactive::Owner::scope("sigil-widget-toggle-click", || {
         let on = signal(false);
@@ -225,7 +263,7 @@ fn toggle_scene_emits_on_and_off_variants() {
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout recomputes");
         for _ in 0..120 {
-            sigil::animation_runtime::tick(1.0 / 60.0);
+            sigil::animation::tick(1.0 / 60.0);
         }
         let on_colors = rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
@@ -242,11 +280,51 @@ fn toggle_and_checkbox_share_styled_interaction_path() {
     let checkbox_src = include_str!("../../src/widgets/checkbox.rs");
     let toggle_src = include_str!("../../src/widgets/toggle.rs");
 
-    assert!(interaction_src.contains("pub fn style_state"));
-    assert!(interaction_src.contains("pub fn release_pointer"));
+    assert!(interaction_src.contains("fn style_state"));
+    assert!(interaction_src.contains("fn release_pointer"));
     assert!(press_src.contains("interaction.release_pointer"));
     assert!(press_src.contains("interaction.activate_key"));
     assert!(shared_src.contains("binary_style_state"));
     assert!(checkbox_src.contains("binary_style_state"));
     assert!(toggle_src.contains("binary_style_state"));
+}
+
+fn named_by_its_signal_label<N: IntoNode + 'static>(
+    role: Role,
+    [first, second]: [&'static str; 2],
+    build: impl FnOnce(Signal<String>) -> N + 'static,
+) {
+    sigil::reactive::Owner::scope("sigil-widget-signal-label", || {
+        let label = signal(String::from(first));
+        let mut ui = Harness::new(move || build(label));
+        assert_eq!(ui.get_by_role(role, first).name(), Some(first));
+
+        label.set(String::from(second));
+        ui.settle();
+        assert_eq!(ui.get_by_role(role, second).name(), Some(second));
+    });
+}
+
+#[test]
+fn a_gauge_with_a_signal_label_is_named_by_that_label() {
+    named_by_its_signal_label(Role::ProgressIndicator, ["Stock", "Orders"], |label| {
+        gauge(signal(0.5)).label(label)
+    });
+}
+
+#[test]
+fn a_stat_with_a_signal_label_is_named_by_that_label() {
+    named_by_its_signal_label(Role::Group, ["Stock", "Orders"], |label| stat(label, "42"));
+}
+
+#[test]
+fn an_empty_state_with_a_signal_title_is_named_by_that_title() {
+    named_by_its_signal_label(Role::Status, ["No stock", "No orders"], |title| {
+        empty_state(title, "Nothing here yet")
+    });
+}
+
+#[test]
+fn an_avatar_with_signal_initials_is_named_by_them() {
+    named_by_its_signal_label(Role::Image, ["TG", "MK"], avatar);
 }

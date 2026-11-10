@@ -1,5 +1,6 @@
 /// Size step of a control.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ControlSize {
     /// The compact control size.
     Compact,
@@ -7,6 +8,4 @@ pub enum ControlSize {
     Default,
     /// The wide control size.
     Wide,
-    /// The grow control size.
-    Grow,
 }

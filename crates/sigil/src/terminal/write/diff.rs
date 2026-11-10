@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 use super::{AnsiPen, AnsiStyle, CONTINUES, cells, row_bytes, same_cell, same_row};
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::paint::{Cell, Grid};
 use crate::terminal::scroll::Shift;
 
@@ -32,7 +32,12 @@ impl RowDamage {
     }
 }
 
-pub(crate) fn unchanged(prev: &Grid, next: &Grid, damage: Option<&RowDamage>, caps: &Caps) -> bool {
+pub(crate) fn unchanged(
+    prev: &Grid,
+    next: &Grid,
+    damage: Option<&RowDamage>,
+    caps: &Capabilities,
+) -> bool {
     let same = |row: usize| same_row(prev.row(row), next.row(row), caps);
     prev.cols() == next.cols()
         && prev.rows() == next.rows()
@@ -46,7 +51,7 @@ pub(crate) fn dirty(
     out: &mut impl Write,
     prev: &Grid,
     next: &Grid,
-    caps: &Caps,
+    caps: &Capabilities,
     damage: Option<&RowDamage>,
 ) -> io::Result<()> {
     let shift = match damage {
@@ -78,7 +83,7 @@ fn span(
     (old, row): (&[Cell], usize),
     next: &Grid,
     pen: &mut AnsiPen,
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     let new = next.row(row);
     let differs = |index: usize| match (old.get(index), new.get(index)) {

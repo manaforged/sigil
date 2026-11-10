@@ -14,9 +14,10 @@ use sigil::events::{
 };
 use sigil::geometry::{Point, Size};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{Dimension, LayoutEngine, LayoutStyle, Position, TextMeasure};
+use sigil::layout::{LayoutEngine, LayoutStyle, Length, Position, TextMeasure};
 use sigil::prelude::Widget;
 use sigil::style::TextStyle;
+use sigil::widgets::Layout;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(1_000, false);
@@ -231,8 +232,8 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
         .fixed_size(width, height)
         .position(Position::Absolute)
         .with_layout(move |style| {
-            style.inset.left = Dimension::Px(x);
-            style.inset.top = Dimension::Px(y);
+            style.inset.left = Length::Px(x);
+            style.inset.top = Length::Px(y);
         })
 }
 

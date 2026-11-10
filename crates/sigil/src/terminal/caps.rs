@@ -1,5 +1,5 @@
 use crate::app::Ambiguous;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 use crate::terminal::term::{Calibration, ProbeRow};
@@ -47,6 +47,7 @@ pub(crate) const fn ask_cell() -> Result<Option<[u16; 2]>, Busy> {
 
 /// How many colors a terminal shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ColorDepth {
     /// The truecolor color depth.
     Truecolor,
@@ -69,6 +70,7 @@ pub enum Backdrop {
 
 /// The keyboard protocol a terminal speaks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Keyboard {
     /// The legacy keyboard.
     Legacy,
@@ -87,6 +89,7 @@ pub enum ClipRoute {
 
 /// The characters the terminal host draws borders with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Borders {
     /// The rounded borders.
     Rounded,
@@ -107,6 +110,7 @@ pub enum Fills {
 
 /// How the terminal host shows the text cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Cursor {
     /// The bar cursor.
     Bar,
@@ -127,7 +131,7 @@ const DEFAULT_CELL_ASPECT: f32 = 0.5;
 
 /// Terminal capabilities.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Caps {
+pub struct Capabilities {
     /// The color.
     pub color: ColorDepth,
     /// The graphics, if any.
@@ -157,7 +161,7 @@ pub struct Caps {
     /// The backdrop, if any.
     pub backdrop: Option<Backdrop>,
     /// The background color the terminal reported, if it answered.
-    pub background: Option<Rgba8>,
+    pub background: Option<Color>,
     /// The notices.
     pub notices: Notices,
     /// The fills.
@@ -166,7 +170,7 @@ pub struct Caps {
     pub cell: Option<[u16; 2]>,
 }
 
-impl Default for Caps {
+impl Default for Capabilities {
     fn default() -> Self {
         Self {
             color: ColorDepth::Truecolor,
@@ -205,7 +209,7 @@ struct Answers {
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
-    background: Option<Rgba8>,
+    background: Option<Color>,
     truecolor: bool,
     version: Version,
     measured: Calibration,
@@ -214,12 +218,12 @@ struct Answers {
 }
 
 struct Draft {
-    caps: Caps,
+    caps: Capabilities,
     #[cfg(unix)]
     ask: Questions,
 }
 
-impl Caps {
+impl Capabilities {
     /// One cell's width over its height, or 0.5 when the terminal did not report its cell size.
     #[must_use]
     pub fn cell_aspect(&self) -> f32 {
@@ -250,7 +254,7 @@ impl Caps {
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Calibration) {
+fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Capabilities, Calibration) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
@@ -269,13 +273,13 @@ fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Calibratio
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Calibration) {
+const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Capabilities, Calibration) {
     (caps, Calibration::Unmeasured)
 }
 
 #[cfg(unix)]
 impl Draft {
-    fn settle(mut self, answers: &Answers) -> Caps {
+    fn settle(mut self, answers: &Answers) -> Capabilities {
         self.caps.notices.activity = answers.activity;
         self.caps.cell = answers.cell.or(self.caps.cell);
         if self.ask.has(Question::Sync) {

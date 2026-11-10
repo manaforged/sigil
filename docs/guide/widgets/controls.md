@@ -1,6 +1,6 @@
 # Controls
 
-Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, and `radio_group` take the `Widget` sizing methods (`.width()`, `.height()`, `.grow()`, `.padding()`, `.layout()`); `slider` sizes through `.layout()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
+Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
 
 ## button
 
@@ -20,7 +20,7 @@ Key options:
 
 - `.primary()`: solid fill in the primary tone. `.neutral()` (the default) is a soft neutral with a frame. `.destructive()` is solid in the error tone. `.ghost()` drops the frame entirely.
 - `.tone(Tone)`, `.solid()`, `.soft()`: set tone and variant directly.
-- `.size(Size)`: Compact, Default, Wide change height and padding; `Size::Grow` makes the button fill its width at default height.
+- `.size(Size)`: Compact, Default, Wide change height and padding. Add `.fill_width()` to make the button fill its width.
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
 - `.enabled(bool)`: static disable; the node is not focusable.

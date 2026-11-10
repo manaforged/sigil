@@ -23,7 +23,5 @@ pub(crate) fn off(state: State) -> Signal<bool> {
 }
 
 pub(crate) fn node(widget: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width())
-        .child(widget)
+    column().fill_width().gap(Space::None).child(widget)
 }

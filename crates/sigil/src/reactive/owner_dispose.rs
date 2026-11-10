@@ -42,12 +42,14 @@ impl RuntimeState {
     pub(crate) fn remove_effect(&mut self, eff_key: EffectKey) -> Option<OwnerKey> {
         let eff = self.effects.get_mut(eff_key)?;
         let run_owner = eff.run_owner.take();
+        let queued = eff.queued.take();
         for &dep in eff.deps.iter().chain(&eff.prev_deps) {
             unsubscribe(&mut self.signals, dep, eff_key);
         }
         self.effects.remove(eff_key);
-        self.pending.retain(|p| *p != eff_key);
-        self.pending_set.remove(&eff_key);
+        if queued.is_some() {
+            self.pending_len -= 1;
+        }
         self.running.remove(&eff_key);
         run_owner
     }

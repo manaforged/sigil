@@ -2,7 +2,7 @@
 
 use crate::widget_support;
 
-use sigil::animation_runtime::{MotionPrefs, presets, tick};
+use sigil::animation::{MotionPrefs, presets, tick};
 use sigil::events::{Event, EventRouter};
 use sigil::geometry::{Point, Size};
 use sigil::kernel::{Cx, NodeId};
@@ -51,11 +51,11 @@ fn a_style_transition_paints_values_between_base_and_hover_then_settles() {
         let root = cx.add(
             interactive(
                 container()
-                    .bg(Token::Surface)
+                    .background(Token::Surface)
                     .layout(LayoutStyle::block().fixed_size(100.0, 100.0)),
             )
             .opacity(0.5)
-            .transition_preset(presets::DEFAULT)
+            .transition(presets::DEFAULT)
             .hover(|state| state.opacity(1.0)),
         );
         let mut layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

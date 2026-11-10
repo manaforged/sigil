@@ -1,7 +1,7 @@
 use crate::kernel::{DeltaKind, NodeBuilder};
 use crate::reactive::Signal;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ReactivePosition {
     pos: Signal<(f32, f32)>,
 }
@@ -32,7 +32,7 @@ fn publish_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, value: T) 
     changed
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct BoundsReactive {
     bounds: Signal<(f32, f32, f32, f32)>,
 }

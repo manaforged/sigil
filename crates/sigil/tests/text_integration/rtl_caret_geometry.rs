@@ -2,7 +2,7 @@
 
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::text::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
+use sigil::text::{HitPosition, TextAffinity};
 
 const RTL_WORD: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 

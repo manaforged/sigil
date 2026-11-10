@@ -2,7 +2,7 @@ use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, IntoPx, JustifyContent, LayoutStyle, Overflow, rows};
@@ -11,7 +11,7 @@ use crate::style::{
     BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token,
     TransitionId, space,
 };
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -19,7 +19,9 @@ use super::super::layout_ext::LayoutOverrides;
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::shared::{Activate, DIMMED, Press, RELEASE, press, reactive_style_state};
+use super::super::shared::{
+    Activate, DIMMED, Press, RELEASE, caller_style, press, reactive_style_state,
+};
 use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
 #[cfg(test)]
@@ -34,11 +36,11 @@ const LABEL_HEIGHT: f32 = 24.0;
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
-    Token::Field.bg(),
+    Token::Field.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     StyleAtom::BorderToneStep(7),
 ];
-static TRIGGER_DOWN: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static TRIGGER_DOWN: &[StyleAtom] = &[Token::SurfacePressed.background()];
 
 static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
     TRIGGER_BASE,
@@ -54,6 +56,19 @@ pub struct DropdownBuilder {
     on_change: Option<IndexChange>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for DropdownBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("DropdownBuilder")
+            .field("selected", &self.selected)
+            .field("options", &self.options)
+            .field("label", &self.label)
+            .field("disabled", &self.disabled)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A select box.
@@ -194,13 +209,10 @@ fn build_trigger(
             reactive_style_state(interaction, disabled)
         })
         .seal_style();
-    let mut node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
+    let node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
         .child(trigger_label(selected, Rc::clone(options)))
         .child(chevron(ChevronDirection::Down, 16.0));
-    if !styled.is_empty() {
-        node = node.style(styled);
-    }
-    node
+    caller_style(node, styled)
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {

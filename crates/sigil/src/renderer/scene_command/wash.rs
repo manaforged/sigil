@@ -19,7 +19,7 @@ use crate::renderer::scene_instance::{
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::wash_cache::FORMAT;
 use crate::scene::Wash;
-use crate::style::Color;
+use crate::style::Rgba;
 
 impl SceneWalk<'_> {
     /// Draws a wash from its baked texture; false when it must be shaded in place.
@@ -60,7 +60,7 @@ impl SceneWalk<'_> {
         let count = u32::try_from(stops.len()).unwrap_or(u32::MAX);
         let instance = draw_pattern_instance(&draw, 1.0, space, [0, count]).transformed(IDENTITY);
         let ctx = &mut self.ctx;
-        ctx.encoder.clear(&view, Color::rgba(0.0, 0.0, 0.0, 0.0));
+        ctx.encoder.clear(&view, Rgba::new(0.0, 0.0, 0.0, 0.0));
         let stops = FrameUploads::upload_stops(ctx.encoder, &stops, &mut *ctx.stats);
         let instances = ctx.encoder.upload(from_ref(&instance));
         let (buffer, offset, _) = ctx.encoder.uniform(&SceneUniforms {

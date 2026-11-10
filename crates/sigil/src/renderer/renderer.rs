@@ -14,7 +14,7 @@ use crate::geometry::PhysicalSize;
 use crate::hal::Renderer;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::profile::gpu::snapshot;
-use crate::style::Color;
+use crate::style::Rgba;
 
 #[cfg(feature = "desktop")]
 use crate::renderer::device_state::ReadyState;
@@ -34,6 +34,16 @@ pub struct WgpuRenderer {
     retained: Option<crate::renderer::damage::Retained>,
     on_lost: Option<OnLost>,
     device_generation: u64,
+}
+
+impl core::fmt::Debug for WgpuRenderer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("WgpuRenderer")
+            .field("transparent", &self.transparent)
+            .field("last_frame_stats", &self.last_frame_stats)
+            .field("device_generation", &self.device_generation)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for WgpuRenderer {
@@ -229,7 +239,7 @@ impl WgpuRenderer {
         &mut self,
         surface: &mut WgpuSurface,
         scene: &CommandScene,
-        clear_color: Color,
+        clear_color: Rgba,
         viewport: (f32, f32),
     ) -> Result<(), Error> {
         self.recover_lost_device(surface)?;

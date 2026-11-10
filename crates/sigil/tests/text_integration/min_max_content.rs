@@ -8,7 +8,7 @@ use sigil::layout::{TextEngineMeasure, TextMeasure};
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 
-fn make_measurer() -> TextEngineMeasure<OwnedTextEngine> {
+fn make_measurer() -> TextEngineMeasure {
     let engine = Rc::new(OwnedTextEngine::new(TextStyle {
         font_size: 16.0,
         ..TextStyle::default()
@@ -16,11 +16,7 @@ fn make_measurer() -> TextEngineMeasure<OwnedTextEngine> {
     TextEngineMeasure::new(engine)
 }
 
-fn measure_with_space(
-    measurer: &TextEngineMeasure<OwnedTextEngine>,
-    text: &str,
-    space: Size,
-) -> LogicalSize {
+fn measure_with_space(measurer: &TextEngineMeasure, text: &str, space: Size) -> LogicalSize {
     let source = TextContent::Static(text.to_owned());
     measurer.measure(&source, space)
 }

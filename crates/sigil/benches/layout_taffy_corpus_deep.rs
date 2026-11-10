@@ -11,8 +11,8 @@ use std::time::Duration;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, container};
-use sigil::layout::{Dimension, LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::layout::{LayoutEngine, LayoutStyle, Length};
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 use taffy::prelude::*;
 
@@ -138,8 +138,8 @@ fn build_owned_deep_auto() -> impl IntoNode {
 fn owned_deep_auto_node(depth: usize) -> NodeBuilder {
     let mut node = container().layout(
         LayoutStyle::flex_column()
-            .width(Dimension::Auto)
-            .height(Dimension::Auto),
+            .width(Length::Auto)
+            .height(Length::Auto),
     );
     if depth + 1 < DEPTH {
         node = node.child(owned_deep_auto_node(depth + 1));

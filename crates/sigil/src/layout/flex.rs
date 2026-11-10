@@ -9,7 +9,7 @@ use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
 use crate::layout::forest::{
     ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef, SpaceConstraint,
 };
-use crate::layout::style_data::{Dimension, Display, FlexDirection, Position};
+use crate::layout::style_data::{Display, FlexDirection, Length, Position};
 
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
@@ -28,7 +28,7 @@ impl<'a> FlexSolver<'a> {
 
     pub(crate) fn fills_width(&self, node: NodeRef<'_>) -> bool {
         let style = node.style();
-        if style.size.width != Dimension::Auto
+        if style.size.width != Length::Auto
             || matches!(style.display, Display::Grid | Display::None)
         {
             return false;
@@ -50,7 +50,7 @@ impl<'a> FlexSolver<'a> {
                 let child_style = child.style();
                 child_style.display != Display::None
                     && child_style.position != Position::Absolute
-                    && (child_style.size.width == Dimension::Fill
+                    && (child_style.size.width == Length::Fill
                         || (row && child_style.flex_grow > 0.0)
                         || self.fills_width(child))
             });
@@ -65,7 +65,7 @@ impl<'a> FlexSolver<'a> {
             h: definite(avail.h),
         };
         let style = subtree.style();
-        let stretched = style.stretch_width && style.size.width == Dimension::Auto;
+        let stretched = style.stretch_width && style.size.width == Length::Auto;
         let assigned_w =
             (stretched && matches!(avail.w, SpaceConstraint::Definite(_))).then_some(cb.w);
         self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (assigned_w, None))

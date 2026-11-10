@@ -5,7 +5,7 @@ use crate::layout::flex_algorithm::{FlexCtx, layout_item_subtree};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::NodeEdges;
 use crate::layout::style_data::{
-    AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
+    AlignItems, Display, FlexDirection, FlexWrap, JustifyContent, Length, Position, StyleData,
 };
 
 pub(crate) struct FlexArea {
@@ -81,25 +81,25 @@ fn container_ok(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
         && ctx.definite_along(style, ctx.axes.row)
 }
 
-fn zero_lp(value: Dimension) -> bool {
+fn zero_lp(value: Length) -> bool {
     match value {
-        Dimension::Px(px) | Dimension::Percent(px) => px == 0.0,
-        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => value.into_px() == 0.0,
-        Dimension::Auto | Dimension::Fill => false,
+        Length::Px(px) | Length::Percent(px) => px == 0.0,
+        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => value.into_px() == 0.0,
+        Length::Auto | Length::Fill => false,
     }
 }
 
-fn zero_lp_auto(value: Dimension) -> bool {
+fn zero_lp_auto(value: Length) -> bool {
     zero_lp(value)
 }
 
-const fn clamped(value: f32, min: Dimension, max: Dimension) -> f32 {
+const fn clamped(value: f32, min: Length, max: Length) -> f32 {
     let after_min = match min {
-        Dimension::Px(min) => value.max(min),
+        Length::Px(min) => value.max(min),
         _ => value,
     };
     match max {
-        Dimension::Px(max) => after_min.min(max),
+        Length::Px(max) => after_min.min(max),
         _ => after_min,
     }
 }
@@ -126,15 +126,14 @@ impl StyleData {
     fn item_box(&self) -> Option<(f32, f32)> {
         let plain = self.flex_grow <= 0.0
             && self.order == 0
-            && matches!(self.flex_basis, Dimension::Auto)
+            && matches!(self.flex_basis, Length::Auto)
             && !matches!(self.position, Position::Absolute)
             && matches!(
                 self.align_self,
                 None | Some(AlignItems::Start | AlignItems::Stretch)
             )
             && self.margins_zero();
-        let (Dimension::Px(width), Dimension::Px(height)) = (self.size.width, self.size.height)
-        else {
+        let (Length::Px(width), Length::Px(height)) = (self.size.width, self.size.height) else {
             return None;
         };
         #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]

@@ -6,7 +6,7 @@ use crate::geometry::Rect;
 use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
-use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneContext};
+use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
 use crate::widgets::CanvasPaint;
 
 use crate::scene::builder::SceneBuilder;
@@ -103,7 +103,7 @@ fn run<'t>(
 ) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
-    let theme = default_inherited_theme();
+    let theme = crate::style::theme::fallback_theme();
     let inherited = Inherited {
         theme,
         theme_stamp: std::ptr::from_ref(theme) as u64,
@@ -141,7 +141,7 @@ struct EmitWalk<'a, 't> {
 struct Inherited<'t> {
     theme: &'t Theme,
     theme_stamp: u64,
-    text_color: Option<Rgba8>,
+    text_color: Option<Color>,
     text_style: Rc<TextStyle>,
     text_fill: Option<Rc<TextFill>>,
     text_shadows: Option<Rc<[Shadow]>>,
@@ -325,12 +325,6 @@ fn has_laid_child(cx: &Cx, node: &Node) -> bool {
             child.get_extension::<LayoutResult>().is_some() || has_laid_child(cx, child)
         })
     })
-}
-
-fn default_inherited_theme<'theme>() -> &'theme Theme {
-    use std::sync::OnceLock;
-    static DEFAULT: OnceLock<Theme> = OnceLock::new();
-    DEFAULT.get_or_init(Theme::default)
 }
 
 fn is_display_none(node: &Node) -> bool {

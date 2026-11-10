@@ -4,7 +4,7 @@
 
 use crate::layout_stub as stub;
 use sigil::layout::Space;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;
@@ -116,7 +116,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         sigil::profile::enable();
         sigil::profile::reset();
         sigil::profile::begin_frame(sigil::profile::BackendStatus {
-            kind: sigil::profile::BackendKind::Cpu,
+            kind: sigil::profile::Backend::Cpu,
             fallback: sigil::profile::FallbackCause::None,
         });
         pos.set((0.0, -35.0));
@@ -168,7 +168,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         sigil::profile::enable();
         sigil::profile::reset();
         sigil::profile::begin_frame(sigil::profile::BackendStatus {
-            kind: sigil::profile::BackendKind::Cpu,
+            kind: sigil::profile::Backend::Cpu,
             fallback: sigil::profile::FallbackCause::None,
         });
         label.set(String::from("bb"));

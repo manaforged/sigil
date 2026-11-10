@@ -5,7 +5,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
@@ -15,7 +15,7 @@ static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
 static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
-    ROW_SELECTED.bg(),
+    ROW_SELECTED.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Accent8.border(),
     StyleAtom::Shadow(Elevation::Sm),
@@ -28,6 +28,16 @@ pub struct CardBuilder {
     selected: Option<Signal<bool>>,
     activate: Option<Activate>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for CardBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CardBuilder")
+            .field("node", &self.node)
+            .field("selected", &self.selected)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A bordered card.

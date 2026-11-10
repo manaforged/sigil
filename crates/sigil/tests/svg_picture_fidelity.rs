@@ -17,7 +17,7 @@ use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::scene::paint_backdrop;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::{Harness, Query};
 
 type Picture = image::RgbaImage;
@@ -76,7 +76,7 @@ fn capture(ui: &mut Harness, backend: Backend, scale: f32) -> Picture {
             let target = ImageTarget {
                 size: device,
                 viewport,
-                clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+                clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
             };
             render_to_image(ImageRenderer::Cpu(&mut CpuRenderer::new()), &scene, target)
                 .expect("cpu render")

@@ -1,8 +1,7 @@
-use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, ControlSize, LayoutStyle, LogicalKey, NodeBuilder, Paint, Shortcut, Token, Tone,
-    avatar, button, chip, command_menu, container, modal, spacer, status_bar, text, tooltip,
+    AlignItems, ControlSize, LogicalKey, NodeBuilder, Paint, Shortcut, Space, Token, Tone, avatar,
+    button, chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
 };
 use sigil::widgets::ModalBuilder;
 
@@ -10,13 +9,10 @@ use super::data::{Bucket, Section, TEXT_SMALL};
 use super::live::Console;
 
 pub(crate) fn top_bar(console: Console) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Md)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Md)
+        .align_items(AlignItems::Center)
         .child(
             text(move || {
                 let section = console.section.get().label();
@@ -40,7 +36,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
             )
             .tone(move || {
                 if console.paused.get() {
-                    Tone::Warn
+                    Tone::Warning
                 } else {
                     Tone::Success
                 }

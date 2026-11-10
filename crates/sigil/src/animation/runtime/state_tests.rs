@@ -2,10 +2,11 @@ use crate::animation::SpringPreset;
 use crate::reactive::{Owner, signal};
 
 use super::{active_count, tick};
-use crate::animation_runtime::animator::Animator;
-use crate::animation_runtime::config::AnimationConfig;
-use crate::animation_runtime::motion::MotionPrefs;
-use crate::animation_runtime::{clock, running_clocks, tick_clocks};
+use crate::animation::runtime::animator::Animator;
+use crate::animation::runtime::clock::clock;
+use crate::animation::runtime::config::AnimationConfig;
+use crate::animation::runtime::motion_prefs::MotionPrefs;
+use crate::animation::runtime::{running_clocks, tick_clocks};
 
 fn spring(preset: SpringPreset) -> AnimationConfig {
     AnimationConfig::Spring { preset }

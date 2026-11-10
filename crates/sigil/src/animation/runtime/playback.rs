@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use smallvec::SmallVec;
 
+use crate::animation::runtime::motion_prefs::MotionPrefs;
+use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::animation::{Keyframes, KeyframesId};
-use crate::animation_runtime::motion::MotionPrefs;
-use crate::animation_runtime::{AnimationConfig, Animator};
 use crate::reactive::{Signal, signal};
-use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom, StyleEngine};
+use crate::style::{Color, ColorAtom, ColorAtomKind, NumericAtomKind, StyleAtom, StyleEngine};
 
 struct Playing {
     id: KeyframesId,
@@ -17,7 +17,7 @@ struct Playing {
 pub(crate) struct Player {
     time: Signal<f32>,
     playing: Option<Playing>,
-    colors: SmallVec<[(ColorAtom, Rgba8); 4]>,
+    colors: SmallVec<[(ColorAtom, Color); 4]>,
 }
 
 pub(crate) fn animation(atoms: &[StyleAtom]) -> Option<KeyframesId> {
@@ -88,7 +88,7 @@ impl Player {
         keyframes.sample(progress, kind, underlying)
     }
 
-    pub(crate) fn color(&self, kind: ColorAtomKind, underlying: Rgba8) -> Option<Rgba8> {
+    pub(crate) fn color(&self, kind: ColorAtomKind, underlying: Color) -> Option<Color> {
         let (keyframes, progress) = self.progress()?;
         let resolve = |atom: ColorAtom| {
             self.colors

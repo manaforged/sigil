@@ -1,12 +1,15 @@
+use crate::animation::Property;
 use crate::events::{ScrollDelta, ScrollEvent};
 use crate::icons::Icon;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal, untrack};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
-use crate::widgets::{ModalBuilder, Widget, button, icon_button, modal};
+use crate::widgets::{Layout, ModalBuilder, Widget, button, icon_button, modal};
 
 use super::picture;
 
@@ -93,10 +96,10 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
     let drawn_width = derived(move || width * fit.get() * zoom.get());
     let drawn_height = derived(move || height * fit.get() * zoom.get());
     let picture = picture
-        .animate_width(drawn_width)
-        .animate_height(drawn_height)
-        .animate_translate_x(camera.x)
-        .animate_translate_y(camera.y);
+        .drive(Property::Width, drawn_width)
+        .drive(Property::Height, drawn_height)
+        .drive(Property::TranslateX, camera.x)
+        .drive(Property::TranslateY, camera.y);
     let area = container()
         .layout(
             LayoutStyle::flex_row()
@@ -104,10 +107,10 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .animate_width(area_width)
-        .animate_height(area_height)
+        .drive(Property::Width, area_width)
+        .drive(Property::Height, area_height)
         .hittable(true)
-        .on_scroll(move |event| camera.wheel(event))
+        .scroll(move |event| camera.wheel(event))
         .child(picture);
     pan(area, camera)
 }
@@ -140,7 +143,7 @@ fn controls(camera: Camera) -> NodeBuilder {
         )
         .child(
             icon_button(Icon::ZoomOut, move || camera.scale(-1.0))
-                .accessible("Zoom out")
+                .accessible(theme_string_once(StringKey::ZoomOut))
                 .size(ControlSize::Compact),
         )
         .child(
@@ -150,7 +153,7 @@ fn controls(camera: Camera) -> NodeBuilder {
         )
         .child(
             icon_button(Icon::ZoomIn, move || camera.scale(1.0))
-                .accessible("Zoom in")
+                .accessible(theme_string_once(StringKey::ZoomIn))
                 .size(ControlSize::Compact),
         )
         .child(

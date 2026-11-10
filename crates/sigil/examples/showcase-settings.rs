@@ -11,8 +11,8 @@ fn main() -> sigil::AppResult<()> {
 
 fn navigation() -> impl IntoNode {
     sidebar(
-        container()
-            .layout(LayoutStyle::flex_column())
+        column()
+            .gap(Space::None)
             .child(section_label("Settings"))
             .child(list_row(true, "General", ListRowSlots::default()))
             .child(list_row(false, "Appearance", ListRowSlots::default()))
@@ -24,8 +24,8 @@ fn navigation() -> impl IntoNode {
 fn profile_section() -> NodeBuilder {
     let name = signal(String::from("Ada Lovelace"));
     let language = signal(0_usize);
-    container()
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)))
+    column()
+        .gap(rows(1.0))
         .child(section_label("Profile"))
         .child(field("Display name", text_field(name).placeholder("Name")))
         .child(field(
@@ -40,8 +40,8 @@ fn profile_section() -> NodeBuilder {
 fn appearance_section() -> NodeBuilder {
     let theme = signal(String::from("system"));
     let scale = signal(100.0_f32);
-    container()
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)))
+    column()
+        .gap(rows(1.0))
         .child(section_label("Appearance"))
         .child(field(
             "Theme",
@@ -62,8 +62,8 @@ fn appearance_section() -> NodeBuilder {
 fn notifications_section() -> NodeBuilder {
     let desktop = signal(true);
     let digest = signal(false);
-    container()
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)))
+    column()
+        .gap(rows(1.0))
         .child(section_label("Notifications"))
         .child(field(
             "Desktop alerts",
@@ -76,38 +76,40 @@ fn notifications_section() -> NodeBuilder {
 }
 
 fn footer() -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(cols(1.0))
-                .padding(cols(2.0))
-                .justify_content(JustifyContent::End),
-        )
+    row()
+        .gap(cols(1.0))
+        .padding(cols(2.0))
+        .justify_content(JustifyContent::End)
+        .align_items(AlignItems::Stretch)
         .child(button("Cancel"))
         .child(button("Save").primary())
 }
 
 fn content() -> NodeBuilder {
-    container()
+    column()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill())
+        .fill()
+        .gap(Space::None)
         .child(
             scroll(
-                container()
-                    .layout(LayoutStyle::flex_column().gap(rows(2.0)).padding(cols(3.0)))
+                column()
+                    .gap(rows(2.0))
+                    .padding(cols(3.0))
                     .child(profile_section())
                     .child(appearance_section())
                     .child(notifications_section()),
             )
             .fill(),
         )
-        .child(divider_horizontal())
+        .child(divider(Orientation::Horizontal))
         .child(footer())
 }
 
 pub(crate) fn app() -> impl IntoNode {
-    container()
-        .layout(LayoutStyle::flex_row().fill())
+    row()
+        .fill()
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
         .child(navigation())
         .child(content())
 }

@@ -30,14 +30,14 @@ fn a_one_row_braille_graph_sets_the_right_column_for_a_full_value() {
 #[test]
 fn adjacent_cells_of_one_tone_share_a_run() {
     let line = sparkline([1.0, 1.0, 1.0]).range(0.0, 1.0).tones([
-        Some(Tone::Warn),
-        Some(Tone::Warn),
+        Some(Tone::Warning),
+        Some(Tone::Warning),
         None,
     ]);
     assert_eq!(
         line.runs(),
         vec![vec![
-            (Tone::Warn, SparkLayer::Edge, "██".to_owned()),
+            (Tone::Warning, SparkLayer::Edge, "██".to_owned()),
             (Tone::Primary, SparkLayer::Edge, "█".to_owned()),
         ]]
     );
@@ -48,7 +48,7 @@ fn a_shaded_graph_inks_only_the_top_cell_of_each_column_solid() {
     let line = sparkline([0.0, 1.0, 0.5])
         .range(0.0, 1.0)
         .rows(2)
-        .fill(SparkFill::Shade);
+        .area(SparkFill::Shade);
     assert_eq!(
         line.runs(),
         vec![

@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sigil::ErrorKind;
 use sigil::events::{
-    Event, GestureEvent, GestureKind, LogicalKey, ModifiersState, ScrollPhase, Shortcut,
+    Event, Gesture, GestureEvent, LogicalKey, ModifiersState, ScrollPhase, Shortcut,
 };
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -37,7 +37,7 @@ fn a_gesture_reaches_the_node_under_it() {
         let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(move || {
             let record = Rc::clone(&record);
-            container().layout(LayoutStyle::block().fill()).on_gesture(
+            container().layout(LayoutStyle::block().fill()).gesture(
                 move |event: &mut GestureEvent| {
                     record.borrow_mut().push(event.kind);
                 },
@@ -45,11 +45,11 @@ fn a_gesture_reaches_the_node_under_it() {
         });
         host.grid([], 20, 6).unwrap();
         let pinch = Event::gesture(
-            GestureKind::Pinch(0.25),
+            Gesture::Pinch(0.25),
             ScrollPhase::Moved,
             sigil::terminal::cell_point(4, 2),
         );
         host.grid([pinch], 20, 6).unwrap();
-        assert_eq!(*seen.borrow(), vec![GestureKind::Pinch(0.25)]);
+        assert_eq!(*seen.borrow(), vec![Gesture::Pinch(0.25)]);
     });
 }

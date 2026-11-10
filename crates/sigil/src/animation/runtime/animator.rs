@@ -1,10 +1,11 @@
 use crate::reactive::{Runtime, Signal};
 
-use crate::animation_runtime::config::AnimationConfig;
-use crate::animation_runtime::motion::MotionPrefs;
-use crate::animation_runtime::state::{self, AnimatorId};
+use crate::animation::runtime::config::AnimationConfig;
+use crate::animation::runtime::motion_prefs::MotionPrefs;
+use crate::animation::runtime::state::{self, AnimatorId};
 
 /// Animate a signal toward targets.
+#[derive(Debug)]
 pub struct Animator {
     id: Option<AnimatorId>,
     signal: Signal<f32>,

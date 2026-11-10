@@ -44,6 +44,17 @@ impl TextContent {
         }
     }
 
+    pub(crate) fn hash_into(&self, hasher: &mut impl std::hash::Hasher) {
+        use std::hash::Hash as _;
+        match self {
+            Self::Static(value) => value.hash(hasher),
+            Self::Reactive(signal) => signal
+                .try_peek_with(|value| value.hash(hasher))
+                .unwrap_or_else(|| "".hash(hasher)),
+            Self::Compute(compute) => compute().hash(hasher),
+        }
+    }
+
     /// Writes the current text to `out` and returns whether it changed.
     pub fn refresh(&self, out: &mut String) -> bool {
         match self {
@@ -53,11 +64,19 @@ impl TextContent {
         }
     }
 
-    fn into_live(self) -> Self {
+    pub(crate) fn live(&self) -> Option<Signal<String>> {
         match self {
-            Self::Compute(compute) => Self::Reactive(derived(move || compute())),
-            other => other,
+            Self::Static(_) => None,
+            Self::Reactive(signal) => Some(*signal),
+            Self::Compute(compute) => {
+                let compute = Rc::clone(compute);
+                Some(derived(move || compute()))
+            }
         }
+    }
+
+    fn into_live(self) -> Self {
+        self.live().map_or(self, Self::Reactive)
     }
 }
 
@@ -99,6 +118,7 @@ impl<F: Fn() -> String + 'static> From<F> for TextContent {
 }
 
 /// Builder of a text node.
+#[derive(Debug)]
 pub struct TextBuilder {
     node: NodeBuilder,
     hooks: NodeHooks,
@@ -210,19 +230,16 @@ impl TextBuilder {
         cx.add(self)
     }
 
-    kittest_pub! {
-        /// Sets the runs.
-        #[must_use]
-        #[doc(hidden)]
-        pub fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
-            if runs.is_empty() {
-                return self;
-            }
-            let runs = crate::style::TextRuns(runs.into());
-            self.mutate(move |node| {
-                node.attach(runs);
-            })
+    /// Sets the runs.
+    #[must_use]
+    pub(crate) fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
+        if runs.is_empty() {
+            return self;
         }
+        let runs = crate::style::TextRuns(runs.into());
+        self.mutate(move |node| {
+            node.attach(runs);
+        })
     }
 
     /// Sets the mutate.

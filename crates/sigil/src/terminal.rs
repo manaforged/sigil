@@ -29,7 +29,7 @@ mod write;
 
 pub use access::{Access, FocusCursor};
 pub use backdrop::backdrop;
-pub use caps::{Backdrop, Borders, Caps, ColorDepth, Cursor, Fills, Keyboard, Notify};
+pub use caps::{Backdrop, Borders, Capabilities, ColorDepth, Cursor, Fills, Keyboard, Notify};
 kittest_pub! {
     #[doc(hidden)]
     pub use glyphs::Glyphs;
@@ -37,10 +37,6 @@ kittest_pub! {
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use glyphs::glyphs;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use graphics::{base64, detect};
-}
 pub use graphics::{Mux, Protocol};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]

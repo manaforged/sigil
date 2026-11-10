@@ -45,7 +45,7 @@ impl Shadow {
 
     /// Creates a shadow with no offset.
     #[must_use]
-    pub fn glow(color: crate::style::Rgba8, spread: f32, blur: f32) -> Self {
+    pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
         let c = [
             srgb_channel_to_linear(color.r),
             srgb_channel_to_linear(color.g),

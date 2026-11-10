@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint};
-use crate::style::Rgba8;
+use crate::style::Color;
 
 use super::fallback::Fallback;
 use super::paint::{Fill, alpha};
@@ -190,9 +190,9 @@ fn unpremultiplied(stops: &[Stop]) -> Vec<Stop> {
     clippy::cast_sign_loss,
     reason = "each channel is clamped to 0..=1 before the cast"
 )]
-fn bytes([r, g, b, a]: [f32; 4]) -> Rgba8 {
+fn bytes([r, g, b, a]: [f32; 4]) -> Color {
     let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-    Rgba8 {
+    Color {
         r: byte(r),
         g: byte(g),
         b: byte(b),

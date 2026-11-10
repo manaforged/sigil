@@ -1,5 +1,5 @@
 use super::*;
-use crate::layout::style_data::{BoxSizing, Dimension};
+use crate::layout::style_data::{BoxSizing, Length};
 
 impl ResolvedEdges {
     pub(crate) const fn inline(self) -> f32 {
@@ -13,9 +13,9 @@ impl ResolvedEdges {
 
 #[test]
 fn resolve_dim_handles_px_percent_and_auto() {
-    assert_eq!(resolve_dim(Dimension::Px(120.0), 500.0), Some(120.0));
-    assert_eq!(resolve_dim(Dimension::Percent(0.25), 800.0), Some(200.0));
-    assert!(resolve_dim(Dimension::Auto, 100.0).is_none());
+    assert_eq!(resolve_dim(Length::Px(120.0), 500.0), Some(120.0));
+    assert_eq!(resolve_dim(Length::Percent(0.25), 800.0), Some(200.0));
+    assert!(resolve_dim(Length::Auto, 100.0).is_none());
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn clamp_applies_max_then_min_floor() {
 
 #[test]
 fn box_sizing_decides_chrome_addition() {
-    let px = Dimension::Px(100.0);
+    let px = Length::Px(100.0);
     assert_eq!(
         dim_to_border_box(px, 0.0, 20.0, BoxSizing::BorderBox),
         Some(100.0)

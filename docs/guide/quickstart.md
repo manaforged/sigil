@@ -26,8 +26,8 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(Space::Xxl))
-        .bg(Token::Surface)
+        .padding(Space::Xxl)
+        .background(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -76,17 +76,18 @@ The tree is the same. The host changes.
 
 ## Styling
 
-Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes through `LayoutStyle`. A misspelt name does not compile.
+Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes through the layout setters that every builder has, such as `padding`, `gap`, and `width`. A misspelt name does not compile.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 container()
-    .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Sm))
-    .bg(Token::Overlay)
-    .border_w(1)
+    .padding(Space::Lg)
+    .gap(Space::Sm)
+    .background(Token::Overlay)
+    .border_width(1)
     .border_color(Token::OverlayBorder)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
     .shadow(Elevation::Md)
     .child(text("Title").text_role(TextRole::Title).text_color(Token::OnSurface))
     .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
@@ -97,23 +98,25 @@ container()
 
 | Method | Sets |
 | --- | --- |
-| `bg` | Background color |
+| `background` | Background: a color, or a `Background::linear`, `radial`, or `conic` gradient; a later `background` replaces the earlier one |
 | `text_color` | Text color |
-| `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
-| `rounded(Radius)` | Corner radius |
+| `border_color`, `border_width`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
+| `radius(Radius)` | Corner radius |
 | `shadow(Elevation)` | Drop shadow |
 | `opacity(f32)` | Opacity, 0.0 to 1.0 |
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
-| `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
+| `line_height(px)`, `letter_spacing(em)`, `tabular_nums` | Text metrics: line height in pixels, letter spacing in ems |
 | `underline`, `line_through` | Text decoration |
-| `transition`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease`, `delay` | Style transitions, as in Tailwind |
+| `transition(Transition)` | Style transitions, as in Tailwind; `Transition::new()`, `all()`, `colors()`, `opacity()`, and `transform()` choose the properties, and `duration`, `ease`, and `delay` set the timing |
 | `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
 
-Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap. Put all layout for one node in one `LayoutStyle` chain.
+`class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
+
+Spacing and size numbers are pixels. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
 
 ### Typed theme tokens
 
-`Token` names every theme color. `bg`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
+`Token` names every theme color. `background`, `text_color`, and `border_color` take a `Token` or a `Color`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
 
 | Group | Tokens |
 | --- | --- |
@@ -123,7 +126,7 @@ Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, si
 | Borders | `Border`, `BorderStrong` |
 | Focus ring | `Ring` |
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
-| Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warn1`.., `Error1`.., `Info1`.. |
+| Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warning1`.., `Error1`.., `Info1`.. |
 
 `Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
 
@@ -139,11 +142,11 @@ Shared metrics:
 | Disabled | opacity | 50 % |
 | Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider, `interactive` |
-| Controls | `Metrics::current()` | `control_height`, `padding`, `gap` per `Size` |
+| Controls | `Metrics::current()` | `control_height`, `control_padding`, `control_gap` per `Size` |
 
 A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
 
-A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `set_theme` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
+A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `Theme::apply` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
 
 ## Interaction
 
@@ -154,11 +157,13 @@ Static styling works on any node. Interaction styling goes through `interactive(
 # let _ = {
 interactive(
     container()
-        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(Space::Xxl))
-        .bg(Token::Accent)
-        .rounded(Radius::Md),
+        .width(328.0)
+        .height(304.0)
+        .padding(Space::Xxl)
+        .background(Token::Accent)
+        .radius(Radius::Md),
 )
-.hover(|s| s.bg(Token::AccentHover))
+.hover(|s| s.background(Token::AccentHover))
 # };
 ```
 

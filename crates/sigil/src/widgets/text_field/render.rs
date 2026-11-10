@@ -2,17 +2,17 @@ use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::TransitionId;
 use crate::style::{
-    ColorAtom, ControlSize, Metrics, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay,
+    Color, ColorAtom, ControlSize, Metrics, ReactiveStateSlot, StateSlot, StyleAtom, StyleOverlay,
     space,
 };
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::InteractionState;
 
@@ -24,7 +24,7 @@ use super::super::shared::{FIELD_VARIANT, binary_style_state};
 const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
-static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
+static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorAtom::Color(Color {
     r: 211,
     g: 47,
     b: 47,
@@ -125,7 +125,7 @@ fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {
         _ if adorned => LayoutStyle::flex_row()
             .grow(1.0)
             .shrink(1.0)
-            .min_size(0.0, crate::layout::Dimension::Auto),
+            .min_size(0.0, crate::layout::Length::Auto),
         Some(w) => LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
         None => LayoutStyle::flex_row().fill_width().grow(1.0),
     };

@@ -3,12 +3,12 @@
 use std::collections::HashSet;
 
 use sigil::prelude::*;
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
-    combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, markdown,
-    number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
-    toggle, virtual_list,
+    combobox, date_field, divider, dot, dropdown, gauge, icon_button, markdown, number_field,
+    progress, radio_group, scroll, slider, table, tabs, text_edit, text_field, toggle,
+    virtual_list,
 };
 use sigil_kittest::{Harness, InteractionMode};
 
@@ -84,7 +84,7 @@ fn inputs() -> Vec<Case> {
         (
             "color_field",
             Box::new(|| {
-                color_field(signal(Rgba8 {
+                color_field(signal(Color {
                     r: 128,
                     g: 64,
                     b: 200,
@@ -120,8 +120,8 @@ fn pickers() -> Vec<Case> {
 
 fn data() -> Vec<Case> {
     vec![
-        ("dot", Box::new(|| dot(Tone::Warn))),
-        ("divider", Box::new(divider_horizontal)),
+        ("dot", Box::new(|| dot(Tone::Warning))),
+        ("divider", Box::new(|| divider(Orientation::Horizontal))),
         ("label", Box::new(|| text("Field").nowrap())),
         ("text", Box::new(|| text("Body copy"))),
         (

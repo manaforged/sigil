@@ -1,6 +1,4 @@
 use super::*;
-use crate::hal::ParagraphMetrics;
-use crate::style::StyledTextEngine as _;
 use crate::style::TextLineHeight;
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;

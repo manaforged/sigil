@@ -3,7 +3,7 @@ use crate::reactive::Reactive;
 use crate::style::strings::StringKey;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
@@ -12,14 +12,14 @@ use crate::style::TransitionId;
 use crate::style::{
     ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
     BoolChange, CONTROL_INSET, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state,
-    control_row, control_surface, noop_bool_change, press, static_label,
+    control_root, control_row, control_surface, noop_bool_change, press,
 };
 
 /// Builder of a switch.
@@ -33,6 +33,19 @@ pub struct ToggleBuilder {
     style: Style,
 }
 
+impl core::fmt::Debug for ToggleBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ToggleBuilder")
+            .field("on", &self.on)
+            .field("label", &self.label)
+            .field("accessible", &self.accessible)
+            .field("disabled", &self.disabled)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style", &self.style)
+            .finish_non_exhaustive()
+    }
+}
+
 builder_impls!([] ToggleBuilder: paint(style), widget, states(style), node);
 
 static EMPTY_BASE: &[StyleAtom] = &[];
@@ -42,37 +55,37 @@ const CELL_TRACK_ON: &str = "[ ■]";
 const CELL_TRACK_OFF: &str = "[■ ]";
 static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
-    Token::Accent.bg(),
+    Token::Accent.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
 ];
 static TOGGLE_ON_HOVER: &[StyleAtom] = &[
-    Token::AccentHover.bg(),
+    Token::AccentHover.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
 ];
 static TOGGLE_ON_DOWN: &[StyleAtom] = &[
-    Token::AccentHover.bg(),
+    Token::AccentHover.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF: &[StyleAtom] = &[
-    Token::Gray6.bg(),
+    Token::Gray6.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_HOVER: &[StyleAtom] = &[
-    Token::Gray7.bg(),
+    Token::Gray7.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_DOWN: &[StyleAtom] = &[
-    Token::Gray7.bg(),
+    Token::Gray7.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
-    Token::Gray4.bg(),
+    Token::Gray4.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
-static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.bg()];
-static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.bg()];
+static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.background()];
+static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.background()];
 static CELL_ON: &[StyleAtom] = &[Token::Accent.text()];
 static CELL_OFF: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
@@ -126,15 +139,11 @@ impl ToggleBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self.on_change.clone().unwrap_or_else(noop_bool_change);
-        let has_label = self.label.is_some();
-        let user_overlay = self.style.take_state_overlay();
-        let mut node = self.base_node(interaction, on_change, user_overlay);
-        if !self.style.is_empty() {
-            node = node.style(self.style);
-        }
-        node.with(toggle_layout(has_label))
+        let style = std::mem::take(&mut self.style);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, on_change, overlay)
+        })
     }
 
     fn base_node(
@@ -145,14 +154,11 @@ impl ToggleBuilder {
     ) -> NodeBuilder {
         let on = self.on;
         let disabled = self.disabled;
+        let accessible = self.accessible.clone().map(TextContent::Static);
         let node = container()
             .role(Role::Switch)
             .label(accessible_name_or(
-                self.accessible
-                    .clone()
-                    .or_else(|| static_label(self.label.as_ref()))
-                    .map(TextContent::Static)
-                    .as_ref(),
+                accessible.as_ref().or(self.label.as_ref()),
                 StringKey::Toggle,
             ))
             .checked(on)
@@ -182,7 +188,7 @@ fn toggle_layout(has_label: bool) -> LayoutStyle {
     let layout = control_row(LayoutStyle::flex_row())
         .height(height)
         .shrink(0.0)
-        .gap(Space::px(metrics.gap(ControlSize::Default)))
+        .gap(Space::px(metrics.control_gap(ControlSize::Default)))
         .align_items(AlignItems::Center);
     if has_label || CellForm::new(false, true).pick() {
         layout
@@ -223,7 +229,7 @@ fn toggle_track(
                 .padding(Space::px(3.0))
                 .align_items(AlignItems::Center),
         )
-        .style(Style::new().radius(10))
+        .style(Style::new().radius_px(10))
         .class(TOGGLE_ANIM_BASE)
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
@@ -231,7 +237,7 @@ fn toggle_track(
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(14.0, 14.0))
-                .style(Style::new().radius(7))
+                .style(Style::new().radius_px(7))
                 .class(TOGGLE_ANIM_BASE)
                 .style_reactive(move || if on.get() { THUMB_ON } else { THUMB_OFF }),
         )

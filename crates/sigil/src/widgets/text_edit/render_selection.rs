@@ -4,12 +4,12 @@ use crate::kernel::{NodeBuilder, fragment};
 use crate::layout::LayoutStyle;
 use crate::layout::with_text_geometry;
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::TextEditRuntime;
 
 static SELECTION_ATOMS: &[StyleAtom] =
-    &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(SELECTION_FILL))];
+    &[StyleAtom::BackgroundColor(ColorAtom::Color(SELECTION_FILL))];
 
 pub(super) fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
     let runtime = runtime.clone();

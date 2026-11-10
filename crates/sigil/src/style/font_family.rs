@@ -1,5 +1,6 @@
 /// Font family for `font_family`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FontFamily {
     /// The sans font family.
     Sans,

@@ -7,6 +7,7 @@ use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::shared::state_surface;
 
 /// Builder of an interactive node.
+#[derive(Debug)]
 pub struct InteractiveBuilder {
     inner: NodeBuilder,
     style: Style,

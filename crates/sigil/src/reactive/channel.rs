@@ -17,10 +17,17 @@ pub struct EventChannel<T: 'static> {
     inner: Rc<RefCell<ChannelInner<T>>>,
 }
 
+impl<T: 'static> core::fmt::Debug for EventChannel<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("EventChannel").finish_non_exhaustive()
+    }
+}
+
 impl<T: Clone + 'static> EventChannel<T> {
     kittest_pub! {
         /// Creates an event channel.
         #[must_use]
+        #[doc(hidden)]
         pub fn new() -> Self {
             Self {
                 inner: Rc::new(RefCell::new(ChannelInner {
@@ -33,6 +40,7 @@ impl<T: Clone + 'static> EventChannel<T> {
 
     kittest_pub! {
         /// Sends `value` to each subscriber.
+        #[doc(hidden)]
         pub fn emit(&self, value: T) {
             let subs: Vec<Rc<dyn Fn(T)>> = self
                 .inner

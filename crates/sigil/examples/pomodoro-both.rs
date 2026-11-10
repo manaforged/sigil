@@ -66,8 +66,9 @@ fn controls(timer: Timer, settings_open: Signal<bool>) -> NodeBuilder {
         }
         .to_string()
     });
-    container()
-        .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+    row()
+        .gap(cols(1.0))
+        .align_items(AlignItems::Stretch)
         .child(
             button(start_label)
                 .primary()
@@ -114,13 +115,10 @@ pub(crate) fn app_tree() -> impl IntoNode {
     let count = derived(move || format!("Sessions: {}", timer.sessions.get()));
     let space = Shortcut::plain(LogicalKey::character(" "));
     let r = Shortcut::plain(LogicalKey::character("r"));
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .gap(rows(1.0))
-                .padding(em(1.0)),
-        )
+    column()
+        .fill()
+        .gap(rows(1.0))
+        .padding(em(1.0))
         .shortcut(space, move |_| timer.toggle())
         .shortcut(r, move |_| timer.reset())
         .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))

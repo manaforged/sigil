@@ -29,8 +29,10 @@ pub(crate) fn markdown_edit_demo(disabled: Signal<bool>) -> NodeBuilder {
     let source = signal(String::from(
         "# Sigil widgets\n\nEdit me, *live* preview.\n\n- one\n- two",
     ));
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(228.0))
+    column()
+        .fill_width()
+        .height(228.0)
+        .gap(Space::None)
         .child(markdown_edit(source).disabled(disabled))
 }
 
@@ -62,9 +64,10 @@ pub(crate) fn diff_demo() -> DiffBuilder {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(markdown_demo())
             .child(markdown_image_demo())
             .child(markdown_edit_demo(signal(false)))

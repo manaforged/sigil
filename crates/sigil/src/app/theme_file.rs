@@ -110,7 +110,7 @@ pub(super) fn watcher(
 pub(crate) fn launch(path: Option<&std::path::Path>) -> Option<crate::app::ThemeWatcher> {
     let path = path?;
     if let Some(theme) = load(path) {
-        crate::app::set_theme(theme);
+        theme.apply();
     } else {
         tracing::warn!("sigil-app: cannot load theme file {}", path.display());
     }

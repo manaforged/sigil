@@ -1,8 +1,8 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
-use crate::layout::{Dimension, JustifyContent, LayoutStyle};
+use crate::layout::{JustifyContent, LayoutStyle, Length};
 use crate::style::{Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::axis::{Gutter, axis_width, category_axis, crowded, legend, title, x_axis, y_axis};
 use super::bars::{self, Bars};
@@ -346,7 +346,7 @@ fn axis_slot(text: String, width: usize) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .grow(width as f32)
-                .flex_basis(Dimension::Px(0.0))
+                .flex_basis(Length::Px(0.0))
                 .min_size(0.0, 0.0)
                 .justify_content(JustifyContent::Center),
         )

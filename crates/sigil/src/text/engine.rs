@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use ahash::AHashMap;
 
-use crate::hal::{ParagraphMetrics, TextEngine};
-use crate::style::{StyledTextEngine, TextLineHeight, TextStyle};
+use crate::style::{TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
@@ -40,6 +39,15 @@ pub struct OwnedTextEngine {
     cache: RefCell<ParagraphCache>,
     chains: RefCell<AHashMap<ChainKey, Arc<[Font]>>>,
     face_tables: RefCell<AHashMap<FaceKey, FaceTable>>,
+}
+
+impl core::fmt::Debug for OwnedTextEngine {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("OwnedTextEngine")
+            .field("font_gen", &self.font_gen)
+            .field("font_epoch", &self.font_epoch)
+            .finish_non_exhaustive()
+    }
 }
 
 type FaceKey = (u32, SmallVec<[(u64, u16, u32); 8]>);
@@ -102,6 +110,43 @@ impl OwnedTextEngine {
     #[cfg(any(test, feature = "kittest"))]
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
+    }
+
+    /// Lays out text in the engine's own style.
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn layout_paragraph(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+    ) -> Result<Paragraph, crate::Error> {
+        let style = self.style.clone();
+        self.layout_paragraph_styled(text, max_width, &style)
+    }
+
+    /// Lays out text in the given style, wrapped at `max_width` when it is set.
+    #[cfg_attr(
+        not(feature = "kittest"),
+        allow(
+            clippy::unnecessary_wraps,
+            reason = "the signature is public under kittest and callers propagate the result"
+        )
+    )]
+    pub fn layout_paragraph_styled(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Result<Paragraph, crate::Error> {
+        self.refresh_fonts();
+        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
+            return Ok(cached);
+        }
+        let (para, fit) = self.build_paragraph(text, max_width, style);
+        let key = if fit.wrapped { max_width } else { None };
+        self.cache
+            .borrow_mut()
+            .insert(text, key, style, (para.clone(), fit.width));
+        Ok(para)
     }
 
     pub fn layout_paragraph_ellipsized(
@@ -282,50 +327,6 @@ impl OwnedTextEngine {
             min_content_hint,
         );
         (paragraph, fit)
-    }
-}
-
-impl TextEngine for OwnedTextEngine {
-    type Error = crate::Error;
-    type Paragraph = Paragraph;
-
-    #[cfg(any(test, feature = "kittest"))]
-    fn layout_paragraph(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-    ) -> Result<Paragraph, crate::Error> {
-        let style = self.style.clone();
-        self.layout_paragraph_styled(text, max_width, &style)
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    fn clear_cache(&self) {
-        self.cache.borrow_mut().clear();
-    }
-}
-
-impl StyledTextEngine for OwnedTextEngine {
-    fn layout_paragraph_styled(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-        style: &TextStyle,
-    ) -> Result<Paragraph, crate::Error> {
-        self.refresh_fonts();
-        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
-            return Ok(cached);
-        }
-        let (para, fit) = self.build_paragraph(text, max_width, style);
-        let key = if fit.wrapped { max_width } else { None };
-        self.cache
-            .borrow_mut()
-            .insert(text, key, style, (para.clone(), fit.width));
-        Ok(para)
-    }
-
-    fn font_generation(&self) -> u64 {
-        Self::font_generation(self)
     }
 }
 

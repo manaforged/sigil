@@ -7,7 +7,7 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use crate::style::Rgba8;
+use crate::style::Color;
 use tiny_skia::{
     BlendMode, Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
     PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke, Transform as TsTransform,
@@ -52,7 +52,7 @@ pub(super) fn ts_transform(transform: Transform, scale: f32, origin: Point) -> T
         .post_translate(-origin.x, -origin.y)
 }
 
-pub(super) fn color(color: crate::style::Color) -> TsColor {
+pub(super) fn color(color: crate::style::Rgba) -> TsColor {
     TsColor::from_rgba(
         encode(color.r),
         encode(color.g),
@@ -76,14 +76,14 @@ pub(super) fn coverage_table(linear: [f32; 3], alpha: f32) -> [[u8; 4]; 256] {
     })
 }
 
-pub(super) fn rgba_table(color: Rgba8, opacity: f32) -> [[u8; 4]; 256] {
+pub(super) fn rgba_table(color: Color, opacity: f32) -> [[u8; 4]; 256] {
     coverage_table(
         [color.r, color.g, color.b].map(decode),
         f32::from(color.a) / 255.0 * opacity,
     )
 }
 
-pub(super) fn ts_color(color: Rgba8, opacity: f32) -> TsColor {
+pub(super) fn ts_color(color: Color, opacity: f32) -> TsColor {
     let alpha = (f32::from(color.a) / 255.0 * opacity).clamp(0.0, 1.0);
     TsColor::from_rgba(
         f32::from(color.r) / 255.0,
@@ -96,7 +96,7 @@ pub(super) fn ts_color(color: Rgba8, opacity: f32) -> TsColor {
 
 pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::Gamma2;
 
-pub(super) fn solid(color: Rgba8, opacity: f32) -> Paint<'static> {
+pub(super) fn solid(color: Color, opacity: f32) -> Paint<'static> {
     let mut paint = Paint::default();
     let color = ts_color(color, opacity);
     paint.set_color(color);

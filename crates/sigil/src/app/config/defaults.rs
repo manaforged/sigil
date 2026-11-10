@@ -1,3 +1,5 @@
+#[cfg(feature = "scene")]
+use super::text::TextSetup;
 use super::*;
 
 impl AppConfig {
@@ -36,11 +38,7 @@ impl AppConfig {
             double_click_distance: None,
             task_workers: crate::tasks::TaskWorkers::Auto,
             #[cfg(feature = "scene")]
-            fonts: None,
-            #[cfg(feature = "scene")]
-            font_fallbacks: Vec::new(),
-            #[cfg(feature = "scene")]
-            text_tuning: None,
+            text: TextSetup::default(),
             #[cfg(feature = "terminal")]
             terminal: TerminalOptions::default(),
             #[cfg(feature = "desktop")]

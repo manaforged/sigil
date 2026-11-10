@@ -120,7 +120,7 @@ pub(crate) const fn shown_when(show: bool) -> &'static [StyleAtom] {
 }
 
 #[derive(Clone, Copy)]
-struct EscapeLayer {
+pub(crate) struct EscapeLayer {
     id: u64,
     show: Signal<bool>,
 }
@@ -132,6 +132,15 @@ thread_local! {
     static LIGHT_LAYERS: RefCell<Vec<EscapeLayer>> = const {
         RefCell::new(Vec::new())
     };
+}
+
+pub(crate) type Stacks = (Vec<EscapeLayer>, Vec<EscapeLayer>);
+
+pub(crate) fn swap_layers(stacks: Stacks) -> Stacks {
+    (
+        ESCAPE_LAYERS.replace(stacks.0),
+        LIGHT_LAYERS.replace(stacks.1),
+    )
 }
 
 /// Closes every open light popup; false when none was open.

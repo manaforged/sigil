@@ -16,8 +16,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use sigil::animation::{Easing, Keyframes, Property};
-use sigil::animation_runtime::{running_clocks, tick};
+use sigil::animation::{Easing, Keyframes, Property, Transition};
+use sigil::animation::{running_clocks, tick};
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -28,13 +28,13 @@ const VIEW: (f32, f32) = (200.0, 200.0);
 const SIDE: f32 = 40.0;
 const FRAME: f32 = 1.0 / 60.0;
 const IDENTITY: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
     a: 255,
 };
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -44,7 +44,7 @@ const WHITE: Rgba8 = Rgba8 {
 #[derive(Clone, Copy, Debug)]
 struct Seen {
     opacity: f32,
-    color: Rgba8,
+    color: Color,
     matrix: [[f32; 3]; 2],
 }
 
@@ -56,7 +56,7 @@ impl Seen {
 
 fn square() -> NodeBuilder {
     container()
-        .bg(BLACK)
+        .background(BLACK)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
@@ -171,10 +171,12 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
 
         let toggle = signal(false);
         let node = square()
-            .transition_colors()
-            .duration(Duration::from_secs(1))
-            .ease(Easing::Linear)
-            .paint_when(toggle, |state| state.bg(WHITE));
+            .transition(
+                Transition::colors()
+                    .duration(Duration::from_secs(1))
+                    .ease(Easing::Linear),
+            )
+            .paint_when(toggle, |state| state.background(WHITE));
         let mut fading = mount(node);
         start(&mut fading, toggle);
         run(&mut fading, 0.5);
@@ -281,9 +283,11 @@ fn a_zero_duration_transition_waits_for_its_delay() {
         let flag = signal(false);
         let node = square()
             .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::ZERO)
-            .delay(Duration::from_millis(250))
+            .transition(
+                Transition::opacity()
+                    .duration(Duration::ZERO)
+                    .delay(Duration::from_millis(250)),
+            )
             .paint_when(flag, |state| state.opacity(1.0));
         let mut ui = mount(node);
         start(&mut ui, flag);

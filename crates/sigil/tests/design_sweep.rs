@@ -80,7 +80,7 @@ struct Report {
     smallest: BTreeMap<String, (usize, String)>,
 }
 
-type Flaws = Vec<(FlawKind, String)>;
+type Flaws = Vec<(Flaw, String)>;
 
 impl Report {
     fn sweep(trees: &[String], surfaces: &[Surface]) -> Self {
@@ -291,7 +291,7 @@ fn every_theme_keeps_its_text_tokens_readable_on_their_surfaces() {
                     container()
                         .layout(LayoutStyle::block().fill_width())
                         .theme(theme())
-                        .bg(surface)
+                        .background(surface)
                         .child(text("Words").text_color(ink))
                 })
                 .pixels(200, 80)
@@ -299,7 +299,7 @@ fn every_theme_keeps_its_text_tokens_readable_on_their_surfaces() {
                 failed.extend(
                     ui.flaws()
                         .iter()
-                        .filter(|flaw| flaw.kind() == FlawKind::Contrast)
+                        .filter(|flaw| flaw.kind() == Flaw::Contrast)
                         .map(|flaw| format!("{name} {ink:?} on {surface:?}: {flaw}")),
                 );
             }

@@ -6,7 +6,7 @@ use crate::scene_support;
 use scene_support::rect;
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder, SceneCommand};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -95,7 +95,7 @@ type RenderCommandScene = fn(
     &mut WgpuRenderer,
     &mut WgpuSurface,
     &CommandScene,
-    Color,
+    Rgba,
     (f32, f32),
 ) -> Result<(), sigil::Error>;
 
@@ -112,7 +112,7 @@ fn nested_clip_scene() -> CommandScene {
 const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
     DrawRect::new(
         rect,
-        Rgba8 {
+        Color {
             r: 180,
             g: 20,
             b: 80,

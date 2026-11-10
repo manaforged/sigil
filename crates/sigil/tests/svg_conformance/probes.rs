@@ -3,7 +3,7 @@ use std::sync::Arc;
 use resvg::usvg::{self, Tree};
 use sigil::geometry::{Point, Rect};
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::widgets::SvgMode;
 
 use super::{
@@ -11,15 +11,15 @@ use super::{
     resvg_picture, scene,
 };
 
-const SURFACES: [Rgba8; 3] = [
+const SURFACES: [Color; 3] = [
     WHITE,
-    Rgba8 {
+    Color {
         r: 200,
         g: 200,
         b: 200,
         a: 255,
     },
-    Rgba8 {
+    Color {
         r: 40,
         g: 44,
         b: 52,
@@ -75,7 +75,7 @@ const GPU_PROBES: [(&str, &str); 1] = [(
     r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#b0c4de"/><rect x="10" y="10" width="80" height="80" fill="#000000" opacity="0.7"/></svg>"##,
 )];
 
-fn on_surface(surface: Rgba8, picture: CommandScene) -> CommandScene {
+fn on_surface(surface: Color, picture: CommandScene) -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.draw_rect(DrawRect::new(
         Rect::new(Point::new(0.0, 0.0), 100.0, 100.0),

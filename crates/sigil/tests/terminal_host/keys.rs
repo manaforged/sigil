@@ -139,7 +139,7 @@ fn a_paste_reaches_the_focused_node_as_one_event() {
         let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             let record = Rc::clone(&record);
-            button("Target").on_paste(move |text| {
+            button("Target").paste(move |text| {
                 record.borrow_mut().push(text.to_owned());
                 true
             })

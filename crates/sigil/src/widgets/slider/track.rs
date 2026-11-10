@@ -1,17 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
-
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::snap::{self, CellForm};
 use crate::layout::{LayoutStyle, cols, rows};
 use crate::reactive::Signal;
 use crate::style::TransitionId;
+use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::{
-    BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
+    BORDER_WIDTH, BgGradient, Color, ColorAtom, Elevation, GradientAxis, GradientStopKey,
     StateStyle, Style, StyleAtom, StyleVariant, Token,
 };
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -29,7 +27,7 @@ const CELL_THUMB: &str = "●";
 type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
 const fn rgba(r: u8, g: u8, b: u8, a: u8) -> ColorAtom {
-    ColorAtom::Rgba8(Rgba8 { r, g, b, a })
+    ColorAtom::Color(Color { r, g, b, a })
 }
 
 const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
@@ -39,21 +37,25 @@ const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
 const THUMB_BORDER: StyleAtom = StyleAtom::BorderWidth(BORDER_WIDTH);
 
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static TRACK_FILL: &[StyleAtom] = &[Token::Accent.bg()];
+static TRACK_FILL: &[StyleAtom] = &[Token::Accent.background()];
 static CELL_THUMB_ATOMS: &[StyleAtom] = &[Token::Accent.text()];
 static THUMB_REST: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
+    Token::OnAccent.background(),
     THUMB_BORDER,
     Token::Accent.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_HOVER: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
+    Token::OnAccent.background(),
     THUMB_BORDER,
     Token::AccentHover.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
-static THUMB_DISABLED: &[StyleAtom] = &[Token::OnAccent.bg(), THUMB_BORDER, Token::Gray8.border()];
+static THUMB_DISABLED: &[StyleAtom] = &[
+    Token::OnAccent.background(),
+    THUMB_BORDER,
+    Token::Gray8.border(),
+];
 
 static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
     GradientStopKey::new(0, rgba(148, 163, 184, 66)),
@@ -114,7 +116,7 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
     let node = container()
         .hittable(false)
         .layout(layout)
-        .style(Style::new().radius(3))
+        .style(Style::new().radius_px(3))
         .class(class);
     if filled {
         node.style_reactive(move || {
@@ -126,29 +128,21 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
     }
 }
 
-type SliderAtoms = Mutex<HashMap<(bool, i16), &'static [StyleAtom]>>;
-
 fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<SliderAtoms> = OnceLock::new();
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    static CACHE: Keyed<(bool, i16)> = Keyed::new();
     #[allow(
         clippy::cast_possible_truncation,
         reason = "values are bounded to the target range before the cast"
     )]
     let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as i16;
-    let build = || {
-        let extent = (crate::style::atom::ATOM_FRACTION, scaled);
-        let atom = match orientation {
-            Orientation::Horizontal => StyleAtom::Width(extent.0, extent.1),
-            Orientation::Vertical => StyleAtom::Height(extent.0, extent.1),
-        };
-        Box::leak(Box::new([atom])) as &'static [StyleAtom]
-    };
-    let Ok(mut map) = cache.lock() else {
-        return build();
-    };
-    map.entry((orientation == Orientation::Vertical, scaled))
-        .or_insert_with(build)
+    let key = (orientation == Orientation::Vertical, scaled);
+    keyed(&CACHE, KEYED_CAP, key, || {
+        let kind = crate::style::atom::ATOM_FRACTION;
+        vec![match orientation {
+            Orientation::Horizontal => StyleAtom::Width(kind, scaled),
+            Orientation::Vertical => StyleAtom::Height(kind, scaled),
+        }]
+    })
 }
 
 pub(super) fn slider_thumb(
@@ -184,7 +178,7 @@ fn window_thumb(
     container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
-        .style(Style::new().radius(8))
+        .style(Style::new().radius_px(8))
         .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
             slider_thumb_variant(glass).state(binary_style_state(interaction, disabled))

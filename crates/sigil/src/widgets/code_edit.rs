@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use crate::events::KeyEvent;
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::layout::snap::{CellForm, line};
 use crate::layout::{LayoutStyle, Overflow};
@@ -37,11 +37,12 @@ type KeyHandler = Rc<dyn Fn(&mut KeyEvent) + 'static>;
 type SelectionAnchor = Signal<Option<(usize, usize)>>;
 type SelRange = ((usize, usize), (usize, usize));
 
-type GutterMarks = Signal<Vec<Option<ChangeKind>>>;
+type GutterMarks = Signal<Vec<Option<Change>>>;
 
 /// Line change mark in the `code_edit` gutter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ChangeKind {
+#[non_exhaustive]
+pub enum Change {
     /// The added change kind.
     Added,
     /// The modified change kind.
@@ -50,7 +51,7 @@ pub enum ChangeKind {
     Deleted,
 }
 
-impl ChangeKind {
+impl Change {
     const fn bar_token(self) -> Token {
         match self {
             Self::Added => Token::Success9,
@@ -62,7 +63,7 @@ impl ChangeKind {
 
 /// The severity of a code diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DiagSeverity {
+pub enum Severity {
     /// The hint diag severity.
     Hint,
     /// The info diag severity.
@@ -73,11 +74,11 @@ pub enum DiagSeverity {
     Error,
 }
 
-impl DiagSeverity {
+impl Severity {
     const fn tint_token(self) -> Token {
         match self {
             Self::Error => Token::Error3,
-            Self::Warning => Token::Warn3,
+            Self::Warning => Token::Warning3,
             Self::Info | Self::Hint => Token::Info3,
         }
     }
@@ -85,7 +86,7 @@ impl DiagSeverity {
 
 /// A code diagnostic on a byte range.
 #[derive(Clone, Copy, Debug)]
-pub struct DiagSpan {
+pub struct Diagnostic {
     /// The line.
     pub line: usize,
     /// The start.
@@ -93,10 +94,10 @@ pub struct DiagSpan {
     /// The end.
     pub end: usize,
     /// The severity.
-    pub severity: DiagSeverity,
+    pub severity: Severity,
 }
 
-type DiagSpans = Signal<Vec<DiagSpan>>;
+type Diagnostics = Signal<Vec<Diagnostic>>;
 
 /// Builder of a code editor.
 pub struct CodeEditBuilder {
@@ -105,11 +106,27 @@ pub struct CodeEditBuilder {
     highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
-    diagnostics: Option<DiagSpans>,
+    diagnostics: Option<Diagnostics>,
     on_key: Option<KeyHandler>,
     disabled: Option<Signal<bool>>,
     row_h: Option<f32>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for CodeEditBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CodeEditBuilder")
+            .field("lines", &self.lines)
+            .field("caret", &self.caret)
+            .field("highlights", &self.highlights)
+            .field("selection", &self.selection)
+            .field("gutter", &self.gutter)
+            .field("diagnostics", &self.diagnostics)
+            .field("disabled", &self.disabled)
+            .field("row_h", &self.row_h)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A code editor with built-in `text_edit` editing.
@@ -174,7 +191,7 @@ impl CodeEditBuilder {
 
     /// Sets the diagnostics.
     #[must_use]
-    pub const fn diagnostics(mut self, spans: DiagSpans) -> Self {
+    pub const fn diagnostics(mut self, spans: Diagnostics) -> Self {
         self.diagnostics = Some(spans);
         self
     }
@@ -210,7 +227,7 @@ impl CodeEditBuilder {
                     .overflow_y(Overflow::Hidden),
             )
             .size_reactive(viewport)
-            .on_scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
+            .scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
             .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
                 EditSurface {
@@ -263,7 +280,7 @@ struct EditSurface {
     highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
-    diagnostics: Option<DiagSpans>,
+    diagnostics: Option<Diagnostics>,
     start: Signal<usize>,
     viewport: Signal<(f32, f32)>,
     caret_shown: Signal<bool>,

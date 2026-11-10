@@ -18,7 +18,7 @@ fn a_thin_stroke_survives_the_sextant_fallback() {
                 .move_to(0.0, 100.0)
                 .line_to(400.0, 100.0)
                 .stroke(
-                    Rgba8 {
+                    Color {
                         r: 200,
                         g: 60,
                         b: 60,
@@ -57,18 +57,18 @@ fn first_ink(tone: Option<Tone>) -> Option<sigil::terminal::Ink> {
 #[test]
 fn a_progress_tone_changes_the_fill_ink() {
     let plain = first_ink(None);
-    let warn = first_ink(Some(Tone::Warn));
+    let warn = first_ink(Some(Tone::Warning));
     assert!(plain.is_some() && warn.is_some());
     assert_ne!(plain, warn);
 }
 
 #[test]
 fn colorfgbg_names_a_dark_or_light_backdrop() {
-    use sigil::terminal::{Backdrop, Caps};
+    use sigil::terminal::{Backdrop, Capabilities};
     let caps = |pair: &'static str| {
-        Caps::detect(move |key| (key == "COLORFGBG").then(|| pair.to_string())).backdrop
+        Capabilities::detect(move |key| (key == "COLORFGBG").then(|| pair.to_string())).backdrop
     };
     assert_eq!(caps("15;0"), Some(Backdrop::Dark));
     assert_eq!(caps("0;15"), Some(Backdrop::Light));
-    assert_eq!(Caps::detect(|_| None).backdrop, None);
+    assert_eq!(Capabilities::detect(|_| None).backdrop, None);
 }

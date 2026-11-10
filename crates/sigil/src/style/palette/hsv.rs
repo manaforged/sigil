@@ -1,11 +1,11 @@
-use crate::style::Rgba8;
+use crate::style::Color;
 
-pub(super) fn tint_toward_hue(c: Rgba8, target_hue_degrees: f32) -> Rgba8 {
+pub(super) fn tint_toward_hue(c: Color, target_hue_degrees: f32) -> Color {
     let (_, s, v) = rgb_to_hsv(c);
     hsv_to_rgb(target_hue_degrees, s, v, c.a)
 }
 
-pub(super) fn rgb_to_hsv(c: Rgba8) -> (f32, f32, f32) {
+pub(super) fn rgb_to_hsv(c: Color) -> (f32, f32, f32) {
     let r = f32::from(c.r) / 255.0;
     let g = f32::from(c.g) / 255.0;
     let b = f32::from(c.b) / 255.0;
@@ -29,7 +29,7 @@ pub(super) fn rgb_to_hsv(c: Rgba8) -> (f32, f32, f32) {
     (hue, saturation, value)
 }
 
-fn hsv_to_rgb(hue: f32, saturation: f32, value: f32, alpha: u8) -> Rgba8 {
+fn hsv_to_rgb(hue: f32, saturation: f32, value: f32, alpha: u8) -> Color {
     let scaled_hue = hue.rem_euclid(360.0) / 60.0;
     let sextant = sextant_index(scaled_hue);
     let fract = scaled_hue - scaled_hue.floor();
@@ -44,7 +44,7 @@ fn hsv_to_rgb(hue: f32, saturation: f32, value: f32, alpha: u8) -> Rgba8 {
         4 => (rising, low, value),
         _ => (value, low, falling),
     };
-    Rgba8 {
+    Color {
         r: to_byte(red),
         g: to_byte(green),
         b: to_byte(blue),
@@ -78,7 +78,7 @@ fn to_byte(channel: f32) -> u8 {
     clippy::cast_possible_truncation,
     reason = "Bounded by definition: (30·255 + 59·255 + 11·255)/100 = 255."
 )]
-pub(super) const fn perceived_brightness(c: Rgba8) -> u8 {
+pub(super) const fn perceived_brightness(c: Color) -> u8 {
     let r = c.r as u32;
     let g = c.g as u32;
     let b = c.b as u32;

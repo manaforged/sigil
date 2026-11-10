@@ -16,7 +16,7 @@ pub(in crate::widgets) fn clipboard_keys(
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
     let pasted = runtime.clone();
-    let node = node.on_paste(move |text| shell_paste(text, &pasted));
+    let node = node.paste(move |text| shell_paste(text, &pasted));
     let commands: [(&str, ModifiersState, KeyCommand); 4] = [
         ("c", ModifiersState::empty(), clipboard_copy),
         ("x", ModifiersState::empty(), clipboard_cut),
@@ -110,12 +110,13 @@ pub(in crate::widgets) fn submit_text(event: &mut KeyEvent, runtime: &TextEditRu
 }
 
 fn clipboard_copy(event: &mut KeyEvent, runtime: &TextEditRuntime) {
-    event.stop_propagation();
     if runtime.disabled() {
+        event.stop_propagation();
         return;
     }
     let state = runtime.edit_mut();
     if let Some(text) = state.selected_text() {
+        event.stop_propagation();
         runtime
             .clip_fail
             .set(crate::clipboard::write(&*runtime.clipboard, text).is_err());

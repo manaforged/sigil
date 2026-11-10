@@ -5,6 +5,7 @@ use crate::layout::{AlignItems, JustifyContent};
 
 use super::glyph;
 
+mod catalog;
 mod names;
 
 use names::{ALIGN, AXES, FIELD_KINDS, FITS, IMAGE_SIZES, JUSTIFY, LOOKS, TEXT_STYLES, pick};
@@ -12,6 +13,8 @@ use names::{ALIGN, AXES, FIELD_KINDS, FITS, IMAGE_SIZES, JUSTIFY, LOOKS, TEXT_ST
 const MAX_CHILDREN: usize = 256;
 const MAX_OPTIONS: usize = 64;
 const MAX_TABS: usize = 16;
+
+pub(super) use catalog::{Item, Mood, Piece, Plot};
 
 #[derive(Clone)]
 pub(super) enum Dynamic {
@@ -154,6 +157,7 @@ pub(super) enum Kind {
         max: f32,
     },
     DateTime(Clock),
+    Piece(Piece),
     Unsupported {
         name: String,
     },
@@ -168,7 +172,8 @@ impl Dynamic {
     fn of(props: &Map<String, Value>, key: &str) -> Self {
         match props.get(key) {
             Some(Value::Object(map)) => map
-                .get("path")
+                .get("@path")
+                .or_else(|| map.get("path"))
                 .and_then(Value::as_str)
                 .map_or(Self::Literal(Value::Null), |path| {
                     Self::Path(path.to_string())
@@ -357,6 +362,7 @@ impl Component {
             .unwrap_or_default();
         let kind = content(name, props)
             .or_else(|| input(name, props))
+            .or_else(|| catalog::parse(name, props))
             .unwrap_or_else(|| Kind::Unsupported {
                 name: name.to_string(),
             });

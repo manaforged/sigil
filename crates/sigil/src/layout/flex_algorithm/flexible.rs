@@ -1,5 +1,8 @@
 use crate::layout::flex_lines::{FlexItem, FlexLine};
 use crate::layout::resolve::clamp;
+use smallvec::{SmallVec, smallvec};
+
+const INLINE_ITEMS: usize = 16;
 
 pub(super) fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
     let used_basis: f32 = line.items.iter().map(FlexItem::outer_main_basis).sum();
@@ -29,7 +32,7 @@ fn flex_factor(item: &FlexItem, growing: bool) -> f32 {
     }
 }
 
-fn freeze_inflexible(items: &mut [FlexItem], growing: bool) -> Vec<bool> {
+fn freeze_inflexible(items: &mut [FlexItem], growing: bool) -> SmallVec<[bool; INLINE_ITEMS]> {
     items
         .iter_mut()
         .map(|item| {
@@ -76,7 +79,7 @@ fn flex_round(items: &mut [FlexItem], frozen: &mut [bool], remaining: f32, growi
         }
         return false;
     }
-    let mut violations = vec![0.0_f32; items.len()];
+    let mut violations: SmallVec<[f32; INLINE_ITEMS]> = smallvec![0.0_f32; items.len()];
     let mut net = 0.0_f32;
     for ((item, &is_frozen), violation) in items
         .iter_mut()

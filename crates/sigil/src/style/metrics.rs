@@ -18,6 +18,7 @@ pub const fn space(steps: u8) -> f32 {
 
 /// Corner radius from the theme: 2, 4, 6, 8, and 9999 px. 0 on a character grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Radius {
     /// The none radius.
     None,
@@ -73,7 +74,7 @@ impl Metrics {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(6),
             ControlSize::Default => space(7),
-            ControlSize::Wide | ControlSize::Grow => space(9),
+            ControlSize::Wide => space(9),
         })
     }
 
@@ -83,27 +84,27 @@ impl Metrics {
         match size {
             ControlSize::Compact => space(6),
             ControlSize::Default => space(8),
-            ControlSize::Wide | ControlSize::Grow => space(37),
+            ControlSize::Wide => space(37),
         }
     }
 
     /// Returns the padding of a control of this size.
     #[must_use]
-    pub fn padding(self, size: ControlSize) -> f32 {
+    pub fn control_padding(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1) + 2.0,
             ControlSize::Default => space(2) + 2.0,
-            ControlSize::Wide | ControlSize::Grow => space(3) + 2.0,
+            ControlSize::Wide => space(3) + 2.0,
         })
     }
 
     /// Returns the gap of a control of this size.
     #[must_use]
-    pub fn gap(self, size: ControlSize) -> f32 {
+    pub fn control_gap(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1),
             ControlSize::Default => space(2),
-            ControlSize::Wide | ControlSize::Grow => space(3),
+            ControlSize::Wide => space(3),
         })
     }
 
@@ -156,12 +157,12 @@ impl Layer {
     #[must_use]
     pub(crate) const fn atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Page => const { &[Token::Surface.bg()] },
-            Self::Sunken => const { &[Token::SurfaceSubtle.bg(), Radius::Md.atom()] },
+            Self::Page => const { &[Token::Surface.background()] },
+            Self::Sunken => const { &[Token::SurfaceSubtle.background(), Radius::Md.atom()] },
             Self::Raised => {
                 const {
                     &[
-                        Token::Surface.bg(),
+                        Token::Surface.background(),
                         StyleAtom::BorderWidth(BORDER_WIDTH),
                         Token::Border.border(),
                         StyleAtom::Shadow(Elevation::Sm),
@@ -172,7 +173,7 @@ impl Layer {
             Self::Overlay => {
                 const {
                     &[
-                        Token::Overlay.bg(),
+                        Token::Overlay.background(),
                         StyleAtom::BorderWidth(BORDER_WIDTH),
                         Token::OverlayBorder.border(),
                         StyleAtom::Shadow(OVERLAY_SHADOW),

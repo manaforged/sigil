@@ -292,3 +292,89 @@ fn command_menu_disabled_item() {
         .delta(DELTA_PCT)
         .assert(img);
 }
+
+#[test]
+fn clicking_a_row_of_a_filtered_list_runs_that_row() {
+    Owner::scope("cmd-menu-filtered-click", filtered_click);
+}
+
+fn filtered_click() {
+    use sigil::events::{KeyPhase, LogicalKey, ModifiersState};
+
+    let chosen: Signal<String> = signal(String::new());
+    let mut harness = sigil_kittest::Harness::new(move || {
+        container().focusable(true).child(
+            command_menu()
+                .item("Attack", || {})
+                .item("Wait", || {})
+                .item("Run", || {})
+                .submit(move |label| chosen.set(label.to_owned())),
+        )
+    })
+    .pixels(420, 260);
+    harness.settle();
+    harness
+        .send([Event::key(LogicalKey::character("R"), KeyPhase::Down)
+            .modifiers(ModifiersState::empty())
+            .text(Some("R".into()))])
+        .settle();
+    let shown = harness.text();
+    assert!(!shown.contains("Attack"), "R filters the list: {shown}");
+    let row = harness
+        .accessibility_tree()
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.label() == Some("Run"))
+        .find_map(|(_, node)| node.bounds())
+        .expect("the filtered list shows Run");
+    let at = sigil::geometry::Point::new(
+        row.x0.midpoint(row.x1) as f32,
+        row.y0.midpoint(row.y1) as f32,
+    );
+    harness
+        .send([Event::pointer_down(at), Event::pointer_up(at)])
+        .settle();
+    assert_eq!(chosen.get(), "Run");
+}
+
+fn bottoms(harness: &mut sigil_kittest::Harness, label: &str) -> (f64, f64) {
+    let tree = harness.accessibility_tree();
+    let bottom = |pick: &dyn Fn(&accesskit::Node) -> bool| {
+        tree.nodes
+            .iter()
+            .filter(|(_, node)| pick(node))
+            .find_map(|(_, node)| node.bounds())
+            .map_or(f64::NAN, |rect| rect.y1)
+    };
+    (
+        bottom(&|node| node.role() == accesskit::Role::Menu),
+        bottom(&|node| node.label() == Some(label)),
+    )
+}
+
+#[test]
+fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
+    Owner::scope("cmd-menu-scrolls", || {
+        let labels: Vec<String> = (1..=30).map(|n| format!("Action {n}")).collect();
+        let mut harness = sigil_kittest::Harness::new(move || {
+            labels.iter().fold(command_menu(), |menu, label| {
+                menu.item(label.clone(), || {})
+            })
+        })
+        .pixels(420, 600);
+        harness.settle();
+        let (start_panel, start_row) = bottoms(&mut harness, "Action 30");
+        assert!(
+            start_row > start_panel,
+            "a long list is cut: row {start_row} panel {start_panel}"
+        );
+        harness
+            .send((0..29).map(|_| Event::key_down(Key::ArrowDown).physical(PhysicalKey::ArrowDown)))
+            .settle();
+        let (panel, row) = bottoms(&mut harness, "Action 30");
+        assert!(
+            row <= panel,
+            "the cursor row is in view: row {row} panel {panel}"
+        );
+    });
+}

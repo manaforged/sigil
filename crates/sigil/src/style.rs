@@ -55,28 +55,29 @@ pub(crate) mod variant;
 pub(crate) mod variant_kit;
 
 pub(crate) use animator_overlay::AnimatorOverlay;
-pub(crate) use animator_overlay::{ColorAtomKind, Family, NumericAtomKind};
+pub(crate) use animator_overlay::NumericAtomKind;
+pub(crate) use animator_overlay::{ColorAtomKind, Family};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
 pub use atom::{
-    ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial,
-    RadialExtent, Rgba8,
+    Background, ClipShape, Color, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
+    MaskSize, Radial, RadialExtent,
 };
 kittest_pub! {
     #[doc(hidden)]
-    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, FilterAtom, MaskAtom, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
+    pub use atom::{BgGradient, GradientStopKey, PaintAtom, RenderStyle, StyleAtom, TransitionId};
 }
+#[cfg(test)]
+pub(crate) use atom::GradientShape;
+pub(crate) use atom::MillisU16;
 pub(crate) use binding::ReactiveStateSlot;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use binding::{ReactiveStyleAtoms, StyleBinding};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use builder_ext::ClassSource;
-}
+pub(crate) use builder_ext::ClassSource;
 pub(crate) use class_parse::parse_classes;
 kittest_pub! {
     #[doc(hidden)]
@@ -87,7 +88,7 @@ kittest_pub! {
     pub use focus_ring::FocusRing;
 }
 pub use font_family::FontFamily;
-pub use grid::grid;
+pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
 pub use text_scale::text_scale;
@@ -115,8 +116,9 @@ pub use resolve::unsupported_style_warning_count_for;
 pub use text_scale::TextRole;
 kittest_pub! {
     #[doc(hidden)]
-    pub use resolve::{render_style_for, text_style_for};
+    pub use resolve::render_style_for;
 }
+pub(crate) use resolve::text_style_for;
 pub use size::ControlSize;
 pub(crate) use state::StyleVariant;
 kittest_pub! {
@@ -129,24 +131,18 @@ kittest_pub! {
     pub use strings::Strings;
 }
 pub(crate) use struct_api::Style;
-pub use styled::StateVariants;
+pub use styled::States;
 pub(crate) use styled::node::attach_style;
 kittest_pub! {
     #[doc(hidden)]
     pub use styled::StateStyleBuilder;
 }
-#[cfg(all(feature = "scene", not(feature = "kittest")))]
-#[allow(unused_imports, reason = "public only under kittest")]
-pub(crate) use text_style::StyledTextEngine;
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
-pub use text_style::StyledTextEngine;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
-pub(crate) use text_style::{TextFace, TextRuns};
+pub(crate) use text_style::{TextFace, TextRun, TextRuns};
 kittest_pub! {
     #[doc(hidden)]
-    pub use text_style::{TextLineHeight, TextRun};
+    pub use text_style::TextLineHeight;
 }
 pub use theme::{Theme, ThemeValue};
 pub use token::Token;
@@ -158,14 +154,17 @@ kittest_pub! {
 pub(crate) use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
 /// Gives the fill color for selected text.
-pub(crate) const SELECTION_FILL: Rgba8 = Rgba8 {
+pub(crate) const SELECTION_FILL: Color = Color {
     r: 56,
     g: 118,
     b: 224,
     a: 130,
 };
 
-pub use crate::hal::geometry::Color;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use crate::hal::geometry::Rgba;
+}
 
 #[cfg(test)]
 #[path = "style/resolution_tests.rs"]

@@ -1,5 +1,6 @@
 use proptest::prelude::*;
 use sigil::Host;
+use sigil::animation::Property;
 use sigil::kernel::HostMode;
 use sigil::kernel::{NodeBuilder, container, text};
 use sigil::layout::LayoutStyle;
@@ -8,7 +9,7 @@ use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
 use sigil::style::{Theme, Token, Transform2D};
 use sigil::terminal::Access;
-use sigil::widgets::{modal, scroll};
+use sigil::widgets::{Layout, modal, scroll};
 
 use super::live::Side;
 
@@ -80,7 +81,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
             vec![
                 container()
                     .theme(theme)
-                    .bg(Token::Surface)
+                    .background(Token::Surface)
                     .child(container().child(text("themed"))),
             ]
         })
@@ -90,7 +91,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                 .child(
                     container()
                         .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                        .animate_translate_x(knobs.shift)
+                        .drive(Property::TranslateX, knobs.shift)
                         .child(text(knobs.label)),
                 ),
         )

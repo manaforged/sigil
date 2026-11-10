@@ -90,7 +90,7 @@ fn rust_code_in_a_diff_is_syntax_coloured() {
     let text = "--- a/x.rs\n+++ b/x.rs\n@@ -1,2 +1,2 @@\n pub fn keep(value: u32) -> Option<u32> { Some(42) }\n-let a = 1;\n+let a = 2;\n";
     let mut ui = Harness::new(move || {
         column()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(diff(text.to_owned()).view(DiffView::Unified))
     })
     .pixels(900, 240);

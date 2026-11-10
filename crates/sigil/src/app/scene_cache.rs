@@ -100,10 +100,11 @@ pub(super) fn window_scene(
 ) -> CommandScene {
     let mut scene = emit_viewport_scene(cx, root, viewport);
     if backdrop {
-        match cx.get(root).and_then(Node::get_extension::<Theme>) {
-            Some(theme) => paint_backdrop(&mut scene, theme, viewport),
-            None => paint_backdrop(&mut scene, &Theme::default(), viewport),
-        }
+        let theme = cx
+            .get(root)
+            .and_then(Node::get_extension::<Theme>)
+            .unwrap_or_else(crate::style::theme::fallback_theme);
+        paint_backdrop(&mut scene, theme, viewport);
     }
     scene
 }

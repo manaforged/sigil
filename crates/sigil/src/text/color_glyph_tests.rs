@@ -15,8 +15,7 @@ fn detects_color_bitmap_font() {
 fn rasterizes_check_mark_in_color() {
     let font = FontRef::new(EMOJI).unwrap();
     let gid = glyph_for_char(&font, '\u{2705}').expect("cmap has ✅");
-    let raster =
-        rasterize(&font, gid, 128.0, crate::style::Color::default()).expect("color raster");
+    let raster = rasterize(&font, gid, 128.0, crate::style::Rgba::default()).expect("color raster");
 
     assert!(
         raster.width > 8 && raster.height > 8,
@@ -50,7 +49,7 @@ fn non_emoji_glyph_has_no_color_raster() {
             &font,
             GlyphId::new(9_999),
             128.0,
-            crate::style::Color::default()
+            crate::style::Rgba::default()
         )
         .is_none()
     );

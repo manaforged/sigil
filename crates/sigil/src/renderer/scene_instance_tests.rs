@@ -1,8 +1,8 @@
 use crate::geometry::{Point, Rect, Size};
 use crate::kernel::*;
 use crate::layout::{LayoutEngine, LayoutStyle};
-use crate::style::Rgba8;
-use crate::widgets::Widget;
+use crate::style::Color;
+use crate::widgets::Layout;
 
 use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,
@@ -211,7 +211,7 @@ fn gradient_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawGradient {
 
 const fn stroke(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: Rgba8 {
+        color: Color {
             r: 51,
             g: 102,
             b: 153,
@@ -231,7 +231,7 @@ fn gradient() -> LinearGradient {
             GradientStop::new(0.0, color()),
             GradientStop::new(
                 1.0,
-                Rgba8 {
+                Color {
                     r: 255,
                     g: 255,
                     b: 255,
@@ -242,8 +242,8 @@ fn gradient() -> LinearGradient {
     )
 }
 
-const fn color() -> Rgba8 {
-    Rgba8 {
+const fn color() -> Color {
+    Color {
         r: 1,
         g: 2,
         b: 3,

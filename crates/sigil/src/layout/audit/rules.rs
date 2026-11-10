@@ -2,7 +2,7 @@ use crate::geometry::Rect;
 use crate::kernel::{Cx, Node, NodeId, NodeType, Role};
 use crate::layout::{LayoutEngine, LayoutStyle, Overflow, Position, ReactivePosition};
 
-use super::{Flaw, Tolerance, is_row, label};
+use super::{Issue, Tolerance, is_row, label};
 
 const SLACK: f32 = 1.0;
 
@@ -61,7 +61,7 @@ pub(super) fn clipped_text(
     cx: &Cx,
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !matches!(node.kind, NodeType::Text { .. }) {
         return;
@@ -78,7 +78,7 @@ pub(super) fn clipped_text(
             if let Some(clip) = rect(layout, parent)
                 && clip.height + 0.5 < shown.height
             {
-                out.push(Flaw::ClippedText {
+                out.push(Issue::ClippedText {
                     node: label(id, node),
                     needed: shown.height,
                     shown: clip.height,
@@ -95,7 +95,7 @@ pub(super) fn uneven_controls(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: super::Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !tolerance.boxed_controls || !is_row(node) {
         return;
@@ -114,7 +114,7 @@ pub(super) fn uneven_controls(
             (low.min(*height), high.max(*height))
         });
     if heights.len() >= 2 && high - low > 0.5 {
-        out.push(Flaw::UnevenControls {
+        out.push(Issue::UnevenControls {
             parent: label(id, node),
             heights,
         });
@@ -129,7 +129,7 @@ fn intersects(a: Rect, b: Rect) -> bool {
     wide && tall
 }
 
-pub(super) fn overlap(cx: &Cx, layout: &LayoutEngine, node: &Node, out: &mut Vec<Flaw>) {
+pub(super) fn overlap(cx: &Cx, layout: &LayoutEngine, node: &Node, out: &mut Vec<Issue>) {
     let flow: Vec<(NodeId, &Node, Rect)> = node
         .children()
         .iter()
@@ -140,7 +140,7 @@ pub(super) fn overlap(cx: &Cx, layout: &LayoutEngine, node: &Node, out: &mut Vec
         if let [(first, first_node, a), (second, second_node, b)] = pair
             && intersects(*a, *b)
         {
-            out.push(Flaw::Overlap {
+            out.push(Issue::Overlap {
                 first: label(*first, first_node),
                 second: label(*second, second_node),
             });
@@ -152,7 +152,7 @@ pub(super) fn escaped(
     cx: &Cx,
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !in_flow(node) {
         return;
@@ -178,7 +178,7 @@ pub(super) fn escaped(
     .into_iter()
     .fold(0.0_f32, f32::max);
     if by > SLACK {
-        out.push(Flaw::Overflow {
+        out.push(Issue::Overflow {
             node: label(id, node),
             parent: label(parent_id, parent),
             by,
@@ -190,7 +190,7 @@ pub(super) fn small_target(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !is_control(node.a11y.role) {
         return;
@@ -199,7 +199,7 @@ pub(super) fn small_target(
         return;
     };
     if target.width < tolerance.target || target.height < tolerance.target {
-        out.push(Flaw::SmallTarget {
+        out.push(Issue::SmallTarget {
             node: label(id, node),
             width: target.width,
             height: target.height,

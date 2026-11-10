@@ -4,7 +4,7 @@ use super::attr::Attribution;
 use super::key::Category;
 use super::*;
 
-fn recording(backend: Option<BackendKind>) -> MutexGuard<'static, ()> {
+fn recording(backend: Option<Backend>) -> MutexGuard<'static, ()> {
     let gate = exclusive();
     enable();
     reset();
@@ -40,7 +40,7 @@ fn disabled_span_is_silent() {
 
 #[test]
 fn span_records_when_enabled() {
-    let _gate = recording(Some(BackendKind::Cpu));
+    let _gate = recording(Some(Backend::Cpu));
     {
         let _s = span(Phase::Layout);
         count(Counter::TextMeasure);
@@ -54,7 +54,7 @@ fn span_records_when_enabled() {
 
 #[test]
 fn pointer_beats_hover_on_the_same_frame() {
-    let _gate = recording(Some(BackendKind::Cpu));
+    let _gate = recording(Some(Backend::Cpu));
     interact(Cause::Hover);
     interact(Cause::Pointer);
     tick_frame();
@@ -64,7 +64,7 @@ fn pointer_beats_hover_on_the_same_frame() {
 
 #[test]
 fn count_add_sums() {
-    let _gate = recording(Some(BackendKind::Cpu));
+    let _gate = recording(Some(Backend::Cpu));
     count_add(Counter::SceneCmds, 12);
     count_add(Counter::SceneCmds, 3);
     tick_frame();
@@ -74,7 +74,7 @@ fn count_add_sums() {
 
 #[test]
 fn dump_writes_chrome_json() {
-    let _gate = recording(Some(BackendKind::Cpu));
+    let _gate = recording(Some(Backend::Cpu));
     interact(Cause::Pointer);
     {
         let _s = span(Phase::Paint);
@@ -136,7 +136,7 @@ fn summary_names_who_caused_the_cost_and_the_gpu_passes() {
     let subject = || "Button \"Start\"".to_owned();
     for _ in 0..2 {
         begin_frame(BackendStatus {
-            kind: BackendKind::Gpu,
+            kind: Backend::Gpu,
             fallback: FallbackCause::None,
         });
         attribute(Hotspot::LayoutDirtySeed, 1, 7, subject);

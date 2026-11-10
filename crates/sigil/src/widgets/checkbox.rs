@@ -3,7 +3,7 @@ use crate::reactive::Reactive;
 use crate::style::strings::StringKey;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
@@ -12,14 +12,14 @@ use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant,
     Token, Tone, TransitionId,
 };
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_row,
-    control_surface, noop_bool_change, press, static_label,
+    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_root,
+    control_row, control_surface, noop_bool_change, press,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -38,23 +38,37 @@ pub struct CheckboxBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for CheckboxBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CheckboxBuilder")
+            .field("checked", &self.checked)
+            .field("partial", &self.partial)
+            .field("label", &self.label)
+            .field("disabled", &self.disabled)
+            .field("tone", &self.tone)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 static EMPTY_BASE: &[StyleAtom] = &[];
-static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
+static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.background(), Token::Accent.border()];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
-    &[Token::AccentHover.bg(), Token::AccentHover.border()];
-static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.bg(), Token::Gray9.border()];
-static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
-static UNCHECKED: &[StyleAtom] = &[Token::Field.bg()];
-static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.bg()];
-static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
-static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.bg()];
+    &[Token::AccentHover.background(), Token::AccentHover.border()];
+static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.background(), Token::Gray9.border()];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.background(), Token::Gray10.border()];
+static UNCHECKED: &[StyleAtom] = &[Token::Field.background()];
+static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.background()];
+static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];
+static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.background()];
 static BOX_BASE: &[StyleAtom] = &[
     StyleAtom::BorderRadius(4),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Border.border(),
     StyleAtom::Transition(CHECKBOX_TRANSITION),
 ];
-static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.bg(), Token::OnAccent.text()];
+static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.background(), Token::OnAccent.text()];
 static CELL_DISABLED: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 static CELL_VARIANT: StyleVariant = StyleVariant::new(
     EMPTY_BASE,
@@ -127,18 +141,14 @@ impl CheckboxBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self
             .on_change
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
-        let has_label = self.label.is_some();
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node.with(checkbox_layout(has_label))
+        let style = std::mem::take(&mut self.style_accumulator);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, on_change, overlay)
+        })
     }
 
     fn base_node(
@@ -153,12 +163,7 @@ impl CheckboxBuilder {
         let tone = self.tone;
         let root = container()
             .role(Role::CheckBox)
-            .label(accessible_name_or(
-                static_label(self.label.as_ref())
-                    .map(TextContent::Static)
-                    .as_ref(),
-                StringKey::Checkbox,
-            ))
+            .label(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
             .checked(checked)
             .mixed(partial)
             .layout(checkbox_layout(self.label.is_some()));
@@ -191,7 +196,7 @@ builder_impls!([] CheckboxBuilder: paint(style_accumulator), widget, states(styl
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let metrics = Metrics::current();
     let root_size = metrics.control_height(ControlSize::Default);
-    let gap = metrics.gap(ControlSize::Default);
+    let gap = metrics.control_gap(ControlSize::Default);
     let row = control_row(LayoutStyle::flex_row())
         .height(root_size)
         .gap(Space::px(gap))

@@ -1,24 +1,23 @@
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
 use smallvec::SmallVec;
 
-use crate::animation_runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
-use crate::animation_runtime::binding_animate_color::{
+use crate::animation::runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
+use crate::animation::runtime::binding_animate_color::{
     build_color_entry, read_color, retarget_color_entry,
 };
-use crate::animation_runtime::playback::{Player, animation};
-use crate::animation_runtime::registry::{Transitioned, transition_config};
-use crate::animation_runtime::targets::{Change, Targets, targets};
-use crate::animation_runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::playback::{Player, animation};
+use crate::animation::runtime::registry::{Transitioned, transition_config};
+use crate::animation::runtime::targets::{Change, Targets, targets};
+use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Signal, effect_named, owner_by_id, signal};
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom, StyleBinding, StyleEngine,
+    AnimatorOverlay, Color, ColorAtomKind, NumericAtomKind, StyleAtom, StyleBinding, StyleEngine,
     Theme, Tone, ToneContext,
 };
 
-const CLEAR: Rgba8 = Rgba8 {
+const CLEAR: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -32,7 +31,7 @@ struct State {
     numeric: Vec<AttachedAnimator>,
     colors: Vec<AttachedColorAnimator>,
     player: Option<Player>,
-    inherited_text: Option<Rgba8>,
+    inherited_text: Option<Color>,
 }
 
 type Transition = (AnimationConfig, Transitioned);
@@ -48,7 +47,7 @@ impl State {
             .and_then(|entry| entry.signal.try_peek())
     }
 
-    fn transition_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    fn transition_color(&self, kind: ColorAtomKind) -> Option<Color> {
         if !self.enabled {
             return None;
         }
@@ -65,7 +64,7 @@ impl State {
             .map(read_color)
     }
 
-    fn underlying_color(&self, kind: ColorAtomKind) -> Rgba8 {
+    fn underlying_color(&self, kind: ColorAtomKind) -> Color {
         let target = self
             .previous
             .and_then(|target| target.colors.get(kind as usize).copied().flatten());
@@ -88,7 +87,7 @@ impl State {
         }
     }
 
-    fn reset(&mut self, previous: &Targets, inherited_text: Rgba8) {
+    fn reset(&mut self, previous: &Targets, inherited_text: Color) {
         for entry in &mut self.numeric {
             if let Some(Some(value)) = previous.numeric.get(entry.kind as usize) {
                 entry.signal.try_set(*value);
@@ -190,7 +189,7 @@ impl AnimatorOverlay for StyleAnimator {
         player.numeric(kind, underlying).or(transitioned)
     }
 
-    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color> {
         let state = self.state.borrow();
         let transitioned = state.transition_color(kind);
         let Some(player) = state.player.as_ref() else {
@@ -201,7 +200,7 @@ impl AnimatorOverlay for StyleAnimator {
             .or(transitioned)
     }
 
-    fn update(&self, atoms: &[StyleAtom], theme: &Theme, tone: Tone, inherited_text: Rgba8) {
+    fn update(&self, atoms: &[StyleAtom], theme: &Theme, tone: Tone, inherited_text: Color) {
         let target = targets(atoms, theme, tone);
         let mut state = self.state.borrow_mut();
         state.inherited_text = Some(inherited_text);
@@ -271,7 +270,7 @@ fn update_colors(
     entries: &mut Vec<AttachedColorAnimator>,
     change: &Change,
     (config, group): Transition,
-    (inherited_text, tag): (Rgba8, Option<NodeTag>),
+    (inherited_text, tag): (Color, Option<NodeTag>),
 ) {
     for kind in ColorAtomKind::ALL {
         let (from, to) = change.color(kind);
@@ -304,7 +303,7 @@ fn update_colors(
     }
 }
 
-fn snap_color(entry: &mut AttachedColorAnimator, to: Rgba8) {
+fn snap_color(entry: &mut AttachedColorAnimator, to: Color) {
     retarget_color_entry(entry, to);
     for animator in &mut entry.animators {
         animator.finish();
@@ -312,15 +311,14 @@ fn snap_color(entry: &mut AttachedColorAnimator, to: Rgba8) {
     }
 }
 
-const fn color_fallback(kind: ColorAtomKind, color: Rgba8, inherited_text: Rgba8) -> Rgba8 {
+const fn color_fallback(kind: ColorAtomKind, color: Color, inherited_text: Color) -> Color {
     match kind {
         ColorAtomKind::Text | ColorAtomKind::Border => inherited_text,
-        _ => Rgba8 { a: 0, ..color },
+        _ => Color { a: 0, ..color },
     }
 }
 
 pub(crate) fn prepare(cx: &Cx, id: NodeId) {
-    static DEFAULT_THEME: OnceLock<Theme> = OnceLock::new();
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -332,7 +330,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     }
     let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
         .find_map(|ancestor| cx.get(ancestor)?.get_extension::<Theme>())
-        .unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default));
+        .unwrap_or_else(crate::style::theme::fallback_theme);
     let tone = node
         .get_extension::<ToneContext>()
         .copied()
@@ -344,7 +342,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     });
 }
 
-fn inherited_text(cx: &Cx, target: NodeId, theme: &Theme) -> Rgba8 {
+fn inherited_text(cx: &Cx, target: NodeId, theme: &Theme) -> Color {
     std::iter::successors(cx.parent(target), |&id| cx.parent(id))
         .find_map(|id| crate::style::render_style_for(id, cx.get(id)?, theme, None).text_color)
         .unwrap_or(theme.on_surface)

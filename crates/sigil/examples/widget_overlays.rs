@@ -10,8 +10,10 @@ fn main() -> sigil::AppResult<()> {
 }
 
 pub(crate) fn modal_demo(open: Signal<bool>) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(268.0))
+    column()
+        .fill_width()
+        .height(268.0)
+        .gap(Space::None)
         .child(text("Page behind the modal").nowrap())
         .child(
             modal(open)
@@ -22,8 +24,10 @@ pub(crate) fn modal_demo(open: Signal<bool>) -> NodeBuilder {
 }
 
 pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(268.0))
+    column()
+        .fill_width()
+        .height(268.0)
+        .gap(Space::None)
         .child(text("Page behind the sheet").nowrap())
         .child(
             sheet(open)
@@ -36,19 +40,19 @@ pub(crate) fn menu_demo(open: Signal<bool>) -> impl IntoNode {
     menu(open)
         .label("Edit")
         .anchor(16.0, 16.0)
-        .item(MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {}))
+        .item(MenuItem::new("Undo").hint("Ctrl+Z").activate(|| {}))
         .item(MenuItem::new("Redo").disabled(true))
         .separator()
         .item(MenuItem::new("Share").submenu(true))
 }
 
 pub(crate) fn menu_bar_demo() -> impl IntoNode {
-    menu_bar().fill().menu(
+    menu_bar().fill_width().menu(
         "File",
         [
             MenuItem::new("New").activate(|| {}),
-            MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
-            MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
+            MenuItem::new("Open").hint("Ctrl+O").activate(|| {}),
+            MenuItem::new("Quit").hint("Ctrl+Q").activate(|| {}),
         ],
     )
 }
@@ -62,12 +66,10 @@ pub(crate) fn command_menu_demo() -> impl IntoNode {
 }
 
 pub(crate) fn tooltip_demo() -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .padding_top(Space::raw(40.0, "example layout")),
-        )
+    column()
+        .fill_width()
+        .padding_top(Space::raw(40.0, "example layout"))
+        .gap(Space::None)
         .child(
             tooltip("Saves the document")
                 .delay(0)
@@ -77,8 +79,10 @@ pub(crate) fn tooltip_demo() -> NodeBuilder {
 
 pub(crate) fn toast_demo(shown: bool) -> NodeBuilder {
     let message = shown.then(|| String::from("Changes saved"));
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(88.0))
+    column()
+        .fill_width()
+        .height(88.0)
+        .gap(Space::None)
         .child(toast(signal(message)))
 }
 
@@ -88,8 +92,10 @@ pub(crate) fn toast_queue_demo(shown: bool) -> NodeBuilder {
         queue.success("Saved");
         queue.error("Upload failed");
     }
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(128.0))
+    column()
+        .fill_width()
+        .height(128.0)
+        .gap(Space::None)
         .child(toast_queue(queue))
 }
 
@@ -99,13 +105,15 @@ pub(crate) fn hint_overlay_demo() -> impl IntoNode {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(menu_bar_demo())
             .child(
-                container()
-                    .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+                row()
+                    .gap(cols(1.0))
+                    .align_items(AlignItems::Stretch)
                     .child(modal_demo(signal(false)))
                     .child(sheet_demo(signal(false)))
                     .child(menu_demo(signal(false)))

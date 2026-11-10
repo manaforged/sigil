@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 pub(crate) use crate::scene::damage::FullReason;
 
-use crate::animation_runtime::linear_channel_to_srgb;
+use crate::animation::runtime::linear_channel_to_srgb;
 use crate::geometry::{Point, Rect};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::intersect_rect;
@@ -12,7 +12,7 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::damage::Budget;
 use crate::scene::damage::scene_damage;
 use crate::scene::damage::{Damage, command_ink};
-use crate::style::{Color, Rgba8};
+use crate::style::{Color, Rgba};
 
 const FULL_OPACITY: u16 = 10_000;
 const CLEAR_BLEED: f32 = 2.0;
@@ -28,7 +28,7 @@ pub(crate) struct FrameKey {
     pub(crate) target: wgpu::Texture,
     pub(crate) viewport: (f32, f32),
     pub(crate) scale: f32,
-    pub(crate) clear: Color,
+    pub(crate) clear: Rgba,
 }
 
 pub(crate) struct Retained {
@@ -68,8 +68,8 @@ pub(crate) fn culled(scene: &CommandScene, region: Rect) -> CommandScene {
     CommandScene { commands }
 }
 
-pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Color) -> CommandScene {
-    let fill = Rgba8 {
+pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Rgba) -> CommandScene {
+    let fill = Color {
         r: linear_channel_to_srgb(clear.r),
         g: linear_channel_to_srgb(clear.g),
         b: linear_channel_to_srgb(clear.b),

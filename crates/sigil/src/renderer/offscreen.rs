@@ -1,4 +1,4 @@
-use crate::style::Color;
+use crate::style::Rgba;
 
 use crate::Error;
 use crate::renderer::device_state::PipelineCache;
@@ -13,7 +13,7 @@ use crate::renderer::scene_command::walk::WalkCtx;
 use crate::renderer::scene_command::walk::walk_command_scene;
 use crate::renderer::split_encoder::SplitEncoder;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct OffscreenTarget<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
@@ -43,7 +43,7 @@ impl WgpuRenderer {
         &mut self,
         target: OffscreenTarget<'_>,
         scene: &CommandScene,
-        clear_color: Color,
+        clear_color: Rgba,
     ) -> Result<(), Error> {
         self.last_frame_stats = FrameStats::default();
         let mut encoder = target

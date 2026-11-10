@@ -19,7 +19,7 @@ impl LayoutEngine {
             if !force.covers(cx, id) && self.prepared.get(key) == Some(&signature) {
                 continue;
             }
-            crate::animation_runtime::style::prepare(cx, id);
+            crate::animation::runtime::style::prepare(cx, id);
             self.prepared.insert(key, signature);
         }
     }

@@ -1,10 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sigil::style::StyledTextEngine as _;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef, MetadataProvider};
 
-use sigil::hal::{ParagraphMetrics, TextEngine};
 use sigil::style::{TextLineHeight, TextStyle};
 use sigil::text::OwnedTextEngine;
 

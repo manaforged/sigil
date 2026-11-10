@@ -6,7 +6,7 @@ use crate::events_support::routing_helpers;
 use input::ctrl_s;
 
 use sigil::events::Event;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use std::cell::Cell;
 use std::rc::Rc;
 

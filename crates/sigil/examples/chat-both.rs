@@ -219,19 +219,19 @@ pub(crate) fn app_tree() -> impl IntoNode {
         picker.focus.update(|n| *n += 1);
     };
     let unread = move || format!("{} unread", chat.unread.with(|u| u.iter().sum::<usize>()));
-    container()
-        .layout(LayoutStyle::flex_column().fill())
+    column()
+        .fill()
+        .gap(Space::None)
         .key_capture(
             Shortcut::ctrl(LogicalKey::character("k")),
             move |_: &mut KeyEvent| show_picker(),
         )
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .padding(Space::raw(PANE_PADDING, "example layout")),
-                )
+            row()
+                .fill_width()
+                .padding(Space::raw(PANE_PADDING, "example layout"))
+                .gap(Space::None)
+                .align_items(AlignItems::Stretch)
                 .child(text(move || format!("# {}", current_name(chat))).nowrap())
                 .child(spacer())
                 .child(show(
@@ -262,30 +262,27 @@ fn wide() -> bool {
 }
 
 fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .grow(1.0)
-                .min_height(rows(0.0)),
-        )
+    row()
+        .fill_width()
+        .grow(1.0)
+        .min_height(rows(0.0))
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
         .child(show(wide, move || sidebar(channels(chat)), container))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fill()
-                        .gap(rows(1.0))
-                        .padding(Space::raw(PANE_PADDING, "example layout")),
-                )
+            column()
+                .fill()
+                .gap(rows(1.0))
+                .padding(Space::raw(PANE_PADDING, "example layout"))
                 .child(transcript(chat))
                 .child(composer(chat, posts)),
         )
 }
 
 fn channels(chat: Chat) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width())
+    column()
+        .fill_width()
+        .gap(Space::None)
         .child(section_label("Channels"))
         .children_reactive(move || {
             let current = chat.active.get();
@@ -310,8 +307,9 @@ fn channels(chat: Chat) -> NodeBuilder {
 
 fn transcript(chat: Chat) -> impl IntoNode {
     scroll(
-        container()
-            .layout(LayoutStyle::flex_column().fill_width().gap(rows(1.0)))
+        column()
+            .fill_width()
+            .gap(rows(1.0))
             .children_reactive(move || {
                 let entries = chat.visible.get().into_iter();
                 entries
@@ -330,8 +328,9 @@ fn message(chat: Chat, index: usize) -> NodeBuilder {
         read(head).unwrap_or_default()
     };
     let body = text(move || read(|msg| msg.body.clone()).unwrap_or_default());
-    container()
-        .layout(LayoutStyle::flex_column().fill_width())
+    column()
+        .fill_width()
+        .gap(Space::None)
         .child(
             text(head)
                 .nowrap()

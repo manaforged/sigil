@@ -16,7 +16,7 @@ use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LayerEffect, LayerScope,
     LinearGradient, SceneBuilder,
 };
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::shared_device;
 use std::hint::black_box;
 use wgpu::TextureFormat;
@@ -26,7 +26,7 @@ const SIGMA_SWEEP: [f32; 5] = [0.0, 6.0, 12.0, 18.0, 24.0];
 const COUNT_SWEEP: [u32; 3] = [1, 3, 8];
 const SIZE_SWEEP: [u32; 4] = [128, 256, 512, 1024];
 const FIXED_SIGMA: f32 = 12.0;
-const CLEAR: Color = Color::rgba(0.05, 0.06, 0.09, 1.0);
+const CLEAR: Rgba = Rgba::new(0.05, 0.06, 0.09, 1.0);
 
 fn blur_sigma_sweep(c: &mut Criterion) {
     let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
@@ -232,8 +232,8 @@ fn make_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture
     })
 }
 
-const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
 criterion_group!(benches, blur_sigma_sweep, blur_count_sweep, blur_size_sweep);

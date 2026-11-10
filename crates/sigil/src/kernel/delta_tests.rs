@@ -8,7 +8,7 @@ fn a_colour_write_records_only_its_node_as_paint() {
     Owner::scope("delta-colour", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(container().paint_when(lit, |style| style.bg(Token::Accent)));
+        let id = cx.add(container().paint_when(lit, |style| style.background(Token::Accent)));
         drop(cx.take_delta());
         lit.set(true);
         let delta = cx.take_delta();
@@ -54,7 +54,7 @@ fn a_frame_with_no_change_has_an_empty_delta() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
-                .paint_when(lit, |style| style.bg(Token::Accent))
+                .paint_when(lit, |style| style.background(Token::Accent))
                 .child(text("still")),
         );
         assert!(
@@ -70,7 +70,7 @@ fn dropping_a_tree_forgets_its_pending_changes() {
     Owner::scope("delta-drop", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
-        let _id = cx.add(container().paint_when(lit, |style| style.bg(Token::Accent)));
+        let _id = cx.add(container().paint_when(lit, |style| style.background(Token::Accent)));
         drop(cx.take_delta());
         lit.set(true);
         let instance = cx.instance_id();

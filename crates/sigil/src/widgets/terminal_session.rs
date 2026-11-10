@@ -9,7 +9,7 @@ use crate::layout::{LayoutStyle, mono_cell, rows};
 use crate::reactive::{Signal, derived, effect_named, signal};
 use crate::style::TextRun;
 use crate::style::theme::ambient::ActiveTheme;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::{key_payload, shell};
 
@@ -25,7 +25,7 @@ impl Session {
             .child(list)
             .selectable_text(true)
             .size_reactive(size)
-            .on_paste(move |text| pasted.paste(text).is_ok());
+            .paste(move |text| pasted.paste(text).is_ok());
         pointer(wheel(node, self), self)
     }
 
@@ -108,11 +108,14 @@ fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
 
 #[allow(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "values are bounded to the target range before the cast"
+    reason = "the cast saturates, and Rust has no checked conversion from a float"
 )]
+const fn whole(value: f32) -> i32 {
+    value as i32
+}
+
 fn cells(span: f32, cell: f32) -> u16 {
-    (span / cell.max(1.0)).floor().clamp(1.0, 999.0) as u16
+    u16::try_from(whole((span / cell.max(1.0)).floor().clamp(1.0, 999.0))).unwrap_or(1)
 }
 
 #[allow(
@@ -122,14 +125,16 @@ fn cells(span: f32, cell: f32) -> u16 {
 )]
 fn cell_at(x: f32, y: f32) -> (u16, u16) {
     let (width, height) = mono_cell();
-    let cell = |at: f32, size: f32| (at.max(0.0) / size.max(1.0)).floor().min(998.0) as u16;
+    let cell = |at: f32, size: f32| {
+        u16::try_from(whole((at.max(0.0) / size.max(1.0)).floor().min(998.0))).unwrap_or_default()
+    };
     (cell(x, width), cell(y, height))
 }
 
 fn wheel(node: NodeBuilder, session: &Rc<Session>) -> NodeBuilder {
     let session = Rc::clone(session);
     let left = Cell::new(0.0_f32);
-    node.on_scroll(move |event| {
+    node.scroll(move |event| {
         let count = whole_rows(event, &left);
         if count != 0 {
             scroll(&session, event, count);
@@ -148,9 +153,9 @@ fn whole_rows(event: &ScrollEvent, left: &Cell<f32>) -> i32 {
         ScrollDelta::Pixels(point) => point.y / mono_cell().1.max(1.0),
     };
     let total = left.get() + delta;
-    let whole = total.trunc();
-    left.set(total - whole);
-    whole as i32
+    let rows = total.trunc();
+    left.set(total - rows);
+    whole(rows)
 }
 
 fn scroll(session: &Session, event: &ScrollEvent, count: i32) {

@@ -6,13 +6,14 @@ use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::layout::{Popup, PopupSide};
 use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
 pub use layer::close_top_escape;
 pub(crate) use layer::{
     PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when,
 };
+pub(crate) use layer::{Stacks as PopupStacks, swap_layers};
 
 pub(crate) const PANEL_INSET: f32 = space(1) + 1.0;
 pub(crate) const PANEL_WIDTH: f32 = space(48);
@@ -20,7 +21,7 @@ pub(crate) const POPUP_GAP: f32 = space(1);
 
 pub(crate) static SURFACE: &[StyleAtom] = Layer::Overlay.atoms();
 
-static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.bg()];
+static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.background()];
 
 #[must_use]
 pub(crate) fn surface(role: Role) -> NodeBuilder {
@@ -57,7 +58,7 @@ pub(crate) fn separator() -> NodeBuilder {
                 .fill_width()
                 .height(separator_height())
                 .shrink(0.0)
-                .padding_x(Space::px(metrics.padding(ControlSize::Default)))
+                .padding_x(Space::px(metrics.control_padding(ControlSize::Default)))
                 .padding_y(Space::px(metrics.overlay_padding())),
         )
         .child(

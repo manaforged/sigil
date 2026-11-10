@@ -8,7 +8,7 @@ use sigil_kittest::Harness;
 
 fn x_of(direction: Direction, view: fn() -> NodeBuilder, name: &str) -> f32 {
     let mut ui = Harness::new(move || {
-        sigil::app::set_theme(Theme::light().with_direction(direction));
+        Theme::light().with_direction(direction).apply();
         view()
     })
     .pixels(600, 200);

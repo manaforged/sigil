@@ -14,7 +14,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{Color, GradientAxis, Radial, RadialExtent};
+use sigil::style::{Background, GradientAxis, Radial, RadialExtent, Rgba};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
 
@@ -24,14 +24,14 @@ mod borders;
 mod route;
 
 pub(crate) const SCALE: f32 = 2.0;
-const RED: Rgba8 = rgb(255, 0, 0);
-const GREEN: Rgba8 = rgb(0, 255, 0);
-const BLUE: Rgba8 = rgb(0, 0, 255);
-pub(crate) const WHITE: Rgba8 = rgb(255, 255, 255);
-pub(crate) const INK: Rgba8 = rgb(0, 0, 0);
+const RED: Color = rgb(255, 0, 0);
+const GREEN: Color = rgb(0, 255, 0);
+const BLUE: Color = rgb(0, 0, 255);
+pub(crate) const WHITE: Color = rgb(255, 255, 255);
+pub(crate) const INK: Color = rgb(0, 0, 0);
 
-pub(crate) const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+pub(crate) const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -58,7 +58,7 @@ impl Shot {
 pub(crate) fn page(width: f32, height: f32, child: impl IntoNode + 'static) -> impl IntoNode {
     container()
         .layout(LayoutStyle::block().fixed_size(width, height))
-        .bg(WHITE)
+        .background(WHITE)
         .child(child)
 }
 
@@ -99,13 +99,13 @@ fn cpu_frame(ui: &mut Harness, (width, height): (u32, u32)) -> image::RgbaImage 
         scene: &scene,
         viewport,
         size,
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(size.width, size.height, rgba).expect("cpu frame size")
 }
 
-pub(crate) fn distance(a: [u8; 3], b: Rgba8) -> u32 {
+pub(crate) fn distance(a: [u8; 3], b: Color) -> u32 {
     [b.r, b.g, b.b]
         .iter()
         .zip(a)
@@ -114,7 +114,7 @@ pub(crate) fn distance(a: [u8; 3], b: Rgba8) -> u32 {
 }
 
 #[track_caller]
-fn assert_near(shot: &Shot, point: (f32, f32), want: Rgba8, limit: u32, what: &str) {
+fn assert_near(shot: &Shot, point: (f32, f32), want: Color, limit: u32, what: &str) {
     let found = shot.at(point.0, point.1);
     let off = distance(found, want);
     assert!(
@@ -130,9 +130,7 @@ fn radial_box() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg_radial(Radial::new())
-            .gradient_from(RED)
-            .gradient_to(BLUE),
+            .background(Background::radial(Radial::new()).start(RED).end(BLUE)),
     )
 }
 
@@ -162,14 +160,16 @@ fn closest_side_circle() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg_radial(
-                Radial::new()
-                    .circle(true)
-                    .extent(RadialExtent::ClosestSide)
-                    .at(25, 50),
-            )
-            .gradient_from(RED)
-            .gradient_to(BLUE),
+            .background(
+                Background::radial(
+                    Radial::new()
+                        .circle(true)
+                        .extent(RadialExtent::ClosestSide)
+                        .at(25, 50),
+                )
+                .start(RED)
+                .end(BLUE),
+            ),
     )
 }
 
@@ -195,10 +195,7 @@ fn conic_box(from: i16) -> impl IntoNode {
         80.0,
         container()
             .layout(LayoutStyle::block().fixed_size(80.0, 80.0))
-            .bg_conic(from)
-            .gradient_from(RED)
-            .gradient_via(GREEN)
-            .gradient_to(BLUE),
+            .background(Background::conic(from).start(RED).middle(GREEN).end(BLUE)),
     )
 }
 
@@ -260,10 +257,12 @@ fn gradient_word() -> impl IntoNode {
             .font_size(40.0, "test fixture")
             .font_weight(900)
             .text_color(INK)
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED)
-            .gradient_to(BLUE)
-            .bg_clip_text(),
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .end(BLUE),
+            )
+            .background_clip_text(),
     )
 }
 
@@ -326,7 +325,7 @@ fn tiled() -> impl IntoNode {
         20.0,
         container()
             .layout(LayoutStyle::block().fixed_size(35.0, 20.0))
-            .bg_image(quarters()),
+            .background_image(quarters()),
     )
 }
 
@@ -351,7 +350,7 @@ fn an_image_paint_tiles_at_its_natural_size() {
 fn parity_scene() -> impl IntoNode {
     container()
         .layout(LayoutStyle::flex_row().fixed_size(400.0, 80.0))
-        .bg(WHITE)
+        .background(WHITE)
         .child(radial_box())
         .child(conic_box(45))
         .child(borders::dashed_card())

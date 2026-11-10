@@ -26,7 +26,7 @@ fn events_channel_delivers_activations_to_subscribers() {
 fn install_reports_a_platform_with_no_menu_bar() {
     assert_eq!(Menu::new().install().is_ok(), NATIVE_MENU_BAR);
     assert_eq!(has_pending(), NATIVE_MENU_BAR);
-    PENDING.with(|slot| *slot.borrow_mut() = None);
+    NATIVE.with(Native::take);
 }
 
 #[cfg(target_os = "windows")]
@@ -34,12 +34,12 @@ fn install_reports_a_platform_with_no_menu_bar() {
 fn install_after_install_queues_again() {
     Menu::new().install().expect("install");
     assert!(has_pending());
-    PENDING.with(|slot| *slot.borrow_mut() = None);
-    INSTALLED.with(|slot| *slot.borrow_mut() = Some(muda::Menu::new()));
+    NATIVE.with(Native::take);
+    NATIVE.with(|native| native.installed(|slot| *slot = Some(muda::Menu::new())));
     Menu::new().install().expect("install");
     assert!(has_pending());
-    PENDING.with(|slot| *slot.borrow_mut() = None);
-    INSTALLED.with(|slot| *slot.borrow_mut() = None);
+    NATIVE.with(Native::take);
+    NATIVE.with(|native| native.installed(|slot| *slot = None));
 }
 
 #[test]

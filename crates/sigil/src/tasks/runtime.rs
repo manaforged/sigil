@@ -4,7 +4,6 @@ use std::fmt;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use crate::hal::Scheduler;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use crate::Error;
@@ -116,7 +115,20 @@ impl AsyncRuntime {
 
     /// Runs waiting UI-thread work and returns how many items ran.
     pub fn pump(&mut self) -> usize {
-        Scheduler::drain(self)
+        sweep_owner_tasks(&self.parts.owner_tasks);
+
+        let budget = self.rx.len();
+        let mut ran = 0_usize;
+        for _ in 0..budget {
+            let Ok(msg) = self.rx.try_recv() else {
+                break;
+            };
+            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
+                ran += 1;
+            }
+        }
+        crate::reactive::run_dispatch_deferred();
+        ran
     }
 
     pub(crate) fn spawn_parts(&self) -> SpawnParts {
@@ -166,24 +178,22 @@ fn sweep_owner_tasks(registry: &TaskRegistry) {
     });
 }
 
-impl Scheduler for AsyncRuntime {
-    type Error = Error;
-    type Owner = Owner;
-    type SpawnTask = TaskHandle;
-
+impl AsyncRuntime {
+    /// Queues a callback to run on the UI thread under an owner.
     #[cfg(any(test, feature = "kittest"))]
-    fn enqueue_main(
+    pub fn enqueue_main(
         &self,
-        owner: Self::Owner,
+        owner: Owner,
         f: Box<dyn FnOnce() + Send + 'static>,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Error> {
         self.parts
             .dispatcher
             .send(DispatchMessage { owner, callback: f })
     }
 
+    /// Spawns a future that is cancelled when its owner is disposed.
     #[cfg(any(test, feature = "kittest"))]
-    fn spawn<F>(&self, owner: Self::Owner, future: F) -> Self::SpawnTask
+    pub fn spawn<F>(&self, owner: Owner, future: F) -> TaskHandle
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -194,23 +204,6 @@ impl Scheduler for AsyncRuntime {
         let task = self.parts.backend.spawn(owner, future, drop);
         attach_task(&self.parts, owner, task.clone());
         task
-    }
-
-    fn drain(&mut self) -> usize {
-        sweep_owner_tasks(&self.parts.owner_tasks);
-
-        let budget = self.rx.len();
-        let mut ran = 0_usize;
-        for _ in 0..budget {
-            let Ok(msg) = self.rx.try_recv() else {
-                break;
-            };
-            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
-                ran += 1;
-            }
-        }
-        crate::reactive::run_dispatch_deferred();
-        ran
     }
 }
 

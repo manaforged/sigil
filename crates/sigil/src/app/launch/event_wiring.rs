@@ -1,5 +1,5 @@
 use crate::events::EventRouter;
-use crate::events::{Event, Key, KeyPhase, WindowEvent};
+use crate::events::{Event, WindowEvent};
 use crate::geometry::{PhysicalSize, Scale};
 use crate::hal::Shell as _;
 use crate::kernel::Cx;
@@ -8,6 +8,7 @@ use crate::profile::Cause;
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
+use crate::app::config::QuitKeys;
 use crate::error::AppResult;
 use std::sync::Arc;
 
@@ -22,7 +23,6 @@ pub(super) struct DrainCtx<'a> {
     pub(super) layout: &'a LayoutEngine,
     pub(super) router: &'a mut EventRouter,
     pub(super) renderer: &'a mut Backend,
-    pub(super) exit_requested: &'a mut bool,
 }
 
 pub(super) struct EnsureSurfaceCtx<'a> {
@@ -109,8 +109,11 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         layout,
         router,
         renderer,
-        exit_requested,
     } = ctx;
+    router.set_quit(QuitKeys {
+        ctrl_c: false,
+        ..view.config.quit
+    });
     for event in core::mem::take(&mut view.inbox) {
         crate::profile::note_input(&event);
         if let Event::Window(window_event) = &event {
@@ -121,13 +124,6 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
                 viewport: &mut view.viewport,
             };
             window_ctx.handle(window_event);
-        }
-        if let Event::Key(key_event) = &event
-            && view.config.quit.esc
-            && key_event.key == Key::Escape.into()
-            && key_event.phase == KeyPhase::Down
-        {
-            *exit_requested = true;
         }
         router.route(cx, layout, event);
     }
@@ -155,9 +151,7 @@ pub(super) fn publish_a11y(
     let mut bridge = crate::a11y::AccessKitBridge::new(action_rx, |tree_update| {
         shell.publish_a11y_update(handle, tree_update);
     });
-    if let Err(err) = crate::hal::A11yBridge::publish(&mut bridge, update) {
-        tracing::warn!(target: "sigil::a11y", error = ?err, "accessibility update publish failed");
-    }
+    bridge.publish(update);
 }
 
 pub(super) fn drain_a11y_actions(
@@ -166,9 +160,9 @@ pub(super) fn drain_a11y_actions(
     router: &mut EventRouter,
     layout: &LayoutEngine,
 ) {
-    let mut bridge =
+    let bridge =
         crate::a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
-    while let Some((target, request)) = crate::hal::A11yBridge::take_action(&mut bridge) {
+    while let Some((target, request)) = bridge.take_action() {
         crate::profile::interact(Cause::A11y);
         crate::a11y::actions::apply(cx, router, layout, target, &request);
     }

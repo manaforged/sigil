@@ -21,13 +21,13 @@ fn default_matches_css_baseline() {
     );
     assert_eq!(
         (s.flex_grow, s.flex_shrink, s.flex_basis),
-        (0.0, 1.0, Dimension::Auto)
+        (0.0, 1.0, Length::Auto)
     );
     assert_eq!((s.justify_content, s.align_content), (None, None));
     assert_eq!((s.align_items, s.align_self), (None, None));
     assert_eq!(s.overflow, Axes::splat(Overflow::Visible));
-    assert_eq!(s.inset, Edges::splat(Dimension::Auto));
-    assert_eq!(s.size, Axes::splat(Dimension::Auto));
+    assert_eq!(s.inset, Edges::splat(Length::Auto));
+    assert_eq!(s.size, Axes::splat(Length::Auto));
 }
 
 #[test]

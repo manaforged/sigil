@@ -2,8 +2,8 @@ use super::*;
 use crate::kernel::Cx;
 use crate::reactive::Owner;
 
-fn rgba(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+fn rgba(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 #[test]

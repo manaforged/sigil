@@ -60,7 +60,7 @@ fn type_char_owned(ch: String, physical: PhysicalKey) -> Event {
         .text(Some(ch))
 }
 
-fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Rgba8) -> f32 {
+fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Color) -> f32 {
     emit_scene(cx, root, None)
         .commands
         .iter()

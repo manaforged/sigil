@@ -16,6 +16,17 @@ pub struct FontCollection {
     symbols: Option<Font>,
 }
 
+impl core::fmt::Debug for FontCollection {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("FontCollection")
+            .field("icon", &self.icon)
+            .field("fallbacks", &self.fallbacks)
+            .field("emoji", &self.emoji)
+            .field("symbols", &self.symbols)
+            .finish_non_exhaustive()
+    }
+}
+
 impl FontCollection {
     #[must_use]
     pub fn with_default() -> Self {

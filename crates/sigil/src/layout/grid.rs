@@ -11,7 +11,7 @@ use crate::layout::grid_tracks::{
     resolve_gap, spanned_height,
 };
 use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Axes, Dimension, Display, StyleData};
+use crate::layout::style_data::{Axes, Display, Length, StyleData};
 
 pub(crate) struct GridSolver<'a> {
     scope: MeasureScope<'a>,
@@ -120,7 +120,7 @@ impl<'a> GridSolver<'a> {
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), Error> {
         let avail = self.scope.available();
         let border_w = match subtree.style().size.width {
-            Dimension::Px(px) => px,
+            Length::Px(px) => px,
             _ => definite(avail.w),
         };
         self.solve_at(subtree, border_w, Position2 { x: 0.0, y: 0.0 })
@@ -187,14 +187,14 @@ impl<'a> GridSolver<'a> {
         let avail_h = definite(self.scope.available().h);
         let chrome = frame.edges.block_chrome();
         let inner_h = match frame.style.size.height {
-            Dimension::Px(px) => Some((px - chrome).max(0.0)),
-            Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => {
+            Length::Px(px) => Some((px - chrome).max(0.0)),
+            Length::Rows(_) | Length::Cols(_) | Length::Em(_) => {
                 Some((frame.style.size.height.text_px().unwrap_or(0.0) - chrome).max(0.0))
             }
-            Dimension::Fill => Some((avail_h - chrome).max(0.0)),
-            Dimension::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
-            Dimension::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
-            Dimension::Auto => None,
+            Length::Fill => Some((avail_h - chrome).max(0.0)),
+            Length::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
+            Length::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
+            Length::Auto => None,
         };
         if let Some(height) = inner_h {
             distribute_fr_rows(
@@ -322,7 +322,7 @@ impl<'a> GridSolver<'a> {
         let cell = forest
             .refer(cid)
             .ok_or_else(|| Error::layout(format!("stale grid cell {cid:?}")))?;
-        let stretch = matches!(cell.style().size.height, Dimension::Auto);
+        let stretch = matches!(cell.style().size.height, Length::Auto);
         let nested = MeasureScope::new(forest, self.scope.text(), self.scope.available());
         match cell.style().display {
             Display::Flex => FlexSolver::new(nested).solve_at_area(

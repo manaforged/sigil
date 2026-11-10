@@ -6,13 +6,14 @@ use crate::style::{ControlSize, Style, StyleAtom, Tone};
 use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 #[cfg(feature = "scene")]
 mod svg;
 
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Glyph {
     Text(TextContent),
     #[cfg(feature = "scene")]
@@ -20,6 +21,7 @@ enum Glyph {
 }
 
 /// Builder of an icon.
+#[derive(Debug)]
 pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
@@ -34,7 +36,7 @@ pub struct IconBuilder {
 }
 
 /// What `icon` accepts: a bundled `Icon` or any text glyph.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IconSource(Glyph);
 
 impl IntoIconSource for IconSource {
@@ -141,7 +143,7 @@ impl IconBuilder {
         let (base, glyph_class) = match self.size {
             ControlSize::Compact => (16.0, "text-xs"),
             ControlSize::Default => (20.0, "text-base"),
-            ControlSize::Wide | ControlSize::Grow => (24.0, "text-lg"),
+            ControlSize::Wide => (24.0, "text-lg"),
         };
         let extent = self.px.unwrap_or(base);
         #[cfg(feature = "scene")]
@@ -178,10 +180,7 @@ impl IconBuilder {
         if let Some(label) = self.label {
             container_node = container_node.label(label);
         }
-        if !self.style_accumulator.is_empty() {
-            container_node = container_node.style(self.style_accumulator);
-        }
-        container_node
+        caller_style(container_node, self.style_accumulator)
     }
 }
 

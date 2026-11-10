@@ -10,7 +10,7 @@ use sigil::widgets::icon_svg;
 use sigil_kittest::Harness;
 
 const SIDE: u32 = 32;
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -21,7 +21,9 @@ fn frame(body: &'static str) -> image::RgbaImage {
     let app = move || {
         let svg =
             format!(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">{body}</svg>"#);
-        column().bg(BLACK).child(icon_svg(svg).px(SIDE as f32))
+        column()
+            .background(BLACK)
+            .child(icon_svg(svg).px(SIDE as f32))
     };
     let mut ui = Harness::new(app).pixels(SIDE, SIDE);
     ui.image().expect("harness image").expect("gpu frame")
@@ -61,7 +63,7 @@ fn stroked_polyline_leaves_rows_outside_its_outline_empty() {
 
 #[test]
 fn a_translucent_token_tints_an_icon_at_its_own_alpha() {
-    let glow = Rgba8 {
+    let glow = Color {
         r: 255,
         g: 255,
         b: 255,
@@ -71,7 +73,7 @@ fn a_translucent_token_tints_an_icon_at_its_own_alpha() {
     let app = move || {
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24"/></svg>"#;
         column()
-            .bg(BLACK)
+            .background(BLACK)
             .theme(theme.clone())
             .child(icon_svg(svg).px(SIDE as f32))
     };

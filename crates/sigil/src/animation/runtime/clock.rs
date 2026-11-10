@@ -35,7 +35,7 @@ pub fn running_clocks() -> usize {
             .values()
             .filter(|source| matches!(source, FrameSource::Clock(_)))
             .count()
-    }) + crate::animation_runtime::state::perpetual_count()
+    }) + crate::animation::runtime::state::perpetual_count()
 }
 
 pub(crate) fn tick_clocks(dt: f32) {

@@ -1,14 +1,14 @@
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder};
-use sigil::style::{Color, Theme, Token};
+use sigil::style::{Rgba, Theme, Token};
 use sigil::widgets::{PathNode, path};
 use sigil_kittest::gpu::{headless_renderer, pixel_rgba};
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
 
 const SIDE: f32 = 60.0;
 const PIXELS: u32 = 120;
-const CLEAR: Color = Color::rgba(0.5, 0.5, 0.5, 1.0);
+const CLEAR: Rgba = Rgba::new(0.5, 0.5, 0.5, 1.0);
 
 fn scene_of(node: PathNode, theme: &Theme) -> CommandScene {
     let mut scene = SceneBuilder::new();

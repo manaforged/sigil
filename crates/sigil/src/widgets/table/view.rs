@@ -6,13 +6,13 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::DISABLED_OPACITY;
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
+use super::super::shared::{DIMMED, caller_style};
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
 use super::density::Density;
@@ -22,14 +22,13 @@ use super::row::{RowSpec, body_row};
 use super::select;
 use super::state::TableState;
 
-static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
 static FRAMED: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::BorderStrong.border(),
     Radius::Md.atom(),
-    Token::Surface.bg(),
+    Token::Surface.background(),
 ];
-static UNFRAMED: &[StyleAtom] = &[Token::Surface.bg()];
+static UNFRAMED: &[StyleAtom] = &[Token::Surface.background()];
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
 /// Builder of a table.
@@ -39,7 +38,6 @@ pub struct TableBuilder<Row: 'static> {
     header_height: f32,
     viewport_height: f32,
     viewport_width: Option<f32>,
-    viewport_fill: bool,
     row_menu: Option<RowMenu<Row>>,
     row_activate: Option<RowActivate<Row>>,
     empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
@@ -53,6 +51,20 @@ pub struct TableBuilder<Row: 'static> {
     layout_overrides: LayoutOverrides,
 }
 
+impl<Row: 'static> core::fmt::Debug for TableBuilder<Row> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TableBuilder")
+            .field("state", &self.state)
+            .field("row_height", &self.row_height)
+            .field("header_height", &self.header_height)
+            .field("viewport_height", &self.viewport_height)
+            .field("select", &self.select)
+            .field("density", &self.density)
+            .field("striped", &self.striped)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A sortable, filterable table.
 #[must_use]
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
@@ -62,7 +74,6 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         header_height: DEFAULT_HEADER_HEIGHT,
         viewport_height: space(120),
         viewport_width: None,
-        viewport_fill: false,
         row_menu: None,
         row_activate: None,
         empty: None,
@@ -103,13 +114,6 @@ impl<Row: 'static> TableBuilder<Row> {
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
-        self
-    }
-
-    /// Applies the viewport fill option.
-    #[must_use]
-    pub const fn viewport_fill(mut self) -> Self {
-        self.viewport_fill = true;
         self
     }
 
@@ -191,7 +195,8 @@ impl<Row: 'static> TableBuilder<Row> {
             striped: self.striped,
             disabled: self.disabled,
         };
-        let viewport = (!self.viewport_fill).then_some(self.viewport_height);
+        let fill = self.layout_overrides.fills_height();
+        let viewport = (!fill).then_some(self.viewport_height);
         let body = body_view(
             state.clone(),
             chrome.clone(),
@@ -215,7 +220,7 @@ impl<Row: 'static> TableBuilder<Row> {
             .class(self.density.text())
             .with(
                 self.layout_overrides
-                    .apply(root_layout(self.viewport_fill, self.viewport_width)),
+                    .apply(root_layout(fill, self.viewport_width)),
             )
             .child(header_row(&state, header, &chrome, hscroll))
             .child(body)
@@ -253,12 +258,12 @@ fn empty_overlay<Row: 'static>(
         })
 }
 
-fn root_layout(viewport_fill: bool, viewport_width: Option<f32>) -> LayoutStyle {
+fn root_layout(fill: bool, viewport_width: Option<f32>) -> LayoutStyle {
     let layout = LayoutStyle::flex_column()
         .fill_width()
         .overflow_x(Overflow::Hidden);
     match viewport_width {
-        _ if viewport_fill => layout.grow(1.0).fill_height(),
+        _ if fill => layout.grow(1.0),
         Some(width) => layout.width(width),
         None => layout,
     }
@@ -281,7 +286,7 @@ fn body_view<Row: 'static>(
     };
     match viewport {
         Some(height) => body.viewport_height(height).shrink_to_content(),
-        None => body.viewport_fill(),
+        None => body.fill(),
     }
 }
 
@@ -295,16 +300,12 @@ fn finish(
         Some(disabled) => root.style_reactive(move || if disabled.get() { DIMMED } else { &[] }),
         None => root,
     };
-    let root = if style.is_empty() {
-        root
-    } else {
-        root.style(style)
-    };
+    let root = caller_style(root, style);
     let root = match hs.probe {
         Some(probe) => root.child(hscroll::probe(probe)),
         None => root,
     };
-    root.on_scroll(move |ev| {
+    root.scroll(move |ev| {
         let x = WheelAxis {
             offset: hs.scroll_x,
             viewport: hs.viewport.peek(),

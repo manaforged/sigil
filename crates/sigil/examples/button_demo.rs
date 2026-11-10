@@ -11,15 +11,13 @@ fn main() -> sigil::AppResult<()> {
 
 fn build() -> impl IntoNode {
     let count = signal(0_u32);
-    container()
+    row()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill()
-                .gap(Space::Lg)
-                .padding(Space::Xxl),
-        )
-        .bg(Token::Surface)
+        .fill()
+        .gap(Space::Lg)
+        .padding(Space::Xxl)
+        .align_items(AlignItems::Stretch)
+        .background(Token::Surface)
         .child(button("Neutral").activate(move || count.set(count.peek() + 1)))
         .child(button("Primary").primary().activate(|| {}))
 }

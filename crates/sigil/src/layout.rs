@@ -39,7 +39,7 @@ pub(crate) mod text_geometry;
 mod text_style;
 mod units;
 
-pub use builder_ext::{column, row};
+pub use builder_ext::{column, grid, row};
 pub use engine::LayoutEngine;
 pub(crate) use engine::{Popup, PopupSide, ViewportOverlay};
 #[cfg(any(test, feature = "kittest"))]
@@ -56,8 +56,8 @@ pub use space::Space;
 #[cfg(any(test, feature = "kittest"))]
 pub use style_adapter::apply_style_atoms;
 pub use style_data::{
-    AlignContent, AlignItems, Axes, BoxSizing, Dimension, Display, Edges, FlexDirection, FlexWrap,
-    JustifyContent, Overflow, Position, StyleData, TrackSize,
+    AlignContent, AlignItems, Axes, BoxSizing, Display, Edges, FlexDirection, FlexWrap,
+    JustifyContent, Length, Overflow, Position, StyleData, TrackSize,
 };
 #[cfg(all(feature = "scene", any(test, feature = "kittest")))]
 pub use text_adapter::TextEngineMeasure;

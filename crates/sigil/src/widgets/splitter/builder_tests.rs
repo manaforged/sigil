@@ -5,25 +5,46 @@ use crate::reactive::Owner;
 
 use super::{Orientation, splitter};
 use crate::geometry::Size;
-use crate::layout::{Dimension, FlexDirection, LayoutEngine, LayoutStyle};
-use crate::widgets::Widget;
+use crate::layout::{FlexDirection, LayoutEngine, LayoutStyle, Length};
+use crate::widgets::{Layout, Widget};
 
 #[test]
-fn pane_width_reaches_the_splitter_root() {
-    Owner::scope("pane-width", || {
+fn a_width_on_a_pane_sets_the_pane_and_not_the_splitter() {
+    let pane = splitter(Orientation::Horizontal)
+        .pane(container())
+        .width(180.0);
+
+    assert_eq!(pane.entry.initial_size, 180.0);
+    assert_eq!(pane.splitter.layout_overrides.width_hint(), None);
+}
+
+#[test]
+fn a_width_in_columns_on_a_pane_sets_its_initial_size() {
+    let width = crate::layout::cols(30.0);
+    let pane = splitter(Orientation::Horizontal)
+        .pane(container())
+        .width(width);
+
+    assert_eq!(Some(pane.entry.initial_size), width.px());
+    assert!(pane.entry.initial_size > 0.0);
+}
+
+#[test]
+fn a_width_on_the_splitter_reaches_its_root() {
+    Owner::scope("splitter-width", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             splitter(Orientation::Horizontal)
                 .pane(container())
-                .width(180.0)
-                .commit(),
+                .commit()
+                .width(180.0),
         );
         let style = cx
             .get(root)
             .expect("root")
             .get_extension::<LayoutStyle>()
             .expect("layout");
-        assert_eq!(style.data().size.width, Dimension::Px(180.0));
+        assert_eq!(style.data().size.width, Length::Px(180.0));
     });
 }
 
@@ -53,12 +74,12 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
         let root = cx.add(
             splitter(Orientation::Horizontal)
                 .pane(container().layout(LayoutStyle::flex_column().fill()))
-                .initial(224.0)
-                .min(180.0)
-                .max(500.0)
+                .width(224.0)
+                .min_width(180.0)
+                .max_width(500.0)
                 .pane(container().layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0)))
                 .grow(1.0)
-                .min(320.0)
+                .min_width(320.0)
                 .commit()
                 .layout(LayoutStyle::flex_row().fill()),
         );
@@ -91,7 +112,7 @@ fn splitter_and_pane_builders_convert_to_nodes() {
         };
         let pane: NodeBuilder = splitter(Orientation::Horizontal)
             .pane(container())
-            .initial(120.0)
+            .width(120.0)
             .pane(container())
             .grow(1.0)
             .into();

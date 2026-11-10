@@ -6,7 +6,7 @@
 
 use smallvec::SmallVec;
 
-use super::Rgba8;
+use super::Color;
 use crate::scene::Shadow;
 use crate::scene::command::Filter;
 use crate::style::NumericAtomKind;
@@ -30,10 +30,10 @@ pub(crate) fn hue_units(degrees: f32) -> i16 {
     (degrees % 360.0).round() as i16
 }
 
-pub(crate) fn shadow_color(shadow: Shadow) -> Rgba8 {
+pub(crate) fn shadow_color(shadow: Shadow) -> Color {
     let [r, g, b, a] = shadow.color;
     let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-    Rgba8 {
+    Color {
         r: byte(encode(r)),
         g: byte(encode(g)),
         b: byte(encode(b)),
@@ -49,7 +49,7 @@ pub struct FilterAtom(pub(crate) FilterPart);
 pub(crate) struct ShadowSpec {
     offset: [i16; 2],
     blur: u16,
-    color: Rgba8,
+    color: Color,
 }
 
 impl ShadowSpec {
@@ -57,7 +57,7 @@ impl ShadowSpec {
         Self {
             offset: [0, y * 16],
             blur: sigma_16ths,
-            color: Rgba8 {
+            color: Color {
                 r: 0,
                 g: 0,
                 b: 0,
@@ -77,7 +77,7 @@ impl ShadowSpec {
     const CLEAR: Self = Self {
         offset: [0, 0],
         blur: 0,
-        color: Rgba8 {
+        color: Color {
             r: 0,
             g: 0,
             b: 0,
@@ -97,7 +97,7 @@ impl ShadowSpec {
         }
     }
 
-    fn shadow(self, color: Option<Rgba8>) -> Shadow {
+    fn shadow(self, color: Option<Color>) -> Shadow {
         let color = color.unwrap_or(self.color);
         let linear = [
             decode(color.r),
@@ -146,8 +146,8 @@ pub(crate) struct FilterStyle {
     hue: Option<i16>,
     drop: Option<ShadowSpec>,
     text: TextShadows,
-    pub(crate) drop_color: Option<Rgba8>,
-    pub(crate) text_color: Option<Rgba8>,
+    pub(crate) drop_color: Option<Color>,
+    pub(crate) text_color: Option<Color>,
 }
 
 impl Amount {

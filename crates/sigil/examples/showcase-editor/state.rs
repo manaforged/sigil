@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{ChangeKind, DiagSpan, Highlight};
+use sigil::widgets::{Change, Diagnostic, Highlight};
 
 use super::facts::{CHANGES, DIAGNOSTICS};
 use super::project::{FILE_COUNT, FileId, Folder, TreeItem};
@@ -36,8 +36,8 @@ pub(crate) struct Buffer {
     pub(crate) lines: Signal<Vec<String>>,
     pub(crate) caret: Signal<(usize, usize)>,
     pub(crate) highlights: Signal<Vec<Vec<Highlight>>>,
-    pub(crate) gutter: Signal<Vec<Option<ChangeKind>>>,
-    pub(crate) diagnostics: Signal<Vec<DiagSpan>>,
+    pub(crate) gutter: Signal<Vec<Option<Change>>>,
+    pub(crate) diagnostics: Signal<Vec<Diagnostic>>,
     pub(crate) text: Signal<String>,
 }
 
@@ -65,7 +65,7 @@ impl Buffer {
     }
 }
 
-fn gutter_marks(file: FileId, total: usize) -> Vec<Option<ChangeKind>> {
+fn gutter_marks(file: FileId, total: usize) -> Vec<Option<Change>> {
     (0..total)
         .map(|row| {
             CHANGES
@@ -76,11 +76,11 @@ fn gutter_marks(file: FileId, total: usize) -> Vec<Option<ChangeKind>> {
         .collect()
 }
 
-fn diag_spans(file: FileId) -> Vec<DiagSpan> {
+fn diag_spans(file: FileId) -> Vec<Diagnostic> {
     DIAGNOSTICS
         .iter()
         .filter(|diag| diag.file == file)
-        .map(|diag| DiagSpan {
+        .map(|diag| Diagnostic {
             line: diag.line,
             start: diag.start,
             end: diag.end,

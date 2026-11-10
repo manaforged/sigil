@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::{BORDER_WIDTH, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::vector::{PathNode, path};
 
 use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};

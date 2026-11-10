@@ -3,17 +3,14 @@ use crate::style::StateSlot;
 use crate::widgets::{StateTarget, Widget};
 
 /// Paint per interaction state, on builders that track hover, focus, press, and disabled.
-pub trait StateVariants: Widget + StateTarget {
+pub trait States: Widget + StateTarget {
     /// Sets the style for the rest state.
     #[must_use]
     fn rest<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        self.set_state(
-            StateSlot::Rest,
-            configure(StateStyleBuilder::new()).into_atoms(),
-        )
+        state(self, StateSlot::Rest, configure)
     }
 
     /// Sets the style while the pointer is over the node.
@@ -22,10 +19,7 @@ pub trait StateVariants: Widget + StateTarget {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        self.set_state(
-            StateSlot::Hovered,
-            configure(StateStyleBuilder::new()).into_atoms(),
-        )
+        state(self, StateSlot::Hovered, configure)
     }
 
     /// Sets the style while the node has focus.
@@ -34,10 +28,7 @@ pub trait StateVariants: Widget + StateTarget {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        self.set_state(
-            StateSlot::Focused,
-            configure(StateStyleBuilder::new()).into_atoms(),
-        )
+        state(self, StateSlot::Focused, configure)
     }
 
     /// Sets the style while the node is pressed.
@@ -46,10 +37,7 @@ pub trait StateVariants: Widget + StateTarget {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        self.set_state(
-            StateSlot::Pressed,
-            configure(StateStyleBuilder::new()).into_atoms(),
-        )
+        state(self, StateSlot::Pressed, configure)
     }
 
     /// Sets the style while the node is disabled.
@@ -58,11 +46,16 @@ pub trait StateVariants: Widget + StateTarget {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        self.set_state(
-            StateSlot::Disabled,
-            configure(StateStyleBuilder::new()).into_atoms(),
-        )
+        state(self, StateSlot::Disabled, configure)
     }
 }
 
-impl<T: Widget + StateTarget> StateVariants for T {}
+impl<T: Widget + StateTarget> States for T {}
+
+fn state<W, F>(widget: W, slot: StateSlot, configure: F) -> W
+where
+    W: StateTarget,
+    F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
+{
+    widget.set_state(slot, configure(StateStyleBuilder::new()).into_atoms())
+}

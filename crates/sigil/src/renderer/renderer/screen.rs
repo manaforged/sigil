@@ -11,7 +11,7 @@ use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::split_encoder::SplitEncoder;
-use crate::style::Color;
+use crate::style::Rgba;
 
 #[derive(Debug)]
 pub struct ScreenSubmission<'a> {
@@ -21,7 +21,7 @@ pub struct ScreenSubmission<'a> {
     pub format: wgpu::TextureFormat,
     pub viewport: (f32, f32),
     pub scale: f32,
-    pub clear: Option<Color>,
+    pub clear: Option<Rgba>,
 }
 
 fn clear_screen(split: &mut SplitEncoder, target: &ScreenSubmission<'_>) {

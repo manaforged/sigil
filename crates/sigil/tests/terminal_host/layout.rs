@@ -2,8 +2,8 @@ use sigil::Host;
 use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
+use sigil::widgets::Layout;
 
 #[test]
 fn a_frame_records_the_siblings_its_layout_moved() {

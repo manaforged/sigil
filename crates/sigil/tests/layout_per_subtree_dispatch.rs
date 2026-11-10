@@ -5,7 +5,7 @@
     clippy::similar_names
 )]
 
-use sigil::layout::{Axes as StyleSize, Dimension, Display, FlexDirection, LayoutDrive, StyleData};
+use sigil::layout::{Axes as StyleSize, Display, FlexDirection, LayoutDrive, Length, StyleData};
 use sigil_kittest::FakeMeasure;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
@@ -31,7 +31,7 @@ fn flex_style(dir: FlexDirection) -> StyleData {
 
 fn fixed(w: f32, h: f32) -> StyleData {
     StyleData {
-        size: StyleSize::new(Dimension::Px(w), Dimension::Px(h)),
+        size: StyleSize::new(Length::Px(w), Length::Px(h)),
         ..StyleData::default()
     }
 }
@@ -48,7 +48,7 @@ fn flex_inside_block_lays_out_as_flex() {
     let root = d.insert(fixed_block(400.0, 200.0));
     let row = d.insert({
         let mut s = flex_style(FlexDirection::Row);
-        s.size = StyleSize::new(Dimension::Px(300.0), Dimension::Px(40.0));
+        s.size = StyleSize::new(Length::Px(300.0), Length::Px(40.0));
         s
     });
     let a = d.insert(fixed(30.0, 30.0));
@@ -76,7 +76,7 @@ fn block_inside_flex_lays_out_as_block() {
     let mut d = drive();
     let root = d.insert({
         let mut s = flex_style(FlexDirection::Column);
-        s.size = StyleSize::new(Dimension::Px(400.0), Dimension::Px(400.0));
+        s.size = StyleSize::new(Length::Px(400.0), Length::Px(400.0));
         s
     });
     let inner_block = d.insert(fixed_block(300.0, 300.0));
@@ -112,7 +112,7 @@ fn nested_block_flex_block_alternation() {
     let root = d.insert(fixed_block(500.0, 500.0));
     let row = d.insert({
         let mut s = flex_style(FlexDirection::Row);
-        s.size = StyleSize::new(Dimension::Px(400.0), Dimension::Px(200.0));
+        s.size = StyleSize::new(Length::Px(400.0), Length::Px(200.0));
         s
     });
     let col_a = d.insert(fixed_block(100.0, 200.0));
@@ -152,13 +152,13 @@ fn nested_flex_block_flex_alternation() {
     let mut d = drive();
     let root = d.insert({
         let mut s = flex_style(FlexDirection::Column);
-        s.size = StyleSize::new(Dimension::Px(500.0), Dimension::Px(500.0));
+        s.size = StyleSize::new(Length::Px(500.0), Length::Px(500.0));
         s
     });
     let mid_block = d.insert(fixed_block(400.0, 200.0));
     let inner_row = d.insert({
         let mut s = flex_style(FlexDirection::Row);
-        s.size = StyleSize::new(Dimension::Px(300.0), Dimension::Px(60.0));
+        s.size = StyleSize::new(Length::Px(300.0), Length::Px(60.0));
         s
     });
     let leaf_x = d.insert(fixed(40.0, 40.0));
@@ -187,7 +187,7 @@ fn flex_column_with_block_display_child_computes_correct_intrinsic_height() {
     let mut d = drive();
     let root = d.insert({
         let mut s = flex_style(FlexDirection::Column);
-        s.size = StyleSize::new(Dimension::Px(400.0), Dimension::Auto);
+        s.size = StyleSize::new(Length::Px(400.0), Length::Auto);
         s
     });
     let block_child = d.insert(block_style());

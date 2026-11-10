@@ -38,6 +38,14 @@ pub struct ThemeWatcher {
     owner: Owner,
 }
 
+impl core::fmt::Debug for ThemeWatcher {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ThemeWatcher")
+            .field("owner", &self.owner)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Drop for ThemeWatcher {
     fn drop(&mut self) {
         drop(self.watcher.take());
@@ -66,7 +74,7 @@ fn reload(
         let file = path.clone();
         dispatch_to_owner(&dispatcher, owner, move || {
             if let Some(theme) = crate::app::theme_file::load(&file) {
-                crate::app::set_theme(theme);
+                theme.apply();
             }
         });
     }

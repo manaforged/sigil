@@ -2,12 +2,13 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::layer_composite::{
     Backdrop, CompositeRequest, LayerCompositePipeline, LayerMask,
 };
+use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::projected::{ProjectedPipeline, ProjectedRequest};
 use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, compose, translation};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::super::backdrop::{self, BackdropCopy};
 use super::super::{LayerTarget, local_rect, mask};
@@ -44,10 +45,7 @@ pub(in super::super) fn composite_layer(
         mask.release(ctx);
     }
     release(ctx, copy.map(|(copy, _)| copy));
-    ctx.layer_pool
-        .as_mut()
-        .expect("layer pool acquired the texture")
-        .release(layer.handle);
+    release_layer(ctx, layer.handle);
 }
 
 fn draw(
@@ -75,6 +73,13 @@ fn draw(
         (Some(mask), None) => pipeline.composite_masked(paint, request, mask),
         (None, None) => pipeline.composite(paint, request),
     }
+}
+
+fn release_layer(ctx: &mut WalkCtx<'_>, handle: LayerHandle) {
+    ctx.layer_pool
+        .as_mut()
+        .expect("layer pool acquired the texture")
+        .release(handle);
 }
 
 fn release(ctx: &mut WalkCtx<'_>, copy: Option<BackdropCopy>) {
@@ -119,10 +124,7 @@ fn composite_projected(
         BlendMode::Normal => project(ctx, target, &target.view, request),
         mode => project_blended(ctx, target, request, mode),
     }
-    ctx.layer_pool
-        .as_mut()
-        .expect("layer pool acquired the texture")
-        .release(layer.handle);
+    release_layer(ctx, layer.handle);
 }
 
 fn project(
@@ -159,7 +161,7 @@ fn project_blended(
     let Ok(scratch) = pool.acquire(ctx.device, width, height, texture.format()) else {
         return;
     };
-    ctx.encoder.clear(&scratch.view, Color::TRANSPARENT);
+    ctx.encoder.clear(&scratch.view, Rgba::TRANSPARENT);
     project(ctx, target, &scratch.view, request);
     let (w, h) = target.viewport(ctx.scale);
     let whole = Rect::new(Point::new(0.0, 0.0), w, h);

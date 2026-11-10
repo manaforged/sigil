@@ -2,7 +2,7 @@ use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Axes, Dimension, Display, Position};
+use crate::layout::style_data::{Axes, Display, Length, Position};
 
 use super::placement::PlacedItem;
 use super::sizing::item_min_max_main;
@@ -115,7 +115,7 @@ pub(super) fn write_container(
         style.size.width,
         style.box_sizing,
     ) {
-        (true, Dimension::Auto, _, _) | (false, _, Dimension::Auto, _) => None,
+        (true, Length::Auto, _, _) | (false, _, Length::Auto, _) => None,
         (true, dim, _, sizing) => dim_to_border_box(dim, ctx.cb.h, chrome_cross, sizing),
         (false, _, dim, sizing) => dim_to_border_box(dim, ctx.cb.w, chrome_cross, sizing),
     };
@@ -160,7 +160,7 @@ fn assigned_size(
     let style = node.style();
     let probing = ctx.suppress_stretch;
     let in_flow = style.position != Position::Absolute;
-    let sized = style.size.width != Dimension::Auto
+    let sized = style.size.width != Length::Auto
         || (style.flex_grow > 0.0 && ctx.axes.row)
         || ctx.solver.fills_width(node);
     let stretched = (style.stretch_width || ctx.solver.fills_width(node))
@@ -168,7 +168,7 @@ fn assigned_size(
         && (!probing || ctx.measures_height);
     let assigned_w = ((!probing && sized) || stretched).then_some(w);
     let assigned_h = (!probing
-        && (style.size.height != Dimension::Auto
+        && (style.size.height != Length::Auto
             || (in_flow && ctx.axes.row)
             || style.flex_grow > 0.0))
         .then_some(h);

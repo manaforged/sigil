@@ -4,11 +4,11 @@ use crate::geometry::{Point, Rect};
 use crate::scene::command::fills::{FillRule, PathPaint};
 use crate::scene::command::payloads::{DrawPath, PathCmd};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const IDENTITY: crate::scene::command::Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 const KAPPA: f32 = 0.552_284_8;
-const OPAQUE: Rgba8 = Rgba8 {
+const OPAQUE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -21,6 +21,7 @@ const OPAQUE: Rgba8 = Rgba8 {
     reason = "SceneCommand already holds DrawPath inline, so boxing it here saves no space and adds an allocation"
 )]
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Clip {
     /// A rectangle, applied with the scissor.
     Rect(Rect),
@@ -112,6 +113,10 @@ impl Clip {
         }
     }
 
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) const fn mask(&self) -> Option<&DrawPath> {
         match self {
             Self::Path(draw) => Some(draw),

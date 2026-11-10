@@ -54,10 +54,8 @@ pub(crate) use glyph::{RunInk, shape_run};
 pub use gradient::{Gradient, GradientKind};
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use payloads::MITER_LIMIT;
-pub(crate) use payloads::{CellBorder, CellRect};
-pub use payloads::{
-    DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
-};
+pub(crate) use payloads::{CellBorder, CellRect, DrawPath};
+pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
 pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(
     feature = "scene",
@@ -85,18 +83,24 @@ impl CommandScene {
         Self { commands }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn find_text(&self, expected: &str) -> Option<&GlyphRun> {
-        self.commands.iter().find_map(|command| match command {
-            SceneCommand::GlyphRun(draw) if draw.text == expected => Some(draw),
+    /// Returns the text runs of this scene in paint order.
+    pub fn glyph_runs(&self) -> impl Iterator<Item = &GlyphRun> {
+        self.commands.iter().filter_map(|command| match command {
+            SceneCommand::GlyphRun(draw) => Some(draw),
             _ => None,
         })
+    }
+
+    /// Returns the first text run whose text equals `expected`.
+    #[must_use]
+    pub fn find_text(&self, expected: &str) -> Option<&GlyphRun> {
+        self.glyph_runs().find(|draw| draw.text == expected)
     }
 }
 
 /// One draw or state command in a `CommandScene`.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum SceneCommand {
     /// Clips the commands up to the matching `PopClip`.
     PushClip(Clip),

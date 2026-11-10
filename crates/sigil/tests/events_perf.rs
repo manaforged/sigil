@@ -1,7 +1,7 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use sigil::geometry::Point;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;

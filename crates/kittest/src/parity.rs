@@ -1,20 +1,22 @@
 use sigil::geometry::PhysicalSize;
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::CommandScene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 
-use crate::Error;
 use crate::gpu::{Capture, read_pixels, render_capture};
+use crate::{Error, ErrorKind};
 
 pub const CLOSE_TOLERANCE: u8 = 48;
 pub const MAX_MEAN_DIFF: f32 = 20.0;
 pub const MIN_CLOSE_FRACTION: f32 = 0.85;
 
+/// One scene and the target that both renderers draw it into.
+#[derive(Clone, Copy, Debug)]
 pub struct Frame<'a> {
     pub scene: &'a CommandScene,
     pub viewport: (f32, f32),
     pub size: PhysicalSize,
-    pub clear: Color,
+    pub clear: Rgba,
 }
 
 impl Frame<'_> {
@@ -27,7 +29,7 @@ impl Frame<'_> {
 pub fn cpu_rgba(renderer: &mut CpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>, Error> {
     let pixmap = renderer
         .render(frame.scene, frame.clear, frame.viewport, frame.size)
-        .map_err(|err| Error::Render(err.to_string()))?;
+        .map_err(|err| Error::caused(ErrorKind::Render, err))?;
     let mut rgba = Vec::with_capacity(pixmap.pixels().len() * 4);
     for px in pixmap.pixels() {
         let c = px.demultiply();
@@ -39,18 +41,15 @@ pub fn cpu_rgba(renderer: &mut CpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>
 pub fn gpu_rgba(renderer: &mut WgpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>, Error> {
     let device = renderer
         .device()
-        .ok_or_else(|| Error::Device("renderer has no device".to_owned()))?
+        .ok_or_else(|| Error::text(ErrorKind::Device, "renderer has no device"))?
         .clone();
     let queue = renderer
         .queue()
-        .ok_or_else(|| Error::Device("renderer has no queue".to_owned()))?
+        .ok_or_else(|| Error::text(ErrorKind::Device, "renderer has no queue"))?
         .clone();
-    let capture = Capture {
-        viewport: frame.viewport,
-        size_px: [frame.size.width, frame.size.height],
-        scale: frame.scale(),
-        clear: frame.clear,
-    };
+    let capture = Capture::new(frame.viewport, [frame.size.width, frame.size.height])
+        .scale(frame.scale())
+        .clear(frame.clear);
     let texture = render_capture(renderer, (&device, &queue), frame.scene, &capture)?;
     read_pixels(
         &device,
@@ -125,7 +124,7 @@ pub fn check_cpu(scene: &crate::scene_gen::GeneratedScene) -> Result<(), String>
     let size = scene.physical();
     let render = |renderer: &mut CpuRenderer| {
         renderer
-            .render(&commands, scene.clear, scene.viewport, size)
+            .render(&commands, scene.clear(), scene.viewport(), size)
             .map_err(|err| format!("render failed: {err}"))
     };
     let mut renderer = CpuRenderer::new();

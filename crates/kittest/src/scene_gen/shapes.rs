@@ -3,7 +3,7 @@ use sigil::scene::{
     CornerRadii, LayerEffect, LayerScope, Shadow, ShadowKind, Stroke, StrokeAlign, StrokeStyle,
     Transform,
 };
-use sigil::style::Rgba8;
+use sigil::style::Color;
 
 use super::Gen;
 
@@ -34,10 +34,10 @@ impl Gen<'_, '_, '_> {
         Rect::new(origin, self.extent(w), self.extent(h))
     }
 
-    pub(crate) fn color(&mut self) -> Rgba8 {
+    pub(crate) fn color(&mut self) -> Color {
         let e = &mut *self.entropy;
         let a = if e.chance(30) { 255 } else { e.byte() };
-        Rgba8 {
+        Color {
             r: e.byte(),
             g: e.byte(),
             b: e.byte(),

@@ -3,7 +3,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::kernel::{Cx, NodeId, NodeType, TextContent, container, node, text};
+use sigil::kernel::{Cx, NodeId, NodeType, TextContent, container, for_each, node, text};
 use sigil::reactive::{Owner, signal};
 
 fn text_value(cx: &Cx, id: NodeId) -> String {
@@ -364,3 +364,6 @@ fn a_keyed_survivor_keeps_its_node_untouched() {
         assert_eq!(patched, 0, "a surviving key was patched");
     });
 }
+
+#[path = "kernel_reactive_children/for_each.rs"]
+mod for_each_once;

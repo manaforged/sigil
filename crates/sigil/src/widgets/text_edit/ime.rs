@@ -61,7 +61,7 @@ pub(in crate::widgets) fn attach_ime_handlers(
     runtime.install_disable_clears_preedit();
     runtime.install_caret_anchor_sync();
     let node = node
-        .on_ime(move |event| on_ime_event(event, &event_rt))
+        .ime(move |event| on_ime_event(event, &event_rt))
         .focus_out(move || blur_rt.clear_preedit())
         .ime_eligible(move || !eligible_rt.disabled());
     crate::events::builder_ext::ime_caret(node, anchor)

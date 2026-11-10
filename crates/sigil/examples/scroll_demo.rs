@@ -15,15 +15,17 @@ fn build() -> impl IntoNode {
 
 fn root() -> NodeBuilder {
     let items = tall_column();
-    container()
+    column()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill().padding(Space::Xl))
-        .bg(Token::Surface)
+        .fill()
+        .padding(Space::Xl)
+        .gap(Space::None)
+        .background(Token::Surface)
         .child(scroll(items).extent(600.0).height(300.0))
 }
 
 fn tall_column() -> NodeBuilder {
-    let mut col = container().layout(LayoutStyle::flex_column().gap(Space::Sm));
+    let mut col = column().gap(Space::Sm);
     for i in 1..=15 {
         col = col.child(button(format!("Item {i}")).activate(|| {}));
     }

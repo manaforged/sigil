@@ -5,9 +5,11 @@ use crate::icons::Icon;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, signal, timeout};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
 use crate::style::{ControlSize, Paint, Radius, Token, space};
-use crate::widgets::Widget;
 use crate::widgets::{ButtonBuilder, icon_button};
+use crate::widgets::{Layout, Widget};
 
 use super::{Drawn, diagram_name, fit, lightbox, scrolled};
 
@@ -86,46 +88,50 @@ impl Chrome {
                     .padding(Space::Xs)
                     .align_items(AlignItems::Center),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .border_color(Token::Border)
-            .border_w(1)
-            .rounded(Radius::Md)
+            .border_width(1)
+            .radius(Radius::Md)
             .paint_when(hidden, |s| s.opacity(0.0))
             .child(self.toggle())
             .child(self.copy(source));
         if expandable {
             let open = self.open;
-            bar = bar
-                .child(tool(Icon::Maximize2, move || open.set(true)).accessible("Expand diagram"));
+            bar = bar.child(
+                tool(Icon::Maximize2, move || open.set(true))
+                    .accessible(theme_string_once(StringKey::ExpandDiagram)),
+            );
         }
         bar
     }
 
     fn toggle(self) -> ButtonBuilder {
         let code = self.code;
+        let theme = ActiveTheme::capture();
         let name = derived(move || {
-            if code.get() {
-                "Show diagram"
+            theme.string(if code.get() {
+                StringKey::ShowDiagram
             } else {
-                "Show code"
-            }
-            .to_string()
+                StringKey::ShowCode
+            })
         });
         tool(Icon::Code, move || code.update(|on| *on = !*on))
             .accessible(AccessibleName::Derived(name))
-            .paint_when(code, |s| s.bg(Token::Accent3).text_color(Token::Accent11))
+            .paint_when(code, |s| {
+                s.background(Token::Accent3).text_color(Token::Accent11)
+            })
     }
 
     fn copy(self, source: &str) -> ButtonBuilder {
         let copied = self.copied;
         let body = source.trim_end().to_string();
+        let theme = ActiveTheme::capture();
         let name = derived(move || {
-            if copied.get() {
-                "Copied"
+            theme.string(if copied.get() {
+                StringKey::Copied
             } else {
-                "Copy source"
-            }
-            .to_string()
+                StringKey::CopySource
+            })
         });
         tool(Icon::Copy, move || {
             if crate::clipboard::copy(&body).is_ok() {
@@ -147,8 +153,8 @@ fn code_view(source: &str) -> NodeBuilder {
         .role(Role::Code)
         .class("font-mono text-sm")
         .layout(LayoutStyle::flex_column().fill_width().padding(Space::Md))
-        .bg(Token::Field)
-        .rounded(Radius::Md)
+        .background(Token::Field)
+        .radius(Radius::Md)
         .selectable_text(true);
     for line in source.trim_end().lines() {
         let line = if line.is_empty() { " " } else { line };
@@ -167,8 +173,8 @@ fn updating() -> NodeBuilder {
                 .padding_x(Space::Sm)
                 .padding_y(Space::Xs),
         )
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(
             text("Updating…")
                 .class("text-xs")

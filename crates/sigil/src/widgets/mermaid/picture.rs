@@ -36,14 +36,14 @@ const ROLES: [(ThemeRole, Token); 20] = [
     (ThemeRole::EdgeLabelBackground, Token::SurfaceSubtle),
     (ThemeRole::ClusterBackground, Token::Gray2),
     (ThemeRole::ClusterBorder, Token::Border),
-    (ThemeRole::NoteBackground, Token::Warn3),
-    (ThemeRole::NoteBorder, Token::Warn8),
+    (ThemeRole::NoteBackground, Token::Warning3),
+    (ThemeRole::NoteBorder, Token::Warning8),
     (ThemeRole::ActorBackground, Token::Accent3),
     (ThemeRole::ActorBorder, Token::Accent8),
     (ThemeRole::ActivationBackground, Token::Accent4),
     (ThemeRole::ActivationBorder, Token::Accent8),
     (ThemeRole::Error, Token::Error9),
-    (ThemeRole::Warning, Token::Warn9),
+    (ThemeRole::Warning, Token::Warning9),
     (ThemeRole::Success, Token::Success9),
 ];
 

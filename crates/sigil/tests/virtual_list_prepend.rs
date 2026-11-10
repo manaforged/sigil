@@ -48,7 +48,7 @@ fn prepending_items_keeps_the_top_visible_item_in_place() {
                 .estimate(48.0)
                 .key_by(|_, id: &u64| *id)
                 .scroll_bind(scroll)
-                .viewport_fill(),
+                .fill(),
             )
         })
         .pixels(600, 600);

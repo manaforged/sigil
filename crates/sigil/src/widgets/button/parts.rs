@@ -1,4 +1,4 @@
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{TextBuilder, TextContent, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
@@ -13,8 +13,8 @@ const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 #[derive(Clone, Copy)]
 pub(super) enum ButtonWidth {
     Hug,
-    Fixed(f32),
     Fill,
+    Fixed(f32),
 }
 
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
@@ -25,8 +25,8 @@ pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> 
         .justify_content(JustifyContent::Center);
     match width {
         ButtonWidth::Hug => layout.shrink(0.0),
+        ButtonWidth::Fill => layout,
         ButtonWidth::Fixed(px) => layout.width(px).shrink(0.0),
-        ButtonWidth::Fill => layout.fill_width(),
     }
 }
 
@@ -39,7 +39,7 @@ pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
 ];
 
 const CLEAR_BORDER: StyleAtom =
-    StyleAtom::BorderColor(ColorAtom::Rgba8(crate::scene::command::fills::TRANSPARENT));
+    StyleAtom::BorderColor(ColorAtom::Color(crate::scene::command::fills::TRANSPARENT));
 
 pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
 

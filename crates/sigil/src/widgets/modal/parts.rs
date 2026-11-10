@@ -6,7 +6,7 @@ use crate::reactive::Signal;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Paint, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
@@ -62,5 +62,10 @@ pub(super) fn dialog_body(children: Vec<Box<dyn IntoNode>>, offset: Signal<f32>)
                 .shrink(1.0)
                 .min_size(0.0, 0.0),
         )
-        .child(scroll(content).fit().scroll_bind(offset).bg(Token::Overlay))
+        .child(
+            scroll(content)
+                .fit()
+                .scroll_bind(offset)
+                .background(Token::Overlay),
+        )
 }

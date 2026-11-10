@@ -6,7 +6,7 @@ use sigil_kittest::Harness;
 use super::frame_of;
 
 const SIDE: u32 = 40;
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,

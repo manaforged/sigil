@@ -5,13 +5,13 @@ use sigil::Host;
 use sigil::app::{FrameHooks, FrameInfo, FramePaintHook};
 use sigil::events::Event;
 use sigil::prelude::*;
-use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause};
+use sigil::profile::{self, Backend, BackendStatus, FallbackCause};
 use sigil::reactive::Runtime;
 use sigil::reactive::{__test_clear_clock, __test_set_clock, Owner, next_interval_deadline};
 use sigil::tasks::AsyncRuntime;
 use sigil::terminal::Screen;
 
-use crate::Error;
+use crate::{Error, ErrorKind};
 use gpu_surface::{GPU_STATUS, GpuSurface};
 
 mod actions;
@@ -56,7 +56,7 @@ impl HarnessSurface {
         match self {
             Self::Cells { .. } => BackendStatus::TERMINAL,
             Self::Pixels { fallback, .. } => BackendStatus {
-                kind: BackendKind::Cpu,
+                kind: Backend::Cpu,
                 fallback: *fallback,
             },
             Self::Gpu(_) => GPU_STATUS,
@@ -64,6 +64,7 @@ impl HarnessSurface {
     }
 }
 
+/// Drives one app the way a user does and checks what it shows.
 pub struct Harness {
     clock: Instant,
     owner: Owner,
@@ -81,13 +82,17 @@ impl Harness {
         cols: u16,
         rows: u16,
         events: &[Event],
-    ) -> Result<String, sigil::Error> {
+    ) -> Result<String, Error> {
         Owner::scope("sigil-terminal-present", || {
             let mut host = Host::new(sigil::kernel::HostMode::Cell);
             host.mount(tree);
-            host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))?;
+            host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))
+                .map_err(|err| Error::caused(ErrorKind::Layout, err))?;
             host.repair_focus();
-            Ok(host.grid(events.iter().cloned(), cols, rows)?.text())
+            let grid = host
+                .grid(events.iter().cloned(), cols, rows)
+                .map_err(|err| Error::caused(ErrorKind::Render, err))?;
+            Ok(grid.text())
         })
     }
 
@@ -150,7 +155,8 @@ impl Harness {
     #[must_use]
     pub fn gpu(mut self, width: u32, height: u32, scale: f32) -> Self {
         self.host = Host::new(sigil::kernel::HostMode::Pixel);
-        if let Some(gpu) = GpuSurface::open(width, height, scale).unwrap_or_else(|err| fail(err)) {
+        let opened = GpuSurface::open(width, height, scale);
+        if let Some(gpu) = opened.unwrap_or_else(|err| fail(err.chain())) {
             self.surface = HarnessSurface::Gpu(Box::new(gpu));
         } else {
             eprintln!("sigil-kittest: no GPU adapter; gpu surface falls back to pixels");
@@ -168,7 +174,8 @@ impl Harness {
         if let Some(tree) = self.pending.take() {
             let (owner, host) = (self.owner, &mut self.host);
             owner.with(|| tree(host));
-            self.frames(Vec::new()).unwrap_or_else(|err| fail(err));
+            self.frames(Vec::new())
+                .unwrap_or_else(|err| fail(err.chain()));
         }
         self
     }
@@ -211,7 +218,7 @@ impl Harness {
                 layout
             }
         };
-        layout.map_err(|err| Error::Layout(err.to_string()))
+        layout.map_err(|err| Error::caused(ErrorKind::Layout, err))
     }
 
     fn frames(&mut self, events: Vec<Event>) -> Result<(), Error> {
@@ -222,7 +229,9 @@ impl Harness {
     #[track_caller]
     pub fn send(&mut self, events: impl IntoIterator<Item = Event>) -> &mut Self {
         let events = events.into_iter().collect();
-        self.live().frames(events).unwrap_or_else(|err| fail(err));
+        self.live()
+            .frames(events)
+            .unwrap_or_else(|err| fail(err.chain()));
         self
     }
 
@@ -241,7 +250,8 @@ impl Harness {
             let next = due.map_or(self.clock + step, |due| due.min(self.clock + step));
             self.clock = next.min(end);
             __test_set_clock(self.clock);
-            self.frame(Vec::new()).unwrap_or_else(|err| fail(err));
+            self.frame(Vec::new())
+                .unwrap_or_else(|err| fail(err.chain()));
         }
         self.settle()
     }
@@ -295,7 +305,7 @@ impl Harness {
 
     /// Lists the design rules that the current frame breaks.
     #[must_use]
-    pub fn flaws(&mut self) -> Vec<sigil::layout::audit::Flaw> {
+    pub fn flaws(&mut self) -> Vec<sigil::layout::audit::Issue> {
         self.live();
         let tolerance = sigil::layout::audit::Tolerance::for_mode(self.host.host_mode());
         sigil::testing::flaws(&self.host, tolerance)
@@ -347,13 +357,23 @@ fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_
 }
 
 fn busy() -> bool {
-    Runtime::frame_dirty() || sigil::animation_runtime::active_count() > 0
+    Runtime::frame_dirty() || sigil::animation::active_count() > 0
 }
 
 fn settle_dt() -> f32 {
-    let perpetual_only = sigil::animation_runtime::active_count() == 0
-        && sigil::animation_runtime::running_clocks() > 0;
+    let perpetual_only =
+        sigil::animation::active_count() == 0 && sigil::animation::running_clocks() > 0;
     if perpetual_only { 0.0 } else { FRAME_DT }
+}
+
+impl std::fmt::Debug for Harness {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Harness")
+            .field("viewport", &self.viewport())
+            .field("mounted", &self.pending.is_none())
+            .field("audited", &self.audited)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Drop for Harness {

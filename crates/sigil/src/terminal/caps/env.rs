@@ -10,7 +10,7 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     let color = color_depth(env, known);
     let modern = known.is_some_and(|term| term != Known::Apple);
     Draft {
-        caps: Caps {
+        caps: Capabilities {
             color,
             graphics,
             mux,

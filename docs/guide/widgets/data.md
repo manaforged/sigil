@@ -25,7 +25,7 @@ Key options:
 
 - `.row_height(len)`: fixed row height. `len` is pixels or a text unit such as `rows(1.0)`.
 - `.item_height(Fn(usize, &T) -> f32)`: variable row heights; the scroll model uses measured tops.
-- `.viewport_height(len)` / `.viewport_width(px)` / `.viewport_fill()`: size the window; `viewport_fill` grows to the parent instead of the fixed height.
+- `.viewport_height(len)` / `.viewport_width(px)`: size the window. `.fill()`, `.fill_height()`, or a percent height grows to the parent instead of the fixed height.
 - `.overscan(pages)`: extra viewport-heights rendered above and below.
 - `.key_by(Fn(usize, &T) -> u64)` / `.identified()`: stable row keys (`identified` requires `T: Identifiable`) so focus and selection survive reordering.
 - `.measured()`: each row lays out at the list width and reports its height. The heights go into one cache keyed by the row key (or the index without `key_by`). A row that has not laid out yet uses `.estimate(len)` (default: the row height). The cache clears when the row width changes, and drops the keys of removed rows when the items change. `follow_row` and `follow_end` keep the tail pinned while rows grow and measurements replace estimates. When the list is scrolled up, a height change above the first visible row moves the scroll offset by the same amount, so the visible rows stay still. The host lays out again in the same frame when a measured size changes, so a new height never paints at the old offset.
@@ -35,7 +35,7 @@ Key options:
 - `.content_height_bind(Signal<f32>)` / `.max_scroll_bind(Signal<f32>)`: the list writes its content height and its largest scroll offset (content height minus the viewport) to these signals. Both use the same scroll model as the list: measured tops, variable heights, or fixed rows. To page from outside the list, write `scroll_bind` clamped to `0.0..=max_scroll`. To jump to the tail, write `max_scroll`.
 - `.scroll_into_view(index)`, `.initial_scroll(ScrollAnchor)` (`Top`/`Bottom`/`Index`): initial position.
 - `.follow_end(bool)`: start at the end and keep the view pinned to the last row while rows grow, until the user scrolls up (chat/log behavior).
-- `.follow_row(Signal<usize>)`: an effect that scrolls the target row into view whenever it changes. It scrolls the least whole rows that show the row, and uses the measured viewport with `.viewport_fill()`. When the content grows, the list follows only if the view was at the bottom and the target is the last row; a list that opens empty and fills later stays at the target row. If the user scrolls up, the view stays, also when a new row moves the target. The list follows again after the view returns to the bottom. A target write with no new rows always scrolls to the target row, so `target.update(|row| *row = last)` jumps to the tail.
+- `.follow_row(Signal<usize>)`: an effect that scrolls the target row into view whenever it changes. It scrolls the least whole rows that show the row, and uses the measured viewport with `.fill()`. When the content grows, the list follows only if the view was at the bottom and the target is the last row; a list that opens empty and fills later stays at the target row. If the user scrolls up, the view stays, also when a new row moves the target. The list follows again after the view returns to the bottom. A target write with no new rows always scrolls to the target row, so `target.update(|row| *row = last)` jumps to the tail.
 - `.keyboard(bool)`: keyboard is on by default: Arrow Up/Down move the focused row, PageUp/PageDown move a page, Home/End jump to the ends. A page uses the row tops, so `.measured()` lists page by the measured heights. The focused list draws the shared focus ring.
 
 ## table
@@ -57,14 +57,14 @@ let state = TableState::new(
         TableColumn::new("size", "Size").numeric().cell(|r: &Row| text(format!("{} B", r.size)).nowrap()),
     ],
 );
-table(state).striped().viewport_fill();
+table(state).striped().fill_height();
 # };
 ```
 
 `TableColumn::new(id: &'static str, title)`:
 
-- `.width(ColWidth::Fixed(px) | ColWidth::Fraction(n))`: columns are `Fraction(1.0)` by default; `.min_width(px)` floors at 48 px.
-- `.align(ColAlign::End)` / `.numeric()`: `numeric` right-aligns and flags the column.
+- `.width(ColumnWidth::Fixed(px) | ColumnWidth::Fraction(n))`: columns are `Fraction(1.0)` by default; `.min_width(px)` floors at 48 px.
+- `.align(ColumnAlign::End)` / `.numeric()`: `numeric` right-aligns and flags the column.
 - `.sortable(Fn(&Row, &Row) -> Ordering)` / `.sort_by(key)`: clicking the header cycles ascending/descending/off via `toggle_sort`.
 - `.filterable(Fn(&Row, &str) -> bool)`: participates in the quick filter.
 - `.cell(Fn(&Row) -> impl IntoNode)`: the cell content; a column without it renders an empty `Role::GridCell`.
@@ -78,13 +78,13 @@ table(state).striped().viewport_fill();
 - `sort_key() -> Signal<Option<SortKey>>`, `toggle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
 - Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 
-`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.viewport_fill()`, `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
+`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
 
 The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
 
 ## heatmap
 
-`heatmap(grid_w, grid_h, color) -> NodeBuilder` where `color` is `Fn(usize, usize) -> Rgba8`. Eagerly builds `grid_w × grid_h` fixed 8 px cells in nested flex rows; the color closure runs once at build time. Not virtualized and not reactive. Keep grids small, or rebuild the node when the data changes.
+`heatmap(grid_w, grid_h, color) -> NodeBuilder` where `color` is `Fn(usize, usize) -> Color`. Eagerly builds `grid_w × grid_h` fixed 8 px cells in nested flex rows; the color closure runs once at build time. Not virtualized and not reactive. Keep grids small, or rebuild the node when the data changes.
 
 ## Rows and key-value pairs
 
@@ -108,8 +108,8 @@ A selected row keeps the `accent-5` wash. Hover and pressed rows show `surface-h
 
 ## Terminal notes
 
-- `.row_height()` and `.viewport_height()` take pixels, not a `TextLength`. The terminal host rounds a row height to whole cells, and a row height below one cell still takes one cell. Prefer `.viewport_fill()` in terminal layouts so the list takes the height that its parent gives it.
-- `.follow_row(Signal<usize>)` and `.viewport_fill()` use the measured viewport, so they follow the terminal size.
+- `.row_height()` and `.viewport_height()` take pixels, not a `TextLength`. The terminal host rounds a row height to whole cells, and a row height below one cell still takes one cell. Prefer `.fill()` in terminal layouts so the list takes the height that its parent gives it.
+- `.follow_row(Signal<usize>)` and `.fill()` use the measured viewport, so they follow the terminal size.
 - The wheel scrolls three lines per notch.
 - A heatmap cell of 8 px is smaller than a cell, so a heatmap paints one colored cell per data cell at best. Keep terminal heatmaps small.
 

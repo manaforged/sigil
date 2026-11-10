@@ -12,7 +12,7 @@ macro_rules! string_keys {
 
         impl StringKey {
             /// Every key.
-            pub const ALL: [Self; 43] = [$(Self::$key,)*];
+            pub const ALL: [Self; 60] = [$(Self::$key,)*];
         }
 
         const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [$(($name, StringKey::$key),)*];
@@ -65,6 +65,23 @@ string_keys! {
     NoticeWarning "notice_warning" "Warning",
     NoticeSuccess "notice_success" "Success",
     Notice "notice" "Notice",
+    Gauge "gauge" "Gauge",
+    Progress "progress" "Progress",
+    Slider "slider" "Slider",
+    Tabs "tabs" "Tabs",
+    CloseTab "close_tab" "Close tab",
+    Menu "menu" "Menu",
+    Diff "diff" "Diff",
+    Math "math" "Math",
+    Row "row" "row {0}",
+    ResizeColumn "resize_column" "Resize {0}",
+    ExpandDiagram "expand_diagram" "Expand diagram",
+    ShowDiagram "show_diagram" "Show diagram",
+    ShowCode "show_code" "Show code",
+    Copied "copied" "Copied",
+    CopySource "copy_source" "Copy source",
+    ZoomOut "zoom_out" "Zoom out",
+    ZoomIn "zoom_in" "Zoom in",
 }
 
 impl StringKey {

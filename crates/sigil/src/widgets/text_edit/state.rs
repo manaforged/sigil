@@ -15,6 +15,16 @@ pub struct TextEditState {
     pub(super) edit: Rc<RefCell<TextEdit>>,
 }
 
+impl std::fmt::Debug for TextEditState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TextEditState")
+            .field("value", &self.value)
+            .field("caret", &self.caret)
+            .field("selection", &self.selection)
+            .finish_non_exhaustive()
+    }
+}
+
 impl TextEditState {
     /// Creates a text edit state.
     #[must_use]

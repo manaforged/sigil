@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 fn ten_row_list() -> Vec<String> {
     (0..10).map(|i| format!("item {i}")).collect()
@@ -7,7 +8,7 @@ fn ten_row_list() -> Vec<String> {
 fn row_label(label: &str) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row())
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .text_color(Token::OnSurface)
         .child(text(label.to_owned()))
 }
@@ -71,7 +72,9 @@ fn virtual_list_items_bind() {
 }
 
 fn splitter_pane(bg: Token) -> NodeBuilder {
-    container().bg(bg).layout(LayoutStyle::flex_column().fill())
+    container()
+        .background(bg)
+        .layout(LayoutStyle::flex_column().fill())
 }
 
 #[test]

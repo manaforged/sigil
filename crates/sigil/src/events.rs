@@ -20,7 +20,7 @@ pub(crate) use builder_ext::{event_methods, handler_methods, mutate_handlers, wi
 pub(crate) use focus::ScrollReveal;
 pub(crate) use focus::focus_from_keyboard;
 pub(crate) use focus::note_focus_source;
-pub use focus::{FocusIntent, request_focus};
+pub use focus::{FocusDirection, request_focus};
 pub(crate) use handlers::EventHandlers;
 pub(crate) use handlers::{A11yEdit, dispatch};
 #[cfg(not(feature = "kittest"))]
@@ -46,9 +46,9 @@ pub fn invoke_node(
 
 pub(crate) use crate::hal::events::ClickConfig;
 pub use crate::hal::events::{
-    Event, FileDropPhase, GestureEvent, GestureKind, ImeEvent, Key, KeyEvent, KeyPhase, LogicalKey,
-    ModifiersState, MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerKind,
-    PointerPhase, ScrollDelta, ScrollEvent, ScrollPhase, Shortcut, WindowEvent,
+    Event, FileDropPhase, Gesture, GestureEvent, ImeEvent, Key, KeyEvent, KeyPhase, LogicalKey,
+    ModifiersState, MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerPhase,
+    PointerType, ScrollDelta, ScrollEvent, ScrollPhase, Shortcut, WindowEvent,
 };
 kittest_pub! {
     #[doc(hidden)]

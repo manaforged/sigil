@@ -6,7 +6,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, t
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, derived};
 use crate::style::Tone;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 mod glyphs;
 
@@ -15,6 +15,7 @@ pub(crate) use glyphs::spark_glyph;
 
 /// Sparkline glyphs.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum SparkMark {
     /// The block spark mark.
     #[default]
@@ -25,6 +26,7 @@ pub enum SparkMark {
 
 /// Body of a multi-row sparkline.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum SparkFill {
     /// The solid spark fill.
     #[default]
@@ -39,7 +41,7 @@ pub(crate) enum SparkLayer {
     Body,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SparkShape {
     range: Option<(f32, f32)>,
     tone: Tone,
@@ -54,6 +56,15 @@ pub struct SparklineBuilder {
     values: Rc<dyn Reactive<Vec<f32>>>,
     shape: SparkShape,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for SparklineBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SparklineBuilder")
+            .field("shape", &self.shape)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A sparkline.
@@ -102,9 +113,9 @@ impl SparklineBuilder {
         self
     }
 
-    /// Sets the fill.
+    /// Sets how the area under the line is drawn.
     #[must_use]
-    pub const fn fill(mut self, fill: SparkFill) -> Self {
+    pub const fn area(mut self, fill: SparkFill) -> Self {
         self.shape.fill = fill;
         self
     }

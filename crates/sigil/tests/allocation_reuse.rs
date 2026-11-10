@@ -1,9 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::NodeExtensions;
-use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
-use sigil::text::{OwnedTextEngine, ParagraphMetrics as _};
+use sigil::text::OwnedTextEngine;
 
 const LABEL: &str = "row 4821";
 

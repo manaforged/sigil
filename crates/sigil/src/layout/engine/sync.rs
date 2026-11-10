@@ -32,7 +32,7 @@ impl LayoutEngine {
         inherited: InheritedText<'_>,
     ) -> Result<SmallVec<[NodeHandle; 4]>, Error> {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
-        crate::animation_runtime::style::prepare(cx, id);
+        crate::animation::runtime::style::prepare(cx, id);
         self.track_reactive(id, node);
         let kernel_version = node.version();
         let children = SmallVec::<[NodeId; 4]>::from_slice(node.children());
@@ -129,7 +129,7 @@ impl LayoutEngine {
 
     pub(super) fn sync_one_node(&mut self, cx: &Cx, id: NodeId) -> Result<(), Error> {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
-        crate::animation_runtime::style::prepare(cx, id);
+        crate::animation::runtime::style::prepare(cx, id);
         self.track_reactive(id, node);
         if matches!(node.kind, NodeType::Fragment) {
             return Ok(());

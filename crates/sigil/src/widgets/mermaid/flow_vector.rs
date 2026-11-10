@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::{BORDER_WIDTH, Paint, Radius, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::vector::{PathNode, path};
 
 use super::flow::{Graph, GridRect, NodeShape, arrange};
@@ -373,9 +373,9 @@ pub(super) fn edge_label(label: &str, at: Point) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .bg(Token::Surface)
-        .rounded(Radius::Full)
-        .border_w(1)
+        .background(Token::Surface)
+        .radius(Radius::Full)
+        .border_width(1)
         .border_color(Token::BorderSubtle)
         .child(
             text(label.to_string())

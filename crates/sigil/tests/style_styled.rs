@@ -14,22 +14,22 @@ use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
 use sigil::layout::Space;
 use sigil::layout::{
-    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutStyle, Overflow,
+    AlignItems, Display, FlexDirection, JustifyContent, LayoutStyle, Length, Overflow,
 };
-use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    ColorAtom, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder, StateVariants, TextLineHeight,
-    Theme, Token,
+    Color, ColorAtom, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
+    Token,
 };
+use sigil::widgets::Layout;
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(200.0, 100.0);
-const REST: Rgba8 = color(240, 240, 240, 255);
-const A: Rgba8 = color(200, 20, 20, 255);
-const B: Rgba8 = color(20, 200, 20, 255);
-const C: Rgba8 = color(20, 20, 200, 255);
-const D: Rgba8 = color(90, 90, 90, 255);
+const REST: Color = color(240, 240, 240, 255);
+const A: Color = color(200, 20, 20, 255);
+const B: Color = color(20, 200, 20, 255);
+const C: Color = color(20, 20, 200, 255);
+const D: Color = color(90, 90, 90, 255);
 
 #[derive(Clone, Copy)]
 enum Drive {
@@ -52,7 +52,9 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
     let mut router = EventRouter::new();
     match drive {
         Drive::Rest => {}
-        Drive::Hover => router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0))),
+        Drive::Hover => {
+            router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
+        }
         Drive::Press => {
             router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
             router.route(&mut cx, &layout, Event::pointer_down(Point::new(8.0, 8.0)));
@@ -69,7 +71,7 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
         .collect()
 }
 
-fn colors(build: impl IntoNode, drive: Drive) -> Vec<Rgba8> {
+fn colors(build: impl IntoNode, drive: Drive) -> Vec<Color> {
     rects(build, drive).iter().map(|rect| rect.color).collect()
 }
 
@@ -111,7 +113,7 @@ fn painted_opacity(build: impl IntoNode) -> Option<u16> {
 #[test]
 fn default_impl_chains_correctly() {
     let node = container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(80.0, 20.0)
@@ -119,7 +121,7 @@ fn default_impl_chains_correctly() {
         )
         .child(
             container()
-                .bg(A)
+                .background(A)
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
     let all = rects(node, Drive::Rest);
@@ -131,7 +133,10 @@ fn default_impl_chains_correctly() {
 #[test]
 fn hover_state_record_overwrites_on_second_call() {
     let hovered = colors(
-        pane().bg(REST).hover(|s| s.bg(A)).hover(|s| s.bg(B)),
+        pane()
+            .background(REST)
+            .hover(|s| s.background(A))
+            .hover(|s| s.background(B)),
         Drive::Hover,
     );
     assert!(
@@ -146,7 +151,9 @@ fn hover_state_record_overwrites_on_second_call() {
 
 #[test]
 fn hover_atoms_accumulate_within_closure() {
-    let node = pane().bg(REST).hover(|s| s.bg(A).rounded(Radius::Md));
+    let node = pane()
+        .background(REST)
+        .hover(|s| s.background(A).radius(Radius::Md));
     let hovered = rects(node, Drive::Hover);
     let rect = hovered
         .iter()
@@ -157,39 +164,45 @@ fn hover_atoms_accumulate_within_closure() {
 
 #[test]
 fn focus_slot_records_atoms() {
-    let focused = colors(pane().bg(REST).focus(|s| s.bg(A)), Drive::Focus);
+    let focused = colors(
+        pane().background(REST).focus(|s| s.background(A)),
+        Drive::Focus,
+    );
     assert!(focused.contains(&A), "focus slot must paint: {focused:?}");
 }
 
 #[test]
 fn pressed_slot_records_atoms() {
-    let pressed = colors(pane().bg(REST).pressed(|s| s.bg(A)), Drive::Press);
+    let pressed = colors(
+        pane().background(REST).pressed(|s| s.background(A)),
+        Drive::Press,
+    );
     assert!(pressed.contains(&A), "pressed slot must paint: {pressed:?}");
 }
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let node = || pane().bg(REST).disabled_style(|s| s.bg(A));
+    let node = || pane().background(REST).disabled_style(|s| s.background(A));
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(!colors(node(), Drive::Hover).contains(&A));
 }
 
 #[test]
 fn bg_accepts_rgba8() {
-    assert_eq!(rest_rect(pane().bg(A)).color, A);
+    assert_eq!(rest_rect(pane().background(A)).color, A);
 }
 
 #[test]
 fn bg_accepts_theme_token() {
     assert_eq!(
-        rest_rect(pane().bg(Token::Surface)).color,
+        rest_rect(pane().background(Token::Surface)).color,
         Theme::default().surface
     );
 }
 
 #[test]
 fn bg_accepts_color_atom() {
-    assert_eq!(rest_rect(pane().bg(ColorAtom::Rgba8(C))).color, C);
+    assert_eq!(rest_rect(pane().background(ColorAtom::Color(C))).color, C);
 }
 
 #[test]
@@ -203,10 +216,10 @@ fn padding_methods_sweep_order_preserved() {
         .padding_bottom(Space::Xxxl)
         .padding_left(Space::raw(56.0, "test fixture"));
     let padding = sigil::testing::style_data(&style).padding;
-    assert_eq!(padding.top, Dimension::Px(32.0));
-    assert_eq!(padding.right, Dimension::Px(40.0));
-    assert_eq!(padding.bottom, Dimension::Px(48.0));
-    assert_eq!(padding.left, Dimension::Px(56.0));
+    assert_eq!(padding.top, Length::Px(32.0));
+    assert_eq!(padding.right, Length::Px(40.0));
+    assert_eq!(padding.bottom, Length::Px(48.0));
+    assert_eq!(padding.left, Length::Px(56.0));
 }
 
 #[test]
@@ -214,14 +227,14 @@ fn sizing_methods_emit_correct_atoms() {
     let style = LayoutStyle::default()
         .width(100.0)
         .height(50.0)
-        .width(Dimension::Percent(1.0));
+        .width(Length::Percent(1.0));
     assert_eq!(
         sigil::testing::style_data(&style).size.width,
-        Dimension::Percent(1.0)
+        Length::Percent(1.0)
     );
     assert_eq!(
         sigil::testing::style_data(&style).size.height,
-        Dimension::Px(50.0)
+        Length::Px(50.0)
     );
 }
 
@@ -241,7 +254,7 @@ fn overflow_hidden_emits_both_axes() {
 #[test]
 fn rounded_presets_emit_distinct_radii() {
     for (radius, px) in [(Radius::Sm, 2.0), (Radius::Md, 6.0), (Radius::Lg, 8.0)] {
-        let rect = rest_rect(pane().bg(A).rounded(radius));
+        let rect = rest_rect(pane().background(A).radius(radius));
         assert_eq!(rect.border_radius.0[0], px, "{radius:?}");
     }
 }
@@ -250,11 +263,11 @@ fn rounded_presets_emit_distinct_radii() {
 fn all_four_state_slots_populate_independently() {
     let node = || {
         pane()
-            .bg(REST)
-            .hover(|s| s.bg(A))
-            .focus(|s| s.bg(B))
-            .pressed(|s| s.bg(C))
-            .disabled_style(|s| s.bg(D))
+            .background(REST)
+            .hover(|s| s.background(A))
+            .focus(|s| s.background(B))
+            .pressed(|s| s.background(C))
+            .disabled_style(|s| s.background(D))
     };
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(colors(node(), Drive::Hover).contains(&A));
@@ -264,9 +277,11 @@ fn all_four_state_slots_populate_independently() {
 
 #[test]
 fn state_builder_implements_styled_within_closure() {
-    let node = pane()
-        .bg(REST)
-        .hover(|s| s.bg(Token::SurfaceHover).rounded(Radius::Lg).opacity(1.0));
+    let node = pane().background(REST).hover(|s| {
+        s.background(Token::SurfaceHover)
+            .radius(Radius::Lg)
+            .opacity(1.0)
+    });
     let hovered = rects(node, Drive::Hover);
     let color = Theme::default().surface_hover;
     let rect = hovered
@@ -281,13 +296,15 @@ fn color_atom_from_impls_route_correctly() {
     let from_rgba: ColorAtom = color(1, 2, 3, 4).into();
     let from_token: ColorAtom = Token::Surface.into();
 
-    assert!(matches!(from_rgba, ColorAtom::Rgba8(_)));
+    assert!(matches!(from_rgba, ColorAtom::Color(_)));
     assert!(matches!(from_token, ColorAtom::Token(Token::Surface)));
 }
 
 #[test]
 fn state_style_builder_can_be_built_standalone() {
-    let node = pane().bg(REST).hover(|s: StateStyleBuilder| s.bg(A));
+    let node = pane()
+        .background(REST)
+        .hover(|s: StateStyleBuilder| s.background(A));
     assert!(colors(node, Drive::Hover).contains(&A));
 }
 
@@ -299,7 +316,7 @@ fn font_methods_emit_typography_atoms() {
             .font_size(14.0, "test fixture")
             .font_weight(600)
             .font_family(FontFamily::Mono)
-            .line_height_px(20.0),
+            .line_height(20.0),
     );
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let scene = emit_scene(&cx, root, None);
@@ -325,8 +342,8 @@ fn flex_layout_methods_emit_correct_atoms() {
     assert_eq!(data.flex_direction, FlexDirection::Row);
     assert_eq!(data.align_items, Some(AlignItems::Center));
     assert_eq!(data.justify_content, Some(JustifyContent::SpaceBetween));
-    assert_eq!(data.gap.width, Dimension::Px(8.0));
-    assert_eq!(data.gap.height, Dimension::Px(8.0));
+    assert_eq!(data.gap.width, Length::Px(8.0));
+    assert_eq!(data.gap.height, Length::Px(8.0));
     assert_eq!(data.flex_grow, 1.0);
     assert_eq!(data.flex_shrink, 0.5);
 }
@@ -351,11 +368,20 @@ fn flex_grow_takes_a_factor_like_every_other_grow() {
 
 #[test]
 fn trap2_opacity_f32_scales_to_atom() {
-    assert_eq!(painted_opacity(pane().bg(A).opacity(0.5)), Some(5_000));
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(0.5)),
+        Some(5_000)
+    );
 }
 
 #[test]
 fn trap2_opacity_clamps_at_boundaries() {
-    assert_eq!(painted_opacity(pane().bg(A).opacity(0.0)).unwrap_or(0), 0);
-    assert_eq!(painted_opacity(pane().bg(A).opacity(1.0)), Some(10_000));
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(0.0)).unwrap_or(0),
+        0
+    );
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(1.0)),
+        Some(10_000)
+    );
 }

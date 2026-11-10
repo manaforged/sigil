@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use sigil::hal::Scheduler;
 use sigil::reactive::Owner;
 use sigil::tasks::{AsyncRuntime, sleep};
 use wasm_bindgen_test::wasm_bindgen_test;

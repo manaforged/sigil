@@ -10,6 +10,7 @@ pub fn reduced_motion() -> bool {
     MotionPrefs::reduced()
 }
 
+#[derive(Debug)]
 pub struct MotionPrefs;
 
 impl MotionPrefs {
@@ -22,7 +23,7 @@ impl MotionPrefs {
     pub fn set(preferred: bool) {
         REDUCED_MOTION.with(|cell| cell.set(preferred));
         if preferred {
-            crate::animation_runtime::state::finish_all();
+            crate::animation::runtime::state::finish_all();
         }
     }
 }

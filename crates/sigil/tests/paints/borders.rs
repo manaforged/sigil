@@ -7,8 +7,8 @@ const HALF_INK: u32 = 382;
 fn card(width: f32, height: f32, border: i16) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(width, height))
-        .bg(WHITE)
-        .border_w(border)
+        .background(WHITE)
+        .border_width(border)
         .border_color(INK)
 }
 
@@ -20,7 +20,7 @@ fn rounded_dashed_card() -> impl IntoNode {
     page(
         120.0,
         60.0,
-        card(120.0, 60.0, 2).rounded(Radius::Full).border_dashed(),
+        card(120.0, 60.0, 2).radius(Radius::Full).border_dashed(),
     )
 }
 

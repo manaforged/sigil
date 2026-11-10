@@ -6,10 +6,13 @@ use crate::layout::PopupSide;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal};
 use crate::style::Style;
-use crate::widgets::Widget;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
+use crate::widgets::{Layout, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PANEL_WIDTH, PopupAnchor, PopupLayer};
+use super::super::shared::caller_style;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
 /// One menu entry.
@@ -17,8 +20,8 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 pub struct MenuItem {
     /// The label.
     pub label: String,
-    /// The shortcut, if any.
-    pub shortcut: Option<String>,
+    /// The hint text, if any.
+    pub hint: Option<String>,
     /// Whether disabled.
     pub disabled: bool,
     /// Whether submenu indicator.
@@ -30,7 +33,7 @@ impl std::fmt::Debug for MenuItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MenuItem")
             .field("label", &self.label)
-            .field("shortcut", &self.shortcut)
+            .field("hint", &self.hint)
             .field("disabled", &self.disabled)
             .field("submenu_indicator", &self.submenu_indicator)
             .field("on_activate", &self.on_activate.is_some())
@@ -44,17 +47,17 @@ impl MenuItem {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            shortcut: None,
+            hint: None,
             disabled: false,
             submenu_indicator: false,
             on_activate: None,
         }
     }
 
-    /// Sets the shortcut.
+    /// Sets the hint text shown after the label, such as a key name.
     #[must_use]
-    pub fn shortcut(mut self, hint: impl Into<String>) -> Self {
-        self.shortcut = Some(hint.into());
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into());
         self
     }
 
@@ -81,6 +84,7 @@ impl MenuItem {
 }
 
 /// Builder of a popup menu.
+#[derive(Debug)]
 pub struct MenuBuilder {
     open: Signal<bool>,
     host: Option<Owner>,
@@ -167,19 +171,18 @@ impl MenuBuilder {
             ),
         };
         let overrides = std::mem::take(&mut self.layout_overrides);
-        let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
+        let menu_label = self
+            .label
+            .unwrap_or_else(|| theme_string_once(StringKey::Menu));
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
-        let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
+        let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
             .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);
-        if !self.style_accumulator.is_empty() {
-            panel = panel.style(self.style_accumulator);
-        }
-        let panel = overrides.finish(panel);
+        let panel = overrides.finish(caller_style(panel, self.style_accumulator));
 
         let layer = PopupLayer::new(open, PopupAnchor::Inline);
         layer.register_escape();

@@ -4,7 +4,7 @@ use sigil::kernel::HostMode;
 #[test]
 fn replacing_rows_repaints_the_table() {
     use sigil::Host;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -18,7 +18,7 @@ fn replacing_rows_repaints_the_table() {
             }],
             vec![
                 TableColumn::new("n", "NAME")
-                    .width(ColWidth::Fixed(96.0))
+                    .width(ColumnWidth::Fixed(96.0))
                     .cell(|row: &Row| text(row.name.clone()).nowrap()),
             ],
         );
@@ -59,7 +59,7 @@ fn a_click_selects_the_row_under_it() {
     use sigil::Host;
     use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -75,7 +75,7 @@ fn a_click_selects_the_row_under_it() {
             ],
             vec![
                 TableColumn::new("n", "NAME")
-                    .width(ColWidth::Fixed(96.0))
+                    .width(ColumnWidth::Fixed(96.0))
                     .cell(|row: &Row| text(row.name).nowrap()),
             ],
         );
@@ -128,7 +128,7 @@ fn the_wheel_scrolls_the_body() {
     use sigil::Host;
     use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -145,7 +145,7 @@ fn the_wheel_scrolls_the_body() {
             rows,
             vec![
                 TableColumn::new("n", "NAME")
-                    .width(ColWidth::Fixed(96.0))
+                    .width(ColumnWidth::Fixed(96.0))
                     .cell(|row: &Row| text(row.name.clone()).nowrap()),
             ],
         );

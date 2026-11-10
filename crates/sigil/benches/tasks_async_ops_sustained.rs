@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use criterion::Criterion;
-use sigil::hal::Scheduler;
 use sigil::reactive::{Owner, signal};
 use sigil::tasks::{AsyncRuntime, signal_writer, spawn};
 
@@ -39,7 +38,7 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
     for frame in 0..total_frames {
         let next_frame_at = loop_start + frame_period * (frame + 1);
         let drain_start = Instant::now();
-        let drained = scheduler.drain();
+        let drained = scheduler.pump();
         let drain_dur = drain_start.elapsed();
         black_box(drained);
         sum += drain_dur;
@@ -89,7 +88,7 @@ fn run_one_sustained_iteration() -> Duration {
     let total_frames = 60_u32;
     let (sum, max) = run_frame_loop(&mut scheduler, total_frames);
     stop.store(true, Ordering::Relaxed);
-    let _ = scheduler.drain();
+    let _ = scheduler.pump();
 
     assert!(
         max <= Duration::from_millis(16),
@@ -117,7 +116,7 @@ pub fn bench_spawn_smoke_latency(c: &mut Criterion) {
                     spin_until(Duration::from_millis(100), || woke.load(Ordering::Acquire)),
                     "spawn did not dispatch within 100ms"
                 );
-                let drained = scheduler.drain();
+                let drained = scheduler.pump();
                 black_box(drained);
                 assert!(status.get().is_ok(), "status should resolve to Ok");
             });

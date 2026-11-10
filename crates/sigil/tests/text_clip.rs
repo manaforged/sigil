@@ -21,7 +21,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
                 .child(cell),
         );
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(200.0, 40.0))
             .expect("layout");

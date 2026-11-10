@@ -1,8 +1,8 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::Space;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Position};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Position};
 use crate::style::{Radius, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::ChartView;
 use super::plot::{AXIS, ROW, X_AXIS};
@@ -58,7 +58,7 @@ fn y_label(item: &Tick) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .position(Position::Absolute)
                 .inset_left(0.0)
-                .inset_top(Dimension::Percent(1.0 - item.at))
+                .inset_top(Length::Percent(1.0 - item.at))
                 .margin_top(Space::px(-TICK_H / 2.0))
                 .fill_width()
                 .height(TICK_H)
@@ -109,7 +109,7 @@ fn x_label(item: &Tick) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .position(Position::Absolute)
                 .inset_top(0.0)
-                .inset_left(Dimension::Percent(item.at))
+                .inset_left(Length::Percent(item.at))
                 .margin_left(Space::px(-TICK_W / 2.0))
                 .width(TICK_W)
                 .height(TICK_H)
@@ -145,7 +145,7 @@ pub(super) fn category_axis(labels: &[String], count: usize, gutter: &Gutter) ->
                 .layout(
                     LayoutStyle::flex_row()
                         .grow(1.0)
-                        .flex_basis(Dimension::Px(0.0))
+                        .flex_basis(Length::Px(0.0))
                         .min_size(0.0, 0.0)
                         .justify_content(JustifyContent::End)
                         .align_items(AlignItems::Center),
@@ -205,7 +205,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class([Radius::Sm.atom(), item.hue.bg()]),
+                        .class([Radius::Sm.atom(), item.hue.background()]),
                 )
                 .child(
                     text(item.legend.clone())

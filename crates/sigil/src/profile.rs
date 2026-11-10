@@ -18,13 +18,10 @@ mod store;
 
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use self::{attr::budget_ns, chrome::site_name, store::with_frames};
-pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
+pub use key::{Backend, BackendStatus, Cause, Counter, FallbackCause, Phase};
 pub(crate) use key::{Hotspot, SiteKind};
 pub(crate) use site::site;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use span::Span;
-}
+use span::Span;
 kittest_pub! {
     #[doc(hidden)]
     pub use store::Frame;

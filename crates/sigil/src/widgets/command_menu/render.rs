@@ -5,7 +5,7 @@ use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 use std::rc::Rc;
 
 use crate::style::{ControlSize, Metrics, space};
@@ -13,13 +13,15 @@ use crate::style::{ControlSize, Metrics, space};
 use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
-use super::super::shared::Activate;
+use super::super::scroll::{reveal_row, scroll};
+use super::super::shared::{Activate, caller_style};
 use super::super::text_field::{TextFieldBuilder, text_field};
 use super::builder::CommandMenuBuilder;
 use super::nav::{CommandPalette, MenuLevel, PaletteEntry, SubmitObserver};
 
 const LEVEL_GAP: f32 = space(2);
 const FIELD_GAP: f32 = space(1);
+const MAX_ROWS: usize = 12;
 
 #[derive(Clone, Copy)]
 struct Active {
@@ -106,7 +108,7 @@ impl CommandMenuBuilder {
                     .map(|(depth, level)| build_level_panel(level, depth, depth == top, &chrome))
                     .collect::<Vec<_>>()
             });
-        let mut root = listbox(
+        let root = listbox(
             root,
             CommandModel {
                 palette,
@@ -114,10 +116,7 @@ impl CommandMenuBuilder {
                 on_cancel: parts.on_cancel,
             },
         );
-        if !parts.style_accumulator.is_empty() {
-            root = root.style(parts.style_accumulator);
-        }
-        root
+        caller_style(root, parts.style_accumulator)
     }
 }
 
@@ -138,7 +137,7 @@ fn query_field(chrome: &PanelChrome, depth: usize) -> TextFieldBuilder {
         .map_node(move |node| node.focus_in(move || active.focused.set(true)))
         .blur(move || {
             active.focused.set(false);
-            if palette.stack.peek().len() == depth + 1 {
+            if !active.pointed.peek() && palette.stack.peek().len() == depth + 1 {
                 palette.reset();
             }
         })
@@ -146,13 +145,23 @@ fn query_field(chrome: &PanelChrome, depth: usize) -> TextFieldBuilder {
         .submit(move |_| palette.activate(on_submit.as_ref()))
 }
 
-fn panel_layout(row_count: usize, with_field: bool) -> LayoutStyle {
+fn rows_height(rows: usize) -> f32 {
     let item_height = Metrics::current().control_height(ControlSize::Default);
-    let rows = f32::from(u16::try_from(row_count).unwrap_or(u16::MAX));
+    f32::from(u16::try_from(rows).unwrap_or(u16::MAX)) * item_height
+}
+
+fn panel_layout(row_count: usize, with_field: bool) -> LayoutStyle {
     let gap = if with_field { FIELD_GAP } else { 0.0 };
-    let field = if with_field { item_height + gap } else { 0.0 };
+    let field = if with_field {
+        rows_height(1) + gap
+    } else {
+        0.0
+    };
     LayoutStyle::flex_column()
-        .height(popup::panel_height([rows * item_height, field]))
+        .height(popup::panel_height([
+            rows_height(row_count.min(MAX_ROWS)),
+            field,
+        ]))
         .padding(Space::px(Metrics::current().overlay_padding()))
         .gap(Space::px(gap))
         .shrink(0.0)
@@ -187,7 +196,8 @@ fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
         palette: chrome.palette,
         on_submit: chrome.on_submit.clone(),
     };
-    container()
+    let (count, cursor) = (level.entries.len(), level.cursor);
+    let list = container()
         .layout(LayoutStyle::flex_column().align_items(AlignItems::Stretch))
         .children_reactive(move || {
             level
@@ -198,7 +208,17 @@ fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
                 .enumerate()
                 .map(|(idx, entry)| build_row(entry, idx, &row))
                 .collect::<Vec<_>>()
-        })
+        });
+    if count <= MAX_ROWS {
+        return list;
+    }
+    let (offset, viewport) = (signal(0.0_f32), rows_height(MAX_ROWS));
+    reveal_row(offset, cursor, rows_height(1), viewport);
+    scroll(list)
+        .height(viewport)
+        .scroll_bind(offset)
+        .into_node_builder()
+        .focusable(false)
 }
 
 #[derive(Clone)]

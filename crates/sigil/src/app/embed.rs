@@ -2,7 +2,7 @@ use accesskit::ActionRequest;
 
 use crate::events::Event;
 use crate::events::hit_test::HitTestCache;
-use crate::events::{EventRouter, FocusIntent};
+use crate::events::{EventRouter, FocusDirection};
 use crate::geometry::{Point, Rect, Size};
 use crate::reactive::Runtime;
 use std::rc::Rc;
@@ -18,6 +18,8 @@ mod access;
 mod emit;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
+#[cfg(feature = "terminal")]
+mod quit;
 use super::host_env::{EnvGuard, HostEnv};
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 use crate::scene::emit::EmitMemo;
@@ -77,8 +79,8 @@ impl Host {
     fn pixels() -> Self {
         #[cfg(feature = "scene")]
         let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
-            Rc::new(crate::app::DefaultTextMeasure::new()),
-            Box::new(crate::app::DefaultTextMeasure::new()),
+            Rc::new(crate::layout::text_adapter::TextEngineMeasure::default()),
+            Box::new(crate::layout::text_adapter::TextEngineMeasure::default()),
         );
         #[cfg(not(feature = "scene"))]
         let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
@@ -260,7 +262,7 @@ impl Host {
     pub(crate) fn flaws(
         &self,
         tolerance: crate::layout::audit::Tolerance,
-    ) -> Vec<crate::layout::audit::Flaw> {
+    ) -> Vec<crate::layout::audit::Issue> {
         let _env = self.enter();
         self.root.map_or_else(Vec::new, |root| {
             crate::layout::audit::flaws(&self.cx, &self.layout, (root, self.theme()), tolerance)
@@ -273,14 +275,13 @@ impl Host {
         Some((&mut self.cx, &self.layout, &mut self.router, root))
     }
 
-    /// Sends an input event through the tree.
-    pub fn route(&mut self, event: Event) {
+    /// Sends an input event through the tree and returns whether a key press was consumed.
+    pub fn route(&mut self, event: Event) -> bool {
         let _env = self.enter();
         self.router.set_visual_transforms(self.visual_transforms);
-        if self.root.is_some() {
-            self.router.route(&mut self.cx, &self.layout, event);
-        }
+        let handled = self.root.is_some() && self.router.route(&mut self.cx, &self.layout, event);
         crate::reactive::run_dispatch_deferred();
+        handled
     }
 
     fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine, &mut EventRouter)) {
@@ -314,7 +315,7 @@ impl Host {
     }
 
     /// Applies a focus request.
-    pub fn focus_intent(&mut self, intent: FocusIntent) {
+    pub fn focus_intent(&mut self, intent: FocusDirection) {
         self.on_tree(|cx, layout, router| router.focus_intent(cx, layout, intent));
     }
 

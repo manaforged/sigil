@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, show};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::activatable::activatable;
 use super::list_row::{Disclosure, disclosure_slot};

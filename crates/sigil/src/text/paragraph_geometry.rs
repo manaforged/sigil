@@ -1,10 +1,46 @@
 use crate::geometry::{Point, Rect};
 use crate::hal::{HitPosition, RenderedGlyph, TextAffinity};
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
 
 impl Paragraph {
+    /// Returns the width of the widest line.
+    #[must_use]
+    pub fn width(&self) -> f32 {
+        self.inner
+            .lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0_f32, f32::max)
+    }
+
+    /// Returns the summed height of all lines.
+    #[must_use]
+    pub fn height(&self) -> f32 {
+        self.inner.lines.iter().map(|l| l.height).sum()
+    }
+
+    /// Returns the number of lines.
+    #[cfg(any(test, feature = "kittest"))]
+    #[must_use]
+    pub fn line_count(&self) -> usize {
+        self.inner.lines.len()
+    }
+
+    /// Returns the narrowest width that fits without overflow.
+    #[must_use]
+    pub fn min_content_width(&self) -> f32 {
+        self.content_widths().min
+    }
+
+    /// Returns the width of the text laid out on one line.
+    #[cfg(any(test, feature = "kittest"))]
+    #[must_use]
+    pub fn max_content_width(&self) -> f32 {
+        self.content_widths().max
+    }
+
     #[must_use]
     pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
         self.rendered_glyphs_in(0, usize::MAX)
@@ -27,7 +63,7 @@ impl Paragraph {
                     x: g.x,
                     y: line.baseline_y + g.offset_y,
                     size: self.inner.font_size,
-                    color: Color::WHITE,
+                    color: Rgba::WHITE,
                     variation_coords: face.variation_coords.clone(),
                     skew: face.skew,
                 });

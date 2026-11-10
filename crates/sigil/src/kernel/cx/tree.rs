@@ -43,3 +43,15 @@ impl Cx {
             .map_or(0, |node| node.children.len())
     }
 }
+
+impl core::fmt::Debug for Cx {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Cx")
+            .field("instance_id", &self.instance_id)
+            .field("roots", &self.roots)
+            .field("scale", &self.scale)
+            .field("host_mode", &self.host_mode)
+            .field("live_region", &self.live_region)
+            .finish_non_exhaustive()
+    }
+}

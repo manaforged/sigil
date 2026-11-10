@@ -113,7 +113,7 @@ impl BlockSolver<'_> {
             return self.computed_size(child);
         }
         if matches!(display, Display::Flex | Display::Grid) {
-            self.solve_nested(child, inner_cb, provisional)?;
+            self.solve_nested(child, inner_cb, provisional, *edges)?;
             return self.computed_size(child);
         }
         let auto_w =

@@ -39,8 +39,7 @@ pub mod capture;
 pub(crate) mod color_glyph_paint;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 /// The opaque color a window clears to before it paints.
-pub(crate) const SURFACE_CLEAR: crate::style::Color =
-    crate::style::Color::rgba(0.03, 0.04, 0.05, 1.0);
+pub(crate) const SURFACE_CLEAR: crate::style::Rgba = crate::style::Rgba::new(0.03, 0.04, 0.05, 1.0);
 
 #[cfg(all(
     feature = "cpu",

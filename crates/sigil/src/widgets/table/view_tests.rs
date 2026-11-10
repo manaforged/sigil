@@ -10,7 +10,7 @@ use crate::geometry::{Point, Rect, Size};
 use crate::kernel::{AccessibleName, Cx, NodeId, container};
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::table;
 use crate::widgets::table::{TableColumn, TableState};
@@ -87,7 +87,7 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             table(state.clone())
-                .viewport_fill()
+                .fill_height()
                 .selectable_checkboxes()
                 .empty(move || {
                     let capture = capture.clone();

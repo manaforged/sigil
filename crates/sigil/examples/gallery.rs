@@ -29,10 +29,12 @@ fn build() -> impl IntoNode {
     let dialog = signal(false);
     let drawer = signal(false);
     let queue = ToastQueue::new();
-    container()
+    row()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_row().fill())
-        .bg(Token::Surface)
+        .fill()
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
+        .background(Token::Surface)
         .child(sidebar(nav(page)))
         .child(content(page, dialog, drawer, queue))
         .child(
@@ -54,12 +56,7 @@ fn build() -> impl IntoNode {
 }
 
 fn nav(page: Signal<usize>) -> NodeBuilder {
-    let mut col = container().layout(
-        LayoutStyle::flex_column()
-            .fill_height()
-            .padding(Space::Md)
-            .gap(Space::Xxs),
-    );
+    let mut col = column().fill_height().padding(Space::Md).gap(Space::Xxs);
     col = col.child(section_label("Widgets"));
     for (index, name) in PAGES.iter().enumerate() {
         col = col.child(nav_row(page, index, name));
@@ -69,18 +66,16 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
 
 fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder {
     let active = derived(move || page.get() == index);
-    container()
+    row()
         .role(Role::Button)
         .focusable(true)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(28.0)
-                .padding_x(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
-        .rounded(Radius::Md)
-        .paint_when(active, |s| s.bg(Token::Accent4))
+        .fill_width()
+        .height(28.0)
+        .padding_x(Space::Sm)
+        .align_items(AlignItems::Center)
+        .gap(Space::None)
+        .radius(Radius::Md)
+        .paint_when(active, |s| s.background(Token::Accent4))
         .child(text(name).nowrap().text_role(TextRole::Body))
         .pointer_up(move |_| page.set(index))
 }
@@ -92,13 +87,10 @@ fn content(
     queue: ToastQueue,
 ) -> impl IntoNode {
     scroll(
-        container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill_width()
-                    .padding(Space::Xl)
-                    .gap(Space::raw(20.0, "example layout")),
-            )
+        column()
+            .fill_width()
+            .padding(Space::Xl)
+            .gap(Space::raw(20.0, "example layout"))
             .children_reactive(move || {
                 vec![match page.get() {
                     1 => inputs_page(),
@@ -114,19 +106,16 @@ fn content(
     .fill()
 }
 
-fn page_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().fill_width().gap(Space::Sm)
+fn page_column() -> NodeBuilder {
+    column().fill_width().gap(Space::Sm)
 }
 
-fn row_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fill_width()
-        .gap(Space::Sm)
-        .align_items(AlignItems::Center)
+fn page_row() -> NodeBuilder {
+    row().fill_width().gap(Space::Sm)
 }
 
 fn row2(a: impl IntoNode + 'static, b: impl IntoNode + 'static) -> NodeBuilder {
-    container().layout(row_layout()).child(a).child(b)
+    page_row().child(a).child(b)
 }
 
 fn row3(
@@ -134,15 +123,14 @@ fn row3(
     b: impl IntoNode + 'static,
     c: impl IntoNode + 'static,
 ) -> NodeBuilder {
-    container().layout(row_layout()).child(a).child(b).child(c)
+    page_row().child(a).child(b).child(c)
 }
 
 fn controls_page() -> NodeBuilder {
     let clicks = signal(0_i32);
     let mode = signal(String::from("auto"));
     let level = signal(40.0_f32);
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Buttons"))
         .child(row3(
             button("Increment")
@@ -179,8 +167,7 @@ fn inputs_page() -> NodeBuilder {
         String::from("C++"),
     ])
     .placeholder("Language");
-    container()
-        .layout(page_layout())
+    page_column()
         .child(field(
             "Text field",
             text_field(signal(String::new())).placeholder("Full name"),
@@ -231,8 +218,7 @@ fn demo_columns() -> Vec<TableColumn<DemoRow>> {
 
 fn data_page() -> NodeBuilder {
     let items: Vec<String> = (1..=40).map(|i| format!("Item {i}")).collect();
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Table"))
         .child(
             table(TableState::new(
@@ -265,17 +251,20 @@ fn data_page() -> NodeBuilder {
 }
 
 fn content_page() -> NodeBuilder {
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Text"))
         .child(text("Labels and text share TextContent.").nowrap())
         .child(section_label("Icons and indicators"))
         .child(row3(
-            icon("★").tone(Tone::Warn).label("Star"),
+            icon("★").tone(Tone::Warning).label("Star"),
             chip("stable", Tone::Success),
             chip("4", Tone::Error),
         ))
-        .child(row3(dot(Tone::Success), dot(Tone::Warn), dot(Tone::Error)))
+        .child(row3(
+            dot(Tone::Success),
+            dot(Tone::Warning),
+            dot(Tone::Error),
+        ))
         .child(section_label("Chart"))
         .child(
             chart([12.0, 28.0, 18.0, 34.0])
@@ -289,7 +278,7 @@ fn content_page() -> NodeBuilder {
                 .line_to(12.0, 4.0)
                 .line_to(20.0, 20.0)
                 .close()
-                .fill(Rgba8 {
+                .fill(Color {
                     r: 90,
                     g: 140,
                     b: 255,
@@ -303,12 +292,13 @@ fn documents_page() -> NodeBuilder {
     let source = signal(String::from(
         "# Sigil widgets\n\nEdit me — *live* preview.\n\n- one\n- two",
     ));
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Markdown"))
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width().height(240.0))
+            column()
+                .fill_width()
+                .height(240.0)
+                .gap(Space::None)
                 .child(markdown_edit(source)),
         )
         .child(section_label("Diff"))
@@ -324,14 +314,13 @@ fn documents_page() -> NodeBuilder {
 
 fn chrome_page() -> NodeBuilder {
     let tab = signal(0_usize);
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Menu bar"))
-        .child(menu_bar().fill().menu(
+        .child(menu_bar().fill_width().menu(
             "File",
             [
                 MenuItem::new("New").activate(|| {}),
-                MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
+                MenuItem::new("Quit").hint("Ctrl+Q").activate(|| {}),
             ],
         ))
         .child(section_label("Panel and card"))
@@ -370,8 +359,7 @@ fn chrome_page() -> NodeBuilder {
 }
 
 fn overlays_page(dialog: Signal<bool>, drawer: Signal<bool>, queue: ToastQueue) -> NodeBuilder {
-    container()
-        .layout(page_layout())
+    page_column()
         .child(section_label("Dialog and sheet"))
         .child(row2(
             button("Open modal")

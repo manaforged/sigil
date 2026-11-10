@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::orientation::Orientation;
 
 pub(super) fn with_caption(
@@ -22,7 +22,7 @@ pub(super) fn with_caption(
     };
     container()
         .layout(
-            base.gap(Space::px(metrics.gap(ControlSize::Default)))
+            base.gap(Space::px(metrics.control_gap(ControlSize::Default)))
                 .align_items(AlignItems::Center),
         )
         .child(text(caption).nowrap())

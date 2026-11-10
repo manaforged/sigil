@@ -32,8 +32,8 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(Space::Xxl))
-        .bg(Token::Surface)
+        .padding(Space::Xxl)
+        .background(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -101,7 +101,7 @@ A bare number does not compile:
 ```rust,compile_fail
 use sigil::prelude::*;
 
-let _ = LayoutStyle::flex_column().gap(13.0);
+let _ = column().gap(13.0);
 ```
 
 Neither does a font size with no reason:
@@ -150,7 +150,7 @@ Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, 
 - A `pty` session opens at 24x80 and does not resize.
 - Items public only under the `kittest` feature are test support, not API, and can change in any release.
 
-Styling is typed: paint through `Paint` methods and state variants, layout through `LayoutStyle`. Typed actions use a plain `impl Action for ...`; there is no derive macro.
+Styling is typed: paint through `Paint` methods and state variants, layout through the layout setters. Typed actions use a plain `impl Action for ...`; there is no derive macro.
 
 ## Docs
 

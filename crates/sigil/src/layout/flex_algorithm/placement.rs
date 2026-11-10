@@ -1,9 +1,9 @@
 use crate::Error;
 use crate::layout::flex::CbSize;
-use crate::layout::flex_lines::{FlexItem, FlexLine};
+use crate::layout::flex_lines::{FlexItem, FlexLine, FlexLines};
 use crate::layout::resolve::{NodeEdges, clamp, resolve_lp};
 use crate::layout::style_data::{
-    AlignContent, AlignItems, Dimension, FlexWrap, JustifyContent, StyleData,
+    AlignContent, AlignItems, FlexWrap, JustifyContent, Length, StyleData,
 };
 
 use super::FlexCtx;
@@ -27,7 +27,7 @@ fn relax_minimums(ctx: &FlexCtx<'_, '_>, line: &mut FlexLine, container_main: f3
 
 pub(super) fn place_lines(
     ctx: &FlexCtx<'_, '_>,
-    mut lines: Vec<FlexLine>,
+    mut lines: FlexLines,
     style: &StyleData,
     container_main: f32,
     container_cross: f32,
@@ -109,7 +109,7 @@ fn resolve_cross_sizes(
         let node = forest
             .refer(item.id)
             .ok_or_else(|| Error::layout(format!("stale flex item id {:?}", item.id)))?;
-        if node.style().size.width != Dimension::Auto {
+        if node.style().size.width != Length::Auto {
             continue;
         }
         let sized = FlexCtx {

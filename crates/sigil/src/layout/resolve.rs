@@ -2,7 +2,7 @@
 
 use crate::layout::snap;
 use crate::layout::style_data::{
-    Axes, BoxSizing, Dimension, Edges, LengthPercentage, LengthPercentageAuto, StyleData,
+    Axes, BoxSizing, Edges, Length, LengthPercentage, LengthPercentageAuto, StyleData,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -79,25 +79,25 @@ impl NodeEdges {
     }
 }
 
-fn fixed_px(dim: Dimension) -> Option<f32> {
+fn fixed_px(dim: Length) -> Option<f32> {
     match dim {
-        Dimension::Px(value) => Some(value),
-        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => dim.text_px(),
+        Length::Px(value) => Some(value),
+        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => dim.text_px(),
         _ => None,
     }
 }
 
-pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
+pub(crate) fn resolve_dim(dim: Length, cb: f32) -> Option<f32> {
     snap::size(match dim {
-        Dimension::Px(v) => Some(v),
-        Dimension::Percent(p) => Some(p * cb),
-        Dimension::Fill => Some(cb),
-        Dimension::Auto => None,
-        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => dim.text_px(),
+        Length::Px(v) => Some(v),
+        Length::Percent(p) => Some(p * cb),
+        Length::Fill => Some(cb),
+        Length::Auto => None,
+        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => dim.text_px(),
     })
 }
 
-pub(crate) fn resolve_lp(lp: Dimension, cb: f32) -> f32 {
+pub(crate) fn resolve_lp(lp: Length, cb: f32) -> f32 {
     match lp.definite() {
         Some(LengthPercentage::Px(px)) => px,
         Some(LengthPercentage::Percent(percent)) => percent * cb,
@@ -114,7 +114,7 @@ fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
     }
 }
 
-fn edges_lp(rect: Edges<Dimension>, cb_inline: f32) -> ResolvedEdges {
+fn edges_lp(rect: Edges<Length>, cb_inline: f32) -> ResolvedEdges {
     ResolvedEdges {
         left: resolve_lp(rect.left, cb_inline),
         right: resolve_lp(rect.right, cb_inline),
@@ -123,7 +123,7 @@ fn edges_lp(rect: Edges<Dimension>, cb_inline: f32) -> ResolvedEdges {
     }
 }
 
-fn edges_lp_auto(rect: Edges<Dimension>, cb_inline: f32) -> AutoEdges {
+fn edges_lp_auto(rect: Edges<Length>, cb_inline: f32) -> AutoEdges {
     AutoEdges {
         left: resolve_lp_auto(rect.left.into(), cb_inline),
         right: resolve_lp_auto(rect.right.into(), cb_inline),
@@ -138,7 +138,7 @@ pub(crate) fn clamp(value: f32, min: Option<f32>, max: Option<f32>) -> f32 {
 }
 
 pub(crate) fn dim_to_border_box(
-    dim: Dimension,
+    dim: Length,
     cb: f32,
     chrome: f32,
     sizing: BoxSizing,
@@ -152,8 +152,8 @@ pub(crate) fn dim_to_border_box(
 
 #[derive(Clone, Copy)]
 pub(crate) struct InsetAxis {
-    pub(crate) leading: Dimension,
-    pub(crate) trailing: Dimension,
+    pub(crate) leading: Length,
+    pub(crate) trailing: Length,
     pub(crate) origin: f32,
     pub(crate) cb_dim: f32,
     pub(crate) box_dim: f32,
@@ -175,7 +175,7 @@ pub(crate) fn resolve_inset_axis(a: InsetAxis) -> f32 {
 }
 
 pub(crate) fn stretched(
-    [leading, trailing]: [Dimension; 2],
+    [leading, trailing]: [Length; 2],
     cb_dim: f32,
     margins: f32,
 ) -> Option<f32> {

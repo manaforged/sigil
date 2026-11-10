@@ -18,9 +18,9 @@ fn compare(gpu: &mut WgpuRenderer, scene: &GeneratedScene) -> Result<Diff, Strin
     let commands = scene.scene();
     let frame = Frame {
         scene: &commands,
-        viewport: scene.viewport,
+        viewport: scene.viewport(),
         size: scene.physical(),
-        clear: scene.clear,
+        clear: scene.clear(),
     };
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).map_err(|e| format!("cpu: {e:?}"))?;
     let gpu = gpu_rgba(gpu, &frame).map_err(|e| format!("gpu: {e:?}"))?;
@@ -48,16 +48,16 @@ fn gpu_matches_cpu_on_generated_scenes() {
         if !diverges(&d) {
             continue;
         }
-        let keep = minimize(scene.commands.len(), |keep| {
+        let keep = minimize(scene.commands().len(), |keep| {
             diverges(&compare(&mut gpu, &scene.keep(keep)))
         });
         let small = scene.keep(&keep);
         println!(
             "seed {seed}: {d:?}\n{}viewport {:?} scale {}\n{:#?}",
             fixture_text(seed, &keep),
-            small.viewport,
-            small.scale,
-            small.commands
+            small.viewport(),
+            small.scale(),
+            small.commands()
         );
         failures.push(seed);
     }

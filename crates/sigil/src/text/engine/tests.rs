@@ -4,7 +4,6 @@ use super::collection::FontCollection;
 use super::{
     FaceStyle, Font, PushRunArgs, Script, push_run, run_has_disallowed_notdef, shape_validated,
 };
-use crate::style::StyledTextEngine as _;
 use crate::text::glyph::GlyphId;
 
 const FIRA_REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;

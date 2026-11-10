@@ -16,7 +16,7 @@ fn multiple_reactive_sources_compose_in_install_order() {
         let root = cx.add(
             container()
                 .paint_when(signal(true), |s| s.opacity(0.5))
-                .paint_when(signal(true), |s| s.opacity(0.9).rounded(Radius::Base)),
+                .paint_when(signal(true), |s| s.opacity(0.9).radius(Radius::Base)),
         );
         let binding = cx
             .get(root)
@@ -38,7 +38,7 @@ fn composition_is_append_only_across_many_installs() {
             container()
                 .paint_when(signal(true), |s| s.opacity(0.5))
                 .paint_when(signal(true), |s| s.opacity(0.5))
-                .paint_when(signal(true), |s| s.opacity(0.9).rounded(Radius::Base)),
+                .paint_when(signal(true), |s| s.opacity(0.9).radius(Radius::Base)),
         );
         let binding = cx
             .get(root)

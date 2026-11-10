@@ -9,7 +9,7 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::style::scale::ruby_light;
 use widget_support::{compute, rect_colors};
 
@@ -21,7 +21,7 @@ fn assert_hover_overlay_paints(
     root: NodeId,
     layout: &LayoutEngine,
     hover_xy: (f32, f32),
-    overlay: Rgba8,
+    overlay: Color,
 ) {
     assert!(
         !rect_colors(cx, root).contains(&overlay),
@@ -56,7 +56,7 @@ fn checkbox_user_hover_overlay_paints_row_root() {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(checkbox(checked).hover(|s| s.bg(ruby_9)));
+        let root = cx.add(checkbox(checked).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (10.0, 10.0), ruby_9);
     });
@@ -68,7 +68,8 @@ fn dropdown_user_hover_overlay_paints_trigger() {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(dropdown(selected, vec!["a".into(), "b".into()]).hover(|s| s.bg(ruby_9)));
+        let root = cx
+            .add(dropdown(selected, vec!["a".into(), "b".into()]).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (100.0, 20.0), ruby_9);
     });
@@ -80,7 +81,7 @@ fn slider_user_hover_overlay_paints_track_root() {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(slider(value, 0.0..=100.0).hover(|s| s.bg(ruby_9)));
+        let root = cx.add(slider(value, 0.0..=100.0).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (10.0, 14.0), ruby_9);
     });
@@ -96,7 +97,7 @@ fn tabs_user_hover_overlay_paints_hovered_tab() {
             tabs()
                 .active(active)
                 .labels(["A", "B"])
-                .hover(|s| s.bg(ruby_9)),
+                .hover(|s| s.background(ruby_9)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (120.0, 17.0), ruby_9);
@@ -109,7 +110,7 @@ fn text_field_user_hover_overlay_paints_frame() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(text_field(value).hover(|s| s.bg(ruby_9)));
+        let root = cx.add(text_field(value).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (30.0, 15.0), ruby_9);
     });
@@ -121,7 +122,7 @@ fn text_edit_user_hover_overlay_paints_frame() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(text_edit(value).hover(|s| s.bg(ruby_9)));
+        let root = cx.add(text_edit(value).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (20.0, 20.0), ruby_9);
     });

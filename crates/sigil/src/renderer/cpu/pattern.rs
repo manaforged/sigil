@@ -6,7 +6,7 @@
 )]
 
 use crate::geometry::Rect;
-use crate::style::Rgba8;
+use crate::style::Color;
 use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, SpreadMode, Transform};
 
 use crate::renderer::scene_command::PatternKind;
@@ -184,7 +184,7 @@ fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     t * t * 2.0f64.mul_add(-t, 3.0)
 }
 
-fn full(color: Rgba8) -> [u8; 4] {
+fn full(color: Color) -> [u8; 4] {
     rgba_table(color, 1.0).last().copied().unwrap_or_default()
 }
 

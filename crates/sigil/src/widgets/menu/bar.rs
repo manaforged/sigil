@@ -7,37 +7,39 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Owner, Signal, signal};
-use crate::style::StateVariants;
+use crate::style::States;
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Style, StyleAtom, Token, space,
 };
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::interactive::interactive;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
+use super::super::shared::caller_style;
 use super::builder::MenuItem;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
 const TRIGGER_H: f32 = space(8);
 
 static BAR_SURFACE: &[StyleAtom] = &[
-    Token::SurfaceSubtle.bg(),
+    Token::SurfaceSubtle.background(),
     StyleAtom::BorderBottom(BORDER_WIDTH),
     Token::Border.border(),
 ];
 static TRIGGER_REST: &[StyleAtom] = &[Radius::Md.atom()];
-static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.bg()];
+static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.background()];
 
+#[derive(Debug)]
 struct MenuSlot {
     label: String,
     rows: Vec<Row>,
 }
 
 /// Builder of a menu bar.
+#[derive(Debug)]
 pub struct MenuBarBuilder {
     slots: Vec<MenuSlot>,
-    fill: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -47,7 +49,6 @@ pub struct MenuBarBuilder {
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
         slots: Vec::new(),
-        fill: false,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -68,33 +69,23 @@ impl MenuBarBuilder {
         self
     }
 
-    /// Applies the fill option.
-    #[must_use]
-    pub const fn fill(mut self) -> Self {
-        self.fill = true;
-        self
-    }
-
     fn root(self) -> NodeBuilder {
         let open_idx: Signal<Option<usize>> = signal(None);
         let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
             .label(theme_label(StringKey::MenuBar))
-            .with({
-                let row = LayoutStyle::flex_row();
-                let row = if self.fill { row.fill_width() } else { row };
-                row.height(TRIGGER_H)
+            .with(
+                LayoutStyle::flex_row()
+                    .height(TRIGGER_H)
                     .shrink(0.0)
                     .padding_x(Space::Xs)
                     .gap(Space::Xs)
-                    .align_items(AlignItems::Center)
-            })
+                    .align_items(AlignItems::Center),
+            )
             .class(BAR_SURFACE);
 
-        if !self.style_accumulator.is_empty() {
-            bar = bar.style(self.style_accumulator);
-        }
+        bar = caller_style(bar, self.style_accumulator);
 
         for (index, slot) in self.slots.into_iter().enumerate() {
             bar = bar.child(slot_node(index, slot, open_idx, host));
@@ -185,8 +176,8 @@ fn interactive_trigger(
         })
         .child(text(label).class("text-sm").class(Token::OnSurface.text()));
     interactive(inner)
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed))
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
 }
 
 #[cfg(test)]

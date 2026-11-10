@@ -1,5 +1,4 @@
-use super::super::vector::PathColor;
-use crate::style::{ColorAtom, Rgba8, StyleAtom, Token, Tone};
+use crate::style::{Color, ColorAtom, StyleAtom, Token, Tone};
 
 const FILL: u8 = 9;
 const SOFT_DROP: u8 = 5;
@@ -9,18 +8,18 @@ const SOFT_ALPHA: u8 = 0x70;
 pub(super) struct Hue {
     pub(super) tone: Tone,
     step: u8,
-    rgb: Option<Rgba8>,
+    rgb: Option<Color>,
 }
 
 const PALETTE: [Hue; 10] = [
     Hue::new(Tone::Primary, 9),
     Hue::new(Tone::Success, 9),
-    Hue::new(Tone::Warn, 9),
+    Hue::new(Tone::Warning, 9),
     Hue::new(Tone::Error, 9),
     Hue::new(Tone::Info, 9),
     Hue::new(Tone::Primary, 7),
     Hue::new(Tone::Success, 7),
-    Hue::new(Tone::Warn, 7),
+    Hue::new(Tone::Warning, 7),
     Hue::new(Tone::Error, 7),
     Hue::new(Tone::Info, 7),
 ];
@@ -34,7 +33,7 @@ impl Hue {
         }
     }
 
-    pub(super) const fn rgb(color: Rgba8) -> Self {
+    pub(super) const fn rgb(color: Color) -> Self {
         Self {
             tone: Tone::Primary,
             step: FILL,
@@ -59,26 +58,21 @@ impl Hue {
 
     pub(super) fn color(self) -> ColorAtom {
         self.rgb
-            .map_or_else(|| ColorAtom::Token(self.token()), ColorAtom::Rgba8)
+            .map_or_else(|| ColorAtom::Token(self.token()), ColorAtom::Color)
     }
 
-    pub(super) fn paint(self) -> PathColor {
-        self.rgb
-            .map_or_else(|| PathColor::Token(self.token()), PathColor::Rgba)
-    }
-
-    pub(super) fn bg(self) -> StyleAtom {
+    pub(super) fn background(self) -> StyleAtom {
         self.rgb.map_or_else(
-            || self.token().bg(),
-            |color| StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
+            || self.token().background(),
+            |color| StyleAtom::BackgroundColor(ColorAtom::Color(color)),
         )
     }
 
-    pub(super) fn soft(self) -> PathColor {
+    pub(super) fn soft(self) -> ColorAtom {
         self.rgb.map_or_else(
-            || PathColor::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
+            || ColorAtom::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
             |color| {
-                PathColor::Rgba(Rgba8 {
+                ColorAtom::Color(Color {
                     a: SOFT_ALPHA,
                     ..color
                 })

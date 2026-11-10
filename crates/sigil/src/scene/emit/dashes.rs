@@ -10,7 +10,7 @@ use crate::scene::command::{
     DrawPath, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin, outline_key, rounded_outline,
 };
 use crate::scene::style_adapter::corner_radii_for;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::style::atom::BorderStyle;
 
 use super::borders::{border_color, border_edges, borders_uniform};
@@ -21,7 +21,7 @@ const THIN: f32 = 3.0;
 const DOT: f32 = 0.01;
 
 struct Line {
-    color: Rgba8,
+    color: Color,
     opacity: u16,
     style: BorderStyle,
     node: NodeId,

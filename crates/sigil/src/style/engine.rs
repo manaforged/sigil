@@ -1,6 +1,6 @@
-use crate::style::atom::{PaintAtom, PaintStyle};
+use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
 use crate::style::{
-    AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
+    AnimatorOverlay, Color, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
@@ -70,7 +70,7 @@ impl<'theme> StyleEngine<'theme> {
     }
 
     #[must_use]
-    fn tone_step(&self, step: u8) -> Rgba8 {
+    fn tone_step(&self, step: u8) -> Color {
         let role = self.tone.scale_role();
         Token::scale(role, step).map_or_else(
             || self.theme.scale(role).step(step),
@@ -80,7 +80,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Resolves a color atom against the theme.
     #[must_use]
-    pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
+    pub fn resolve_color(&self, color: ColorAtom) -> Color {
         self.theme.resolve_color(color)
     }
 
@@ -91,13 +91,11 @@ impl<'theme> StyleEngine<'theme> {
     fn apply_atom(self, atom: StyleAtom, render: &mut RenderStyle) {
         match atom {
             StyleAtom::BackgroundColor(color) => {
-                render.background_color = Some(self.resolve_color(color));
+                fill(render, Some(self.resolve_color(color)), None);
             }
-            StyleAtom::BackgroundGradient(gradient) => {
-                render.background_gradient = Some(gradient);
-            }
+            StyleAtom::BackgroundGradient(gradient) => fill(render, None, Some(gradient)),
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
-            StyleAtom::BgToneStep(step) => render.background_color = Some(self.tone_step(step)),
+            StyleAtom::BgToneStep(step) => fill(render, Some(self.tone_step(step)), None),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
                 render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
@@ -164,7 +162,7 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::TransitionDelay(_)
             | StyleAtom::Animation(_)
             | StyleAtom::UnknownThemeRef(_) => {}
-            StyleAtom::Paint(paint) => self.apply_paint(paint, &mut render.paint),
+            StyleAtom::Paint(paint) => self.apply_paint(paint, render),
             StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
             StyleAtom::Space(atom) => render.space.apply(atom),
             StyleAtom::Mask(atom) => render.mask.apply(atom.0),
@@ -179,23 +177,37 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
-    fn apply_paint(self, atom: PaintAtom, paint: &mut PaintStyle) {
+    fn apply_paint(self, atom: PaintAtom, render: &mut RenderStyle) {
         match atom {
-            PaintAtom::Gradient(shape) => paint.gradient = Some(shape),
+            PaintAtom::Gradient(shape) => render.paint.gradient = Some(shape),
+            PaintAtom::NoGradient => render.paint.gradient = None,
             PaintAtom::Stop(slot, color) => {
-                if let Some(stop) = paint.stops.get_mut(slot.index()) {
-                    *stop = Some(self.resolve_color(color));
-                }
+                set_stop(
+                    &mut render.paint.stops,
+                    slot,
+                    Some(self.resolve_color(color)),
+                );
             }
+            PaintAtom::NoStop(slot) => set_stop(&mut render.paint.stops, slot, None),
             PaintAtom::StopAt(slot, percent) => {
-                if let Some(position) = paint.positions.get_mut(slot.index()) {
-                    *position = Some(percent);
-                }
+                set_stop(&mut render.paint.positions, slot, Some(percent));
             }
-            PaintAtom::ClipText => paint.clip_text = true,
-            PaintAtom::Image(id) => paint.image = Some(id),
-            PaintAtom::Border(style) => paint.border = style,
+            PaintAtom::NoColor => fill(render, None, None),
+            PaintAtom::ClipText => render.paint.clip_text = true,
+            PaintAtom::Image(id) => render.paint.image = Some(id),
+            PaintAtom::Border(style) => render.paint.border = style,
         }
+    }
+}
+
+const fn fill(render: &mut RenderStyle, color: Option<Color>, gradient: Option<BgGradient>) {
+    render.background_color = color;
+    render.background_gradient = gradient;
+}
+
+fn set_stop<T>(stops: &mut [Option<T>; 3], slot: StopSlot, value: Option<T>) {
+    if let Some(stop) = stops.get_mut(slot.index()) {
+        *stop = value;
     }
 }
 

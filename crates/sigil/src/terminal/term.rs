@@ -15,7 +15,7 @@ use crossterm::terminal::{
 };
 use crossterm::{cursor, execute, queue};
 
-use crate::terminal::caps::{Caps, Cursor, Keyboard};
+use crate::terminal::caps::{Capabilities, Cursor, Keyboard};
 use crate::terminal::mouse::{MOUSE_OFF, MouseTracking};
 use crate::terminal::notify;
 use crate::terminal::screen::Screen;
@@ -53,14 +53,14 @@ thread_local! {
     static FOCUSED: Cell<bool> = const { Cell::new(true) };
     static MOUSE: Cell<MouseTracking> = const { Cell::new(MouseTracking::Drags) };
     static TITLE: RefCell<Option<String>> = const { RefCell::new(None) };
-    static CAPS: Cell<Option<Caps>> = const { Cell::new(None) };
+    static CAPS: Cell<Option<Capabilities>> = const { Cell::new(None) };
     static LIVE_ROWS: Cell<u16> = const { Cell::new(0) };
 }
 
 pub(crate) struct Term {
     pub(crate) redraw: bool,
     inline: bool,
-    caps: Caps,
+    caps: Capabilities,
     cell_stale: bool,
     out: BufWriter<io::Stdout>,
 }
@@ -78,7 +78,7 @@ impl Term {
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
         enter_screen(inline)?;
-        let (caps, measured) = Caps::measure((!inline).then_some(ProbeRow::Fixed));
+        let (caps, measured) = Capabilities::measure((!inline).then_some(ProbeRow::Fixed));
         calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
         BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);
@@ -118,7 +118,7 @@ impl Term {
         self.redraw || REDRAW.with(Cell::get) || signals::resumed()
     }
 
-    pub(crate) const fn caps(&self) -> Caps {
+    pub(crate) const fn caps(&self) -> Capabilities {
         self.caps
     }
 
@@ -132,7 +132,7 @@ impl Term {
         self.cell_stale = self.caps.cell.is_some();
     }
 
-    pub(crate) fn remeasure(&mut self) -> Option<Caps> {
+    pub(crate) fn remeasure(&mut self) -> Option<Capabilities> {
         if !self.cell_stale {
             return None;
         }
@@ -234,11 +234,11 @@ fn modify_keys_sequence(keyboard: Keyboard, wanted: bool) -> &'static str {
 
 /// The capabilities the terminal host probed when it entered raw mode, for the current thread.
 #[must_use]
-pub fn caps() -> Option<Caps> {
+pub fn caps() -> Option<Capabilities> {
     CAPS.with(Cell::get)
 }
 
-pub(crate) fn current_caps() -> Caps {
+pub(crate) fn current_caps() -> Capabilities {
     caps().unwrap_or_default()
 }
 

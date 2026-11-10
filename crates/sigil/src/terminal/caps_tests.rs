@@ -1,9 +1,9 @@
-use super::{Caps, ColorDepth, Erase, Fills, Keyboard};
+use super::{Capabilities, ColorDepth, Erase, Fills, Keyboard};
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 
-fn caps(pairs: &[(&str, &str)]) -> Caps {
-    Caps::detect(|key| {
+fn caps(pairs: &[(&str, &str)]) -> Capabilities {
+    Capabilities::detect(|key| {
         pairs
             .iter()
             .find(|(name, _)| *name == key)

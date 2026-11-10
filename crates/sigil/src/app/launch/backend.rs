@@ -1,12 +1,12 @@
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer as _;
-use crate::profile::{BackendKind, BackendStatus, FallbackCause};
+use crate::profile::{self, BackendStatus, FallbackCause};
 #[cfg(feature = "inspect")]
 use crate::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::{CpuRenderer, CpuSurface, WgpuRenderer, WgpuSurface, into_window_handle};
 use crate::scene::CommandScene;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::{Error, ErrorKind};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
@@ -18,7 +18,7 @@ pub(super) use shot::inspect_shot;
 
 const ENV: &str = "SIGIL_BACKEND";
 use crate::renderer::SURFACE_CLEAR;
-const TRANSPARENT_CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
+const TRANSPARENT_CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 0.0);
 
 pub(in crate::app) struct Backend {
     inner: BackendInner,
@@ -51,9 +51,9 @@ impl Backend {
             }
         };
         let (inner, kind) = if cause == FallbackCause::ForcedByEnv {
-            (BackendInner::Cpu(Box::default()), BackendKind::Cpu)
+            (BackendInner::Cpu(Box::default()), profile::Backend::Cpu)
         } else {
-            (BackendInner::Wgpu(Box::default()), BackendKind::Gpu)
+            (BackendInner::Wgpu(Box::default()), profile::Backend::Gpu)
         };
         Self {
             inner,
@@ -71,7 +71,7 @@ impl Backend {
         self.status
     }
 
-    pub(in crate::app) const fn clear_color(&self) -> Color {
+    pub(in crate::app) const fn clear_color(&self) -> Rgba {
         if self.is_transparent() {
             TRANSPARENT_CLEAR
         } else {
@@ -109,7 +109,7 @@ impl Backend {
             FallbackCause::DeviceError
         };
         self.settle(BackendStatus {
-            kind: BackendKind::Cpu,
+            kind: profile::Backend::Cpu,
             fallback,
         });
         let mut cpu = CpuRenderer::new();
@@ -268,7 +268,7 @@ impl Backend {
         &mut self,
         surface: &mut RenderSurface,
         scene: &CommandScene,
-        clear: Color,
+        clear: Rgba,
         viewport: (f32, f32),
     ) -> Result<(), Error> {
         match (&mut self.inner, surface) {

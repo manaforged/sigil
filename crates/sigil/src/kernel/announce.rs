@@ -18,6 +18,12 @@ pub fn announce(text: impl Into<String>, politeness: Live) {
 }
 
 impl Cx {
+    pub(crate) fn swap_announcements(
+        pending: VecDeque<(String, Live)>,
+    ) -> VecDeque<(String, Live)> {
+        PENDING.replace(pending)
+    }
+
     /// Move the text that `announce` queued into the live region.
     pub fn flush_announcements(&mut self) {
         loop {

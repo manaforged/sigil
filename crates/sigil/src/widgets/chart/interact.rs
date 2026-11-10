@@ -7,8 +7,8 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::Token;
-use crate::widgets::Widget;
 use crate::widgets::interaction::is_primary;
+use crate::widgets::{Layout, Widget};
 
 use super::tips::{Probe, Tips, card};
 
@@ -121,7 +121,7 @@ impl Interact {
             return plot;
         };
         let width = Rc::clone(&self.width);
-        plot.on_scroll(move |event: &mut ScrollEvent| {
+        plot.scroll(move |event: &mut ScrollEvent| {
             let steps = match event.delta {
                 ScrollDelta::Pixels(delta) => delta.y * ZOOM_PER_PIXEL,
                 ScrollDelta::Lines(delta) => delta.y * ZOOM_PER_LINE,
@@ -211,5 +211,5 @@ fn marks(at: Probe, tips: &Tips, pad: f32, crosshair: bool) -> Vec<NodeBuilder> 
 fn rule(layout: LayoutStyle) -> NodeBuilder {
     container()
         .layout(layout.position(Position::Absolute))
-        .class([Token::Gray8.bg()])
+        .class([Token::Gray8.background()])
 }

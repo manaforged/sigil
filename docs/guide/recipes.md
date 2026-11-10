@@ -109,7 +109,7 @@ A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained builder met
 
 ## Theme switching
 
-`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `set_theme` replaces the active theme at the next frame, on the window and on the terminal host.
+`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -117,7 +117,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let dark = signal(false);
     container().child(toggle(dark)).child(button("Apply").activate(move || {
-        set_theme(if dark.get() { Theme::dark() } else { Theme::light() });
+        (if dark.get() { Theme::dark() } else { Theme::light() }).apply();
     }))
 }
 
@@ -157,7 +157,7 @@ surface = "#101014"
 
 fn tree() -> impl IntoNode {
     if let Ok(theme) = SOURCE.parse::<Theme>() {
-        set_theme(theme);
+        theme.apply();
     }
     text("Custom theme")
 }
@@ -186,15 +186,15 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme color. The `Paint` methods `bg`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
+`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
 
 ```rust,no_run
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     container()
-        .bg(Token::SurfaceSubtle)
-        .border_w(1)
+        .background(Token::SurfaceSubtle)
+        .border_width(1)
         .border_color(Token::Border)
         .child(text("Panel").text_color(Token::OnSurfaceMuted))
 }
@@ -206,14 +206,16 @@ fn main() -> AppResult<()> {
 
 ## Layout reference
 
-`LayoutStyle` describes the box of one node. Start from a constructor, then chain setters:
+A container function makes the box of one node. Chain setters on it:
 
-| Constructor | Box |
+| Container | Box |
 | --- | --- |
-| `LayoutStyle::flex_column()` | Children in a column |
-| `LayoutStyle::flex_row()` | Children in a row |
-| `LayoutStyle::grid(tracks)` | Children in grid columns |
-| `LayoutStyle::block()` | Block flow |
+| `column()` | Children top to bottom, with the theme gap |
+| `row()` | Children left to right, centred across the row, with the theme gap |
+| `grid(columns)` | Children in grid columns |
+| `container()` | Block flow |
+
+`.gap(Space::None)` removes the theme gap. `.align_items(AlignItems::Stretch)` makes the children of a row as high as the row. Every widget takes the same setters:
 
 | Setter | Effect |
 | --- | --- |
@@ -227,7 +229,7 @@ fn main() -> AppResult<()> {
 | `position`, `inset`, `inset_top`, ... | Absolute placement |
 | `overflow`, `overflow_x`, `overflow_y` | Clip and scroll |
 
-A plain number is logical pixels. `rows(n)`, `cols(n)`, and `em(n)` are text-relative. In the terminal host, `rows(1.0)` is one cell high and `cols(1.0)` is one cell wide. In a window, `rows(1.0)` is one line height and `cols(1.0)` is one character advance. Use text-relative units in a tree that runs on both hosts. See [Units](units.md).
+A size includes the padding and the border of the node. A plain number is logical pixels. `rows(n)`, `cols(n)`, and `em(n)` are text-relative. In the terminal host, `rows(1.0)` is one cell high and `cols(1.0)` is one cell wide. In a window, `rows(1.0)` is one line height and `cols(1.0)` is one character advance. Use text-relative units in a tree that runs on both hosts. See [Units](units.md).
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -236,19 +238,23 @@ use sigil::prelude::TrackSize;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
-    let header = container()
-        .layout(LayoutStyle::flex_row().height(rows(1.0)).gap(cols(1.0)).fill_width())
+    let header = row()
+        .height(rows(1.0))
+        .gap(cols(1.0))
+        .fill_width()
         .child(text("Title"))
         .child(spacer())
         .child(text("v0.1"));
-    let grid = container()
-        .layout(LayoutStyle::grid(vec![TrackSize::Px(160.0), TrackSize::Fr(1.0)]).gap(rows(1.0)))
+    let names = grid([TrackSize::Px(160.0), TrackSize::Fr(1.0)])
+        .gap(rows(1.0))
         .child(text("Name"))
         .child(text("Sigil"));
-    let body = container()
-        .layout(LayoutStyle::flex_column().grow(1.0).padding(cols(2.0)).max_width(em(40.0)))
-        .child(grid);
-    container().layout(LayoutStyle::flex_column().fill()).child(header).child(body)
+    let body = column()
+        .grow(1.0)
+        .padding(cols(2.0))
+        .max_width(em(40.0))
+        .child(names);
+    column().fill().gap(Space::None).child(header).child(body)
 }
 
 fn main() -> AppResult<()> {
@@ -275,6 +281,41 @@ fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("viewport"), tree)
 }
 ```
+
+## Lists
+
+`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list.
+
+Put each field that changes in a signal inside the item, and read that signal in the row. A field that is a plain value is read one time, when the row is built.
+
+```rust,no_run
+use sigil::prelude::*;
+
+#[derive(Clone)]
+struct Thread {
+    id: u32,
+    title: Signal<String>,
+    unread: Signal<bool>,
+}
+
+fn inbox(threads: Signal<Vec<Thread>>) -> impl IntoNode {
+    let unread = derived(move || {
+        threads.with(|all| all.iter().filter(|thread| thread.unread.get()).count())
+    });
+    column()
+        .child(text(move || format!("{} unread", unread.get())))
+        .child(scroll(for_each(threads, |thread: &Thread| thread.id, thread_row)))
+}
+
+fn thread_row(thread: &Thread) -> NodeBuilder {
+    let unread = thread.unread;
+    row()
+        .child(text(thread.title))
+        .child(button("Read").activate(move || unread.set(false)))
+}
+```
+
+`unread.set(false)` runs the count again, then the label that reads the count. It builds no row.
 
 ## Streaming from a backend
 
@@ -374,7 +415,7 @@ fn tree() -> impl IntoNode {
     virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
         .estimate(rows(2.0))
-        .viewport_fill()
+        .fill()
         .follow_end(true)
 }
 
@@ -396,7 +437,7 @@ fn tree() -> impl IntoNode {
     let page = 400.0;
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
-        .viewport_fill()
+        .fill()
         .scroll_bind(scroll)
         .max_scroll_bind(max)
         .follow_row(tail);
@@ -504,7 +545,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event, and the app exits through `request_exit`.
+Ctrl+C always reaches the tree first. With `quit_on_ctrl_c(false)` an unconsumed Ctrl+C no longer exits, and the app exits through `request_exit`.
 
 ## Screen readers
 

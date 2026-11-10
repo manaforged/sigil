@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 #[cfg(feature = "scene")]
 use crate::widgets::icon::icon_svg;
 use crate::widgets::spinner::spinner;
@@ -17,9 +17,17 @@ const COMPACT_LABEL_HEIGHT: f32 = 32.0;
 impl ButtonBuilder {
     #[cfg(feature = "scene")]
     fn leading_icon(&self, svg: std::sync::Arc<str>) -> crate::widgets::icon::IconBuilder {
+        let metrics = Metrics::current();
+        let px = if metrics.is_grid() {
+            metrics.icon_size()
+        } else if self.height < 30.0 {
+            14.0
+        } else {
+            16.0
+        };
         icon_svg(svg)
             .tone(self.resolved_tone())
-            .px(if self.height < 30.0 { 14.0_f32 } else { 16.0 }.min(self.height))
+            .px(px.min(self.height))
             .on_solid(self.resolved_fill() == ButtonFill::Solid)
     }
 
@@ -40,7 +48,9 @@ impl ButtonBuilder {
         let mut row = container().hittable(false).layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
+                .gap(Space::px(
+                    Metrics::current().control_gap(ControlSize::Compact),
+                )),
         );
         if let Some(svg) = self.leading.clone() {
             row = row.child(self.leading_icon(svg));
@@ -94,7 +104,9 @@ impl ButtonBuilder {
             .layout(
                 LayoutStyle::flex_row()
                     .align_items(AlignItems::Center)
-                    .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
+                    .gap(Space::px(
+                        Metrics::current().control_gap(ControlSize::Compact),
+                    )),
             )
             .class(atoms)
             .children_reactive(move || {

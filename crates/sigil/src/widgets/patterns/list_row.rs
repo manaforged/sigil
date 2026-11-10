@@ -3,16 +3,16 @@ use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Signal, signal};
-use crate::style::StateVariants;
+use crate::style::States;
 use crate::style::{Paint, Radius, Token, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::chip::chip;
 use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::table::ColAlign;
+use super::super::table::ColumnAlign;
 use super::activatable::activatable;
 
 const INDENT_COLS: f32 = 2.0;
@@ -39,6 +39,7 @@ pub enum Disclosure {
 
 /// Text tone of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RowTone {
     /// The normal row tone.
     #[default]
@@ -66,13 +67,14 @@ impl RowTone {
 }
 
 /// One fixed-width column of a list row.
+#[derive(Debug)]
 pub struct ListColumn {
     /// The text.
     pub text: TextContent,
     /// The width.
     pub width: f32,
     /// The align.
-    pub align: ColAlign,
+    pub align: ColumnAlign,
 }
 
 impl ListColumn {
@@ -82,14 +84,14 @@ impl ListColumn {
         Self {
             text: text.into(),
             width,
-            align: ColAlign::End,
+            align: ColumnAlign::End,
         }
     }
 
     /// Aligns the column to the start.
     #[must_use]
     pub const fn start(mut self) -> Self {
-        self.align = ColAlign::Start;
+        self.align = ColumnAlign::Start;
         self
     }
 }
@@ -135,6 +137,26 @@ pub struct ListRowSlots {
     pub activate: Option<Rc<dyn Fn()>>,
 }
 
+impl core::fmt::Debug for ListRowSlots {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ListRowSlots")
+            .field("depth", &self.depth)
+            .field("disclosure", &self.disclosure)
+            .field("marker", &self.marker)
+            .field("marker_tone", &self.marker_tone)
+            .field("status", &self.status)
+            .field("status_tone", &self.status_tone)
+            .field("badge", &self.badge)
+            .field("detail", &self.detail)
+            .field("columns", &self.columns)
+            .field("shrink", &self.shrink)
+            .field("title_width", &self.title_width)
+            .field("indent", &self.indent)
+            .field("tone", &self.tone)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Builds one list row from its slots.
 #[must_use]
 pub fn list_row(
@@ -176,7 +198,7 @@ pub fn list_row(
     }
     let row = if selected {
         row.selected(signal(true))
-            .class([Radius::Md.atom(), ROW_SELECTED.bg()])
+            .class([Radius::Md.atom(), ROW_SELECTED.background()])
     } else {
         row_states(row, None)
     };
@@ -191,8 +213,8 @@ pub(crate) const ROW_SELECTED_HOVER: Token = Token::Accent6;
 
 pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     let row = interactive(row.class(Radius::Md.atom()))
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed));
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed));
     match disabled {
         Some(disabled) => row.disabled(disabled),
         None => row,
@@ -292,7 +314,7 @@ fn title_text(title: TextContent, slots: &ListRowSlots) -> TextBuilder {
             .grow(1.0)
             .min_size(0.0, 0.0)
             .shrink(0.0)
-            .max_size(Dimension::Percent(1.0), Dimension::Auto),
+            .max_size(Length::Percent(1.0), Length::Auto),
         None => LayoutStyle::block().grow(1.0).min_size(0.0, 0.0),
     };
     text(title)
@@ -327,7 +349,7 @@ fn status_text(
 ) -> TextBuilder {
     let node = text(status).ellipsize().class("text-xs").class(
         status_tone
-            .map_or_else(|| tone.detail(), Tone::solid)
+            .map_or_else(|| tone.detail(), |shade| shade.token(12))
             .text(),
     );
     if shrink {
@@ -345,8 +367,8 @@ fn column(entry: ListColumn, shrink: bool, tone: RowTone) -> NodeBuilder {
                 .shrink(if shrink { 1.0 } else { 0.0 })
                 .min_size(0.0, 0.0)
                 .justify_content(match entry.align {
-                    ColAlign::Start => JustifyContent::Start,
-                    ColAlign::End => JustifyContent::End,
+                    ColumnAlign::Start => JustifyContent::Start,
+                    ColumnAlign::End => JustifyContent::End,
                 }),
         )
         .child(

@@ -11,8 +11,14 @@ mod spacing;
 pub(crate) use fields::LayoutFields;
 
 /// Layout description of a node.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct LayoutStyle(pub(crate) StyleData, LayoutFields);
+
+impl Default for LayoutStyle {
+    fn default() -> Self {
+        Self(border_box(), LayoutFields::default())
+    }
+}
 
 impl PartialEq for LayoutStyle {
     fn eq(&self, other: &Self) -> bool {
@@ -26,9 +32,8 @@ impl LayoutStyle {
     pub fn block() -> Self {
         let style = StyleData {
             display: Display::Block,
-            box_sizing: BoxSizing::BorderBox,
             flex_direction: FlexDirection::Column,
-            ..StyleData::default()
+            ..border_box()
         };
         Self(style, BOX.with(LayoutFields::DIRECTION))
     }
@@ -49,8 +54,7 @@ impl LayoutStyle {
         let style = StyleData {
             display: Display::Flex,
             flex_direction,
-            box_sizing: BoxSizing::BorderBox,
-            ..StyleData::default()
+            ..border_box()
         };
         Self(style, BOX.with(LayoutFields::DIRECTION))
     }
@@ -60,9 +64,8 @@ impl LayoutStyle {
     pub fn grid(columns: Vec<crate::layout::TrackSize>) -> Self {
         let style = StyleData {
             display: Display::Grid,
-            box_sizing: BoxSizing::BorderBox,
             grid_template_columns: columns,
-            ..StyleData::default()
+            ..border_box()
         };
         Self(style, BOX.with(LayoutFields::GRID_COLUMNS))
     }
@@ -212,6 +215,13 @@ impl LayoutStyle {
 }
 
 const BOX: LayoutFields = LayoutFields::DISPLAY.with(LayoutFields::BOX_SIZING);
+
+fn border_box() -> StyleData {
+    StyleData {
+        box_sizing: BoxSizing::BorderBox,
+        ..StyleData::default()
+    }
+}
 
 #[cfg(test)]
 #[path = "intent_tests.rs"]

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
 use crate::style::{
-    RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme, ToneContext,
+    Color, RenderStyle, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme, ToneContext,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -31,7 +31,7 @@ pub fn render_style_for(
     id: NodeId,
     node: &Node,
     inherited: &Theme,
-    inherited_text: Option<Rgba8>,
+    inherited_text: Option<Color>,
 ) -> RenderStyle {
     let mut render = RenderStyle::default();
     let theme = node.get_extension::<Theme>().unwrap_or(inherited);
@@ -59,11 +59,9 @@ pub fn render_style_for(
 }
 }
 
-kittest_pub! {
 /// Resolves the text style of a node on top of a base text style.
 #[must_use]
-#[doc(hidden)]
-pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
+pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
     let mut style = base.clone();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return style;
@@ -84,7 +82,6 @@ pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextS
         StyleEngine::overlay_text(overlay, &mut style);
     }
     style
-}
 }
 
 fn apply_atoms(

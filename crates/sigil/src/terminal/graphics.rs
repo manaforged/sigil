@@ -10,9 +10,9 @@ mod detect;
 mod encode;
 mod sixel;
 
-pub(crate) use detect::detect_mux;
-pub use detect::{Mux, Protocol, detect};
-pub use encode::base64;
+pub use detect::{Mux, Protocol};
+pub(crate) use detect::{detect, detect_mux};
+pub(crate) use encode::base64;
 #[cfg(test)]
 pub(crate) use encode::blocks_window;
 #[cfg(any(test, feature = "kittest"))]
@@ -130,7 +130,7 @@ impl ImagePainter {
     pub(crate) fn emit(
         &mut self,
         out: &mut impl Write,
-        caps: crate::terminal::caps::Caps,
+        caps: crate::terminal::caps::Capabilities,
         frame: ImageFrame<'_>,
     ) -> io::Result<()> {
         let Some(protocol) = caps.graphics else {

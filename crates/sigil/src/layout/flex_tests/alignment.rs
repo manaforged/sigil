@@ -60,7 +60,7 @@ fn align_items_stretch_fills_cross_when_cross_size_auto() {
         align_items: Some(AlignItems::Stretch),
         ..flex_box(200.0, 100.0)
     };
-    let b = kids(parent, &[sized(Dimension::Px(40.0), Dimension::Auto)])[0];
+    let b = kids(parent, &[sized(Length::Px(40.0), Length::Auto)])[0];
     assert!(near(b.h, 100.0), "h={}", b.h);
 }
 

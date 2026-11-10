@@ -5,7 +5,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
 
@@ -59,7 +59,7 @@ pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
 pub(super) fn rule() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fill_width().height(1.0).shrink(0.0))
-        .class(Token::BorderStrong.bg())
+        .class(Token::BorderStrong.background())
 }
 
 pub(super) fn stack(
@@ -210,7 +210,7 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
     let mut block = container()
         .role(Role::Code)
         .class("font-mono text-sm")
-        .class([Token::Field.bg(), Radius::Md.atom()])
+        .class([Token::Field.background(), Radius::Md.atom()])
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()

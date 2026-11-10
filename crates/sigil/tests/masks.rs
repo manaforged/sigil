@@ -20,7 +20,7 @@ use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawImage, DrawRect, GradientStop, LayerEffect,
     LayerScope, LinearGradient, Mask, MaskMode, SceneBuilder,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
@@ -33,11 +33,11 @@ mod style;
 const SIDE: u32 = 60;
 const SCALE: f32 = 2.0;
 const GAP: f32 = 10.0;
-const RED: Rgba8 = rgba(255, 0, 0, 255);
-const BLUE: Rgba8 = rgba(0, 0, 255, 255);
+const RED: Color = rgba(255, 0, 0, 255);
+const BLUE: Color = rgba(0, 0, 255, 255);
 
-const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
 fn sized(node: impl IntoNode + 'static, width: f32) -> impl IntoNode {
@@ -46,7 +46,7 @@ fn sized(node: impl IntoNode + 'static, width: f32) -> impl IntoNode {
         .child(node)
 }
 
-fn ramp(rect: Rect, from: Rgba8, to: Rgba8) -> DrawGradient {
+fn ramp(rect: Rect, from: Color, to: Color) -> DrawGradient {
     let y = rect.height.mul_add(0.5, rect.origin.y);
     let start = Point::new(rect.origin.x, y);
     let end = Point::new(rect.origin.x + rect.width, y);
@@ -54,7 +54,7 @@ fn ramp(rect: Rect, from: Rgba8, to: Rgba8) -> DrawGradient {
     DrawGradient::new(rect, LinearGradient::new(start, end, stops.to_vec()))
 }
 
-fn gradient_mask(mode: MaskMode, from: Rgba8, to: Rgba8, rect: Rect) -> Mask {
+fn gradient_mask(mode: MaskMode, from: Color, to: Color, rect: Rect) -> Mask {
     let mut scene = SceneBuilder::new();
     scene.draw_gradient(ramp(rect, from, to));
     Mask::new(mode, scene.finish())
@@ -166,7 +166,7 @@ fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
         scene,
         viewport: (width as f32, SIDE as f32),
         size: PhysicalSize::new(device_w, device_h),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")

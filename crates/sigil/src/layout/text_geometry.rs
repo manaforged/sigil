@@ -47,7 +47,7 @@ pub fn set_text_geometry(geometry: Rc<dyn TextMeasure>) {
 }
 
 pub(crate) fn swap_geometry(geometry: Option<Rc<dyn TextMeasure>>) -> Option<Rc<dyn TextMeasure>> {
-    TEXT_GEOMETRY.with(|cell| core::mem::replace(&mut *cell.borrow_mut(), geometry))
+    TEXT_GEOMETRY.replace(geometry)
 }
 
 pub(crate) fn with_text_geometry<R>(f: impl FnOnce(&dyn TextMeasure) -> R) -> Option<R> {

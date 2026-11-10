@@ -1,6 +1,4 @@
-use std::fmt::Write as _;
-
-use super::{FAN_OUT_SECONDS, GRADIENT, INK, LINKS, OPEN, draws};
+use super::*;
 
 fn linked(links: usize, link: impl Fn(usize, usize) -> String) -> String {
     (1..=links).map(|at| link(at, at - 1)).collect()

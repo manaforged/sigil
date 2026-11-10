@@ -4,14 +4,14 @@ mod marks;
 mod path;
 
 pub use marks::{DrawDecoration, DrawSprite};
-pub use path::DrawPath;
+pub(crate) use path::DrawPath;
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use path::MITER_LIMIT;
 pub(crate) use path::{PathCmd, PathStroke, outline_key, rounded_outline};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
-use crate::style::{Rgba8, Tone};
+use crate::style::{Color, Tone};
 
 use crate::scene::corner_radii::CornerRadii;
 
@@ -26,7 +26,7 @@ pub struct DrawRect {
     /// The rect.
     pub rect: Rect,
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     pub border_radius: CornerRadii,
@@ -60,7 +60,7 @@ pub struct CellBorder {
     /// The widths.
     pub widths: [f32; 4],
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
     /// Whether rounded.
     pub rounded: bool,
 }
@@ -81,7 +81,7 @@ pub(crate) struct CellRect {
 impl DrawRect {
     /// A solid rectangle with square corners at full opacity.
     #[must_use]
-    pub const fn new(rect: Rect, color: Rgba8) -> Self {
+    pub const fn new(rect: Rect, color: Color) -> Self {
         Self {
             node: None,
             rect,

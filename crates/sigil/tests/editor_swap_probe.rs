@@ -9,11 +9,11 @@
 use sigil::events::{Event, EventRouter, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::{Dimension, LayoutEngine};
+use sigil::layout::{LayoutEngine, Length};
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::{FakeMeasure, gpu::read_pixels};
 use std::env::temp_dir;
 use std::process;
@@ -38,7 +38,7 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
         .child(mono);
     let column = LayoutStyle::flex_column()
         .grow(1.0)
-        .width(Dimension::Percent(1.0));
+        .width(Length::Percent(1.0));
     container()
         .layout(column)
         .child(
@@ -104,7 +104,7 @@ fn render(
                 scale: 1.0,
             },
             &scene,
-            Color {
+            Rgba {
                 r: 0.0,
                 g: 0.0,
                 b: 0.0,
@@ -219,7 +219,11 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
         .label(name.to_owned())
         .focusable(true)
         .layout(LayoutStyle::flex_row().height(22.0).padding_x(Space::Sm));
-    let row = if active { row.bg(Token::Accent) } else { row };
+    let row = if active {
+        row.background(Token::Accent)
+    } else {
+        row
+    };
     row.pointer_down(move |ev| {
         selected.set(idx);
         ev.stop_propagation();

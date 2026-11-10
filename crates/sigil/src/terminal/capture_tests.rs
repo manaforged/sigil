@@ -4,7 +4,7 @@ use crate::terminal::paint::Ink;
 #[test]
 fn image_preserves_cell_backgrounds_and_rejects_empty_sizes() {
     let mut grid = Grid::new(2, 1);
-    let red = Rgba8 {
+    let red = Color {
         r: 255,
         g: 0,
         b: 0,

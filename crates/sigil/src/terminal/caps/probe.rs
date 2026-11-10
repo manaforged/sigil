@@ -3,7 +3,7 @@ use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Known, Question, Questions, Version};
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::terminal::term::{ProbeRow, calibration, measure};
 
 const TIMEOUT: Duration = Duration::from_millis(500);
@@ -184,7 +184,7 @@ fn csi_params(reply: &str, last: char) -> Option<&str> {
     })
 }
 
-fn background(reply: &str) -> Option<Rgba8> {
+fn background(reply: &str) -> Option<Color> {
     let (_, rest) = reply.split_once("\x1b]11;rgb:")?;
     let body = rest.split(['\x1b', '\x07']).next()?;
     let mut channels = body.split('/').map(|hex| {
@@ -194,10 +194,10 @@ fn background(reply: &str) -> Option<Rgba8> {
         u8::try_from(value * 255 / top.max(1)).ok()
     });
     let (r, g, b) = (channels.next()??, channels.next()??, channels.next()??);
-    Some(Rgba8 { r, g, b, a: 255 })
+    Some(Color { r, g, b, a: 255 })
 }
 
-fn backdrop(color: Rgba8) -> Backdrop {
+fn backdrop(color: Color) -> Backdrop {
     let [r, g, b] = [color.r, color.g, color.b].map(|c| f64::from(c) / 255.0);
     let luma = 0.0722f64.mul_add(b, 0.2126f64.mul_add(r, 0.7152 * g));
     if luma < 0.5 {

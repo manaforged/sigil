@@ -33,7 +33,7 @@ static ENCODED: std::sync::LazyLock<Box<[u8; STEPS as usize + 1]>> =
     std::sync::LazyLock::new(|| {
         let mut table = Box::new([0; STEPS as usize + 1]);
         for (step, byte) in (0..=STEPS).zip(table.iter_mut()) {
-            *byte = crate::animation_runtime::linear_channel_to_srgb(
+            *byte = crate::animation::runtime::linear_channel_to_srgb(
                 f32::from(step) / f32::from(STEPS),
             );
         }
@@ -76,8 +76,8 @@ pub(crate) const AA_TEXT: f32 = 4.5;
 
 /// Returns the WCAG contrast ratio of two opaque colors.
 #[must_use]
-pub(crate) fn contrast(a: crate::style::Rgba8, b: crate::style::Rgba8) -> f32 {
-    let luminance = |color: crate::style::Rgba8| {
+pub(crate) fn contrast(a: crate::style::Color, b: crate::style::Color) -> f32 {
+    let luminance = |color: crate::style::Color| {
         0.0722_f32.mul_add(
             decode(color.b),
             0.7152_f32.mul_add(decode(color.g), 0.2126 * decode(color.r)),

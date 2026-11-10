@@ -9,11 +9,11 @@ use std::hint::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::kernel::Cx;
 use sigil::reactive::Owner;
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::widgets::heatmap;
 
-const fn cell_color(x: usize, y: usize) -> Rgba8 {
-    Rgba8 {
+const fn cell_color(x: usize, y: usize) -> Color {
+    Color {
         #[allow(
             clippy::cast_possible_truncation,
             reason = "values are bounded to the target range before the cast"

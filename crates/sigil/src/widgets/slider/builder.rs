@@ -4,17 +4,18 @@ use std::rc::Rc;
 use crate::kernel::Action;
 
 use crate::events::PointerEvent;
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Reactive, Signal};
+use crate::style::strings::StringKey;
 use crate::style::{Style, StyleOverlay};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 
 use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::{control_surface, disabled_now};
+use super::super::shared::{accessible_name_or, control_root, control_surface, disabled_now};
 use super::handlers::{attach_key_handlers, attach_pointer_drag};
 use super::track::{slider_thumb, track};
 
@@ -31,7 +32,7 @@ pub(super) struct SliderRange {
     pub(super) max: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(super) struct SliderRuntime {
     pub(super) value: Signal<f32>,
     pub(super) range: SliderRange,
@@ -50,6 +51,18 @@ pub struct SliderBuilder {
     marks: Vec<String>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for SliderBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SliderBuilder")
+            .field("runtime", &self.runtime)
+            .field("label", &self.label)
+            .field("marks", &self.marks)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A value slider.
@@ -142,20 +155,18 @@ impl SliderBuilder {
 
     fn root(mut self) -> NodeBuilder {
         let runtime = self.runtime;
-        let interaction = InteractionState::new(true).disabled(runtime.disabled);
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let root = slider_root(&self, interaction, user_overlay);
-        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
-        let mut node = interaction.install(attach_pointer_drag(
-            keyed,
-            interaction,
-            runtime,
-            Rc::clone(&on_change),
-        ));
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
+        let style = std::mem::take(&mut self.style_accumulator);
+        let mut node = control_root(runtime.disabled, style, |interaction, overlay| {
+            let root = slider_root(&self, interaction, overlay);
+            let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+            interaction.install(attach_pointer_drag(
+                keyed,
+                interaction,
+                runtime,
+                Rc::clone(&on_change),
+            ))
+        });
         if let Some(caption) = self.label {
             node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
         }
@@ -225,9 +236,10 @@ fn slider_root(
 ) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
+    let label = builder.label.clone().map(TextContent::Static);
     let root = container()
         .role(Role::Slider)
-        .label(builder.label.clone().unwrap_or_else(|| "Slider".to_owned()))
+        .label(accessible_name_or(label.as_ref(), StringKey::Slider))
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
@@ -251,7 +263,7 @@ fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool)
     match orientation {
         Orientation::Horizontal => {
             let base = LayoutStyle::flex_row()
-                .height(CellForm::new(Dimension::from(HORIZONTAL_HEIGHT), rows(1.0)).pick());
+                .height(CellForm::new(Length::from(HORIZONTAL_HEIGHT), rows(1.0)).pick());
             let base = match length {
                 Some(px) => base.width(px),
                 None if captioned => base.grow(1.0).width(0.0),
@@ -261,7 +273,7 @@ fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool)
         }
         Orientation::Vertical => {
             let base = LayoutStyle::flex_column()
-                .width(CellForm::new(Dimension::from(VERTICAL_WIDTH), cols(1.0)).pick());
+                .width(CellForm::new(Length::from(VERTICAL_WIDTH), cols(1.0)).pick());
             let base = match length {
                 Some(px) => base.height(px),
                 None => base.fill_height(),

@@ -4,11 +4,14 @@ use std::rc::Rc;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Reactive, Signal, derived, signal};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{BORDER_WIDTH, Paint, Style, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::highlight::language_for_path;
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 use super::virtual_list::virtual_list;
 
 mod header;
@@ -88,6 +91,15 @@ pub struct DiffBuilder {
     shape: DiffShape,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for DiffBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("DiffBuilder")
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A rendered unified diff of text or a parsed `Patch`.
@@ -184,12 +196,17 @@ impl DiffBuilder {
         let top = shape.clone();
         let mut root = container()
             .role(Role::List)
-            .label(shape.path.clone().unwrap_or_else(|| String::from("Diff")))
+            .label(
+                shape
+                    .path
+                    .clone()
+                    .unwrap_or_else(|| theme_string_once(StringKey::Diff)),
+            )
             .mutate(move |target| target.a11y.description = Some(AccessibleName::Derived(summary)))
             .layout(root_layout())
             .class("rounded")
-            .class(Token::Field.bg())
-            .border_w(BORDER_WIDTH)
+            .class(Token::Field.background())
+            .border_width(BORDER_WIDTH)
             .border_color(Token::Border)
             .child(
                 container()
@@ -202,10 +219,7 @@ impl DiffBuilder {
         if let Some(status) = shape.status {
             root = root.child(status_row(status));
         }
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

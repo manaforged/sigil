@@ -7,10 +7,12 @@ use sigil::renderer::capture::{
 };
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::CommandScene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 
-use crate::Error;
+use crate::{Error, ErrorKind};
+
 const BYTES_PER_PIXEL: u32 = 4;
+pub(crate) const CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 1.0);
 
 pub type Gpu = (wgpu::Device, wgpu::Queue);
 
@@ -27,7 +29,7 @@ pub fn no_gpu_allowed() -> bool {
 fn shared() -> Result<Option<&'static (wgpu::Adapter, Gpu)>, Error> {
     match SHARED.get_or_init(open_device) {
         Ok(shared) => Ok(Some(shared)),
-        Err(Error::NoAdapter(_)) if no_gpu_allowed() => Ok(None),
+        Err(err) if err.is_no_adapter() && no_gpu_allowed() => Ok(None),
         Err(err) => Err(err.clone()),
     }
 }
@@ -84,17 +86,50 @@ fn open_device() -> Result<(wgpu::Adapter, Gpu), Error> {
     match WgpuRenderer::headless_device_for_tests() {
         Ok((adapter, device, queue)) => Ok((adapter, (device, queue))),
         Err(err) if err.kind() == sigil::ErrorKind::NoAdapter => {
-            Err(Error::NoAdapter(err.to_string()))
+            Err(Error::caused(ErrorKind::NoAdapter, err))
         }
-        Err(err) => Err(Error::Device(err.to_string())),
+        Err(err) => Err(Error::caused(ErrorKind::Device, err)),
     }
 }
 
+/// Target of a raw offscreen capture.
+#[must_use]
+#[derive(Clone, Copy, Debug)]
 pub struct Capture {
-    pub viewport: (f32, f32),
-    pub size_px: [u32; 2],
-    pub scale: f32,
-    pub clear: Color,
+    viewport: (f32, f32),
+    size_px: [u32; 2],
+    scale: f32,
+    clear: Rgba,
+}
+
+impl Capture {
+    /// Creates a capture of a logical viewport into `size_px` pixels, at scale 1 on opaque black.
+    pub const fn new(viewport: (f32, f32), size_px: [u32; 2]) -> Self {
+        Self {
+            viewport,
+            size_px,
+            scale: 1.0,
+            clear: CLEAR,
+        }
+    }
+
+    /// Sets the device scale.
+    pub const fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    /// Sets the clear color.
+    pub const fn clear(mut self, clear: Rgba) -> Self {
+        self.clear = clear;
+        self
+    }
+
+    /// Returns the size of the captured texture in pixels.
+    #[must_use]
+    pub const fn size_px(&self) -> [u32; 2] {
+        self.size_px
+    }
 }
 
 pub fn render_capture(
@@ -119,7 +154,7 @@ pub fn render_capture(
             scene,
             capture.clear,
         )
-        .map_err(|err| Error::Render(err.to_string()))?;
+        .map_err(|err| Error::caused(ErrorKind::Render, err))?;
     Ok(texture)
 }
 
@@ -135,10 +170,10 @@ pub fn render_scene_to_image(
         ImageTarget {
             size: PhysicalSize::new(width, height),
             viewport,
-            clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+            clear: CLEAR,
         },
     )
-    .map_err(|err| Error::Render(err.to_string()))
+    .map_err(|err| Error::caused(ErrorKind::Render, err))
 }
 
 #[must_use]
@@ -164,5 +199,5 @@ pub fn read_pixels(
     height: u32,
 ) -> Result<Vec<u8>, Error> {
     read_texture(device, queue, texture, CaptureExtent { width, height })
-        .map_err(|err| Error::Readback(err.to_string()))
+        .map_err(|err| Error::text(ErrorKind::Readback, err))
 }

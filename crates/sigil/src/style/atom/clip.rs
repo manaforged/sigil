@@ -5,6 +5,7 @@ use crate::scene::Clip;
 
 /// The region a node and its children keep, like CSS `clip-path`, measured against the border box.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum ClipShape {
     /// `inset(top right bottom left round radius)` in px.
     Inset {

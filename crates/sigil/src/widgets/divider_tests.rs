@@ -9,8 +9,11 @@ fn dividers_are_decorative_not_focusable_splitters() {
     Owner::scope("divider-build", || {
         let mut cx = Cx::new_root();
         for (id, kind) in [
-            (horizontal().build(&mut cx), "horizontal"),
-            (vertical().build(&mut cx), "vertical"),
+            (
+                divider(Orientation::Horizontal).build(&mut cx),
+                "horizontal",
+            ),
+            (divider(Orientation::Vertical).build(&mut cx), "vertical"),
         ] {
             let node = cx.get(id).expect("divider node exists");
             assert!(

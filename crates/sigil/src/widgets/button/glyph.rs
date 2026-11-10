@@ -5,6 +5,7 @@ use crate::kernel::TextContent;
 use super::{ButtonBuilder, button};
 
 /// What `icon_button` shows.
+#[derive(Debug)]
 pub enum ButtonGlyph {
     /// The text button glyph.
     Text(TextContent),

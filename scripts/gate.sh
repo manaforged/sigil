@@ -96,6 +96,9 @@ job_fuzz() {
   step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
   local fuzz_target
   fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
+  case "$fuzz_target" in
+    *-apple-darwin) export CFLAGS="${CFLAGS:-} -mllvm -asan-guard-against-version-mismatch=0" ;;
+  esac
   step fuzz cargo +nightly fuzz build --dev --target "$fuzz_target"
 }
 

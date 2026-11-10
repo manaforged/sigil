@@ -22,14 +22,14 @@ fn position_relative_child_paints() {
                     .inset_left(20.0)
                     .inset_top(20.0),
             )
-            .bg(Token::Accent);
+            .background(Token::Accent);
         let middle = container()
             .layout(
                 LayoutStyle::block()
                     .fixed_size(80.0, 80.0)
                     .position(Position::Relative),
             )
-            .bg(Token::SurfacePressed)
+            .background(Token::SurfacePressed)
             .child(inner);
         container()
             .layout(
@@ -37,7 +37,7 @@ fn position_relative_child_paints() {
                     .fixed_size(150.0, 150.0)
                     .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(middle)
     })
     .stub()
@@ -78,8 +78,8 @@ fn narrow_text_renders_glyph() {
             .text_color(Token::OnSurface);
         let wrapper = container()
             .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-            .rounded(Radius::Sm)
-            .bg(Token::Surface)
+            .radius(Radius::Sm)
+            .background(Token::Surface)
             .child(glyph);
         container()
             .layout(
@@ -87,7 +87,7 @@ fn narrow_text_renders_glyph() {
                     .fixed_size(200.0, 80.0)
                     .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(wrapper)
     })
     .stub()

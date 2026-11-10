@@ -296,7 +296,7 @@ fn a_custom_theme_renders_off_the_ui_thread_and_keeps_the_last_image() {
         ui.query(&Query::text(RENDERING)).is_some(),
         "the busy chart finished before the theme switch"
     );
-    set_theme(Theme::console_dark());
+    Theme::console_dark().apply();
     let start = Instant::now();
     ui.settle();
     let shown = chart_paths(&mut ui);

@@ -6,28 +6,32 @@ pub(crate) const SPACING_STEP: f32 = 4.0;
 
 pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
+pub(crate) const OPACITY_UNITS: f32 = 10_000.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Px(pub i16);
 
+mod background;
+#[cfg(test)]
+pub(crate) use background::NO_GRADIENT;
 mod clip;
 mod color;
 mod filter;
 mod gradient;
 mod mask;
 mod space;
+pub use background::{Background, Gradient};
 pub use clip::ClipShape;
-pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
-pub use filter::FilterAtom;
+pub use color::{BgGradient, Color, ColorAtom, GradientAxis, GradientStopKey};
 pub(crate) use filter::{
-    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
-    shadow_color,
+    Amount, FilterAtom, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units,
+    hue_units, shadow_color,
 };
-pub use gradient::{
-    BorderStyle, Conic, GradientShape, PaintAtom, PaintStyle, Radial, RadialExtent, StopSlot,
-};
-pub use mask::{MaskAtom, MaskImage, MaskSize};
-pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
-pub use space::{Backface, SpaceAtom, SpaceStyle};
+pub(crate) use gradient::{BorderStyle, GradientShape, PaintStyle, StopSlot};
+pub use gradient::{Conic, PaintAtom, Radial, RadialExtent};
+pub(crate) use mask::{MaskAtom, MaskKind, MaskPart, MaskStyle};
+pub use mask::{MaskImage, MaskSize};
+pub(crate) use space::{Backface, SpaceAtom, SpaceStyle};
 
 /// Identifies a transition preset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -45,6 +49,7 @@ pub struct MillisU16(
 
 /// Selects a shadow depth from the theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Elevation {
     /// The sm elevation.
     Sm,
@@ -62,11 +67,11 @@ pub enum Elevation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderStyle {
     /// The background color, if any.
-    pub background_color: Option<Rgba8>,
+    pub background_color: Option<Color>,
     /// The background gradient, if any.
     pub background_gradient: Option<BgGradient>,
     /// The text color, if any.
-    pub text_color: Option<Rgba8>,
+    pub text_color: Option<Color>,
     /// The border radius, if any.
     pub border_radius: Option<i16>,
     /// The border width, if any.
@@ -80,7 +85,7 @@ pub struct RenderStyle {
     /// The border left, if any.
     pub border_left: Option<i16>,
     /// The border color, if any.
-    pub border_color: Option<Rgba8>,
+    pub border_color: Option<Color>,
     /// The shadow, if any.
     pub shadow: Option<Elevation>,
     /// The opacity.
@@ -358,12 +363,12 @@ pub(crate) const ATOM_FULL: u8 = 1;
 pub(crate) const ATOM_FRACTION: u8 = 2;
 pub(crate) const ATOM_AUTO: u8 = 3;
 
-pub(crate) const fn decode_atom(kind: u8, value: i16) -> crate::layout::Dimension {
+pub(crate) const fn decode_atom(kind: u8, value: i16) -> crate::layout::Length {
     match kind {
-        ATOM_FULL => crate::layout::Dimension::Percent(1.0),
-        ATOM_FRACTION => crate::layout::Dimension::Percent(value as f32 / 10_000.0),
-        ATOM_AUTO => crate::layout::Dimension::Auto,
-        _ => crate::layout::Dimension::Px(value as f32),
+        ATOM_FULL => crate::layout::Length::Percent(1.0),
+        ATOM_FRACTION => crate::layout::Length::Percent(value as f32 / 10_000.0),
+        ATOM_AUTO => crate::layout::Length::Auto,
+        _ => crate::layout::Length::Px(value as f32),
     }
 }
 

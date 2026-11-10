@@ -16,7 +16,7 @@ use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::{SvgMode, svg_scene};
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
@@ -29,7 +29,7 @@ mod images;
 mod nested;
 
 const SIDE: u32 = 40;
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -42,7 +42,7 @@ const fn frame(scene: &CommandScene, side: u32) -> Frame<'_> {
         scene,
         viewport: (side as f32, side as f32),
         size: PhysicalSize::new(side, side),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     }
 }
 

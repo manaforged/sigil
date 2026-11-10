@@ -13,7 +13,7 @@ use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
@@ -23,7 +23,7 @@ const HEIGHT: u32 = 60;
 const SCALE: f32 = 2.0;
 const DEVICE: (u32, u32) = (WIDTH * 2, HEIGHT * 2);
 const HAIRLINE_ROW: u32 = 20;
-const INK: Rgba8 = Rgba8 {
+const INK: Color = Color {
     r: 255,
     g: 40,
     b: 40,
@@ -46,7 +46,7 @@ fn shapes(scene: &mut SceneBuilder, rect: Rect) {
     let card = Rect::new(rect.origin, 32.0, 32.0);
     let rounded = DrawRect::new(
         card,
-        Rgba8 {
+        Color {
             r: 240,
             g: 200,
             b: 60,
@@ -60,7 +60,7 @@ fn shapes(scene: &mut SceneBuilder, rect: Rect) {
         GradientStop::new(0.0, INK),
         GradientStop::new(
             1.0,
-            Rgba8 {
+            Color {
                 r: 20,
                 g: 90,
                 b: 255,
@@ -188,7 +188,7 @@ fn one_scene_agrees_on_the_cpu_and_the_gpu() {
         scene: &scene,
         viewport,
         size: PhysicalSize::new(DEVICE.0, DEVICE.1),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let drawn = gpu.pixels().filter(|px| px.0[..3] != [0, 0, 0]).count();

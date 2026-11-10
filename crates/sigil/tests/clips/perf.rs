@@ -6,7 +6,7 @@ use sigil::layout::{FlexWrap, LayoutStyle, Overflow};
 use sigil::prelude::*;
 use sigil::renderer::WgpuRenderer;
 use sigil::scene::{Clip, CommandScene, DrawImage, SceneBuilder};
-use sigil::style::{Color, Paint, Radius};
+use sigil::style::{Paint, Radius};
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::{Capture, headless_renderer, read_pixels, render_capture, shared_device};
 
@@ -75,7 +75,7 @@ fn avatars() -> impl IntoNode {
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
-            .rounded(Radius::Full)
+            .radius(Radius::Full)
             .child(child);
         grid = grid.child(avatar);
     }
@@ -84,15 +84,11 @@ fn avatars() -> impl IntoNode {
 
 fn frame_ms(renderer: &mut WgpuRenderer, scene: &CommandScene) -> f64 {
     let (device, queue) = shared_device().expect("sigil-kittest").expect("adapter");
-    let capture = Capture {
-        viewport: VIEW,
-        size_px: [(VIEW.0 * SCALE) as u32, (VIEW.1 * SCALE) as u32],
-        scale: SCALE,
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
-    };
+    let capture =
+        Capture::new(VIEW, [(VIEW.0 * SCALE) as u32, (VIEW.1 * SCALE) as u32]).scale(SCALE);
     let start = Instant::now();
     let texture = render_capture(renderer, (device, queue), scene, &capture).expect("render");
-    let [w, h] = capture.size_px;
+    let [w, h] = capture.size_px();
     std::hint::black_box(read_pixels(device, queue, &texture, w, h).expect("readback"));
     start.elapsed().as_secs_f64() * 1e3
 }

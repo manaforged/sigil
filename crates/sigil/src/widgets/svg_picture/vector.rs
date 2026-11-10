@@ -8,7 +8,7 @@ use crate::layout::LayoutStyle;
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache::shift_command;
 use crate::style::Theme;
-use crate::widgets::{CanvasPaint, Widget};
+use crate::widgets::{CanvasPaint, Layout};
 
 use super::Picture;
 use super::lower::lower;

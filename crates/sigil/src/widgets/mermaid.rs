@@ -6,8 +6,9 @@ use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
 use crate::reactive::{Reactive, signal};
 use crate::style::space;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
+use crate::widgets::{bound_source, frame_source};
 
 mod canvas;
 #[cfg(feature = "scene")]
@@ -194,23 +195,8 @@ fn diagram_name(source: &str) -> String {
     format!("Mermaid {kind}")
 }
 
-const MAX_SOURCE_LINES: usize = 256;
-const MAX_SOURCE_CHARS: usize = 512;
 const MAX_OUTPUT_LINES: usize = 512;
 const MAX_OUTPUT_CHARS: usize = 1024;
-
-fn bound_source(source: &str) -> String {
-    let mut out = String::new();
-    for (index, line) in source.lines().enumerate() {
-        if index >= MAX_SOURCE_LINES {
-            out.push_str("source truncated");
-            break;
-        }
-        out.extend(line.chars().take(MAX_SOURCE_CHARS));
-        out.push('\n');
-    }
-    out
-}
 
 fn bound_output(mut lines: Vec<String>) -> Vec<String> {
     lines.truncate(MAX_OUTPUT_LINES);
@@ -230,27 +216,11 @@ fn draw(source: &str) -> Vec<String> {
     let mut lines = flow::draw(&source)
         .or_else(|| sequence::draw(&source))
         .or_else(|| pie::draw(&source))
-        .unwrap_or_else(|| framed(&source));
+        .unwrap_or_else(|| frame_source(&source));
     while lines.last().is_some_and(|line| line.trim().is_empty()) {
         lines.pop();
     }
     bound_output(lines)
-}
-
-fn framed(source: &str) -> Vec<String> {
-    let mut lines: Vec<String> = source.lines().map(ToString::to_string).collect();
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-    let width = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
-    let bar = "─".repeat(width.saturating_add(2));
-    let mut out = vec![format!("┌{bar}┐")];
-    for line in lines {
-        let pad = width.saturating_sub(line.chars().count());
-        out.push(format!("│ {line}{} │", " ".repeat(pad)));
-    }
-    out.push(format!("└{bar}┘"));
-    out
 }
 
 #[cfg(test)]

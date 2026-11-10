@@ -8,7 +8,7 @@
 
 use sigil::renderer::{DrawParams, ScreenSubmission, SlugTextPipeline};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
-use sigil::style::{Rgba8, TextLineHeight, TextStyle};
+use sigil::style::{Color, TextLineHeight, TextStyle};
 use sigil::text::OwnedTextEngine;
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels, shared_device};
 
@@ -100,7 +100,7 @@ fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
                 format: FORMAT,
                 viewport: (LOGICAL_W, LOGICAL_H),
                 scale: submission_scale,
-                clear: Some(sigil::style::Color::BLACK),
+                clear: Some(sigil::style::Rgba::BLACK),
             },
             &scene,
         )
@@ -127,7 +127,7 @@ fn build_text_scene() -> CommandScene {
     let run = shape_glyph_run(
         rect,
         TEXT.to_string(),
-        Rgba8 {
+        Color {
             r: 255,
             g: 255,
             b: 255,

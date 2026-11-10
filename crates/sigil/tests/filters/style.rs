@@ -6,9 +6,9 @@ use sigil_kittest::Harness;
 
 use super::{SCALE, SIDE, frames_of, gpu_frame, model, probe, rgba};
 
-const INPUT: Rgba8 = rgba(200, 80, 40, 255);
-const BLACK: Rgba8 = rgba(0, 0, 0, 255);
-const WHITE: Rgba8 = rgba(255, 255, 255, 255);
+const INPUT: Color = rgba(200, 80, 40, 255);
+const BLACK: Color = rgba(0, 0, 0, 255);
+const WHITE: Color = rgba(255, 255, 255, 255);
 
 fn page(child: impl IntoNode + 'static, pad: f32) -> NodeBuilder {
     container()
@@ -17,7 +17,7 @@ fn page(child: impl IntoNode + 'static, pad: f32) -> NodeBuilder {
                 .fixed_size(SIDE as f32, SIDE as f32)
                 .padding(Space::raw(pad, "test fixture")),
         )
-        .bg(BLACK)
+        .background(BLACK)
         .child(child)
 }
 
@@ -25,7 +25,7 @@ fn dimmed() -> NodeBuilder {
     page(
         container()
             .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32))
-            .bg(INPUT)
+            .background(INPUT)
             .brightness(0.5),
         0.0,
     )
@@ -53,7 +53,7 @@ fn blurred() -> NodeBuilder {
     page(
         container()
             .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-            .bg(WHITE)
+            .background(WHITE)
             .blur(4.0),
         20.0,
     )
@@ -130,7 +130,7 @@ fn stacked(top: impl IntoNode + 'static, parent: fn(NodeBuilder) -> NodeBuilder)
                     .fixed_size(SIDE as f32, SIDE as f32)
                     .padding(Space::Xs),
             )
-            .bg(WHITE)
+            .background(WHITE)
             .text_color(WHITE),
     )
     .child(
@@ -202,7 +202,7 @@ fn turning_a_parent_shadow_off_redraws_the_cached_child_text() {
         let app = move || {
             container()
                 .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32))
-                .bg(BLACK)
+                .background(BLACK)
                 .text_shadow(red)
                 .paint_when(off, |state| state.text_shadow(None))
                 .child(

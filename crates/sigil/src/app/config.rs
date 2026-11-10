@@ -90,11 +90,7 @@ pub struct AppConfig {
     pub(crate) double_click_distance: Option<f32>,
     pub(crate) task_workers: crate::tasks::TaskWorkers,
     #[cfg(feature = "scene")]
-    pub(crate) fonts: Option<crate::text::fonts::DefaultFonts>,
-    #[cfg(feature = "scene")]
-    pub(crate) font_fallbacks: Vec<crate::text::fonts::FallbackFace>,
-    #[cfg(feature = "scene")]
-    pub(crate) text_tuning: Option<crate::renderer::slug::TextTuning>,
+    pub(crate) text: text::TextSetup,
     #[cfg(feature = "terminal")]
     pub(crate) terminal: TerminalOptions,
     #[cfg(feature = "desktop")]
@@ -127,14 +123,14 @@ impl AppConfig {
         self
     }
 
-    /// Exit the app on Escape.
+    /// Exits the app on an Escape press the UI did not consume.
     #[must_use]
     pub const fn esc_exits(mut self, yes: bool) -> Self {
         self.quit.esc = yes;
         self
     }
 
-    /// Sets the quit on ctrl c.
+    /// Exits a terminal app on a Ctrl+C press the UI did not consume.
     #[must_use]
     pub const fn quit_on_ctrl_c(mut self, yes: bool) -> Self {
         self.quit.ctrl_c = yes;
@@ -198,9 +194,19 @@ impl AppConfig {
     /// Sets the canvas.
     #[cfg(feature = "desktop")]
     #[must_use]
-    pub fn canvas(mut self, id: impl Into<String>) -> Self {
-        self.canvas = Some(id.into());
-        self
+    pub fn canvas(self, id: impl Into<String>) -> Self {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self {
+                canvas: Some(id.into()),
+                ..self
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            drop(id);
+            self
+        }
     }
 
     /// Applies the terminal option.

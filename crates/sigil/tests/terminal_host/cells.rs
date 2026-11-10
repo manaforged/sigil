@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{ColWidth, Orientation, TableColumn, TableState, TreeNode};
+use sigil::widgets::{ColumnWidth, Orientation, TableColumn, TableState, TreeNode};
 
 use super::{painted, present, step};
 
@@ -44,7 +44,7 @@ fn job_table() -> TableState<(usize, String)> {
         rows(2000, 0),
         vec![
             TableColumn::new("id", "Id")
-                .width(ColWidth::Fixed(64.0))
+                .width(ColumnWidth::Fixed(64.0))
                 .sort_by(|row: &(usize, String)| row.0),
             TableColumn::new("name", "Name")
                 .sort_by(|row: &(usize, String)| row.1.clone())
@@ -216,10 +216,10 @@ fn fixed_width_table_headers_show_their_whole_title() {
                 vec![
                     TableColumn::new("pid", "PID")
                         .numeric()
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .sort_by(|row: &(u32, String)| row.0),
                     TableColumn::new("cpu", "CPU%")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .sort_by(|row: &(u32, String)| row.1.clone()),
                 ],
             ))
@@ -301,7 +301,7 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
                 let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
                 scene.draw_rect(sigil::scene::DrawRect::new(
                     top,
-                    Rgba8 {
+                    Color {
                         r: 200,
                         g: 40,
                         b: 40,
@@ -315,7 +315,7 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
                 );
                 scene.draw_rect(sigil::scene::DrawRect::new(
                     lower,
-                    Rgba8 {
+                    Color {
                         r: 40,
                         g: 40,
                         b: 200,

@@ -9,7 +9,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, fragment, show
 use crate::layout::{LayoutStyle, Space, column};
 use crate::reactive::{Signal, derived, interval, signal};
 use crate::style::Tone;
-use crate::widgets::{Widget, notice_band};
+use crate::widgets::{Layout, Widget, notice_band};
 
 mod build;
 mod lex;
@@ -34,6 +34,15 @@ pub struct View {
     source: String,
     path: Option<PathBuf>,
     binds: Binds,
+}
+
+impl core::fmt::Debug for View {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("View")
+            .field("source", &self.source)
+            .field("path", &self.path)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Builds a `View` from a file relative to `Cargo.toml`, watched in debug builds.

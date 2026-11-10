@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
+use crate::animation::runtime::{active_count as active_animation_count, running_clocks};
 use crate::geometry::{LogicalSize, PhysicalSize, Scale};
 use crate::hal::Shell;
 use crate::reactive::{Owner, Runtime, next_interval_deadline};

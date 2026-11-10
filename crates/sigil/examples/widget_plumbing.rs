@@ -12,23 +12,22 @@ fn main() -> sigil::AppResult<()> {
 
 pub(crate) fn interactive_demo(disabled: Signal<bool>) -> NodeBuilder {
     interactive(
-        container()
-            .layout(LayoutStyle::flex_column().fill_width())
+        column()
+            .fill_width()
+            .gap(Space::None)
             .child(text("Interactive row").nowrap().text_role(TextRole::Body)),
     )
     .focusable(true)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
     .disabled(disabled)
     .into_node_builder()
 }
 
 pub(crate) fn axis_drag_demo() -> NodeBuilder {
     let width = signal(160.0_f32);
-    let handle = container()
-        .layout(LayoutStyle::flex_column().width(width.peek()))
-        .child(card(
-            text(move || format!("Width {:.0}", width.get())).nowrap(),
-        ));
+    let handle = column().width(width.peek()).gap(Space::None).child(card(
+        text(move || format!("Width {:.0}", width.get())).nowrap(),
+    ));
     axis_drag(
         handle,
         Orientation::Horizontal,
@@ -41,8 +40,9 @@ pub(crate) fn axis_drag_demo() -> NodeBuilder {
 pub(crate) fn drag_ghost_demo() -> NodeBuilder {
     let drag = DragState::<String>::new();
     let dropped = signal(String::from("Drop a card here"));
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
+    column()
+        .fill_width()
+        .gap(Space::Sm)
         .child(
             NodeBuilder::from(card(text("Card A").nowrap()))
                 .drag_source(drag.clone(), String::from("Card A")),
@@ -63,15 +63,18 @@ pub(crate) fn terminal_demo() -> NodeBuilder {
         String::from("   Compiling sigil-ui v0.1.0"),
         String::from("    Finished dev profile"),
     ];
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+    column()
+        .fill_width()
+        .height(120.0)
+        .gap(Space::None)
         .child(terminal(signal(lines), |_| {}))
 }
 
 fn build() -> impl IntoNode {
-    container()
+    column()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+        .gap(rows(1.0))
+        .padding(cols(2.0))
         .child(interactive_demo(signal(false)))
         .child(axis_drag_demo())
         .child(drag_ghost_demo())

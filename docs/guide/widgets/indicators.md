@@ -16,13 +16,13 @@ chip("3", Tone::Error);
 
 - `.tone(..)` takes a `Tone`, a `Signal<Tone>`, or a closure; a signal or closure retints the chip when it changes.
 - `.activate(Fn())` turns the chip into a button: `Role::Button`, pointer release and Enter fire the closure. Without it the chip is `Role::Label` and inert.
-- `.layout(LayoutStyle)` returns a `NodeBuilder` for manual layout.
+- The layout setters, such as `.width(..)` and `.margin(..)`, size and place the chip.
 
-The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warn`, `Error`.
+The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warning`, `Error`.
 
 ## dot
 
-`dot(Tone)`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide/Grow 16 px. Not hittable, not focusable.
+`dot(Tone)`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide 16 px. Not hittable, not focusable.
 
 ## gauge
 
@@ -69,7 +69,7 @@ Indicators have one visual state each: the visual catalog captures only the defa
 | --- | --- | --- | --- |
 | `chip` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
 | `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
-| `gauge` | none | `ProgressIndicator` | A static `.label()`, else "Gauge" |
+| `gauge` | none | `ProgressIndicator` | The `.label()`, else "Gauge" |
 | `progress` | none | `ProgressIndicator` | `.label()`, else "Progress" |
 | `spinner` | none | `ProgressIndicator` | `.label()` on the returned `NodeBuilder`, else "Loading" |
 

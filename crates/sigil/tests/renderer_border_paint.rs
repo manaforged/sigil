@@ -5,9 +5,9 @@ use crate::paint_support as support;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, StrokeAlign, StrokeStyle, emit_scene};
 use sigil::style::{Paint, Theme, Token};
+use sigil::widgets::Layout;
 use support::{TEXT_MEASURE, capture, close};
 
 const SIZE: u32 = 64;
@@ -25,8 +25,8 @@ fn border_class_emits_inside_stroke_command() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(48.0, 48.0))
-            .bg(Token::Surface)
-            .border_w(2)
+            .background(Token::Surface)
+            .border_width(2)
             .border_color(Token::Accent),
     );
     layout(&mut cx, root);
@@ -52,8 +52,8 @@ fn border_paints_edge_and_leaves_interior() {
         || {
             container()
                 .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
-                .bg(Token::Surface)
-                .border_w(4)
+                .background(Token::Surface)
+                .border_width(4)
                 .border_color(Token::Accent)
         },
         [SIZE, SIZE],
@@ -84,11 +84,11 @@ fn border_without_background_shows_parent_through_interior() {
         || {
             let bordered = container()
                 .layout(LayoutStyle::block().fixed_size(48.0, 48.0))
-                .border_w(4)
+                .border_width(4)
                 .border_color(Token::Accent);
             container()
                 .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
-                .bg(Token::SurfaceHover)
+                .background(Token::SurfaceHover)
                 .child(bordered)
         },
         [SIZE, SIZE],
@@ -127,7 +127,7 @@ fn border_width_insets_child_content_box_model() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(48.0, 48.0))
-            .border_w(4)
+            .border_width(4)
             .child(child),
     );
     layout(&mut cx, root);

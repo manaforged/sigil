@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use sigil::animation::Easing;
+use sigil::animation::{Easing, Transition};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::Filter;
-use sigil::style::StateStyleBuilder;
+use sigil::style::{Background, GradientAxis, StateStyleBuilder};
 use sigil_kittest::Harness;
 
 use super::{
@@ -14,9 +14,11 @@ use super::{
 };
 
 fn eased(node: NodeBuilder) -> NodeBuilder {
-    node.transition()
-        .duration(Duration::from_secs(1))
-        .ease(Easing::Linear)
+    node.transition(
+        Transition::new()
+            .duration(Duration::from_secs(1))
+            .ease(Easing::Linear),
+    )
 }
 
 fn switched(
@@ -134,7 +136,9 @@ fn a_mismatched_filter_list_changes_discretely() {
 #[test]
 fn a_gradient_stop_color_transition_mixes_in_srgb() {
     Owner::scope("props-stop-transition", || {
-        let (mut ui, flag) = switched(gradient_square(), |state| state.gradient_from(WHITE));
+        let (mut ui, flag) = switched(gradient_square(), |state| {
+            state.background(Background::linear(GradientAxis::LeftToRight).start(WHITE))
+        });
         start(&mut ui, flag);
         run(&mut ui, 0.25);
         near_color(
@@ -149,7 +153,11 @@ fn a_gradient_stop_color_transition_mixes_in_srgb() {
 fn a_gradient_that_gains_a_stop_changes_discretely() {
     Owner::scope("props-stop-count", || {
         let (mut ui, flag) = switched(gradient_square(), |state| {
-            state.gradient_from(WHITE).gradient_via(BLACK)
+            state.background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(WHITE)
+                    .middle(BLACK),
+            )
         });
         start(&mut ui, flag);
         run(&mut ui, 0.25);
@@ -219,13 +227,16 @@ fn drop_shadow_none_turns_the_shadow_off() {
     });
 }
 
-fn radius_at_half(node: NodeBuilder) -> f32 {
+fn radius_at_half(transition: Transition) -> f32 {
     let flag = signal(false);
-    let eased = node
-        .rounded(Radius::None)
-        .duration(Duration::from_secs(1))
-        .ease(Easing::Linear)
-        .paint_when(flag, |state| state.rounded(Radius::Lg));
+    let eased = square()
+        .transition(
+            transition
+                .duration(Duration::from_secs(1))
+                .ease(Easing::Linear),
+        )
+        .radius(Radius::None)
+        .paint_when(flag, |state| state.radius(Radius::Lg));
     let mut ui = mount(eased);
     start(&mut ui, flag);
     run(&mut ui, 0.5);
@@ -243,8 +254,8 @@ fn radius_at_half(node: NodeBuilder) -> f32 {
 #[test]
 fn transition_all_moves_what_transition_leaves_alone() {
     Owner::scope("props-transition-all", || {
-        let end = radius_at_half(square().transition());
-        let moving = radius_at_half(square().transition_all());
+        let end = radius_at_half(Transition::new());
+        let moving = radius_at_half(Transition::all());
         near(moving, end / 2.0, 0.5, "corner radius at 50%");
         assert!(end > 2.0, "transition jumps to the end radius, got {end}");
     });

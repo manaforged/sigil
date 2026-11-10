@@ -16,6 +16,7 @@ use super::render::{FieldInputs, build_base_node, field_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) use crate::widgets::shared::TextChange;
+use crate::widgets::shared::caller_style;
 
 /// Builder of a text input.
 pub struct TextFieldBuilder {
@@ -38,6 +39,26 @@ pub struct TextFieldBuilder {
     adorn: Adornments,
     clearable: bool,
     focus_target: FocusSlot,
+}
+
+impl core::fmt::Debug for TextFieldBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TextFieldBuilder")
+            .field("value", &self.value)
+            .field("placeholder", &self.placeholder)
+            .field("disabled", &self.disabled)
+            .field("invalid", &self.invalid)
+            .field("caret_visible", &self.caret_visible)
+            .field("scroll_offset", &self.scroll_offset)
+            .field("focus_trigger", &self.focus_trigger)
+            .field("autofocus", &self.autofocus)
+            .field("password", &self.password)
+            .field("reveal", &self.reveal)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("clearable", &self.clearable)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A single-line text input.
@@ -216,9 +237,7 @@ impl TextFieldBuilder {
         if let Some(blur) = self.blur {
             node = node.focus_out(move || blur());
         }
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
+        let node = caller_style(node, self.style_accumulator);
         let overrides = std::mem::take(&mut self.layout_overrides);
         (overrides.finish(node.with(field_layout(width))), runtime)
     }

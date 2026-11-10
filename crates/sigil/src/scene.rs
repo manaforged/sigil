@@ -48,6 +48,8 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
+#[cfg(feature = "terminal")]
+pub(crate) use command::DrawPath;
 pub use command::{
     BlendMode, Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash,
 };
@@ -63,7 +65,7 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawSprite, Filter, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
+    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawSprite, Filter, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
 }
 kittest_pub! {
     #[doc(hidden)]

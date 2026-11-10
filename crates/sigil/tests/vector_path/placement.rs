@@ -1,7 +1,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::path;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
@@ -100,7 +100,7 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_cpu() {
             scene: &scene,
             viewport,
             size: PhysicalSize::new(side, side),
-            clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
         };
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let image = image::RgbaImage::from_raw(side, side, rgba).expect("cpu frame size");

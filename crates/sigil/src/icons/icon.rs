@@ -56,6 +56,7 @@ lucide_icons! {
     Clock => "clock",
     Cloud => "cloud",
     Code => "code",
+    Columns2 => "columns-2",
     Command => "command",
     Copy => "copy",
     Cpu => "cpu",

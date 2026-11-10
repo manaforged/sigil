@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::kernel::IntoNode;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow};
 
 kittest_pub! {
     /// Smallest width a table column can be resized to.
@@ -19,7 +19,8 @@ type CellFn<Row> = Rc<dyn Fn(&Row) -> Box<dyn IntoNode>>;
 
 /// Column width.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ColWidth {
+#[non_exhaustive]
+pub enum ColumnWidth {
     /// The fixed col width.
     Fixed(f32),
     /// The fraction col width.
@@ -28,7 +29,8 @@ pub enum ColWidth {
 
 /// Column alignment.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ColAlign {
+#[non_exhaustive]
+pub enum ColumnAlign {
     /// The start col align.
     #[default]
     Start,
@@ -43,10 +45,23 @@ pub struct TableColumn<Row> {
     compare: Option<CompareFn<Row>>,
     filter: Option<FilterFn<Row>>,
     cell: Option<CellFn<Row>>,
-    width: ColWidth,
+    width: ColumnWidth,
     min_width: f32,
-    align: ColAlign,
+    align: ColumnAlign,
     numeric: bool,
+}
+
+impl<Row> core::fmt::Debug for TableColumn<Row> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TableColumn")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("width", &self.width)
+            .field("min_width", &self.min_width)
+            .field("align", &self.align)
+            .field("numeric", &self.numeric)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<Row> Clone for TableColumn<Row> {
@@ -75,16 +90,16 @@ impl<Row> TableColumn<Row> {
             compare: None,
             filter: None,
             cell: None,
-            width: ColWidth::Fraction(1.0),
+            width: ColumnWidth::Fraction(1.0),
             min_width: MIN_COL_WIDTH,
-            align: ColAlign::Start,
+            align: ColumnAlign::Start,
             numeric: false,
         }
     }
 
     /// Sets the text alignment.
     #[must_use]
-    pub const fn align(mut self, align: ColAlign) -> Self {
+    pub const fn align(mut self, align: ColumnAlign) -> Self {
         self.align = align;
         self
     }
@@ -92,7 +107,7 @@ impl<Row> TableColumn<Row> {
     /// Aligns the column for numbers.
     #[must_use]
     pub const fn numeric(mut self) -> Self {
-        self.align = ColAlign::End;
+        self.align = ColumnAlign::End;
         self.numeric = true;
         self
     }
@@ -132,7 +147,7 @@ impl<Row> TableColumn<Row> {
 
     /// Sets the width.
     #[must_use]
-    pub const fn width(mut self, width: ColWidth) -> Self {
+    pub const fn width(mut self, width: ColumnWidth) -> Self {
         self.width = width;
         self
     }
@@ -172,7 +187,7 @@ impl<Row> TableColumn<Row> {
     }
 
     #[must_use]
-    pub(crate) const fn col_width(&self) -> ColWidth {
+    pub(crate) const fn col_width(&self) -> ColumnWidth {
         self.width
     }
 
@@ -189,7 +204,7 @@ impl<Row> TableColumn<Row> {
 
     /// Returns the alignment.
     #[must_use]
-    pub const fn alignment(&self) -> ColAlign {
+    pub const fn alignment(&self) -> ColumnAlign {
         self.align
     }
 
@@ -207,7 +222,7 @@ impl<Row> TableColumn<Row> {
     ) -> LayoutStyle {
         let mut style = LayoutStyle::flex_row().align_items(AlignItems::Center);
         if let Some(pad_x) = body_pad_x {
-            if self.align == ColAlign::End {
+            if self.align == ColumnAlign::End {
                 style = style.justify_content(JustifyContent::End);
             }
             style = style
@@ -219,10 +234,10 @@ impl<Row> TableColumn<Row> {
             return style.fixed_size(px.max(floor), height).shrink(0.0);
         }
         match self.width {
-            ColWidth::Fixed(px) => style.fixed_size(px.max(0.0), height).shrink(0.0),
-            ColWidth::Fraction(fraction) => style
+            ColumnWidth::Fixed(px) => style.fixed_size(px.max(0.0), height).shrink(0.0),
+            ColumnWidth::Fraction(fraction) => style
                 .height(height)
-                .flex_basis(Dimension::Px(0.0))
+                .flex_basis(Length::Px(0.0))
                 .grow(fraction.max(0.0))
                 .min_size(floor, height)
                 .shrink(1.0),

@@ -9,7 +9,7 @@ use crate::renderer::scene_command::walk::{WalkCtx, compose, translation};
 use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::renderer::vector_pass::{Rendered, Run};
 use crate::scene::command::{DrawPath, LayerEffect, Mask, MaskMode};
-use crate::style::Color;
+use crate::style::Rgba;
 
 use crate::renderer::plan::build_tree;
 
@@ -112,7 +112,7 @@ fn render_scene(
         .get_or_insert_with(Default::default)
         .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)
         .ok()?;
-    ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
+    ctx.encoder.clear(&handle.view, Rgba::TRANSPARENT);
     let layer = LayerTarget {
         view: handle.view.clone(),
         bounds: dest,

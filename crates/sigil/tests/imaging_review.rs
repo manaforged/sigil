@@ -10,22 +10,19 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{ClipShape, Color, GradientAxis, Radial, Transform2D};
+use sigil::style::{Background, ClipShape, GradientAxis, Radial, Rgba, Transform2D};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
-#[path = "imaging_review/text_clip.rs"]
-mod text_clip;
-
 const SCALE: f32 = 2.0;
-const RED: Rgba8 = rgb(255, 0, 0);
-const GREEN: Rgba8 = rgb(0, 255, 0);
-const BLUE: Rgba8 = rgb(0, 0, 255);
-const WHITE: Rgba8 = rgb(255, 255, 255);
-const BLACK: Rgba8 = rgb(0, 0, 0);
+const RED: Color = rgb(255, 0, 0);
+const GREEN: Color = rgb(0, 255, 0);
+const BLUE: Color = rgb(0, 0, 255);
+const WHITE: Color = rgb(255, 255, 255);
+const BLACK: Color = rgb(0, 0, 0);
 
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -55,7 +52,7 @@ fn shoot<A: IntoNode + 'static>(
                 scene: &scene,
                 viewport,
                 size,
-                clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+                clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
             };
             let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
             return image::RgbaImage::from_raw(size.width, size.height, rgba)
@@ -86,7 +83,7 @@ fn at(frame: &image::RgbaImage, x: f32, y: f32) -> [u8; 3] {
     [p[0], p[1], p[2]]
 }
 
-fn off(found: [u8; 3], want: Rgba8) -> u32 {
+fn off(found: [u8; 3], want: Color) -> u32 {
     [want.r, want.g, want.b]
         .iter()
         .zip(found)
@@ -94,10 +91,10 @@ fn off(found: [u8; 3], want: Rgba8) -> u32 {
         .sum()
 }
 
-fn page(w: f32, h: f32, bg: Rgba8, child: impl IntoNode + 'static) -> NodeBuilder {
+fn page(w: f32, h: f32, bg: Color, child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(w, h))
-        .bg(bg)
+        .background(bg)
         .child(child)
 }
 
@@ -108,9 +105,11 @@ fn black_to_white() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg_radial(Radial::new().at(0, 50))
-            .gradient_from(BLACK)
-            .gradient_to(WHITE),
+            .background(
+                Background::radial(Radial::new().at(0, 50))
+                    .start(BLACK)
+                    .end(WHITE),
+            ),
     )
 }
 
@@ -137,8 +136,7 @@ fn red_to_default() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED),
+            .background(Background::linear(GradientAxis::LeftToRight).start(RED)),
     )
 }
 
@@ -149,7 +147,7 @@ fn half_red() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg(Rgba8 {
+            .background(Color {
                 r: 255,
                 g: 0,
                 b: 0,
@@ -169,7 +167,7 @@ fn a_from_stop_fading_to_the_default_transparent_stop_keeps_its_hue() {
         );
         if off(
             mid,
-            Rgba8 {
+            Color {
                 r: solid[0],
                 g: solid[1],
                 b: solid[2],
@@ -192,9 +190,7 @@ fn gradient_over_bg_color() -> NodeBuilder {
         BLACK,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg(WHITE)
-            .bg_radial(Radial::new())
-            .gradient_from(RED),
+            .background(Background::radial(Radial::new()).start(RED).over(WHITE)),
     )
 }
 
@@ -210,10 +206,91 @@ fn a_background_color_shows_under_a_gradient_that_fades_out() {
     check(&failures);
 }
 
+fn mean_ink(frame: &image::RgbaImage, columns: std::ops::Range<u32>) -> [f32; 3] {
+    let (mut sum, mut count) = ([0.0f32; 3], 0.0f32);
+    for y in 0..frame.height() {
+        for x in columns.clone() {
+            let p = frame.get_pixel(x, y);
+            let rgb = [p[0], p[1], p[2]];
+            if off(rgb, WHITE) > 300 {
+                for (total, channel) in sum.iter_mut().zip(rgb) {
+                    *total += f32::from(channel);
+                }
+                count += 1.0;
+            }
+        }
+    }
+    assert!(count > 20.0, "glyph pixels in {columns:?}");
+    sum.map(|total| total / count)
+}
+
+fn word() -> TextBuilder {
+    text("MMMMMM")
+        .font_size(40.0, "test fixture")
+        .font_weight(900)
+        .text_color(BLACK)
+}
+
+fn container_clip_text() -> NodeBuilder {
+    page(
+        240.0,
+        60.0,
+        WHITE,
+        container()
+            .layout(LayoutStyle::block().fixed_size(240.0, 60.0))
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .end(BLUE),
+            )
+            .background_clip_text()
+            .child(word()),
+    )
+}
+
+#[test]
+fn bg_clip_text_on_a_container_paints_its_text_children() {
+    let mut failures = Vec::new();
+    for surface in SURFACES {
+        let frame = shoot(container_clip_text, 240, 60, surface);
+        let left = mean_ink(&frame, 0..frame.width() / 5);
+        if left[0] <= left[2] + 60.0 {
+            failures.push(format!("{surface:?}: background-clip:text clips to descendant text, first letters red, got {left:?}"));
+        }
+    }
+    check(&failures);
+}
+
+fn conic_word() -> NodeBuilder {
+    page(
+        240.0,
+        60.0,
+        WHITE,
+        word()
+            .background(Background::conic(0).start(RED).middle(GREEN).end(BLUE))
+            .background_clip_text(),
+    )
+}
+
+#[test]
+fn conic_gradient_text_changes_color_across_the_word() {
+    let mut failures = Vec::new();
+    for surface in SURFACES {
+        let frame = shoot(conic_word, 240, 60, surface);
+        let width = frame.width();
+        let left = mean_ink(&frame, 0..width / 5);
+        let right = mean_ink(&frame, width * 3 / 5..width * 4 / 5);
+        if !(right[0] > right[2] + 40.0 && left[2] > left[0] + 40.0) {
+            failures.push(format!("{surface:?}: right half red-green, left half green-blue; left {left:?} right {right:?}"));
+        }
+    }
+    check(&failures);
+}
+
 fn shifted(clip: bool) -> NodeBuilder {
     let node = container()
         .layout(LayoutStyle::block().fixed_size(60.0, 60.0))
-        .bg(RED)
+        .background(RED)
         .transform(Transform2D::IDENTITY.translate(-30.0, 0.0));
     let node = if clip {
         node.clip_path(ClipShape::Inset {
@@ -251,12 +328,12 @@ fn near_card(degrees: f32) -> NodeBuilder {
                 .padding_x(Space::raw(50.0, "test fixture"))
                 .padding_y(Space::raw(100.0, "test fixture")),
         )
-        .bg(WHITE)
+        .background(WHITE)
         .perspective(80.0)
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
-                .bg(RED)
+                .background(RED)
                 .rotate_y(degrees),
         )
 }
@@ -285,11 +362,13 @@ fn reversed_positions() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 20.0))
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED)
-            .gradient_from_position(80)
-            .gradient_to(BLUE)
-            .gradient_to_position(20),
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .start_at(80)
+                    .end(BLUE)
+                    .end_at(20),
+            ),
     )
 }
 
@@ -307,46 +386,5 @@ fn a_stop_placed_before_an_earlier_stop_is_clamped_not_reordered() {
     check(&failures);
 }
 
-fn many_images(count: u32) -> NodeBuilder {
-    let mut grid = container().layout(
-        LayoutStyle::flex_row()
-            .fixed_size(240.0, 40.0)
-            .flex_wrap(FlexWrap::Wrap),
-    );
-    for index in 0..count {
-        let color = if index == 0 {
-            [255, 0, 0, 255]
-        } else {
-            [0, (index & 0xff) as u8, (index >> 8) as u8 + 1, 255]
-        };
-        let source = ImageSource::from_rgba8(1, 1, color.to_vec()).expect("1x1 image");
-        grid = grid.child(
-            container()
-                .layout(LayoutStyle::block().fixed_size(4.0, 4.0))
-                .bg_image(source),
-        );
-    }
-    page(240.0, 40.0, WHITE, grid)
-}
-
-#[test]
-fn the_first_of_600_background_images_still_draws() {
-    let control = at(
-        &shoot(|| many_images(1), 240, 40, Surface::Pixels),
-        2.0,
-        2.0,
-    );
-    assert!(
-        off(control, RED) <= 40,
-        "control, one image draws, got {control:?}"
-    );
-    let probe = at(
-        &shoot(|| many_images(600), 240, 40, Surface::Pixels),
-        2.0,
-        2.0,
-    );
-    assert!(
-        off(probe, RED) <= 40,
-        "the first node's 1x1 red tile, got {probe:?}"
-    );
-}
+#[path = "imaging_review/images.rs"]
+mod images;

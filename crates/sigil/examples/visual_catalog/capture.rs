@@ -68,14 +68,12 @@ pub(crate) fn paint<N: IntoNode + 'static>(
     let theme = look.theme();
     let pad = view.pad;
     let frame = move || {
-        container()
+        column()
             .theme(theme)
-            .bg(Token::Surface)
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill()
-                    .padding(Space::raw(pad, "example layout")),
-            )
+            .background(Token::Surface)
+            .fill()
+            .padding(Space::raw(pad, "example layout"))
+            .gap(Space::None)
             .child(child())
     };
     let extra = (2.0 * pad) as u32;
@@ -109,9 +107,10 @@ pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells,
     Owner::scope("visual-catalog-terminal", || {
         let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
-            container()
+            column()
                 .theme(run.look.theme())
-                .layout(LayoutStyle::flex_column().fill())
+                .fill()
+                .gap(Space::None)
                 .child(tree)
         });
         host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))?;

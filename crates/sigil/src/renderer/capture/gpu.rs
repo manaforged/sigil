@@ -168,7 +168,7 @@ impl ReadbackLayout {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct CaptureExtent {
     pub width: u32,
     pub height: u32,

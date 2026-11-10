@@ -2,7 +2,6 @@
 
 use std::collections::HashSet;
 
-use sigil::hal::{ParagraphMetrics, TextEngine};
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 

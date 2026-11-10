@@ -28,6 +28,14 @@ pub struct LayoutDrive {
     text: Box<dyn TextMeasure>,
 }
 
+impl core::fmt::Debug for LayoutDrive {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LayoutDrive")
+            .field("forest", &self.forest)
+            .finish_non_exhaustive()
+    }
+}
+
 impl LayoutDrive {
     #[must_use]
     pub fn new(text: Box<dyn TextMeasure>) -> Self {

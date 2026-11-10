@@ -5,9 +5,10 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text
 use crate::layout::LayoutStyle;
 use crate::reactive::Reactive;
 use crate::style::{StyleAtom, Token, Tone};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::patterns::card;
+use super::shared::accessible_name;
 use super::sparkline::sparkline;
 
 /// Builds a stat.
@@ -21,6 +22,20 @@ pub struct StatBuilder {
     range: Option<(f32, f32)>,
     tone: Option<Tone>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for StatBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("StatBuilder")
+            .field("label", &self.label)
+            .field("value", &self.value)
+            .field("delta", &self.delta)
+            .field("caption", &self.caption)
+            .field("range", &self.range)
+            .field("tone", &self.tone)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A KPI tile in card chrome: a label, a large value, and an optional toned change line, caption, and sparkline trend.
@@ -70,13 +85,13 @@ impl StatBuilder {
 
     #[must_use]
     fn root(self) -> NodeBuilder {
-        let name = self.label.as_static_str().unwrap_or("Statistic").to_owned();
+        let name = accessible_name(&self.label);
         let value = text(self.value)
             .nowrap()
             .ellipsize()
             .class("text-xl font-semibold tabular-nums");
         let value = match self.tone {
-            Some(tone) => value.class(tone.solid().text()),
+            Some(tone) => value.class(tone.token(12).text()),
             None => value.class(Token::OnSurface.text()),
         };
         let mut body = container()
@@ -93,7 +108,7 @@ impl StatBuilder {
             body = body.child(caption_text(
                 change,
                 "text-xs tabular-nums",
-                tone.solid().text(),
+                tone.token(12).text(),
             ));
         }
         if let Some(caption) = self.caption {

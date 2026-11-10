@@ -1,6 +1,7 @@
 use super::*;
 use sigil::layout::Position;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 #[test]
 fn modal_open() {
@@ -8,7 +9,7 @@ fn modal_open() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 modal(open)
                     .title("Confirm action")
@@ -30,7 +31,7 @@ fn modal_open() {
 fn modal_dimmed_backdrop() {
     let img = Harness::render(|| {
         let open = signal(true);
-        let bg = container().bg(Token::Accent).layout(
+        let bg = container().background(Token::Accent).layout(
             LayoutStyle::block()
                 .position(Position::Absolute)
                 .inset_top(0.0)
@@ -64,7 +65,7 @@ fn modal_focused() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 modal(open)
                     .title("Confirm action")
@@ -94,7 +95,7 @@ fn modal_dismissing() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 modal(open)
                     .title("Confirm action")
@@ -119,7 +120,7 @@ fn menu_open() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 menu(open)
                     .width(200.0)
@@ -143,7 +144,7 @@ fn menu_hover_item2() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 menu(open)
                     .width(200.0)
@@ -167,7 +168,7 @@ fn menu_disabled_item() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 menu(open)
                     .width(200.0)
@@ -193,7 +194,7 @@ fn menu_with_separators() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 menu(open)
                     .width(200.0)
@@ -220,7 +221,7 @@ fn menu_submenu_open() {
         let open = signal(true);
         let m = container()
             .layout(LayoutStyle::flex_column().fill())
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 menu(open)
                     .width(200.0)

@@ -3,7 +3,7 @@ use crate::kernel::{Cx, Node, NodeId, NodeType};
 use crate::layout::{Display, FlexDirection, FlexWrap, LayoutEngine, LayoutStyle, StyleData};
 use crate::widgets::Orientation;
 
-use super::{Flaw, Tolerance, is_row, label, style};
+use super::{Issue, Tolerance, is_row, label, style};
 
 fn is_stack(node: &Node) -> bool {
     matches!(
@@ -65,7 +65,7 @@ pub(super) fn columns(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !is_stack(node) {
         return;
@@ -80,7 +80,7 @@ fn run_columns(
     (id, node): (NodeId, &Node),
     rows: &[&Node],
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     let width = rows.first().map_or(0, |row| row.children().len());
     for column in 0..width {
@@ -107,7 +107,7 @@ fn run_columns(
         .iter()
         .any(|gap| *gap <= tolerance.exact);
         if !aligned {
-            out.push(Flaw::Column {
+            out.push(Issue::Column {
                 parent: label(id, node),
                 column,
                 tops: rects.iter().map(|r| r.origin.y).collect(),
@@ -123,7 +123,7 @@ pub(super) fn insets(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if matches!(node.kind, NodeType::Text { .. }) {
         return;
@@ -154,7 +154,7 @@ pub(super) fn insets(
     for (axis, start, end) in spans {
         let gap = (start - end).abs();
         if start > 0.0 && end > 0.0 && gap > tolerance.exact && gap <= tolerance.near_miss {
-            out.push(Flaw::Inset {
+            out.push(Issue::Inset {
                 node: label(id, node),
                 rect: inner,
                 axis,

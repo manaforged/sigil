@@ -1,6 +1,6 @@
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 use crate::scene::command::effects::{DecorationKind, SpriteKind, SpriteSource};
 
@@ -16,7 +16,7 @@ pub struct DrawSprite {
     /// The destination.
     pub destination: Rect,
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
     /// The opacity.
     pub opacity: u16,
 }
@@ -28,7 +28,7 @@ impl DrawSprite {
         source: SpriteSource,
         destination: Rect,
         kind: SpriteKind,
-        color: Rgba8,
+        color: Color,
     ) -> Self {
         Self {
             node: None,
@@ -58,7 +58,7 @@ pub struct DrawDecoration {
     /// The band.
     pub band: Rect,
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
     /// The opacity.
     pub opacity: u16,
     /// The period.
@@ -70,7 +70,7 @@ pub struct DrawDecoration {
 impl DrawDecoration {
     /// A straight text decoration one pixel wide at full opacity.
     #[must_use]
-    pub const fn new(kind: DecorationKind, band: Rect, color: Rgba8) -> Self {
+    pub const fn new(kind: DecorationKind, band: Rect, color: Color) -> Self {
         Self {
             node: None,
             kind,

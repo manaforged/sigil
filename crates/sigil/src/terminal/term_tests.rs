@@ -103,9 +103,9 @@ fn a_panic_on_another_thread_leaves_the_terminal_alone() {
 
 #[test]
 fn caps_reports_the_probe_only_while_the_host_holds_it() {
-    let probed = Caps {
+    let probed = Capabilities {
         backdrop: Some(Backdrop::Light),
-        ..Caps::default()
+        ..Capabilities::default()
     };
     assert_eq!(caps(), None);
     CAPS.with(|slot| slot.set(Some(probed)));

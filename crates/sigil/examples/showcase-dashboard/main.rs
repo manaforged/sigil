@@ -19,17 +19,18 @@ use data::INSPECTOR_BREAKPOINT;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Fleet").size(1280, 800), || {
-        set_theme(Theme::dark());
+        Theme::dark().apply();
         app()
     })
 }
 
 fn pane() -> NodeBuilder {
-    container()
-        .bg(Token::SurfaceSubtle)
-        .border_w(1)
+    column()
+        .gap(Space::None)
+        .background(Token::SurfaceSubtle)
+        .border_width(1)
         .border_color(Token::Border)
-        .rounded(Radius::Md)
+        .radius(Radius::Md)
 }
 
 fn work(console: live::Console) -> NodeBuilder {
@@ -39,16 +40,15 @@ fn work(console: live::Console) -> NodeBuilder {
         let width = viewport.get().width;
         width <= 0.0 || width >= INSPECTOR_BREAKPOINT
     };
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .grow(1.0)
-                .min_size(0.0, 0.0)
-                .gap(Space::Sm),
-        )
+    row()
+        .fill_width()
+        .grow(1.0)
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::Sm)
+        .align_items(AlignItems::Stretch)
         .child(nav::rail(console))
-        .child(services::column(console))
+        .child(services::panel(console))
         .child(jobs::main_panel(console, &state))
         .child(inspector::panel(console).visible_when(roomy))
 }
@@ -56,8 +56,9 @@ fn work(console: live::Console) -> NodeBuilder {
 pub(crate) fn app() -> impl IntoNode {
     let console = live::start();
     let open = console.menu_open;
-    container()
-        .layout(LayoutStyle::flex_column().fill())
+    column()
+        .fill()
+        .gap(Space::None)
         .key_capture(shell::menu_shortcut(), move |_: &mut KeyEvent| {
             open.set(true);
         })

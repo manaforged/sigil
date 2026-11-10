@@ -1,6 +1,6 @@
-use crate::animation_runtime::binding_animate_color::mix;
+use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
-use crate::style::Rgba8;
+use crate::style::Color;
 use smallvec::SmallVec;
 
 #[cfg(any(test, feature = "kittest"))]
@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 #[derive(Clone, Debug, PartialEq)]
 pub enum PaintFill {
     /// The solid paint fill.
-    Solid(Rgba8),
+    Solid(Color),
     /// The linear gradient paint fill.
     LinearGradient(LinearGradient),
     /// The pattern paint fill.
@@ -21,7 +21,7 @@ pub enum PatternKind {
     /// The slash pattern kind.
     Slash {
         /// The color.
-        color: Rgba8,
+        color: Color,
         /// The period.
         period: f32,
         /// The line width.
@@ -30,9 +30,9 @@ pub enum PatternKind {
     /// The checker pattern kind.
     Checker {
         /// The color a.
-        color_a: Rgba8,
+        color_a: Color,
         /// The color b.
-        color_b: Rgba8,
+        color_b: Color,
         /// The cell.
         cell: f32,
     },
@@ -88,7 +88,7 @@ impl PatternKind {
 
 const WASH_EXTENT: f32 = 1.0e6;
 
-pub(crate) const TRANSPARENT: Rgba8 = Rgba8 {
+pub(crate) const TRANSPARENT: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -184,7 +184,7 @@ fn clamp_stops(sorted: &[GradientStop]) -> SmallVec<[GradientStop; 4]> {
 }
 
 /// The color at offset `t` of stops in offset order, mixed in premultiplied gamma-encoded sRGB.
-pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
+pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Color {
     let span = sorted.windows(2).find_map(|pair| match pair {
         [a, b] if a.offset <= t && t < b.offset => Some((*a, *b)),
         _ => None,
@@ -203,13 +203,13 @@ pub struct GradientStop {
     /// The offset.
     pub offset: f32,
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
 }
 
 impl GradientStop {
     /// Creates a gradient stop.
     #[must_use]
-    pub const fn new(offset: f32, color: Rgba8) -> Self {
+    pub const fn new(offset: f32, color: Color) -> Self {
         Self { offset, color }
     }
 }
@@ -238,7 +238,7 @@ pub enum StrokeAlign {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stroke {
     /// The color.
-    pub color: Rgba8,
+    pub color: Color,
     /// The width.
     pub width: f32,
     /// The style.
@@ -285,7 +285,7 @@ pub(crate) enum FillRule {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PathPaint {
     /// One color.
-    Solid(Rgba8),
+    Solid(Color),
     /// A linear, radial, or conic gradient.
     Gradient(super::gradient::Gradient),
 }

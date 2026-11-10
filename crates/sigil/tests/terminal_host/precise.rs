@@ -3,11 +3,11 @@ use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::Paint;
-use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
-use sigil::terminal::{Caps, Glyphs, Screen};
+use sigil::terminal::{Capabilities, Glyphs, Screen};
 
 use super::oracle::{COLS, Model, ROWS, tree};
+use sigil::widgets::Layout;
 
 #[test]
 fn an_unchanged_frame_writes_nothing() {
@@ -42,9 +42,9 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
                 .child(text(bullet).nowrap())
                 .child(text("steady … line").nowrap())
         });
-        let caps = Caps {
+        let caps = Capabilities {
             glyphs: Glyphs::Ascii,
-            ..Caps::default()
+            ..Capabilities::default()
         };
         let mut screen = Screen::with_caps(COLS, ROWS, caps);
         let shown = |view: &mut Screen, embed: &mut Host| {
@@ -69,7 +69,7 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
 fn a_change_hidden_behind_a_cover_writes_nothing() {
     use sigil::layout::Position;
     use sigil::prelude::Widget;
-    use sigil::style::Rgba8;
+    use sigil::style::Color;
 
     let cell = Host::CELL;
     let place = || {
@@ -80,7 +80,7 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
             .width(6.0 * cell)
             .height(2.0 * cell)
     };
-    let tone = |r: u8| Rgba8 {
+    let tone = |r: u8| Color {
         r,
         g: 60,
         b: 60,
@@ -95,10 +95,10 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
                 .child(
                     container()
                         .layout(place())
-                        .paint_when(warm, move |style| style.bg(tone(200)))
-                        .bg(tone(20)),
+                        .paint_when(warm, move |style| style.background(tone(200)))
+                        .background(tone(20)),
                 )
-                .child(container().layout(place()).bg(tone(90)))
+                .child(container().layout(place()).background(tone(90)))
         });
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..3 {
@@ -133,9 +133,9 @@ fn a_changed_link_target_reaches_the_terminal() {
         Owner::scope("precise-link", || {
             let (url, tick) = (signal(String::from("https://a.test")), signal(0_u32));
             let mut host = linked(url, tick);
-            let caps = Caps {
+            let caps = Capabilities {
                 hyperlinks: true,
-                ..Caps::default()
+                ..Capabilities::default()
             };
             let mut screen = Screen::with_caps(COLS, ROWS, caps);
             for _ in 0..3 {

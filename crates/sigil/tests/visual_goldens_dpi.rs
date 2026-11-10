@@ -3,7 +3,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use sigil::app::DefaultTextMeasure;
+use sigil::layout::TextEngineMeasure;
 use sigil::prelude::*;
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
@@ -25,7 +25,7 @@ fn build_button() -> impl IntoNode {
 
 fn capture_at_scale(stem: &str, scale: f32) {
     let img = Harness::render(build_button)
-        .measure(|| Box::new(DefaultTextMeasure::new()))
+        .measure(|| Box::new(TextEngineMeasure::default()))
         .mode(InteractionMode::Default)
         .size(LOGICAL_SIZE)
         .scale(scale)

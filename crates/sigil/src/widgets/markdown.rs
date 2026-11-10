@@ -22,7 +22,7 @@ use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
 use crate::style::{Radius, Token, Tone as ChartTone, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 use std::rc::Rc;
 
 use parse::Block;
@@ -86,6 +86,7 @@ fn frame() -> NodeBuilder {
 }
 
 /// Builder of a markdown editor.
+#[derive(Debug)]
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,
@@ -127,7 +128,7 @@ impl MarkdownEditBuilder {
                 splitter(Orientation::Horizontal)
                     .child(editor, 360.0)
                     .pane(markdown(self.source))
-                    .initial(360.0)
+                    .width(360.0)
                     .grow(fit)
                     .commit()
                     .grow(fit),
@@ -178,7 +179,7 @@ fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
                 .padding(Space::Sm)
                 .gap(Space::Xs),
         )
-        .class([Token::Field.bg(), Radius::Md.atom()]);
+        .class([Token::Field.background(), Radius::Md.atom()]);
     if let Some(title) = data.title {
         column = column.child(text(title).class("text-xs").class(Token::Gray11.text()));
     }

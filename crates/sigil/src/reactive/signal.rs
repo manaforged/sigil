@@ -124,9 +124,11 @@ pub(crate) fn signal_in<T: 'static>(
             rt.owners.contains(owner),
             "signal created under a disposed owner (id={owner:?}, at {location})",
         );
+        let level = rt.creator_level();
         let key = rt.signals.insert(SignalSlot {
             value: Box::new(initial),
             subscribers: SmallVec::new(),
+            level,
         });
         rt.owners
             .get_mut(owner)
@@ -176,9 +178,14 @@ impl<T: Clone + 'static> Signal<T> {
     #[inline]
     #[must_use]
     pub fn try_peek(self) -> Option<T> {
+        self.try_peek_with(T::clone)
+    }
+
+    #[must_use]
+    pub(crate) fn try_peek_with<R>(self, f: impl FnOnce(&T) -> R) -> Option<R> {
         with_rt(|rt| {
             let value = &rt.signals.get(self.key)?.value;
-            value.downcast_ref::<T>().cloned()
+            value.downcast_ref::<T>().map(f)
         })
     }
 }
@@ -187,9 +194,11 @@ fn track_key(rt: &mut RuntimeState, key: SignalKey) {
     let Some(effect) = rt.current_effect else {
         return;
     };
+    let level = rt.signals.get(key).map_or(0, |slot| slot.level);
     let Some(eff) = rt.effects.get_mut(effect) else {
         return;
     };
+    eff.level = eff.level.max(level);
     if eff.prev_deps.get(eff.prev_dep_cursor) == Some(&key) {
         eff.prev_dep_cursor += 1;
         eff.deps.push(key);

@@ -5,9 +5,9 @@ use crate::paint_support as support;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::{Elevation, Paint, Token};
+use sigil::widgets::Layout;
 use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;
@@ -24,7 +24,7 @@ fn shadow_extent(elevation: Option<Elevation>) -> Option<f32> {
     let node = container().layout(LayoutStyle::block().fixed_size(40.0, 40.0));
     let root = cx.add(match elevation {
         Some(elevation) => node.shadow(elevation),
-        None => node.bg(Token::Surface),
+        None => node.background(Token::Surface),
     });
     layout(&mut cx, root);
     emit_scene(&cx, root, None)
@@ -42,7 +42,7 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .shadow(Elevation::Lg),
     );
     layout(&mut cx, root);

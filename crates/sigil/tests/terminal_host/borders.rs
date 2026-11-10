@@ -1,16 +1,17 @@
 use super::*;
 use sigil::layout::Space;
 use sigil::prelude::Radius;
+use sigil::widgets::Layout;
 
 fn boxed(rounded: bool) -> String {
     present(
         move || {
             let frame = container()
                 .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
-                .border_w(1)
+                .border_width(1)
                 .child(text("inside"));
             if rounded {
-                frame.rounded(Radius::Md)
+                frame.radius(Radius::Md)
             } else {
                 frame
             }
@@ -44,7 +45,7 @@ fn backed_rows(parent: sigil::layout::LayoutStyle) -> usize {
                                 .position(sigil::layout::Position::Absolute)
                                 .inset(0.0),
                         )
-                        .bg(sigil::prelude::Token::Accent),
+                        .background(sigil::prelude::Token::Accent),
                 )
                 .child(text("one"))
                 .child(text("two"))
@@ -88,7 +89,7 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
                 );
                 scene.draw_rect(sigil::scene::DrawRect::new(
                     rect,
-                    sigil::prelude::Rgba8 {
+                    sigil::prelude::Color {
                         r: 105,
                         g: 140,
                         b: 210,
@@ -102,9 +103,9 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
                     .height(96.0),
             )
         });
-        let caps = sigil::terminal::Caps {
+        let caps = sigil::terminal::Capabilities {
             fills,
-            ..sigil::terminal::Caps::default()
+            ..sigil::terminal::Capabilities::default()
         };
         let mut screen = sigil::terminal::Screen::with_caps(30, 12, caps);
         screen.frame(&mut host, [], (30, 12)).expect("frame");
@@ -130,8 +131,8 @@ fn a_thick_rounded_border_stays_heavy() {
         || {
             container()
                 .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
-                .border_w(8)
-                .rounded(Radius::Md)
+                .border_width(8)
+                .radius(Radius::Md)
                 .child(text("inside"))
         },
         30,
@@ -149,7 +150,7 @@ fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
                 .child(
                     container()
                         .layout(backdrop.clone())
-                        .bg(sigil::prelude::Token::Accent),
+                        .background(sigil::prelude::Token::Accent),
                 )
                 .child(text("one"))
                 .child(text("two"))

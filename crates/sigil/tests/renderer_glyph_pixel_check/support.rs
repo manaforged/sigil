@@ -1,5 +1,4 @@
 use super::*;
-use sigil::style::StyledTextEngine as _;
 
 pub(super) fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     let measurement = measure(pixels, w, h);
@@ -71,7 +70,7 @@ pub(super) fn render_text(
             texture_scale,
             draw_scale,
             content: TEXT,
-            text: sigil::style::Color::WHITE,
+            text: sigil::style::Rgba::WHITE,
             background: wgpu::Color::BLACK,
         },
         device,
@@ -84,7 +83,7 @@ pub(super) fn render_text_string(
     queue: &wgpu::Queue,
     scale: f32,
     content: &str,
-    colors: (sigil::style::Color, wgpu::Color),
+    colors: (sigil::style::Rgba, wgpu::Color),
 ) -> (Vec<u8>, u32, u32) {
     render_text_inner(
         &RenderArgs {
@@ -103,7 +102,7 @@ pub(super) struct RenderArgs<'a> {
     pub(super) texture_scale: f32,
     pub(super) draw_scale: f32,
     pub(super) content: &'a str,
-    pub(super) text: sigil::style::Color,
+    pub(super) text: sigil::style::Rgba,
     pub(super) background: wgpu::Color,
 }
 

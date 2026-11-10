@@ -8,22 +8,22 @@ use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::style::{Rgba8, Theme};
+use sigil::style::{Color, Theme};
 use widget_support::{compute, rect_colors};
 
-const HOVER_BG: Rgba8 = Rgba8 {
+const HOVER_BG: Color = Color {
     r: 10,
     g: 200,
     b: 30,
     a: 255,
 };
-const PRESSED_BG: Rgba8 = Rgba8 {
+const PRESSED_BG: Color = Color {
     r: 200,
     g: 20,
     b: 200,
     a: 255,
 };
-const REST_BG: Rgba8 = Rgba8 {
+const REST_BG: Color = Color {
     r: 240,
     g: 240,
     b: 240,
@@ -39,14 +39,14 @@ const fn pointer_down_event(x: f32, y: f32) -> Event {
 fn rest_pane() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-        .bg(REST_BG)
+        .background(REST_BG)
 }
 
 #[test]
 fn interactive_hover_overlay_paints_on_pointer_enter() {
     Owner::scope("interactive-hover-paints", || {
         let mut cx = Cx::new_root();
-        let root = cx.add(interactive(rest_pane()).hover(|s| s.bg(HOVER_BG)));
+        let root = cx.add(interactive(rest_pane()).hover(|s| s.background(HOVER_BG)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
@@ -84,7 +84,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
         let root = cx.add(
             container()
                 .theme(Theme::dark())
-                .child(interactive(rest_pane()).hover(|s| s.bg(Token::Accent9))),
+                .child(interactive(rest_pane()).hover(|s| s.background(Token::Accent9))),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -126,8 +126,8 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             interactive(rest_pane())
-                .hover(|s| s.bg(HOVER_BG))
-                .pressed(|s| s.bg(PRESSED_BG)),
+                .hover(|s| s.background(HOVER_BG))
+                .pressed(|s| s.background(PRESSED_BG)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -156,15 +156,15 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
 fn interactive_hover_does_not_stop_ancestor_hover() {
     Owner::scope("interactive-non-propagating", || {
         let mut cx = Cx::new_root();
-        let inner = interactive(rest_pane()).hover(|s| s.bg(HOVER_BG));
+        let inner = interactive(rest_pane()).hover(|s| s.background(HOVER_BG));
         let root = cx.add(
             interactive(
                 container()
                     .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
-                    .bg(REST_BG)
+                    .background(REST_BG)
                     .child(inner),
             )
-            .hover(|s| s.bg(HOVER_BG)),
+            .hover(|s| s.background(HOVER_BG)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -189,7 +189,7 @@ fn interactive_disabled_signal_suppresses_hover() {
         let root = cx.add(
             interactive(rest_pane())
                 .disabled(disabled)
-                .hover(|s| s.bg(HOVER_BG)),
+                .hover(|s| s.background(HOVER_BG)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();

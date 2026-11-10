@@ -57,7 +57,7 @@ fn dialog(cx: &Cx, layout: &LayoutEngine, root: NodeId) -> Rect {
 
 fn settle(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     for _ in 0..2 {
-        sigil::animation_runtime::tick(1.0);
+        sigil::animation::tick(1.0);
         layout
             .compute(cx, root, Size::fixed(VIEW.0, VIEW.1))
             .unwrap();

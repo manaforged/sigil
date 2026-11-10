@@ -1,8 +1,10 @@
+use core::convert::Infallible;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::ErrorKind;
-use crate::app::platform::{Bridge, Wake};
+use crate::app::Wake;
+use crate::app::bridge::Native;
 use crate::error::{AppResult, Error};
 use crate::hal::events::{KeyPhase, LogicalKey, ModifiersState, Shortcut};
 use crate::reactive::EventChannel;
@@ -15,9 +17,8 @@ struct Registered {
 }
 
 thread_local! {
-    static MANAGER: RefCell<Option<GlobalHotKeyManager>> = const { RefCell::new(None) };
+    static NATIVE: Native<Infallible, GlobalHotKeyManager, GlobalHotKeyEvent> = Native::new();
     static REGISTERED: RefCell<HashMap<u32, Registered>> = RefCell::new(HashMap::new());
-    static BRIDGE: Bridge<GlobalHotKeyEvent> = Bridge::new();
 }
 
 const MODIFIER_TOKENS: [(ModifiersState, &str); 4] = [
@@ -58,13 +59,13 @@ pub fn unregister(shortcut: &Shortcut) -> AppResult<bool> {
 }
 
 pub(crate) fn install(wake: Wake) {
-    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    let sink = NATIVE.with(|native| native.sink(wake));
     GlobalHotKeyEvent::set_event_handler(Some(sink));
 }
 
 pub(crate) fn pump() {
-    let pending: Vec<GlobalHotKeyEvent> = BRIDGE.with(|bridge| {
-        bridge
+    let pending: Vec<GlobalHotKeyEvent> = NATIVE.with(|native| {
+        native
             .drain()
             .chain(GlobalHotKeyEvent::receiver().try_iter())
             .collect()
@@ -87,13 +88,14 @@ fn channel_of(id: u32) -> Option<EventChannel<KeyPhase>> {
 fn with_manager(
     op: impl FnOnce(&GlobalHotKeyManager) -> global_hotkey::Result<()>,
 ) -> AppResult<()> {
-    MANAGER.with(|slot| {
-        let mut slot = slot.borrow_mut();
-        let manager = match &mut *slot {
-            Some(manager) => manager,
-            empty => empty.insert(GlobalHotKeyManager::new().map_err(Error::new)?),
-        };
-        op(manager).map_err(Error::new)
+    NATIVE.with(|native| {
+        native.installed(|slot| -> AppResult<()> {
+            let manager = match &mut *slot {
+                Some(manager) => manager,
+                empty => empty.insert(GlobalHotKeyManager::new().map_err(Error::new)?),
+            };
+            op(manager).map_err(Error::new)
+        })
     })
 }
 

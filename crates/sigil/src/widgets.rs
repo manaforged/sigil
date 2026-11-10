@@ -13,6 +13,38 @@ pub(crate) fn oversize_message() -> String {
     )
 }
 
+const MAX_SOURCE_LINES: usize = 256;
+const MAX_SOURCE_CHARS: usize = 512;
+
+pub(crate) fn bound_source(source: &str) -> String {
+    let mut out = String::new();
+    for (index, line) in source.lines().enumerate() {
+        if index >= MAX_SOURCE_LINES {
+            out.push_str("source truncated");
+            break;
+        }
+        out.extend(line.chars().take(MAX_SOURCE_CHARS));
+        out.push('\n');
+    }
+    out
+}
+
+pub(crate) fn frame_source(source: &str) -> Vec<String> {
+    let mut lines: Vec<String> = source.trim_end().lines().map(ToString::to_string).collect();
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    let width = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+    let bar = "─".repeat(width.saturating_add(2));
+    let mut out = vec![format!("┌{bar}┐")];
+    for line in lines {
+        let pad = width.saturating_sub(line.chars().count());
+        out.push(format!("│ {line}{} │", " ".repeat(pad)));
+    }
+    out.push(format!("└{bar}┘"));
+    out
+}
+
 pub(crate) fn oversize_block() -> markdown::parse::Block {
     markdown::parse::Block::Paragraph(vec![markdown::parse::Inline::Text(oversize_message())])
 }
@@ -134,11 +166,7 @@ pub(crate) use builder_impls;
 #[path = "widgets/lib_tests.rs"]
 mod tests;
 
-kittest_pub! {
-    /// Hover, press, and drag state for custom controls.
-    #[doc(hidden)]
-    pub mod interaction;
-}
+pub(crate) mod interaction;
 
 mod button;
 mod canvas;
@@ -182,6 +210,7 @@ pub(crate) mod patterns;
 mod popup;
 pub(crate) use popup::close_light as popup_close_light;
 pub use popup::close_top_escape;
+pub(crate) use popup::{PopupStacks, swap_layers as popup_swap_layers};
 mod a2ui;
 mod progress;
 mod radio_group;
@@ -220,7 +249,7 @@ pub(crate) use checkbox::CheckboxBuilder;
 pub use checkbox::checkbox;
 pub use chip::chip;
 pub(crate) use code_edit::CodeEditBuilder;
-pub use code_edit::{ChangeKind, DiagSeverity, DiagSpan, code_edit};
+pub use code_edit::{Change, Diagnostic, Severity, code_edit};
 pub use color_field::color_field;
 pub(crate) use color_field::{ColorFieldBuilder, parse_hex as parse_color_hex};
 #[cfg(all(feature = "scene", feature = "kittest"))]
@@ -237,7 +266,7 @@ pub use composition::{kv_row, status_bar};
 pub(crate) use date_field::DateFieldBuilder;
 pub use date_field::{Date, date_field};
 pub use diff::{DiffBuilder, DiffView, Hunk, Line, Patch, Selection, diff};
-pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
+pub use divider::divider;
 pub(crate) use dot::DotBuilder;
 pub use dot::dot;
 pub use drag::axis_drag;
@@ -277,11 +306,8 @@ pub use patterns::{
 };
 pub(crate) use progress::ProgressBuilder;
 pub use progress::progress;
+pub(crate) use radio_group::RadioGroupBuilder;
 pub use radio_group::radio_group;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use radio_group::RadioGroupBuilder;
-}
 pub use scroll::scroll;
 pub(crate) use segmented::SegmentedBuilder;
 pub use segmented::segmented;
@@ -295,14 +321,14 @@ pub use splitter::splitter;
 pub use stat::stat;
 pub use surface::surface;
 pub use table::{
-    ColAlign, ColWidth, Density, Identifiable, SortDirection, SortKey, TableColumn, TableState,
-    table,
+    ColumnAlign, ColumnWidth, Density, Identifiable, SortDirection, SortKey, TableColumn,
+    TableState, table,
 };
 kittest_pub! {
     #[doc(hidden)]
     pub use table::MIN_COL_WIDTH;
 }
-pub use a2ui::{A2uiBuilder, a2ui};
+pub use a2ui::{A2UI_CATALOG, A2uiBuilder, a2ui};
 pub(crate) use tabs::TabsBuilder;
 pub use tabs::tabs;
 pub use terminal::terminal;
@@ -320,4 +346,8 @@ pub use virtual_list::{
     RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
 };
 pub use widget::Widget;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use widget::Layout;
+}
 pub(crate) use widget::{Edit, LayoutEdit, Sealed, StateTarget};

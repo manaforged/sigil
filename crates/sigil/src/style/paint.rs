@@ -1,16 +1,11 @@
-use std::time::Duration;
-
-use crate::animation::{Easing, Keyframes, KeyframesId};
-use crate::animation_runtime::presets;
+use crate::animation::{Keyframes, KeyframesId, Transition};
 use crate::kernel::ImageSource;
 use crate::scene::{BlendMode, Shadow};
-use crate::style::atom::{
-    Amount, Backface, BorderStyle, GradientShape, MaskPart, PaintAtom, SpaceAtom, StopSlot,
-};
+use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom};
 use crate::style::engine::encode_px;
 use crate::style::{
-    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Layer, MaskImage, MaskSize,
-    Radial, Radius, StyleAtom, TextDecoration, TextRole,
+    Background, ClipShape, ColorAtom, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
+    StyleAtom, TextDecoration, TextRole,
 };
 
 mod filters;
@@ -20,90 +15,25 @@ mod units;
 
 pub(crate) use slot::{PaintTarget, StyleSlot};
 use slot::{mask, paint, push};
-use units::{fraction_units, letter_spacing_units, millis, opacity_units};
+use units::{fraction_units, letter_spacing_units, opacity_units};
 
 /// Typed paint on nodes, text, widget builders, and state closures.
 pub trait Paint: PaintTarget {
-    /// Sets the bg.
+    /// Fills the background with a color or a gradient.
     #[must_use]
-    fn bg(self, color: impl Into<ColorAtom>) -> Self {
-        push(self, StyleAtom::BackgroundColor(color.into()))
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    #[doc(hidden)]
-    /// Sets the background gradient.
-    #[must_use]
-    fn background_gradient(self, gradient: crate::style::BgGradient) -> Self {
-        push(self, StyleAtom::BackgroundGradient(gradient))
-    }
-
-    /// Fills the background with a linear gradient along `axis`, like Tailwind `bg-linear-to-*`.
-    #[must_use]
-    fn bg_linear(self, axis: GradientAxis) -> Self {
-        paint(self, PaintAtom::Gradient(GradientShape::Linear(axis)))
-    }
-
-    /// Fills the background with a radial gradient, like Tailwind `bg-radial`.
-    #[must_use]
-    fn bg_radial(self, radial: Radial) -> Self {
-        paint(self, PaintAtom::Gradient(GradientShape::Radial(radial)))
-    }
-
-    /// Fills the background with a conic gradient, like Tailwind `bg-conic-*`.
-    #[must_use]
-    fn bg_conic(self, conic: impl Into<Conic>) -> Self {
-        paint(
-            self,
-            PaintAtom::Gradient(GradientShape::Conic(conic.into())),
-        )
-    }
-
-    /// Sets the first gradient color, like Tailwind `from-*`.
-    #[must_use]
-    fn gradient_from(self, color: impl Into<ColorAtom>) -> Self {
-        paint(self, PaintAtom::Stop(StopSlot::From, color.into()))
-    }
-
-    /// Sets the middle gradient color, like Tailwind `via-*`.
-    #[must_use]
-    fn gradient_via(self, color: impl Into<ColorAtom>) -> Self {
-        paint(self, PaintAtom::Stop(StopSlot::Via, color.into()))
-    }
-
-    /// Sets the last gradient color, like Tailwind `to-*`.
-    #[must_use]
-    fn gradient_to(self, color: impl Into<ColorAtom>) -> Self {
-        paint(self, PaintAtom::Stop(StopSlot::To, color.into()))
-    }
-
-    /// Sets where the first color sits in percent, like Tailwind `from-<n>%`; default 0.
-    #[must_use]
-    fn gradient_from_position(self, percent: u8) -> Self {
-        paint(self, PaintAtom::StopAt(StopSlot::From, percent.min(100)))
-    }
-
-    /// Sets where the middle color sits in percent, like Tailwind `via-<n>%`; default 50.
-    #[must_use]
-    fn gradient_via_position(self, percent: u8) -> Self {
-        paint(self, PaintAtom::StopAt(StopSlot::Via, percent.min(100)))
-    }
-
-    /// Sets where the last color sits in percent, like Tailwind `to-<n>%`; default 100.
-    #[must_use]
-    fn gradient_to_position(self, percent: u8) -> Self {
-        paint(self, PaintAtom::StopAt(StopSlot::To, percent.min(100)))
+    fn background(self, background: impl Into<Background>) -> Self {
+        background.into().atoms().into_iter().fold(self, push)
     }
 
     /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
     #[must_use]
-    fn bg_clip_text(self) -> Self {
+    fn background_clip_text(self) -> Self {
         paint(self, PaintAtom::ClipText)
     }
 
     /// Tiles `image` over the background at its natural size, like CSS `background-image: url(..)`.
     #[must_use]
-    fn bg_image(self, image: ImageSource) -> Self {
+    fn background_image(self, image: ImageSource) -> Self {
         slot::image(self, image, |id| StyleAtom::Paint(PaintAtom::Image(id)))
     }
 
@@ -137,9 +67,9 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::BorderColor(color.into()))
     }
 
-    /// Sets the border w.
+    /// Sets the border width.
     #[must_use]
-    fn border_w(self, px: i16) -> Self {
+    fn border_width(self, px: i16) -> Self {
         push(self, StyleAtom::BorderWidth(px))
     }
 
@@ -167,9 +97,9 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::BorderLeft(px))
     }
 
-    /// Sets the rounded.
+    /// Sets the corner radius.
     #[must_use]
-    fn rounded(self, radius: Radius) -> Self {
+    fn radius(self, radius: Radius) -> Self {
         push(self, StyleAtom::Radius(radius))
     }
 
@@ -236,7 +166,7 @@ pub trait Paint: PaintTarget {
 
     /// Sets the CSS mix-blend-mode.
     #[must_use]
-    fn mix_blend(self, mode: BlendMode) -> Self {
+    fn blend(self, mode: BlendMode) -> Self {
         push(self, StyleAtom::MixBlend(mode))
     }
 
@@ -282,15 +212,15 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::FontFamily(family.name()))
     }
 
-    /// Sets the line height px.
+    /// Sets the line height in pixels.
     #[must_use]
-    fn line_height_px(self, px: f32) -> Self {
+    fn line_height(self, px: f32) -> Self {
         push(self, StyleAtom::LineHeight(encode_px(px).0))
     }
 
-    /// Sets the letter spacing em.
+    /// Sets the letter spacing in ems.
     #[must_use]
-    fn letter_spacing_em(self, em: f32) -> Self {
+    fn letter_spacing(self, em: f32) -> Self {
         push(self, StyleAtom::LetterSpacing(letter_spacing_units(em)))
     }
 
@@ -312,60 +242,10 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::TextDecoration(TextDecoration::LineThrough))
     }
 
-    #[cfg(any(test, feature = "kittest"))]
-    #[doc(hidden)]
-    /// Sets the transition preset.
+    /// Animates the properties that `transition` names when their values change, like CSS `transition`.
     #[must_use]
-    fn transition_preset(self, id: crate::style::TransitionId) -> Self {
-        push(self, StyleAtom::Transition(id))
-    }
-
-    /// Transitions colors, opacity, and transform over 150 ms, like Tailwind `transition`.
-    #[must_use]
-    fn transition(self) -> Self {
-        push(self, StyleAtom::Transition(presets::TRANSITION))
-    }
-
-    /// Transitions every animatable property over 150 ms, like Tailwind `transition-all`.
-    #[must_use]
-    fn transition_all(self) -> Self {
-        push(self, StyleAtom::Transition(presets::ALL))
-    }
-
-    /// Transitions background, text, and border colors, like Tailwind `transition-colors`.
-    #[must_use]
-    fn transition_colors(self) -> Self {
-        push(self, StyleAtom::Transition(presets::COLORS))
-    }
-
-    /// Transitions opacity, like Tailwind `transition-opacity`.
-    #[must_use]
-    fn transition_opacity(self) -> Self {
-        push(self, StyleAtom::Transition(presets::OPACITY))
-    }
-
-    /// Transitions translate, scale, and rotate, like Tailwind `transition-transform`.
-    #[must_use]
-    fn transition_transform(self) -> Self {
-        push(self, StyleAtom::Transition(presets::TRANSFORM))
-    }
-
-    /// Sets the transition duration, like Tailwind `duration-*`.
-    #[must_use]
-    fn duration(self, duration: Duration) -> Self {
-        push(self, StyleAtom::TransitionDuration(millis(duration)))
-    }
-
-    /// Sets the transition easing, like Tailwind `ease-*`.
-    #[must_use]
-    fn ease(self, easing: Easing) -> Self {
-        push(self, StyleAtom::TransitionEase(easing))
-    }
-
-    /// Holds the start value before a transition moves, like Tailwind `delay-*`.
-    #[must_use]
-    fn delay(self, delay: Duration) -> Self {
-        push(self, StyleAtom::TransitionDelay(millis(delay)))
+    fn transition(self, transition: impl Into<Transition>) -> Self {
+        transition.into().atoms().into_iter().fold(self, push)
     }
 
     /// Plays a keyframe animation, like Tailwind `animate-*`.

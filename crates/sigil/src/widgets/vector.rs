@@ -9,28 +9,29 @@ use crate::scene::SceneBuilder;
 use crate::scene::command::{
     DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
-use crate::style::{Rgba8, Theme};
+use crate::style::{Color, ColorAtom, Theme};
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{CanvasPaint, Widget};
+use crate::widgets::{CanvasPaint, Layout};
 
 mod key;
 mod paint;
 mod values;
 
 pub(crate) use crate::scene::command::PathCmd;
-pub(crate) use values::{PathColor, PathFill};
+pub(crate) use values::PathFill;
 
 type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 
 const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
 /// Builder of a vector path.
+#[derive(Debug)]
 pub struct PathNode {
     width: u32,
     height: u32,
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
-    stroke: Option<(PathColor, f32)>,
+    stroke: Option<(ColorAtom, f32)>,
     rule: FillRule,
     cap: Option<StrokeCap>,
     join: Option<StrokeJoin>,
@@ -101,11 +102,8 @@ impl PathNode {
 
     /// Sets a solid fill.
     #[must_use]
-    pub fn fill(mut self, color: impl Into<PathColor>) -> Self {
-        self.fill = Some(match color.into() {
-            PathColor::Rgba(color) => PathFill::Solid(color),
-            PathColor::Token(token) => PathFill::Theme(token),
-        });
+    pub fn fill(mut self, color: impl Into<ColorAtom>) -> Self {
+        self.fill = Some(PathFill::Solid(color.into()));
         self
     }
 
@@ -115,7 +113,7 @@ impl PathNode {
         mut self,
         start: (f32, f32),
         end: (f32, f32),
-        stops: Vec<(f32, Rgba8)>,
+        stops: Vec<(f32, Color)>,
     ) -> Self {
         self.fill = Some(PathFill::Linear { start, end, stops });
         self
@@ -127,7 +125,7 @@ impl PathNode {
         mut self,
         center: (f32, f32),
         radius: f32,
-        stops: Vec<(f32, Rgba8)>,
+        stops: Vec<(f32, Color)>,
     ) -> Self {
         self.fill = Some(PathFill::Radial {
             center,
@@ -146,7 +144,7 @@ impl PathNode {
 
     /// Sets the stroke.
     #[must_use]
-    pub fn stroke(mut self, color: impl Into<PathColor>, width: f32) -> Self {
+    pub fn stroke(mut self, color: impl Into<ColorAtom>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }
@@ -231,7 +229,7 @@ impl PathNode {
         Some(draw)
     }
 
-    fn path_stroke(&self, color: Rgba8, width: f32) -> PathStroke {
+    fn path_stroke(&self, color: Color, width: f32) -> PathStroke {
         let (cap, join) = if self.non_scaling {
             (StrokeCap::Round, StrokeJoin::Round)
         } else {

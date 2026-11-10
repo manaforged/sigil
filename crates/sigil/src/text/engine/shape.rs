@@ -10,6 +10,12 @@ mod face;
 use cache::{WordSpan, remember, replay, word_key};
 use face::{FaceSpan, cell_width, coalesce_face_spans, fit_cells, shape_in_chain};
 
+mod script;
+
+pub(super) use script::char_script;
+#[cfg(any(test, feature = "kittest"))]
+pub(super) use script::script_name;
+
 pub(super) struct ShapedSegment {
     pub(super) start: u32,
     pub(super) end: u32,
@@ -269,49 +275,6 @@ pub(super) fn run_has_disallowed_notdef(run: &ShapedRun, fragment: &str) -> bool
 
 fn byte_level(levels: &[u8], byte: usize) -> u8 {
     levels.get(byte).copied().unwrap_or(0)
-}
-
-pub(super) fn char_script(ch: char) -> Script {
-    use unicode_script::{Script as UScript, UnicodeScript};
-    if ch.is_ascii() {
-        return if ch.is_ascii_alphabetic() {
-            Script::Latin
-        } else {
-            Script::Common
-        };
-    }
-    match ch.script() {
-        UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,
-        UScript::Latin | UScript::Greek | UScript::Cyrillic => Script::Latin,
-        UScript::Han
-        | UScript::Hiragana
-        | UScript::Katakana
-        | UScript::Hangul
-        | UScript::Bopomofo => Script::Cjk,
-        UScript::Arabic => Script::Arabic,
-        UScript::Hebrew => Script::Hebrew,
-        UScript::Devanagari => Script::Devanagari,
-        UScript::Khmer => Script::Khmer,
-        UScript::Thai => Script::Thai,
-        UScript::Lao => Script::Lao,
-        _ => Script::Other,
-    }
-}
-
-#[cfg(any(test, feature = "kittest"))]
-pub(super) const fn script_name(script: Script) -> &'static str {
-    match script {
-        Script::Latin => "Latin",
-        Script::Cjk => "Cjk",
-        Script::Common => "Common",
-        Script::Arabic => "Arabic",
-        Script::Hebrew => "Hebrew",
-        Script::Devanagari => "Devanagari",
-        Script::Khmer => "Khmer",
-        Script::Thai => "Thai",
-        Script::Lao => "Lao",
-        Script::Other => "Other",
-    }
 }
 
 fn apply_letter_spacing(run: &mut ShapedRun, style: &FaceStyle) {

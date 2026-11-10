@@ -38,7 +38,7 @@ pub(super) fn bind(
     step_keys(root, &SCROLL_KEYS, move |kind, event| {
         travel(kind, event, scroll_y, max.peek(), height.peek());
     })
-    .on_scroll(move |event| {
+    .scroll(move |event| {
         let y = WheelAxis {
             offset: scroll_y,
             viewport: height.peek(),
@@ -52,7 +52,7 @@ pub(crate) fn contain_scroll(mut root: NodeBuilder) -> NodeBuilder {
     for (key, _) in SCROLL_KEYS {
         root = root.key(key, KeyEvent::stop_propagation);
     }
-    root.on_scroll(ScrollEvent::stop_propagation)
+    root.scroll(ScrollEvent::stop_propagation)
 }
 
 fn step(event: &mut KeyEvent, scroll_y: Signal<f32>, delta: f32, max: f32) {

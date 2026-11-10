@@ -4,7 +4,7 @@ use crate::geometry::{LogicalSize, Point};
 /// Pointer device.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
-pub enum PointerKind {
+pub enum PointerType {
     /// The mouse pointer kind.
     #[default]
     Mouse,
@@ -111,7 +111,7 @@ pub struct PointerEvent {
     /// The delta.
     pub delta: Point,
     /// The kind.
-    pub kind: PointerKind,
+    pub kind: PointerType,
     /// The button, if any.
     pub button: Option<MouseButton>,
     /// The buttons.
@@ -139,7 +139,7 @@ impl PointerEvent {
             position,
             window_position: position,
             delta: Point::new(0.0, 0.0),
-            kind: PointerKind::Mouse,
+            kind: PointerType::Mouse,
             button: None,
             buttons: MouseButtons::empty(),
             modifiers: ModifiersState::empty(),

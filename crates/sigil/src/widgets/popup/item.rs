@@ -3,14 +3,14 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::vector::path;
 
 const GLYPH: f32 = space(4);
 
 static ROW_REST: &[StyleAtom] = &[Radius::Md.atom()];
-static ROW_HIGHLIGHT: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfaceHover.bg()];
+static ROW_HIGHLIGHT: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfaceHover.background()];
 
 pub(crate) struct ItemSlots {
     pub(crate) label: String,
@@ -44,8 +44,8 @@ pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder
                 .fill_width()
                 .height(metrics.control_height(ControlSize::Default))
                 .shrink(0.0)
-                .padding_x(Space::px(metrics.padding(ControlSize::Default)))
-                .gap(Space::px(metrics.gap(ControlSize::Default)))
+                .padding_x(Space::px(metrics.control_padding(ControlSize::Default)))
+                .gap(Space::px(metrics.control_gap(ControlSize::Default)))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::SpaceBetween)
                 .overflow_x(Overflow::Hidden)

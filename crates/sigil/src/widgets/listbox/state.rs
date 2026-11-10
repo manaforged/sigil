@@ -26,6 +26,18 @@ pub struct ListState<K: Clone + Eq + Hash + 'static = String> {
     pub caret: Signal<usize>,
 }
 
+impl<K: Clone + Eq + Hash + 'static> core::fmt::Debug for ListState<K> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ListState")
+            .field("cursor", &self.cursor)
+            .field("scroll", &self.scroll)
+            .field("expanded", &self.expanded)
+            .field("query", &self.query)
+            .field("caret", &self.caret)
+            .finish()
+    }
+}
+
 #[expect(
     clippy::expl_impl_clone_on_copy,
     reason = "a derive would require K: Copy, and Signal<K> is Copy for every K"

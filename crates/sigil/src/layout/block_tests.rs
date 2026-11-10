@@ -8,7 +8,7 @@
 use super::*;
 use crate::layout::forest::{AvailableSpace, LayoutForest, LocalId, MeasureScope};
 use crate::layout::style_data::{
-    Axes as StyleSize, BoxSizing, Dimension, Display, Edges, Position, StyleData,
+    Axes as StyleSize, BoxSizing, Display, Edges, Length, Position, StyleData,
 };
 
 const NO_TEXT: crate::layout::FakeMeasure = crate::layout::FakeMeasure::fixed(0.0, 0.0);
@@ -25,7 +25,7 @@ fn run(forest: &LayoutForest, root: LocalId, w: f32, h: f32) -> BlockSolver<'_> 
     solver
 }
 
-fn sized(w: Dimension, h: Dimension) -> StyleData {
+fn sized(w: Length, h: Length) -> StyleData {
     StyleData {
         size: StyleSize::new(w, h),
         ..StyleData::default()
@@ -33,15 +33,15 @@ fn sized(w: Dimension, h: Dimension) -> StyleData {
 }
 
 fn px(w: f32, h: f32) -> StyleData {
-    sized(Dimension::Px(w), Dimension::Px(h))
+    sized(Length::Px(w), Length::Px(h))
 }
 
-fn margin(left: f32, top: f32, bottom: f32) -> Edges<Dimension> {
+fn margin(left: f32, top: f32, bottom: f32) -> Edges<Length> {
     Edges {
-        left: Dimension::Px(left),
-        right: Dimension::Px(0.0),
-        top: Dimension::Px(top),
-        bottom: Dimension::Px(bottom),
+        left: Length::Px(left),
+        right: Length::Px(0.0),
+        top: Length::Px(top),
+        bottom: Length::Px(bottom),
     }
 }
 
@@ -53,7 +53,7 @@ fn kid(f: &mut LayoutForest, parent: LocalId, style: StyleData) -> LocalId {
 
 fn sibling_gap(top_margin: f32, bottom_margin: f32) -> f32 {
     let mut f = LayoutForest::new();
-    let parent = f.insert(None, sized(Dimension::Px(200.0), Dimension::Auto));
+    let parent = f.insert(None, sized(Length::Px(200.0), Length::Auto));
     let a = kid(
         &mut f,
         parent,
@@ -99,10 +99,10 @@ fn padding_contributes_to_auto_height() {
     let mut f = LayoutForest::new();
     let style = StyleData {
         padding: Edges {
-            left: Dimension::Px(8.0),
-            right: Dimension::Px(8.0),
-            top: Dimension::Px(12.0),
-            bottom: Dimension::Px(4.0),
+            left: Length::Px(8.0),
+            right: Length::Px(8.0),
+            top: Length::Px(12.0),
+            bottom: Length::Px(4.0),
         },
         ..StyleData::default()
     };
@@ -120,8 +120,8 @@ fn padding_and_border_offset_child_origin() {
         let parent = f.insert(
             None,
             StyleData {
-                border: Edges::splat(Dimension::Px(border)),
-                padding: Edges::splat(Dimension::Px(padding)),
+                border: Edges::splat(Length::Px(border)),
+                padding: Edges::splat(Length::Px(padding)),
                 ..px(200.0, 200.0)
             },
         );
@@ -178,9 +178,8 @@ fn display_none_child_is_skipped() {
 #[test]
 fn nested_blocks_stack_vertically() {
     let mut f = LayoutForest::new();
-    let parent = f.insert(None, sized(Dimension::Px(200.0), Dimension::Auto));
-    let kids =
-        [40.0, 25.0, 15.0].map(|h| kid(&mut f, parent, sized(Dimension::Auto, Dimension::Px(h))));
+    let parent = f.insert(None, sized(Length::Px(200.0), Length::Auto));
+    let kids = [40.0, 25.0, 15.0].map(|h| kid(&mut f, parent, sized(Length::Auto, Length::Px(h))));
     let s = run(&f, parent, 800.0, 600.0);
     for (id, y) in kids.into_iter().zip([0.0, 40.0, 65.0]) {
         let b = s.boxed(id).unwrap();
@@ -209,7 +208,7 @@ fn absolute_pinned_to_padding_box() {
     let parent = f.insert(
         None,
         StyleData {
-            padding: Edges::splat(Dimension::Px(8.0)),
+            padding: Edges::splat(Length::Px(8.0)),
             ..px(200.0, 200.0)
         },
     );

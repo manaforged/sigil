@@ -8,7 +8,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, cols};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::inline::note_mark;
 use super::parse::{Block, Inline, Note};
@@ -28,7 +28,12 @@ const fn callout(kind: BlockQuoteKind) -> Callout {
         BlockQuoteKind::Note => ("Note", Token::Info3, Token::Info8, Token::Info11),
         BlockQuoteKind::Tip => ("Tip", Token::Success3, Token::Success8, Token::Success11),
         BlockQuoteKind::Important => ("Important", Token::Accent3, Token::Accent8, Token::Accent11),
-        BlockQuoteKind::Warning => ("Warning", Token::Warn3, Token::Warn8, Token::Warn11),
+        BlockQuoteKind::Warning => (
+            "Warning",
+            Token::Warning3,
+            Token::Warning8,
+            Token::Warning11,
+        ),
         BlockQuoteKind::Caution => ("Caution", Token::Error3, Token::Error8, Token::Error11),
     };
     Callout {
@@ -52,7 +57,7 @@ pub(super) fn alert(kind: BlockQuoteKind, blocks: Vec<Block>, node: BlockNode) -
                 .gap(Space::Xs),
         )
         .class([
-            style.tint.bg(),
+            style.tint.background(),
             StyleAtom::BorderLeft(3),
             style.edge.border(),
             Radius::Md.atom(),

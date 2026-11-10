@@ -3,7 +3,7 @@ use std::sync::Arc;
 use resvg::usvg::Tree;
 
 use crate::scene::command::CommandScene;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 use super::super::fallback::bitmap;
 use super::lower;
@@ -22,7 +22,7 @@ pub fn svg_scene(
     tree: Arc<Tree>,
     key: u64,
     size: (f32, f32),
-    _surface: Rgba8,
+    _surface: Color,
     mode: SvgMode,
 ) -> (CommandScene, Vec<String>) {
     if mode == SvgMode::Vector {

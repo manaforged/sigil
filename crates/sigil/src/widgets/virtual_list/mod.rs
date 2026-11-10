@@ -112,6 +112,7 @@ enum ListSizing {
 
 /// Where a virtual list stays scrolled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ScrollAnchor {
     /// The top scroll anchor.
     Top,
@@ -270,13 +271,6 @@ where
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
-        self
-    }
-
-    /// Applies the viewport fill option.
-    #[must_use]
-    pub const fn viewport_fill(mut self) -> Self {
-        self.sizing = ListSizing::Fill;
         self
     }
 

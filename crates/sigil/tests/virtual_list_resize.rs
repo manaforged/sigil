@@ -8,6 +8,7 @@ use sigil::kernel::{container, text};
 use sigil::prelude::Widget;
 use sigil::prelude::{LayoutStyle, virtual_list};
 use sigil::reactive::{Owner, Signal, signal};
+use sigil::widgets::Layout;
 
 const COLS: u16 = 30;
 const ROWS: u16 = 10;
@@ -46,7 +47,7 @@ fn measured_rows_keep_the_view_still_when_a_row_grows() {
                     })
                     .key_by(|_, key| *key)
                     .measured()
-                    .viewport_fill()
+                    .fill()
                     .scroll_bind(scroll_y)
                     .follow_end(true),
                 )

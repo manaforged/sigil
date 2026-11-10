@@ -1,18 +1,18 @@
 use super::*;
 
-fn margin(left: f32, top: f32) -> Edges<Dimension> {
+fn margin(left: f32, top: f32) -> Edges<Length> {
     Edges {
-        left: Dimension::Px(left),
-        right: Dimension::Px(0.0),
-        top: Dimension::Px(top),
-        bottom: Dimension::Px(0.0),
+        left: Length::Px(left),
+        right: Length::Px(0.0),
+        top: Length::Px(top),
+        bottom: Length::Px(0.0),
     }
 }
 
 #[test]
 fn padding_offsets_child_origin() {
     let parent = StyleData {
-        padding: Edges::splat(Dimension::Px(10.0)),
+        padding: Edges::splat(Length::Px(10.0)),
         ..flex_box(200.0, 100.0)
     };
     let b = kids(parent, &[fixed(40.0, 20.0)])[0];
@@ -55,10 +55,10 @@ fn margin_on_a_nested_flex_container_applies_once_not_twice() {
 #[test]
 fn min_size_floors_main_axis_shrink() {
     let item = StyleData {
-        flex_basis: Dimension::Px(80.0),
+        flex_basis: Length::Px(80.0),
         flex_shrink: 1.0,
-        min_size: StyleSize::new(Dimension::Px(70.0), Dimension::Auto),
-        ..sized(Dimension::Auto, Dimension::Px(20.0))
+        min_size: StyleSize::new(Length::Px(70.0), Length::Auto),
+        ..sized(Length::Auto, Length::Px(20.0))
     };
     for b in kids(flex_box(100.0, 50.0), &[item.clone(), item]) {
         assert!(b.w >= 70.0 - TOL, "w={}", b.w);
@@ -68,10 +68,10 @@ fn min_size_floors_main_axis_shrink() {
 #[test]
 fn max_size_caps_main_axis_grow() {
     let item = StyleData {
-        flex_basis: Dimension::Px(0.0),
+        flex_basis: Length::Px(0.0),
         flex_grow: 1.0,
-        max_size: StyleSize::new(Dimension::Px(80.0), Dimension::Auto),
-        ..sized(Dimension::Auto, Dimension::Px(20.0))
+        max_size: StyleSize::new(Length::Px(80.0), Length::Auto),
+        ..sized(Length::Auto, Length::Px(20.0))
     };
     let b = kids(flex_box(300.0, 50.0), &[item])[0];
     assert!(b.w <= 80.0 + TOL, "w={}", b.w);

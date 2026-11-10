@@ -8,7 +8,7 @@ use sigil::widgets::canvas;
 
 use super::{SCALE, SIDE, frames_of, rgba};
 
-const INK: Rgba8 = rgba(255, 255, 255, 255);
+const INK: Color = rgba(255, 255, 255, 255);
 const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 

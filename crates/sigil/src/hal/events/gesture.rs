@@ -4,7 +4,7 @@ use crate::geometry::Point;
 /// The kind of a trackpad or touch gesture.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
-pub enum GestureKind {
+pub enum Gesture {
     /// The pinch gesture kind.
     Pinch(f64),
     /// The rotate gesture kind.
@@ -20,7 +20,7 @@ pub enum GestureKind {
 #[non_exhaustive]
 pub struct GestureEvent {
     /// The kind.
-    pub kind: GestureKind,
+    pub kind: Gesture,
     /// The phase.
     pub phase: ScrollPhase,
     /// The position.
@@ -31,7 +31,7 @@ pub struct GestureEvent {
 }
 
 impl GestureEvent {
-    pub(crate) const fn new(kind: GestureKind, phase: ScrollPhase, position: Point) -> Self {
+    pub(crate) const fn new(kind: Gesture, phase: ScrollPhase, position: Point) -> Self {
         Self {
             kind,
             phase,

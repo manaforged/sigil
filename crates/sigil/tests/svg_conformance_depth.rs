@@ -10,15 +10,12 @@ use sigil::prelude::*;
 use sigil::widgets::icon_svg;
 use sigil_kittest::Harness;
 
-#[path = "svg_conformance_depth/indirect.rs"]
-mod indirect;
-
 const SIDE: u32 = 32;
 const STACK: usize = 2 << 20;
 const LINKS: usize = 20_000;
 const LIMIT: usize = 32;
 const FAN_OUT_SECONDS: u64 = 30;
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -41,7 +38,7 @@ fn draws(svg: String) -> bool {
         .spawn(move || {
             let app = move || {
                 column()
-                    .bg(BLACK)
+                    .background(BLACK)
                     .child(icon_svg(svg.clone()).px(SIDE as f32))
             };
             let mut ui = Harness::new(app).pixels(SIDE, SIDE);
@@ -281,3 +278,6 @@ fn escaped_ampersands_in_a_definition_are_not_references() {
     );
     assert!(draws(source));
 }
+
+#[path = "svg_conformance_depth/chains.rs"]
+mod chains;

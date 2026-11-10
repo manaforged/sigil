@@ -10,7 +10,7 @@ mod sample;
 mod store;
 
 pub use property::Property;
-pub use store::KeyframesId;
+pub(crate) use store::KeyframesId;
 
 /// A CSS keyframe animation: property values at offsets of one pass, its timing, and its repeats.
 #[derive(Clone, Debug)]
@@ -41,9 +41,13 @@ impl Keyframes {
         }
     }
 
-    /// Sets `property` at `offset`, from 0.0 (start of a pass) to 1.0 (end).
+    /// Sets `property` at `offset`, from 0.0 to 1.0; a layout property is ignored with a warning.
     pub fn keyframe(mut self, offset: f32, property: Property) -> Self {
-        self.frames.push((unit(offset), property));
+        if property.layout() {
+            property.refuse("Keyframes::keyframe");
+        } else {
+            self.frames.push((unit(offset), property));
+        }
         self
     }
 

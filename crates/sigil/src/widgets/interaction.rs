@@ -1,7 +1,7 @@
 mod drag;
 mod steps;
 
-use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerKind, PointerPhase};
+use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerPhase, PointerType};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
@@ -11,8 +11,8 @@ pub(crate) use drag::{DragEnd, axis_of, pointer_drag};
 pub(crate) use steps::{ValueStep, step_keys};
 
 /// Hover, press, and focus signals.
-#[derive(Clone, Copy)]
-pub struct InteractionState {
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct InteractionState {
     disabled: Option<Signal<bool>>,
     hovered: Signal<bool>,
     pressed: Signal<bool>,
@@ -24,7 +24,7 @@ pub struct InteractionState {
 impl InteractionState {
     /// Creates an interaction state.
     #[must_use]
-    pub fn new(enabled: bool) -> Self {
+    pub(crate) fn new(enabled: bool) -> Self {
         Self {
             disabled: (!enabled).then(|| signal(true)),
             hovered: signal(false),
@@ -37,16 +37,9 @@ impl InteractionState {
 
     /// Makes the state follow `disabled` instead of the flag given to `new`.
     #[must_use]
-    pub const fn disabled(mut self, disabled: Option<Signal<bool>>) -> Self {
+    pub(crate) const fn disabled(mut self, disabled: Option<Signal<bool>>) -> Self {
         self.disabled = disabled;
         self
-    }
-
-    /// Returns the enabled.
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn enabled(self) -> bool {
-        self.is_enabled()
     }
 
     fn is_enabled(self) -> bool {
@@ -55,7 +48,7 @@ impl InteractionState {
 
     /// Returns the style state.
     #[must_use]
-    pub fn style_state(self) -> StyleState {
+    pub(crate) fn style_state(self) -> StyleState {
         StyleState {
             disabled: self.disabled.is_some_and(Signal::get),
             hovered: self.hovered.get(),
@@ -64,27 +57,20 @@ impl InteractionState {
         }
     }
 
-    /// Returns the dragging.
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn dragging(self) -> bool {
-        self.dragging.get()
-    }
-
     /// Sets whether a drag is active.
-    pub fn drag(self, next: bool) {
+    pub(crate) fn drag(self, next: bool) {
         set_if_changed(self.dragging, next);
     }
 
     /// Returns the signal that is true while the node has focus.
     #[must_use]
-    pub const fn focused(self) -> Signal<bool> {
+    pub(crate) const fn focused(self) -> Signal<bool> {
         self.focused
     }
 
     /// Attaches the state's handlers to `node`.
     #[must_use]
-    pub fn install(self, node: NodeBuilder) -> NodeBuilder {
+    pub(crate) fn install(self, node: NodeBuilder) -> NodeBuilder {
         let node = match self.disabled {
             Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
             None => node,
@@ -101,7 +87,7 @@ impl InteractionState {
 
     /// Returns the signal that shows the focus ring.
     #[must_use]
-    pub const fn focus_ring(self) -> Signal<bool> {
+    pub(crate) const fn focus_ring(self) -> Signal<bool> {
         self.ring_visible
     }
 
@@ -123,7 +109,7 @@ impl InteractionState {
     }
 
     /// Handles a pointer release and returns whether it activates.
-    pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
+    pub(crate) fn release_pointer(self, event: &mut PointerEvent) -> bool {
         let cancelled = is_cancel(event);
         if !is_primary(event) && !cancelled {
             return false;
@@ -138,7 +124,7 @@ impl InteractionState {
     }
 
     /// Handles a key and returns whether it activates.
-    pub fn activate_key(self, event: &mut KeyEvent) -> bool {
+    pub(crate) fn activate_key(self, event: &mut KeyEvent) -> bool {
         let enabled = self.is_enabled();
         if enabled {
             event.stop_propagation();
@@ -185,7 +171,7 @@ impl InteractionState {
 
 pub(crate) fn is_primary(event: &PointerEvent) -> bool {
     event.button.map_or_else(
-        || event.kind != PointerKind::Mouse,
+        || event.kind != PointerType::Mouse,
         |button| button == MouseButton::Left,
     )
 }

@@ -142,3 +142,21 @@ fn set_with_same_value_does_not_fire_effects() {
         assert_eq!(runs.get(), 2, "update always fires");
     });
 }
+
+#[test]
+fn a_join_of_unequal_paths_sees_each_write_once_and_whole() {
+    Owner::scope("join_unequal_paths", || {
+        let src = signal(1_i32);
+        let near = derived(move || src.get() * 2);
+        let mid = derived(move || src.get() * 3);
+        let far = derived(move || mid.get() + 1);
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        {
+            let seen = Rc::clone(&seen);
+            effect(move || seen.borrow_mut().push((near.get(), far.get())));
+        }
+        src.set(2);
+        batch(|| src.set(5));
+        assert_eq!(*seen.borrow(), vec![(2, 4), (4, 7), (10, 16)]);
+    });
+}

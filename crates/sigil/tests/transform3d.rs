@@ -17,7 +17,7 @@ use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
@@ -33,7 +33,7 @@ const SIDE: f32 = 100.0;
 const CENTRE: f32 = 150.0;
 const DISTANCE: f32 = 500.0;
 const PROBE: f32 = 2.0;
-const INK: Rgba8 = Rgba8 {
+const INK: Color = Color {
     r: 255,
     g: 40,
     b: 40,
@@ -210,7 +210,7 @@ fn a_turned_card_agrees_on_the_cpu_and_the_gpu() {
         scene: &scene,
         viewport,
         size: PhysicalSize::new(side, side),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let (mut worst, mut far, mut total) = (0_u8, 0_usize, 0_usize);

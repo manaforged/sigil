@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::style::Token;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::decimate::Candle;
 use super::marks::{self, Placed};
@@ -53,7 +53,7 @@ pub(super) fn traces(plot: &Traces<'_>, pad: f32) -> NodeBuilder {
         }
     }
     for (item, values) in shown {
-        layer = layer.child(marks::line(&trace(values), item.hue.paint()));
+        layer = layer.child(marks::line(&trace(values), item.hue.color()));
     }
     plot_area(layer, pad)
 }

@@ -73,6 +73,7 @@ mod a11y_live_regions;
 mod a11y_reactive_flow;
 mod a11y_rows_and_fields;
 mod a11y_transform_bounds;
+mod a2ui_catalog;
 mod a2ui_review;
 mod allocation_reuse;
 mod animated_goldens;
@@ -310,6 +311,8 @@ mod tabs_routing;
 mod tasks_scheduler_contract;
 mod tasks_scheduler_spawn;
 mod tasks_task;
+#[cfg(feature = "pty")]
+mod terminal_command;
 #[cfg(feature = "terminal")]
 mod terminal_host;
 #[cfg(all(feature = "terminal", feature = "pty"))]
@@ -340,6 +343,7 @@ mod text_wrap_fit;
 mod theme_file_i18n;
 mod top_layer_culling;
 mod transform3d;
+mod two_hosts;
 mod vector_fit;
 mod vector_no_raster;
 mod vector_path;

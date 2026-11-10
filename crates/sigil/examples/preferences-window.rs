@@ -40,20 +40,24 @@ pub(crate) fn build() -> impl IntoNode {
         volume: signal(60.0),
     };
     effect(move || {
-        set_theme(if prefs.dark.get() {
+        (if prefs.dark.get() {
             Theme::dark()
         } else {
             Theme::light()
-        });
+        })
+        .apply();
     });
-    container()
+    row()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_row().fill())
-        .bg(Token::Surface)
+        .fill()
+        .gap(Space::None)
+        .align_items(AlignItems::Stretch)
+        .background(Token::Surface)
         .child(sidebar(nav(page)))
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill())
+            column()
+                .fill()
+                .gap(Space::None)
                 .child(content(page, prefs))
                 .child(footer(prefs, queue)),
         )
@@ -78,8 +82,9 @@ fn email_error(email: &str) -> Option<String> {
 }
 
 fn nav(page: Signal<usize>) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width())
+    column()
+        .fill_width()
+        .gap(Space::None)
         .child(section_label("Settings"))
         .children_reactive(move || {
             let current = page.get();
@@ -99,13 +104,10 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
 
 fn content(page: Signal<usize>, prefs: Prefs) -> impl IntoNode {
     scroll(
-        container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill_width()
-                    .padding(em(1.5))
-                    .gap(rows(1.0)),
-            )
+        column()
+            .fill_width()
+            .padding(em(1.5))
+            .gap(rows(1.0))
             .children_reactive(move || {
                 vec![match page.get() {
                     1 => appearance(prefs),
@@ -117,34 +119,29 @@ fn content(page: Signal<usize>, prefs: Prefs) -> impl IntoNode {
     .fill()
 }
 
-fn page_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().fill_width().gap(rows(0.75))
+fn page_column() -> NodeBuilder {
+    column().fill_width().gap(rows(0.75))
 }
 
 fn half(child: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .flex_basis(cols(30.0))
-                .min_width(cols(24.0))
-                .grow(1.0),
-        )
+    column()
+        .flex_basis(cols(30.0))
+        .min_width(cols(24.0))
+        .grow(1.0)
+        .gap(Space::None)
         .child(child)
 }
 
 fn account(prefs: Prefs) -> NodeBuilder {
     let languages = LANGUAGES.iter().map(|s| String::from(*s)).collect();
-    container()
-        .layout(page_layout())
+    page_column()
         .child(text("Account").font_size(18.0, "example layout"))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .gap(cols(2.0))
-                        .flex_wrap(FlexWrap::Wrap),
-                )
+            row()
+                .fill_width()
+                .gap(cols(2.0))
+                .flex_wrap(FlexWrap::Wrap)
+                .align_items(AlignItems::Stretch)
                 .child(half(
                     field(
                         "Display name",
@@ -168,8 +165,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
 
 fn appearance(prefs: Prefs) -> NodeBuilder {
     let scale_text = derived(move || format!("Interface scale: {:.0}%", prefs.scale.get()));
-    container()
-        .layout(page_layout())
+    page_column()
         .child(text("Appearance").font_size(18.0, "example layout"))
         .child(toggle(prefs.dark).label("Dark theme"))
         .child(checkbox(prefs.compact).label("Compact rows"))
@@ -181,8 +177,7 @@ fn appearance(prefs: Prefs) -> NodeBuilder {
 
 fn notifications(prefs: Prefs) -> NodeBuilder {
     let volume_text = derived(move || format!("Alert volume: {:.0}", prefs.volume.get()));
-    container()
-        .layout(page_layout())
+    page_column()
         .child(text("Notifications").font_size(18.0, "example layout"))
         .child(toggle(prefs.notify_email).label("Email digests"))
         .child(toggle(prefs.notify_push).label("Push notifications"))
@@ -196,15 +191,12 @@ fn footer(prefs: Prefs, queue: ToastQueue) -> NodeBuilder {
     let invalid = derived(move || {
         name_error(&prefs.name.get()).is_some() || email_error(&prefs.email.get()).is_some()
     });
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .padding(em(0.75))
-                .gap(cols(1.0))
-                .align_items(AlignItems::Center),
-        )
-        .bg(Token::SurfaceHover)
+    row()
+        .fill_width()
+        .padding(em(0.75))
+        .gap(cols(1.0))
+        .align_items(AlignItems::Center)
+        .background(Token::SurfaceHover)
         .child(spacer())
         .child(
             button("Save")

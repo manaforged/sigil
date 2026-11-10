@@ -91,17 +91,17 @@ mod overlay {
     use crate::scene::command::{DrawRect, GlyphRun, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;
     use crate::scene::{CommandScene, SceneCommand};
-    use crate::style::{Rgba8, TextStyle};
+    use crate::style::{Color, TextStyle};
 
-    const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-        Rgba8 { r, g, b, a }
+    const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+        Color { r, g, b, a }
     }
 
-    const OK: Rgba8 = rgba(0x4c, 0xc0, 0x6a, 0xff);
-    const WARN: Rgba8 = rgba(0xe0, 0xb0, 0x40, 0xff);
-    const ERR: Rgba8 = rgba(0xe0, 0x50, 0x50, 0xff);
-    const TEXT_INK: Rgba8 = rgba(0xc8, 0xcd, 0xd8, 0xff);
-    const BACKDROP: Rgba8 = rgba(0x08, 0x0a, 0x10, 0xc0);
+    const OK: Color = rgba(0x4c, 0xc0, 0x6a, 0xff);
+    const WARN: Color = rgba(0xe0, 0xb0, 0x40, 0xff);
+    const ERR: Color = rgba(0xe0, 0x50, 0x50, 0xff);
+    const TEXT_INK: Color = rgba(0xc8, 0xcd, 0xd8, 0xff);
+    const BACKDROP: Color = rgba(0x08, 0x0a, 0x10, 0xc0);
     const BARS: usize = 64;
     const BAR_W: f32 = 4.0;
     const BAR_GAP: f32 = 1.0;

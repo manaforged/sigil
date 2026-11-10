@@ -6,6 +6,7 @@ use crate::widgets::listbox::{only, span, toggle};
 
 /// Selection mode of a list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SelectionMode {
     /// The none selection mode.
     None,

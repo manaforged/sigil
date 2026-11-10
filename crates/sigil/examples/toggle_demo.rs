@@ -12,15 +12,13 @@ fn main() -> sigil::AppResult<()> {
 fn build() -> impl IntoNode {
     let on = signal(false);
     let disabled = signal(true);
-    container()
+    row()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill()
-                .gap(Space::Xl)
-                .padding(Space::Xxl),
-        )
-        .bg(Token::Surface)
+        .fill()
+        .gap(Space::Xl)
+        .padding(Space::Xxl)
+        .align_items(AlignItems::Stretch)
+        .background(Token::Surface)
         .child(toggle(on).change(move |v| on.set(v)))
         .child(toggle(signal(true)))
         .child(toggle(signal(false)).disabled(disabled))

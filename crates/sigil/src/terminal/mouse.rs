@@ -10,6 +10,7 @@ pub(crate) const MOUSE_OFF: &str = "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l
 
 /// Terminal mouse reports, all in SGR form (1006).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum MouseTracking {
     /// The off mouse tracking.
     Off,

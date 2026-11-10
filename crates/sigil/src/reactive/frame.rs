@@ -3,9 +3,9 @@ use slotmap::{SlotMap, new_key_type};
 use web_time::Instant;
 
 use super::interval::{Deadline, tick_intervals};
-use crate::animation_runtime::clock::{ClockSource, running_clocks, tick_clocks};
-use crate::animation_runtime::state::AnimatorSource;
-use crate::animation_runtime::{active_count, tick};
+use crate::animation::runtime::clock::{ClockSource, running_clocks, tick_clocks};
+use crate::animation::runtime::state::AnimatorSource;
+use crate::animation::runtime::{active_count, tick};
 
 new_key_type! {
     pub(crate) struct SourceId;

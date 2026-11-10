@@ -24,7 +24,7 @@ fn delta(a: Rgba<u8>, b: Rgba<u8>) -> i32 {
 pub(crate) fn page(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().padding(Space::Lg))
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(child)
 }
 

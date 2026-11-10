@@ -24,7 +24,7 @@ pub(super) fn endpoint_at(cx: &Cx, region: NodeId, point: Point) -> Option<Endpo
     let node = cx.get(region)?;
     let theme: &Theme = node
         .get_extension::<Theme>()
-        .map_or_else(|| super::links::default_theme(), |theme| theme);
+        .unwrap_or_else(crate::style::theme::fallback_theme);
     let inherit = Inherit {
         theme,
         text_style: Rc::new(TextStyle::default()),

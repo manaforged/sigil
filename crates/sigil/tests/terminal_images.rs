@@ -9,7 +9,7 @@ use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use sigil::kernel::{ImageSource, ObjectFit, image};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::AppConfig;
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 
 const CHILD: &str = "SIGIL_TERMINAL_IMAGES_CHILD";
 

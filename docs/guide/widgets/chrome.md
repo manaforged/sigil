@@ -20,13 +20,13 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## panel and card
 
-`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
+`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`, with `.padding_x(..)` and `.padding_y(..)` applied in call order), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
 
 `card(child) -> NodeBuilder`: the lighter variant: a `rounded-md` `surface` column with the same 1 px `border`, 12 px padding, and 8 px gaps. A panel at tier 1 and a card share one fill and one border.
 
 ## sidebar
 
-`sidebar(child)`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.bg(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
+`sidebar(child)`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.background(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
 
 ## tabs
 
@@ -51,13 +51,13 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 # let _ = {
 splitter(Orientation::Horizontal)
     .child(nav_pane, 240.0)
-    .pane(content_pane).min(200.0).grow(1.0)
+    .pane(content_pane).min_width(200.0).grow(1.0)
     .commit();
 # };
 ```
 
 - `.child(node, initial_px)`: simple pane.
-- `.pane(node)`: returns a pane builder with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`; finish with `.commit()`, another `.pane(...)`, or return it from a component.
+- `.pane(node)`: returns a pane builder. Every setter after it sets the pane: on the main axis, `.width(px)` or `.height(px)` is the initial size, `.min_width(px)` and `.max_width(px)` (or `.min_height`, `.max_height`) clamp the drag, and `.grow(factor)` shares the leftover space. Paint and event setters, such as `.background(..)`, also set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component; call splitter setters before the first `.pane(..)` or after `.commit()`.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
 - `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.
@@ -66,7 +66,7 @@ splitter(Orientation::Horizontal)
 
 `scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
 
-- `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport.
+- `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
 - `.scroll_bind(Signal<f32>)`: expose the scroll offset.
 - `.follow_end(bool)`: start at the end and stay pinned there while content grows, until the user scrolls up (logs, chat).
 
@@ -78,7 +78,7 @@ Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and a
 
 ## dividers and status bar
 
-`divider_horizontal()` / `divider_vertical()`: 1 px rules in the theme border color, not hittable. `status_bar(children)` is a 28 px `Role::Status` strip in the `surface-subtle` chrome fill with a 1 px top border and an 8 px side inset. Every child except the last packs to the left; the last child aligns right. A single child stays on the left.
+`divider(Orientation::Horizontal)` / `divider(Orientation::Vertical)`: 1 px rules in the theme border color, not hittable. `status_bar(children)` is a 28 px `Role::Status` strip in the `surface-subtle` chrome fill with a 1 px top border and an 8 px side inset. Every child except the last packs to the left; the last child aligns right. A single child stays on the left.
 
 ## Small composites
 
@@ -95,7 +95,7 @@ Small composites in `sigil::widgets`:
 - `hint_bar(keys, right)`: left key hints and a right accent label.
 - `avatar(initials)`: a 28 px accent circle; the initials become the accessible name.
 - `hint_overlay(hints)`: a popup-surface list of shortcut rows with 8 px gaps.
-- `divider_vertical().height(space(4))`: a 1×16 px vertical separator for toolbars.
+- `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.

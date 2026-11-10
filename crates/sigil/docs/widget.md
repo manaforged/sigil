@@ -9,7 +9,7 @@ fn toolbar() -> impl IntoNode {
     row()
         .gap(Space::Sm)
         .padding(Space::Md)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(button("Save").primary())
         .child(button("Cancel"))
 }

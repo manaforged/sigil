@@ -1,7 +1,6 @@
-use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ControlSize, Icon, LayoutStyle, NodeBuilder, Paint, Token, Tone, button, card,
-    chip, container, dot, dropdown, scroll, spacer, text,
+    AlignItems, ControlSize, Icon, NodeBuilder, Paint, Space, Token, Tone, button, card, chip,
+    column, container, dot, dropdown, row, scroll, spacer, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 
@@ -11,34 +10,29 @@ use super::data::{
 use super::live::Console;
 use super::pane;
 
-pub(crate) fn column(console: Console) -> NodeBuilder {
+pub(crate) fn panel(console: Console) -> NodeBuilder {
     let filters = ENV_FILTER_LABELS
         .iter()
         .map(|label| (*label).to_owned())
         .collect();
     pane()
-        .layout(
-            LayoutStyle::flex_column()
-                .width(GROUP_WIDTH)
-                .fill_height()
-                .shrink(0.0)
-                .min_size(0.0, 0.0)
-                .padding(Space::Md)
-                .gap(Space::Md),
-        )
+        .width(GROUP_WIDTH)
+        .fill_height()
+        .shrink(0.0)
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding(Space::Md)
+        .gap(Space::Md)
         .child(header(console))
         .child(dropdown(console.env_filter, filters).label("Environment"))
         .child(cards(console))
 }
 
 fn header(console: Console) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(text("Services").nowrap().font_weight(WEIGHT_STRONG))
         .child(spacer())
         .child(
@@ -52,8 +46,9 @@ fn header(console: Console) -> NodeBuilder {
 
 fn cards(console: Console) -> impl IntoNode {
     scroll(
-        container()
-            .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
+        column()
+            .fill_width()
+            .gap(Space::Sm)
             .children_reactive(move || {
                 let filter = ENV_FILTERS.get(console.env_filter.get()).copied().flatten();
                 Service::ALL
@@ -68,16 +63,14 @@ fn cards(console: Console) -> impl IntoNode {
 
 fn service_card(console: Console, service: Service) -> NodeBuilder {
     let env = service.env();
-    let body = container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
+    let body = column()
+        .fill_width()
+        .gap(Space::Sm)
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .gap(Space::Sm)
-                        .align_items(AlignItems::Center),
-                )
+            row()
+                .fill_width()
+                .gap(Space::Sm)
+                .align_items(AlignItems::Center)
                 .child(
                     text(service.name())
                         .nowrap()
@@ -87,13 +80,10 @@ fn service_card(console: Console, service: Service) -> NodeBuilder {
         )
         .child(container().child(chip(env.label(), env.tone())))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .gap(Space::Md)
-                        .align_items(AlignItems::Center),
-                )
+            row()
+                .fill_width()
+                .gap(Space::Md)
+                .align_items(AlignItems::Center)
                 .child(counter(console, service, Bucket::Running, Tone::Info))
                 .child(counter(console, service, Bucket::Queued, Tone::Neutral))
                 .child(counter(console, service, Bucket::Succeeded, Tone::Success))
@@ -106,12 +96,9 @@ fn service_card(console: Console, service: Service) -> NodeBuilder {
 }
 
 fn counter(console: Console, service: Service, bucket: Bucket, tone: Tone) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(Space::Xs)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .gap(Space::Xs)
+        .align_items(AlignItems::Center)
         .child(dot(tone).size(ControlSize::Compact))
         .child(
             text(move || {

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::vector::{PathNode, path};
 use super::axis::format_tick;
@@ -162,7 +162,7 @@ fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathNode {
     };
     shape
         .close()
-        .fill(hue.paint())
+        .fill(hue.color())
         .stroke(Token::Surface, EDGE)
         .non_scaling_stroke()
         .layout(layer_layout())
@@ -199,7 +199,7 @@ fn legend_row(name: &str, value: &str, hue: Hue) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(SWATCH, SWATCH).shrink(0.0))
-                .class([Radius::Sm.atom(), hue.bg()]),
+                .class([Radius::Sm.atom(), hue.background()]),
         )
         .child(
             text(name.to_owned())

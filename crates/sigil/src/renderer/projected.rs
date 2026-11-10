@@ -18,16 +18,10 @@ use crate::profile::count;
 use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_group, texture_layout,
 };
+use crate::renderer::layer_composite::{uniform_layout, uv_max, viewport_uniform};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::Transform3D;
 use shader::PROJECTED_SHADER;
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct ProjectedUniforms {
-    viewport: [f32; 2],
-    pad: [f32; 2],
-}
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -78,7 +72,7 @@ impl ProjectedPipeline {
     }
 
     fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let uniform_layout = uniform_layout(device);
+        let uniform_layout = uniform_layout(device, "sigil-renderer projected uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer projected texture layout");
         let quad = QuadPipeline::new(
             device,
@@ -110,10 +104,7 @@ impl ProjectedPipeline {
                 request.dest.width,
                 request.dest.height,
             ],
-            uv_max: [
-                request.source_extent.0 as f32 / request.texture_size.0.max(1) as f32,
-                request.source_extent.1 as f32 / request.texture_size.1.max(1) as f32,
-            ],
+            uv_max: uv_max(request.source_extent, request.texture_size),
             opacity: request.opacity.clamp(0.0, 1.0),
             row_x,
             row_y,
@@ -144,56 +135,13 @@ impl ProjectedPipeline {
     }
 
     fn uniform(&mut self, ctx: &mut PaintCtx<'_>) -> u32 {
-        let (buffer, offset, _) = ctx.encoder.uniform(&ProjectedUniforms {
-            viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
-            pad: [0.0, 0.0],
-        });
-        if self
-            .uniforms
-            .as_ref()
-            .is_none_or(|(cached, _)| *cached != buffer)
-        {
-            let group = uniform_group(ctx.device, &self.uniform_layout, &buffer);
-            self.uniforms = Some((buffer, group));
-        }
-        offset
+        viewport_uniform(
+            ctx,
+            &self.uniform_layout,
+            "sigil-renderer projected uniforms bind group",
+            &mut self.uniforms,
+        )
     }
-}
-
-fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("sigil-renderer projected uniforms layout"),
-        entries: &[wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: true,
-                min_binding_size: wgpu::BufferSize::new(size_of::<ProjectedUniforms>() as u64),
-            },
-            count: None,
-        }],
-    })
-}
-
-fn uniform_group(
-    device: &wgpu::Device,
-    layout: &wgpu::BindGroupLayout,
-    buffer: &wgpu::Buffer,
-) -> wgpu::BindGroup {
-    count(crate::profile::Counter::AllocCompositeUniformBindGroups);
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("sigil-renderer projected uniforms bind group"),
-        layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                buffer,
-                offset: 0,
-                size: wgpu::BufferSize::new(size_of::<ProjectedUniforms>() as u64),
-            }),
-        }],
-    })
 }
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {

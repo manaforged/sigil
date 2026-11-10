@@ -1,8 +1,9 @@
+use crate::animation::Property;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Position;
-use crate::layout::{Dimension, LayoutStyle, Overflow};
+use crate::layout::{LayoutStyle, Length, Overflow};
 use crate::reactive::{Signal, derived, signal};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use std::ops::Deref;
 
@@ -133,6 +134,7 @@ where
             .bound
             .take()
             .expect("build_bound called without a bound list");
+        let sizing = self.effective_sizing();
         let content = (bound.thunk)(
             BoundStrip {
                 render: std::rc::Rc::new(self.render),
@@ -158,14 +160,21 @@ where
             root,
             axes.viewport_height,
             self.viewport_width,
-            self.sizing == ListSizing::Fill,
+            sizing == ListSizing::Fill,
         );
-        let root = shrink_bound(root, axes, self.sizing == ListSizing::ShrinkToContent);
+        let root = shrink_bound(root, axes, sizing == ListSizing::ShrinkToContent);
         let root = attach_wheel(root, axes);
         if self.keyboard_enabled {
             attach_key_handlers(root, KeyboardRuntime::new(axes, bound.live_rows))
         } else {
             root
+        }
+    }
+
+    fn effective_sizing(&self) -> ListSizing {
+        match self.sizing {
+            ListSizing::Fixed if self.layout_overrides.fills_height() => ListSizing::Fill,
+            sizing => sizing,
         }
     }
 
@@ -231,17 +240,15 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
 fn viewport_layout(root: NodeBuilder, height: f32, width: Option<f32>, fill: bool) -> NodeBuilder {
     let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
     let base = if fill {
-        base.width(Dimension::Fill)
-            .height(Dimension::Fill)
-            .grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+        base.grow(1.0)
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
     } else {
-        let base = base.height(height);
-        match width {
-            Some(w) => base.width(w),
-            None => base,
-        }
+        base.height(height)
+    };
+    let base = match width {
+        Some(w) => base.width(w),
+        None => base,
     };
     root.with(base)
 }
@@ -258,7 +265,23 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
             axes.viewport_height
         }
     });
-    root.animate_height(height)
+    root.drive(Property::Height, height)
 }
 
 builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: node(pub(crate)));
+
+impl<T: 'static, R: RowRender<T>> core::fmt::Debug for VirtualListBuilder<T, R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("VirtualListBuilder")
+            .field("row_height", &self.row_height)
+            .field("viewport_height", &self.viewport_height)
+            .field("overscan", &self.overscan)
+            .field("scroll_y", &self.scroll_y)
+            .field("selection_mode", &self.selection_mode)
+            .field("keyboard_enabled", &self.keyboard_enabled)
+            .field("pin_bottom", &self.pin_bottom)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style_accumulator", &self.style_accumulator)
+            .finish_non_exhaustive()
+    }
+}

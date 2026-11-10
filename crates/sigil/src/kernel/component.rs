@@ -64,6 +64,12 @@ where
 #[doc(hidden)]
 pub struct WithCx<F>(pub F);
 
+impl<F> core::fmt::Debug for WithCx<F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("WithCx").finish_non_exhaustive()
+    }
+}
+
 impl<F> IntoNode for WithCx<F>
 where
     F: FnOnce(&mut Cx) -> NodeId,

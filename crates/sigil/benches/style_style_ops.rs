@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::panic)]
 
+use sigil::animation::Transition;
 use sigil::layout::Space;
 use std::hint::black_box;
 use std::time::Duration;
@@ -14,9 +15,10 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, Rgba8, StateStyle, StyleAtom,
+    Color, ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
+use sigil::widgets::Layout;
 
 static APPLY_ATOMS: &[StyleAtom] = &[
     StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
@@ -49,19 +51,18 @@ static STATE_DISABLED: &[StyleAtom] = &[
 fn paint_node() -> NodeBuilder {
     container()
         .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Lg))
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .text_color(Token::OnSurface)
         .border_color(Token::Border)
-        .border_w(1)
-        .rounded(Radius::Md)
+        .border_width(1)
+        .radius(Radius::Md)
         .shadow(Elevation::Sm)
         .opacity(0.8)
         .font_size(14.0, "benchmark fixture")
         .font_weight(400)
         .font_family(FontFamily::Sans)
-        .line_height_px(16.0)
-        .transition_preset(TransitionId(1))
-        .duration(Duration::from_millis(150))
+        .line_height(16.0)
+        .transition(Transition::from(TransitionId(1)).duration(Duration::from_millis(150)))
 }
 
 fn paint_resolve_atoms(c: &mut Criterion) {
@@ -95,16 +96,15 @@ fn paint_override_last_wins(c: &mut Criterion) {
         b.iter(|| {
             let mut cx = Cx::new_root();
             let node = paint_node()
-                .bg(Token::Accent)
+                .background(Token::Accent)
                 .text_color(Token::OnAccent)
-                .rounded(Radius::Lg)
+                .radius(Radius::Lg)
                 .shadow(Elevation::Lg)
                 .opacity(1.0)
                 .font_size(18.0, "benchmark fixture")
                 .font_weight(700)
-                .line_height_px(24.0)
-                .transition_preset(TransitionId(2))
-                .duration(Duration::from_millis(300));
+                .line_height(24.0)
+                .transition(Transition::from(TransitionId(2)).duration(Duration::from_millis(300)));
             let id = cx.add(black_box(node));
             black_box(binding_len(&cx, id));
         });
@@ -167,19 +167,19 @@ fn state_style_resolve_1000_widgets(c: &mut Criterion) {
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
     let accent_theme = Theme {
-        accent: Rgba8 {
+        accent: Color {
             r: 220,
             g: 38,
             b: 38,
             a: 255,
         },
-        accent_hover: Rgba8 {
+        accent_hover: Color {
             r: 185,
             g: 28,
             b: 28,
             a: 255,
         },
-        on_accent: Rgba8 {
+        on_accent: Color {
             r: 255,
             g: 255,
             b: 255,

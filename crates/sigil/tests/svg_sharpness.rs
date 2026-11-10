@@ -9,12 +9,13 @@
     reason = "pixel coordinates are small and positive"
 )]
 
+use sigil::animation::Property;
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::scene::paint_backdrop;
-use sigil::style::{Color, Transform2D};
+use sigil::style::{Rgba, Transform2D};
 use sigil_kittest::Harness;
 
 const VIEW: (u32, u32) = (480, 360);
@@ -60,7 +61,7 @@ impl Diagram {
 
 fn zoomed(diagram: Diagram, zoom: f32) -> NodeBuilder {
     container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(
             LayoutStyle::block()
                 .width(VIEW.0 as f32)
@@ -70,8 +71,8 @@ fn zoomed(diagram: Diagram, zoom: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(VIEW.0 as f32))
                 .transform(Transform2D::IDENTITY.origin(0.5, 0.0))
-                .animate_scale_x(signal(zoom))
-                .animate_scale_y(signal(zoom))
+                .drive(Property::ScaleX, signal(zoom))
+                .drive(Property::ScaleY, signal(zoom))
                 .child(diagram.node()),
         )
 }
@@ -87,7 +88,7 @@ fn capture(ui: &mut Harness, backend: Backend, scale: f32) -> image::RgbaImage {
             let target = ImageTarget {
                 size: PhysicalSize::new((viewport.0 * scale) as u32, (viewport.1 * scale) as u32),
                 viewport,
-                clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+                clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
             };
             render_to_image(ImageRenderer::Cpu(&mut CpuRenderer::new()), &scene, target)
                 .expect("cpu render")

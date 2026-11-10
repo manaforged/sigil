@@ -10,7 +10,7 @@ use sigil::geometry::{Point, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 
 use routing_helpers::route_event;
 

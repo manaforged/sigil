@@ -84,7 +84,7 @@ fn modal_page() -> impl IntoNode {
     let table_view = table(TableState::new(products(), product_columns()))
         .row_height(TABLE_ROW_HEIGHT)
         .header_height(TABLE_HEADER_HEIGHT)
-        .viewport_fill()
+        .fill_height()
         .selectable_checkboxes();
     container()
         .layout(LayoutStyle::flex_column().fill_width().fill_height())

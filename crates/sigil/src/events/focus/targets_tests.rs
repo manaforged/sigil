@@ -2,7 +2,7 @@ use crate::geometry::Point;
 use crate::geometry::{Rect, Size};
 use crate::kernel::container;
 use crate::layout::*;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::*;
 use crate::events::EventRouter;
@@ -73,8 +73,8 @@ fn is_hittable_target_rejects_a_node_outside_the_viewport() {
                 .fixed_size(10.0, 10.0)
                 .position(Position::Absolute)
                 .with_layout(|style| {
-                    style.inset.left = Dimension::Px(500.0);
-                    style.inset.top = Dimension::Px(500.0);
+                    style.inset.left = Length::Px(500.0);
+                    style.inset.top = Length::Px(500.0);
                 }),
         ),
     );

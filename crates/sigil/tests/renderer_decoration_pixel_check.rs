@@ -80,7 +80,7 @@ fn assert_underline_bar_is_cyan(pixels: &[u8], phys_w: u32) {
         hits >= threshold,
         "underline: at y={y} x=[{SCAN_X0},{}) expected ≥ {threshold}/32 pixels \
          with B > 200 (cyan underline). Got {hits}. \
-         Color is Rgba8(100,200,255,255); B channel must dominate after sRGB \
+         Color is Color(100,200,255,255); B channel must dominate after sRGB \
          compositing. Check decoration_paint.wgsl DECORATION_UNDERLINE branch \
          and per-instance color packing.",
         SCAN_X0 + SCAN_LEN,
@@ -96,7 +96,7 @@ fn assert_strikethrough_bar_is_red(pixels: &[u8], phys_w: u32) {
         hits >= threshold,
         "strikethrough: at y={y} x=[{SCAN_X0},{}) expected ≥ {threshold}/32 pixels \
          with R > 200 (red strikethrough). Got {hits}. \
-         Color is Rgba8(220,60,60,255); R channel must dominate after compositing. \
+         Color is Color(220,60,60,255); R channel must dominate after compositing. \
          Check decoration_paint.wgsl DECORATION_STRIKETHROUGH branch.",
         SCAN_X0 + SCAN_LEN,
     );

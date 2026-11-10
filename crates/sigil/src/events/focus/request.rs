@@ -16,7 +16,11 @@ pub fn request_focus(id: NodeId) {
 }
 
 pub(crate) fn take_focus_requests() -> Vec<NodeId> {
-    PENDING.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
+    PENDING.take()
+}
+
+pub(crate) fn swap_focus_requests(requests: Vec<NodeId>) -> Vec<NodeId> {
+    PENDING.replace(requests)
 }
 
 pub(crate) fn focus_on_trigger(trigger: Signal<u64>, focus: impl Fn() + 'static) {

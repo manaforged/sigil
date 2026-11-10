@@ -1,7 +1,7 @@
 #![allow(clippy::doc_markdown, clippy::float_cmp, clippy::unwrap_used)]
 
 use crate::layout_stub as stub;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use stub::stub_engine;
 
 use sigil::geometry::{Rect, Size};

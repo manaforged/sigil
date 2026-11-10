@@ -208,6 +208,12 @@ pub enum Filter {
 
 #[cfg(any(test, feature = "scene", feature = "terminal"))]
 impl Filter {
+    #[cfg(any(
+        test,
+        feature = "terminal",
+        feature = "desktop",
+        all(feature = "scene", feature = "kittest")
+    ))]
     pub(crate) const fn is_color(self) -> bool {
         !matches!(self, Self::Blur(_) | Self::DropShadow(_))
     }

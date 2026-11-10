@@ -11,6 +11,7 @@ mod platform;
 mod platform;
 
 /// The OS clipboard (feature `clipboard`).
+#[derive(Debug)]
 pub struct OsClipboard;
 
 impl Clipboard for OsClipboard {

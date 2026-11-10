@@ -40,7 +40,7 @@ fn text_memo_content(text: &LayoutText) -> u64 {
     let mut hasher = AHasher::default();
     match &text.content {
         TextContent::Static(value) => value.hash(&mut hasher),
-        live => live.resolve().hash(&mut hasher),
+        live => live.hash_into(&mut hasher),
     }
     text.wrap.hash(&mut hasher);
     text.ellipsis.hash(&mut hasher);

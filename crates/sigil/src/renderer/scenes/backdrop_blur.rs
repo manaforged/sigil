@@ -1,11 +1,11 @@
 use crate::geometry::Rect;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::helpers::{DARK, rect, rgba};
 use crate::scene::{CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder};
 
 #[must_use]
-pub fn backdrop_blur() -> (CommandScene, (f32, f32), Color) {
+pub fn backdrop_blur() -> (CommandScene, (f32, f32), Rgba) {
     let viewport = (1024.0, 360.0);
     let mut scene = SceneBuilder::new();
     draw_bar_pattern(&mut scene, rect(0.0, 0.0, viewport.0, viewport.1));

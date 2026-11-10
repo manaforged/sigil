@@ -1,39 +1,70 @@
 use super::super::interactive::interactive;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleAtom, StyleSlot, Token};
+use crate::style::{BORDER_WIDTH, Paint, Style, StyleAtom, Token};
 
 use super::super::layout_ext::LayoutOverrides;
+use super::super::shared::caller_style;
 use super::drag::{Binds, PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
-use crate::style::StateVariants;
+use super::pane_builder::PaneBuilder;
+use crate::style::States;
 use crate::widgets::orientation::Orientation;
-use crate::widgets::{Edit, Sealed, Widget};
+use crate::widgets::{Layout, Widget};
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
-static RULE: &[StyleAtom] = &[Token::Border.bg()];
+static RULE: &[StyleAtom] = &[Token::Border.background()];
 
-struct PaneEntry {
+pub(super) struct PaneEntry {
     content: Box<dyn IntoNode>,
-    initial_size: f32,
-    min: f32,
-    max: f32,
-    grow: f32,
+    pub(super) initial_size: f32,
+    pub(super) min: f32,
+    pub(super) max: f32,
+    pub(super) grow: f32,
+    pub(super) layout: LayoutOverrides,
+    pub(super) style: Style,
+}
+
+impl PaneEntry {
+    fn new(node: impl IntoNode + 'static, initial_size: f32) -> Self {
+        Self {
+            content: Box::new(node),
+            initial_size: initial_size.max(0.0),
+            min: 0.0,
+            max: f32::INFINITY,
+            grow: 0.0,
+            layout: LayoutOverrides::new(),
+            style: Style::new(),
+        }
+    }
 }
 
 /// Builder of a splitter.
 pub struct SplitterBuilder {
-    orientation: Orientation,
-    panes: Vec<PaneEntry>,
+    pub(super) orientation: Orientation,
+    pub(super) panes: Vec<PaneEntry>,
     sizes_bind: Option<crate::reactive::Signal<Vec<f32>>>,
     settle_bind: Option<crate::reactive::Signal<Vec<f32>>>,
     proportional: bool,
     snap_points: Vec<(usize, Vec<f32>)>,
     snap_threshold: f32,
-    layout_overrides: LayoutOverrides,
+    pub(super) layout_overrides: LayoutOverrides,
     style_accumulator: Style,
+}
+
+impl core::fmt::Debug for SplitterBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SplitterBuilder")
+            .field("orientation", &self.orientation)
+            .field("sizes_bind", &self.sizes_bind)
+            .field("proportional", &self.proportional)
+            .field("snap_threshold", &self.snap_threshold)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style_accumulator", &self.style_accumulator)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Resizable panes.
@@ -56,33 +87,29 @@ impl SplitterBuilder {
     /// Sets the child constrained.
     #[must_use]
     pub fn child_constrained(
-        self,
+        mut self,
         node: impl IntoNode + 'static,
         initial: f32,
         min: f32,
         max: f32,
     ) -> Self {
-        self.pane(node).initial(initial).min(min).max(max).commit()
+        let mut entry = PaneEntry::new(node, initial);
+        entry.min = min.max(0.0);
+        entry.max = max.max(0.0);
+        self.panes.push(entry);
+        self
     }
 
     /// Adds a child.
     #[must_use]
-    pub fn child(self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
-        self.pane(node).initial(initial_size).commit()
+    pub fn child(mut self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
+        self.panes.push(PaneEntry::new(node, initial_size));
+        self
     }
 
     /// Adds a pane and returns its builder.
     pub fn pane(self, node: impl IntoNode + 'static) -> PaneBuilder {
-        PaneBuilder {
-            splitter: self,
-            entry: PaneEntry {
-                content: Box::new(node),
-                initial_size: 0.0,
-                min: 0.0,
-                max: f32::INFINITY,
-                grow: 0.0,
-            },
-        }
+        PaneBuilder::new(self, PaneEntry::new(node, 0.0))
     }
 
     /// Sets the min size.
@@ -173,16 +200,17 @@ impl SplitterBuilder {
         }
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
-            root = root.child(build_pane(entry.content, pane_idx, state, grow));
+            let pane = caller_style(
+                build_pane(entry.content, pane_idx, state, grow),
+                entry.style,
+            );
+            root = root.child(entry.layout.finish(pane));
             if pane_idx + 1 < count {
                 root = root.child(build_handle(pane_idx, orientation, state));
             }
         }
 
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 
     fn normalize_proportional(&mut self) {
@@ -217,94 +245,6 @@ impl From<SplitterBuilder> for NodeBuilder {
     }
 }
 
-/// Configures one pane of a `splitter` before it is committed.
-#[must_use = "PaneBuilder must be committed by calling .commit(), .pane(...), or by passing it to cx.add()"]
-pub struct PaneBuilder {
-    splitter: SplitterBuilder,
-    entry: PaneEntry,
-}
-
-impl PaneBuilder {
-    /// Sets the initial.
-    pub const fn initial(mut self, px: f32) -> Self {
-        self.entry.initial_size = px.max(0.0);
-        self
-    }
-
-    /// Sets the min.
-    pub const fn min(mut self, px: f32) -> Self {
-        self.entry.min = px.max(0.0);
-        self
-    }
-
-    /// Sets the max.
-    pub const fn max(mut self, px: f32) -> Self {
-        self.entry.max = px.max(0.0);
-        self
-    }
-
-    /// Sets the grow.
-    pub const fn grow(mut self, factor: f32) -> Self {
-        self.entry.grow = factor.max(0.0);
-        self
-    }
-
-    /// Adds a pane.
-    pub fn pane(self, node: impl IntoNode + 'static) -> Self {
-        self.commit().pane(node)
-    }
-
-    /// Returns the commit.
-    #[must_use]
-    pub fn commit(mut self) -> SplitterBuilder {
-        self.splitter.panes.push(self.entry);
-        self.splitter
-    }
-}
-
-impl Sealed for PaneBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.splitter.layout_overrides.edit(edit),
-            other => self
-                .splitter
-                .layout_overrides
-                .node_hook(move |node| other.apply(node)),
-        }
-        self
-    }
-
-    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.splitter.layout_overrides.node_hook(f);
-        self
-    }
-}
-
-impl Widget for PaneBuilder {
-    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.splitter.layout_overrides.node_hook(f);
-        self
-    }
-}
-
-impl IntoNode for PaneBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.commit().build(cx)
-    }
-}
-
-impl From<PaneBuilder> for NodeBuilder {
-    fn from(builder: PaneBuilder) -> Self {
-        builder.commit().into()
-    }
-}
-
-impl PaintTarget for PaneBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.splitter.style_accumulator)
-    }
-}
-
 fn fit_to_bounds(
     root: NodeBuilder,
     state: SplitterState,
@@ -335,8 +275,8 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
         .layout(handle_layout(orientation))
         .child(rule(orientation));
     let node = interactive(node)
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed))
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
         .into_node_builder();
     install_handle_keys(
         install_handle_hooks(node, state, handle_idx),

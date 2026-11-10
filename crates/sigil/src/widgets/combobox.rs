@@ -5,7 +5,7 @@ use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{ControlSize, Metrics, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
@@ -16,7 +16,7 @@ const MAX_VISIBLE: usize = 8;
 const FIELD_HEIGHT: f32 = space(8);
 
 /// State of a combobox.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Combobox {
     options: Signal<Vec<String>>,
     query: Signal<String>,

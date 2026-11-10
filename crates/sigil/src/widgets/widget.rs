@@ -1,31 +1,50 @@
 use smallvec::SmallVec;
 
+use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
     FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut,
     event_methods, handler_methods,
 };
 use crate::kernel::NodeBuilder;
-use crate::layout::audit::{AllowedFlaws, FlawKind};
-use crate::layout::builder_ext::asymmetric;
+use crate::layout::audit::{AllowedFlaws, Flaw};
+use crate::layout::builder_ext::{asymmetric, layout_methods};
 use crate::layout::reactive_position;
-use crate::layout::{IntoPx, LayoutStyle, Space};
+use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
-use crate::style::{
-    ColorAtom, NumericAtomKind, StateSlot, StateStyleBuilder, StyleAtom, Theme, Tone,
-};
+use crate::style::{ColorAtom, StateSlot, StateStyleBuilder, StyleAtom, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
 
 pub(crate) use edit::{Edit, LayoutEdit, Sealed, StateTarget};
 
+kittest_pub! {
+    /// Merges a raw layout style into a builder.
+    #[doc(hidden)]
+    pub trait Layout: Sealed {
+        /// Merges `style` into the node's layout.
+        #[must_use]
+        fn layout(self, style: LayoutStyle) -> Self {
+            self.edit(Edit::Layout(LayoutEdit::Merge(style)))
+        }
+    }
+}
+
+impl<T: Sealed> Layout for T {}
+
 #[doc = include_str!("../../docs/widget.md")]
 pub trait Widget: Sealed {
     /// Applies `f` to the root node that this builder produces.
     #[must_use]
     fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
+
+    /// Adds the styles that the Tailwind classes in `classes` name.
+    #[must_use]
+    fn class(self, classes: &'static str) -> Self {
+        self.map_target(move |node| node.class(classes))
+    }
 
     /// Sets the theme for the node and its children.
     #[must_use]
@@ -83,7 +102,7 @@ pub trait Widget: Sealed {
             look::presence(
                 node,
                 shown,
-                crate::animation_runtime::AnimationConfig::Tween {
+                crate::animation::runtime::AnimationConfig::Tween {
                     ms,
                     easing,
                     delay_ms: 0,
@@ -92,88 +111,10 @@ pub trait Widget: Sealed {
         })
     }
 
-    /// Drives the opacity from `value`.
+    /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.
     #[must_use]
-    fn animate_opacity(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Opacity, value))
-    }
-
-    /// Drives the corner radius from `value`.
-    #[must_use]
-    fn animate_radius(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::BorderRadius, value))
-    }
-
-    /// Drives the font size from `value`.
-    #[must_use]
-    fn animate_font_size(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::FontSize, value))
-    }
-
-    /// Drives the line height from `value`.
-    #[must_use]
-    fn animate_line_height(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::LineHeight, value))
-    }
-
-    /// Drives the gap from `value`.
-    #[must_use]
-    fn animate_gap(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Gap, value))
-    }
-
-    /// Drives the horizontal padding from `value`.
-    #[must_use]
-    fn animate_padding_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::PaddingX, value))
-    }
-
-    /// Drives the vertical padding from `value`.
-    #[must_use]
-    fn animate_padding_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::PaddingY, value))
-    }
-
-    /// Drives the width from `value`.
-    #[must_use]
-    fn animate_width(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Width, value))
-    }
-
-    /// Drives the height from `value`.
-    #[must_use]
-    fn animate_height(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Height, value))
-    }
-
-    /// Drives the horizontal offset from `value`.
-    #[must_use]
-    fn animate_translate_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::TranslateX, value))
-    }
-
-    /// Drives the vertical offset from `value`.
-    #[must_use]
-    fn animate_translate_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::TranslateY, value))
-    }
-
-    /// Drives the horizontal scale from `value`.
-    #[must_use]
-    fn animate_scale_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::ScaleX, value))
-    }
-
-    /// Drives the vertical scale from `value`.
-    #[must_use]
-    fn animate_scale_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::ScaleY, value))
-    }
-
-    /// Drives the rotation from `value`.
-    #[must_use]
-    fn animate_rotation(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Rotation, value))
+    fn drive(self, property: fn(f32) -> Property, value: Signal<f32>) -> Self {
+        self.map_target(move |node| look::drive(node, property, value))
     }
 
     /// Hides the node while `shown` is false.
@@ -192,24 +133,6 @@ pub trait Widget: Sealed {
         self.map_target(move |node| look::paint_when(node, active, built))
     }
 
-    /// Merges `style` into the node's layout.
-    #[must_use]
-    fn layout(self, style: LayoutStyle) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Merge(style)))
-    }
-
-    /// Sets the space between the node's children.
-    #[must_use]
-    fn gap(self, gap: impl Into<Space>) -> Self {
-        self.layout(LayoutStyle::default().gap(gap))
-    }
-
-    /// Sets the space inside the node's edges.
-    #[must_use]
-    fn padding(self, padding: impl Into<Space>) -> Self {
-        self.layout(LayoutStyle::default().padding(padding))
-    }
-
     /// Marks the node as intentionally asymmetric, with the reason.
     #[must_use]
     fn asymmetric(self, reason: &'static str) -> Self {
@@ -218,7 +141,7 @@ pub trait Widget: Sealed {
 
     /// Opts the node and its children out of a design rule, with the reason.
     #[must_use]
-    fn allow_flaw(self, kind: FlawKind, _reason: &'static str) -> Self {
+    fn allow_flaw(self, kind: Flaw, _reason: &'static str) -> Self {
         self.map_node(move |node| {
             node.mutate(move |node| {
                 if let Some(allowed) = node.get_extension_mut::<AllowedFlaws>() {
@@ -232,14 +155,14 @@ pub trait Widget: Sealed {
 
     /// Sets the node's width.
     #[must_use]
-    fn width(self, width: impl IntoPx) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Width(width.into_px())))
+    fn width(self, width: impl Into<Length>) -> Self {
+        self.edit(Edit::Layout(LayoutEdit::Width(width.into())))
     }
 
     /// Sets the node's height.
     #[must_use]
-    fn height(self, height: impl IntoPx) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Height(height.into_px())))
+    fn height(self, height: impl Into<Length>) -> Self {
+        self.edit(Edit::Layout(LayoutEdit::Height(height.into())))
     }
 
     /// Sets the node's flex grow factor.
@@ -247,6 +170,8 @@ pub trait Widget: Sealed {
     fn grow(self, factor: f32) -> Self {
         self.edit(Edit::Layout(LayoutEdit::Grow(factor)))
     }
+
+    layout_methods!();
 
     /// Writes the node's laid-out position into `pos` after each layout.
     #[must_use]

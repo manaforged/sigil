@@ -3,7 +3,7 @@
 #![allow(clippy::indexing_slicing)]
 
 use crate::layout_stub as stub;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;

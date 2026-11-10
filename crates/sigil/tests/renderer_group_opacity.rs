@@ -4,9 +4,9 @@
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 255,
     g: 0,
     b: 0,
@@ -38,7 +38,7 @@ fn cpu_group_opacity_blends_overlap_once() {
     let pixmap = CpuRenderer::new()
         .render(
             &overlapping_group(),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
+            Rgba::new(1.0, 1.0, 1.0, 1.0),
             (100.0, 40.0),
             PhysicalSize::new(100, 40),
         )
@@ -87,7 +87,7 @@ fn a_small_group_allocates_only_its_drawn_area() {
     renderer
         .render(
             &small_group(),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
+            Rgba::new(1.0, 1.0, 1.0, 1.0),
             (400.0, 300.0),
             PhysicalSize::new(400, 300),
         )
@@ -122,7 +122,7 @@ fn gpu_small_group_allocates_only_its_drawn_area() {
                 scale: 1.0,
             },
             &small_group(),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
+            Rgba::new(1.0, 1.0, 1.0, 1.0),
         )
         .expect("gpu render");
     let stats = renderer.last_frame_stats();

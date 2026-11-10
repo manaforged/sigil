@@ -27,7 +27,7 @@ fn width(build: impl IntoNode) -> f32 {
         .map_or(0.0, |result| result.rect().width)
 }
 
-fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Rgba8>, Vec<Rgba8>) {
+fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Color>, Vec<Color>) {
     let (mut cx, root, layout) = laid_out(build);
     let rest = rect_colors(&cx, root);
     EventRouter::new().route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
@@ -64,8 +64,8 @@ fn a_hover_state_in_style_paints_on_hover() {
         let (rest, hovered) = rest_and_hover_colors(
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-                .bg(Token::Surface)
-                .hover(|s| s.bg(Token::Accent)),
+                .background(Token::Surface)
+                .hover(|s| s.background(Token::Accent)),
         );
         assert_ne!(rest, hovered, "the hover state never painted");
     });
@@ -75,7 +75,7 @@ fn a_hover_state_in_style_paints_on_hover() {
 fn a_background_set_on_a_button_holds_under_hover() {
     Owner::scope("precedence-button-hover", || {
         let ruby = ruby_light().step(9);
-        let (rest, hovered) = rest_and_hover_colors(button("Save").bg(ruby));
+        let (rest, hovered) = rest_and_hover_colors(button("Save").background(ruby));
         assert!(rest.contains(&ruby), "rest colors: {rest:?}");
         assert!(
             hovered.contains(&ruby),

@@ -1,5 +1,6 @@
 use super::*;
 use sigil::kernel::HostMode;
+use sigil::widgets::Layout;
 use sigil_kittest::Harness;
 
 #[test]
@@ -84,7 +85,7 @@ fn markdown_chart_keeps_labels_and_bars_in_a_narrow_terminal() {
 #[test]
 fn a_chip_cell_paints_on_its_own_row() {
     use sigil::style::Tone;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, chip, table};
 
     #[derive(Clone)]
     struct Row {
@@ -98,10 +99,10 @@ fn a_chip_cell_paints_on_its_own_row() {
                 rows,
                 vec![
                     TableColumn::new("name", "NAME")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|row: &Row| text(row.name).nowrap()),
                     TableColumn::new("tag", "TAG")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|row: &Row| chip(row.name, Tone::Neutral)),
                 ],
             );
@@ -131,7 +132,7 @@ fn a_chip_cell_paints_on_its_own_row() {
 
 #[test]
 fn a_wide_cell_clips_at_the_column_edge() {
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row;
@@ -142,10 +143,10 @@ fn a_wide_cell_clips_at_the_column_edge() {
                 vec![Row],
                 vec![
                     TableColumn::new("wide", "WIDE")
-                        .width(ColWidth::Fixed(32.0))
+                        .width(ColumnWidth::Fixed(32.0))
                         .cell(|_: &Row| text("aaaaaaaaaaaaaaaa").nowrap()),
                     TableColumn::new("tail", "TAIL")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|_: &Row| text("tail").nowrap()),
                 ],
             );
@@ -213,7 +214,7 @@ fn a_control_stands_one_line_tall() {
 
 #[test]
 fn a_filled_table_keeps_its_header_off_row_one() {
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -226,14 +227,14 @@ fn a_filled_table_keeps_its_header_off_row_one() {
                 vec![Row { name: "aaa" }, Row { name: "bbb" }],
                 vec![
                     TableColumn::new("n", "NAME")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|row: &Row| text(row.name).nowrap()),
                 ],
             );
             table(state)
                 .row_height(8.0)
                 .header_height(8.0)
-                .viewport_fill()
+                .fill_height()
         },
         40,
         12,
@@ -283,7 +284,7 @@ fn a_timer_comes_due_on_the_frame_clock() {
 fn a_wide_glyph_keeps_the_next_column() {
     use unicode_width::UnicodeWidthChar;
 
-    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
+    use sigil::widgets::{ColumnWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -306,10 +307,10 @@ fn a_wide_glyph_keeps_the_next_column() {
                 ],
                 vec![
                     TableColumn::new("n", "NAME")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|row: &Row| text(row.name).nowrap()),
                     TableColumn::new("t", "TAIL")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .cell(|row: &Row| text(row.tail).nowrap()),
                 ],
             );

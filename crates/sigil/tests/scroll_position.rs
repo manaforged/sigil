@@ -24,7 +24,7 @@ fn scroll_and_pointer_handlers_see_the_same_local_position() {
                         .pointer_down(move |event: &mut PointerEvent| {
                             seen.update(|s| s.0 = event.position);
                         })
-                        .on_scroll(move |event: &mut ScrollEvent| {
+                        .scroll(move |event: &mut ScrollEvent| {
                             seen.update(|s| s.1 = event.position);
                         }),
                 )

@@ -1,11 +1,11 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const SYNCHRONIZED_OUTPUT: u16 = 2026;
 
-pub(super) type Colors = Arc<Mutex<(Rgba8, Rgba8)>>;
+pub(super) type Colors = Arc<Mutex<(Color, Color)>>;
 
 pub(super) struct Replies {
     tx: Sender<Vec<u8>>,
@@ -30,11 +30,11 @@ impl Replies {
         drop(self.tx.send(reply.into_bytes()));
     }
 
-    fn color(&self, slot: &str, pick: fn(&(Rgba8, Rgba8)) -> Rgba8) {
+    fn color(&self, slot: &str, pick: fn(&(Color, Color)) -> Color) {
         let Ok(colors) = self.colors.lock() else {
             return;
         };
-        let Rgba8 { r, g, b, .. } = pick(&colors);
+        let Color { r, g, b, .. } = pick(&colors);
         self.send(format!(
             "\u{1b}]{slot};rgb:{r:02x}{r:02x}/{g:02x}{g:02x}/{b:02x}{b:02x}\u{1b}\\"
         ));

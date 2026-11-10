@@ -1,3 +1,4 @@
+use sigil::animation::Property;
 use sigil::prelude::*;
 use sigil::style::Transform2D;
 
@@ -19,7 +20,7 @@ fn a_translated_subtree_paints_at_its_moved_place() {
                     .child(
                         container()
                             .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                            .animate_translate_x(signal(shift))
+                            .drive(Property::TranslateX, signal(shift))
                             .child(text("moved")),
                     )
             },

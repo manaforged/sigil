@@ -1,5 +1,5 @@
+use sigil::animation::{Animator, MotionPrefs, tick};
 use sigil::animation::{Easing, SpringPreset};
-use sigil::animation_runtime::{Animator, MotionPrefs, tick};
 use sigil::reactive::{Owner, signal};
 
 const DT_60HZ: f32 = 1.0 / 60.0;

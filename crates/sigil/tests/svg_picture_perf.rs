@@ -11,14 +11,14 @@
 use std::time::{Duration, Instant};
 
 use sigil::Host;
-use sigil::app::{FrameHooks, set_theme};
+use sigil::app::FrameHooks;
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::scene::paint_backdrop;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, gpu_rgba};
 
@@ -83,7 +83,7 @@ impl Painter {
         let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
         let mut scene = host.emit(VIEW);
         paint_backdrop(&mut scene, host.theme(), VIEW);
-        let clear = Color::rgba(0.0, 0.0, 0.0, 1.0);
+        let clear = Rgba::new(0.0, 0.0, 0.0, 1.0);
         let size = PhysicalSize::new(DEVICE.0, DEVICE.1);
         match self {
             Self::Cpu(renderer) => {
@@ -115,7 +115,7 @@ fn median(mut samples: Vec<Duration>) -> f64 {
 fn measure(name: &str, mut painter: Painter) {
     Owner::scope("svg_picture_perf", || {
         let mut host = Host::new(HostMode::Pixel);
-        set_theme(Theme::light());
+        Theme::light().apply();
         host.mount(transcript());
         for _ in 0..3 {
             painter.paint(&mut host);
@@ -126,11 +126,12 @@ fn measure(name: &str, mut painter: Painter) {
             let steady_start = Instant::now();
             painter.paint(&mut host);
             steady.push(steady_start.elapsed());
-            set_theme(if round % 2 == 0 {
+            (if round % 2 == 0 {
                 Theme::dark()
             } else {
                 Theme::light()
-            });
+            })
+            .apply();
             let switch_start = Instant::now();
             painter.paint(&mut host);
             switch.push(switch_start.elapsed());

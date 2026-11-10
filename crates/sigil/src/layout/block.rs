@@ -8,7 +8,7 @@ use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
 use crate::layout::grid::GridSolver;
 use crate::layout::grid_tracks::definite;
 use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Axes, Dimension, Display, Position, StyleData};
+use crate::layout::style_data::{Axes, Display, Length, Position, StyleData};
 
 #[path = "block_absolute.rs"]
 mod absolute;
@@ -191,7 +191,7 @@ impl BlockSolver<'_> {
             let child_origin = Position2::new(x, origin.y + cursor_y);
             let resolved = match style.display {
                 Display::Flex | Display::Grid => {
-                    self.solve_nested(child, inner_cb, child_origin)?
+                    self.solve_nested(child, inner_cb, child_origin, child_edges)?
                 }
                 Display::Block | Display::None => {
                     self.solve_box(child, inner_cb, child_origin, Axes::default())?
@@ -208,16 +208,16 @@ impl BlockSolver<'_> {
         child: NodeRef<'_>,
         inner_cb: Axes<f32>,
         border_origin: Position2,
+        edges: NodeEdges,
     ) -> Result<BlockBox, Error> {
         let style = child.style();
-        let edges = NodeEdges::build(style, inner_cb.width);
         let scope = &self.scope;
         let nested = MeasureScope::new(scope.forest(), scope.text(), scope.available());
         let x = border_origin.x - edges.margin.left.unwrap_or(0.0);
         let y = border_origin.y - edges.margin_top();
         let kind = if matches!(style.display, Display::Grid) {
             let border_w = match style.size.width {
-                Dimension::Px(px) => px,
+                Length::Px(px) => px,
                 _ => inner_cb.width,
             };
             GridSolver::new(nested).solve_at(child, border_w, Position2 { x, y })?;

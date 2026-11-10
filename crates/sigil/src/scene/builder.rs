@@ -13,7 +13,7 @@ use crate::scene::command::{
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::style::srgb::encode_byte;
 
 /// Appends drawing commands to a scene.
@@ -148,7 +148,7 @@ impl SceneBuilder {
         let [r, g, b, a] = shadow.color;
         let [r, g, b] = [r, g, b].map(encode_byte);
         let alpha = (a.clamp(0.0, 1.0) * 255.0).round() as u8;
-        let mut copy = run.tinted(Rgba8 { r, g, b, a: alpha });
+        let mut copy = run.tinted(Color { r, g, b, a: alpha });
         copy.shift(dx, dy);
         if shadow.blur <= 0.0 {
             self.draw_glyph_run(copy);

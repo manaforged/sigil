@@ -12,7 +12,7 @@ fn an_osc_11_reply_sets_the_backdrop_from_its_luma() {
     assert_eq!(none.backdrop, None);
     assert_eq!(
         dark.background,
-        Some(crate::style::Rgba8 {
+        Some(crate::style::Color {
             r: 10,
             g: 10,
             b: 10,

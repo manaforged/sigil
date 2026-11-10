@@ -10,7 +10,7 @@ fn counted_state(rows: Vec<Arc<Item>>, builds: &Rc<Cell<u32>>) -> TableState<Arc
         rows,
         vec![
             TableColumn::new("name", "Name")
-                .width(ColWidth::Fixed(100.0))
+                .width(ColumnWidth::Fixed(100.0))
                 .cell(move |row: &Arc<Item>| {
                     counter.set(counter.get() + 1);
                     container().child(text(row.name.clone()))

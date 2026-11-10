@@ -2,18 +2,18 @@ use crate::layout::Space;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::ActiveTheme;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container};
 use crate::layout::snap;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow, Position};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{Style, StyleAtom, Token, TransitionId, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PopupAnchor, PopupLayer, close_on_escape, footer};
 use super::super::scroll::contain_scroll;
-use super::super::shared::accessible_name_or;
+use super::super::shared::{accessible_name_or, caller_style};
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
@@ -22,12 +22,16 @@ const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
 
-static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
+static BACKDROP_BASE: &[StyleAtom] = &[
+    Token::Scrim.background(),
+    StyleAtom::Transition(MODAL_TRANSITION),
+];
 
 static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 
 /// Edge of a sheet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Side {
     /// The left side.
     Left,
@@ -50,6 +54,22 @@ pub struct ModalBuilder {
     close_button: CloseControl,
     side: Option<Side>,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for ModalBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ModalBuilder")
+            .field("show", &self.show)
+            .field("title", &self.title)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("trap", &self.trap)
+            .field("escape_closes", &self.escape_closes)
+            .field("dismiss_on_backdrop", &self.dismiss_on_backdrop)
+            .field("close_button", &self.close_button)
+            .field("side", &self.side)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A modal dialog.
@@ -296,10 +316,7 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         dialog = dialog.child(footer(actions, BODY_GUTTER));
     }
 
-    if !style_accumulator.is_empty() {
-        dialog = dialog.style(style_accumulator);
-    }
-    layout_overrides.finish(dialog)
+    layout_overrides.finish(caller_style(dialog, style_accumulator))
 }
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
@@ -312,7 +329,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .gap(Space::Sm)
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
-        .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
+        .max_size(Length::Percent(1.0), Length::Percent(1.0))
         .shrink(1.0);
     match side {
         None => base.width(DIALOG_WIDTH),

@@ -8,7 +8,7 @@ use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::untrack;
 use crate::style::{Token, space};
-use crate::widgets::{Widget, button, card, divider_horizontal, divider_vertical, tabs};
+use crate::widgets::{Layout, Orientation, Widget, button, card, divider, tabs};
 
 use super::document::{MAX_BYTES, Surface};
 use super::model::{Model, display};
@@ -45,7 +45,7 @@ impl Budget {
         open
     }
 
-    fn spend(&self, bytes: usize) {
+    pub(super) fn spend(&self, bytes: usize) {
         self.bytes.set(self.bytes.get().saturating_sub(bytes));
     }
 
@@ -202,11 +202,12 @@ impl Render {
             Kind::Tabs { tabs } => self.tabs(tabs),
             Kind::Divider {
                 axis: Axis::Horizontal,
-            } => divider_horizontal(),
+            } => divider(Orientation::Horizontal),
             Kind::Divider {
                 axis: Axis::Vertical,
-            } => divider_vertical(),
+            } => divider(Orientation::Vertical),
             Kind::Button { child, look, event } => self.button(child, *look, event.as_ref()),
+            Kind::Piece(piece) => self.piece(piece),
             Kind::Unsupported { name } => self.mark(format!("Unsupported component \"{name}\".")),
             input => self.input(input),
         }
@@ -299,18 +300,23 @@ impl Render {
             ButtonLook::Primary => control.primary(),
             ButtonLook::Borderless => control.ghost(),
         };
-        if let (Some(event), Some(handler)) = (event, self.handler.clone()) {
-            let name = event.name.clone();
-            let context: Vec<(String, Dynamic)> = event.context.clone();
-            let render = self.clone();
-            control = control.activate(move || {
-                let mut map = serde_json::Map::new();
-                for (key, value) in &context {
-                    map.insert(key.clone(), render.value(value));
-                }
-                handler(&name, &Value::Object(map).to_string());
-            });
+        if let Some(fire) = event.and_then(|event| self.trigger(event)) {
+            control = control.activate(move || fire());
         }
         control.into()
+    }
+
+    pub(super) fn trigger(&self, event: &Event) -> Option<Rc<dyn Fn()>> {
+        let handler = self.handler.clone()?;
+        let name = event.name.clone();
+        let context: Vec<(String, Dynamic)> = event.context.clone();
+        let render = self.clone();
+        Some(Rc::new(move || {
+            let mut map = serde_json::Map::new();
+            for (key, value) in &context {
+                map.insert(key.clone(), render.value(value));
+            }
+            handler(&name, &Value::Object(map).to_string());
+        }))
     }
 }

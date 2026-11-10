@@ -49,11 +49,11 @@ fn demo_state() -> TableState<Item> {
             TableColumn::new("name", "Name")
                 .sort_by(|row: &Item| row.name.clone())
                 .filterable(|row: &Item, query: &str| row.name.contains(query))
-                .width(ColWidth::Fixed(100.0))
+                .width(ColumnWidth::Fixed(100.0))
                 .cell(|row: &Item| container().child(text(row.name.clone()))),
             TableColumn::new("count", "Count")
                 .sort_by(|row: &Item| row.count)
-                .width(ColWidth::Fixed(100.0))
+                .width(ColumnWidth::Fixed(100.0))
                 .cell(|row: &Item| container().child(text(row.count.to_string()))),
         ],
     )

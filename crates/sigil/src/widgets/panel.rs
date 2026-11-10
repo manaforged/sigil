@@ -1,9 +1,10 @@
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
 const TITLE_GAP: f32 = space(2);
@@ -12,13 +13,22 @@ const TITLE_GAP: f32 = space(2);
 pub struct PanelBuilder {
     /// The title, if any.
     pub title: Option<String>,
-    /// The padding.
-    pub padding: Space,
     /// The elevation.
     pub elevation: u32,
     content: Option<Box<dyn IntoNode>>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for PanelBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PanelBuilder")
+            .field("title", &self.title)
+            .field("elevation", &self.elevation)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A titled panel.
@@ -33,7 +43,6 @@ impl PanelBuilder {
     pub fn new() -> Self {
         Self {
             title: None,
-            padding: Space::Lg,
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
@@ -45,13 +54,6 @@ impl PanelBuilder {
     #[must_use]
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
-        self
-    }
-
-    /// Sets the padding.
-    #[must_use]
-    pub fn padding(mut self, padding: impl Into<Space>) -> Self {
-        self.padding = padding.into();
         self
     }
 
@@ -74,10 +76,10 @@ impl PanelBuilder {
             .role(Role::GenericContainer)
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(self.padding)
+                    .padding(Space::Lg)
                     .gap(Space::px(TITLE_GAP))
                     .fill_width()
-                    .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
+                    .min_size(crate::layout::Length::Auto, PANEL_MIN_HEIGHT),
             )
             .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
@@ -94,11 +96,7 @@ impl PanelBuilder {
             root = root.child(child);
         }
 
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 
@@ -112,7 +110,7 @@ builder_impls!([] PanelBuilder: paint(style_accumulator), widget, node);
 
 const fn raised(shadow: Elevation) -> [StyleAtom; 4] {
     [
-        Token::SurfaceHover.bg(),
+        Token::SurfaceHover.background(),
         StyleAtom::BorderWidth(BORDER_WIDTH),
         Token::Border.border(),
         StyleAtom::Shadow(shadow),

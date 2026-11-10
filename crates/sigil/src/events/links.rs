@@ -17,12 +17,6 @@ pub(crate) struct LinkText {
     pub(crate) runs: TextRuns,
 }
 
-pub(super) fn default_theme() -> &'static Theme {
-    use std::sync::OnceLock;
-    static THEME: OnceLock<Theme> = OnceLock::new();
-    THEME.get_or_init(Theme::default)
-}
-
 pub(crate) fn link_text(cx: &Cx, id: NodeId) -> Option<LinkText> {
     let node = cx.get(id)?;
     let NodeType::Text { content, wrap, .. } = &node.kind else {
@@ -35,7 +29,7 @@ pub(crate) fn link_text(cx: &Cx, id: NodeId) -> Option<LinkText> {
     let rect = node
         .get_extension::<LayoutResult>()
         .map(LayoutResult::rect)?;
-    let mut theme = default_theme();
+    let mut theme = crate::style::theme::fallback_theme();
     let mut base = Rc::new(TextStyle::default());
     for step in path_to_node(cx, id) {
         let Some(at) = cx.get(step) else {

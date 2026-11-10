@@ -2,18 +2,20 @@ use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::prelude::PointerEvent;
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
-    ClassSource, ColorAtom, DISABLED_OPACITY, Radius, Rgba8, StateSlot, StateStyle, StyleAtom,
+    ClassSource, Color, ColorAtom, DISABLED_OPACITY, Radius, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, Token, space,
 };
-use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Activate, Press, RELEASE, RELEASE_ENTER, press};
+use crate::widgets::{Layout, Widget};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{TabDrag, install_label_drag_hooks};
@@ -38,20 +40,21 @@ pub(super) fn tab_height(chrome: StripChrome) -> f32 {
 }
 
 static TAB_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
-static TAB_REST: &[StyleAtom] = &[Token::Surface.bg()];
-static TAB_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
-static TAB_DOWN: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static TAB_REST: &[StyleAtom] = &[Token::Surface.background()];
+static TAB_HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
+static TAB_DOWN: &[StyleAtom] = &[Token::SurfacePressed.background()];
 static TAB_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
-static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
+static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];
 static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
-static LINE_ACTIVE_HOVER: &[StyleAtom] = &[Token::Accent.border(), Token::SurfaceHover.bg()];
+static LINE_ACTIVE_HOVER: &[StyleAtom] =
+    &[Token::Accent.border(), Token::SurfaceHover.background()];
 static LABEL_MUTED: &[StyleAtom] = &[Token::Gray11.text(), StyleAtom::FontWeight(500)];
 static LABEL_ACTIVE: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(600)];
 static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(700)];
 static LINE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(presets::SMOOTH),
     StyleAtom::BorderBottom(2),
-    StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
+    StyleAtom::BorderColor(ColorAtom::Color(Color {
         r: 0,
         g: 0,
         b: 0,
@@ -123,7 +126,9 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
     let node = interaction.install(
         container()
             .role(Role::Button)
-            .label(AccessibleName::Static(String::from("Close tab")))
+            .label(AccessibleName::Static(theme_string_once(
+                StringKey::CloseTab,
+            )))
             .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
             .class(Radius::Sm.atom())
             .child(

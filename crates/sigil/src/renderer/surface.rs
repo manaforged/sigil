@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct WgpuSurface {
     pub(crate) surface: wgpu::Surface<'static>,
 

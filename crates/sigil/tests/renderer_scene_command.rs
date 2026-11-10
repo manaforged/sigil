@@ -3,7 +3,7 @@ use crate::scene_support;
 use scene_support::rect;
 use sigil::geometry::Rect;
 use sigil::scene::{CornerRadii, DrawRect, SceneBuilder, SceneCommand, Transform};
-use sigil::style::Rgba8;
+use sigil::style::Color;
 
 #[test]
 fn builder_emits_balanced_push_pop_for_with_clip() {
@@ -121,7 +121,7 @@ fn command_scene_clone_is_deep() {
 const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
     DrawRect::new(
         rect,
-        Rgba8 {
+        Color {
             r: 20,
             g: 40,
             b: 80,
@@ -153,6 +153,7 @@ fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {
             SceneCommand::DrawShadow { .. } => "DrawShadow",
             SceneCommand::GlyphRun(_) => "GlyphRun",
             SceneCommand::Path(_) => "Path",
+            _ => "Other",
         })
         .collect()
 }

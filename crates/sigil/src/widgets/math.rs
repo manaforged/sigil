@@ -3,7 +3,9 @@ use rust_latex_parser::EqNode;
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::{JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, signal};
-use crate::widgets::Widget;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
+use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
 
 #[cfg(feature = "scene")]
@@ -35,7 +37,7 @@ pub(crate) fn block(source: &str) -> NodeBuilder {
         return Horizontal::new(signal(width), None)
             .wrap(centred)
             .role(Role::Figure)
-            .label("Math")
+            .label(theme_string_once(StringKey::Math))
             .description(source.trim().to_string());
     }
     text(unicode(source)).into()

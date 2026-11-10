@@ -3,7 +3,7 @@
     reason = "the model spells out the spec formula"
 )]
 
-use sigil::prelude::Rgba8;
+use sigil::prelude::Color;
 use sigil::scene::Filter;
 
 type Rgba = [f32; 4];
@@ -136,7 +136,7 @@ fn step(filter: Filter, c: Rgba) -> Rgba {
     out.map(|v| v.clamp(0.0, 1.0))
 }
 
-pub(crate) fn expected_bytes(filters: &[Filter], input: Rgba8) -> [u8; 3] {
+pub(crate) fn expected_bytes(filters: &[Filter], input: Color) -> [u8; 3] {
     let start = [input.r, input.g, input.b, input.a].map(|v| f32::from(v) / 255.0);
     let [r, g, b, a] = filters.iter().fold(start, |c, filter| step(*filter, c));
     [r, g, b].map(|srgb| (encode(decode(srgb) * a) * 255.0).round() as u8)

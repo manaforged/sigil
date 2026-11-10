@@ -7,7 +7,7 @@
 use sigil::app::{TextTuning, set_text_tuning};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
-use sigil::style::{Rgba8, TextLineHeight, TextStyle};
+use sigil::style::{Color, TextLineHeight, TextStyle};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels};
 
 const BYTES_PER_PIXEL: u32 = 4;
@@ -79,7 +79,7 @@ fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
                 scale: 1.0,
             },
             &scene,
-            sigil::style::Color::BLACK,
+            sigil::style::Rgba::BLACK,
         )
         .expect("render_command_scene_offscreen");
 
@@ -104,7 +104,7 @@ fn build_text_scene() -> CommandScene {
     let run = shape_glyph_run(
         rect,
         TEXT.to_string(),
-        Rgba8 {
+        Color {
             r: 255,
             g: 255,
             b: 255,

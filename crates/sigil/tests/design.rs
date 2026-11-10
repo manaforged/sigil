@@ -2,10 +2,9 @@
 
 #[path = "design_support/mod.rs"]
 mod design_support;
-#[path = "design/flaws.rs"]
-mod flaws;
 
 use design_support::{Ink, frame, ink, page, shadow_rows};
+use sigil::layout::audit::{Flaw, Issue};
 use sigil::prelude::*;
 use sigil::widgets::ButtonBuilder;
 use sigil_kittest::Harness;
@@ -196,95 +195,121 @@ fn a_row_centres_short_children_against_tall_ones() {
     assert!((tall.y - short.y).abs() < 0.5, "{} and {}", tall.y, short.y);
 }
 
-const LONG: &str = "A sentence long enough to need more than one line in a narrow window";
-
-#[test]
-fn long_text_in_a_row_wraps_inside_the_window_and_pushes_later_widgets_down() {
-    let mut ui = Harness::new(|| {
-        column()
-            .child(
-                row()
-                    .child(button("A"))
-                    .child(text(LONG))
-                    .child(button("B")),
-            )
-            .child(button("Below"))
-    })
-    .pixels(200, 400);
-    let last = ui.get_by_role(Role::Button, "B").bounds().unwrap();
-    let below = ui.get_by_role(Role::Button, "Below").bounds().unwrap();
-    assert!(last.origin.x + last.width <= 200.5, "B ends at {last:?}");
-    assert!(below.width <= 200.5, "the column is {} wide", below.width);
-    assert!(
-        below.origin.y >= last.origin.y + last.height,
-        "{below:?} under {last:?}"
-    );
-    assert!(
-        below.origin.y >= 3.0 * 16.0,
-        "three lines of text end above {below:?}"
-    );
+fn kinds(ui: &mut Harness) -> Vec<Flaw> {
+    ui.flaws().iter().map(Issue::kind).collect()
 }
 
 #[test]
-fn a_text_field_keeps_a_usable_width_inside_a_nested_row() {
+fn text_taller_than_its_clip_is_a_flaw() {
     let mut ui = Harness::new(|| {
-        row()
-            .child(
-                row()
-                    .child(text_field(signal(String::new())))
-                    .child(button("Go")),
-            )
-            .child(text("Words"))
+        page(
+            container()
+                .layout(
+                    LayoutStyle::block()
+                        .fill_width()
+                        .height(10.0)
+                        .overflow_y(Overflow::Hidden),
+                )
+                .child(text("Clipped").text_role(TextRole::Display)),
+        )
     })
-    .pixels(1280, 200);
-    let field = ui
-        .get_by_role(Role::TextInput, "Text field")
-        .bounds()
-        .unwrap();
-    assert!(field.width >= 96.0, "the field is {} wide", field.width);
+    .pixels(360, 160)
+    .unaudited();
+    assert!(kinds(&mut ui).contains(&Flaw::ClippedText));
 }
 
 #[test]
-fn a_button_keeps_its_label_when_a_field_fills_its_row() {
+fn controls_of_two_heights_in_a_row_are_a_flaw() {
     let mut ui = Harness::new(|| {
-        row()
-            .child(text_field(signal(String::new())))
-            .child(button("Save changes"))
+        page(
+            row()
+                .child(button("Tall").height(64.0))
+                .child(button("Short")),
+        )
     })
-    .pixels(360, 200);
-    let alone = {
-        let mut lone = Harness::new(|| row().child(button("Save changes"))).pixels(360, 200);
-        lone.get_by_role(Role::Button, "Save changes")
-            .bounds()
-            .unwrap()
-            .width
+    .pixels(360, 160)
+    .unaudited();
+    assert!(kinds(&mut ui).contains(&Flaw::UnevenControls));
+}
+
+#[test]
+fn siblings_on_top_of_each_other_are_a_flaw() {
+    let mut ui =
+        Harness::new(|| {
+            page(column().gap(Space::None).child(button("First")).child(
+                button("Second").layout(LayoutStyle::flex_row().margin_top(Length::Px(-20.0))),
+            ))
+        })
+        .pixels(360, 160)
+        .unaudited();
+    assert!(kinds(&mut ui).contains(&Flaw::Overlap));
+}
+
+#[test]
+fn a_child_wider_than_its_parent_is_a_flaw() {
+    let mut ui = Harness::new(|| {
+        page(
+            container()
+                .layout(LayoutStyle::block().width(40.0).height(40.0))
+                .child(container().layout(LayoutStyle::block().width(200.0).height(20.0))),
+        )
+    })
+    .pixels(360, 160)
+    .unaudited();
+    assert!(kinds(&mut ui).contains(&Flaw::Overflow));
+}
+
+#[test]
+fn faint_text_is_a_flaw_and_theme_text_is_not() {
+    let faint = Color {
+        r: 200,
+        g: 200,
+        b: 200,
+        a: 255,
     };
-    let saved = ui
-        .get_by_role(Role::Button, "Save changes")
-        .bounds()
-        .unwrap();
-    assert!(
-        (saved.width - alone).abs() < 0.5,
-        "{} and {alone}",
-        saved.width
-    );
+    let mut bad = Harness::new(move || {
+        page(text("Faint").text_color(faint)).background(Color {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        })
+    })
+    .pixels(360, 160)
+    .unaudited();
+    assert!(kinds(&mut bad).contains(&Flaw::Contrast));
+    let mut good =
+        Harness::new(|| page(text("Clear").text_color(Token::OnSurface))).pixels(360, 160);
+    assert!(!kinds(&mut good).contains(&Flaw::Contrast));
 }
 
 #[test]
-fn every_button_fill_has_the_same_width() {
-    let width = |fill: fn(ButtonBuilder) -> ButtonBuilder| {
-        let mut ui = Harness::new(move || fill(button("Go"))).pixels(200, 80);
-        ui.get_by_role(Role::Button, "Go").bounds().unwrap().width
-    };
-    let plain = width(|b| b);
-    for (name, fill) in [
-        (
-            "primary",
-            ButtonBuilder::primary as fn(ButtonBuilder) -> ButtonBuilder,
-        ),
-        ("outline", ButtonBuilder::outline),
-        ("ghost", ButtonBuilder::ghost),
-    ] {
-        assert!((width(fill) - plain).abs() < 0.5, "{name}");
-    }
+fn a_button_under_the_target_size_is_a_flaw() {
+    let mut ui = Harness::new(|| page(row().child(button("Hi").height(16.0))))
+        .pixels(360, 160)
+        .unaudited();
+    assert!(kinds(&mut ui).contains(&Flaw::SmallTarget));
 }
+
+#[test]
+fn allow_flaw_opts_a_node_out_of_one_rule() {
+    let mut ui = Harness::new(|| {
+        page(
+            row()
+                .child(button("Hi").height(16.0))
+                .allow_flaw(Flaw::SmallTarget, "dense toolbar"),
+        )
+    })
+    .pixels(360, 160);
+    assert!(!kinds(&mut ui).contains(&Flaw::SmallTarget));
+}
+
+#[test]
+#[should_panic(expected = "design flaws")]
+fn a_harness_fails_a_flawed_screen_when_it_is_dropped() {
+    let mut ui = Harness::new(|| page(row().child(button("Hi").height(16.0)))).pixels(360, 160);
+    ui.settle();
+}
+
+#[path = "design/rows.rs"]
+mod rows;

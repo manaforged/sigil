@@ -7,7 +7,7 @@ use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, Gradient, GradientKind, GradientStop, SceneBuilder,
     shape_glyph_run,
 };
-use sigil::style::{Color, TextStyle};
+use sigil::style::{Rgba, TextStyle};
 use sigil_kittest::gpu::{Capture, headless_renderer, read_pixels, render_capture, shared_device};
 
 const VIEW: (f32, f32) = (1250.0, 800.0);
@@ -16,8 +16,8 @@ const ROWS: u32 = 20;
 const RADIUS: f32 = 10.0;
 const ROUNDS: usize = 40;
 const WARM: usize = 5;
-const FROM: Rgba8 = super::rgb(250, 120, 40);
-const TO: Rgba8 = super::rgb(40, 60, 200);
+const FROM: Color = super::rgb(250, 120, 40);
+const TO: Color = super::rgb(40, 60, 200);
 
 fn card(index: u32) -> Rect {
     let (w, h) = (VIEW.0 / COLS as f32, VIEW.1 / ROWS as f32);
@@ -86,15 +86,12 @@ fn paths() -> CommandScene {
 
 fn frame(renderer: &mut WgpuRenderer, scene: &CommandScene) -> f64 {
     let (device, queue) = shared_device().expect("sigil-kittest").expect("adapter");
-    let capture = Capture {
-        viewport: VIEW,
-        size_px: [(VIEW.0 * 2.0) as u32, (VIEW.1 * 2.0) as u32],
-        scale: 2.0,
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
-    };
+    let capture = Capture::new(VIEW, [(VIEW.0 * 2.0) as u32, (VIEW.1 * 2.0) as u32])
+        .scale(2.0)
+        .clear(Rgba::new(1.0, 1.0, 1.0, 1.0));
     let start = Instant::now();
     let texture = render_capture(renderer, (device, queue), scene, &capture).expect("render");
-    let [w, h] = capture.size_px;
+    let [w, h] = capture.size_px();
     std::hint::black_box(read_pixels(device, queue, &texture, w, h).expect("readback"));
     start.elapsed().as_secs_f64() * 1e3
 }

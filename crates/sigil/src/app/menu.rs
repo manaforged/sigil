@@ -1,6 +1,5 @@
-use std::cell::{Cell, RefCell};
-
-use crate::app::platform::{Bridge, Wake};
+use crate::app::Wake;
+use crate::app::bridge::Native;
 use crate::error::{AppResult, Error, ErrorKind};
 use crate::events::{Key, LogicalKey, ModifiersState, Shortcut};
 use crate::reactive::EventChannel;
@@ -12,11 +11,7 @@ const NATIVE_MENU_BAR: bool = cfg!(any(target_os = "macos", target_os = "windows
 const UNSUPPORTED: &str = "native menu bars are unsupported on this platform";
 
 thread_local! {
-    static PENDING: RefCell<Option<Menu>> = const { RefCell::new(None) };
-    static INSTALLED: RefCell<Option<muda::Menu>> = const { RefCell::new(None) };
-    static EVENTS: EventChannel<String> = EventChannel::new();
-    static BRIDGE: Bridge<String> = Bridge::new();
-    static CONNECTED: Cell<bool> = const { Cell::new(false) };
+    static NATIVE: Native<Menu, muda::Menu, String> = Native::new();
 }
 
 /// A menu item the platform implements.
@@ -172,14 +167,14 @@ impl Menu {
         if !NATIVE_MENU_BAR {
             return Err(Error::fixed(ErrorKind::Other, UNSUPPORTED));
         }
-        PENDING.with(|slot| *slot.borrow_mut() = Some(self));
+        NATIVE.with(|native| native.queue(self));
         Ok(())
     }
 
     /// The id of each menu item the user picks.
     #[must_use]
     pub fn events() -> EventChannel<String> {
-        EVENTS.with(Clone::clone)
+        NATIVE.with(Native::events)
     }
 
     pub(crate) fn native(&self) -> Result<muda::Menu, String> {
@@ -271,7 +266,7 @@ pub fn simulate(id: impl Into<String>) {
 }
 
 pub(crate) fn has_pending() -> bool {
-    PENDING.with(|slot| slot.borrow().is_some())
+    NATIVE.with(Native::has_pending)
 }
 
 pub(crate) fn install(hwnd: Option<isize>, wake: Wake) {
@@ -285,25 +280,24 @@ pub(crate) fn install(hwnd: Option<isize>, wake: Wake) {
 }
 
 pub(crate) fn connect(wake: Wake) {
-    if CONNECTED.replace(true) {
+    let Some(sink) = NATIVE.with(|native| native.sink_once(wake)) else {
         return;
-    }
-    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    };
     MenuEvent::set_event_handler(Some(move |event: MenuEvent| sink(event.id.0)));
 }
 
 pub(crate) fn pump() {
-    BRIDGE.with(|bridge| EVENTS.with(|channel| bridge.forward(channel)));
+    NATIVE.with(Native::pump);
 }
 
-fn install_menu(hwnd: Option<isize>) -> Result<(), String> {
-    let Some(menu) = PENDING.with(|slot| slot.borrow_mut().take()) else {
-        return Ok(());
-    };
-    let menu = menu.native()?;
-    install_native(&menu, hwnd)?;
-    INSTALLED.with(|slot| *slot.borrow_mut() = Some(menu));
-    Ok(())
+fn install_menu(hwnd: Option<isize>) -> Result<bool, String> {
+    NATIVE.with(|native| {
+        native.install(|menu| {
+            let menu = menu.native()?;
+            install_native(&menu, hwnd)?;
+            Ok(menu)
+        })
+    })
 }
 
 pub(crate) fn accelerator(shortcut: &Shortcut) -> Result<KeyAccelerator, String> {
@@ -363,7 +357,7 @@ fn install_native(menu: &muda::Menu, _hwnd: Option<isize>) -> Result<(), String>
 )]
 fn install_native(menu: &muda::Menu, hwnd: Option<isize>) -> Result<(), String> {
     let hwnd = hwnd.ok_or_else(|| "main window has no Win32 handle".to_string())?;
-    // SAFETY: `hwnd` comes from the live winit window the shell still owns; `INSTALLED` keeps `menu` alive after this call.
+    // SAFETY: `hwnd` comes from the live winit window the shell still owns; `NATIVE` keeps `menu` alive after this call.
     unsafe { menu.init_for_hwnd(hwnd) }.map_err(|error| error.to_string())
 }
 

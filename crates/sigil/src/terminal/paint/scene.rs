@@ -8,8 +8,8 @@ use crate::scene::{
     CellBorder, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawRect, GlyphRun,
     Gradient, LayerEffect, SceneCommand,
 };
-use crate::style::{Rgba8, Theme};
-use crate::terminal::caps::{Caps, Fills};
+use crate::style::{Color, Theme};
+use crate::terminal::caps::{Capabilities, Fills};
 
 use super::decoration::{self, BorderEdge};
 use super::fill::{self, FillSurface};
@@ -23,7 +23,7 @@ mod path;
 pub(crate) struct CellPaint<'a> {
     pub theme: &'a Theme,
     pub cell: f32,
-    pub caps: Caps,
+    pub caps: Capabilities,
     pub marks: &'a Marks,
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, 
     let paint = CellPaint {
         theme,
         cell,
-        caps: Caps::default(),
+        caps: Capabilities::default(),
         marks: &marks,
     };
     raster_with(grid, scene, &paint);
@@ -90,7 +90,7 @@ fn hull(regions: &[Rect]) -> Option<[f32; 4]> {
     })
 }
 
-fn gradient_flat(gradient: &Gradient) -> Rgba8 {
+fn gradient_flat(gradient: &Gradient) -> Color {
     crate::scene::command::fills::color_at(&gradient.stops, 0.5)
 }
 
@@ -234,7 +234,7 @@ impl CellWalk<'_> {
         clippy::cast_sign_loss,
         reason = "alpha is clamped to the u8 range before the cast"
     )]
-    fn fade(&self, color: Rgba8, opacity: u16) -> Rgba8 {
+    fn fade(&self, color: Color, opacity: u16) -> Color {
         let layers = self.state.current_opacity();
         let scale = layers * f32::from(opacity.min(10_000)) / 10_000.0;
         if scale >= 1.0 {
@@ -243,7 +243,7 @@ impl CellWalk<'_> {
         let a = (f32::from(color.a) * scale.max(0.0))
             .round()
             .clamp(0.0, 255.0) as u8;
-        Rgba8 { a, ..color }
+        Color { a, ..color }
     }
 
     fn area(&self, rect: Rect) -> Option<SceneArea> {

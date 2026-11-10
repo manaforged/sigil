@@ -3,30 +3,39 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::animation_runtime::style::StyleAnimator;
+use crate::animation::Property;
+use crate::animation::runtime::style::StyleAnimator;
 use crate::kernel::NodeTag;
 use crate::reactive::Signal;
 use crate::style::merge::SlotSet;
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StateSlot, StyleAtom, StyleOverlay,
+    AnimatorOverlay, Color, ColorAtomKind, NumericAtomKind, StateSlot, StyleAtom, StyleOverlay,
     Theme, Tone, merge_classes,
 };
 
 pub(crate) type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
+#[derive(Clone, Copy, Debug)]
+struct Driven {
+    property: fn(f32) -> Property,
+    value: Signal<f32>,
+}
+
 kittest_pub! {
+    #[doc(hidden)]
     pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 }
 
 kittest_pub! {
     #[derive(Default)]
+    #[doc(hidden)]
     pub struct StyleBinding {
         static_atoms: &'static [StyleAtom],
         dynamic_atoms: SmallVec<[StyleAtom; 16]>,
         reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
         state_overlay: Option<Box<StyleOverlay>>,
-        animated_values: SmallVec<[(NumericAtomKind, Signal<f32>); 2]>,
+        animated_values: SmallVec<[Driven; 2]>,
         state_overlay_slot: Option<ReactiveStateSlot>,
         widget_channels: Option<usize>,
         user_slots: SlotSet,
@@ -63,6 +72,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn owned_atoms(dynamic_atoms: SmallVec<[StyleAtom; 16]>) -> Self {
             Self {
                 dynamic_atoms,
@@ -73,6 +83,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn reactive_atoms(reactive_atoms: ReactiveStyleAtoms) -> Self {
             let mut binding = Self::default();
             binding.add_reactive(reactive_atoms);
@@ -93,6 +104,7 @@ impl StyleBinding {
     }
 
     kittest_pub! {
+        #[doc(hidden)]
         pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
             self.reactive_channels.iter().map(|atoms| atoms.get())
         }
@@ -106,6 +118,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn has_reactive(&self) -> bool {
             !self.reactive_channels.is_empty()
                 || self.state_overlay_slot.is_some()
@@ -192,15 +205,17 @@ impl StyleBinding {
         }
     }
 
-    pub(crate) fn bind_animation(&mut self, kind: NumericAtomKind, value: Signal<f32>) {
+    pub(crate) fn bind_animation(&mut self, property: fn(f32) -> Property, value: Signal<f32>) {
+        let driven = Driven { property, value };
+        let same = core::mem::discriminant(&property(0.0));
         if let Some(entry) = self
             .animated_values
             .iter_mut()
-            .find(|entry| entry.0 == kind)
+            .find(|entry| core::mem::discriminant(&(entry.property)(0.0)) == same)
         {
-            entry.1 = value;
+            *entry = driven;
         } else {
-            self.animated_values.push((kind, value));
+            self.animated_values.push(driven);
         }
     }
 
@@ -208,7 +223,7 @@ impl StyleBinding {
         &self,
         theme: &Theme,
         tone: Tone,
-        inherited_text: Rgba8,
+        inherited_text: Color,
         tag: Option<NodeTag>,
     ) {
         let atoms: SmallVec<[StyleAtom; 32]> = self.cascade().collect();
@@ -292,8 +307,8 @@ impl AnimatorOverlay for StyleBinding {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
         self.animated_values
             .iter()
-            .find(|entry| entry.0 == kind)
-            .map(|entry| entry.1.peek())
+            .rev()
+            .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
             .or_else(|| {
                 self.attached_animators
                     .get()
@@ -301,7 +316,7 @@ impl AnimatorOverlay for StyleBinding {
             })
     }
 
-    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color> {
         self.attached_animators
             .get()
             .and_then(|overlay| overlay.value_for_color(kind))

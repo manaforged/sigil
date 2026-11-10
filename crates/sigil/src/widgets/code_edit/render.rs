@@ -2,16 +2,16 @@ use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{ColorAtom, Paint, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::super::highlight::Highlight;
 use super::{
-    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, LineWindow, RUN_CLASS,
-    SELECTION, SelRange,
+    CHANGE_BAR_W, Change, DIGIT_W, Diagnostic, GUTTER_PAD, LineWindow, RUN_CLASS, SELECTION,
+    SelRange, Severity,
 };
 
-type DiagRange = (usize, usize, DiagSeverity);
+type DiagRange = (usize, usize, Severity);
 
 #[derive(Clone, Copy)]
 pub(super) struct EditRowCtx<'a> {
@@ -19,12 +19,12 @@ pub(super) struct EditRowCtx<'a> {
     pub(super) caret_shown: bool,
     pub(super) selection: Option<SelRange>,
     pub(super) gutter: Option<GutterCtx<'a>>,
-    pub(super) diagnostics: &'a [DiagSpan],
+    pub(super) diagnostics: &'a [Diagnostic],
 }
 
 #[derive(Clone, Copy)]
 pub(super) struct GutterCtx<'a> {
-    pub(super) marks: &'a [Option<ChangeKind>],
+    pub(super) marks: &'a [Option<Change>],
     pub(super) width: f32,
 }
 
@@ -38,7 +38,7 @@ struct RowDecor {
 #[derive(Clone, Copy)]
 struct RowGutter {
     number: usize,
-    mark: Option<ChangeKind>,
+    mark: Option<Change>,
     width: f32,
 }
 
@@ -183,12 +183,12 @@ fn styled_row(
                 .filter(|(start, end, _)| *start <= a && a < *end)
                 .map(|(_, _, severity)| *severity)
                 .max()
-                .map(DiagSeverity::tint_token)
+                .map(Severity::tint_token)
         };
         row = match tint {
             Some(tint) => row.child(
                 row_container(row_h)
-                    .class(tint.bg())
+                    .class(tint.background())
                     .child(run_text(seg, token)),
             ),
             None => row.child(run_text(seg, token)),
@@ -213,10 +213,10 @@ fn gutter_cell(g: RowGutter, row_h: f32) -> NodeBuilder {
         .child(number_text(g.number, row_h))
 }
 
-fn change_bar(mark: Option<ChangeKind>, row_h: f32) -> NodeBuilder {
+fn change_bar(mark: Option<Change>, row_h: f32) -> NodeBuilder {
     let bar = container().layout(LayoutStyle::flex_row().width(CHANGE_BAR_W).height(row_h));
     match mark {
-        Some(kind) => bar.class(kind.bar_token().bg()),
+        Some(kind) => bar.class(kind.bar_token().background()),
         None => bar,
     }
 }
@@ -259,5 +259,5 @@ fn row_container(row_h: f32) -> NodeBuilder {
 fn caret_block(row_h: f32) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().width(2.0).height(row_h * 0.8))
-        .class(Token::OnSurface.bg())
+        .class(Token::OnSurface.background())
 }

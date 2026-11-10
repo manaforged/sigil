@@ -9,7 +9,7 @@ use crate::reactive::Owner;
 fn dot_is_a_generic_ring_around_one_fill() {
     Owner::scope("dot-ring-and-fill", || {
         let mut cx = Cx::new_root();
-        let id = dot(Tone::Warn).build(&mut cx);
+        let id = dot(Tone::Warning).build(&mut cx);
         let node = cx.get(id).expect("dot node exists");
         assert_eq!(node.a11y.role, crate::kernel::Role::GenericContainer);
         assert_eq!(

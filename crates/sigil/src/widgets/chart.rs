@@ -1,4 +1,4 @@
-use crate::layout::audit::FlawKind;
+use crate::layout::audit::Flaw;
 use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::widget::Widget as _;
 use std::ops::Range;
@@ -103,6 +103,19 @@ pub struct ChartBuilder {
     scales: scales::Scales,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
+}
+
+impl core::fmt::Debug for ChartBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ChartBuilder")
+            .field("labels", &self.labels)
+            .field("mark", &self.mark)
+            .field("stack", &self.stack)
+            .field("crosshair", &self.crosshair)
+            .field("tooltip", &self.tooltip)
+            .field("whole", &self.whole)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A bar, line, area, scatter, pie, or candle chart.
@@ -304,9 +317,10 @@ impl ChartBuilder {
             .unwrap_or_else(|| self.natural_height())
             .max(MIN_HEIGHT);
         if let Some(px) = width {
-            self.layout_overrides.edit(LayoutEdit::Width(px));
+            self.layout_overrides.edit(LayoutEdit::Width(px.into()));
         }
-        self.layout_overrides.edit(LayoutEdit::Height(height));
+        self.layout_overrides
+            .edit(LayoutEdit::Height(height.into()));
         plot::PlotFrame {
             width,
             height,
@@ -318,10 +332,10 @@ impl ChartBuilder {
     fn root(self) -> NodeBuilder {
         const REASON: &str = "marks and axis labels sit where the data puts them";
         self.plot()
-            .allow_flaw(FlawKind::Inset, REASON)
-            .allow_flaw(FlawKind::Column, REASON)
-            .allow_flaw(FlawKind::Overflow, REASON)
-            .allow_flaw(FlawKind::Overlap, REASON)
+            .allow_flaw(Flaw::Inset, REASON)
+            .allow_flaw(Flaw::Column, REASON)
+            .allow_flaw(Flaw::Overflow, REASON)
+            .allow_flaw(Flaw::Overlap, REASON)
     }
 
     fn plot(mut self) -> NodeBuilder {
@@ -351,13 +365,10 @@ impl ChartBuilder {
             derived(move || series.with(|series| summary::summary(series, &label_names, theme)));
         let interact = interact::Interact::new(self.x_range, self.crosshair, self.tooltip);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
-        let mut root = figure::frame(look.frame).mutate(move |target| {
+        let root = figure::frame(look.frame).mutate(move |target| {
             target.a11y.description = Some(AccessibleName::Derived(description));
         });
-        if !paint.is_empty() {
-            root = root.style(paint);
-        }
-        root.children_reactive(move || {
+        super::shared::caller_style(root, paint).children_reactive(move || {
             series.with(|series| {
                 figure::content(series, &labels, positions.as_deref(), &look, &interact)
             })

@@ -68,7 +68,7 @@ pub(super) fn glyph_fill(run: &GlyphRun, gradient: &Gradient) -> Option<DrawPath
 }
 
 /// The color a host that cannot fill glyphs with a gradient draws the text in.
-pub(super) fn flat_color(gradient: &Gradient) -> crate::style::Rgba8 {
+pub(super) fn flat_color(gradient: &Gradient) -> crate::style::Color {
     color_at(&gradient.normalized().stops, 0.5)
 }
 

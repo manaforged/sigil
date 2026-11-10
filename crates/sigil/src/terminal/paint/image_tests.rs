@@ -2,7 +2,7 @@ use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageSource, ObjectFit};
 use crate::scene::command::{CommandScene, DrawImage, SceneCommand};
 use crate::style::Theme;
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::paint::{CellPaint, Grid, Marks, raster_with};
 
 fn placed(cell: Option<[u16; 2]>, fit: ObjectFit) -> (u16, u16) {
@@ -21,9 +21,9 @@ fn placed(cell: Option<[u16; 2]>, fit: ObjectFit) -> (u16, u16) {
     let paint = CellPaint {
         theme: &theme,
         cell: 8.0,
-        caps: Caps {
+        caps: Capabilities {
             cell,
-            ..Caps::default()
+            ..Capabilities::default()
         },
         marks: &marks,
     };

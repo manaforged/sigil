@@ -1,9 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
-use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::text::ParagraphMetrics as _;
 
 const LABEL: &str = "Waiting for restock";
 

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
 use crate::scene::command::effects::transform_point;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
@@ -23,6 +23,7 @@ use crate::renderer::slug::{
 };
 use crate::renderer::split_encoder::SplitEncoder;
 
+#[derive(Debug)]
 pub struct DrawParams<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
@@ -38,7 +39,7 @@ pub struct DrawParams<'a> {
     pub glyphs: Option<&'a [RenderedGlyph]>,
     pub origin: (f32, f32),
     pub transform: [[f32; 3]; 2],
-    pub color: Option<Color>,
+    pub color: Option<Rgba>,
     #[cfg(any(test, feature = "kittest"))]
     pub clip: Option<Rect>,
 }
@@ -87,6 +88,14 @@ pub struct SlugTextPipeline {
     cache: GlyphCache,
     quad_vb: wgpu::Buffer,
     atlas: GlyphAtlas,
+}
+
+impl core::fmt::Debug for SlugTextPipeline {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SlugTextPipeline")
+            .field("format", &self.format)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SlugTextPipeline {
