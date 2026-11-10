@@ -35,7 +35,7 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(
         AppConfig::new("orbit - Sigil editor").size(WINDOW_W, WINDOW_H),
         || {
-            set_theme(Theme::dark());
+            Theme::dark().apply();
             app()
         },
     )

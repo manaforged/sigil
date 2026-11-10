@@ -153,7 +153,7 @@ fn typography_atoms_drive_text_measurement() {
         text("Type")
             .font_size(20.0, "test fixture")
             .font_weight(700)
-            .line_height_px(32.0),
+            .line_height(32.0),
     );
 
     LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))

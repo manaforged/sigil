@@ -89,7 +89,7 @@ fn app_tree() -> impl IntoNode {
 
 `run` detects one `sigil::terminal::Capabilities` when it starts. It reads the environment first. For what the environment leaves open, `run` sends a DEC 2026 mode query, a Kitty keyboard query, an OSC 11 background query, and DA1, and waits up to 1 s for the reply. Graphics come from the environment alone.
 
-On a dark backdrop, `run` starts with `Theme::dark()` unless `AppConfig::theme_file` is set. `set_theme` from the app still wins. `Capabilities::detect` runs the environment step alone.
+On a dark backdrop, `run` starts with `Theme::dark()` unless `AppConfig::theme_file` is set. `Theme::apply` from the app still wins. `Capabilities::detect` runs the environment step alone.
 
 | Capability | Environment | Query | Fallback |
 | --- | --- | --- | --- |

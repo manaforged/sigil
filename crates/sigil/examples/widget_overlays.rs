@@ -40,7 +40,7 @@ pub(crate) fn menu_demo(open: Signal<bool>) -> impl IntoNode {
     menu(open)
         .label("Edit")
         .anchor(16.0, 16.0)
-        .item(MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {}))
+        .item(MenuItem::new("Undo").hint("Ctrl+Z").activate(|| {}))
         .item(MenuItem::new("Redo").disabled(true))
         .separator()
         .item(MenuItem::new("Share").submenu(true))
@@ -51,8 +51,8 @@ pub(crate) fn menu_bar_demo() -> impl IntoNode {
         "File",
         [
             MenuItem::new("New").activate(|| {}),
-            MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
-            MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
+            MenuItem::new("Open").hint("Ctrl+O").activate(|| {}),
+            MenuItem::new("Quit").hint("Ctrl+Q").activate(|| {}),
         ],
     )
 }

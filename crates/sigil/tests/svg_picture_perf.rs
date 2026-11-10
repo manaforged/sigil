@@ -15,7 +15,7 @@
 use std::time::{Duration, Instant};
 
 use sigil::Host;
-use sigil::app::{FrameHooks, set_theme};
+use sigil::app::FrameHooks;
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -119,7 +119,7 @@ fn median(mut samples: Vec<Duration>) -> f64 {
 fn measure(name: &str, mut painter: Painter) {
     Owner::scope("svg_picture_perf", || {
         let mut host = Host::new(HostMode::Pixel);
-        set_theme(Theme::light());
+        Theme::light().apply();
         host.mount(transcript());
         for _ in 0..3 {
             painter.paint(&mut host);
@@ -130,11 +130,12 @@ fn measure(name: &str, mut painter: Painter) {
             let steady_start = Instant::now();
             painter.paint(&mut host);
             steady.push(steady_start.elapsed());
-            set_theme(if round % 2 == 0 {
+            (if round % 2 == 0 {
                 Theme::dark()
             } else {
                 Theme::light()
-            });
+            })
+            .apply();
             let switch_start = Instant::now();
             painter.paint(&mut host);
             switch.push(switch_start.elapsed());

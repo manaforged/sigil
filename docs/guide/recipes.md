@@ -109,7 +109,7 @@ A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained builder met
 
 ## Theme switching
 
-`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `set_theme` replaces the active theme at the next frame, on the window and on the terminal host.
+`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -117,7 +117,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let dark = signal(false);
     container().child(toggle(dark)).child(button("Apply").activate(move || {
-        set_theme(if dark.get() { Theme::dark() } else { Theme::light() });
+        (if dark.get() { Theme::dark() } else { Theme::light() }).apply();
     }))
 }
 
@@ -157,7 +157,7 @@ surface = "#101014"
 
 fn tree() -> impl IntoNode {
     if let Ok(theme) = SOURCE.parse::<Theme>() {
-        set_theme(theme);
+        theme.apply();
     }
     text("Custom theme")
 }

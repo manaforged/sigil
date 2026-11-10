@@ -320,7 +320,7 @@ fn chrome_page() -> NodeBuilder {
             "File",
             [
                 MenuItem::new("New").activate(|| {}),
-                MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
+                MenuItem::new("Quit").hint("Ctrl+Q").activate(|| {}),
             ],
         ))
         .child(section_label("Panel and card"))

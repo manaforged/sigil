@@ -276,7 +276,7 @@ fn menu_accepts_styled_surface() {
         let build = menu(signal(true))
             .label("File menu")
             .item(MenuItem::new("New"))
-            .item(MenuItem::new("Save").shortcut("Ctrl+S"))
+            .item(MenuItem::new("Save").hint("Ctrl+S"))
             .separator()
             .item(MenuItem::new("Quit"))
             .background(A)
@@ -288,11 +288,11 @@ fn menu_accepts_styled_surface() {
 #[test]
 fn menu_item_chain_works() {
     let item = MenuItem::new("Save As\u{2026}")
-        .shortcut("Ctrl+Shift+S")
+        .hint("Ctrl+Shift+S")
         .disabled(true)
         .submenu(false);
     assert_eq!(item.label, "Save As\u{2026}");
-    assert_eq!(item.shortcut.as_deref(), Some("Ctrl+Shift+S"));
+    assert_eq!(item.hint.as_deref(), Some("Ctrl+Shift+S"));
     assert!(item.disabled);
     assert!(!item.submenu_indicator);
 }

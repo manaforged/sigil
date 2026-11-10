@@ -74,7 +74,7 @@ fn reload(
         let file = path.clone();
         dispatch_to_owner(&dispatcher, owner, move || {
             if let Some(theme) = crate::app::theme_file::load(&file) {
-                crate::app::set_theme(theme);
+                theme.apply();
             }
         });
     }

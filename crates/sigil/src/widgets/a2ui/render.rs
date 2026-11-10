@@ -8,7 +8,7 @@ use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::untrack;
 use crate::style::{Token, space};
-use crate::widgets::{Layout, Widget, button, card, divider_horizontal, divider_vertical, tabs};
+use crate::widgets::{Layout, Orientation, Widget, button, card, divider, tabs};
 
 use super::document::{MAX_BYTES, Surface};
 use super::model::{Model, display};
@@ -202,10 +202,10 @@ impl Render {
             Kind::Tabs { tabs } => self.tabs(tabs),
             Kind::Divider {
                 axis: Axis::Horizontal,
-            } => divider_horizontal(),
+            } => divider(Orientation::Horizontal),
             Kind::Divider {
                 axis: Axis::Vertical,
-            } => divider_vertical(),
+            } => divider(Orientation::Vertical),
             Kind::Button { child, look, event } => self.button(child, *look, event.as_ref()),
             Kind::Unsupported { name } => self.mark(format!("Unsupported component \"{name}\".")),
             input => self.input(input),

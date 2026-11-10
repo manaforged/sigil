@@ -93,7 +93,7 @@ fn menus(ws: Workspace) -> impl IntoNode {
             entries.iter().map(|(label, command)| {
                 let command = *command;
                 let base = MenuItem::new(*label).activate(move || run(ws, command));
-                command.hint().into_iter().fold(base, MenuItem::shortcut)
+                command.hint().into_iter().fold(base, MenuItem::hint)
             }),
         )
     })

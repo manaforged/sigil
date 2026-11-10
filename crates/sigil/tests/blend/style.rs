@@ -15,7 +15,7 @@ fn blended_cell(mode: BlendMode) -> impl IntoNode {
             container()
                 .layout(LayoutStyle::block().fixed_size(CELL, CELL))
                 .background(rgba(SOURCE, 255))
-                .mix_blend(mode),
+                .blend(mode),
         )
 }
 

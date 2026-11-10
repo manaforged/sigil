@@ -40,11 +40,12 @@ pub(crate) fn build() -> impl IntoNode {
         volume: signal(60.0),
     };
     effect(move || {
-        set_theme(if prefs.dark.get() {
+        (if prefs.dark.get() {
             Theme::dark()
         } else {
             Theme::light()
-        });
+        })
+        .apply();
     });
     row()
         .role(Role::Main)

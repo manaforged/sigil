@@ -98,7 +98,7 @@ fn wrapped_label_inside_flex_row_band_wraps() {
 #[test]
 fn grow_fill_does_not_clip_row_labels() {
     use sigil::kernel::{container, node};
-    use sigil::prelude::{AlignItems, LayoutStyle, divider_horizontal};
+    use sigil::prelude::{AlignItems, LayoutStyle, Orientation, divider};
     let grid = present(
         || {
             container()
@@ -126,7 +126,7 @@ fn grow_fill_does_not_clip_row_labels() {
                                         .layout(
                                             LayoutStyle::flex_row().grow(1.0).min_size(0.0, 0.0),
                                         )
-                                        .child(divider_horizontal()),
+                                        .child(divider(Orientation::Horizontal)),
                                 ),
                                 node(container().child(text("RRRRRRRRRRRRRRRR").nowrap())),
                             ]

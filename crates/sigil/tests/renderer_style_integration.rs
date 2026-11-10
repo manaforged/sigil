@@ -72,7 +72,7 @@ fn styled_text_typography_emits_in_scene() {
         text("Large")
             .font_size(20.0, "test fixture")
             .font_weight(700)
-            .line_height_px(32.0),
+            .line_height(32.0),
     );
 
     layout(&mut cx, root);
@@ -243,7 +243,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
             .font_size(18.0, "test fixture")
             .font_weight(700)
             .font_family(FontFamily::Mono)
-            .line_height_px(24.0)
+            .line_height(24.0)
             .child(text("Doom")),
     );
 

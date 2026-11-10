@@ -185,7 +185,6 @@ pub mod fuzzing {
 pub mod prelude {
     #[cfg(feature = "desktop")]
     pub use crate::app::open;
-    pub use crate::app::set_theme;
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::request_focus;
@@ -218,8 +217,8 @@ pub mod prelude {
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        Color, ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States,
-        TextRole, Theme, Token, Tone,
+        Color, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States, TextRole, Theme,
+        Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::view::View;
@@ -228,14 +227,14 @@ pub mod prelude {
         ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
         SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, a2ui, app_shell,
         avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
-        command_menu, context_menu, date_field, diff, divider_horizontal, divider_vertical, dot,
-        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight,
-        hint_bar, hint_overlay, html, icon, icon_button, interactive, kv_grid, kv_row, list_row,
-        markdown, markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal,
-        notice_band, number_field, panel, path, progress, radio_group, scroll, section_label,
-        segmented, sheet, sidebar, slider, spacer, sparkline, spinner, splitter, stat, status_bar,
-        surface, table, tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip,
-        tree, virtual_list,
+        command_menu, context_menu, date_field, diff, divider, dot, drag_ghost, dropdown,
+        empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
+        hint_overlay, html, icon, icon_button, interactive, kv_grid, kv_row, list_row, markdown,
+        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
+        number_field, panel, path, progress, radio_group, scroll, section_label, segmented, sheet,
+        sidebar, slider, spacer, sparkline, spinner, splitter, stat, status_bar, surface, table,
+        tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip, tree,
+        virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

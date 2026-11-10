@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInputHook, set_theme};
+use sigil::app::{FrameHooks, FrameInputHook};
 use sigil::layout::LayoutResult;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -33,7 +33,7 @@ fn theme_switch_recolors_text_that_did_not_change() {
     Owner::scope("host_frame_updates::theme_switch", || {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(text("Unchanged label")));
-        set_theme(Theme::dark());
+        Theme::dark().apply();
         frame(&mut host, None);
         frame(&mut host, None);
         assert_eq!(
@@ -41,7 +41,7 @@ fn theme_switch_recolors_text_that_did_not_change() {
             Theme::dark().on_surface
         );
 
-        set_theme(Theme::light());
+        Theme::light().apply();
         frame(&mut host, None);
 
         assert_eq!(
@@ -56,13 +56,13 @@ fn theme_set_during_input_paints_in_the_same_frame() {
     Owner::scope("host_frame_updates::theme_in_input", || {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(column().child(text("Label")));
-        set_theme(Theme::dark());
+        Theme::dark().apply();
         frame(&mut host, None);
         let painted = std::cell::Cell::new(None);
 
         let hooks = FrameHooks {
             input: Some(Box::new(|_| {
-                set_theme(Theme::light());
+                Theme::light().apply();
                 None
             })),
             paint: Some(Box::new(|target, _| {
@@ -127,7 +127,7 @@ fn theme_switch_does_not_typeset_a_formula_again() {
         frame(&mut host, None);
         let before = runs.get();
 
-        set_theme(Theme::dark());
+        Theme::dark().apply();
         frame(&mut host, None);
         frame(&mut host, None);
 

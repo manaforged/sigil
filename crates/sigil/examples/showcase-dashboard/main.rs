@@ -19,7 +19,7 @@ use data::INSPECTOR_BREAKPOINT;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Fleet").size(1280, 800), || {
-        set_theme(Theme::dark());
+        Theme::dark().apply();
         app()
     })
 }

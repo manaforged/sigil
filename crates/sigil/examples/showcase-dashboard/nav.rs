@@ -1,7 +1,7 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, Icon, IntoNode, ListRowSlots, NodeBuilder, Paint, Radius, Space, TextContent,
-    Token, Tone, column, divider_horizontal, icon, list_row, row, section_label, sidebar, spacer,
+    AlignItems, Icon, IntoNode, ListRowSlots, NodeBuilder, Orientation, Paint, Radius, Space,
+    TextContent, Token, Tone, column, divider, icon, list_row, row, section_label, sidebar, spacer,
     text,
 };
 
@@ -18,7 +18,7 @@ pub(crate) fn rail(console: Console) -> impl IntoNode {
             .child(section_label("Workspace"))
             .child(sections(console))
             .child(spacer())
-            .child(divider_horizontal())
+            .child(divider(Orientation::Horizontal))
             .child(footer(console)),
     )
     .width(RAIL_WIDTH)

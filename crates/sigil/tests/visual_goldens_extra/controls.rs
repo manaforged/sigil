@@ -88,7 +88,7 @@ fn divider_horizontal_default() {
                     .background(Token::Accent)
                     .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
             )
-            .child(divider_horizontal())
+            .child(divider(Orientation::Horizontal))
             .child(
                 container()
                     .background(Token::SurfaceHover)
@@ -115,7 +115,7 @@ fn divider_vertical_default() {
                     .background(Token::Accent)
                     .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
             )
-            .child(divider_vertical())
+            .child(divider(Orientation::Vertical))
             .child(
                 container()
                     .background(Token::SurfaceHover)

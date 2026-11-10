@@ -215,7 +215,7 @@ fn turned_multiply() -> NodeBuilder {
                 .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
                 .background(SOURCE)
                 .rotate_x(5.0)
-                .mix_blend(BlendMode::Multiply),
+                .blend(BlendMode::Multiply),
         )
 }
 

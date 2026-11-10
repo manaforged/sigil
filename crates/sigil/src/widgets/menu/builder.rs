@@ -20,8 +20,8 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 pub struct MenuItem {
     /// The label.
     pub label: String,
-    /// The shortcut, if any.
-    pub shortcut: Option<String>,
+    /// The hint text, if any.
+    pub hint: Option<String>,
     /// Whether disabled.
     pub disabled: bool,
     /// Whether submenu indicator.
@@ -33,7 +33,7 @@ impl std::fmt::Debug for MenuItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MenuItem")
             .field("label", &self.label)
-            .field("shortcut", &self.shortcut)
+            .field("hint", &self.hint)
             .field("disabled", &self.disabled)
             .field("submenu_indicator", &self.submenu_indicator)
             .field("on_activate", &self.on_activate.is_some())
@@ -47,17 +47,17 @@ impl MenuItem {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            shortcut: None,
+            hint: None,
             disabled: false,
             submenu_indicator: false,
             on_activate: None,
         }
     }
 
-    /// Sets the shortcut.
+    /// Sets the hint text shown after the label, such as a key name.
     #[must_use]
-    pub fn shortcut(mut self, hint: impl Into<String>) -> Self {
-        self.shortcut = Some(hint.into());
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into());
         self
     }
 

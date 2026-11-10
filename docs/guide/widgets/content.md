@@ -67,7 +67,7 @@ Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure.
 
 ## Small content helpers
 
-These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider_horizontal()` and `divider_vertical()` draw 1 px rules in the border color; `divider_vertical().height(px)` draws a short tick, such as between toolbar items.
+These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
 
 ## States, keys, and accessibility
 

@@ -105,7 +105,7 @@ container()
 | `shadow(Elevation)` | Drop shadow |
 | `opacity(f32)` | Opacity, 0.0 to 1.0 |
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
-| `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
+| `line_height(px)`, `letter_spacing(em)`, `tabular_nums` | Text metrics: line height in pixels, letter spacing in ems |
 | `underline`, `line_through` | Text decoration |
 | `transition(Transition)` | Style transitions, as in Tailwind; `Transition::new()`, `all()`, `colors()`, `opacity()`, and `transform()` choose the properties, and `duration`, `ease`, and `delay` set the timing |
 | `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
@@ -146,7 +146,7 @@ Shared metrics:
 
 A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
 
-A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `set_theme` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
+A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `Theme::apply` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
 
 ## Interaction
 

@@ -158,10 +158,10 @@ impl ButtonBuilder {
         self
     }
 
-    /// Sets the key that triggers this button, shown faint after the label.
+    /// Sets the hint text shown faint after the label, such as a key name.
     #[must_use]
-    pub fn shortcut(mut self, key: impl Into<String>) -> Self {
-        self.shortcut = Some(key.into());
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.shortcut = Some(hint.into());
         self
     }
 

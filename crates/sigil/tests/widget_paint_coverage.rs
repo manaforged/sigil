@@ -10,9 +10,9 @@ use sigil::prelude::*;
 use sigil::style::Color;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
-    combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, markdown,
-    number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
-    toggle, virtual_list,
+    combobox, date_field, divider, dot, dropdown, gauge, icon_button, markdown, number_field,
+    progress, radio_group, scroll, slider, table, tabs, text_edit, text_field, toggle,
+    virtual_list,
 };
 use sigil_kittest::{Harness, InteractionMode};
 
@@ -125,7 +125,7 @@ fn pickers() -> Vec<Case> {
 fn data() -> Vec<Case> {
     vec![
         ("dot", Box::new(|| dot(Tone::Warning))),
-        ("divider", Box::new(divider_horizontal)),
+        ("divider", Box::new(|| divider(Orientation::Horizontal))),
         ("label", Box::new(|| text("Field").nowrap())),
         ("text", Box::new(|| text("Body copy"))),
         (

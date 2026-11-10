@@ -101,7 +101,7 @@ fn content() -> NodeBuilder {
             )
             .fill(),
         )
-        .child(divider_horizontal())
+        .child(divider(Orientation::Horizontal))
         .child(footer())
 }
 

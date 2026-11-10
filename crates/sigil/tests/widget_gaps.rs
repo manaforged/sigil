@@ -234,7 +234,7 @@ fn divider_vertical_takes_a_fixed_height() {
         let root = cx.add(
             row()
                 .layout(LayoutStyle::flex_row().fixed_size(200.0, 100.0))
-                .child(divider_vertical().height(16.0)),
+                .child(divider(Orientation::Vertical).height(16.0)),
         );
         let mut layout = sigil::layout::LayoutEngine::with_text_measure(Box::new(
             sigil_kittest::FakeMeasure::fixed(10.0, 16.0),

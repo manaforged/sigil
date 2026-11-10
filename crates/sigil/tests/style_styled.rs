@@ -324,7 +324,7 @@ fn font_methods_emit_typography_atoms() {
             .font_size(14.0, "test fixture")
             .font_weight(600)
             .font_family(FontFamily::Mono)
-            .line_height_px(20.0),
+            .line_height(20.0),
     );
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let scene = emit_scene(&cx, root, None);

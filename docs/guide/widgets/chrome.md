@@ -78,7 +78,7 @@ Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and a
 
 ## dividers and status bar
 
-`divider_horizontal()` / `divider_vertical()`: 1 px rules in the theme border color, not hittable. `status_bar(children)` is a 28 px `Role::Status` strip in the `surface-subtle` chrome fill with a 1 px top border and an 8 px side inset. Every child except the last packs to the left; the last child aligns right. A single child stays on the left.
+`divider(Orientation::Horizontal)` / `divider(Orientation::Vertical)`: 1 px rules in the theme border color, not hittable. `status_bar(children)` is a 28 px `Role::Status` strip in the `surface-subtle` chrome fill with a 1 px top border and an 8 px side inset. Every child except the last packs to the left; the last child aligns right. A single child stays on the left.
 
 ## Small composites
 
@@ -95,7 +95,7 @@ Small composites in `sigil::widgets`:
 - `hint_bar(keys, right)`: left key hints and a right accent label.
 - `avatar(initials)`: a 28 px accent circle; the initials become the accessible name.
 - `hint_overlay(hints)`: a popup-surface list of shortcut rows with 8 px gaps.
-- `divider_vertical().height(space(4))`: a 1×16 px vertical separator for toolbars.
+- `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.

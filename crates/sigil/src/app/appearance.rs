@@ -7,10 +7,12 @@ thread_local! {
     static PENDING: RefCell<Option<Theme>> = const { RefCell::new(None) };
 }
 
-/// Replace the active theme at the next frame.
-pub fn set_theme(theme: Theme) {
-    PENDING.with(|pending| *pending.borrow_mut() = Some(theme));
-    Runtime::mark_frame_dirty();
+impl Theme {
+    /// Applies this theme to the running app at the next frame.
+    pub fn apply(self) {
+        PENDING.with(|pending| *pending.borrow_mut() = Some(self));
+        Runtime::mark_frame_dirty();
+    }
 }
 
 pub(super) fn take() -> Option<Theme> {

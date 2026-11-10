@@ -84,7 +84,6 @@ pub use crate::text::load_font_url;
 pub use crate::text::web_fallbacks;
 #[cfg(feature = "scene")]
 pub use crate::text::{WebFont, WebFontScript, set_web_fallbacks};
-pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
 #[cfg(feature = "terminal")]

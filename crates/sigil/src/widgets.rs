@@ -266,7 +266,7 @@ pub use composition::{kv_row, status_bar};
 pub(crate) use date_field::DateFieldBuilder;
 pub use date_field::{Date, date_field};
 pub use diff::{DiffBuilder, DiffView, Hunk, Line, Patch, Selection, diff};
-pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
+pub use divider::divider;
 pub(crate) use dot::DotBuilder;
 pub use dot::dot;
 pub use drag::axis_drag;

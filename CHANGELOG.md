@@ -144,12 +144,12 @@ First public release.
 | `ChipBuilder::layout(LayoutStyle) -> NodeBuilder` | the `Widget` layout setters, which return the `ChipBuilder` |
 | `CanvasBuilder::layout` | the `Widget` layout setters |
 | `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
-| `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider_vertical() -> NodeBuilder` |
+| `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider(Orientation::Vertical) -> NodeBuilder` |
 | `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | the `Widget` layout setters, which merge into it |
 | `widgets::layout_ext::LayoutOverrides` | The `Widget` layout setters, such as `width`, `height`, and `grow` |
 | A second `.layout(..)` on a widget builder replaced the first | Each layout setter merges, in call order, as on `NodeBuilder` |
 | `const fn color_field` | `fn color_field` |
-| `const fn divider_vertical` | `fn divider_vertical` |
+| `const fn divider_vertical` | `fn divider(Orientation)` |
 | `widgets::layout_ext` | private; its methods are `Widget` |
 | `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, and `TextEditBuilder::focus_when` as `const fn` | the same methods, no longer `const` |
 | `Placement` without `mark_col`, `mark_row`, `span_cols`, and `span_rows` | those fields are part of `Placement` |
@@ -266,6 +266,12 @@ First public release.
 | a paint, event, or `map_node` setter after `.pane(node)`, such as `.pane(node).background(..)`, set the splitter | it sets the pane. Call it before the first `.pane(..)` or after `.commit()` to set the splitter |
 | `Paint::bg_clip_text()`, `Paint::bg_image(image)` | `Paint::background_clip_text()`, `Paint::background_image(image)`. The class string `bg-clip-text` is unchanged |
 | `ScaleRole::Warn` | `ScaleRole::Warning` |
+| `ButtonBuilder::shortcut(text)`, `MenuItem::shortcut(text)`, the `MenuItem::shortcut` field | `ButtonBuilder::hint(text)`, `MenuItem::hint(text)`, the `MenuItem::hint` field; `Widget::shortcut(shortcut, handler)` still binds a key |
+| `divider_horizontal()`, `divider_vertical()` | `divider(Orientation::Horizontal)`, `divider(Orientation::Vertical)` |
+| `Paint::line_height_px(px)`, `Paint::letter_spacing_em(em)` | `Paint::line_height(px)`, `Paint::letter_spacing(em)`; the units are unchanged |
+| `Paint::mix_blend(BlendMode)` | `Paint::blend(BlendMode)` |
+| `ColorAtom` in `sigil::prelude` | `sigil::style::ColorAtom`; setters still take `Token` and `Color` through `Into<ColorAtom>` |
+| `set_theme(theme)`, `sigil::app::set_theme(theme)` | `theme.apply()` |
 
 ### Changed
 

@@ -61,7 +61,7 @@ fn paint_node() -> NodeBuilder {
         .font_size(14.0, "benchmark fixture")
         .font_weight(400)
         .font_family(FontFamily::Sans)
-        .line_height_px(16.0)
+        .line_height(16.0)
         .transition(Transition::from(TransitionId(1)).duration(Duration::from_millis(150)))
 }
 
@@ -103,7 +103,7 @@ fn paint_override_last_wins(c: &mut Criterion) {
                 .opacity(1.0)
                 .font_size(18.0, "benchmark fixture")
                 .font_weight(700)
-                .line_height_px(24.0)
+                .line_height(24.0)
                 .transition(Transition::from(TransitionId(2)).duration(Duration::from_millis(300)));
             let id = cx.add(black_box(node));
             black_box(binding_len(&cx, id));

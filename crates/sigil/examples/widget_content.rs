@@ -81,7 +81,7 @@ pub(crate) fn avatar_demo() -> NodeBuilder {
 }
 
 pub(crate) fn divider_horizontal_demo() -> NodeBuilder {
-    divider_horizontal()
+    divider(Orientation::Horizontal)
 }
 
 pub(crate) fn divider_vertical_demo() -> NodeBuilder {
@@ -89,7 +89,7 @@ pub(crate) fn divider_vertical_demo() -> NodeBuilder {
         .height(40.0)
         .gap(Space::None)
         .align_items(AlignItems::Stretch)
-        .child(divider_vertical())
+        .child(divider(Orientation::Vertical))
 }
 
 fn build() -> impl IntoNode {

@@ -104,7 +104,7 @@ fn a_focus_request_stays_with_the_host_that_made_it() {
 #[test]
 fn a_pending_theme_stays_with_the_host_that_set_it() {
     Owner::scope("two_hosts::theme", || {
-        let mut one = speaker(|| set_theme(Theme::dark()));
+        let mut one = speaker(|| Theme::dark().apply());
         let mut two = quiet();
         click_focused(&mut one);
         settle(&mut two);

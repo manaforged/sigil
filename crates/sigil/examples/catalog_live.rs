@@ -114,12 +114,12 @@ fn widget(pick: &Pick) -> NodeBuilder {
 fn sandbox(first: Pick) -> impl IntoNode {
     let (sender, receiver) = unbounded_channel();
     PICKS.with(|picks| *picks.borrow_mut() = Some(sender));
-    set_theme(first.theme());
+    first.theme().apply();
     let picks = signal(vec![first]);
     on_message(
         receiver,
         move |next: Pick| {
-            set_theme(next.theme());
+            next.theme().apply();
             picks.set(vec![next]);
         },
         || {},

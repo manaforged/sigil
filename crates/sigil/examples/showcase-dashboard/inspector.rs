@@ -1,7 +1,8 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Paint, Radius, Space, TextContent,
-    Token, Tone, button, column, container, derived, divider_horizontal, dropdown, field, kv_grid,
-    number_field, progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
+    AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Orientation, Paint, Radius, Space,
+    TextContent, Token, Tone, button, column, container, derived, divider, dropdown, field,
+    kv_grid, number_field, progress, row, scroll, section_label, slider, spacer, text, text_field,
+    toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
 
@@ -21,7 +22,7 @@ pub(crate) fn panel(console: Console) -> NodeBuilder {
         .min_width(0.0)
         .min_height(0.0)
         .child(header(console))
-        .child(divider_horizontal())
+        .child(divider(Orientation::Horizontal))
         .child(
             scroll(
                 column()

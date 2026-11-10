@@ -166,7 +166,7 @@ pub trait Paint: PaintTarget {
 
     /// Sets the CSS mix-blend-mode.
     #[must_use]
-    fn mix_blend(self, mode: BlendMode) -> Self {
+    fn blend(self, mode: BlendMode) -> Self {
         push(self, StyleAtom::MixBlend(mode))
     }
 
@@ -212,15 +212,15 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::FontFamily(family.name()))
     }
 
-    /// Sets the line height px.
+    /// Sets the line height in pixels.
     #[must_use]
-    fn line_height_px(self, px: f32) -> Self {
+    fn line_height(self, px: f32) -> Self {
         push(self, StyleAtom::LineHeight(encode_px(px).0))
     }
 
-    /// Sets the letter spacing em.
+    /// Sets the letter spacing in ems.
     #[must_use]
-    fn letter_spacing_em(self, em: f32) -> Self {
+    fn letter_spacing(self, em: f32) -> Self {
         push(self, StyleAtom::LetterSpacing(letter_spacing_units(em)))
     }
 

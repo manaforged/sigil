@@ -40,7 +40,7 @@ The family pages carry signatures, options, and behavior notes:
 - **progress(Signal\<f32\>, max)** and **gauge(Signal\<f32\>)**.
 - **chip(label, Tone)**: the same `Tone` as buttons. `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a button; without `.activate` it stays a label.
 - **field(label, control)**: a label above a control; `.error(..)` adds an error line. Use it for forms.
-- **icon(glyph)**, **dot(Tone)**, **divider_horizontal()**, and **divider_vertical()**.
+- **icon(glyph)**, **dot(Tone)**, and **divider(Orientation)**.
 - **code_edit(lines, caret)**: a line-oriented code editor that renders only the visible rows. See [Documents](widgets/documents.md#code_edit).
 - **markdown(Signal\<String\>)**: a read-only document: headings, paragraphs, lists, fenced code, pipe tables, plus `**bold**`, `` `code` ``, and `[label](url)`. Not an in-place editor.
 - **html(Signal\<String\>)**: the same nodes as `markdown`, from an HTML subset (`h1`-`h3`, `p`, `ul`/`ol`/`li`, `pre`/`code`, `a`, `strong`/`em`, `table`). Scripts and styles are dropped. Not a browser.
