@@ -32,6 +32,11 @@ pub const fn em(count: f32) -> Length {
 }
 
 impl Length {
+    /// Returns whether the length takes a share of its container: `Fill` or a percentage.
+    pub(crate) const fn fills(self) -> bool {
+        matches!(self, Self::Fill | Self::Percent(_))
+    }
+
     pub(crate) fn px(self) -> Option<f32> {
         match self {
             Self::Px(px) => Some(px),

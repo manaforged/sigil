@@ -195,8 +195,8 @@ pub(super) fn selected_text(cx: &Cx, sel: TextSelection) -> String {
         .iter()
         .filter_map(|(id, text)| {
             let (start, end) = selected_range(sel, &order, *id, text.len())?;
-            let start = floor_boundary(text, start);
-            let end = ceil_boundary(text, end).max(start);
+            let start = text.floor_char_boundary(start);
+            let end = text.ceil_char_boundary(end).max(start);
             Some(text[start..end].to_string())
         })
         .collect::<Vec<_>>()
@@ -211,20 +211,4 @@ pub(super) fn selected_ranges(cx: &Cx, sel: TextSelection) -> HashMap<NodeId, (u
             selected_range(sel, &order, *id, text.len()).map(|range| (*id, range))
         })
         .collect()
-}
-
-fn floor_boundary(text: &str, mut index: usize) -> usize {
-    index = index.min(text.len());
-    while index > 0 && !text.is_char_boundary(index) {
-        index -= 1;
-    }
-    index
-}
-
-fn ceil_boundary(text: &str, mut index: usize) -> usize {
-    index = index.min(text.len());
-    while index < text.len() && !text.is_char_boundary(index) {
-        index += 1;
-    }
-    index
 }

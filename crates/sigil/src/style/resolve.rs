@@ -41,12 +41,7 @@ pub fn render_style_for(
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return render;
     };
-    let tone = node
-        .get_extension::<ToneContext>()
-        .copied()
-        .unwrap_or_default()
-        .tone;
-    let engine = StyleEngine::with_tone(theme, tone);
+    let engine = engine_for(node, theme);
 
     for atom in binding.cascade() {
         apply_atoms(engine, &[atom], &mut render, id, node);
@@ -68,12 +63,7 @@ pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -
     };
 
     let theme = node.get_extension::<Theme>().unwrap_or(inherited);
-    let tone = node
-        .get_extension::<ToneContext>()
-        .copied()
-        .unwrap_or_default()
-        .tone;
-    let engine = StyleEngine::with_tone(theme, tone);
+    let engine = engine_for(node, theme);
 
     for atom in binding.cascade() {
         engine.apply_text(&[atom], &mut style);
@@ -82,6 +72,15 @@ pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -
         StyleEngine::overlay_text(overlay, &mut style);
     }
     style
+}
+
+fn engine_for<'a>(node: &Node, theme: &'a Theme) -> StyleEngine<'a> {
+    let tone = node
+        .get_extension::<ToneContext>()
+        .copied()
+        .unwrap_or_default()
+        .tone;
+    StyleEngine::with_tone(theme, tone)
 }
 
 fn apply_atoms(

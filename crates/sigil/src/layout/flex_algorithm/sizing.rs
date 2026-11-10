@@ -90,7 +90,7 @@ pub(crate) fn item_main_basis(
         return v.max(0.0);
     }
     let dim = axes.pick(style.size.width, style.size.height);
-    let sized = !(intrinsic && matches!(dim, Length::Fill | Length::Percent(_)));
+    let sized = !(intrinsic && dim.fills());
     if sized && let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
         return size.max(0.0);
     }

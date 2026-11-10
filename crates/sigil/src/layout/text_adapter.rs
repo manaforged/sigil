@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use crate::app::floor_boundary;
 use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
@@ -79,7 +78,7 @@ impl TextMeasure for TextEngineMeasure {
         width: Option<f32>,
         mut position: HitPosition,
     ) -> CaretGeometry {
-        position.byte_index = floor_boundary(text, position.byte_index);
+        position.byte_index = text.floor_char_boundary(position.byte_index);
         self.engine
             .layout_paragraph_styled(text, width, style)
             .map_or_else(
@@ -102,8 +101,8 @@ impl TextMeasure for TextEngineMeasure {
         width: Option<f32>,
         (mut anchor, mut focus): (HitPosition, HitPosition),
     ) -> Vec<Rect> {
-        anchor.byte_index = floor_boundary(text, anchor.byte_index);
-        focus.byte_index = floor_boundary(text, focus.byte_index);
+        anchor.byte_index = text.floor_char_boundary(anchor.byte_index);
+        focus.byte_index = text.floor_char_boundary(focus.byte_index);
         self.engine
             .layout_paragraph_styled(text, width, style)
             .map_or_else(|_| Vec::new(), |para| para.selection_rects(anchor, focus))
