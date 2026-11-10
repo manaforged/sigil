@@ -9,8 +9,8 @@ use crate::reactive::{Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, Style, StyleAtom, StyleOverlay,
-    StyleState, StyleVariant, Token, space,
+    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, Style, StyleAtom, StyleState,
+    StyleVariant, Token, space,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -91,28 +91,6 @@ pub(crate) fn control(node: NodeBuilder, disabled: Option<Signal<bool>>) -> Node
         .disabled_by(disabled)
 }
 
-pub(crate) fn control_surface(
-    node: NodeBuilder,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    overlay: StyleOverlay,
-) -> NodeBuilder {
-    state_surface(node.class(CONTROL_BASE), interaction, disabled, overlay)
-}
-
-pub(crate) fn state_surface(
-    node: NodeBuilder,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    overlay: StyleOverlay,
-) -> NodeBuilder {
-    disabled_a11y(node, disabled)
-        .stateful_style(CONTROL_VARIANT, overlay, move || {
-            reactive_style_state(interaction, disabled)
-        })
-        .seal_style()
-}
-
 pub(crate) fn disabled_a11y(node: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     match disabled {
         Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
@@ -169,14 +147,4 @@ pub(crate) fn caller_style(node: NodeBuilder, style: Style) -> NodeBuilder {
     } else {
         node.style(style)
     }
-}
-
-pub(crate) fn control_root(
-    disabled: Option<Signal<bool>>,
-    mut style: Style,
-    base: impl FnOnce(InteractionState, StyleOverlay) -> NodeBuilder,
-) -> NodeBuilder {
-    let interaction = InteractionState::new(true).disabled(disabled);
-    let overlay = style.take_state_overlay();
-    caller_style(base(interaction, overlay), style)
 }

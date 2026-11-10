@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{StateStyle, StyleOverlay, StyleVariant};
+use crate::style::{StateStyle, StyleOverlay, StyleState, StyleVariant};
 use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{
-    Activate, DIMMED, RELEASE_ENTER_SPACE, disabled_a11y, press, reactive_style_state,
+    Activate, DIMMED, RELEASE_ENTER_SPACE, disabled_a11y, or_disabled, press,
 };
 
 static NODE_VARIANT: StyleVariant =
@@ -18,6 +18,8 @@ pub(crate) struct Wiring {
     activate: Option<Activate>,
     state: Option<InteractionState>,
     variant: Option<StyleVariant>,
+    busy: Option<Signal<bool>>,
+    active: bool,
 }
 
 impl Wiring {
@@ -26,6 +28,8 @@ impl Wiring {
             && self.activate.is_none()
             && self.state.is_none()
             && self.variant.is_none()
+            && self.busy.is_none()
+            && !self.active
     }
 }
 
@@ -53,6 +57,16 @@ impl NodeBuilder {
         self
     }
 
+    pub(crate) const fn active(mut self) -> Self {
+        self.wiring_mut().active = true;
+        self
+    }
+
+    pub(crate) const fn busy_by(mut self, busy: Option<Signal<bool>>) -> Self {
+        self.wiring_mut().busy = busy;
+        self
+    }
+
     pub(crate) const fn variant(mut self, variant: StyleVariant) -> Self {
         self.wiring_mut().variant = Some(variant);
         self
@@ -77,14 +91,21 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
         activate,
         state,
         variant,
+        busy,
+        active,
     } = wiring;
+    let look = disabled;
+    let disabled = or_disabled(disabled, busy);
     let interaction = state
         .unwrap_or_else(|| InteractionState::new(true))
         .disabled(disabled);
     let node = disabled_a11y(node, disabled).stateful_style(
         variant.unwrap_or(NODE_VARIANT),
         overlay,
-        move || reactive_style_state(interaction, disabled),
+        move || StyleState {
+            disabled: look.is_some_and(Signal::get),
+            ..interaction.style_state()
+        },
     );
     let node = node.seal_style();
     match activate {
@@ -95,6 +116,7 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
             &activate,
             RELEASE_ENTER_SPACE,
         )),
+        None if active => interaction.install(node),
         None if node.is_focusable() => {
             interaction.observe_style(node.focus_ring(interaction.focus_ring()))
         }

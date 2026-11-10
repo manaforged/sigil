@@ -6,13 +6,12 @@ use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::{ControlSize, Metrics, Style, StyleAtom, StyleOverlay, Token, Tone};
+use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, Tone};
 use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
 use super::listbox::{Move, RADIO_GROUP};
-use super::shared::{caller_style, control_surface, disabled_a11y, disabled_now};
-use crate::widgets::interaction::InteractionState;
+use super::shared::{caller_style, control, disabled_a11y, disabled_now};
 
 /// Builder of a radio group.
 #[derive(Debug)]
@@ -144,18 +143,15 @@ fn option_row(
     let checked_key = key.clone();
     let checked: Signal<bool> = derived(move || selected.get() == checked_key);
     let ring_visible = derived(move || group_focus.get() && checked.get());
-    let interaction = InteractionState::new(true);
-    let row = interaction.observe_style(
-        container().layout(
-            LayoutStyle::flex_row()
-                .height(Metrics::current().control_height(ControlSize::Default))
-                .padding_x(Space::Xs)
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        ),
+    let row = container().layout(
+        LayoutStyle::flex_row()
+            .height(Metrics::current().control_height(ControlSize::Default))
+            .padding_x(Space::Xs)
+            .gap(Space::Sm)
+            .align_items(AlignItems::Center),
     );
     let activate_key = key;
-    control_surface(row, interaction, disabled, StyleOverlay::default())
+    control(row, disabled)
         .role(Role::RadioButton)
         .label(label.to_owned())
         .checked(checked)
@@ -167,11 +163,7 @@ fn option_row(
         )
         .pick()(checked, tone))
         .child(text(label).class(Token::OnSurface.text()))
-        .pointer_up(move |_event| {
-            if !disabled_now(disabled) {
-                selected.set(activate_key.clone());
-            }
-        })
+        .pointer_up(move |_event| selected.set(activate_key.clone()))
 }
 
 fn centered_square(size: f32) -> LayoutStyle {
