@@ -4,9 +4,9 @@ use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
 use crate::widgets::Widget;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct TabDrag {
-    inner: &'static TabDragInner,
+    inner: std::rc::Rc<TabDragInner>,
 }
 
 struct TabDragInner {
@@ -20,37 +20,37 @@ struct TabDragInner {
 
 impl TabDrag {
     pub(super) fn new() -> Self {
-        let inner = Box::leak(Box::new(TabDragInner {
+        let inner = std::rc::Rc::new(TabDragInner {
             source: Cell::new(None),
             current: Cell::new(None),
             just_dragged: Cell::new(false),
             order: Cell::new(None),
             count: Cell::new(0),
             tab_width: Cell::new(0.0),
-        }));
+        });
         Self { inner }
     }
 
-    pub(super) fn bind(self, order: Option<Signal<Vec<usize>>>, count: usize) {
+    pub(super) fn bind(&self, order: Option<Signal<Vec<usize>>>, count: usize) {
         self.inner.order.set(order);
         self.inner
             .count
             .set(u16::try_from(count).unwrap_or(u16::MAX));
     }
 
-    fn begin(self, visual_index: u16, width: f32) {
+    fn begin(&self, visual_index: u16, width: f32) {
         self.inner.source.set(Some(visual_index));
         self.inner.current.set(Some(visual_index));
         self.inner.just_dragged.set(false);
         self.inner.tab_width.set(width);
     }
 
-    fn tab_width(self) -> f32 {
+    fn tab_width(&self) -> f32 {
         let width = self.inner.tab_width.get();
         if width > 1.0 { width } else { 80.0 }
     }
 
-    fn end(self) {
+    fn end(&self) {
         let source = self.inner.source.take();
         let current = self.inner.current.take();
         if let (Some(start), Some(now)) = (source, current)
@@ -60,7 +60,7 @@ impl TabDrag {
         }
     }
 
-    pub(super) const fn consume_just_dragged(self) -> bool {
+    pub(super) fn consume_just_dragged(&self) -> bool {
         self.inner.just_dragged.replace(false)
     }
 }
@@ -71,16 +71,17 @@ pub(super) fn install_label_drag_hooks(
     visual_index: usize,
 ) -> NodeBuilder {
     let slot = u16::try_from(visual_index).unwrap_or(u16::MAX);
+    let (down, moving) = (drag.clone(), drag.clone());
     node.pointer_down(move |event| {
-        drag.begin(slot, event.target_size.width);
+        down.begin(slot, event.target_size.width);
         event.capture_pointer();
     })
     .pointer_move(move |event| {
-        let inner = drag.inner;
+        let inner = &moving.inner;
         let (Some(_), Some(current)) = (inner.source.get(), inner.current.get()) else {
             return;
         };
-        let tab_width = drag.tab_width();
+        let tab_width = moving.tab_width();
         let tab_list_x = f32::from(current).mul_add(tab_width, event.position.x);
         let target = (1..inner.count.get())
             .take_while(|&probe| tab_list_x >= f32::from(probe) * tab_width)

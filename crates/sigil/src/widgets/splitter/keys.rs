@@ -16,7 +16,8 @@ pub(super) fn install_handle_keys(
     handle: usize,
 ) -> NodeBuilder {
     let (min, max) = state.bounds(handle);
-    let value = derived(move || state.tracked_size(handle));
+    let tracked = state.clone();
+    let value = derived(move || tracked.tracked_size(handle));
     let (back, forward) = match state.orientation() {
         Orientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
         Orientation::Vertical => (Key::ArrowUp, Key::ArrowDown),

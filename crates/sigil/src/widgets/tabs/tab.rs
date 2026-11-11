@@ -195,8 +195,9 @@ pub(super) fn build_tab(
     let interaction = InteractionState::new(!is_disabled);
     let selected = derived(move || active.get() == index);
 
+    let dragged = drag.clone();
     let activate: Activate = Rc::new(move || {
-        if !is_disabled && !drag.is_some_and(TabDrag::consume_just_dragged) {
+        if !is_disabled && !dragged.as_ref().is_some_and(TabDrag::consume_just_dragged) {
             active.set(index);
         }
     });

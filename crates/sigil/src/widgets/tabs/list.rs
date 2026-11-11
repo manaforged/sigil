@@ -131,7 +131,7 @@ fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
         enabled: Rc::new(enabled),
         ids: Rc::new(RefCell::new(vec![None; count])),
     };
-    if let Some(drag_state) = spec.drag {
+    if let Some(drag_state) = &spec.drag {
         drag_state.bind(spec.order, count);
     }
     roving
@@ -147,7 +147,7 @@ fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
                 label,
                 active,
                 &spec.disabled,
-                spec.drag,
+                spec.drag.clone(),
                 spec.closeable,
                 spec.close_handler.clone(),
                 spec.user_overlay.clone(),

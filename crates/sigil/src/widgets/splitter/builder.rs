@@ -195,17 +195,17 @@ impl SplitterBuilder {
         );
         let mut root = container().role(Role::GenericContainer).layout(root_layout);
         if self.proportional {
-            root = fit_to_bounds(root, state, orientation, count);
+            root = fit_to_bounds(root, state.clone(), orientation, count);
         }
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
             let pane = caller_style(
-                build_pane(entry.content, pane_idx, state, grow),
+                build_pane(entry.content, pane_idx, state.clone(), grow),
                 entry.style,
             );
             root = root.child(entry.layout.finish(pane));
             if pane_idx + 1 < count {
-                root = root.child(build_handle(pane_idx, orientation, state));
+                root = root.child(build_handle(pane_idx, orientation, state.clone()));
             }
         }
 
@@ -277,7 +277,7 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
         .hover(|s| s.background(Token::SurfaceHover))
         .pressed(|s| s.background(Token::SurfacePressed));
     install_handle_keys(
-        install_handle_hooks(node, state, handle_idx),
+        install_handle_hooks(node, state.clone(), handle_idx),
         state,
         handle_idx,
     )
