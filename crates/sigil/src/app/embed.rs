@@ -1,7 +1,6 @@
 use accesskit::ActionRequest;
 
 use crate::events::Event;
-use crate::events::hit_test::HitTestCache;
 use crate::events::{EventRouter, FocusDirection};
 use crate::geometry::{Point, Rect, Size};
 use crate::reactive::Runtime;
@@ -38,7 +37,6 @@ pub struct Host {
     fill_root: bool,
     theme: Theme,
     visual_transforms: bool,
-    hits: HitTestCache,
     #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     emitted: EmitMemo,
     env: HostEnv,
@@ -110,7 +108,6 @@ impl Host {
             fill_root: false,
             theme: Theme::default(),
             visual_transforms,
-            hits: HitTestCache::default(),
             #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             emitted: EmitMemo::default(),
             env,
@@ -121,9 +118,13 @@ impl Host {
         }
     }
 
-    /// Tells widgets whether the host can show hyperlinks.
-    pub const fn set_hyperlinks(&mut self, yes: bool) {
-        self.env.caps.hyperlinks = yes;
+    kittest_pub! {
+        if feature = "terminal";
+        /// Tells widgets whether the host can show hyperlinks.
+        #[doc(hidden)]
+        pub const fn set_hyperlinks(&mut self, yes: bool) {
+            self.env.caps.hyperlinks = yes;
+        }
     }
 
     pub(crate) fn enter(&self) -> EnvGuard {
@@ -138,11 +139,6 @@ impl Host {
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.cx.host_mode()
-    }
-
-    /// Returns whether take exit is set.
-    pub fn take_exit(&self) -> bool {
-        self.env.exit.replace(false)
     }
 
     /// Builds `app` and makes it the root of the tree.
@@ -209,17 +205,6 @@ impl Host {
         {
             self.attach_theme(theme);
         }
-    }
-
-    /// Returns the nodes under the point, from the deepest node up.
-    pub fn hit_path(&mut self, x: f32, y: f32) -> Vec<NodeId> {
-        let _env = self.enter();
-        if self.root.is_none() {
-            return Vec::new();
-        }
-        self.hits
-            .hit_path(&self.cx, &self.layout, Point::new(x, y))
-            .map_or_else(Vec::new, smallvec::SmallVec::into_vec)
     }
 
     /// Returns the node tree context.

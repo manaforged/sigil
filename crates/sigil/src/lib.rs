@@ -27,6 +27,14 @@ use pollster as _;
 use wgpu as _;
 
 macro_rules! kittest_pub {
+    (if $cond:meta; $(#[$meta:meta])* pub $($item:tt)*) => {
+        $(#[$meta])*
+        #[cfg(feature = "kittest")]
+        pub $($item)*
+        $(#[$meta])*
+        #[cfg(all(not(feature = "kittest"), $cond))]
+        pub(crate) $($item)*
+    };
     ($(#[$meta:meta])* pub $($item:tt)*) => {
         $(#[$meta])*
         #[cfg(feature = "kittest")]

@@ -192,12 +192,12 @@ impl PointerEvent {
 
     /// Returns whether capture requested is set.
     #[must_use]
-    pub const fn capture_requested(&self) -> bool {
+    pub(crate) const fn capture_requested(&self) -> bool {
         self.capture_requested
     }
 
     /// Sets the captured.
-    pub const fn set_captured(&mut self, captured: bool) {
+    pub(crate) const fn set_captured(&mut self, captured: bool) {
         self.captured = captured;
     }
 }
