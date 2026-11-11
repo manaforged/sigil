@@ -1,4 +1,3 @@
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use crate::kernel::{ImageRaster, ImageSource, ThemedImage, cached_image};
@@ -29,13 +28,12 @@ impl HeatGrid {
                 rgba.extend_from_slice(&[cell.r, cell.g, cell.b, cell.a]);
             }
         }
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        (grid_w, grid_h, &rgba).hash(&mut hasher);
+        let key = crate::fnv::hash_of(&(grid_w, grid_h, &rgba));
         Some(Self {
             width: u32::try_from(grid_w).ok()?,
             height: u32::try_from(grid_h).ok()?,
             rgba: Arc::from(rgba),
-            key: hasher.finish(),
+            key,
         })
     }
 

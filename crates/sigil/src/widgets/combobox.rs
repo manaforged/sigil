@@ -3,7 +3,7 @@ use crate::layout::PopupSide;
 use crate::layout::Space;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, batch, derived, signal};
 use crate::style::{ControlSize, Metrics, space};
 use crate::widgets::{Layout, Widget};
 
@@ -23,7 +23,6 @@ pub struct Combobox {
     selected: Signal<Option<usize>>,
     open: Signal<bool>,
     cursor: Signal<usize>,
-    session: Signal<u32>,
     placeholder: &'static str,
     disabled: Option<Signal<bool>>,
 }
@@ -38,7 +37,6 @@ impl Combobox {
             selected: signal(None),
             open: signal(false),
             cursor: signal(0),
-            session: signal(0),
             placeholder: "",
             disabled: None,
         }
@@ -56,6 +54,14 @@ impl Combobox {
     pub const fn placeholder(mut self, text: &'static str) -> Self {
         self.placeholder = text;
         self
+    }
+
+    pub(crate) const fn placeholder_text(self) -> &'static str {
+        self.placeholder
+    }
+
+    pub(crate) const fn disabled_flag(self) -> Option<Signal<bool>> {
+        self.disabled
     }
 
     /// Returns the query.
@@ -154,10 +160,11 @@ impl Combobox {
         let Some(label) = self.options.peek().get(index).cloned() else {
             return;
         };
-        self.selected.set(Some(index));
-        self.query.set(label);
-        self.open.set(false);
-        self.session.update(|s| *s += 1);
+        batch(|| {
+            self.selected.set(Some(index));
+            self.query.set(label);
+            self.open.set(false);
+        });
     }
 
     /// Commits the highlighted row and returns whether a row was committed.
@@ -258,10 +265,7 @@ fn field_host(state: Combobox) -> NodeBuilder {
                 state.open();
             }
         })
-        .children_reactive(move || {
-            let _ = state.session.get();
-            vec![build_field(state)]
-        })
+        .child(build_field(state))
 }
 
 fn build_field(state: Combobox) -> TextFieldBuilder {

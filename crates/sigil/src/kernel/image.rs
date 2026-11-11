@@ -18,10 +18,8 @@ impl ImageSource {
     #[cfg(feature = "image-decode")]
     #[must_use]
     pub fn decode(encoded: &[u8]) -> Option<Self> {
-        use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        encoded.hash(&mut hasher);
-        crate::kernel::cached_image(hasher.finish(), || Self::decode_uncached(encoded).ok())
+        let key = crate::fnv::bytes(crate::fnv::OFFSET, encoded);
+        crate::kernel::cached_image(key, || Self::decode_uncached(encoded).ok())
     }
 
     #[cfg(feature = "image-decode")]

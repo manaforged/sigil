@@ -1,5 +1,3 @@
-use std::fmt::Write as _;
-
 use super::strings::{StringKey, Strings};
 
 /// Layout direction.
@@ -272,17 +270,16 @@ impl Locale {
     /// Formats a date in this locale's order.
     #[must_use]
     pub fn format_date(&self, year: i32, month: u8, day: u8) -> String {
-        let mut out = String::with_capacity(10);
-        for (index, part) in self.date_order.parts().into_iter().enumerate() {
-            if index > 0 {
-                out.push(self.date_separator);
-            }
-            let _ = match part {
-                DatePart::Year => write!(out, "{year:04}"),
-                DatePart::Month => write!(out, "{month:02}"),
-                DatePart::Day => write!(out, "{day:02}"),
-            };
-        }
+        let separator = self.date_separator.to_string();
+        let out = self
+            .date_order
+            .parts()
+            .map(|part| match part {
+                DatePart::Year => format!("{year:04}"),
+                DatePart::Month => format!("{month:02}"),
+                DatePart::Day => format!("{day:02}"),
+            })
+            .join(&separator);
         out.chars().map(|c| self.local_digit(c)).collect()
     }
 
@@ -313,16 +310,16 @@ impl Locale {
         strings: &Strings,
     ) -> String {
         let hour = hour % 24;
-        let mut out = String::with_capacity(11);
-        let _ = if self.hour12 {
-            write!(out, "{}:{minute:02}", (hour + 11) % 12 + 1)
+        let clock = if self.hour12 {
+            format!("{}:{minute:02}", (hour + 11) % 12 + 1)
         } else {
-            write!(out, "{hour:02}:{minute:02}")
+            format!("{hour:02}:{minute:02}")
         };
-        if let Some(second) = second {
-            let _ = write!(out, ":{second:02}");
-        }
-        let mut out: String = out.chars().map(|c| self.local_digit(c)).collect();
+        let clock = match second {
+            Some(second) => format!("{clock}:{second:02}"),
+            None => clock,
+        };
+        let mut out: String = clock.chars().map(|c| self.local_digit(c)).collect();
         if self.hour12 {
             out.push(' ');
             out.push_str(strings.get(if hour < 12 {

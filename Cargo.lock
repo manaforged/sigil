@@ -5926,6 +5926,7 @@ dependencies = [
  "unicode-script",
  "unicode-segmentation",
  "unicode-width",
+ "url",
  "usvg",
  "vello_cpu",
  "vello_gpu",

@@ -77,9 +77,9 @@ fn aliases() -> Vec<(&'static str, bool)> {
 fn main() -> io::Result<()> {
     let mut out = String::from("cargo::rerun-if-changed=build.rs\n");
     for (name, on) in aliases() {
-        let _ = writeln!(out, "cargo::rustc-check-cfg=cfg({name})");
+        writeln!(out, "cargo::rustc-check-cfg=cfg({name})").map_err(io::Error::other)?;
         if on {
-            let _ = writeln!(out, "cargo::rustc-cfg={name}");
+            writeln!(out, "cargo::rustc-cfg={name}").map_err(io::Error::other)?;
         }
     }
     io::stdout().write_all(out.as_bytes())

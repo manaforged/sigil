@@ -44,7 +44,7 @@ pub(crate) use image::ThemedImage;
 pub use image::{ImageBuilder, ImageCrop, ImageRaster, ImageSource, ObjectFit, image};
 pub(crate) use image_cache::cached_image;
 #[cfg(feature = "image-decode")]
-pub use image_load::{ImageLoadBuilder, load_image};
+pub(crate) use image_load::Load;
 pub use node::{Node, NodeExtensions, Surface, TopLayer};
 kittest_pub! {
     #[doc(hidden)]

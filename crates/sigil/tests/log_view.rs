@@ -86,3 +86,14 @@ fn a_trailing_line_break_adds_no_empty_line() {
         ui.settle().expect_text("listening");
     });
 }
+
+#[test]
+fn pushing_empty_text_adds_one_empty_line() {
+    Owner::scope("log-empty", || {
+        let log = Log::new(10);
+        log.push("first");
+        log.push("");
+        log.push("third");
+        assert_eq!(log.len(), 3);
+    });
+}

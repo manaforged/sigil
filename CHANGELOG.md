@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - The minimum supported Rust version is 1.96. Before, it was 1.95.
+- A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
 - A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
 - The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.
 - `DateFieldBuilder` implements `FieldControl`, so `field(..).error(..)` accepts it.
@@ -49,12 +50,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `TableColumn::editable(text, commit)` edits a cell in place. Double-click or Enter starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. The result is written into the table's rows, and an open edit follows its row by `Identifiable` id when the app replaces the rows.
 - `virtual_list(..).end_reached(rows, f)` and `table(..).end_reached(rows, f)` run `f` once each time the user scrolls within `rows` rows of the end, for load-more paging.
 - `link(label)`: focusable text that opens `href` or runs an action, with role link, theme hover and focus styles, and an OSC 8 hyperlink on the terminal host.
-- `Log` and `log_view(log)`: an append-only log that drops its oldest lines past a limit and follows the tail until the user scrolls up. `Log::push` splits at `\n` or `\r\n` and adds no empty line for a trailing break.
-- `badge`, `skeleton`, `pagination`, `breadcrumbs` and `stepper` patterns. `pagination` moves the page into range when the page count shrinks.
+- `Log` and `log_view(log)`: an append-only log that drops its oldest lines past a limit and follows the tail until the user scrolls up. `Log::push` splits at `\n` or `\r\n`, adds no empty line for a trailing break, and adds one empty line for empty text.
+- `badge`, `skeleton`, `pagination`, `breadcrumbs` and `stepper` patterns. A `badge` at zero takes no space or gap. `pagination` moves the page into range when the page count shrinks.
 - `range_slider(value, range)`: two thumbs on one track editing a `Signal<RangeInclusive<f32>>`. The start never passes the end, each thumb takes focus and keys, and a drag moves the nearest thumb. When both thumbs sit on one value, the drag direction picks the thumb.
 - `time_field` with `Time` and `DateTime` (both ordered): a time, or a date and time, input with a 12- or 24-hour clock from the new `Locale::hour12` field, and `Locale::format_time` and `parse_time`. `TimeFieldBuilder` implements `FieldControl`.
-- `tag_input(options, selected)`: a filterable multi-select whose chosen options show as removable tags. Backspace in an empty input removes the last tag.
-- `load_image(location)` loads an image from a file path, `file://` URL or `data:` URI off the UI thread, with a placeholder while loading and an error view with the reason. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`. Loads are cached by location and, for a file, its modified time and size, so a changed file loads again.
+- `tag_input(options, selected)`: a filterable multi-select whose chosen options show as removable tags. Backspace in an empty input removes the last tag. `.disabled(..)` also disables the remove buttons.
+- `widgets::load_image(location)` loads an image from a file path, `file://` URL (including `file://localhost/` and Windows drive paths) or `data:` URI off the UI thread, with a placeholder while loading and an error view with the reason. It takes the layout setters; on a sized axis the image fills the box with `.fit`. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`. Loads are cached by location and, for a file, its modified time and size, so a changed file loads again.
 - `load_image` and `ImageSource::load` fetch http(s) URLs in a browser (wasm32), and in native builds with the new `image-http` feature through leyline-http, with a 30 s timeout and a 64 MiB body limit. An error status fails with `ErrorKind::Http`. Without the feature, a native build fails the load with `ErrorKind::Fetch`.
 - `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
 - The recipes have a Lists section on per-row signals.

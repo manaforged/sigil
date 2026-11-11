@@ -38,7 +38,7 @@ Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contai
 
 ## load_image
 
-`load_image(location) -> ImageLoadBuilder` (feature `image-decode`). Loads a file path, a `file://` URL, or a base64 `data:` URI off the UI thread. It also fetches http(s) URLs in a browser, and in native builds with the `image-http` feature, with a 30 s timeout, a 64 MiB body limit, and an `ErrorKind::Http` error for an error status. `.alt(text)`, `.fit(ObjectFit)`, `.placeholder(Fn() -> impl IntoNode)` for the loading view, and `.error(Fn(&Error) -> impl IntoNode)` for the failure view. Loads are cached by location and, for a file, its modified time and size. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`.
+`load_image(location) -> ImageLoadBuilder` (feature `image-decode`). Loads a file path, a `file://` URL, or a base64 `data:` URI off the UI thread. It also fetches http(s) URLs in a browser, and in native builds with the `image-http` feature, with a 30 s timeout, a 64 MiB body limit, and an `ErrorKind::Http` error for an error status. Size it with `.width(..)` and `.height(..)`: on a sized axis the loaded image fills the box with `.fit(ObjectFit)`. `.alt(text)`, `.placeholder(Fn() -> impl IntoNode)` for the loading view, and `.error(Fn(&Error) -> impl IntoNode)` for the failure view. Loads are cached by location and, for a file, its modified time and size. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`.
 
 ## path
 
