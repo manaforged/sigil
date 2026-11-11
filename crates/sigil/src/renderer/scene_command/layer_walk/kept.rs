@@ -1,7 +1,7 @@
 use crate::geometry::Rect;
 
 use crate::Error;
-use crate::renderer::cache_limits::CacheLimits;
+use crate::renderer::cache_limits::{CacheLimits, FrameCache};
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::scene_command::walk::WalkCtx;
 use crate::renderer::scene_instance::LAYER_FORMAT;
@@ -13,7 +13,7 @@ use super::offscreen::{layer_plan, open_layer, restored};
 use super::{LayerFrame, LayerTarget, Nested};
 
 #[derive(Clone, PartialEq)]
-pub(super) struct KeptKey {
+pub(crate) struct KeptKey {
     scope: LayerScope,
     transform: Transform,
     clip: Option<Rect>,
@@ -39,58 +39,21 @@ impl KeptKey {
     }
 }
 
-struct Entry {
-    key: KeptKey,
-    commands: Vec<SceneCommand>,
-    handle: LayerHandle,
-    extent: (u32, u32),
-    used: u64,
-}
-
-#[derive(Default)]
-pub(crate) struct KeptLayers {
-    entries: Vec<Entry>,
-    frame: u64,
-}
-
-impl KeptLayers {
-    pub(crate) fn begin_frame(&mut self) {
-        self.frame += 1;
-        let (frame, stale) = (self.frame, CacheLimits::DEFAULT.kept_layer_stale_frames);
-        self.entries.retain(|entry| entry.used + stale >= frame);
-    }
-
-    fn make_room(&mut self, pixels: u64) -> bool {
-        crate::renderer::cache_limits::make_room(
-            &mut self.entries,
-            self.frame,
-            (pixels, CacheLimits::DEFAULT.kept_layer_pixels),
-            |entry| entry.used,
-            |entry| u64::from(entry.handle.width) * u64::from(entry.handle.height),
-        )
-    }
-}
+pub(crate) type KeptLayers = FrameCache<KeptKey, (LayerHandle, (u32, u32))>;
 
 pub(super) fn restore(
     ctx: &mut WalkCtx<'_>,
     key: &KeptKey,
     commands: &[SceneCommand],
 ) -> Option<(LayerHandle, (u32, u32))> {
-    let frame = ctx.kept.frame;
-    let entry = ctx
-        .kept
-        .entries
-        .iter_mut()
-        .find(|entry| entry.key == *key && entry.commands == commands)?;
-    entry.used = frame;
-    let (width, height) = (entry.handle.width, entry.handle.height);
-    let extent = entry.extent;
+    let (kept, extent) = ctx.kept.get(key, commands)?;
+    let (width, height) = (kept.width, kept.height);
     let pool = ctx.layer_pool.get_or_insert_with(Default::default);
     let handle = pool.acquire(ctx.device, width, height, LAYER_FORMAT).ok()?;
-    let source = entry.handle.view.texture();
+    let source = kept.view.texture();
     ctx.encoder
         .copy_region(source, handle.view.texture(), (0, 0, width, height));
-    Some((handle, extent))
+    Some((handle, *extent))
 }
 
 pub(super) fn keep(
@@ -99,26 +62,21 @@ pub(super) fn keep(
     view: &wgpu::TextureView,
     extent: (u32, u32),
 ) -> Result<(), Error> {
-    if commands.len() < CacheLimits::DEFAULT.layer_min_commands {
-        return Ok(());
-    }
     let source = view.texture();
     let (width, height) = (source.width(), source.height());
-    if !ctx.kept.make_room(u64::from(width) * u64::from(height)) {
+    let area = |(kept, _): &(LayerHandle, _)| u64::from(kept.width) * u64::from(kept.height);
+    let need = (
+        u64::from(width) * u64::from(height),
+        CacheLimits::DEFAULT.kept_layer_pixels,
+    );
+    if !ctx.kept.admit(commands, need, area) {
         return Ok(());
     }
     let pool = ctx.layer_pool.get_or_insert_with(Default::default);
     let handle = pool.acquire(ctx.device, width, height, source.format())?;
     ctx.encoder
         .copy_region(source, handle.view.texture(), (0, 0, width, height));
-    let used = ctx.kept.frame;
-    ctx.kept.entries.push(Entry {
-        key,
-        commands: commands.to_vec(),
-        handle,
-        extent,
-        used,
-    });
+    ctx.kept.insert(key, commands, (handle, extent));
     Ok(())
 }
 

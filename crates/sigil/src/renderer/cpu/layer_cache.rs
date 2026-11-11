@@ -1,7 +1,7 @@
 use tiny_skia::{Pixmap, Transform as TsTransform};
 
 use crate::geometry::{Point, Rect};
-use crate::renderer::cache_limits::{CacheLimits, make_room};
+use crate::renderer::cache_limits::{CacheLimits, FrameCache};
 use crate::renderer::plan::PlanNode;
 use crate::renderer::scene_command::state::SceneState;
 use crate::scene::command::{LayerScope, SceneCommand, Transform};
@@ -18,58 +18,15 @@ pub(super) struct LayerKey {
     pub(super) place: (f32, Point),
 }
 
-struct Entry {
-    key: LayerKey,
-    commands: Vec<SceneCommand>,
-    pixels: Pixmap,
-    used: u64,
-}
-
-#[derive(Default)]
-pub(super) struct LayerCache {
-    entries: Vec<Entry>,
-    frame: u64,
-}
+pub(super) type LayerCache = FrameCache<LayerKey, Pixmap>;
 
 impl LayerCache {
-    pub(super) fn begin_frame(&mut self) {
-        self.frame += 1;
-        let (frame, stale) = (self.frame, CacheLimits::DEFAULT.cpu_layer_stale_frames);
-        self.entries.retain(|entry| entry.used + stale >= frame);
-    }
-
-    pub(super) fn get(&mut self, key: &LayerKey, commands: &[SceneCommand]) -> Option<&Pixmap> {
-        let frame = self.frame;
-        let entry = self
-            .entries
-            .iter_mut()
-            .find(|entry| entry.key == *key && entry.commands == commands)?;
-        entry.used = frame;
-        Some(&entry.pixels)
-    }
-
     pub(super) fn put(&mut self, key: LayerKey, commands: &[SceneCommand], pixels: &Pixmap) {
-        let limits = CacheLimits::DEFAULT;
-        if commands.len() < limits.layer_min_commands {
-            return;
-        }
         let area = |pixmap: &Pixmap| u64::from(pixmap.width()) * u64::from(pixmap.height());
-        let room = make_room(
-            &mut self.entries,
-            self.frame,
-            (area(pixels), limits.cpu_layer_pixels),
-            |entry| entry.used,
-            |entry| area(&entry.pixels),
-        );
-        if !room {
-            return;
+        let need = (area(pixels), CacheLimits::DEFAULT.cpu_layer_pixels);
+        if self.admit(commands, need, area) {
+            self.insert(key, commands, pixels.clone());
         }
-        self.entries.push(Entry {
-            key,
-            commands: commands.to_vec(),
-            pixels: pixels.clone(),
-            used: self.frame,
-        });
     }
 }
 

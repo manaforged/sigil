@@ -213,26 +213,14 @@ impl BlurPipeline {
             viewport: [vw.max(1.0), vh.max(1.0)],
             params,
         };
-        let uniform_buf = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("sigil-renderer blur uniforms"),
-                contents: bytemuck::bytes_of(&uniforms),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-        let uniform_bg = buffer_group(
-            ctx.device,
-            "sigil-renderer blur uniforms bind group",
+        let uniform_bg = ctx.uniform_group(
             &self.uniform_layout,
-            uniform_buf.as_entire_buffer_binding(),
+            (
+                "sigil-renderer blur uniforms",
+                "sigil-renderer blur uniforms bind group",
+            ),
+            bytemuck::bytes_of(&uniforms),
         );
-        let instance_buf = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("sigil-renderer blur instance buffer"),
-                contents: bytemuck::bytes_of(&instance),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
         let tex_bg = texture_group(
             ctx.device,
             "sigil-renderer blur texture bind group",
@@ -240,14 +228,14 @@ impl BlurPipeline {
             src,
             &self.sampler,
         );
-        let load = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
-        let pass = begin_pass(ctx.encoder, "sigil-renderer blur pass", dst, load);
-        quad.draw(
-            pass,
+        ctx.draw_once(
+            quad,
+            ("sigil-renderer blur pass", dst),
             &[&uniform_bg, &tex_bg],
-            &[],
-            instance_buf.slice(..),
-            1,
+            (
+                "sigil-renderer blur instance buffer",
+                bytemuck::bytes_of(&instance),
+            ),
         );
     }
 }
@@ -263,4 +251,59 @@ pub(crate) struct PassSrc<'a> {
     pub(crate) view: &'a wgpu::TextureView,
     pub(crate) w: u32,
     pub(crate) h: u32,
+}
+
+impl<'a> PassSrc<'a> {
+    pub(crate) fn or_view<'b>(self, view: Option<&'b wgpu::TextureView>) -> PassSrc<'b>
+    where
+        'a: 'b,
+    {
+        PassSrc {
+            view: view.unwrap_or(self.view),
+            w: self.w,
+            h: self.h,
+        }
+    }
+}
+
+impl PassCtx<'_> {
+    pub(crate) fn uniform_group(
+        &self,
+        layout: &wgpu::BindGroupLayout,
+        (buffer_label, group_label): (&str, &str),
+        contents: &[u8],
+    ) -> wgpu::BindGroup {
+        let buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(buffer_label),
+                contents,
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        buffer_group(
+            self.device,
+            group_label,
+            layout,
+            buffer.as_entire_buffer_binding(),
+        )
+    }
+
+    pub(crate) fn draw_once(
+        &mut self,
+        quad: &QuadPipeline,
+        (pass_label, target): (&'static str, &wgpu::TextureView),
+        groups: &[&wgpu::BindGroup],
+        (instance_label, instance): (&str, &[u8]),
+    ) {
+        let instance_buf = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(instance_label),
+                contents: instance,
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let load = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+        let pass = begin_pass(self.encoder, pass_label, target, load);
+        quad.draw(pass, groups, &[], instance_buf.slice(..), 1);
+    }
 }

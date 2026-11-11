@@ -6,6 +6,7 @@ use crate::hal::Renderer;
 use crate::style::Rgba;
 use tiny_skia::Pixmap;
 
+use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::plan::build_tree;
 use crate::renderer::scene_command::CommandScene;
@@ -153,7 +154,8 @@ impl CpuRenderer {
     fn walk(&mut self, target: &mut Pixmap, scene: &CommandScene, scale: f32, origin: Point) {
         self.stats = FrameStats::default();
         self.quads.begin_frame();
-        self.cached.begin_frame();
+        self.cached
+            .begin_frame(CacheLimits::DEFAULT.cpu_layer_stale_frames);
         self.stats.scene_commands = scene.commands.len();
         let scratch = paint::PaintScratch {
             quads: &mut self.quads,

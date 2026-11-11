@@ -1,4 +1,4 @@
-use super::DecorationPipeline;
+use super::decoration_pipeline;
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -8,6 +8,6 @@ fn decoration_pipeline_constructs_against_real_device() {
         return;
     };
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-    let pipeline = DecorationPipeline::new(device, format);
+    let pipeline = decoration_pipeline(device, format);
     assert_eq!(pipeline.format(), format);
 }

@@ -10,7 +10,7 @@ use super::Color;
 use crate::scene::Shadow;
 use crate::scene::command::Filter;
 use crate::style::NumericAtomKind;
-use crate::style::srgb::{decode, encode};
+use crate::style::srgb::{decode_rgb, encode, unit};
 
 mod motion;
 
@@ -102,12 +102,8 @@ impl ShadowSpec {
 
     fn shadow(self, color: Option<Color>) -> Shadow {
         let color = color.unwrap_or(self.color);
-        let linear = [
-            decode(color.r),
-            decode(color.g),
-            decode(color.b),
-            f32::from(color.a) / 255.0,
-        ];
+        let [r, g, b] = decode_rgb(color);
+        let linear = [r, g, b, unit(color.a)];
         let offset = self.offset.map(|value| f32::from(value) / SUB);
         Shadow::new(offset, f32::from(self.blur) / SUB, 0.0, linear)
     }

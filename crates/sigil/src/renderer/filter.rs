@@ -5,13 +5,11 @@
 )]
 
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt as _;
 
 use crate::Error;
 use crate::renderer::blur_paint::{BlurPipeline, PassCtx, PassSrc};
 use crate::renderer::fill_paint::setup::{
-    QuadDesc, QuadPipeline, begin_pass, buffer_group, buffer_layout, linear_sampler, texture_group,
-    texture_layout,
+    QuadDesc, QuadPipeline, buffer_layout, linear_sampler, texture_group, texture_layout,
 };
 use crate::renderer::layer_pool::LayerPool;
 use crate::scene::command::Filter;
@@ -106,10 +104,7 @@ impl FilterPipeline {
     ) -> Result<Option<wgpu::TextureView>, Error> {
         let mut current: Option<wgpu::TextureView> = None;
         for step in filters.steps() {
-            let input = PassSrc {
-                view: current.as_ref().unwrap_or(src.view),
-                ..src
-            };
+            let input = src.or_view(current.as_ref());
             let next = match *step {
                 [Filter::Blur(sigma)] => self.blur.apply(ctx, pool, input, sigma * scale)?,
                 [Filter::DropShadow(shadow)] => {
@@ -151,10 +146,7 @@ impl FilterPipeline {
                     *offset = bias;
                 }
             }
-            let input = PassSrc {
-                view: current.as_ref().unwrap_or(src.view),
-                ..src
-            };
+            let input = src.or_view(current.as_ref());
             let pass = FilterPass {
                 src: input,
                 shadow: input.view,
@@ -194,44 +186,30 @@ impl FilterPipeline {
     ) -> Result<wgpu::TextureView, Error> {
         let (w, h) = (pass.src.w, pass.src.h);
         let out = pool.acquire(ctx.device, w, h, quad.format)?;
-        let groups = self.groups(ctx.device, pass);
-        let instance_buf = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("sigil-renderer filter instance"),
-                contents: bytemuck::bytes_of(&[0.0, 0.0, w as f32, h as f32]),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-        let load = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
-        let render = begin_pass(ctx.encoder, "sigil-renderer filter pass", &out.view, load);
-        quad.draw(
-            render,
+        let groups = [
+            ctx.uniform_group(
+                &self.uniform_layout,
+                (
+                    "sigil-renderer filter uniforms",
+                    "sigil-renderer filter uniforms bind group",
+                ),
+                bytemuck::bytes_of(&pass.uniforms),
+            ),
+            self.texture(ctx.device, pass.src.view),
+            self.texture(ctx.device, pass.shadow),
+        ];
+        ctx.draw_once(
+            quad,
+            ("sigil-renderer filter pass", &out.view),
             &[&groups[0], &groups[1], &groups[2]],
-            &[],
-            instance_buf.slice(..),
-            1,
+            (
+                "sigil-renderer filter instance",
+                bytemuck::bytes_of(&[0.0, 0.0, w as f32, h as f32]),
+            ),
         );
         let view = out.view.clone();
         ctx.retained.push(out);
         Ok(view)
-    }
-
-    fn groups(&self, device: &wgpu::Device, pass: &FilterPass<'_>) -> [wgpu::BindGroup; 3] {
-        let uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("sigil-renderer filter uniforms"),
-            contents: bytemuck::bytes_of(&pass.uniforms),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        [
-            buffer_group(
-                device,
-                "sigil-renderer filter uniforms bind group",
-                &self.uniform_layout,
-                uniform_buf.as_entire_buffer_binding(),
-            ),
-            self.texture(device, pass.src.view),
-            self.texture(device, pass.shadow),
-        ]
     }
 
     fn texture(&self, device: &wgpu::Device, view: &wgpu::TextureView) -> wgpu::BindGroup {

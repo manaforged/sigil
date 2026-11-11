@@ -2,6 +2,7 @@
 
 use crate::geometry::Rect;
 use crate::style::Color;
+use crate::style::srgb::unit;
 use bytemuck::{Pod, Zeroable};
 use half::f16;
 
@@ -38,7 +39,7 @@ impl BlendSpace {
     fn channel(self, channel: u8) -> f32 {
         match self {
             Self::Linear => srgb_channel_to_linear(channel),
-            Self::Gamma => f32::from(channel) / 255.0,
+            Self::Gamma => unit(channel),
         }
     }
 
@@ -51,7 +52,7 @@ impl BlendSpace {
             self.channel(color.r),
             self.channel(color.g),
             self.channel(color.b),
-            f32::from(color.a) / 255.0,
+            unit(color.a),
         ]
     }
 }
@@ -70,6 +71,12 @@ pub(crate) const fn affine_rows(transform: Transform) -> [[f32; 4]; 2] {
     [[a, b, tx, 0.0], [c, d, ty, 0.0]]
 }
 
+const fn with_tail(head: [f32; 4], tail: [f32; 2]) -> [f32; 4] {
+    let [a, b, _, _] = head;
+    let [x, y] = tail;
+    [a, b, x, y]
+}
+
 pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
 pub(crate) const MAX_GRADIENT_STOPS_U32: u32 = 8;
 
@@ -84,22 +91,6 @@ pub(crate) struct RectInstance {
     pub(crate) stroke_meta: [f32; 4],
     pub(crate) xform_x: [f32; 4],
     pub(crate) xform_y: [f32; 4],
-}
-
-impl RectInstance {
-    pub(crate) const fn with_dash_origin(mut self, origin: [f32; 2]) -> Self {
-        let [opacity, outset, _, _] = self.params;
-        let [x, y] = origin;
-        self.params = [opacity, outset, x, y];
-        self
-    }
-
-    pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
-        let [xform_x, xform_y] = affine_rows(transform);
-        self.xform_x = xform_x;
-        self.xform_y = xform_y;
-        self
-    }
 }
 
 #[repr(C)]
@@ -119,27 +110,29 @@ pub(crate) struct FillInstance {
 }
 
 impl FillInstance {
-    pub(crate) const fn with_dash_origin(mut self, origin: [f32; 2]) -> Self {
-        let [opacity, outset, _, _] = self.params;
-        let [x, y] = origin;
-        self.params = [opacity, outset, x, y];
-        self
-    }
-
     pub(crate) const fn with_phase(mut self, phase: [f32; 2]) -> Self {
-        let [a, b, _, _] = self.line;
-        let [x, y] = phase;
-        self.line = [a, b, x, y];
-        self
-    }
-
-    pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
-        let [xform_x, xform_y] = affine_rows(transform);
-        self.xform_x = xform_x;
-        self.xform_y = xform_y;
+        self.line = with_tail(self.line, phase);
         self
     }
 }
+
+macro_rules! dash_and_transform {
+    ($($instance:ty),+) => {$(
+        impl $instance {
+            pub(crate) const fn with_dash_origin(mut self, origin: [f32; 2]) -> Self {
+                self.params = with_tail(self.params, origin);
+                self
+            }
+
+            pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
+                [self.xform_x, self.xform_y] = affine_rows(transform);
+                self
+            }
+        }
+    )+};
+}
+
+dash_and_transform!(RectInstance, FillInstance);
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]

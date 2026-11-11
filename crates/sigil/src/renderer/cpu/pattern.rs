@@ -15,6 +15,7 @@ use crate::renderer::scene_command::PatternKind;
 use super::bound::{CpuBound, corners, extent};
 #[cfg(feature = "kittest")]
 use super::shapes::rgba_table;
+use super::shapes::unit;
 
 pub(super) struct PatternPlacement {
     pub(super) kind: PatternKind,
@@ -202,7 +203,7 @@ fn full(color: Color) -> [u8; 4] {
 }
 
 fn wash_pixel(wash: &crate::scene::Wash, centre: (f32, f32), x: f64, y: f64) -> [u8; 4] {
-    let alpha = f32::from(wash.paper.a) / 255.0;
+    let alpha = unit(wash.paper.a);
     let [red, green, blue] = wash.shade(x as f32, y as f32, centre);
     let byte = |channel: f32| crate::style::srgb::byte(channel * alpha * 255.0);
     [byte(red), byte(green), byte(blue), wash.paper.a]

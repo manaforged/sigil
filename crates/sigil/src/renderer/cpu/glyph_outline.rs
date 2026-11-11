@@ -15,7 +15,7 @@ use crate::renderer::glyph_place::{coverage_curve, pen_shift, text_gamma};
 use crate::renderer::scene_command::{GlyphRun, Transform};
 use crate::text::outline::{Oblique, for_each_outline};
 
-use super::shapes::{self, Brush, decode, solid};
+use super::shapes::{self, Brush, decode_rgb, solid};
 
 struct GlyphPen<'a> {
     builder: &'a mut PathBuilder,
@@ -88,7 +88,7 @@ pub(super) fn fill_glyphs(
 ) {
     let color = run.color();
     let paint = solid(color, opacity);
-    let linear = [color.r, color.g, color.b].map(decode);
+    let linear = decode_rgb(color);
     let gamma = text_gamma([linear[0], linear[1], linear[2], 1.0], true);
     for path in paths {
         if (gamma - 1.0).abs() < f32::EPSILON {

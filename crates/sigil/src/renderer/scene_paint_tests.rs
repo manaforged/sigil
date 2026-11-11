@@ -1,4 +1,4 @@
-use super::ScenePipeline;
+use super::scene_pipeline;
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -8,6 +8,6 @@ fn scene_pipeline_constructs_against_real_device() {
         return;
     };
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-    let pipeline = ScenePipeline::new(device, format);
+    let pipeline = scene_pipeline(device, format);
     assert_eq!(pipeline.format(), format);
 }

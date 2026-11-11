@@ -14,10 +14,17 @@ const STEPS: u16 = 1 << 14;
 static DECODED: std::sync::LazyLock<[f32; 256]> = std::sync::LazyLock::new(|| {
     let mut table = [0.0; 256];
     for (channel, slot) in (0..=u8::MAX).zip(table.iter_mut()) {
-        *slot = decode_unit(f32::from(channel) / 255.0);
+        *slot = decode_unit(unit(channel));
     }
     table
 });
+
+/// Maps a byte channel to 0..=1 without a transfer curve.
+#[must_use]
+#[inline]
+pub(crate) fn unit(channel: u8) -> f32 {
+    f32::from(channel) / 255.0
+}
 
 /// Decodes one sRGB-encoded channel in 0..=1 to linear light.
 #[must_use]
@@ -43,6 +50,12 @@ static ENCODED: std::sync::LazyLock<Box<[u8; STEPS as usize + 1]>> =
 #[must_use]
 pub(crate) fn decode(channel: u8) -> f32 {
     DECODED.get(usize::from(channel)).copied().unwrap_or(1.0)
+}
+
+/// Decodes the red, green and blue bytes of a color to linear light.
+#[must_use]
+pub(crate) fn decode_rgb(color: crate::style::Color) -> [f32; 3] {
+    [color.r, color.g, color.b].map(decode)
 }
 
 /// Rounds a channel value in 0.0..=255.0 to its byte, clamping values outside that range.
@@ -87,7 +100,7 @@ pub(crate) fn luma([r, g, b]: [f32; 3]) -> f32 {
 /// Returns the WCAG relative luminance of an opaque color.
 #[must_use]
 pub(crate) fn luminance(color: crate::style::Color) -> f32 {
-    luma([color.r, color.g, color.b].map(decode))
+    luma(decode_rgb(color))
 }
 
 /// Returns the WCAG contrast ratio of two opaque colors.

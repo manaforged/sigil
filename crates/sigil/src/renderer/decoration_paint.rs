@@ -2,13 +2,9 @@
 
 use bytemuck::{Pod, Zeroable};
 
-use crate::renderer::fill_paint::setup::{
-    QuadDesc, QuadPipeline, buffer_group, buffer_layout, clipped_pass,
-};
-use crate::renderer::frame_upload::UploadedRange;
+use crate::renderer::fill_paint::setup::{QuadDesc, UniformLabels, UniformQuad};
 use crate::renderer::scene_command::{DecorationKind, DrawDecoration, Transform};
 use crate::renderer::scene_instance::BlendSpace;
-use crate::renderer::scene_paint::PaintCtx;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -34,61 +30,29 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     ],
 };
 
-pub(crate) struct DecorationPipeline {
-    quad: QuadPipeline,
-    bgl: wgpu::BindGroupLayout,
-}
+pub(crate) type DecorationPipeline = UniformQuad;
 
-impl DecorationPipeline {
-    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let bgl = buffer_layout(
-            device,
-            "sigil-renderer decoration uniforms layout",
-            wgpu::ShaderStages::VERTEX,
-            wgpu::BufferBindingType::Uniform,
-        );
-        let quad = QuadPipeline::new(
-            device,
-            format,
-            QuadDesc {
-                label: "sigil-renderer decoration",
-                wgsl: include_str!("decoration_paint.wgsl"),
-                groups: &[Some(&bgl)],
-                instance: INSTANCE_LAYOUT,
-                fs_entry: "fs_main",
-                blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            },
-        );
-        Self { quad, bgl }
-    }
-
-    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.quad.format
-    }
-
-    pub(crate) fn paint_uploaded(
-        &self,
-        mut ctx: PaintCtx<'_>,
-        instances: UploadedRange,
-        uniform: wgpu::BufferBinding<'_>,
-    ) {
-        let bind_group = buffer_group(
-            ctx.device,
-            "sigil-renderer decoration bind group",
-            &self.bgl,
-            uniform,
-        );
-        let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer decoration paint pass") else {
-            return;
-        };
-        self.quad.draw(
-            pass,
-            &[&bind_group],
-            &[],
-            instances.buffer.slice(instances.bytes),
-            instances.count,
-        );
-    }
+pub(crate) fn decoration_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+) -> DecorationPipeline {
+    UniformQuad::new(
+        device,
+        format,
+        UniformLabels {
+            layout: "sigil-renderer decoration uniforms layout",
+            group: "sigil-renderer decoration bind group",
+            pass: "sigil-renderer decoration paint pass",
+        },
+        QuadDesc {
+            label: "sigil-renderer decoration",
+            wgsl: include_str!("decoration_paint.wgsl"),
+            groups: &[],
+            instance: INSTANCE_LAYOUT,
+            fs_entry: "fs_main",
+            blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+        },
+    )
 }
 
 pub(crate) fn decoration_instance(

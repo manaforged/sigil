@@ -92,6 +92,27 @@ pub(crate) struct CellRect {
     pub outline: bool,
 }
 
+macro_rules! node_and_cell {
+    ($($command:ty),+) => {$(
+        impl $command {
+            pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
+                self.node = Some(node);
+                self
+            }
+
+            pub(crate) const fn with_cell(mut self, cell: CellRect) -> Self {
+                self.tone = cell.tone;
+                self.leaf = cell.leaf;
+                self.border = cell.border;
+                self.outline = cell.outline;
+                self
+            }
+        }
+    )+};
+}
+
+node_and_cell!(DrawRect, DrawGradient);
+
 impl DrawRect {
     /// A solid rectangle with square corners at full opacity.
     #[must_use]
@@ -135,19 +156,6 @@ impl DrawRect {
             self.stroke = Some(stroke);
             self
         }
-    }
-
-    pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
-        self.node = Some(node);
-        self
-    }
-
-    pub(crate) const fn with_cell(mut self, cell: CellRect) -> Self {
-        self.tone = cell.tone;
-        self.leaf = cell.leaf;
-        self.border = cell.border;
-        self.outline = cell.outline;
-        self
     }
 }
 
@@ -224,19 +232,6 @@ impl DrawGradient {
             self.stroke = Some(stroke);
             self
         }
-    }
-
-    pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
-        self.node = Some(node);
-        self
-    }
-
-    pub(crate) const fn with_cell(mut self, cell: CellRect) -> Self {
-        self.tone = cell.tone;
-        self.leaf = cell.leaf;
-        self.border = cell.border;
-        self.outline = cell.outline;
-        self
     }
 }
 

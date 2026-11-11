@@ -13,7 +13,7 @@ use crate::scene::command::{Filter, LayerEffect};
 use crate::scene::shadow::Shadow;
 
 use super::shadow::blur;
-use super::shapes::{decode, encode, encode_byte};
+use super::shapes::{decode, encode, encode_byte, unit};
 
 pub(super) fn filter(layer: &mut Pixmap, effect: &LayerEffect, scale: f32) {
     let Some(filters) = LayerFilters::of(effect) else {
@@ -35,7 +35,7 @@ pub(super) fn filter(layer: &mut Pixmap, effect: &LayerEffect, scale: f32) {
 fn recolor(layer: &mut Pixmap, matrices: &[ColorMatrix]) {
     let (pixels, _) = layer.data_mut().as_chunks_mut::<4>();
     for pixel in pixels.iter_mut().filter(|pixel| pixel[3] > 0) {
-        let alpha = f32::from(pixel[3]) / 255.0;
+        let alpha = unit(pixel[3]);
         let [r, g, b] = [pixel[0], pixel[1], pixel[2]].map(|c| encode(decode(c) / alpha));
         let [r, g, b, a] = matrices
             .iter()
@@ -63,7 +63,7 @@ fn drop_shadow(layer: &mut Pixmap, shadow: Shadow, scale: f32) {
         let coverage = if inside {
             source
                 .get(((y * width + x) * 4 + 3) as usize)
-                .map_or(0.0, |value| f32::from(*value) / 255.0)
+                .map_or(0.0, |value| unit(*value))
         } else {
             0.0
         };
@@ -72,7 +72,7 @@ fn drop_shadow(layer: &mut Pixmap, shadow: Shadow, scale: f32) {
 }
 
 fn under(top: [u8; 4], tint: [f32; 4], coverage: f32) -> [u8; 4] {
-    let alpha = f32::from(top[3]) / 255.0;
+    let alpha = unit(top[3]);
     let below = 1.0 - alpha;
     let mut out = [0_u8; 4];
     for ((slot, channel), tone) in out.iter_mut().zip(top).zip(tint).take(3) {

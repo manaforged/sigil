@@ -19,6 +19,7 @@ use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_group, texture_layout,
 };
 use crate::renderer::layer_composite::{uniform_layout, uv_max, viewport_uniform};
+use crate::renderer::scene_command::walk::pipeline_for;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::Transform3D;
 use shader::PROJECTED_SHADER;
@@ -58,20 +59,15 @@ impl ProjectedPipeline {
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
     ) -> &'a mut Self {
-        let index = pipelines
-            .iter()
-            .position(|pipeline| pipeline.quad.format == format)
-            .unwrap_or_else(|| {
-                count(crate::profile::Counter::GpuCompositePipelines);
-                pipelines.push(Self::new(device, format));
-                pipelines.len() - 1
-            });
-        pipelines
-            .get_mut(index)
-            .expect("projected pipeline index was just found or pushed")
+        pipeline_for(pipelines, device, format, (Self::format, Self::new))
+    }
+
+    const fn format(&self) -> wgpu::TextureFormat {
+        self.quad.format
     }
 
     fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        count(crate::profile::Counter::GpuCompositePipelines);
         let uniform_layout = uniform_layout(device, "sigil-renderer projected uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer projected texture layout");
         let quad = QuadPipeline::new(

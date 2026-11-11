@@ -1,4 +1,4 @@
-use super::ShadowPipeline;
+use super::shadow_pipeline;
 use super::shadow_shader::SHADOW_SHADER;
 
 #[test]
@@ -9,7 +9,7 @@ fn shadow_pipeline_constructs_against_real_device() {
         return;
     };
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-    let pipeline = ShadowPipeline::new(device, format);
+    let pipeline = shadow_pipeline(device, format);
     assert_eq!(pipeline.format(), format);
 }
 

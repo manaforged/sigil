@@ -14,7 +14,7 @@ use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::expanded_shadow_rect;
-use crate::style::srgb::{decode, decode_unit, encode, encode_byte};
+use crate::style::srgb::{decode, decode_unit, encode, encode_byte, unit};
 
 use super::shadow_field::ShadowField;
 use super::shapes::{blit, coverage_table};
@@ -204,7 +204,7 @@ fn upsample(src: &[[f32; 4]], dims: Dims, full: Dims, factor: f32) -> Vec<[f32; 
 }
 
 fn to_premultiplied(pixel: [u8; 4]) -> [f32; 4] {
-    let alpha = f32::from(pixel[3]) / 255.0;
+    let alpha = unit(pixel[3]);
     if alpha <= 0.0 {
         return [0.0; 4];
     }
