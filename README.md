@@ -16,7 +16,7 @@ Status: 0.2 is the first release. The API will break between minor versions unti
 
 ## Requirements
 
-- Rust 1.95 or newer.
+- Rust 1.96 or newer.
 - On Linux, the window host needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages. On Debian and Ubuntu: `sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev`. The terminal host needs none of them.
 - A wgpu-capable GPU for the default renderer of the window host. Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 

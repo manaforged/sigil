@@ -13,7 +13,7 @@ type View = Box<dyn Fn() -> Box<dyn IntoNode>>;
 type ErrorView = Box<dyn Fn(&Error) -> Box<dyn IntoNode>>;
 
 impl ImageSource {
-    /// Loads a file path, `file://` URL, base64 `data:` URI, or http(s) URL in a browser off the UI thread, cached by location and, for a file, its modified time and size.
+    /// Loads a file path, `file://` URL, base64 `data:` URI, or http(s) URL (feature `image-http` outside a browser) off the UI thread, cached by location and, for a file, its modified time and size.
     #[must_use]
     pub fn load(location: impl Into<String>) -> Signal<Load> {
         let location = location.into();
@@ -69,6 +69,21 @@ fn cache_key(location: &str) -> u64 {
     crate::fnv::mix(key, meta.len())
 }
 
+#[cfg(native_http)]
+fn fetch(url: &str) -> Result<ImageSource, Error> {
+    crate::net::get(url)
+        .map_err(|err| crate::net::fetch_failed("image", &err))
+        .and_then(|bytes| ImageSource::decode_uncached(&bytes))
+}
+
+#[cfg(not(native_http))]
+const fn fetch(_url: &str) -> Result<ImageSource, Error> {
+    Err(Error::fixed(
+        ErrorKind::Fetch,
+        "loading an image from an http URL needs the image-http feature",
+    ))
+}
+
 fn file_path(location: &str) -> &str {
     location.strip_prefix("file://").unwrap_or(location)
 }
@@ -98,10 +113,7 @@ fn read(location: &str) -> Result<ImageSource, Error> {
         return ImageSource::decode_uncached(&bytes);
     }
     if is_http(location) {
-        return Err(Error::fixed(
-            ErrorKind::Fetch,
-            "loading an image from an http URL is not supported yet",
-        ));
+        return fetch(location);
     }
     let path = file_path(location);
     let bytes = std::fs::read(path)
@@ -120,7 +132,7 @@ pub struct ImageLoadBuilder {
     error: ErrorView,
 }
 
-/// An image loaded from a file path, `file://` URL, base64 `data:` URI, or http(s) URL in a browser.
+/// An image loaded from a file path, `file://` URL, base64 `data:` URI, or http(s) URL (feature `image-http` outside a browser).
 ///
 /// ```
 /// use sigil::prelude::*;

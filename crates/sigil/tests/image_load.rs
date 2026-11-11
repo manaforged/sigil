@@ -76,3 +76,57 @@ fn a_changed_file_loads_again() {
     image::RgbaImage::new(2, 2).save(&path).expect("write 2x2");
     assert_eq!(loaded_size(&path_text), Some((2, 2)));
 }
+
+#[cfg(feature = "image-http")]
+fn serve(status: &'static str, body: Vec<u8>) -> String {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind a local port");
+    let url = format!(
+        "http://{}/picture.png",
+        listener.local_addr().expect("local address")
+    );
+    std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept the request");
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 1024];
+        while !request.ends_with(b"\r\n\r\n") {
+            let read = stream.read(&mut chunk).expect("read the request");
+            if read == 0 {
+                return;
+            }
+            request.extend_from_slice(chunk.get(..read).unwrap_or_default());
+        }
+        let head = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        stream.write_all(head.as_bytes()).expect("write the head");
+        stream.write_all(&body).expect("write the body");
+    });
+    url
+}
+
+#[cfg(feature = "image-http")]
+#[test]
+fn an_http_image_loads_off_the_ui_thread() {
+    let mut png = std::io::Cursor::new(Vec::new());
+    image::RgbaImage::new(3, 5)
+        .write_to(&mut png, image::ImageFormat::Png)
+        .expect("encode a png");
+    let url = serve("200 OK", png.into_inner());
+    assert_eq!(loaded_size(&url), Some((3, 5)));
+}
+
+#[cfg(feature = "image-http")]
+#[test]
+fn an_http_error_status_shows_the_error_view() {
+    let url = serve("404 Not Found", Vec::new());
+    Harness::new(move || {
+        column().child(
+            load_image(url.clone())
+                .alt("Picture")
+                .error(|err| text(format!("Failed: {:?}", err.kind()))),
+        )
+    })
+    .expect_text("Failed: Http");
+}

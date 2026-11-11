@@ -81,7 +81,7 @@ pub mod layout;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod layout;
-#[cfg(target_arch = "wasm32")]
+#[cfg(http_fetch)]
 mod net;
 /// Frame timing, counters, and profile output.
 pub mod profile;

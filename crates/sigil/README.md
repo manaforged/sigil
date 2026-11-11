@@ -12,7 +12,7 @@ The package is `sigil-ui` because `sigil` is taken on crates.io. The library nam
 
 Follow [Install](https://github.com/manaforged/sigil#install). It also gives the terminal-only line without the GPU stack.
 
-Rust 1.95 or newer. The window host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the CPU renderer.
+Rust 1.96 or newer. The window host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the CPU renderer.
 
 ## Usage
 
@@ -128,7 +128,8 @@ Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, 
 | `shaping-complex` | via `scene` | Complex-script text shaping through `HarfRust`. |
 | `clipboard` | via `desktop` | `OsClipboard`, the system clipboard. |
 | `clipboard-image` | no | `sigil::clipboard::image()`, images from the system clipboard. |
-| `image-decode` | no | `ImageSource::decode`, and `data:` images in `markdown`. |
+| `image-decode` | no | `ImageSource::decode`, `load_image`, and `data:` images in `markdown`. |
+| `image-http` | no | `load_image` and `ImageSource::load` fetch http(s) URLs in native builds, through leyline-http. Builds BoringSSL from source, which needs a C and C++ compiler. Turns on `image-decode`. |
 | `dialog` | no | `sigil::app::dialog`: in-app open, save, folder, message, and confirm dialogs on either host. |
 | `native-dialog` | no | Native dialogs on the window host; the terminal host keeps the in-app dialogs. Turns on `dialog` and `desktop`. |
 | `menu` | no | `sigil::app::menu`: native application menus. Turns on `desktop`. |
