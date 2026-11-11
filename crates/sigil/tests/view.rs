@@ -143,6 +143,24 @@ fn a_flag_shows_and_hides_a_widget() {
     ui.click("Toggle").expect_text("Details");
 }
 
+#[test]
+fn a_field_names_its_control_by_its_label() {
+    Owner::scope("view-field-name", || {
+        let name = signal(String::new());
+        let email = signal(String::new());
+        let mut ui = Harness::new(move || {
+            View::new(
+                "column {\n  field \"Name\" {\n    text_field value=$name\n  }\n  field \"Email\" {\n    text_field value=$email\n  }\n}\n",
+            )
+            .signal("name", name)
+            .signal("email", email)
+        });
+        ui.type_into("Email", "ada@example.com");
+        assert_eq!(email.peek(), "ada@example.com");
+        assert_eq!(name.peek(), "");
+    });
+}
+
 fn problem(source: &str) -> String {
     Owner::scope("view", || {
         View::new(source)

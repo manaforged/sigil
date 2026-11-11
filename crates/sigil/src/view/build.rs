@@ -72,11 +72,14 @@ fn shown(item: &Rc<Item>) -> Box<dyn IntoNode> {
 }
 
 fn field_of(item: &Item) -> Box<dyn IntoNode> {
-    let mut control = fragment();
-    for child in &item.children {
-        control = control.child(build(child));
-    }
-    Box::new(styled(field(label(item), control), &item.attrs))
+    let control = item
+        .children
+        .first()
+        .map_or_else(|| -> Box<dyn IntoNode> { Box::new(fragment()) }, build);
+    Box::new(styled(
+        NodeBuilder::wrapping(field(label(item), control)),
+        &item.attrs,
+    ))
 }
 
 fn text_of(item: &Item) -> Box<dyn IntoNode> {
