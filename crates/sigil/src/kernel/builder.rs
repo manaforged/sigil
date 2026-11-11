@@ -28,7 +28,7 @@ pub struct NodeBuilder {
     pub(super) pre_extensions: Vec<NodeMutator>,
     pub(super) reactive_children: Option<ReactiveChildrenInstall>,
     pub(super) on_added: Vec<AddedHook>,
-    style: Style,
+    style: Option<Box<Style>>,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
     wiring: Wiring,
 }
@@ -76,7 +76,7 @@ impl NodeBuilder {
             pre_extensions: Vec::new(),
             reactive_children: None,
             on_added: Vec::new(),
-            style: Style::new(),
+            style: None,
             wraps: None,
             wiring: Wiring::default(),
         }
@@ -344,16 +344,16 @@ impl NodeBuilder {
         cx.add(self)
     }
 
-    pub(crate) const fn pending_style(&mut self) -> &mut Style {
-        &mut self.style
+    pub(crate) fn pending_style(&mut self) -> &mut Style {
+        self.style.get_or_insert_with(|| Box::new(Style::new()))
     }
 
     fn styled(mut self) -> Self {
-        let style = std::mem::take(&mut self.style);
-        if style.is_empty() && self.wiring.is_inert() {
-            self
-        } else {
-            crate::style::attach_style(self, style)
+        let style = self.style.take().filter(|style| !style.is_empty());
+        match style {
+            Some(style) => crate::style::attach_style(self, *style),
+            None if self.wiring.is_inert() => self,
+            None => crate::style::attach_style(self, Style::new()),
         }
     }
 
@@ -375,7 +375,7 @@ impl NodeBuilder {
 
 impl PaintTarget for NodeBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
+        StyleSlot(self.pending_style())
     }
 }
 
