@@ -32,8 +32,8 @@ pub(crate) fn emit_color_glyphs(
         return;
     }
     let target = GlyphTarget { id, rect, opacity };
-    for glyph in para.rendered_glyphs() {
-        emit_one(scene, &target, &glyph, &color_fonts);
+    for glyph in para.rendered_glyphs_slice() {
+        emit_one(scene, &target, glyph, &color_fonts);
     }
 }
 

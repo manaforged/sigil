@@ -7,6 +7,7 @@ use crate::text::shaper::{FaceStyle, Font, Script};
 mod cache;
 mod face;
 
+pub(super) use cache::{SpanKey, WordCache, with_words};
 use cache::{WordSpan, remember, replay, word_key};
 use face::{FaceSpan, cell_width, coalesce_face_spans, fit_cells, shape_in_chain};
 
@@ -54,11 +55,13 @@ pub(super) struct WordCtx<'a> {
     pub(super) is_ws: bool,
     pub(super) chain: &'a [Font],
     pub(super) style: &'a FaceStyle,
+    pub(super) span_key: &'a SpanKey,
 }
 
 pub(super) fn split_word_into_uniform_runs(
     ctx: &WordCtx<'_>,
     levels: &[u8],
+    words: &mut WordCache,
     out: &mut Vec<ShapedSegment>,
 ) {
     let mut acc = RunAccumulator::new();
@@ -67,14 +70,14 @@ pub(super) fn split_word_into_uniform_runs(
         let level = byte_level(levels, ctx.word_start + ch_offset);
         let script = char_script(ch);
         if acc.would_split(level, script) {
-            acc.flush_to(ctx, ch_offset, out);
+            acc.flush_to(ctx, ch_offset, words, out);
             acc.start(ch_offset, level, script);
         } else {
             acc.extend(ch_offset, level, script);
         }
     }
 
-    acc.flush_to(ctx, ctx.word.len(), out);
+    acc.flush_to(ctx, ctx.word.len(), words, out);
 }
 
 struct RunAccumulator {
@@ -120,7 +123,13 @@ impl RunAccumulator {
         }
     }
 
-    fn flush_to(&self, ctx: &WordCtx<'_>, end_offset: usize, out: &mut Vec<ShapedSegment>) {
+    fn flush_to(
+        &self,
+        ctx: &WordCtx<'_>,
+        end_offset: usize,
+        words: &mut WordCache,
+        out: &mut Vec<ShapedSegment>,
+    ) {
         if self.start >= end_offset {
             return;
         }
@@ -132,7 +141,7 @@ impl RunAccumulator {
             script: self.script.unwrap_or(Script::Common),
             is_break_opportunity: ctx.is_ws,
         };
-        push_run(&args, ctx.chain, ctx.style, out);
+        push_run_cached(&args, ctx.chain, (ctx.span_key, ctx.style), words, out);
     }
 }
 
@@ -157,10 +166,22 @@ pub(super) struct PushRunArgs<'a> {
 
 const WORD_MAX_BYTES: usize = 64;
 
+#[cfg(test)]
 pub(super) fn push_run(
     args: &PushRunArgs<'_>,
     chain: &[Font],
     style: &FaceStyle,
+    out: &mut Vec<ShapedSegment>,
+) {
+    let span_key = SpanKey::new(chain, style);
+    with_words(|words| push_run_cached(args, chain, (&span_key, style), words, out));
+}
+
+fn push_run_cached(
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    (span_key, style): (&SpanKey, &FaceStyle),
+    words: &mut WordCache,
     out: &mut Vec<ShapedSegment>,
 ) {
     if args.fragment.is_empty() {
@@ -170,17 +191,17 @@ pub(super) fn push_run(
         shape_face_spans(args, chain, style, out);
         return;
     }
-    let key = word_key(args, chain, style);
-    if replay(key, args, chain, style, out) {
+    let key = word_key(args, span_key.hash);
+    if replay(words, key, args, (span_key, style), out) {
         return;
     }
     let first = out.len();
     shape_face_spans(args, chain, style, out);
     remember(
+        words,
         key,
         args,
-        chain,
-        style,
+        (span_key, style),
         out.get(first..).unwrap_or_default(),
     );
 }

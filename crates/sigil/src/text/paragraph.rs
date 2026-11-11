@@ -221,6 +221,7 @@ struct ParagraphInner {
     fonts: FaceTable,
     min_content_hint: f32,
     content_widths: std::sync::OnceLock<ContentWidths>,
+    rendered: std::sync::OnceLock<Vec<crate::hal::RenderedGlyph>>,
     #[cfg(host)]
     ink: std::sync::OnceLock<Option<Rect>>,
 }
@@ -254,10 +255,16 @@ impl Paragraph {
                 fonts,
                 min_content_hint,
                 content_widths: std::sync::OnceLock::new(),
+                rendered: std::sync::OnceLock::new(),
                 #[cfg(host)]
                 ink: std::sync::OnceLock::new(),
             }),
         }
+    }
+
+    #[cfg(feature = "scene")]
+    pub(crate) fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
     }
 
     fn content_widths(&self) -> ContentWidths {

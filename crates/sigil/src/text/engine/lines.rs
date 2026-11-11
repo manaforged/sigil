@@ -1,6 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::bidi;
+use crate::text::cache::{WRAP_SLACK, WrapBounds};
 use crate::text::paragraph::{LayoutLine, SegmentAppend};
 use crate::text::shaper::{FaceStyle, Shaper};
 
@@ -50,18 +51,11 @@ impl<'a> PendingLine<'a> {
     }
 }
 
-const WRAP_SLACK: f32 = 1e-3;
-
 #[derive(Clone, Copy, Default)]
 pub(super) struct LineFit {
     pub(super) wrapped: bool,
     pub(super) width: f32,
-}
-
-impl LineFit {
-    pub(super) fn fits(self, limit: f32) -> bool {
-        self.width - limit <= WRAP_SLACK
-    }
+    pub(super) bounds: WrapBounds,
 }
 
 pub(super) fn break_lines(
@@ -88,7 +82,7 @@ pub(super) fn break_lines(
             cursor = seg.end;
             continue;
         }
-        if should_wrap(&pending, seg, max_width) {
+        if check_wrap(&pending, seg, max_width, &mut fit.bounds) {
             fit.wrapped = true;
             fit.width = fit.width.max(pending.peak);
             push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
@@ -123,17 +117,23 @@ fn line_estimate(segments: &[ShapedSegment], max_width: Option<f32>) -> usize {
     (total / limit).ceil().clamp(1.0, segments.len() as f32) as usize
 }
 
-fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option<f32>) -> bool {
-    let Some(limit) = max_width else {
-        return false;
-    };
-    if seg.is_break_opportunity || !seg.breakable_before {
+fn check_wrap(
+    pending: &PendingLine<'_>,
+    seg: &ShapedSegment,
+    max_width: Option<f32>,
+    bounds: &mut WrapBounds,
+) -> bool {
+    if seg.is_break_opportunity || !seg.breakable_before || pending.is_empty() {
         return false;
     }
-    if pending.is_empty() {
-        return false;
+    let candidate = pending.width + seg.advance;
+    let wrapped = max_width.is_some_and(|limit| candidate - limit > WRAP_SLACK);
+    if wrapped {
+        bounds.min_wrap = bounds.min_wrap.min(candidate);
+    } else {
+        bounds.min_nowrap = bounds.min_nowrap.max(candidate);
     }
-    pending.width + seg.advance - limit > WRAP_SLACK
+    wrapped
 }
 
 fn push_visual_line(

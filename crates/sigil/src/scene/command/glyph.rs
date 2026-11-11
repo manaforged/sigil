@@ -38,7 +38,7 @@ pub(crate) struct SharedGlyph {
     pub(crate) flow: TextFlow,
     pub(crate) tone: Option<Tone>,
     inks: Vec<RunInk>,
-    positioned_glyphs: Vec<RenderedGlyph>,
+    positioned_glyphs: Option<Vec<RenderedGlyph>>,
     #[cfg(feature = "scene")]
     paragraph: Option<Paragraph>,
     fill: Option<super::DrawPath>,
@@ -53,8 +53,32 @@ impl core::fmt::Debug for SharedGlyph {
             .field("opacity", &self.opacity)
             .field("flow", &self.flow)
             .field("tone", &self.tone)
-            .field("positioned_glyphs", &self.positioned_glyphs)
+            .field("positioned_glyphs", &self.glyphs_slice())
             .finish_non_exhaustive()
+    }
+}
+
+impl SharedGlyph {
+    fn glyph_count(&self) -> usize {
+        if let Some(glyphs) = &self.positioned_glyphs {
+            return glyphs.len();
+        }
+        #[cfg(feature = "scene")]
+        if let Some(paragraph) = &self.paragraph {
+            return paragraph.glyph_count();
+        }
+        0
+    }
+
+    fn glyphs_slice(&self) -> &[RenderedGlyph] {
+        if let Some(glyphs) = &self.positioned_glyphs {
+            return glyphs;
+        }
+        #[cfg(feature = "scene")]
+        if let Some(paragraph) = &self.paragraph {
+            return paragraph.rendered_glyphs_slice();
+        }
+        &[]
     }
 }
 
@@ -89,7 +113,7 @@ impl GlyphRun {
                 flow: TextFlow::Line,
                 tone: None,
                 inks: Vec::new(),
-                positioned_glyphs: Vec::new(),
+                positioned_glyphs: None,
                 #[cfg(feature = "scene")]
                 paragraph: None,
                 fill: None,
@@ -135,13 +159,13 @@ impl GlyphRun {
     /// Returns the number of positioned glyphs in this run.
     #[must_use]
     pub fn glyph_count(&self) -> usize {
-        self.shared.positioned_glyphs.len()
+        self.shared.glyph_count()
     }
 
     #[cfg(feature = "scene")]
     #[must_use]
     pub(crate) fn positioned_glyphs(&self) -> &[RenderedGlyph] {
-        &self.shared.positioned_glyphs
+        self.shared.glyphs_slice()
     }
 
     #[cfg(scene_host)]
@@ -176,7 +200,7 @@ impl GlyphRun {
     #[cfg(feature = "scene")]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
         let shared = Arc::make_mut(&mut self.shared);
-        shared.positioned_glyphs = paragraph.rendered_glyphs();
+        shared.positioned_glyphs = None;
         shared.paragraph = Some(paragraph);
         self
     }
@@ -185,7 +209,7 @@ impl GlyphRun {
     pub(crate) fn with_glyphs(mut self, color: Color, glyphs: Vec<RenderedGlyph>) -> Self {
         let shared = Arc::make_mut(&mut self.shared);
         shared.color = color;
-        shared.positioned_glyphs = glyphs;
+        shared.positioned_glyphs = Some(glyphs);
         self
     }
 
@@ -247,13 +271,23 @@ impl GlyphRun {
 }
 
 #[cfg(feature = "scene")]
-const fn same_paragraph(left: &SharedGlyph, right: &SharedGlyph) -> bool {
-    left.paragraph.is_some() == right.paragraph.is_some()
+fn same_glyphs(left: &SharedGlyph, right: &SharedGlyph) -> bool {
+    if left.paragraph.is_some() != right.paragraph.is_some() {
+        return false;
+    }
+    if left.positioned_glyphs.is_none()
+        && right.positioned_glyphs.is_none()
+        && let (Some(lp), Some(rp)) = (&left.paragraph, &right.paragraph)
+        && lp.ptr_eq(rp)
+    {
+        return true;
+    }
+    left.glyphs_slice() == right.glyphs_slice()
 }
 
 #[cfg(not(feature = "scene"))]
-const fn same_paragraph(_: &SharedGlyph, _: &SharedGlyph) -> bool {
-    true
+fn same_glyphs(left: &SharedGlyph, right: &SharedGlyph) -> bool {
+    left.glyphs_slice() == right.glyphs_slice()
 }
 
 impl fmt::Debug for GlyphRun {
@@ -267,7 +301,7 @@ impl fmt::Debug for GlyphRun {
             .field("opacity", &self.shared.opacity)
             .field("flow", &self.shared.flow)
             .field("tone", &self.shared.tone)
-            .field("positioned_glyphs", &self.shared.positioned_glyphs);
+            .field("positioned_glyphs", &self.shared.glyphs_slice());
         #[cfg(feature = "scene")]
         out.field("has_paragraph", &self.shared.paragraph.is_some());
         out.finish()
@@ -291,9 +325,8 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && this.flow == other.flow
         && this.tone == other.tone
         && this.inks == other.inks
-        && this.positioned_glyphs == other.positioned_glyphs
         && this.fill == other.fill
-        && same_paragraph(this, other)
+        && same_glyphs(this, other)
 }
 
 #[cfg(scene_host)]

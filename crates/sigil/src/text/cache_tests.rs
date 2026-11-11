@@ -24,7 +24,16 @@ fn style_at(size: f32) -> TextStyle {
 
 fn seeded(text: &str, style: &TextStyle) -> ParagraphCache {
     let mut cache = ParagraphCache::new();
-    cache.insert(text, None, style, (make_paragraph(text, style), 0.0));
+    cache.insert(
+        text,
+        None,
+        style,
+        CachedParagraph {
+            paragraph: make_paragraph(text, style),
+            fit: 0.0,
+            bounds: WrapBounds::OPEN,
+        },
+    );
     cache
 }
 
@@ -78,13 +87,27 @@ fn near_equal_widths_keep_separate_entries() {
         "Hello",
         Some(100.2),
         &style,
-        (make_paragraph("Hello", &style), 0.0),
+        CachedParagraph {
+            paragraph: make_paragraph("Hello", &style),
+            fit: 0.0,
+            bounds: WrapBounds {
+                min_nowrap: 100.2,
+                min_wrap: 100.3,
+            },
+        },
     );
     cache.insert(
         "Hello",
         Some(100.4),
         &style,
-        (make_paragraph("Hello", &style), 0.0),
+        CachedParagraph {
+            paragraph: make_paragraph("Hello", &style),
+            fit: 0.0,
+            bounds: WrapBounds {
+                min_nowrap: 100.4,
+                min_wrap: 100.5,
+            },
+        },
     );
     assert!(cache.get("Hello", Some(100.2), &style).is_some());
     assert!(cache.get("Hello", Some(100.4), &style).is_some());

@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use super::text_memo::text_memo_key;
+use super::text_memo::{min_content_memo_key, text_memo_key};
 use super::{ComputedBox, LayoutForest, LocalId, NodeRef};
 use crate::layout::TextMeasure;
 use crate::layout::resolve::NodeEdges;
@@ -95,6 +95,10 @@ impl<'a> MeasureScope<'a> {
         if text.ellipsis {
             return None;
         }
+        let memo_key = min_content_memo_key(node.id(), text, self.text.font_generation());
+        if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
+            return Some(hit.width);
+        }
         let width = if text.wrap {
             crate::geometry::Dim::MinContent
         } else {
@@ -108,6 +112,11 @@ impl<'a> MeasureScope<'a> {
             || self.text.measure(&text.content, space),
             |style| self.text.measure_styled(&text.content, style, space),
         );
+        let out = crate::layout::style_data::Axes {
+            width: measured.width,
+            height: measured.height,
+        };
+        self.forest.text_memo.borrow_mut().store(memo_key, out);
         Some(measured.width)
     }
 
@@ -118,7 +127,15 @@ impl<'a> MeasureScope<'a> {
         wrap_to: Option<f32>,
     ) -> Option<crate::layout::style_data::Axes<f32>> {
         let text = node.text()?;
-        let memo_key = text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
+        let mut memo_key =
+            text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
+        if text.wrap && known.width.is_none() && wrap_to.is_none() {
+            match self.available.w {
+                SpaceConstraint::Definite(value) => memo_key.wrap = value.to_bits(),
+                SpaceConstraint::MinContent => memo_key.min_content = true,
+                SpaceConstraint::MaxContent => {}
+            }
+        }
         if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
             return Some(hit);
         }
