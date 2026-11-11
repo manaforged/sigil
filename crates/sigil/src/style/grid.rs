@@ -3,6 +3,7 @@ thread_local! {
 }
 
 /// Sets the size of the cell that spacing values snap to.
+#[cfg(any(test, feature = "kittest"))]
 pub fn cell(cell: f32) {
     CELL.set(snapped(cell));
 }

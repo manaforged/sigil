@@ -35,6 +35,7 @@ pub(crate) fn raster(scene: &CommandScene, theme: &Theme, cols: u16, rows: u16, 
     grid
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32) {
     let marks = Marks::default();
     let paint = CellPaint {

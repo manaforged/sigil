@@ -24,14 +24,16 @@ impl Cx {
         PENDING.replace(pending)
     }
 
-    /// Move the text that `announce` queued into the live region.
-    pub fn flush_announcements(&mut self) {
-        loop {
-            let next = PENDING.with(|cell| cell.borrow_mut().pop_front());
-            let Some((text, live)) = next else {
-                return;
-            };
-            self.post_announcement(text, live);
+    kittest_pub! {
+        /// Move the text that `announce` queued into the live region.
+        pub fn flush_announcements(&mut self) {
+            loop {
+                let next = PENDING.with(|cell| cell.borrow_mut().pop_front());
+                let Some((text, live)) = next else {
+                    return;
+                };
+                self.post_announcement(text, live);
+            }
         }
     }
 

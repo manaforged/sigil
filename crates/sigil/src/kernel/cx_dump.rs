@@ -6,12 +6,15 @@ use crate::kernel::{NodeId, NodeType, TextContent};
 impl Cx {
     /// Indented text of the node tree below `root`, for debugging.
     #[must_use]
+    #[doc(hidden)]
+    #[cfg(feature = "kittest")]
     pub fn dump_tree(&self, root: NodeId) -> String {
         let mut out = String::new();
         self.write_dump(root, 0, &mut out);
         out
     }
 
+    #[cfg(feature = "kittest")]
     fn write_dump(&self, id: NodeId, depth: usize, out: &mut String) {
         let Some(node) = self.nodes.get(id.key()) else {
             return;
@@ -50,6 +53,7 @@ impl Cx {
     }
 }
 
+#[cfg(feature = "kittest")]
 fn dump_text_content(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => format!("{value:?}"),
