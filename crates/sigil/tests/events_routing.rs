@@ -72,10 +72,7 @@ fn file_drop_broadcasts_to_registered_handlers() {
         &mut router,
         &mut cx,
         &layout,
-        Event::FileDrop(FileDropEvent {
-            path: Some("/tmp/data.csv".to_owned()),
-            phase: FileDropPhase::Dropped,
-        }),
+        Event::file_drop(Some("/tmp/data.csv".to_owned()), FileDropPhase::Dropped),
     );
 
     assert_eq!(dropped.borrow().as_slice(), ["/tmp/data.csv"]);

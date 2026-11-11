@@ -162,15 +162,22 @@ impl CellWalk<'_> {
             }
             SceneCommand::Pattern(_)
             | SceneCommand::DrawShadow { .. }
-            | SceneCommand::Sprite(_)
             | SceneCommand::PushClip(_)
             | SceneCommand::PopClip
-            | SceneCommand::PushTransform(_)
-            | SceneCommand::PopTransform
-            | SceneCommand::SaveLayer { .. }
-            | SceneCommand::RestoreLayer
             | SceneCommand::PushLayer(_)
             | SceneCommand::PopLayer => {}
+            #[cfg(any(test, feature = "kittest"))]
+            SceneCommand::Sprite(_) => {}
+            #[cfg(any(
+                test,
+                feature = "kittest",
+                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+            ))]
+            SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
+            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            SceneCommand::SaveLayer { .. } => {}
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            SceneCommand::RestoreLayer => {}
         }
     }
 

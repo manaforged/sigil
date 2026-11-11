@@ -2,7 +2,7 @@ use ahash::AHashSet;
 use smallvec::SmallVec;
 
 use crate::events::EventHandlers;
-use crate::kernel::component::{ErasedComponent, Patch};
+use crate::kernel::component::{ErasedComponent, NodePatch};
 use crate::kernel::{A11yProps, Cx, NodeBuilder, NodeId, NodeType, TopLayer, reactive_children};
 use crate::profile::Counter;
 use crate::reactive::{Owner, is_live};
@@ -91,11 +91,11 @@ impl Cx {
             return Some(self.mount_child(parent, builder));
         };
         match builder.patch_box(self, id) {
-            Patch::Patched => {
+            NodePatch::Patched => {
                 crate::profile::count_add(Counter::KernelPatched, 1);
                 Some(Fate::Patched(id))
             }
-            Patch::Mismatch(builder) | Patch::Unsupported(builder) => {
+            NodePatch::Mismatch(builder) | NodePatch::Unsupported(builder) => {
                 self.remove_counted(id);
                 Some(self.mount_child(parent, builder))
             }
@@ -128,12 +128,12 @@ impl Cx {
 }
 
 impl NodeBuilder {
-    pub(super) fn patch_onto(mut self, cx: &mut Cx, id: NodeId) -> Patch<Self> {
+    pub(super) fn patch_onto(mut self, cx: &mut Cx, id: NodeId) -> NodePatch<Self> {
         if self.wraps.is_some() {
-            return Patch::Unsupported(self);
+            return NodePatch::Unsupported(self);
         }
         if !cx.kind_matches(id, &self.kind) {
-            return Patch::Mismatch(self);
+            return NodePatch::Mismatch(self);
         }
         cx.refill(id, |cx| {
             let style = std::mem::take(&mut self.style);
@@ -143,7 +143,7 @@ impl NodeBuilder {
             crate::kernel::text::track_delta(cx, id);
             this.refill_onto(cx, id);
         });
-        Patch::Patched
+        NodePatch::Patched
     }
 
     fn refill_onto(self, cx: &mut Cx, id: NodeId) {

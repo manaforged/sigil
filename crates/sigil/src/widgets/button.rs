@@ -11,6 +11,7 @@ use super::layout_ext::LayoutOverrides;
 use super::shared::{Activate, accessible_name, caller_style, noop_activate};
 
 /// Builder of a button.
+#[must_use]
 pub struct ButtonBuilder {
     label: TextContent,
     tone: Option<Tone>,
@@ -52,13 +53,11 @@ impl core::fmt::Debug for ButtonBuilder {
 }
 
 /// A push button.
-#[must_use]
 pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
     ButtonBuilder::new(label)
 }
 
 /// A button that shows one glyph: text or an `Icon`.
-#[must_use]
 pub fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static) -> ButtonBuilder {
     let mut builder = glyph.into().into_button().ghost().activate(activate);
     builder.square = true;
@@ -67,7 +66,6 @@ pub fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static)
 
 impl ButtonBuilder {
     /// Creates a button builder.
-    #[must_use]
     pub fn new(label: impl Into<TextContent>) -> Self {
         let metrics = Metrics::current();
         Self {
@@ -93,46 +91,39 @@ impl ButtonBuilder {
     }
 
     /// Sets the accessible.
-    #[must_use]
     pub fn accessible(mut self, name: impl Into<AccessibleName>) -> Self {
         self.accessible = Some(name.into());
         self
     }
 
     /// Sets the pending.
-    #[must_use]
     pub const fn pending(mut self, pending: Signal<bool>) -> Self {
         self.pending = Some(pending);
         self
     }
 
     /// Applies the primary option.
-    #[must_use]
     pub const fn primary(self) -> Self {
         self.tone(Tone::Primary)
     }
 
     /// Applies the neutral option.
-    #[must_use]
     pub const fn neutral(self) -> Self {
         self.tone(Tone::Neutral)
     }
 
     /// Applies the destructive option.
-    #[must_use]
     pub const fn destructive(self) -> Self {
         self.tone(Tone::Error)
     }
 
     /// Applies the outline option.
-    #[must_use]
     pub const fn outline(self) -> Self {
         self.fill(ButtonFill::Outline)
     }
 
     /// Sets the icon svg.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn icon_svg(mut self, svg: impl Into<std::sync::Arc<str>>) -> Self {
         self.leading = Some(svg.into());
         self
@@ -140,47 +131,40 @@ impl ButtonBuilder {
 
     /// Sets the icon.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn icon(self, icon: crate::icons::Icon) -> Self {
         self.icon_svg(icon.svg())
     }
 
     /// Sets the icon shown after the label, such as a dropdown chevron.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn trailing(mut self, icon: crate::icons::Icon) -> Self {
         self.trailing = Some(icon.svg().into());
         self
     }
 
     /// Sets the hint text shown faint after the label, such as a key name.
-    #[must_use]
     pub fn hint(mut self, hint: impl Into<String>) -> Self {
         self.shortcut = Some(hint.into());
         self
     }
 
     /// Applies the ghost option.
-    #[must_use]
     pub const fn ghost(self) -> Self {
         self.fill(ButtonFill::Ghost)
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = Some(tone);
         self
     }
 
     /// Applies the solid option.
-    #[must_use]
     pub const fn solid(self) -> Self {
         self.fill(ButtonFill::Solid)
     }
 
     /// Applies the soft option.
-    #[must_use]
     pub const fn soft(self) -> Self {
         self.fill(ButtonFill::Soft)
     }
@@ -206,14 +190,12 @@ impl ButtonBuilder {
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the size.
-    #[must_use]
     pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
         self.width = ButtonWidth::Hug;
@@ -223,7 +205,6 @@ impl ButtonBuilder {
     }
 
     /// Sets the activate.
-    #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
@@ -272,7 +253,7 @@ mod content;
 mod glyph;
 mod parts;
 
-pub(crate) use glyph::ButtonGlyph;
+pub use glyph::ButtonGlyph;
 
 use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
 

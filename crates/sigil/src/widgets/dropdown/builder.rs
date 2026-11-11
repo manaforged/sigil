@@ -44,6 +44,7 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
 );
 
 /// Builder of a select box.
+#[must_use]
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
@@ -68,14 +69,12 @@ impl core::fmt::Debug for DropdownBuilder {
 }
 
 /// A select box.
-#[must_use]
 pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {
     DropdownBuilder::new(selected, options)
 }
 
 impl DropdownBuilder {
     /// Creates a dropdown builder.
-    #[must_use]
     pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
             selected,
@@ -89,21 +88,18 @@ impl DropdownBuilder {
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, cb: impl Fn(usize) + 'static) -> Self {
         self.on_change = Some(Rc::new(cb));
         self

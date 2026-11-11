@@ -6,9 +6,12 @@ use super::effects::Transform;
 
 const MIN_W: f32 = 1.0e-4;
 
-/// A CSS 4×4 transform that maps a layer's plane with rotation and perspective.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Transform3D([[f32; 4]; 4]);
+kittest_pub! {
+    /// A CSS 4×4 transform that maps a layer's plane with rotation and perspective.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Transform3D([[f32; 4]; 4]);
+}
 
 impl Default for Transform3D {
     fn default() -> Self {
@@ -28,74 +31,89 @@ impl From<Transform> for Transform3D {
 }
 
 impl Transform3D {
-    /// The transform that changes nothing.
-    pub const IDENTITY: Self = Self([
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]);
-
-    /// Applies `next` after this transform's functions, like the next entry of a CSS `transform` list.
-    #[must_use]
-    pub fn then(self, next: Self) -> Self {
-        let columns =
-            [0, 1, 2, 3].map(|col| next.0.map(|row| row.get(col).copied().unwrap_or(0.0)));
-        Self(
-            self.0
-                .map(|row| columns.map(|column| row.iter().zip(column).map(|(x, y)| x * y).sum())),
-        )
+    kittest_pub! {
+        /// The transform that changes nothing.
+        pub const IDENTITY: Self = Self([
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]);
     }
 
-    /// Adds a CSS `translate3d(x, y, z)`.
-    #[must_use]
-    pub fn translate(self, x: f32, y: f32, z: f32) -> Self {
-        let mut m = Self::IDENTITY.0;
-        (m[0][3], m[1][3], m[2][3]) = (x, y, z);
-        self.then(Self(m))
+    kittest_pub! {
+        /// Applies `next` after this transform's functions, like the next entry of a CSS `transform` list.
+        #[must_use]
+        pub fn then(self, next: Self) -> Self {
+            let columns =
+                [0, 1, 2, 3].map(|col| next.0.map(|row| row.get(col).copied().unwrap_or(0.0)));
+            Self(self.0.map(|row| {
+                columns.map(|column| row.iter().zip(column).map(|(x, y)| x * y).sum())
+            }))
+        }
     }
 
-    /// Adds a CSS `rotateX(angle)` in radians.
-    #[must_use]
-    pub fn rotate_x(self, radians: f32) -> Self {
-        let (s, c) = radians.sin_cos();
-        let mut m = Self::IDENTITY.0;
-        (m[1][1], m[1][2], m[2][1], m[2][2]) = (c, -s, s, c);
-        self.then(Self(m))
+    kittest_pub! {
+        /// Adds a CSS `translate3d(x, y, z)`.
+        #[must_use]
+        pub fn translate(self, x: f32, y: f32, z: f32) -> Self {
+            let mut m = Self::IDENTITY.0;
+            (m[0][3], m[1][3], m[2][3]) = (x, y, z);
+            self.then(Self(m))
+        }
     }
 
-    /// Adds a CSS `rotateY(angle)` in radians.
-    #[must_use]
-    pub fn rotate_y(self, radians: f32) -> Self {
-        let (s, c) = radians.sin_cos();
-        let mut m = Self::IDENTITY.0;
-        (m[0][0], m[0][2], m[2][0], m[2][2]) = (c, s, -s, c);
-        self.then(Self(m))
+    kittest_pub! {
+        /// Adds a CSS `rotateX(angle)` in radians.
+        #[must_use]
+        pub fn rotate_x(self, radians: f32) -> Self {
+            let (s, c) = radians.sin_cos();
+            let mut m = Self::IDENTITY.0;
+            (m[1][1], m[1][2], m[2][1], m[2][2]) = (c, -s, s, c);
+            self.then(Self(m))
+        }
     }
 
-    /// Adds a CSS `rotateZ(angle)` in radians.
-    #[must_use]
-    pub fn rotate_z(self, radians: f32) -> Self {
-        let (s, c) = radians.sin_cos();
-        let mut m = Self::IDENTITY.0;
-        (m[0][0], m[0][1], m[1][0], m[1][1]) = (c, -s, s, c);
-        self.then(Self(m))
+    kittest_pub! {
+        /// Adds a CSS `rotateY(angle)` in radians.
+        #[must_use]
+        pub fn rotate_y(self, radians: f32) -> Self {
+            let (s, c) = radians.sin_cos();
+            let mut m = Self::IDENTITY.0;
+            (m[0][0], m[0][2], m[2][0], m[2][2]) = (c, s, -s, c);
+            self.then(Self(m))
+        }
     }
 
-    /// Adds a CSS `perspective(distance)`; distances under 1 px count as 1 px.
-    #[must_use]
-    pub fn perspective(self, distance: f32) -> Self {
-        let mut m = Self::IDENTITY.0;
-        m[3][2] = -1.0 / distance.max(1.0);
-        self.then(Self(m))
+    kittest_pub! {
+        /// Adds a CSS `rotateZ(angle)` in radians.
+        #[must_use]
+        pub fn rotate_z(self, radians: f32) -> Self {
+            let (s, c) = radians.sin_cos();
+            let mut m = Self::IDENTITY.0;
+            (m[0][0], m[0][1], m[1][0], m[1][1]) = (c, -s, s, c);
+            self.then(Self(m))
+        }
     }
 
-    /// Wraps `inner` so it turns around `origin`, like CSS `transform-origin` and `perspective-origin`.
-    #[must_use]
-    pub fn around(self, origin: Point, inner: Self) -> Self {
-        self.translate(origin.x, origin.y, 0.0)
-            .then(inner)
-            .translate(-origin.x, -origin.y, 0.0)
+    kittest_pub! {
+        /// Adds a CSS `perspective(distance)`; distances under 1 px count as 1 px.
+        #[must_use]
+        pub fn perspective(self, distance: f32) -> Self {
+            let mut m = Self::IDENTITY.0;
+            m[3][2] = -1.0 / distance.max(1.0);
+            self.then(Self(m))
+        }
+    }
+
+    kittest_pub! {
+        /// Wraps `inner` so it turns around `origin`, like CSS `transform-origin` and `perspective-origin`.
+        #[must_use]
+        pub fn around(self, origin: Point, inner: Self) -> Self {
+            self.translate(origin.x, origin.y, 0.0)
+                .then(inner)
+                .translate(-origin.x, -origin.y, 0.0)
+        }
     }
 
     pub(crate) fn back_facing(self) -> bool {

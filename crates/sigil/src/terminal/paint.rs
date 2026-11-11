@@ -90,7 +90,7 @@ impl Grid {
 
     /// Returns the images.
     #[must_use]
-    pub fn images(&self) -> &[Placement] {
+    pub(crate) fn images(&self) -> &[Placement] {
         &self.images
     }
 

@@ -19,9 +19,16 @@ mod store;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use self::{attr::budget_ns, chrome::site_name, store::with_frames};
 pub use key::{Backend, BackendStatus, Cause, Counter, FallbackCause, Phase};
-pub(crate) use key::{Hotspot, SiteKind};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use key::{Hotspot, SiteKind};
+}
 pub(crate) use site::site;
-use span::Span;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use site::Site;
+}
+pub use span::Span;
 kittest_pub! {
     #[doc(hidden)]
     pub use store::Frame;
@@ -74,6 +81,10 @@ pub fn count_add(counter: Counter, n: u64) {
 }
 
 pub(crate) use attr::attribute;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use attr::Attribution;
+}
 #[cfg(any(
     test,
     all(
@@ -129,10 +140,14 @@ pub(crate) fn dump_if_enabled() {
     }
 }
 
-/// Returns the recorded frames.
-#[must_use]
-pub fn frames() -> Vec<Frame> {
-    store::frames()
+kittest_pub! {
+    if any(test, all(feature = "inspect", any(feature = "desktop", feature = "terminal")));
+    /// Returns the recorded frames.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn frames() -> Vec<Frame> {
+        store::frames()
+    }
 }
 
 kittest_pub! {

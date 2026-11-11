@@ -1,5 +1,3 @@
-use smallvec::SmallVec;
-
 use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
@@ -13,12 +11,12 @@ use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
-use crate::style::{ColorAtom, StateSlot, StateStyleBuilder, StyleAtom, Theme, Tone};
+use crate::style::{ColorAtom, StateStyleBuilder, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
 
-pub(crate) use edit::{Edit, LayoutEdit, Sealed, StateTarget};
+pub(crate) use edit::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
 
 kittest_pub! {
     /// Merges a raw layout style into a builder.
@@ -27,7 +25,7 @@ kittest_pub! {
         /// Merges `style` into the node's layout.
         #[must_use]
         fn layout(self, style: LayoutStyle) -> Self {
-            self.edit(Edit::Layout(LayoutEdit::Merge(style)))
+            self.edit(NodeEdit(Edit::Layout(LayoutEdit::Merge(style))))
         }
     }
 }
@@ -156,19 +154,19 @@ pub trait Widget: Sealed {
     /// Sets the node's width.
     #[must_use]
     fn width(self, width: impl Into<Length>) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Width(width.into())))
+        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Width(width.into()))))
     }
 
     /// Sets the node's height.
     #[must_use]
     fn height(self, height: impl Into<Length>) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Height(height.into())))
+        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Height(height.into()))))
     }
 
     /// Sets the node's flex grow factor.
     #[must_use]
     fn grow(self, factor: f32) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Grow(factor)))
+        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Grow(factor))))
     }
 
     layout_methods!();
@@ -237,18 +235,18 @@ pub trait Widget: Sealed {
     /// Focuses the node when it is added.
     #[must_use]
     fn autofocus(self) -> Self {
-        self.edit(Edit::Autofocus)
+        self.edit(NodeEdit(Edit::Autofocus))
     }
 
     /// Focuses the node each time `trigger` changes.
     #[must_use]
     fn focus_when(self, trigger: Signal<u64>) -> Self {
-        self.edit(Edit::FocusWhen(trigger))
+        self.edit(NodeEdit(Edit::FocusWhen(trigger)))
     }
 }
 
 impl Sealed for NodeBuilder {
-    fn edit(self, edit: Edit) -> Self {
+    fn edit(self, NodeEdit(edit): NodeEdit) -> Self {
         edit.apply(self)
     }
 
@@ -258,8 +256,8 @@ impl Sealed for NodeBuilder {
 }
 
 impl StateTarget for NodeBuilder {
-    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-        self.pending_style().set_state(slot, atoms);
+    fn set_state(mut self, state: StatePaint) -> Self {
+        self.pending_style().set_state(state.slot, state.atoms);
         self
     }
 }

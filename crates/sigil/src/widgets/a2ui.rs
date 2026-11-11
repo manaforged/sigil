@@ -26,6 +26,7 @@ const MAX_SHOWN_SOURCE: usize = 16 << 10;
 pub const A2UI_CATALOG: &str = include_str!("a2ui/catalog.json");
 
 /// Builder of an A2UI 1.0 or v0.9 surface rendered with native widgets.
+#[must_use]
 pub struct A2uiBuilder {
     source: Signal<String>,
     handler: Option<Handler>,
@@ -42,7 +43,6 @@ impl core::fmt::Debug for A2uiBuilder {
 }
 
 /// An A2UI surface from JSON: one message, an array of messages, or `{"messages": [..]}`.
-#[must_use]
 pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {
     A2uiBuilder {
         source: json.into_signal(),
@@ -84,7 +84,6 @@ fn surface(source: &str, handler: Option<Handler>) -> NodeBuilder {
 
 impl A2uiBuilder {
     /// Calls `activate` with a pressed button's action name and its context as JSON.
-    #[must_use]
     pub fn activate(mut self, activate: impl Fn(&str, &str) + 'static) -> Self {
         self.handler = Some(Rc::new(activate));
         self

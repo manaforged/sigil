@@ -7,6 +7,10 @@ use crate::tasks::Status;
 use crate::text::fonts::{add_fallback_font, wake_font_listeners};
 use crate::{Error, ErrorKind};
 
+#[allow(
+    clippy::must_use_candidate,
+    reason = "starts the font fetch; the status signal is optional"
+)]
 pub fn load_font_url(url: &str, face_index: u32) -> Signal<Status<(), Error>> {
     let status = signal(Status::Pending);
     let url = url.to_owned();

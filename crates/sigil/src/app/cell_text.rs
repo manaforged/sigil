@@ -16,34 +16,46 @@ mod wrap;
 pub(crate) use wrap::cell_text_lines;
 use wrap::{hard_break_at, ranges};
 
-/// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
-#[derive(Clone, Copy, Debug, Default)]
-pub enum CellWidth {
-    /// The unicode cell width.
-    #[default]
-    Unicode,
-    /// The scalar cell width.
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
-    Scalar {
-        /// The joiner.
-        joiner: usize,
-        /// The nonjoiner.
-        nonjoiner: usize,
-        /// The keycap.
-        keycap: usize,
-    },
+kittest_pub! {
+    /// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
+    #[derive(Clone, Copy, Debug, Default)]
+    pub enum CellWidth {
+        /// The unicode cell width.
+        #[default]
+        Unicode,
+        /// The scalar cell width.
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        Scalar {
+            /// The joiner.
+            joiner: usize,
+            /// The nonjoiner.
+            nonjoiner: usize,
+            /// The keycap.
+            keycap: usize,
+        },
+    }
 }
 
-/// How wide East Asian ambiguous characters are in cells.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Ambiguous {
-    /// The narrow ambiguous.
-    #[default]
-    Narrow,
-    /// The wide ambiguous.
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
-    Wide,
+macro_rules! ambiguous {
+    ($vis:vis) => {
+        /// How wide East Asian ambiguous characters are in cells.
+        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+        #[non_exhaustive]
+        $vis enum Ambiguous {
+            /// The narrow ambiguous.
+            #[default]
+            Narrow,
+            /// The wide ambiguous.
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            Wide,
+        }
+    };
 }
+
+#[cfg(any(feature = "kittest", feature = "terminal"))]
+ambiguous!(pub);
+#[cfg(not(any(feature = "kittest", feature = "terminal")))]
+ambiguous!(pub(crate));
 
 thread_local! {
     static CELL_WIDTH: Cell<CellWidth> = const { Cell::new(CellWidth::Unicode) };

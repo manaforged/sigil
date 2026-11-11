@@ -35,7 +35,10 @@ mod top_layer;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 pub(crate) use memo::EmitMemo;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
-pub(crate) use subtree::EmitDiff;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use subtree::EmitDiff;
+}
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 use subtree::Prior;
 use subtree::SpanTrack;
@@ -43,12 +46,15 @@ use text_clip::TextFill;
 
 const VIEW_OVERSCAN: f32 = 64.0;
 
-/// Emits the draw commands under `root`, skipping nodes outside `clip`.
-#[must_use]
-pub fn emit_scene(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
-    let selection = crate::events::selection::ranges(cx);
-    let mut track = SpanTrack::off();
-    run(cx, root, clip, &selection, &mut track)
+kittest_pub! {
+    /// Emits the draw commands under `root`, skipping nodes outside `clip`.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn emit_scene(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
+        let selection = crate::events::selection::ranges(cx);
+        let mut track = SpanTrack::off();
+        run(cx, root, clip, &selection, &mut track)
+    }
 }
 
 #[cfg(feature = "terminal")]

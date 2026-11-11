@@ -25,7 +25,6 @@ where
     R: RowRender<T>,
 {
     /// Sets the scrollbar.
-    #[must_use]
     pub const fn scrollbar(mut self, on: bool) -> Self {
         self.scrollbar = on;
         self

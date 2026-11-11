@@ -4,6 +4,10 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 
 mod clip;
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 mod decoration;
 pub(crate) mod effects;
 pub(crate) mod fills;
@@ -24,45 +28,90 @@ pub(crate) mod transform3d;
 pub(crate) mod trim;
 mod wash;
 
-pub use clip::Clip;
-#[cfg(any(
-    test,
-    all(feature = "scene", feature = "terminal"),
-    feature = "desktop",
-    all(feature = "scene", feature = "kittest")
-))]
-pub(crate) use decoration::DecorationGeometry;
-pub use effects::{
-    BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind,
-    SpriteSource, Transform,
-};
-#[cfg(any(test, feature = "kittest"))]
-pub use fills::PaintFill;
-pub(crate) use fills::{FillRule, PathPaint};
-pub use fills::{
-    GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeCap, StrokeJoin,
-    StrokeStyle,
-};
-pub use glyph::GlyphRun;
-pub(crate) use glyph::TextFlow;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use clip::Clip;
+}
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
-pub use glyph::shape_glyph_run;
+pub(crate) use decoration::DecorationGeometry;
+pub use effects::BlendMode;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use effects::{
+        DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, Transform,
+    };
+}
+kittest_pub! {
+    #[doc(hidden)]
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
+    pub use effects::{SpriteKind, SpriteSource};
+}
+#[cfg(any(test, feature = "kittest"))]
+pub use fills::PaintFill;
+pub(crate) use fills::{FillRule, PathPaint};
+pub use fills::{StrokeCap, StrokeJoin};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use fills::{GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeStyle};
+}
+pub use glyph::{GlyphRun, SharedGlyph};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use glyph::TextFlow;
+}
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
+kittest_pub! {
+    #[doc(hidden)]
+    pub use glyph::shape_glyph_run;
+}
 pub(crate) use glyph::{RunInk, shape_run};
-pub use gradient::{Gradient, GradientKind};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use gradient::{Gradient, GradientKind};
+}
+pub(crate) use payloads::CellRect;
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use payloads::MITER_LIMIT;
-pub(crate) use payloads::{CellBorder, CellRect, DrawPath};
-pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use payloads::CellBorder;
+}
+pub use payloads::DrawRect;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern};
+}
+kittest_pub! {
+    #[doc(hidden)]
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
+    pub use payloads::DrawSprite;
+}
 pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
-pub(crate) use stroke_band::{StrokeBand, StrokeDash};
-pub use transform3d::Transform3D;
+pub(crate) use stroke_band::StrokeBand;
+#[cfg(all(feature = "scene", any(test, feature = "kittest")))]
+pub(crate) use stroke_band::StrokeDash;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use transform3d::Transform3D;
+}
 pub use wash::Wash;
 #[cfg(all(
     feature = "scene",
@@ -73,8 +122,11 @@ pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
 /// The ordered drawing commands of one frame.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CommandScene {
-    /// The commands.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub commands: Vec<SceneCommand>,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) commands: Vec<SceneCommand>,
 }
 
 impl CommandScene {
@@ -98,52 +150,60 @@ impl CommandScene {
     }
 }
 
-/// One draw or state command in a `CommandScene`.
-#[derive(Clone, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum SceneCommand {
-    /// Clips the commands up to the matching `PopClip`.
-    PushClip(Clip),
-    /// The pop clip scene command.
-    PopClip,
-    /// The push transform scene command.
-    PushTransform(Transform),
-    /// The pop transform scene command.
-    PopTransform,
-    /// The save layer scene command.
-    SaveLayer {
-        /// The opacity.
-        opacity: f32,
-    },
-    /// The restore layer scene command.
-    RestoreLayer,
-    /// The push layer scene command.
-    PushLayer(LayerScope),
-    /// The pop layer scene command.
-    PopLayer,
-    /// The rect scene command.
-    Rect(DrawRect),
-    /// The gradient scene command.
-    Gradient(DrawGradient),
-    /// The pattern scene command.
-    Pattern(DrawPattern),
-    /// The draw shadow scene command.
-    DrawShadow {
-        /// The rect.
-        rect: [f32; 4],
-        /// The radii.
-        radii: CornerRadii,
-        /// The shadow.
-        shadow: Shadow,
-    },
-    /// The glyph run scene command.
-    GlyphRun(GlyphRun),
-    /// The sprite scene command.
-    Sprite(DrawSprite),
-    /// The image scene command.
-    Image(DrawImage),
-    /// The vector path scene command.
-    Path(DrawPath),
-    /// The decoration scene command.
-    Decoration(DrawDecoration),
+kittest_pub! {
+    /// One draw or state command in a `CommandScene`.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    #[non_exhaustive]
+    pub enum SceneCommand {
+        /// Clips the commands up to the matching `PopClip`.
+        PushClip(Clip),
+        /// The pop clip scene command.
+        PopClip,
+        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        /// The push transform scene command.
+        PushTransform(Transform),
+        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        /// The pop transform scene command.
+        PopTransform,
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        /// The save layer scene command.
+        SaveLayer {
+            /// The opacity.
+            opacity: f32,
+        },
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        /// The restore layer scene command.
+        RestoreLayer,
+        /// The push layer scene command.
+        PushLayer(LayerScope),
+        /// The pop layer scene command.
+        PopLayer,
+        /// The rect scene command.
+        Rect(DrawRect),
+        /// The gradient scene command.
+        Gradient(DrawGradient),
+        /// The pattern scene command.
+        Pattern(DrawPattern),
+        /// The draw shadow scene command.
+        DrawShadow {
+            /// The rect.
+            rect: [f32; 4],
+            /// The radii.
+            radii: CornerRadii,
+            /// The shadow.
+            shadow: Shadow,
+        },
+        /// The glyph run scene command.
+        GlyphRun(GlyphRun),
+        #[cfg(any(test, feature = "kittest"))]
+        /// The sprite scene command.
+        Sprite(DrawSprite),
+        /// The image scene command.
+        Image(DrawImage),
+        /// The vector path scene command.
+        Path(DrawPath),
+        /// The decoration scene command.
+        Decoration(DrawDecoration),
+    }
 }

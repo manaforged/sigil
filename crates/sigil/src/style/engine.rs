@@ -4,18 +4,22 @@ use crate::style::{
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
-/// Applies style atoms to paint and text styles against a theme and tone.
-#[derive(Debug, Clone, Copy)]
-pub struct StyleEngine<'theme> {
-    theme: &'theme Theme,
-    tone: Tone,
+kittest_pub! {
+    /// Applies style atoms to paint and text styles against a theme and tone.
+    #[derive(Debug, Clone, Copy)]
+    pub struct StyleEngine<'theme> {
+        theme: &'theme Theme,
+        tone: Tone,
+    }
 }
 
 impl<'theme> StyleEngine<'theme> {
-    /// Creates a style engine.
-    #[must_use]
-    pub const fn new(theme: &'theme Theme) -> Self {
-        Self::with_tone(theme, Tone::Neutral)
+    kittest_pub! {
+        /// Creates a style engine.
+        #[must_use]
+        pub const fn new(theme: &'theme Theme) -> Self {
+            Self::with_tone(theme, Tone::Neutral)
+        }
     }
 
     /// Creates an engine that resolves colors in `tone`.
@@ -24,10 +28,12 @@ impl<'theme> StyleEngine<'theme> {
         Self { theme, tone }
     }
 
-    /// Applies `atoms` to a render style.
-    pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
-        for atom in atoms {
-            (*self).apply_atom(*atom, render);
+    kittest_pub! {
+        /// Applies `atoms` to a render style.
+        pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
+            for atom in atoms {
+                (*self).apply_atom(*atom, render);
+            }
         }
     }
 
@@ -113,6 +119,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
+            #[cfg(any(test, feature = "kittest"))]
             StyleAtom::Transform(transform) => render.transform = transform,
             StyleAtom::PaddingAll(_)
             | StyleAtom::PaddingX(_)
@@ -160,8 +167,7 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::TransitionDuration(_)
             | StyleAtom::TransitionEase(_)
             | StyleAtom::TransitionDelay(_)
-            | StyleAtom::Animation(_)
-            | StyleAtom::UnknownThemeRef(_) => {}
+            | StyleAtom::Animation(_) => {}
             StyleAtom::Paint(paint) => self.apply_paint(paint, render),
             StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
             StyleAtom::Space(atom) => render.space.apply(atom),
@@ -298,7 +304,6 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BorderColor(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::Shadow(_)
-        | StyleAtom::Transform(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)
@@ -307,7 +312,6 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TransitionEase(_)
         | StyleAtom::TransitionDelay(_)
         | StyleAtom::Animation(_)
-        | StyleAtom::UnknownThemeRef(_)
         | StyleAtom::Paint(_)
         | StyleAtom::ClipPath(_)
         | StyleAtom::Space(_)
@@ -319,5 +323,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}
+        #[cfg(any(test, feature = "kittest"))]
+        StyleAtom::Transform(_) => {}
     }
 }

@@ -22,6 +22,7 @@ pub struct FrameInfo {
 }
 
 /// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
+#[non_exhaustive]
 #[derive(Debug)]
 pub struct FrameOutput {
     /// Whether exit.
@@ -34,14 +35,18 @@ pub struct FrameOutput {
     pub layout: Result<(), Error>,
 }
 
-/// Runs before layout and may return a new viewport.
-pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
+kittest_pub! {
+    /// Runs before layout and may return a new viewport.
+    pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
+}
 
 /// Runs after layout.
 pub(crate) type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 
-/// Runs when the frame paints.
-pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
+kittest_pub! {
+    /// Runs when the frame paints.
+    pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
+}
 
 /// The optional hooks that `Host::frame` runs.
 #[derive(Default)]

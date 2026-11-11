@@ -38,6 +38,7 @@ pub(crate) fn color_matrix(filter: Filter) -> Option<ColorMatrix> {
             let amount = unit(amount);
             transfer(2.0f32.mul_add(-amount, 1.0), amount)
         }
+        #[cfg(feature = "kittest")]
         Filter::Opacity(amount) => {
             let mut matrix = rgb(IDENTITY);
             matrix[3][3] = unit(amount);

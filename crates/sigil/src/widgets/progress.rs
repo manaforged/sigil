@@ -20,6 +20,7 @@ static EMPTY: &[StyleAtom] = &[];
 
 /// Builder of a progress bar.
 #[derive(Debug)]
+#[must_use]
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
@@ -33,14 +34,12 @@ pub struct ProgressBuilder {
 }
 
 /// A progress bar.
-#[must_use]
 pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
     ProgressBuilder::new(value, max)
 }
 
 impl ProgressBuilder {
     /// Creates a progress builder.
-    #[must_use]
     pub fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
             value,
@@ -55,21 +54,18 @@ impl ProgressBuilder {
     }
 
     /// Applies the indeterminate option.
-    #[must_use]
     pub const fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
         self
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         let name = name.into();
         self.caption = match &name {

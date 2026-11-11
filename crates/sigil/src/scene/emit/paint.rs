@@ -101,11 +101,10 @@ fn push_text_decoration(
         TextDecoration::LineThrough => DecorationKind::Strikethrough,
     };
     let thickness = (text_style.font_size * 0.06).max(1.0);
-    let y = match kind {
-        DecorationKind::Strikethrough => rect.origin.y + (rect.height - thickness) / 2.0,
-        DecorationKind::Underline | DecorationKind::WavyUnderline => {
-            rect.origin.y + rect.height - thickness
-        }
+    let y = if kind == DecorationKind::Strikethrough {
+        rect.origin.y + (rect.height - thickness) / 2.0
+    } else {
+        rect.origin.y + rect.height - thickness
     };
     let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
     scene.draw_decoration(

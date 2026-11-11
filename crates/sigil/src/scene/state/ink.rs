@@ -47,6 +47,7 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]).expand(shadow_reach(shadow))
         }
         SceneCommand::GlyphRun(draw) => draw.ink_rect()?.expand(1.0 / scale),
+        #[cfg(any(test, feature = "kittest"))]
         SceneCommand::Sprite(draw) => draw.destination,
         SceneCommand::Image(draw) => draw.destination,
         SceneCommand::Path(draw) => draw.bounds.expand(1.0 / scale),
@@ -58,13 +59,17 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             }
             LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => scope.clip,
         },
-        SceneCommand::PushClip(_)
-        | SceneCommand::PopClip
-        | SceneCommand::PushTransform(_)
-        | SceneCommand::PopTransform
-        | SceneCommand::SaveLayer { .. }
-        | SceneCommand::RestoreLayer
-        | SceneCommand::PopLayer => return None,
+        SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => return None,
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+        ))]
+        SceneCommand::PushTransform(_) | SceneCommand::PopTransform => return None,
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        SceneCommand::SaveLayer { .. } => return None,
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        SceneCommand::RestoreLayer => return None,
     })
 }
 

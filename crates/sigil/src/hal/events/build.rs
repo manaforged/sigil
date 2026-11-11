@@ -129,6 +129,14 @@ impl Event {
         Self::Paste(text.into())
     }
 
+    /// Builds a file drag event for `path` in `phase`.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn file_drop(path: Option<String>, phase: super::FileDropPhase) -> Self {
+        Self::FileDrop(super::FileDropEvent { path, phase })
+    }
+
     /// Builds the event for a window losing focus.
     #[must_use]
     pub const fn blur() -> Self {

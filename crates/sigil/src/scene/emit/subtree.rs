@@ -65,20 +65,24 @@ pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {
     ]
 }
 
-/// What `Host::emit_since` changed: pairs of old and new command ranges that differ.
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct EmitDiff {
-    /// The changed.
-    pub changed: Vec<(Range<usize>, Range<usize>)>,
+kittest_pub! {
+    /// What `Host::emit_since` changed: pairs of old and new command ranges that differ.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, Default, PartialEq, Eq)]
+    pub struct EmitDiff {
+        pub(crate) changed: Vec<(Range<usize>, Range<usize>)>,
+    }
 }
 
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 impl EmitDiff {
-    /// Returns whether unchanged is set.
-    #[must_use]
-    pub const fn unchanged(&self) -> bool {
-        self.changed.is_empty()
+    kittest_pub! {
+        /// Returns whether unchanged is set.
+        #[must_use]
+        pub const fn unchanged(&self) -> bool {
+            self.changed.is_empty()
+        }
     }
 }
 

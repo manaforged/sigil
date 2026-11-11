@@ -37,7 +37,7 @@ mod cache_limits;
 #[cfg(any(test, feature = "inspect", feature = "kittest", feature = "terminal"))]
 pub mod capture;
 pub(crate) mod color_glyph_paint;
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 /// The opaque color a window clears to before it paints.
 pub(crate) const SURFACE_CLEAR: crate::style::Rgba = crate::style::Rgba::new(0.03, 0.04, 0.05, 1.0);
 
@@ -152,5 +152,5 @@ pub use surface::WgpuSurface;
 pub use test_state::{GlobalTextState, lock_global_text_state};
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub use window_handle::WindowHandle;
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(feature = "desktop")]
 pub(crate) use window_handle::into_window_handle;

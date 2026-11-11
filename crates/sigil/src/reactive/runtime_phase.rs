@@ -7,35 +7,37 @@ use crate::reactive::phase::DrawPhase;
 use crate::reactive::runtime::{Runtime, RuntimeState, with_rt};
 
 impl Runtime {
-    /// Resets the runtime after a caught panic.
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-    pub fn recover_from_panic() {
-        let run_owners = with_rt(|rt| {
-            let deferred = core::mem::take(&mut rt.dispose_after_run);
-            let mut run_owners = Vec::new();
-            for eff_key in deferred {
-                if rt.running.contains(&eff_key) {
-                    rt.dispose_after_run.push(eff_key);
-                    continue;
+    kittest_pub! {
+        /// Resets the runtime after a caught panic.
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        pub fn recover_from_panic() {
+            let run_owners = with_rt(|rt| {
+                let deferred = core::mem::take(&mut rt.dispose_after_run);
+                let mut run_owners = Vec::new();
+                for eff_key in deferred {
+                    if rt.running.contains(&eff_key) {
+                        rt.dispose_after_run.push(eff_key);
+                        continue;
+                    }
+                    if let Some(run_owner) = rt.remove_effect(eff_key) {
+                        run_owners.push(run_owner);
+                    }
                 }
-                if let Some(run_owner) = rt.remove_effect(eff_key) {
-                    run_owners.push(run_owner);
-                }
+                run_owners
+            });
+            for run_owner in run_owners {
+                dispose_owner(run_owner);
             }
-            run_owners
-        });
-        for run_owner in run_owners {
-            dispose_owner(run_owner);
+            let deferred_cleanups = with_rt(|rt| {
+                rt.phase = DrawPhase::Idle;
+                rt.running.clear();
+                rt.panic_origin = None;
+                clear_dead_current(rt);
+                core::mem::take(&mut rt.deferred_cleanups)
+            });
+            drop(with_rt(|rt| core::mem::take(&mut rt.after_run)));
+            run_deferred_cleanups(deferred_cleanups);
         }
-        let deferred_cleanups = with_rt(|rt| {
-            rt.phase = DrawPhase::Idle;
-            rt.running.clear();
-            rt.panic_origin = None;
-            clear_dead_current(rt);
-            core::mem::take(&mut rt.deferred_cleanups)
-        });
-        drop(with_rt(|rt| core::mem::take(&mut rt.after_run)));
-        run_deferred_cleanups(deferred_cleanups);
     }
 
     pub(crate) fn recover_after_swallowed_panic() {
@@ -54,41 +56,53 @@ impl Runtime {
         with_rt(|rt| rt.panic_origin.map(|(_, name, location)| (name, location)))
     }
 
-    /// Enters the effect phase.
-    pub fn begin_effect() {
-        advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
-        with_rt(|rt| rt.frame_dirty = false);
+    kittest_pub! {
+        /// Enters the effect phase.
+        pub fn begin_effect() {
+            advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
+            with_rt(|rt| rt.frame_dirty = false);
+        }
     }
 
-    /// Enters the layout phase.
-    pub fn begin_layout() {
-        advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
+    kittest_pub! {
+        /// Enters the layout phase.
+        pub fn begin_layout() {
+            advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
+        }
     }
 
-    /// Enters the paint phase.
-    pub fn begin_paint() {
-        advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
-        with_rt(|rt| rt.paints += 1);
+    kittest_pub! {
+        /// Enters the paint phase.
+        pub fn begin_paint() {
+            advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
+            with_rt(|rt| rt.paints += 1);
+        }
     }
 
     pub(crate) fn layout_paints() -> Option<u64> {
         with_rt(|rt| (rt.phase == DrawPhase::Layout).then_some(rt.paints))
     }
 
-    /// Ends the current frame.
-    pub fn end_frame() {
-        advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
+    kittest_pub! {
+        /// Ends the current frame.
+        pub fn end_frame() {
+            advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
+        }
     }
 
-    /// Returns whether something asked for another frame.
-    #[must_use]
-    pub fn frame_dirty() -> bool {
-        with_rt(|rt| rt.frame_dirty)
+    kittest_pub! {
+        /// Returns whether something asked for another frame.
+        #[must_use]
+        pub fn frame_dirty() -> bool {
+            with_rt(|rt| rt.frame_dirty)
+        }
     }
 
-    /// Asks for another frame.
-    pub fn mark_frame_dirty() {
-        with_rt(|rt| rt.frame_dirty = true);
+    kittest_pub! {
+        /// Asks for another frame.
+        pub fn mark_frame_dirty() {
+            with_rt(|rt| rt.frame_dirty = true);
+        }
     }
 }
 

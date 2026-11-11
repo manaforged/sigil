@@ -15,77 +15,93 @@ pub enum PaintFill {
     Pattern(PatternKind),
 }
 
-/// The shape of a pattern fill.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PatternKind {
-    /// The slash pattern kind.
-    Slash {
-        /// The color.
-        color: Color,
-        /// The period.
-        period: f32,
-        /// The line width.
-        line_width: f32,
-    },
-    /// The checker pattern kind.
-    Checker {
-        /// The color a.
-        color_a: Color,
-        /// The color b.
-        color_b: Color,
-        /// The cell.
-        cell: f32,
-    },
-    /// The watercolour wash pattern kind.
-    Wash(super::wash::Wash),
+kittest_pub! {
+    /// The shape of a pattern fill.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum PatternKind {
+        #[cfg(any(test, feature = "kittest"))]
+        /// The slash pattern kind.
+        Slash {
+            /// The color.
+            color: Color,
+            /// The period.
+            period: f32,
+            /// The line width.
+            line_width: f32,
+        },
+        #[cfg(any(test, feature = "kittest"))]
+        /// The checker pattern kind.
+        Checker {
+            /// The color a.
+            color_a: Color,
+            /// The color b.
+            color_b: Color,
+            /// The cell.
+            cell: f32,
+        },
+        /// The watercolour wash pattern kind.
+        Wash(super::wash::Wash),
+    }
 }
 
 impl PatternKind {
-    /// Returns this pattern with its values in range.
-    #[must_use]
-    pub const fn normalized(self) -> Self {
-        match self {
-            Self::Slash {
-                color,
-                period,
-                line_width,
-            } => {
-                let period = pattern_length(period);
-                let line_width = if line_width.is_nan() {
-                    0.0
-                } else {
-                    line_width.clamp(0.0, period)
-                };
+    kittest_pub! {
+        if any(test, feature = "scene");
+        /// Returns this pattern with its values in range.
+        #[must_use]
+        pub const fn normalized(self) -> Self {
+            match self {
+                #[cfg(any(test, feature = "kittest"))]
                 Self::Slash {
                     color,
                     period,
                     line_width,
+                } => {
+                    let period = pattern_length(period);
+                    let line_width = if line_width.is_nan() {
+                        0.0
+                    } else {
+                        line_width.clamp(0.0, period)
+                    };
+                    Self::Slash {
+                        color,
+                        period,
+                        line_width,
+                    }
                 }
+                #[cfg(any(test, feature = "kittest"))]
+                Self::Checker {
+                    color_a,
+                    color_b,
+                    cell,
+                } => Self::Checker {
+                    color_a,
+                    color_b,
+                    cell: pattern_length(cell),
+                },
+                Self::Wash(wash) => Self::Wash(wash.normalized()),
             }
-            Self::Checker {
-                color_a,
-                color_b,
-                cell,
-            } => Self::Checker {
-                color_a,
-                color_b,
-                cell: pattern_length(cell),
-            },
-            Self::Wash(wash) => Self::Wash(wash.normalized()),
         }
     }
 
-    /// Returns the tile extent.
-    #[must_use]
-    pub const fn tile_extent(self) -> f32 {
-        match self.normalized() {
-            Self::Slash { period, .. } => period,
-            Self::Checker { cell, .. } => cell * 2.0,
-            Self::Wash(_) => WASH_EXTENT,
+    kittest_pub! {
+        if any(test, feature = "scene");
+        /// Returns the tile extent.
+        #[must_use]
+        pub const fn tile_extent(self) -> f32 {
+            match self.normalized() {
+                #[cfg(any(test, feature = "kittest"))]
+                Self::Slash { period, .. } => period,
+                #[cfg(any(test, feature = "kittest"))]
+                Self::Checker { cell, .. } => cell * 2.0,
+                Self::Wash(_) => WASH_EXTENT,
+            }
         }
     }
 }
 
+#[cfg(any(test, feature = "kittest", feature = "scene"))]
 const WASH_EXTENT: f32 = 1.0e6;
 
 pub(crate) const TRANSPARENT: Color = Color {
@@ -95,9 +111,12 @@ pub(crate) const TRANSPARENT: Color = Color {
     a: 0,
 };
 
+#[cfg(any(test, feature = "kittest"))]
 const MIN_PATTERN_LENGTH: f32 = 1.0;
+#[cfg(any(test, feature = "kittest"))]
 const MAX_PATTERN_LENGTH: f32 = 1024.0;
 
+#[cfg(any(test, feature = "kittest"))]
 const fn pattern_length(length: f32) -> f32 {
     if length.is_nan() {
         MIN_PATTERN_LENGTH
@@ -106,36 +125,35 @@ const fn pattern_length(length: f32) -> f32 {
     }
 }
 
-/// A gradient along a straight axis.
-#[derive(Clone, Debug, PartialEq)]
-pub struct LinearGradient {
-    /// The start.
-    pub start: Point,
-    /// The end.
-    pub end: Point,
-    /// The stops.
-    pub stops: SmallVec<[GradientStop; 4]>,
+kittest_pub! {
+    /// A gradient along a straight axis.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LinearGradient {
+        /// The start.
+        pub start: Point,
+        /// The end.
+        pub end: Point,
+        /// The stops.
+        pub stops: SmallVec<[GradientStop; 4]>,
+    }
 }
 
 impl LinearGradient {
-    /// Creates a linear gradient.
-    #[must_use]
-    pub fn new(start: Point, end: Point, stops: impl Into<SmallVec<[GradientStop; 4]>>) -> Self {
-        Self {
-            start,
-            end,
-            stops: stops.into(),
+    kittest_pub! {
+        /// Creates a linear gradient.
+        #[must_use]
+        pub fn new(
+            start: Point,
+            end: Point,
+            stops: impl Into<SmallVec<[GradientStop; 4]>>,
+        ) -> Self {
+            Self {
+                start,
+                end,
+                stops: stops.into(),
+            }
         }
-    }
-
-    /// Returns the normalized.
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self::new(
-            self.start,
-            self.end,
-            normalize_stops(&self.stops, self.is_degenerate()),
-        )
     }
 
     pub(super) fn is_degenerate(&self) -> bool {
@@ -197,54 +215,70 @@ pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Color {
     }
 }
 
-/// A color at one offset of a gradient.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GradientStop {
-    /// The offset.
-    pub offset: f32,
-    /// The color.
-    pub color: Color,
-}
-
-impl GradientStop {
-    /// Creates a gradient stop.
-    #[must_use]
-    pub const fn new(offset: f32, color: Color) -> Self {
-        Self { offset, color }
+kittest_pub! {
+    /// A color at one offset of a gradient.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct GradientStop {
+        /// The offset.
+        pub offset: f32,
+        /// The color.
+        pub color: Color,
     }
 }
 
-/// The dash style of a stroke.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StrokeStyle {
-    /// The solid stroke style.
-    Solid,
-    /// The dashed stroke style.
-    Dashed(f32),
+impl GradientStop {
+    kittest_pub! {
+        /// Creates a gradient stop.
+        #[must_use]
+        pub const fn new(offset: f32, color: Color) -> Self {
+            Self { offset, color }
+        }
+    }
 }
 
-/// Where a stroke sits relative to a shape's edge.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StrokeAlign {
-    /// The centered stroke align.
-    Centered,
-    /// The inside stroke align.
-    Inside,
-    /// The outside stroke align.
-    Outside,
+kittest_pub! {
+    /// The dash style of a stroke.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum StrokeStyle {
+        /// The solid stroke style.
+        Solid,
+        #[cfg(any(test, feature = "kittest"))]
+        /// The dashed stroke style.
+        Dashed(f32),
+    }
 }
 
-/// The width, color, and style of an outline.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Stroke {
-    /// The color.
-    pub color: Color,
-    /// The width.
-    pub width: f32,
-    /// The style.
-    pub style: StrokeStyle,
-    /// The align.
-    pub align: StrokeAlign,
+kittest_pub! {
+    /// Where a stroke sits relative to a shape's edge.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub enum StrokeAlign {
+        #[cfg(any(test, feature = "kittest"))]
+        /// The centered stroke align.
+        Centered,
+        /// The inside stroke align.
+        Inside,
+        /// The outside stroke align.
+        Outside,
+    }
+}
+
+kittest_pub! {
+    /// The width, color, and style of an outline.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Stroke {
+        /// The color.
+        pub color: Color,
+        /// The width.
+        pub width: f32,
+        /// The style.
+        pub style: StrokeStyle,
+        /// The align.
+        pub align: StrokeAlign,
+    }
 }
 
 /// The shape at the open ends of a stroked path.

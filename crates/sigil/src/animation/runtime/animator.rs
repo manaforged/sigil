@@ -4,12 +4,14 @@ use crate::animation::runtime::config::AnimationConfig;
 use crate::animation::runtime::motion_prefs::MotionPrefs;
 use crate::animation::runtime::state::{self, AnimatorId};
 
-/// Animate a signal toward targets.
-#[derive(Debug)]
-pub struct Animator {
-    id: Option<AnimatorId>,
-    signal: Signal<f32>,
-    config: AnimationConfig,
+kittest_pub! {
+    /// Animate a signal toward targets.
+    #[derive(Debug)]
+    pub struct Animator {
+        id: Option<AnimatorId>,
+        signal: Signal<f32>,
+        config: AnimationConfig,
+    }
 }
 
 impl Animator {
@@ -24,6 +26,7 @@ impl Animator {
     #[cfg(any(test, feature = "kittest"))]
     #[doc(hidden)]
     /// Creates an animator that drives `signal` with a tween of `ms` milliseconds.
+    #[must_use]
     pub fn tween(signal: Signal<f32>, ms: u16, easing: crate::animation::Easing) -> Self {
         Self::new(
             signal,
@@ -50,35 +53,41 @@ impl Animator {
         }
     }
 
-    /// Animates toward `value`.
-    pub fn target(&mut self, value: f32) {
-        if !value.is_finite() {
-            tracing::warn!(target: "sigil::animation", value, "ignored a non-finite animation target");
-            return;
-        }
-        if MotionPrefs::reduced() {
-            self.cancel();
-            self.signal.try_set(value);
-            Runtime::mark_frame_dirty();
-            return;
-        }
-        let (signal, config) = (self.signal, self.config);
-        self.id
-            .get_or_insert_with(|| state::register_config(signal, config))
-            .retarget(value);
-    }
-
-    /// Jumps to the end of the animation.
-    pub fn finish(&self) {
-        if let Some(id) = self.id {
-            id.finish();
+    kittest_pub! {
+        /// Animates toward `value`.
+        pub fn target(&mut self, value: f32) {
+            if !value.is_finite() {
+                tracing::warn!(target: "sigil::animation", value, "ignored a non-finite animation target");
+                return;
+            }
+            if MotionPrefs::reduced() {
+                self.cancel();
+                self.signal.try_set(value);
+                Runtime::mark_frame_dirty();
+                return;
+            }
+            let (signal, config) = (self.signal, self.config);
+            self.id
+                .get_or_insert_with(|| state::register_config(signal, config))
+                .retarget(value);
         }
     }
 
-    /// Stops the animation where it is.
-    pub fn cancel(&mut self) {
-        if let Some(id) = self.id.take() {
-            id.deregister();
+    kittest_pub! {
+        /// Jumps to the end of the animation.
+        pub fn finish(&self) {
+            if let Some(id) = self.id {
+                id.finish();
+            }
+        }
+    }
+
+    kittest_pub! {
+        /// Stops the animation where it is.
+        pub fn cancel(&mut self) {
+            if let Some(id) = self.id.take() {
+                id.deregister();
+            }
         }
     }
 
@@ -93,10 +102,12 @@ impl Animator {
             .unwrap_or_default()
     }
 
-    /// Returns whether settled is set.
-    #[must_use]
-    pub fn settled(&self) -> bool {
-        self.id.is_none_or(AnimatorId::is_settled)
+    kittest_pub! {
+        /// Returns whether settled is set.
+        #[must_use]
+        pub fn settled(&self) -> bool {
+            self.id.is_none_or(AnimatorId::is_settled)
+        }
     }
 }
 

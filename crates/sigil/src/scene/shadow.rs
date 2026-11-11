@@ -1,15 +1,18 @@
 use crate::geometry::{Point, Rect};
 
-/// Whether a shadow falls outside or inside a shape.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ShadowKind {
-    /// The outer shadow kind.
-    #[default]
-    Outer,
-    /// The inner shadow kind.
-    Inner,
-    /// The glow shadow kind.
-    Glow,
+kittest_pub! {
+    /// Whether a shadow falls outside or inside a shape.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    pub enum ShadowKind {
+        /// The outer shadow kind.
+        #[default]
+        Outer,
+        /// The inner shadow kind.
+        Inner,
+        /// The glow shadow kind.
+        Glow,
+    }
 }
 
 /// The offset, blur, spread, and color of a shadow.

@@ -11,10 +11,12 @@ struct TaskState {
     waker: Mutex<Option<Waker>>,
 }
 
-/// A task spawned on `AsyncRuntime`.
-#[derive(Clone, Debug)]
-pub struct TaskHandle {
-    state: Arc<TaskState>,
+kittest_pub! {
+    /// A task spawned on `AsyncRuntime`.
+    #[derive(Clone, Debug)]
+    pub struct TaskHandle {
+        state: Arc<TaskState>,
+    }
 }
 
 impl TaskHandle {
@@ -40,10 +42,12 @@ impl TaskHandle {
         }
     }
 
-    /// Returns whether this task handle is finished.
-    #[must_use]
-    pub fn is_finished(&self) -> bool {
-        self.state.finished.load(Ordering::SeqCst)
+    kittest_pub! {
+        /// Returns whether this task handle is finished.
+        #[must_use]
+        pub fn is_finished(&self) -> bool {
+            self.state.finished.load(Ordering::SeqCst)
+        }
     }
 
     pub(crate) fn finish(&self) {

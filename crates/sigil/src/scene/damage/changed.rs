@@ -9,6 +9,11 @@ use crate::scene::{LayerEffect, LayerScope, SceneCommand};
 enum ChangeBound {
     Nothing,
     Rect(Option<Rect>),
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
     Full,
 }
 
@@ -24,24 +29,23 @@ pub(super) fn changed_ink(
     let mut opened: SmallVec<[bool; 16]> = SmallVec::new();
     for (index, command) in commands.iter().enumerate().take(end) {
         let marked = changed(index);
-        match command {
-            SceneCommand::PushClip(_)
-            | SceneCommand::PushTransform(_)
-            | SceneCommand::PushLayer(_)
-            | SceneCommand::SaveLayer { .. } => opened.push(marked),
-            SceneCommand::PopClip
-            | SceneCommand::PopTransform
-            | SceneCommand::PopLayer
-            | SceneCommand::RestoreLayer => {
+        match scope_edge(command) {
+            Some(true) => opened.push(marked),
+            Some(false) => {
                 let push_changed = opened.pop().unwrap_or(false);
                 if marked && !push_changed {
                     return None;
                 }
             }
-            _ => {}
+            None => {}
         }
         if marked {
             let ink = match structural_ink(commands, index, &state, &layers, (area, scale)) {
+                #[cfg(any(
+                    test,
+                    feature = "kittest",
+                    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+                ))]
                 Some(ChangeBound::Full) => return None,
                 Some(ChangeBound::Rect(rect)) => rect,
                 Some(ChangeBound::Nothing) => None,
@@ -63,6 +67,30 @@ pub(super) fn changed_ink(
     Some(())
 }
 
+const fn scope_edge(command: &SceneCommand) -> Option<bool> {
+    match command {
+        SceneCommand::PushClip(_) | SceneCommand::PushLayer(_) => Some(true),
+        SceneCommand::PopClip | SceneCommand::PopLayer => Some(false),
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+        ))]
+        SceneCommand::PushTransform(_) => Some(true),
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+        ))]
+        SceneCommand::PopTransform => Some(false),
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        SceneCommand::SaveLayer { .. } => Some(true),
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        SceneCommand::RestoreLayer => Some(false),
+        _ => None,
+    }
+}
+
 fn structural_ink(
     commands: &[SceneCommand],
     index: usize,
@@ -78,16 +106,27 @@ fn structural_ink(
             layers,
         )),
         SceneCommand::PushLayer(_) => ChangeBound::Rect(command_ink(command, state, layers, scale)),
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
         SceneCommand::SaveLayer { .. } => {
             let end = SceneState::group_end(commands, index + 1);
             let children = commands.get(index + 1..end).unwrap_or_default();
             ChangeBound::Rect(state.draw_bounds(children, area, scale))
         }
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+        ))]
         SceneCommand::PushTransform(_) => ChangeBound::Full,
-        SceneCommand::PopClip
-        | SceneCommand::PopTransform
-        | SceneCommand::PopLayer
-        | SceneCommand::RestoreLayer => ChangeBound::Nothing,
+        SceneCommand::PopClip | SceneCommand::PopLayer => ChangeBound::Nothing,
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+        ))]
+        SceneCommand::PopTransform => ChangeBound::Nothing,
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        SceneCommand::RestoreLayer => ChangeBound::Nothing,
         _ => return None,
     })
 }

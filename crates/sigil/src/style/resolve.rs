@@ -1,34 +1,12 @@
 use crate::kernel::{Node, NodeId, NodeType};
-use std::collections::HashSet;
-use std::sync::{Mutex, OnceLock};
-
-use crate::style::{
-    Color, RenderStyle, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme, ToneContext,
-};
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-enum UnsupportedSlot {
-    UnknownThemeRef(&'static str),
-}
-
-#[cfg(any(test, feature = "kittest"))]
-#[must_use]
-pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> usize {
-    let Some(warned) = WARNED_UNSUPPORTED.get() else {
-        return 0;
-    };
-    let Ok(warned) = warned.lock() else {
-        return 0;
-    };
-    usize::from(warned.contains(&(UnsupportedSlot::UnknownThemeRef(token), id)))
-}
+use crate::style::{Color, RenderStyle, StyleBinding, StyleEngine, TextStyle, Theme, ToneContext};
 
 kittest_pub! {
 /// Resolves the paint style of a node from its style binding and theme.
 #[must_use]
 #[doc(hidden)]
 pub fn render_style_for(
-    id: NodeId,
+    _id: NodeId,
     node: &Node,
     inherited: &Theme,
     inherited_text: Option<Color>,
@@ -44,7 +22,7 @@ pub fn render_style_for(
     let engine = engine_for(node, theme);
 
     for atom in binding.cascade() {
-        apply_atoms(engine, &[atom], &mut render, id, node);
+        engine.apply(&[atom], &mut render);
     }
 
     if let Some(overlay) = binding.animator_overlay() {
@@ -81,43 +59,4 @@ fn engine_for<'a>(node: &Node, theme: &'a Theme) -> StyleEngine<'a> {
         .unwrap_or_default()
         .tone;
     StyleEngine::with_tone(theme, tone)
-}
-
-fn apply_atoms(
-    engine: StyleEngine<'_>,
-    atoms: &[StyleAtom],
-    render: &mut RenderStyle,
-    id: NodeId,
-    node: &Node,
-) {
-    engine.apply(atoms, render);
-    if cfg!(debug_assertions) {
-        for atom in atoms {
-            if let StyleAtom::UnknownThemeRef(token) = atom {
-                warn_unsupported(UnsupportedSlot::UnknownThemeRef(token), id, node);
-            }
-        }
-    }
-}
-
-static WARNED_UNSUPPORTED: OnceLock<Mutex<HashSet<(UnsupportedSlot, NodeId)>>> = OnceLock::new();
-
-fn warn_unsupported(slot: UnsupportedSlot, id: NodeId, node: &Node) {
-    let warned = WARNED_UNSUPPORTED.get_or_init(|| Mutex::new(HashSet::new()));
-    let Ok(mut warned) = warned.lock() else {
-        return;
-    };
-    if !warned.insert((slot, id)) {
-        return;
-    }
-    match slot {
-        UnsupportedSlot::UnknownThemeRef(token) => {
-            tracing::warn!(
-                token,
-                node = ?id,
-                role = ?node.a11y.role,
-                "unsupported style atom"
-            );
-        }
-    }
 }

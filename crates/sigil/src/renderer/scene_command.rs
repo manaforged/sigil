@@ -9,9 +9,11 @@ mod wash;
 pub(crate) use crate::scene::state;
 pub(crate) mod walk;
 
+#[cfg(any(test, feature = "kittest"))]
+pub(crate) use crate::scene::command::StrokeDash;
 pub(crate) use crate::scene::command::{
     CommandScene, DecorationGeometry, DecorationKind, DrawDecoration, DrawGradient, DrawImage,
     DrawPattern, DrawRect, DrawSprite, GlyphRun, GradientStop, LayerEffect, LayerScope,
     LinearGradient, PatternKind, SceneCommand, SpriteKind, SpriteSource, Stroke, StrokeBand,
-    StrokeDash, Transform,
+    Transform,
 };

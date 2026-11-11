@@ -49,30 +49,44 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
-#[cfg(feature = "terminal")]
-pub(crate) use command::DrawPath;
 pub use command::{
-    BlendMode, Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash,
+    BlendMode, CommandScene, DrawRect, GlyphRun, SharedGlyph, StrokeCap, StrokeJoin, Wash,
 };
-#[cfg(any(test, feature = "terminal"))]
-pub(crate) use command::{CellBorder, TextFlow};
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::Transform;
+    pub use command::{
+        Clip, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath,
+        DrawPattern, Filter, Gradient, GradientKind, GradientStop, LayerEffect,
+        LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SceneCommand,
+        Stroke, StrokeAlign, StrokeStyle, Transform, Transform3D,
+    };
 }
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::Transform3D;
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
+    pub use command::{DrawSprite, SpriteKind, SpriteSource};
 }
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawSprite, Filter, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
+    pub use command::{CellBorder, TextFlow};
 }
 kittest_pub! {
     #[doc(hidden)]
     pub use corner_radii::CornerRadii;
 }
-pub use emit::emit_scene;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+kittest_pub! {
+    #[doc(hidden)]
+    pub use emit::EmitDiff;
+}
+kittest_pub! {
+    #[doc(hidden)]
+    pub use emit::emit_scene;
+}
 pub use shadow::Shadow;
 kittest_pub! {
     #[doc(hidden)]

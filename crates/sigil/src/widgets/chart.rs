@@ -90,6 +90,7 @@ struct SeriesSource {
 }
 
 /// Builder of a chart.
+#[must_use]
 pub struct ChartBuilder {
     series: Vec<SeriesSource>,
     labels: Vec<String>,
@@ -119,7 +120,6 @@ impl core::fmt::Debug for ChartBuilder {
 }
 
 /// A bar, line, area, scatter, pie, or candle chart.
-#[must_use]
 pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
     ChartBuilder::blank().push(String::new(), Rc::new(values), Hue::of(Tone::Primary))
 }
@@ -162,7 +162,6 @@ impl ChartBuilder {
     }
 
     /// Creates a candlestick chart from open, high, low, and close rows.
-    #[must_use]
     pub fn candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>) -> Self {
         let flat = move || {
             rows.read()
@@ -174,13 +173,11 @@ impl ChartBuilder {
     }
 
     /// Creates a scatter chart from x and y rows.
-    #[must_use]
     pub fn scatter(rows: impl Reactive<Vec<(f32, f32)>>) -> Self {
         chart(flat_pairs(rows)).mark(ChartMark::Scatter)
     }
 
     /// Adds a named series of x and y rows to a scatter chart.
-    #[must_use]
     pub fn points(
         self,
         name: impl Into<String>,
@@ -191,79 +188,67 @@ impl ChartBuilder {
     }
 
     /// Sets the x range.
-    #[must_use]
     pub const fn x_range(mut self, range: Signal<Range<f32>>) -> Self {
         self.x_range = Some(range);
         self
     }
 
     /// Applies the crosshair option.
-    #[must_use]
     pub const fn crosshair(mut self) -> Self {
         self.crosshair = true;
         self
     }
 
     /// Shows the values under the pointer in a card.
-    #[must_use]
     pub const fn tooltip(mut self) -> Self {
         self.tooltip = true;
         self
     }
 
     /// Applies the whole numbers option.
-    #[must_use]
     pub const fn whole_numbers(mut self) -> Self {
         self.whole = true;
         self
     }
 
     /// Applies the bar option.
-    #[must_use]
     pub const fn bar(self) -> Self {
         self.mark(ChartMark::Bar)
     }
 
     /// Stacks the bars of each series on one column.
-    #[must_use]
     pub const fn stacked(mut self) -> Self {
         self.stack = Stack::Stacked;
         self.mark(ChartMark::Bar)
     }
 
     /// Lays the bars along rows, with values on the x axis.
-    #[must_use]
     pub const fn horizontal(mut self) -> Self {
         self.scales.orient = scales::Orient::Horizontal;
         self.mark(ChartMark::Bar)
     }
 
     /// Applies the line option.
-    #[must_use]
     pub const fn line(self) -> Self {
         self.mark(ChartMark::Line)
     }
 
     /// Fills the area under each line.
-    #[must_use]
     pub const fn area(self) -> Self {
         self.mark(ChartMark::Area)
     }
 
     /// Draws the first series as pie slices named by the labels.
-    #[must_use]
     pub const fn pie(self) -> Self {
         self.mark(ChartMark::Pie)
     }
 
     /// Draws the first series as a ring of slices named by the labels.
-    #[must_use]
     pub const fn donut(self) -> Self {
         self.mark(ChartMark::Donut)
     }
 
     /// Sets the tone.
-    #[must_use]
     pub fn tone(mut self, tone: Tone) -> Self {
         if let Some(series) = self.series.first_mut() {
             series.hue = Hue::of(tone);
@@ -272,14 +257,12 @@ impl ChartBuilder {
     }
 
     /// Sets the labels.
-    #[must_use]
     pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.labels = labels.into_iter().map(Into::into).collect();
         self
     }
 
     /// Sets the series.
-    #[must_use]
     pub fn series(
         self,
         name: impl Into<String>,

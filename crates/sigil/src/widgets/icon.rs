@@ -22,6 +22,7 @@ enum Glyph {
 
 /// Builder of an icon.
 #[derive(Debug)]
+#[must_use]
 pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
@@ -65,14 +66,12 @@ impl IntoIconSource for crate::icons::Icon {
 }
 
 /// An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph.
-#[must_use]
 pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
 /// An SVG icon.
 #[cfg(feature = "scene")]
-#[must_use]
 pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
     let mut builder = IconBuilder::new("");
     builder.glyph = Glyph::Svg(svg.into());
@@ -81,7 +80,6 @@ pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
 
 impl IconBuilder {
     /// Creates an icon builder.
-    #[must_use]
     pub fn new(glyph: impl IntoIconSource) -> Self {
         Self {
             glyph: glyph.into_icon_source().0,
@@ -98,42 +96,36 @@ impl IconBuilder {
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
     /// Sets the size.
-    #[must_use]
     pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self
     }
 
     /// Sets the px.
-    #[must_use]
     pub const fn px(mut self, px: f32) -> Self {
         self.px = Some(px);
         self
     }
 
     /// Applies the strong option.
-    #[must_use]
     pub const fn strong(mut self) -> Self {
         self.step = 12;
         self
     }
 
     #[cfg(feature = "scene")]
-    #[must_use]
     pub(crate) const fn on_solid(mut self, yes: bool) -> Self {
         self.on_solid = yes;
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self

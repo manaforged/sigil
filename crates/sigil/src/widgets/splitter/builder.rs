@@ -41,6 +41,7 @@ impl PaneEntry {
 }
 
 /// Builder of a splitter.
+#[must_use]
 pub struct SplitterBuilder {
     pub(super) orientation: Orientation,
     pub(super) panes: Vec<PaneEntry>,
@@ -67,7 +68,6 @@ impl core::fmt::Debug for SplitterBuilder {
 }
 
 /// Resizable panes.
-#[must_use]
 pub fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
         orientation,
@@ -84,7 +84,6 @@ pub fn splitter(orientation: Orientation) -> SplitterBuilder {
 
 impl SplitterBuilder {
     /// Sets the child constrained.
-    #[must_use]
     pub fn child_constrained(
         mut self,
         node: impl IntoNode + 'static,
@@ -100,7 +99,6 @@ impl SplitterBuilder {
     }
 
     /// Adds a child.
-    #[must_use]
     pub fn child(mut self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
         self.panes.push(PaneEntry::new(node, initial_size));
         self
@@ -112,7 +110,6 @@ impl SplitterBuilder {
     }
 
     /// Sets the min size.
-    #[must_use]
     pub fn min_size(mut self, idx: usize, px: f32) -> Self {
         if let Some(pane) = self.panes.get_mut(idx) {
             pane.min = px.max(0.0);
@@ -121,7 +118,6 @@ impl SplitterBuilder {
     }
 
     /// Sets the max size.
-    #[must_use]
     pub fn max_size(mut self, idx: usize, px: f32) -> Self {
         if let Some(pane) = self.panes.get_mut(idx) {
             pane.max = px.max(0.0);
@@ -130,35 +126,30 @@ impl SplitterBuilder {
     }
 
     /// Sets the sizes bind.
-    #[must_use]
     pub const fn sizes_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
         self.sizes_bind = Some(signal);
         self
     }
 
     /// Sets the signal that gets the pane sizes when a drag or a key move ends.
-    #[must_use]
     pub const fn settle_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
         self.settle_bind = Some(signal);
         self
     }
 
     /// Keeps each pane's share when the splitter resizes; initial sizes are then shares.
-    #[must_use]
     pub const fn proportional(mut self) -> Self {
         self.proportional = true;
         self
     }
 
     /// Sets the snap points.
-    #[must_use]
     pub fn snap_points(mut self, handle_idx: usize, points: &[f32]) -> Self {
         self.snap_points.push((handle_idx, points.to_vec()));
         self
     }
 
     /// Sets the snap threshold.
-    #[must_use]
     pub const fn snap_threshold(mut self, threshold: f32) -> Self {
         self.snap_threshold = threshold.max(0.0);
         self

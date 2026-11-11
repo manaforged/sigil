@@ -33,6 +33,7 @@ impl AtlasPipeline {
                     let at = raster_scale(state.current_transform(), scale, draw.destination);
                     self.register_image(device, queue, &draw.source_at(at).0);
                 }
+                #[cfg(any(test, feature = "kittest"))]
                 SceneCommand::Sprite(draw) => {
                     self.resolve_atlas(device, queue, draw.source.atlas);
                 }

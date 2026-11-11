@@ -12,42 +12,45 @@ fn pressed_key(key: LogicalKey, text: Option<String>) -> Event {
     Event::key(key, KeyPhase::Down).text(text)
 }
 
-/// Translate a crossterm key event to an `Event`.
-#[must_use]
-pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<Event> {
-    let (phase, repeat) = match event.kind {
-        KeyEventKind::Press => (KeyPhase::Down, false),
-        KeyEventKind::Repeat => (KeyPhase::Down, true),
-        KeyEventKind::Release => (KeyPhase::Up, false),
-    };
-    let code = shifted(event);
-    let key = logical(code)?;
-    let altgr = event
-        .modifiers
-        .contains(KeyModifiers::CONTROL | KeyModifiers::ALT)
-        && matches!(code, KeyCode::Char(ch) if !ch.is_ascii_alphanumeric());
-    let text = match code {
-        KeyCode::Char(ch)
-            if phase == KeyPhase::Down
-                && (altgr
-                    || !event
-                        .modifiers
-                        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)) =>
-        {
-            Some(ch.to_string())
+kittest_pub! {
+    /// Translate a crossterm key event to an `Event`.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<Event> {
+        let (phase, repeat) = match event.kind {
+            KeyEventKind::Press => (KeyPhase::Down, false),
+            KeyEventKind::Repeat => (KeyPhase::Down, true),
+            KeyEventKind::Release => (KeyPhase::Up, false),
+        };
+        let code = shifted(event);
+        let key = logical(code)?;
+        let altgr = event
+            .modifiers
+            .contains(KeyModifiers::CONTROL | KeyModifiers::ALT)
+            && matches!(code, KeyCode::Char(ch) if !ch.is_ascii_alphanumeric());
+        let text = match code {
+            KeyCode::Char(ch)
+                if phase == KeyPhase::Down
+                    && (altgr
+                        || !event
+                            .modifiers
+                            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)) =>
+            {
+                Some(ch.to_string())
+            }
+            _ => None,
+        };
+        let mut held = modifiers(event);
+        if altgr {
+            held -= ModifiersState::CONTROL | ModifiersState::ALT;
         }
-        _ => None,
-    };
-    let mut held = modifiers(event);
-    if altgr {
-        held -= ModifiersState::CONTROL | ModifiersState::ALT;
+        Some(
+            Event::key(key, phase)
+                .modifiers(held)
+                .repeat(repeat)
+                .text(text),
+        )
     }
-    Some(
-        Event::key(key, phase)
-            .modifiers(held)
-            .repeat(repeat)
-            .text(text),
-    )
 }
 
 pub(crate) fn push_key_text(events: &mut Vec<Event>, event: Event) {

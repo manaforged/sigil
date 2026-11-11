@@ -87,6 +87,7 @@ fn frame() -> NodeBuilder {
 
 /// Builder of a markdown editor.
 #[derive(Debug)]
+#[must_use]
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,
@@ -94,7 +95,6 @@ pub struct MarkdownEditBuilder {
 }
 
 /// A markdown editor with preview.
-#[must_use]
 pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
     MarkdownEditBuilder {
         source,
@@ -105,7 +105,6 @@ pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
 
 impl MarkdownEditBuilder {
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self

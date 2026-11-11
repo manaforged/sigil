@@ -1,4 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use crate::renderer::glyph_place::{pen_shift, text_gamma};
 use crate::renderer::scene_instance::BlendSpace;
 use std::collections::HashMap;

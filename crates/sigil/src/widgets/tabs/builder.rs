@@ -29,6 +29,7 @@ pub(super) enum StripChrome {
 pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
 
 /// Builder of tabs.
+#[must_use]
 pub struct TabsBuilder {
     active: Option<Signal<usize>>,
     labels: Vec<String>,
@@ -64,7 +65,6 @@ impl core::fmt::Debug for TabsBuilder {
 }
 
 /// Creates a tabs widget.
-#[must_use]
 pub fn tabs() -> TabsBuilder {
     TabsBuilder {
         active: None,
@@ -86,7 +86,6 @@ pub fn tabs() -> TabsBuilder {
 
 impl TabsBuilder {
     /// Adds a tab.
-    #[must_use]
     pub fn tab<F, N>(mut self, label: impl Into<String>, content: F) -> Self
     where
         F: FnOnce() -> N + 'static,
@@ -98,7 +97,6 @@ impl TabsBuilder {
     }
 
     /// Sets the labels.
-    #[must_use]
     pub fn labels<S>(mut self, labels: impl Reactive<Vec<S>>) -> Self
     where
         S: Into<String> + 'static,
@@ -110,70 +108,60 @@ impl TabsBuilder {
     }
 
     /// Sets the active.
-    #[must_use]
     pub const fn active(mut self, active: Signal<usize>) -> Self {
         self.active = Some(active);
         self
     }
 
     /// Applies the line option.
-    #[must_use]
     pub const fn line(mut self) -> Self {
         self.chrome = StripChrome::Line;
         self
     }
 
     /// Applies the pill option.
-    #[must_use]
     pub const fn pill(mut self) -> Self {
         self.chrome = StripChrome::Pill;
         self
     }
 
     /// Sets the justify list.
-    #[must_use]
     pub const fn justify_list(mut self, justify: JustifyContent) -> Self {
         self.list_justify = Some(justify);
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.aria_label = label.into();
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, indices: &[usize]) -> Self {
         self.disabled = indices.to_vec();
         self
     }
 
     /// Sets the reorderable.
-    #[must_use]
     pub const fn reorderable(mut self, enabled: bool) -> Self {
         self.reorderable = enabled;
         self
     }
 
     /// Sets the order.
-    #[must_use]
     pub const fn order(mut self, signal: Signal<Vec<usize>>) -> Self {
         self.order = Some(signal);
         self
     }
 
     /// Sets the closeable.
-    #[must_use]
     pub const fn closeable(mut self, enabled: bool) -> Self {
         self.closeable = enabled;
         self
     }
 
     /// Sets the callback that closes a tab.
-    #[must_use]
     pub fn close(mut self, handler: impl Fn(usize) + 'static) -> Self {
         self.close_handler = Some(Rc::new(handler));
         self

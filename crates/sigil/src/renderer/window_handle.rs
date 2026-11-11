@@ -16,6 +16,7 @@ impl WindowHandle {
     }
 }
 
+#[cfg(feature = "desktop")]
 pub(crate) fn into_window_handle<W>(window: W) -> WindowHandle
 where
     W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'static,

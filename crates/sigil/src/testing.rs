@@ -13,6 +13,7 @@ pub fn with_runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
     Owner::scope(name, || f(&Runtime));
 }
 
+#[must_use]
 pub fn tick_intervals() -> usize {
     crate::reactive::tick_intervals()
 }

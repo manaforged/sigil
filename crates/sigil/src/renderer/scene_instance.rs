@@ -57,7 +57,9 @@ impl BlendSpace {
 }
 
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
 pub(crate) const FILL_KIND_WASH: u32 = 3;
 pub(crate) const FILL_KIND_RADIAL: u32 = 4;
@@ -242,7 +244,31 @@ pub(crate) fn draw_pattern_instance(
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
-    let (fill_kind, line, pattern_a, mut pattern_b) = pack_pattern(draw.pattern, space);
+    let (fill_kind, line, pattern_a, mut pattern_b) = match draw.pattern.normalized() {
+        #[cfg(any(test, feature = "kittest"))]
+        PatternKind::Slash {
+            color,
+            period,
+            line_width,
+        } => (
+            FILL_KIND_SLASH,
+            [period, line_width, 0.0, 0.0],
+            premultiplied(space, color),
+            [0.0; 4],
+        ),
+        #[cfg(any(test, feature = "kittest"))]
+        PatternKind::Checker {
+            color_a,
+            color_b,
+            cell,
+        } => (
+            FILL_KIND_CHECKER,
+            [cell, 0.0, 0.0, 0.0],
+            premultiplied(space, color_a),
+            premultiplied(space, color_b),
+        ),
+        PatternKind::Wash(wash) => pack_wash(wash),
+    };
     if fill_kind == FILL_KIND_WASH {
         pattern_b[3] = crate::scene::command::wash_centre_bits(draw.rect.width, draw.rect.height);
     }
@@ -286,55 +312,29 @@ type PatternPack = (u32, [f32; 4], [f32; 4], [f32; 4]);
     clippy::cast_precision_loss,
     reason = "a wash seed is masked to 24 bits, which f32 holds exactly"
 )]
-fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
-    match kind.normalized() {
-        PatternKind::Slash {
-            color,
-            period,
-            line_width,
-        } => (
-            FILL_KIND_SLASH,
-            [period, line_width, 0.0, 0.0],
-            premultiplied(space, color),
-            [0.0; 4],
-        ),
-        PatternKind::Checker {
-            color_a,
-            color_b,
-            cell,
-        } => (
-            FILL_KIND_CHECKER,
-            [cell, 0.0, 0.0, 0.0],
-            premultiplied(space, color_a),
-            premultiplied(space, color_b),
-        ),
-        PatternKind::Wash(wash) => (
-            FILL_KIND_WASH,
-            [wash.scale, wash.seed as f32, 0.0, 0.0],
-            [wash.density, wash.pools, wash.edges, wash.granulation],
-            [
-                wash.grain,
-                wash.specks,
-                f32::from(u8::from(wash.band) | (u8::from(wash.dark()) << 1)),
-                0.0,
-            ],
-        ),
-    }
-}
-
-/// The paper and pigment stops a wash reads, with their positions in the palette.
-pub(crate) fn wash_stops(kind: PatternKind) -> Option<Vec<GradientStop>> {
-    let PatternKind::Wash(wash) = kind else {
-        return None;
-    };
-    Some(
-        wash.palette()
-            .zip(0_u16..)
-            .map(|(color, index)| GradientStop::new(f32::from(index), color))
-            .collect(),
+fn pack_wash(wash: crate::scene::Wash) -> PatternPack {
+    (
+        FILL_KIND_WASH,
+        [wash.scale, wash.seed as f32, 0.0, 0.0],
+        [wash.density, wash.pools, wash.edges, wash.granulation],
+        [
+            wash.grain,
+            wash.specks,
+            f32::from(u8::from(wash.band) | (u8::from(wash.dark()) << 1)),
+            0.0,
+        ],
     )
 }
 
+/// The paper and pigment stops a wash reads, with their positions in the palette.
+pub(crate) fn wash_stops(wash: crate::scene::Wash) -> Vec<GradientStop> {
+    wash.palette()
+        .zip(0_u16..)
+        .map(|(color, index)| GradientStop::new(f32::from(index), color))
+        .collect()
+}
+
+#[cfg(any(test, feature = "kittest"))]
 fn premultiplied(space: BlendSpace, color: Color) -> [f32; 4] {
     let [r, g, b, a] = space.rgba(color);
     [r * a, g * a, b * a, a]

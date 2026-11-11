@@ -90,6 +90,7 @@ impl SplitEncoder {
                 SceneCommand::Pattern(draw) => {
                     let stops = match draw.pattern {
                         PatternKind::Wash(_) => MAX_PIGMENTS + 1,
+                        #[cfg(any(test, feature = "kittest"))]
                         _ => 1,
                     };
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
@@ -97,7 +98,7 @@ impl SplitEncoder {
                 }
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,
                 SceneCommand::Decoration(_) => vertices += size_of::<DecorationInstance>() as u64,
-                SceneCommand::Sprite(_) | SceneCommand::Image(_) => {
+                command if draws_quad(command) => {
                     vertices += size_of::<QuadInstance>() as u64;
                     uniforms += self.uniform_alignment;
                 }
@@ -394,4 +395,13 @@ fn reusable_target<'a>(desc: &wgpu::RenderPassDescriptor<'a>) -> Option<&'a wgpu
         && texture.mip_level_count() == 1
         && texture.depth_or_array_layers() == 1)
         .then_some(attachment.view)
+}
+
+const fn draws_quad(command: &SceneCommand) -> bool {
+    match command {
+        SceneCommand::Image(_) => true,
+        #[cfg(any(test, feature = "kittest"))]
+        SceneCommand::Sprite(_) => true,
+        _ => false,
+    }
 }

@@ -6,7 +6,7 @@ use crate::kernel::Role;
 use crate::reactive::{Signal, derived, effect_named};
 
 use crate::kernel::NodeBuilder;
-use crate::kernel::component::Patch;
+use crate::kernel::component::NodePatch;
 use crate::kernel::hooks::NodeHooks;
 use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, NodeId, NodeType};
 use crate::style::{PaintTarget, StyleSlot};
@@ -256,7 +256,7 @@ impl IntoNode for TextBuilder {
         self.hooks.finish(self.node).build(cx)
     }
 
-    fn patch(self, cx: &mut Cx, existing: NodeId) -> Patch<Self> {
+    fn patch(self, cx: &mut Cx, existing: NodeId) -> NodePatch<Self> {
         self.hooks
             .finish(self.node)
             .patch(cx, existing)

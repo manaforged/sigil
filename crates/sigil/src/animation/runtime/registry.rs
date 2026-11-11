@@ -3,22 +3,28 @@ use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, Transition
 
 use crate::animation::runtime::config::AnimationConfig;
 
-pub mod presets {
-    use crate::style::TransitionId;
+kittest_pub! {
+    pub mod presets {
+        use crate::style::TransitionId;
 
-    pub(crate) const SMOOTH: TransitionId = TransitionId(0);
-    pub(crate) const GENTLE: TransitionId = TransitionId(1);
-    pub(crate) const SNAPPY: TransitionId = TransitionId(2);
-    pub(crate) const BOUNCY: TransitionId = TransitionId(3);
-    pub(crate) const STIFF: TransitionId = TransitionId(4);
-    pub(crate) const FAST: TransitionId = TransitionId(16);
-    pub const DEFAULT: TransitionId = TransitionId(17);
-    pub(crate) const SLOW: TransitionId = TransitionId(18);
-    pub(crate) const TRANSITION: TransitionId = TransitionId(19);
-    pub(crate) const COLORS: TransitionId = TransitionId(20);
-    pub(crate) const OPACITY: TransitionId = TransitionId(21);
-    pub(crate) const TRANSFORM: TransitionId = TransitionId(22);
-    pub const ALL: TransitionId = TransitionId(23);
+        pub(crate) const SMOOTH: TransitionId = TransitionId(0);
+        pub(crate) const GENTLE: TransitionId = TransitionId(1);
+        pub(crate) const SNAPPY: TransitionId = TransitionId(2);
+        pub(crate) const BOUNCY: TransitionId = TransitionId(3);
+        pub(crate) const STIFF: TransitionId = TransitionId(4);
+        pub(crate) const FAST: TransitionId = TransitionId(16);
+        kittest_pub! {
+            pub const DEFAULT: TransitionId = TransitionId(17);
+        }
+        pub(crate) const SLOW: TransitionId = TransitionId(18);
+        pub(crate) const TRANSITION: TransitionId = TransitionId(19);
+        pub(crate) const COLORS: TransitionId = TransitionId(20);
+        pub(crate) const OPACITY: TransitionId = TransitionId(21);
+        pub(crate) const TRANSFORM: TransitionId = TransitionId(22);
+        kittest_pub! {
+            pub const ALL: TransitionId = TransitionId(23);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

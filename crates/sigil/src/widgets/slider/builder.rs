@@ -44,6 +44,7 @@ pub(super) struct SliderRuntime {
 }
 
 /// Builder of a slider.
+#[must_use]
 pub struct SliderBuilder {
     runtime: SliderRuntime,
     on_change: Option<ValueChange>,
@@ -66,14 +67,12 @@ impl core::fmt::Debug for SliderBuilder {
 }
 
 /// A value slider.
-#[must_use]
 pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
     SliderBuilder::new(value, range)
 }
 
 impl SliderBuilder {
     /// Creates a slider builder.
-    #[must_use]
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
         let (start, end) = range.into_inner();
         Self {
@@ -98,56 +97,48 @@ impl SliderBuilder {
     }
 
     /// Sets the length.
-    #[must_use]
     pub const fn length(mut self, length: f32) -> Self {
         self.runtime.length = Some(length);
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Sets the marks.
-    #[must_use]
     pub fn marks(mut self, marks: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.marks = marks.into_iter().map(Into::into).collect();
         self
     }
 
     /// Sets the step.
-    #[must_use]
     pub const fn step(mut self, step: f32) -> Self {
         self.runtime.step = step;
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.runtime.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
     /// Applies the glass option.
-    #[must_use]
     pub const fn glass(mut self) -> Self {
         self.runtime.glass = true;
         self
     }
 
     /// Sets the orientation.
-    #[must_use]
     pub const fn orientation(mut self, orientation: Orientation) -> Self {
         self.runtime.orientation = orientation;
         self

@@ -7,6 +7,7 @@ use super::{Harness, Node};
 const DRAG_STEPS: u16 = 4;
 
 mod sealed {
+    #[allow(unnameable_types, reason = "sealed")]
     pub trait Sealed {}
 }
 

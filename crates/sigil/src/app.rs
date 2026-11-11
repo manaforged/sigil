@@ -93,14 +93,19 @@ kittest_pub! {
     #[doc(hidden)]
     pub use cell_text::{set_ambiguous, set_cell_width};
 }
-#[cfg(any(test, feature = "terminal"))]
-pub(crate) use cell_text::{Ambiguous, CellWidth};
+#[cfg(any(feature = "kittest", feature = "terminal"))]
+pub use cell_text::Ambiguous;
+kittest_pub! {
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[doc(hidden)]
+    pub use cell_text::CellWidth;
+}
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
-pub use frame::{FrameHooks, FrameInfo};
+pub use frame::{FrameHooks, FrameInfo, FrameOutput};
 kittest_pub! {
     #[doc(hidden)]
     pub use frame::{FrameInputHook, FramePaintHook};

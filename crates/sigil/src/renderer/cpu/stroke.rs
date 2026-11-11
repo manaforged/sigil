@@ -8,7 +8,9 @@
 use crate::geometry::{Point, Rect};
 use tiny_skia::{FillRule, Mask, Path, PathBuilder, Pixmap, Point as TsPoint};
 
-use crate::renderer::scene_command::{Stroke, StrokeBand, StrokeDash};
+#[cfg(any(test, feature = "kittest"))]
+use crate::renderer::scene_command::StrokeDash;
+use crate::renderer::scene_command::{Stroke, StrokeBand};
 use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::{CpuBound, expand, rounded_rect};
@@ -29,6 +31,7 @@ pub(super) fn stroke(
     };
     let paint = solid(stroke.color, brush.opacity);
     let clip = brush.mask_for(&paint);
+    #[cfg(any(test, feature = "kittest"))]
     let dashed = match band
         .dash
         .map(|dash| dash_mask(target, rect, dash, brush, clip))
@@ -36,6 +39,8 @@ pub(super) fn stroke(
         Some(None) => return,
         found => found.flatten(),
     };
+    #[cfg(not(any(test, feature = "kittest")))]
+    let dashed = None;
     target.fill_path(
         &path,
         &paint,
@@ -72,6 +77,7 @@ fn ring(
     builder.finish()
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn dash_mask(
     target: &Pixmap,
     rect: Rect,

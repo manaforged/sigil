@@ -1,50 +1,56 @@
-use crate::geometry::{Point, Rect};
+use crate::geometry::Rect;
 
 use super::effects::DecorationKind;
 use super::payloads::DrawDecoration;
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 const WAVE_STROKE: f32 = 0.8;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 const WAVE_AMPLITUDE: f32 = 0.75;
 const WAVE_MIN_PERIOD: f32 = 1.0;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 const WAVE_PERIOD_PER_REACH: f32 = 4.0;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 const TAU: f32 = std::f32::consts::TAU;
 
 /// The position and size of a text decoration.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DecorationGeometry {
+pub(crate) struct DecorationGeometry {
     /// The band.
-    pub band: Rect,
+    pub(crate) band: Rect,
     /// The center.
-    pub center: f32,
+    pub(crate) center: f32,
     /// The thickness.
-    pub thickness: f32,
+    pub(crate) thickness: f32,
     /// The amplitude.
-    pub amplitude: f32,
+    pub(crate) amplitude: f32,
     /// The period.
-    pub period: f32,
+    pub(crate) period: f32,
 }
 
 impl DecorationGeometry {
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     /// Returns the height of a wavy line at `x`.
     #[must_use]
-    pub fn wave_y(&self, x: f32) -> f32 {
+    pub(crate) fn wave_y(&self, x: f32) -> f32 {
         self.amplitude
             .mul_add((x / self.period * TAU).sin(), self.center)
     }
 
     /// Returns the line.
     #[must_use]
-    pub fn line(&self) -> Rect {
+    pub(crate) fn line(&self) -> Rect {
         Rect::new(
-            Point::new(self.band.origin.x, self.center - self.thickness / 2.0),
+            crate::geometry::Point::new(self.band.origin.x, self.center - self.thickness / 2.0),
             self.band.width,
             self.thickness,
         )
     }
 
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     /// Returns the reach.
     #[must_use]
-    pub fn reach(&self) -> f32 {
+    pub(crate) fn reach(&self) -> f32 {
         self.amplitude + self.thickness / 2.0
     }
 }
@@ -52,7 +58,7 @@ impl DecorationGeometry {
 impl DrawDecoration {
     /// Returns the geometry.
     #[must_use]
-    pub fn geometry(&self) -> Option<DecorationGeometry> {
+    pub(crate) fn geometry(&self) -> Option<DecorationGeometry> {
         let band = self.band;
         let finite = [band.origin.x, band.origin.y, band.width, band.height]
             .iter()
@@ -71,11 +77,13 @@ impl DrawDecoration {
         };
         match self.kind {
             DecorationKind::Underline | DecorationKind::Strikethrough => Some(straight),
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             DecorationKind::WavyUnderline => Some(wave(straight, width, self.period)),
         }
     }
 }
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 fn wave(straight: DecorationGeometry, width: f32, period: f32) -> DecorationGeometry {
     let height = straight.band.height;
     let thickness = (width * WAVE_STROKE).min(height / 2.0);

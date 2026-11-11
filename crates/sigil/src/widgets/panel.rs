@@ -10,6 +10,7 @@ const PANEL_MIN_HEIGHT: f32 = space(12);
 const TITLE_GAP: f32 = space(2);
 
 /// Builder of a panel.
+#[must_use]
 pub struct PanelBuilder {
     /// The title, if any.
     pub title: Option<String>,
@@ -32,14 +33,12 @@ impl core::fmt::Debug for PanelBuilder {
 }
 
 /// A titled panel.
-#[must_use]
 pub fn panel() -> PanelBuilder {
     PanelBuilder::new()
 }
 
 impl PanelBuilder {
     /// Creates a panel builder.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             title: None,
@@ -51,21 +50,18 @@ impl PanelBuilder {
     }
 
     /// Sets the title.
-    #[must_use]
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
         self
     }
 
     /// Sets the elevation.
-    #[must_use]
     pub fn elevation(mut self, tier: u32) -> Self {
         self.elevation = tier.min(3);
         self
     }
 
     /// Adds a child.
-    #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.content = Some(Box::new(child));
         self

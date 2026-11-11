@@ -15,9 +15,15 @@ pub(crate) mod state;
 pub(crate) mod style;
 pub(crate) mod targets;
 
-pub use animator::Animator;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use animator::Animator;
+}
 pub(crate) use binding_animate_color::linear_channel_to_srgb;
-pub use clock::running_clocks;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use clock::running_clocks;
+}
 #[cfg(test)]
 pub(crate) use clock::tick_clocks;
 pub(crate) use config::AnimationConfig;
@@ -29,5 +35,11 @@ pub(crate) use motion_prefs::MotionPrefs;
 pub use motion_prefs::reduced_motion;
 #[cfg(test)]
 pub(crate) use registry::config;
-pub use registry::presets;
-pub use state::{active_count, tick};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use registry::presets;
+}
+kittest_pub! {
+    #[doc(hidden)]
+    pub use state::{active_count, tick};
+}

@@ -2,7 +2,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder};
 use crate::layout::Orientation;
 use crate::layout::{LayoutStyle, Length};
 use crate::style::{PaintTarget, StyleSlot};
-use crate::widgets::{Edit, LayoutEdit, Sealed, Widget};
+use crate::widgets::{Edit, LayoutEdit, NodeEdit, Sealed, Widget};
 
 use super::builder::{PaneEntry, SplitterBuilder};
 
@@ -32,7 +32,6 @@ impl PaneBuilder {
     }
 
     /// Returns the commit.
-    #[must_use]
     pub fn commit(mut self) -> SplitterBuilder {
         self.splitter.panes.push(self.entry);
         self.splitter
@@ -76,7 +75,7 @@ impl PaneEntry {
 }
 
 impl Sealed for PaneBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         match edit {
             Edit::Layout(edit) => self.entry.edit_layout(edit, self.splitter.orientation),
             other => self.entry.layout.node_hook(move |node| other.apply(node)),

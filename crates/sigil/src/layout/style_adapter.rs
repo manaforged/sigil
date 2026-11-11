@@ -82,7 +82,6 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)
         | StyleAtom::Shadow(_)
-        | StyleAtom::Transform(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
@@ -97,7 +96,6 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::TransitionEase(_)
         | StyleAtom::TransitionDelay(_)
         | StyleAtom::Animation(_)
-        | StyleAtom::UnknownThemeRef(_)
         | StyleAtom::Paint(_)
         | StyleAtom::ClipPath(_)
         | StyleAtom::Space(_)
@@ -109,6 +107,8 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}
+        #[cfg(any(test, feature = "kittest"))]
+        StyleAtom::Transform(_) => {}
     }
 }
 

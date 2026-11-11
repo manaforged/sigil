@@ -8,7 +8,7 @@
   "refusedEnv": ["SIGIL_ALLOW_NO_GPU", "SIGIL_REGEN_GOLDENS", "SIGIL_REGEN_ALLOW_CONTENT_LOSS"],
   "ratchet": {
     "dead_code": { "lint": "dead_code", "max": 7 },
-    "unreachable_pub": { "lint": "unreachable_pub", "max": 9 },
+    "unreachable_pub": { "lint": "unreachable_pub", "max": 7 },
     "too_many_lines": { "lint": "clippy::too_many_lines", "max": 5 },
     "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 12 },
     "panic": { "lint": "clippy::panic", "max": 4 },

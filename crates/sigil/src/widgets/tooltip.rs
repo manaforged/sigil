@@ -23,6 +23,7 @@ const BUBBLE_MAX_WIDTH: f32 = space(60);
 static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 /// Builder of a tooltip.
+#[must_use]
 pub struct TooltipBuilder {
     label: String,
     shortcut: Option<String>,
@@ -47,14 +48,12 @@ impl core::fmt::Debug for TooltipBuilder {
 }
 
 /// A hover tooltip.
-#[must_use]
 pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
     TooltipBuilder::new(label)
 }
 
 impl TooltipBuilder {
     /// Creates a tooltip builder.
-    #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -68,28 +67,24 @@ impl TooltipBuilder {
     }
 
     /// Sets the delay.
-    #[must_use]
     pub const fn delay(mut self, ms: u64) -> Self {
         self.delay_ms = ms;
         self
     }
 
     /// Sets the hint.
-    #[must_use]
     pub fn hint(mut self, hint: Option<impl Into<String>>) -> Self {
         self.shortcut = hint.map(Into::into);
         self
     }
 
     /// Adds a child.
-    #[must_use]
     pub fn child(mut self, target: impl IntoNode + 'static) -> Self {
         self.child = Some(Box::new(target));
         self
     }
 
     /// Applies the clamp top option.
-    #[must_use]
     pub const fn clamp_top(mut self) -> Self {
         self.clamp_top = true;
         self

@@ -59,18 +59,19 @@ pub(crate) use animator_overlay::NumericAtomKind;
 pub(crate) use animator_overlay::{ColorAtomKind, Family};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
-pub(crate) use atom::TextDecoration;
+pub use atom::TextDecoration;
 pub use atom::{
     Background, ClipShape, Color, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
     MaskSize, Radial, RadialExtent,
 };
 kittest_pub! {
     #[doc(hidden)]
-    pub use atom::{BgGradient, GradientStopKey, PaintAtom, RenderStyle, StyleAtom, TransitionId};
+    pub use atom::{
+        Backface, BgGradient, BorderStyle, FilterAtom, GradientShape, GradientStopKey, MaskAtom,
+        MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, StopSlot, StyleAtom,
+        TransitionId,
+    };
 }
-#[cfg(test)]
-pub(crate) use atom::GradientShape;
-pub(crate) use atom::MillisU16;
 pub(crate) use binding::ReactiveStateSlot;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
@@ -93,11 +94,7 @@ pub use font_family::FontFamily;
 pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
-pub use text_scale::text_scale;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use locale::{DateOrder, Locale};
-}
+pub use locale::{DateOrder, Locale};
 pub(crate) use merge::merge_classes;
 #[cfg(test)]
 pub(crate) use merge::merge_warning_count_for_component;
@@ -113,43 +110,29 @@ pub(crate) use parser::parse_class_string;
 #[cfg(any(test, fuzzing))]
 pub(crate) use parser::parse_stateful_token;
 pub(crate) use reactive::StyleReactiveEffect;
-#[cfg(any(test, feature = "kittest"))]
-pub use resolve::unsupported_style_warning_count_for;
 pub use text_scale::TextRole;
+pub use text_scale::text_scale;
 kittest_pub! {
     #[doc(hidden)]
     pub use resolve::render_style_for;
 }
 pub(crate) use resolve::text_style_for;
+pub use scale::{ColorScale, ScaleRole};
 pub use size::ControlSize;
 pub(crate) use state::StyleVariant;
 kittest_pub! {
     #[doc(hidden)]
     pub use state::{StateSlot, StateStyle, StyleState};
 }
-kittest_pub! {
-    #[doc(hidden)]
-    pub use strings::StringKey;
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use strings::Strings;
-}
+pub use strings::{StringKey, Strings};
 pub(crate) use struct_api::Style;
+pub use styled::StateStyleBuilder;
 pub use styled::States;
 pub(crate) use styled::node::attach_style;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use styled::StateStyleBuilder;
-}
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
-pub(crate) use text_style::{TextFace, TextRun, TextRuns};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use text_style::TextLineHeight;
-}
-pub use theme::{Theme, ThemeValue};
+pub use text_style::{TextFace, TextLineHeight, TextRun, TextRuns};
+pub use theme::{Theme, ThemeValue, TokenLayer, TokenTable};
 pub use token::Token;
 pub use tone::Tone;
 kittest_pub! {

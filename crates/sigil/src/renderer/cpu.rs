@@ -29,6 +29,7 @@ mod quad;
 mod shadow;
 mod shadow_field;
 mod shapes;
+#[cfg(any(test, feature = "kittest"))]
 mod sprite_tint;
 mod stroke;
 
@@ -84,10 +85,12 @@ impl CpuRenderer {
         Self::default()
     }
 
+    #[cfg(feature = "desktop")]
     pub(crate) const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub(crate) const fn is_transparent(&self) -> bool {
         self.transparent

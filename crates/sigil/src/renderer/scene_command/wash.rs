@@ -56,7 +56,7 @@ impl SceneWalk<'_> {
             Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1),
             PatternKind::Wash(wash),
         );
-        let stops = gradient_stop_records(&wash_stops(draw.pattern).unwrap_or_default(), space);
+        let stops = gradient_stop_records(&wash_stops(wash), space);
         let count = u32::try_from(stops.len()).unwrap_or(u32::MAX);
         let instance = draw_pattern_instance(&draw, 1.0, space, [0, count]).transformed(IDENTITY);
         let ctx = &mut self.ctx;

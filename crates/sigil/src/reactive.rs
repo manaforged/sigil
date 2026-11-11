@@ -37,11 +37,14 @@ mod source;
 mod trace;
 
 pub use batch::batch;
-kittest_pub! {
-    #[cfg(any(test, feature = "hotkey", feature = "kittest", feature = "media", feature = "menu"))]
-    #[doc(hidden)]
-    pub use channel::EventChannel;
-}
+#[cfg(any(
+    test,
+    feature = "hotkey",
+    feature = "kittest",
+    feature = "media",
+    feature = "menu"
+))]
+pub use channel::{EventChannel, Subscription};
 pub use derived::derived;
 pub(crate) use effect::effect_at;
 #[cfg(not(feature = "kittest"))]

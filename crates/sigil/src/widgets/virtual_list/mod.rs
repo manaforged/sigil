@@ -68,6 +68,7 @@ where
 }
 
 /// Builder of a virtual list.
+#[must_use]
 pub struct VirtualListBuilder<T, R>
 where
     T: 'static,
@@ -147,7 +148,6 @@ where
 }
 
 /// A list that builds only the visible rows.
-#[must_use]
 #[track_caller]
 pub fn virtual_list<T, R, N, I>(items: I, render: R) -> VirtualListBuilder<T, R>
 where
@@ -204,7 +204,6 @@ where
     R: RowRender<T>,
 {
     /// Applies the identified option.
-    #[must_use]
     pub fn identified(self) -> Self
     where
         T: Identifiable,
@@ -218,35 +217,30 @@ where
     }
 
     /// Sets the key by.
-    #[must_use]
     pub fn key_by(mut self, f: impl Fn(usize, &T) -> u64 + 'static) -> Self {
         self.row_key = Some(std::rc::Rc::new(f));
         self
     }
 
     /// Sets the row height.
-    #[must_use]
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
     /// Applies the measured option.
-    #[must_use]
     pub const fn measured(mut self) -> Self {
         self.measured = true;
         self
     }
 
     /// Sets the estimate.
-    #[must_use]
     pub fn estimate(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.estimate = Some(length.into_px());
         self
     }
 
     /// Sets the item height.
-    #[must_use]
     pub fn item_height(mut self, f: impl Fn(usize, &T) -> f32 + 'static) -> Self {
         self.item_height = Some(Box::new(f));
         self.row_tops.clear();
@@ -254,42 +248,36 @@ where
     }
 
     /// Sets the viewport height.
-    #[must_use]
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
     /// Sets the overscan.
-    #[must_use]
     pub const fn overscan(mut self, pages: usize) -> Self {
         self.overscan = pages;
         self
     }
 
     /// Sets the viewport width.
-    #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
     /// Applies the shrink to content option.
-    #[must_use]
     pub const fn shrink_to_content(mut self) -> Self {
         self.sizing = ListSizing::ShrinkToContent;
         self
     }
 
     /// Sets the scroll bind.
-    #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
     /// Sets the scroll x bind.
-    #[must_use]
     pub const fn scroll_x_bind(
         mut self,
         scroll_x: Signal<f32>,
@@ -305,7 +293,6 @@ where
     }
 
     /// Sets the cursor.
-    #[must_use]
     pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
         self.focused_row = Some(cursor);
         if self.follow.is_none() {
@@ -315,7 +302,6 @@ where
     }
 
     /// Sets the selection.
-    #[must_use]
     pub const fn selection(mut self, mode: SelectionMode) -> Self {
         self.selection_mode = mode;
         self
@@ -328,14 +314,12 @@ where
     }
 
     /// Sets the keyboard.
-    #[must_use]
     pub const fn keyboard(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
         effect(move || {
@@ -347,7 +331,6 @@ where
     }
 
     /// Sets the follow end.
-    #[must_use]
     pub const fn follow_end(mut self, on: bool) -> Self {
         if on {
             self.initial_scroll = Some(ScrollAnchor::Bottom);
@@ -357,14 +340,12 @@ where
     }
 
     /// Sets the scroll into view.
-    #[must_use]
     pub const fn scroll_into_view(mut self, index: usize) -> Self {
         self.initial_scroll = Some(ScrollAnchor::Index(index));
         self
     }
 
     /// Sets the initial scroll.
-    #[must_use]
     pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
         self.initial_scroll = match anchor {
             ScrollAnchor::Top => None,
@@ -374,7 +355,6 @@ where
     }
 
     /// Sets the follow row.
-    #[must_use]
     pub const fn follow_row(mut self, target: Signal<usize>) -> Self {
         self.follow = Some(target);
         self

@@ -1,9 +1,9 @@
 use smallvec::{SmallVec, smallvec};
 
+#[cfg(any(test, feature = "kittest"))]
+use super::BgGradient;
 use super::gradient::percent as percent_of;
-use super::{
-    BgGradient, Color, ColorAtom, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot,
-};
+use super::{Color, ColorAtom, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot};
 use crate::style::{StyleAtom, Token};
 
 type Atoms = SmallVec<[StyleAtom; 8]>;
@@ -18,6 +18,7 @@ pub struct Background(Fill);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Fill {
     Color(ColorAtom),
+    #[cfg(any(test, feature = "kittest"))]
     Stops(BgGradient),
     Gradient(Gradient),
 }
@@ -58,6 +59,7 @@ impl Background {
     pub(crate) fn atoms(self) -> Atoms {
         match self.0 {
             Fill::Color(color) => smallvec![StyleAtom::BackgroundColor(color), NO_GRADIENT],
+            #[cfg(any(test, feature = "kittest"))]
             Fill::Stops(gradient) => {
                 smallvec![StyleAtom::BackgroundGradient(gradient), NO_GRADIENT]
             }
@@ -166,6 +168,7 @@ impl From<Token> for Background {
     }
 }
 
+#[cfg(any(test, feature = "kittest"))]
 impl From<BgGradient> for Background {
     fn from(gradient: BgGradient) -> Self {
         Self(Fill::Stops(gradient))

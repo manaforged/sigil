@@ -23,6 +23,7 @@ unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 missing_debug_implementations = "deny"
 unreachable_pub = "warn"
+unnameable_types = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 rust_2018_idioms = { level = "warn", priority = -1 }
 

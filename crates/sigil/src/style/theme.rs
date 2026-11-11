@@ -23,7 +23,7 @@ mod mix;
 mod table;
 
 pub(crate) use ambient::fallback_theme;
-pub(crate) use table::TokenTable;
+pub use table::{TokenLayer, TokenTable};
 
 /// One theme token value.
 #[derive(Debug, Clone, Copy, PartialEq)]

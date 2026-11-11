@@ -19,6 +19,7 @@ const SEGMENTED_HEIGHT: f32 = 32.0;
 
 /// Builder of a segmented control.
 #[derive(Debug)]
+#[must_use]
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,
@@ -28,7 +29,6 @@ pub struct SegmentedBuilder {
 }
 
 /// A framed row of options where one is active; `.label()` names the group and `.height()` (`Widget`) sets its height.
-#[must_use]
 pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder {
     SegmentedBuilder {
         active,
@@ -41,7 +41,6 @@ pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder
 
 impl SegmentedBuilder {
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self

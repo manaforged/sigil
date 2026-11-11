@@ -17,14 +17,12 @@ where
     R: RowRender<T>,
 {
     /// Sets the content height bind.
-    #[must_use]
     pub const fn content_height_bind(mut self, content_height: Signal<f32>) -> Self {
         self.content_height_bind = Some(content_height);
         self
     }
 
     /// Sets the max scroll bind.
-    #[must_use]
     pub const fn max_scroll_bind(mut self, max_scroll: Signal<f32>) -> Self {
         self.max_scroll_bind = Some(max_scroll);
         self

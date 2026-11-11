@@ -11,7 +11,10 @@ mod transition;
 mod tween;
 
 pub use easing::Easing;
-pub(crate) use keyframes::KeyframesId;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use keyframes::KeyframesId;
+}
 pub use keyframes::{Keyframes, Property};
 pub(crate) use motion::Motion;
 pub use runtime::clock::clock;

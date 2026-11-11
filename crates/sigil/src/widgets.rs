@@ -1,4 +1,4 @@
-#![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
+#![allow(clippy::wildcard_imports)]
 
 pub(crate) const MAX_SOURCE_BYTES: usize = 1 << 20;
 
@@ -62,19 +62,15 @@ macro_rules! builder_impls {
     };
     (@states [$($g:tt)*] $ty:ty, $field:ident) => {
         impl<$($g)*> crate::widgets::StateTarget for $ty {
-            fn set_state(
-                mut self,
-                slot: crate::style::StateSlot,
-                atoms: smallvec::SmallVec<[crate::style::StyleAtom; 16]>,
-            ) -> Self {
-                self.$field.set_state(slot, atoms);
+            fn set_state(mut self, state: crate::widgets::StatePaint) -> Self {
+                self.$field.set_state(state.slot, state.atoms);
                 self
             }
         }
     };
     (@widget [$($g:tt)*] $ty:ty $(, focus = $autofocus:ident / $trigger:ident)?) => {
         impl<$($g)*> crate::widgets::Sealed for $ty {
-            fn edit(mut self, edit: crate::widgets::Edit) -> Self {
+            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
                 match edit {
                     crate::widgets::Edit::Layout(edit) => self.layout_overrides.edit(edit),
                     $(
@@ -107,8 +103,8 @@ macro_rules! builder_impls {
     };
     (@forward [$($g:tt)*] $ty:ty, $field:ident) => {
         impl<$($g)*> crate::widgets::Sealed for $ty {
-            fn edit(mut self, edit: crate::widgets::Edit) -> Self {
-                self.$field = self.$field.map(move |inner| crate::widgets::Sealed::edit(inner, edit));
+            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
+                self.$field = self.$field.map(move |inner| crate::widgets::Sealed::edit(inner, crate::widgets::NodeEdit(edit)));
                 self
             }
 
@@ -122,12 +118,8 @@ macro_rules! builder_impls {
         }
 
         impl<$($g)*> crate::widgets::StateTarget for $ty {
-            fn set_state(
-                mut self,
-                slot: crate::style::StateSlot,
-                atoms: smallvec::SmallVec<[crate::style::StyleAtom; 16]>,
-            ) -> Self {
-                self.$field = self.$field.map(move |inner| crate::widgets::StateTarget::set_state(inner, slot, atoms));
+            fn set_state(mut self, state: crate::widgets::StatePaint) -> Self {
+                self.$field = self.$field.map(move |inner| crate::widgets::StateTarget::set_state(inner, state));
                 self
             }
         }
@@ -242,87 +234,71 @@ mod vega;
 mod virtual_list;
 mod widget;
 
-pub use button::{ButtonBuilder, button, icon_button};
-pub use canvas::canvas;
+pub use button::{ButtonBuilder, ButtonGlyph, button, icon_button};
+pub use canvas::{CanvasBuilder, canvas};
 pub use chart::{ChartBuilder, chart};
-pub(crate) use checkbox::CheckboxBuilder;
-pub use checkbox::checkbox;
-pub use chip::chip;
-pub(crate) use code_edit::CodeEditBuilder;
-pub use code_edit::{Change, Diagnostic, Severity, code_edit};
-pub(crate) use color_field::ColorFieldBuilder;
-pub use color_field::color_field;
+pub use checkbox::{CheckboxBuilder, checkbox};
+pub use chip::{ChipBuilder, chip};
+pub use code_edit::{Change, CodeEditBuilder, Diagnostic, Severity, code_edit};
+pub use color_field::{ColorFieldBuilder, color_field};
 #[cfg(all(feature = "scene", feature = "kittest"))]
 #[doc(hidden)]
 pub use svg_picture::{SvgMode, svg_scene};
 
-pub use combobox::{Combobox, combobox};
-pub use command_menu::command_menu;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use command_menu::CommandMenuBuilder;
-}
 pub use crate::layout::Orientation;
+pub use combobox::{Combobox, combobox};
+pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
-pub(crate) use date_field::DateFieldBuilder;
-pub use date_field::{Date, date_field};
-pub use diff::{DiffBuilder, DiffView, Hunk, Line, Patch, Selection, diff};
+pub use date_field::{Date, DateFieldBuilder, date_field};
+pub use diff::{
+    DiffBuilder, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, Selection, diff,
+};
 pub use divider::divider;
-pub(crate) use dot::DotBuilder;
-pub use dot::dot;
+pub use dot::{DotBuilder, dot};
 pub use drag::axis_drag;
 pub use drag_drop::{DragState, drag_ghost};
-pub(crate) use dropdown::DropdownBuilder;
-pub use dropdown::dropdown;
-pub use field::field;
-pub use fuzzy::fuzzy_score;
-pub(crate) use gauge::GaugeBuilder;
-pub use gauge::gauge;
+pub use dropdown::{DropdownBuilder, dropdown};
+pub use field::{FieldBuilder, FieldControl, field};
+pub use fuzzy::{FuzzyMatch, fuzzy_score};
+pub use gauge::{GaugeBuilder, gauge};
 pub use graphviz::graphviz;
 pub use highlight::{Highlight, highlight};
 pub use html::html;
 #[cfg(feature = "scene")]
 pub use icon::icon_svg;
-pub use icon::{IconBuilder, icon};
+pub use icon::{IconBuilder, IconSource, IntoIconSource, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use listbox::{CursorEdge, ListState};
-pub(crate) use markdown::MarkdownEditBuilder;
-pub use markdown::{markdown, markdown_edit, markdown_inline};
+pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
 pub use math::math;
-pub(crate) use menu::{MenuBarBuilder, MenuBuilder};
-pub use menu::{MenuItem, context_menu, menu, menu_bar};
+pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
 #[cfg(fuzzing)]
 pub(crate) use mermaid::figure as mermaid_figure;
 pub use mermaid::mermaid;
 pub use modal::{ModalBuilder, Side, modal, sheet};
-pub use number_field::number_field;
+pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
-pub(crate) use panel::PanelBuilder;
-pub use panel::panel;
+pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    Disclosure, ListColumn, ListRowSlots, RowTone, app_shell, avatar, card, disclosure,
-    empty_state, hint_bar, hint_overlay, kv_grid, list_row, notice_band, section_label, sidebar,
-    spacer,
+    CardBuilder, Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
+    app_shell, avatar, card, disclosure, empty_state, hint_bar, hint_overlay, kv_grid, list_row,
+    notice_band, section_label, sidebar, spacer,
 };
-pub(crate) use progress::ProgressBuilder;
-pub use progress::progress;
-pub(crate) use radio_group::RadioGroupBuilder;
-pub use radio_group::radio_group;
-pub use scroll::scroll;
-pub(crate) use segmented::SegmentedBuilder;
-pub use segmented::segmented;
-pub(crate) use slider::SliderBuilder;
-pub use slider::slider;
+pub use progress::{ProgressBuilder, progress};
+pub use radio_group::{RadioGroupBuilder, radio_group};
+pub use scroll::{IntoScrollExtent, ScrollBuilder, scroll};
+pub use segmented::{SegmentedBuilder, segmented};
+pub use slider::{SliderBuilder, slider};
 #[cfg(feature = "terminal")]
 pub(crate) use sparkline::spark_glyph;
 pub use sparkline::{SparkFill, SparkMark, SparklineBuilder, sparkline};
 pub use spinner::{spinner, spinner_frame};
-pub use splitter::splitter;
-pub use stat::stat;
+pub use splitter::{PaneBuilder, SplitterBuilder, splitter};
+pub use stat::{StatBuilder, stat};
 pub use surface::surface;
 pub use table::{
-    ColumnAlign, ColumnWidth, Density, Identifiable, SortDirection, SortKey, TableColumn,
-    TableState, table,
+    ColumnAlign, ColumnWidth, Density, Identifiable, SortDirection, SortKey, TableBuilder,
+    TableColumn, TableState, table,
 };
 kittest_pub! {
     #[doc(hidden)]
@@ -330,28 +306,26 @@ kittest_pub! {
 }
 #[cfg(feature = "a2ui")]
 pub use a2ui::{A2UI_CATALOG, A2uiBuilder, a2ui};
-pub(crate) use tabs::TabsBuilder;
-pub use tabs::tabs;
+pub use tabs::{TabsBuilder, tabs};
 pub use terminal::terminal;
 pub use text_edit::{SubmitKey, TextEditBuilder, TextEditState, text_edit};
 pub use text_field::{TextFieldBuilder, text_field};
 pub use toast::toast;
 pub use toast_queue::{ToastQueue, toast_queue};
-pub(crate) use toggle::ToggleBuilder;
-pub use toggle::toggle;
-pub(crate) use tooltip::TooltipBuilder;
-pub use tooltip::tooltip;
-pub use tree::{TreeNode, tree};
+pub use toggle::{ToggleBuilder, toggle};
+pub use tooltip::{TooltipBuilder, tooltip};
+pub use tree::{TreeBuilder, TreeNode, tree};
 pub use vector::{PathNode, path};
 pub use virtual_list::{
-    RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
+    IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,
+    virtual_list,
 };
 pub use widget::Widget;
 kittest_pub! {
     #[doc(hidden)]
     pub use widget::Layout;
 }
-pub(crate) use widget::{Edit, LayoutEdit, Sealed, StateTarget};
+pub(crate) use widget::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
 
 crate::kernel::into_node_builder!(
     ButtonBuilder,

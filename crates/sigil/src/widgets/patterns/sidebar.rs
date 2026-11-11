@@ -24,6 +24,7 @@ static SIDEBAR_CHROME: &[StyleAtom] = &[
 ];
 
 /// Builder of a sidebar.
+#[must_use]
 pub struct SidebarBuilder {
     child: Box<dyn IntoNode>,
     resizable: Option<(f32, f32)>,
@@ -42,7 +43,6 @@ impl core::fmt::Debug for SidebarBuilder {
 }
 
 /// A side column.
-#[must_use]
 pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {
     SidebarBuilder {
         child: Box::new(child),
@@ -54,7 +54,6 @@ pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {
 
 impl SidebarBuilder {
     /// Sets the resizable.
-    #[must_use]
     pub const fn resizable(mut self, min: f32, max: f32) -> Self {
         self.resizable = Some((min, max));
         self

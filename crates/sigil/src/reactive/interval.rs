@@ -135,20 +135,22 @@ fn invoke(id: SourceId, owner: Owner) -> bool {
     ran
 }
 
-/// Earliest next fire time of the registered intervals and timeouts.
-#[must_use]
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-pub fn next_interval_deadline() -> Option<Instant> {
-    with_sources(|sources| {
-        sources
-            .map
-            .values()
-            .filter_map(|source| match source {
-                FrameSource::Deadline(deadline) => Some(deadline.next_fire),
-                _ => None,
-            })
-            .min()
-    })
+kittest_pub! {
+    /// Earliest next fire time of the registered intervals and timeouts.
+    #[must_use]
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    pub fn next_interval_deadline() -> Option<Instant> {
+        with_sources(|sources| {
+            sources
+                .map
+                .values()
+                .filter_map(|source| match source {
+                    FrameSource::Deadline(deadline) => Some(deadline.next_fire),
+                    _ => None,
+                })
+                .min()
+        })
+    }
 }
 
 /// Sets the interval clock.

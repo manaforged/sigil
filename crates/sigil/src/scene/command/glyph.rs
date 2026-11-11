@@ -9,16 +9,19 @@ use crate::style::{Color, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
-/// The direction of a run of text.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum TextFlow {
-    /// The line text flow.
-    #[default]
-    Line,
-    /// The wrap text flow.
-    Wrap,
-    /// The ellipsis text flow.
-    Ellipsis,
+kittest_pub! {
+    /// The direction of a run of text.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    pub enum TextFlow {
+        /// The line text flow.
+        #[default]
+        Line,
+        /// The wrap text flow.
+        Wrap,
+        /// The ellipsis text flow.
+        Ellipsis,
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -27,13 +30,23 @@ pub(crate) struct RunInk {
     pub(crate) background: Option<Color>,
 }
 
+/// The text, style, and shaped glyphs that a `GlyphRun` shares between clones.
 #[derive(Clone)]
 pub struct SharedGlyph {
+    /// The text.
     pub text: String,
+    /// The color.
     pub color: Color,
+    /// The text style.
     pub style: TextStyle,
+    /// The opacity.
     pub opacity: u16,
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub flow: TextFlow,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) flow: TextFlow,
+    /// The tone, if any.
     pub tone: Option<Tone>,
     inks: Vec<RunInk>,
     positioned_glyphs: Vec<RenderedGlyph>,
@@ -270,20 +283,22 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && same_paragraph(this, other)
 }
 
-/// A shaped `GlyphRun`, which `SceneCommand::GlyphRun` holds.
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
-#[must_use]
-pub fn shape_glyph_run(
-    rect: Rect,
-    text: String,
-    color: Color,
-    style: TextStyle,
-    opacity: u16,
-) -> GlyphRun {
-    shape_run(GlyphRun::new(rect, text, color, style, opacity))
+kittest_pub! {
+    /// A shaped `GlyphRun`, which `SceneCommand::GlyphRun` holds.
+    #[must_use]
+    pub fn shape_glyph_run(
+        rect: Rect,
+        text: String,
+        color: Color,
+        style: TextStyle,
+        opacity: u16,
+    ) -> GlyphRun {
+        shape_run(GlyphRun::new(rect, text, color, style, opacity))
+    }
 }
 
 #[must_use]

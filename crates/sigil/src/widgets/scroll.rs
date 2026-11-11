@@ -52,6 +52,7 @@ static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.background()];
 
 /// Builder of a scroll area.
 #[derive(Debug)]
+#[must_use]
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Option<Signal<f32>>,
@@ -81,7 +82,6 @@ impl IntoScrollExtent for Signal<f32> {
 }
 
 /// A scroll event.
-#[must_use]
 pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
@@ -96,28 +96,24 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
 
 impl ScrollBuilder {
     /// Sets the extent.
-    #[must_use]
     pub fn extent(mut self, extent: impl IntoScrollExtent) -> Self {
         self.extent = Some(extent.into_extent());
         self
     }
 
     /// Makes the scroll area as high as its content, up to the height of its parent.
-    #[must_use]
     pub const fn fit(mut self) -> Self {
         self.fit = true;
         self
     }
 
     /// Sets the scroll bind.
-    #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
     /// Sets the follow end.
-    #[must_use]
     pub const fn follow_end(mut self, on: bool) -> Self {
         self.follow_end = on;
         self

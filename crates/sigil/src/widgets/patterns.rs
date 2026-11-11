@@ -116,6 +116,7 @@ static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 
 /// Builder of a key hint overlay.
 #[derive(Debug)]
+#[must_use]
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
@@ -123,7 +124,6 @@ pub struct HintOverlayBuilder {
 
 impl HintOverlayBuilder {
     /// Creates a hint overlay builder.
-    #[must_use]
     pub fn new(hints: &[(&str, &str)]) -> Self {
         let entries = hints
             .iter()
@@ -136,7 +136,6 @@ impl HintOverlayBuilder {
     }
 
     /// Sets the entry.
-    #[must_use]
     pub fn entry(mut self, chord: impl Into<String>, description: impl Into<String>) -> Self {
         self.entries.push((chord.into(), description.into()));
         self
@@ -177,7 +176,6 @@ impl HintOverlayBuilder {
 builder_impls!([] HintOverlayBuilder: widget, node);
 
 /// An overlay that lists key bindings.
-#[must_use]
 pub fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
 }
@@ -271,12 +269,12 @@ mod disclosure;
 mod list_row;
 mod sidebar;
 
-pub use card::card;
+pub use card::{CardBuilder, card};
 pub use disclosure::disclosure;
 use list_row::row_height;
 pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
-pub use sidebar::sidebar;
+pub use sidebar::{SidebarBuilder, sidebar};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

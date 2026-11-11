@@ -8,31 +8,58 @@ use crate::scene::shadow::Shadow;
 use super::transform3d::Transform3D;
 use super::{CommandScene, SceneCommand};
 
-/// A 2D affine transform as two rows of three values.
-pub type Transform = [[f32; 3]; 2];
-
-/// How a renderer colors a sprite.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SpriteKind {
-    /// The mono sprite kind.
-    Mono,
-    /// The subpixel sprite kind.
-    Subpixel,
-    /// The poly sprite kind.
-    Poly,
+kittest_pub! {
+    /// A 2D affine transform as two rows of three values.
+    #[doc(hidden)]
+    pub type Transform = [[f32; 3]; 2];
 }
 
-/// Where a sprite's pixels come from.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SpriteSource {
-    /// The atlas.
-    pub atlas: u32,
-    /// The region.
-    pub region: Rect,
-    /// The phase.
-    pub phase: f32,
+kittest_pub! {
+    /// How a renderer colors a sprite.
+    #[doc(hidden)]
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum SpriteKind {
+        #[cfg(any(test, feature = "kittest"))]
+        /// The mono sprite kind.
+        Mono,
+        #[cfg(any(test, feature = "kittest"))]
+        /// The subpixel sprite kind.
+        Subpixel,
+        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        /// The poly sprite kind.
+        Poly,
+    }
 }
 
+kittest_pub! {
+    /// Where a sprite's pixels come from.
+    #[doc(hidden)]
+    #[cfg(any(
+        test,
+        feature = "kittest",
+        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+    ))]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct SpriteSource {
+        /// The atlas.
+        pub atlas: u32,
+        /// The region.
+        pub region: Rect,
+        /// The phase.
+        pub phase: f32,
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "kittest",
+    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+))]
 impl SpriteSource {
     #[cfg(all(
         feature = "scene",
@@ -58,30 +85,37 @@ impl SpriteSource {
     }
 }
 
-/// The line style of a text decoration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DecorationKind {
-    /// The underline decoration kind.
-    Underline,
-    /// The strikethrough decoration kind.
-    Strikethrough,
-    /// The wavy underline decoration kind.
-    WavyUnderline,
+kittest_pub! {
+    /// The line style of a text decoration.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum DecorationKind {
+        /// The underline decoration kind.
+        Underline,
+        /// The strikethrough decoration kind.
+        Strikethrough,
+        #[cfg(any(test, feature = "kittest", all(feature = "scene", feature = "terminal")))]
+        /// The wavy underline decoration kind.
+        WavyUnderline,
+    }
 }
 
-/// The bounds and effects of a composite layer.
-#[derive(Clone, Debug, PartialEq)]
-pub struct LayerScope {
-    /// The clip.
-    pub clip: Rect,
-    /// The clip radii.
-    pub clip_radii: CornerRadii,
-    /// The effect.
-    pub effect: LayerEffect,
-    /// The opacity.
-    pub opacity: f32,
-    /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
-    pub blend: BlendMode,
+kittest_pub! {
+    /// The bounds and effects of a composite layer.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LayerScope {
+        /// The clip.
+        pub clip: Rect,
+        /// The clip radii.
+        pub clip_radii: CornerRadii,
+        /// The effect.
+        pub effect: LayerEffect,
+        /// The opacity.
+        pub opacity: f32,
+        /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
+        pub blend: BlendMode,
+    }
 }
 
 #[cfg(feature = "scene")]
@@ -160,50 +194,57 @@ impl BlendMode {
     ];
 }
 
-/// An effect applied to a composite layer.
-#[derive(Clone, Debug, PartialEq)]
-pub enum LayerEffect {
-    /// The identity layer effect.
-    Identity,
-    /// The transform layer effect.
-    Transform(Transform),
-    /// The layer is drawn as a CSS 3D plane through a perspective transform.
-    Projected {
-        /// The full transform from layer space to the parent's space.
-        transform: Transform3D,
-        /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
-        hide_backface: bool,
-    },
-    /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
-    Mask(Mask),
-    /// The layer's pixels pass through each filter in order, as in CSS `filter`.
-    Filter(Arc<[Filter]>),
+kittest_pub! {
+    /// An effect applied to a composite layer.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum LayerEffect {
+        /// The identity layer effect.
+        Identity,
+        /// The transform layer effect.
+        Transform(Transform),
+        /// The layer is drawn as a CSS 3D plane through a perspective transform.
+        Projected {
+            /// The full transform from layer space to the parent's space.
+            transform: Transform3D,
+            /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
+            hide_backface: bool,
+        },
+        /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
+        Mask(Mask),
+        /// The layer's pixels pass through each filter in order, as in CSS `filter`.
+        Filter(Arc<[Filter]>),
+    }
 }
 
-/// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum Filter {
-    /// A Gaussian blur whose standard deviation is this many logical pixels.
-    Blur(f32),
-    /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
-    DropShadow(Shadow),
-    /// Multiplies each color channel by the amount.
-    Brightness(f32),
-    /// Scales each color channel away from mid-gray by the amount.
-    Contrast(f32),
-    /// Mixes toward the luminance gray by the amount, clamped to 1.
-    Grayscale(f32),
-    /// Rotates the hue by this many degrees.
-    HueRotate(f32),
-    /// Mixes toward the inverted color by the amount, clamped to 1.
-    Invert(f32),
-    /// Multiplies alpha by the amount, clamped to 1.
-    Opacity(f32),
-    /// Scales saturation by the amount.
-    Saturate(f32),
-    /// Mixes toward sepia by the amount, clamped to 1.
-    Sepia(f32),
+kittest_pub! {
+    /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[non_exhaustive]
+    pub enum Filter {
+        /// A Gaussian blur whose standard deviation is this many logical pixels.
+        Blur(f32),
+        /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
+        DropShadow(Shadow),
+        /// Multiplies each color channel by the amount.
+        Brightness(f32),
+        /// Scales each color channel away from mid-gray by the amount.
+        Contrast(f32),
+        /// Mixes toward the luminance gray by the amount, clamped to 1.
+        Grayscale(f32),
+        /// Rotates the hue by this many degrees.
+        HueRotate(f32),
+        /// Mixes toward the inverted color by the amount, clamped to 1.
+        Invert(f32),
+        #[cfg(feature = "kittest")]
+        /// Multiplies alpha by the amount, clamped to 1.
+        Opacity(f32),
+        /// Scales saturation by the amount.
+        Saturate(f32),
+        /// Mixes toward sepia by the amount, clamped to 1.
+        Sepia(f32),
+    }
 }
 
 #[cfg(any(test, feature = "scene", feature = "terminal"))]
@@ -233,30 +274,38 @@ pub(crate) fn filter_reach(filters: &[Filter]) -> f32 {
         .sum()
 }
 
-/// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum MaskMode {
-    /// The mask's alpha.
-    #[default]
-    Alpha,
-    /// The mask's luminance times its alpha.
-    Luminance,
+kittest_pub! {
+    /// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
+    #[doc(hidden)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub enum MaskMode {
+        /// The mask's alpha.
+        #[default]
+        Alpha,
+        /// The mask's luminance times its alpha.
+        Luminance,
+    }
 }
 
-/// Drawing commands whose alpha or luminance scales a layer's pixels.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Mask {
-    pub(crate) mode: MaskMode,
-    pub(crate) commands: Arc<[SceneCommand]>,
+kittest_pub! {
+    /// Drawing commands whose alpha or luminance scales a layer's pixels.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Mask {
+        pub(crate) mode: MaskMode,
+        pub(crate) commands: Arc<[SceneCommand]>,
+    }
 }
 
 impl Mask {
-    /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
-    #[must_use]
-    pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
-        Self {
-            mode,
-            commands: scene.commands.into(),
+    kittest_pub! {
+        /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
+        #[must_use]
+        pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
+            Self {
+                mode,
+                commands: scene.commands.into(),
+            }
         }
     }
 }

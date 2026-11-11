@@ -12,22 +12,35 @@ use crate::style::{StateSlot, StyleAtom};
 mod sealed {
     use super::{LayoutStyle, Length, NodeBuilder, Signal, SmallVec, StateSlot, StyleAtom};
 
+    #[allow(unnameable_types, reason = "sealed")]
     pub trait Sealed: Sized {
-        fn edit(self, edit: Edit) -> Self;
+        fn edit(self, edit: NodeEdit) -> Self;
 
         fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
     }
 
-    pub trait StateTarget: Sized {
-        fn set_state(self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self;
+    #[allow(unnameable_types, reason = "sealed")]
+    #[derive(Debug)]
+    pub struct StatePaint {
+        pub(crate) slot: StateSlot,
+        pub(crate) atoms: SmallVec<[StyleAtom; 16]>,
     }
+
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait StateTarget: Sized {
+        fn set_state(self, state: StatePaint) -> Self;
+    }
+
+    #[allow(unnameable_types, reason = "sealed")]
+    #[derive(Debug)]
+    pub struct NodeEdit(pub(crate) Edit);
 
     #[allow(
         clippy::large_enum_variant,
         reason = "an edit is built and consumed within one setter call"
     )]
     #[derive(Debug)]
-    pub enum Edit {
+    pub(crate) enum Edit {
         Layout(LayoutEdit),
         Autofocus,
         FocusWhen(Signal<u64>),
@@ -38,7 +51,7 @@ mod sealed {
         reason = "an edit is built and consumed within one setter call"
     )]
     #[derive(Clone, Debug)]
-    pub enum LayoutEdit {
+    pub(crate) enum LayoutEdit {
         Merge(LayoutStyle),
         Width(Length),
         Height(Length),
@@ -46,7 +59,7 @@ mod sealed {
     }
 }
 
-pub(crate) use sealed::{Edit, LayoutEdit, Sealed, StateTarget};
+pub(crate) use sealed::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
 
 impl Edit {
     pub(crate) fn apply(self, node: NodeBuilder) -> NodeBuilder {

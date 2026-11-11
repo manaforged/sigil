@@ -32,6 +32,7 @@ static UNFRAMED: &[StyleAtom] = &[Token::Surface.background()];
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
 /// Builder of a table.
+#[must_use]
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
     row_height: f32,
@@ -66,7 +67,6 @@ impl<Row: 'static> core::fmt::Debug for TableBuilder<Row> {
 }
 
 /// A sortable, filterable table.
-#[must_use]
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
         state,
@@ -90,49 +90,42 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 
 impl<Row: 'static> TableBuilder<Row> {
     /// Sets the row height.
-    #[must_use]
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
     /// Sets the header height.
-    #[must_use]
     pub const fn header_height(mut self, px: f32) -> Self {
         self.header_height = px;
         self
     }
 
     /// Sets the viewport height.
-    #[must_use]
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
     /// Sets the viewport width.
-    #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
     /// Sets the row menu.
-    #[must_use]
     pub fn row_menu(mut self, build: impl Fn(&Row) -> Vec<MenuItem> + 'static) -> Self {
         self.row_menu = Some(Rc::new(build));
         self
     }
 
     /// Sets the row activate.
-    #[must_use]
     pub fn row_activate(mut self, activate: impl Fn(&Row) + 'static) -> Self {
         self.row_activate = Some(Rc::new(activate));
         self
     }
 
     /// Sets the density.
-    #[must_use]
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
         self.header_height = density.header();
@@ -141,42 +134,36 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     /// Applies the striped option.
-    #[must_use]
     pub const fn striped(mut self) -> Self {
         self.striped = true;
         self
     }
 
     /// Sets the framed.
-    #[must_use]
     pub const fn framed(mut self, framed: bool) -> Self {
         self.frame = if framed { FRAMED } else { UNFRAMED };
         self
     }
 
     /// Sets the scroll bind.
-    #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the empty.
-    #[must_use]
     pub fn empty(mut self, build: impl Fn() -> NodeBuilder + 'static) -> Self {
         self.empty = Some(Rc::new(build));
         self
     }
 
     /// Applies the selectable checkboxes option.
-    #[must_use]
     pub const fn selectable_checkboxes(mut self) -> Self {
         self.select = true;
         self

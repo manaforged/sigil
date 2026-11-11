@@ -108,17 +108,20 @@ pub(crate) fn rounded_outline(rect: Rect, radii: [f32; 4]) -> Vec<PathCmd> {
     ]
 }
 
-/// A command that fills and strokes a vector path.
-#[derive(Clone, Debug, PartialEq)]
-pub struct DrawPath {
-    pub(crate) node: Option<NodeId>,
-    pub(crate) outline: Arc<[PathCmd]>,
-    pub(crate) transform: Transform,
-    pub(crate) fill: Option<(FillRule, PathPaint)>,
-    pub(crate) stroke: Option<PathStroke>,
-    pub(crate) opacity: u16,
-    pub(crate) bounds: Rect,
-    pub(crate) key: u64,
+kittest_pub! {
+    /// A command that fills and strokes a vector path.
+    #[doc(hidden)]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DrawPath {
+        pub(crate) node: Option<NodeId>,
+        pub(crate) outline: Arc<[PathCmd]>,
+        pub(crate) transform: Transform,
+        pub(crate) fill: Option<(FillRule, PathPaint)>,
+        pub(crate) stroke: Option<PathStroke>,
+        pub(crate) opacity: u16,
+        pub(crate) bounds: Rect,
+        pub(crate) key: u64,
+    }
 }
 
 impl DrawPath {

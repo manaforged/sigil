@@ -1,6 +1,3 @@
-#![allow(unreachable_pub, clippy::redundant_pub_crate)]
-
-#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
 pub(crate) const BLUR_SHADER: &str = concat!(
     vertex_in!(),
     r"

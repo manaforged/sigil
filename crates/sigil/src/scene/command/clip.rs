@@ -15,67 +15,78 @@ const OPAQUE: Color = Color {
     a: 255,
 };
 
-/// The region a clip keeps.
-#[allow(
-    clippy::large_enum_variant,
-    reason = "SceneCommand already holds DrawPath inline, so boxing it here saves no space and adds an allocation"
-)]
-#[derive(Clone, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum Clip {
-    /// A rectangle, applied with the scissor.
-    Rect(Rect),
-    /// A rectangle with rounded corners.
-    Rounded(Rect, CornerRadii),
-    /// The pixels a path covers, weighted by its alpha.
-    Path(DrawPath),
+kittest_pub! {
+    /// The region a clip keeps.
+    #[doc(hidden)]
+    #[allow(
+        clippy::large_enum_variant,
+        reason = "SceneCommand already holds DrawPath inline, so boxing it here saves no space and adds an allocation"
+    )]
+    #[derive(Clone, Debug, PartialEq)]
+    #[non_exhaustive]
+    pub enum Clip {
+        /// A rectangle, applied with the scissor.
+        Rect(Rect),
+        /// A rectangle with rounded corners.
+        Rounded(Rect, CornerRadii),
+        /// The pixels a path covers, weighted by its alpha.
+        Path(DrawPath),
+    }
 }
 
 impl Clip {
-    /// A rectangle with corners of `radius`.
-    #[must_use]
-    pub const fn rounded(rect: Rect, radius: f32) -> Self {
-        Self::Rounded(rect, CornerRadii::uniform(radius))
-    }
-
-    /// A disc of `radius` around `center`.
-    #[must_use]
-    pub fn circle(center: Point, radius: f32) -> Self {
-        let radius = radius.max(0.0);
-        let corner = Point::new(center.x - radius, center.y - radius);
-        Self::rounded(Rect::new(corner, radius * 2.0, radius * 2.0), radius)
-    }
-
-    /// The ellipse inscribed in `rect`.
-    #[must_use]
-    pub fn ellipse(rect: Rect) -> Self {
-        let (rx, ry) = (rect.width * 0.5, rect.height * 0.5);
-        let (cx, cy) = (rect.origin.x + rx, rect.origin.y + ry);
-        let (kx, ky) = (rx * KAPPA, ry * KAPPA);
-        let outline = [
-            PathCmd::MoveTo(cx + rx, cy),
-            PathCmd::CubicTo(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry),
-            PathCmd::CubicTo(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy),
-            PathCmd::CubicTo(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry),
-            PathCmd::CubicTo(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy),
-            PathCmd::Close,
-        ];
-        Self::outline(outline.into(), FillRule::NonZero)
-    }
-
-    /// The polygon through `points`, filled by the nonzero rule.
-    #[must_use]
-    pub fn polygon(points: &[Point]) -> Self {
-        let mut outline = Vec::with_capacity(points.len() + 1);
-        for (index, point) in points.iter().enumerate() {
-            outline.push(if index == 0 {
-                PathCmd::MoveTo(point.x, point.y)
-            } else {
-                PathCmd::LineTo(point.x, point.y)
-            });
+    kittest_pub! {
+        /// A rectangle with corners of `radius`.
+        #[must_use]
+        pub const fn rounded(rect: Rect, radius: f32) -> Self {
+            Self::Rounded(rect, CornerRadii::uniform(radius))
         }
-        outline.push(PathCmd::Close);
-        Self::outline(outline.into(), FillRule::NonZero)
+    }
+
+    kittest_pub! {
+        /// A disc of `radius` around `center`.
+        #[must_use]
+        pub fn circle(center: Point, radius: f32) -> Self {
+            let radius = radius.max(0.0);
+            let corner = Point::new(center.x - radius, center.y - radius);
+            Self::rounded(Rect::new(corner, radius * 2.0, radius * 2.0), radius)
+        }
+    }
+
+    kittest_pub! {
+        /// The ellipse inscribed in `rect`.
+        #[must_use]
+        pub fn ellipse(rect: Rect) -> Self {
+            let (rx, ry) = (rect.width * 0.5, rect.height * 0.5);
+            let (cx, cy) = (rect.origin.x + rx, rect.origin.y + ry);
+            let (kx, ky) = (rx * KAPPA, ry * KAPPA);
+            let outline = [
+                PathCmd::MoveTo(cx + rx, cy),
+                PathCmd::CubicTo(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry),
+                PathCmd::CubicTo(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy),
+                PathCmd::CubicTo(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry),
+                PathCmd::CubicTo(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy),
+                PathCmd::Close,
+            ];
+            Self::outline(outline.into(), FillRule::NonZero)
+        }
+    }
+
+    kittest_pub! {
+        /// The polygon through `points`, filled by the nonzero rule.
+        #[must_use]
+        pub fn polygon(points: &[Point]) -> Self {
+            let mut outline = Vec::with_capacity(points.len() + 1);
+            for (index, point) in points.iter().enumerate() {
+                outline.push(if index == 0 {
+                    PathCmd::MoveTo(point.x, point.y)
+                } else {
+                    PathCmd::LineTo(point.x, point.y)
+                });
+            }
+            outline.push(PathCmd::Close);
+            Self::outline(outline.into(), FillRule::NonZero)
+        }
     }
 
     pub(crate) fn outline(outline: Arc<[PathCmd]>, rule: FillRule) -> Self {

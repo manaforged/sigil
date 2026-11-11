@@ -180,6 +180,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
+        #[cfg(any(test, feature = "kittest"))]
         StyleAtom::Transform(_) => ResolvedSlot::Transform,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
@@ -196,7 +197,6 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::TransitionEase(_) => ResolvedSlot::TransitionEase,
         StyleAtom::TransitionDelay(_) => ResolvedSlot::TransitionDelay,
         StyleAtom::Animation(_) => ResolvedSlot::Animation,
-        StyleAtom::UnknownThemeRef(_) => ResolvedSlot::UnknownThemeRef,
         StyleAtom::Paint(paint) => paint_slot(paint),
         StyleAtom::ClipPath(_) => ResolvedSlot::ClipPath,
         StyleAtom::Space(atom) => space_slot(atom),
@@ -311,6 +311,7 @@ pub(crate) enum ResolvedSlot {
     BorderColor,
     Shadow,
     Opacity,
+    #[cfg(any(test, feature = "kittest"))]
     Transform,
     FontSize,
     FontWeight,
@@ -327,7 +328,6 @@ pub(crate) enum ResolvedSlot {
     TransitionEase,
     TransitionDelay,
     Animation,
-    UnknownThemeRef,
     BackgroundGradient,
     BackgroundImage,
     GradientFrom,
