@@ -206,6 +206,7 @@ impl SceneBuilder {
     }
 
     kittest_pub! {
+        if feature = "scene";
         /// Closes the last open layer.
         pub fn pop_layer(&mut self) {
             self.commands.push(SceneCommand::PopLayer);

@@ -329,6 +329,7 @@ impl Cx {
     }
 
     kittest_pub! {
+        if feature = "desktop";
         /// Sets the scale; a non-finite or non-positive value becomes 1.0.
         pub fn set_scale(&mut self, scale: f32) {
             let scale = Scale::new(scale).factor();

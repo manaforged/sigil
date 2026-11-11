@@ -118,11 +118,13 @@ impl Host {
         }
     }
 
-    /// Tells widgets whether the host can show hyperlinks.
-    #[doc(hidden)]
-    #[cfg(feature = "kittest")]
-    pub const fn set_hyperlinks(&mut self, yes: bool) {
-        self.env.caps.hyperlinks = yes;
+    kittest_pub! {
+        if feature = "terminal";
+        /// Tells widgets whether the host can show hyperlinks.
+        #[doc(hidden)]
+        pub const fn set_hyperlinks(&mut self, yes: bool) {
+            self.env.caps.hyperlinks = yes;
+        }
     }
 
     pub(crate) fn enter(&self) -> EnvGuard {
