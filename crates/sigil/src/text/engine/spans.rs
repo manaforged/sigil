@@ -25,7 +25,7 @@ pub(super) struct ShapeSpan {
     pub(super) slot: u16,
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(super) fn shape_segments(
     chain: &[Font],
     text: &str,
@@ -109,7 +109,7 @@ fn hard_break(start: usize, len: usize) -> ShapedSegment {
         breakable_before: false,
         is_hard_break: true,
         level: 0,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         script: Script::Common,
         face_slot: 0,
     }

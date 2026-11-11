@@ -51,7 +51,7 @@ pub(crate) fn build_tree(commands: &[SceneCommand]) -> Vec<PlanNode<'_>> {
                 });
                 index = end + 1;
             }
-            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            #[cfg(host)]
             SceneCommand::SaveLayer { opacity } => {
                 let end = SceneState::group_end(commands, index);
                 let inner = commands.get(index..end).unwrap_or_default();

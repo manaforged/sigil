@@ -17,20 +17,16 @@ kittest_pub! {
 kittest_pub! {
     /// How a renderer colors a sprite.
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum SpriteKind {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The mono sprite kind.
         Mono,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The subpixel sprite kind.
         Subpixel,
-        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        #[cfg(scene_paint)]
         /// The poly sprite kind.
         Poly,
     }
@@ -39,11 +35,7 @@ kittest_pub! {
 kittest_pub! {
     /// Where a sprite's pixels come from.
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct SpriteSource {
         /// The atlas.
@@ -55,16 +47,9 @@ kittest_pub! {
     }
 }
 
-#[cfg(any(
-    test,
-    feature = "kittest",
-    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-))]
+#[cfg(scene_paint)]
 impl SpriteSource {
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(scene_host)]
     pub(crate) fn fitted(self, atlas: (f32, f32), dest: Rect) -> Option<(Rect, Rect)> {
         let region = self.region;
         if region.width <= 0.0 || region.height <= 0.0 {
@@ -94,7 +79,7 @@ kittest_pub! {
         Underline,
         /// The strikethrough decoration kind.
         Strikethrough,
-        #[cfg(any(test, feature = "kittest", all(feature = "scene", feature = "terminal")))]
+        #[cfg(cpu_paint)]
         /// The wavy underline decoration kind.
         WavyUnderline,
     }
@@ -247,14 +232,9 @@ kittest_pub! {
     }
 }
 
-#[cfg(any(test, feature = "scene", feature = "terminal"))]
+#[cfg(vector_paint)]
 impl Filter {
-    #[cfg(any(
-        test,
-        feature = "terminal",
-        feature = "desktop",
-        all(feature = "scene", feature = "kittest")
-    ))]
+    #[cfg(scene_emit)]
     pub(crate) const fn is_color(self) -> bool {
         !matches!(self, Self::Blur(_) | Self::DropShadow(_))
     }

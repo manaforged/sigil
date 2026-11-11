@@ -31,7 +31,7 @@ pub(crate) fn command(target: &OsStr) -> Command {
     let mut cmd = Command::new("open");
     #[cfg(target_os = "windows")]
     let mut cmd = Command::new("rundll32");
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(not(vendor_os))]
     let mut cmd = Command::new("xdg-open");
 
     #[cfg(target_os = "windows")]

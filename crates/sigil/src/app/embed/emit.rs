@@ -5,7 +5,7 @@ use crate::scene::emit::{EmitDiff, EmitMemo, emit_scene_since};
 use super::{Host, viewport_rect};
 
 impl Host {
-    #[cfg(any(test, feature = "terminal", feature = "kittest"))]
+    #[cfg(terminal_host)]
     #[must_use]
     pub(crate) fn emit_since(
         &mut self,

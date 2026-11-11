@@ -3,21 +3,13 @@ use crate::kernel::NodeId;
 use crate::style::Color;
 
 use crate::scene::command::effects::DecorationKind;
-#[cfg(any(
-    test,
-    feature = "kittest",
-    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-))]
+#[cfg(scene_paint)]
 use crate::scene::command::effects::{SpriteKind, SpriteSource};
 
 kittest_pub! {
     /// A command that draws a sprite.
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct DrawSprite {
         /// The node, if any.
@@ -35,11 +27,7 @@ kittest_pub! {
     }
 }
 
-#[cfg(any(
-    test,
-    feature = "kittest",
-    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-))]
+#[cfg(scene_paint)]
 impl DrawSprite {
     kittest_pub! {
         if test;

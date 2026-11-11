@@ -10,7 +10,7 @@ fn command_uses_platform_helper() {
     assert_eq!(program, "open");
     #[cfg(target_os = "windows")]
     assert_eq!(program, "rundll32");
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(not(vendor_os))]
     assert_eq!(program, "xdg-open");
 }
 

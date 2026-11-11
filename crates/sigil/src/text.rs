@@ -28,7 +28,7 @@ pub(crate) mod shaper;
 pub(crate) mod shaping_complex;
 
 pub use crate::hal::text::{HitPosition, RenderedGlyph, TextAffinity};
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use engine::FontCollection;
 pub use engine::OwnedTextEngine;
 #[cfg(target_arch = "wasm32")]

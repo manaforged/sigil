@@ -4,7 +4,7 @@ use crate::Error;
 use crate::renderer::device_state::PipelineCache;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use crate::renderer::renderer::ScreenSubmission;
 use crate::renderer::renderer::WgpuRenderer;
 use crate::renderer::renderer::record_clear;
@@ -23,7 +23,7 @@ pub struct OffscreenTarget<'a> {
     pub scale: f32,
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
     fn from(target: &ScreenSubmission<'a>) -> Self {
         Self {
@@ -38,7 +38,7 @@ impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
 }
 
 impl WgpuRenderer {
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     pub fn render_command_scene_offscreen(
         &mut self,
         target: OffscreenTarget<'_>,

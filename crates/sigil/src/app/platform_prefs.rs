@@ -53,7 +53,7 @@ fn read() -> PlatformPrefs {
     }
 }
 
-#[cfg(all(unix, not(target_os = "macos"), not(target_arch = "wasm32")))]
+#[cfg(freedesktop)]
 fn read() -> PlatformPrefs {
     PlatformPrefs {
         reduced_motion: gsetting("org.gnome.desktop.interface", "enable-animations")
@@ -65,7 +65,7 @@ fn read() -> PlatformPrefs {
     }
 }
 
-#[cfg(all(unix, not(target_os = "macos"), not(target_arch = "wasm32")))]
+#[cfg(freedesktop)]
 fn gsetting(schema: &str, key: &str) -> Option<String> {
     let output = std::process::Command::new("gsettings")
         .args(["get", schema, key])

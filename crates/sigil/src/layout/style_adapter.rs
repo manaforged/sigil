@@ -107,7 +107,7 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         StyleAtom::Transform(_) => {}
     }
 }

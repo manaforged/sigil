@@ -140,15 +140,11 @@ impl<'a> CpuPainter<'a> {
             | SceneCommand::PopLayer
             | SceneCommand::PushClip(_)
             | SceneCommand::PopClip => {}
-            #[cfg(any(
-                test,
-                feature = "kittest",
-                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-            ))]
+            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
-            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            #[cfg(host)]
             SceneCommand::SaveLayer { .. } => {}
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             SceneCommand::RestoreLayer => {}
             SceneCommand::Rect(draw) => self.rect(draw),
             SceneCommand::Gradient(draw) => self.gradient(draw),
@@ -162,7 +158,7 @@ impl<'a> CpuPainter<'a> {
                 Some(fill) => self.path(fill),
                 None => self.glyph_run(draw),
             },
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SceneCommand::Sprite(draw) => self.sprite(draw),
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Decoration(draw) => self.decoration(draw),

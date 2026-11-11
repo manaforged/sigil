@@ -7,7 +7,7 @@ use crate::shell::key_map::same_name_match;
 use muda::accelerator::{Key as NativeKey, KeyAccelerator, Modifiers as NativeModifiers};
 use muda::{CheckMenuItem, IsMenuItem, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 
-const NATIVE_MENU_BAR: bool = cfg!(any(target_os = "macos", target_os = "windows"));
+const NATIVE_MENU_BAR: bool = cfg!(vendor_os);
 const UNSUPPORTED: &str = "native menu bars are unsupported on this platform";
 
 thread_local! {
@@ -260,7 +260,7 @@ fn native_standard(item: StandardItem) -> PredefinedMenuItem {
 }
 
 /// Delivers `id` as if the user picked that item.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub fn simulate(id: impl Into<String>) {
     Menu::events().emit(id.into());
 }
@@ -361,7 +361,7 @@ fn install_native(menu: &muda::Menu, hwnd: Option<isize>) -> Result<(), String> 
     unsafe { menu.init_for_hwnd(hwnd) }.map_err(|error| error.to_string())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(not(vendor_os))]
 fn install_native(_menu: &muda::Menu, _hwnd: Option<isize>) -> Result<(), String> {
     Err(UNSUPPORTED.to_string())
 }

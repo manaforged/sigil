@@ -155,7 +155,7 @@ impl<'a> SceneWalk<'a> {
             return;
         }
         match command {
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SceneCommand::Sprite(draw) => self.draw_sprite(draw),
             SceneCommand::Image(draw) => self.draw_image(draw),
             _ => {}

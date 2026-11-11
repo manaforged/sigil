@@ -31,11 +31,7 @@ impl Notification {
     }
 
     /// Shows the notification on the desktop.
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "windows",
-        all(unix, not(target_os = "android"))
-    ))]
+    #[cfg(os_notifications)]
     pub fn send(&self) -> AppResult<()> {
         let mut native = notify_rust::Notification::new();
         native.summary(&self.title).body(&self.body);
@@ -46,11 +42,7 @@ impl Notification {
     }
 
     /// Returns an unsupported error on this target.
-    #[cfg(not(any(
-        target_os = "macos",
-        target_os = "windows",
-        all(unix, not(target_os = "android"))
-    )))]
+    #[cfg(not(os_notifications))]
     pub fn send(&self) -> AppResult<()> {
         Err(Error::new(std::io::Error::from(
             std::io::ErrorKind::Unsupported,

@@ -177,7 +177,7 @@ impl WinitShell {
             .unwrap_or(1.0)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn windows(&self) -> &[(WinitWindowHandle, Arc<Window>)] {
         &self.windows

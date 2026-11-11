@@ -30,9 +30,9 @@ pub(crate) use self::kind::QuadBlend;
 pub(crate) use self::kind::{QuadInstance, QuadKind};
 pub(crate) use self::mask::MaskParams;
 use self::mask_atlas::RasterAtlas;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use self::mask_atlas::set_test_atlas_size_override;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) use self::mask_atlas::test_atlas_size_override;
 pub(crate) use self::prepare::raster_scale;
 use crate::renderer::raster::Hinters;

@@ -73,7 +73,7 @@ impl Host {
         dt: f32,
         hooks: FrameHooks<'_>,
     ) -> FrameOutput {
-        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        #[cfg(hot_patch)]
         self.remount_patched();
         let _env = self.enter();
         Runtime::begin_effect();

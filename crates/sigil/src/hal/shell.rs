@@ -130,7 +130,7 @@ pub trait Shell: Sized {
         self.create_window_logical(title, initial)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     fn drain_events(&mut self) -> IntoIter<Event>;
 
     fn run<F>(self, frame: F) -> Result<(), Self::Error>

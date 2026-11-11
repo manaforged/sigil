@@ -248,13 +248,7 @@ pub(crate) fn gauge(counter: Counter, value: u64) {
     });
 }
 
-#[cfg(any(
-    test,
-    all(
-        feature = "scene",
-        any(feature = "desktop", feature = "kittest", feature = "terminal")
-    )
-))]
+#[cfg(scene_host)]
 pub(crate) fn with_open(f: impl FnOnce(&mut Frame)) {
     with_store(|store| f(&mut store.open));
 }

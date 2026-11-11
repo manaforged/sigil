@@ -10,7 +10,7 @@ use crate::widgets::Layout;
 
 mod glyphs;
 
-#[cfg(any(feature = "terminal", test))]
+#[cfg(feature = "terminal")]
 pub(crate) use glyphs::spark_glyph;
 
 /// Sparkline glyphs.

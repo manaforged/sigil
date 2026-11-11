@@ -130,7 +130,7 @@ impl<T> Arena<T> {
         self.get(key).is_some()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn keys(&self) -> impl Iterator<Item = ArenaKey<T>> + '_ {
         self.slots.iter().enumerate().filter_map(|(index, slot)| {
             slot.value.as_ref().map(|_| ArenaKey {

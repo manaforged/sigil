@@ -112,7 +112,7 @@ impl LayoutForest {
         self.frame
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn count(&self) -> usize {
         self.nodes.iter().filter(|n| n.alive).count()
     }

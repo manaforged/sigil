@@ -29,7 +29,7 @@ impl Cx {
             .and_then(|node| node.children.first().copied())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn nth_child(&self, id: NodeId, n: usize) -> Option<NodeId> {
         self.nodes
@@ -37,7 +37,7 @@ impl Cx {
             .and_then(|node| node.children.get(n).copied())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn child_count(&self, id: NodeId) -> usize {
         self.nodes

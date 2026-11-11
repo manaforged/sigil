@@ -15,7 +15,7 @@ impl WgpuSurface {
     }
 
     #[must_use]
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub const fn format(&self) -> wgpu::TextureFormat {
         self.config.format
     }

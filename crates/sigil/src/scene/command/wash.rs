@@ -13,10 +13,7 @@ mod noise;
 #[cfg(feature = "scene")]
 mod paint;
 
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 /// Packs an area's centre in whole pixels into the bits of one float for the shader.
 pub(crate) fn centre_bits(width: f32, height: f32) -> f32 {
     let half = |extent: f32| (extent / 2.0).round().clamp(0.0, 65_535.0) as u32;

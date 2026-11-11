@@ -124,7 +124,7 @@ impl Node {
         &self.children
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn has_extensions(&self) -> bool {
         self.extensions
@@ -204,7 +204,7 @@ impl NodeExtensions {
         boxed.downcast::<T>().ok().map(|value| *value)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     /// Returns whether this node extensions is empty.
     #[must_use]

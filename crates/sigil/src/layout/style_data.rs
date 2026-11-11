@@ -270,24 +270,24 @@ pub enum AlignItems {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlignContent {
     /// The start align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Start,
     /// The end align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     End,
     /// The center align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Center,
     /// The stretch align content.
     Stretch,
     /// The space between align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     SpaceBetween,
     /// The space around align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     SpaceAround,
     /// The space evenly align content.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     SpaceEvenly,
 }
 

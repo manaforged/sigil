@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
@@ -145,7 +145,7 @@ impl AsyncRuntime {
         self.parts.backend.started()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn pending_count(&self) -> usize {
         self.rx.len()
@@ -180,7 +180,7 @@ fn sweep_owner_tasks(registry: &TaskRegistry) {
 
 impl AsyncRuntime {
     /// Queues a callback to run on the UI thread under an owner.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn enqueue_main(
         &self,
         owner: Owner,
@@ -192,7 +192,7 @@ impl AsyncRuntime {
     }
 
     /// Spawns a future that is cancelled when its owner is disposed.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn spawn<F>(&self, owner: Owner, future: F) -> TaskHandle
     where
         F: Future<Output = ()> + Send + 'static,

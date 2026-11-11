@@ -170,7 +170,7 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::MixBlend(mode))
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     /// Sets the transform.
     #[must_use]

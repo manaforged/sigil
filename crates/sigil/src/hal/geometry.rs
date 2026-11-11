@@ -128,7 +128,7 @@ impl Rgba {
         a: 0.0,
     };
     /// Opaque black.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub const BLACK: Self = Self {
         r: 0.0,
         g: 0.0,
@@ -136,7 +136,7 @@ impl Rgba {
         a: 1.0,
     };
     /// Opaque white.
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    #[cfg(raster)]
     pub const WHITE: Self = Self {
         r: 1.0,
         g: 1.0,
@@ -146,7 +146,7 @@ impl Rgba {
 
     /// Creates a color from its four channels.
     #[must_use]
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    #[cfg(raster)]
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }

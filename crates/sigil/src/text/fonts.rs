@@ -24,7 +24,7 @@ impl core::fmt::Debug for DefaultFonts {
 pub(crate) enum DefaultFontSource {
     #[default]
     Bundled,
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    #[cfg(host)]
     Custom(DefaultFonts),
     #[cfg(feature = "desktop")]
     System,
@@ -36,21 +36,9 @@ pub(crate) type FallbackFace = (Arc<Vec<u8>>, u32);
 
 static ADDED_FALLBACKS: RwLock<Vec<FallbackFace>> = RwLock::new(Vec::new());
 
-#[cfg(any(
-    test,
-    target_arch = "wasm32",
-    feature = "desktop",
-    feature = "kittest",
-    feature = "terminal"
-))]
+#[cfg(font_listeners)]
 type FontsChanged = Arc<dyn Fn() + Send + Sync>;
-#[cfg(any(
-    test,
-    target_arch = "wasm32",
-    feature = "desktop",
-    feature = "kittest",
-    feature = "terminal"
-))]
+#[cfg(font_listeners)]
 static ON_CHANGE: RwLock<Option<FontsChanged>> = RwLock::new(None);
 
 #[cfg(feature = "desktop")]
@@ -60,25 +48,13 @@ pub(crate) fn on_fonts_changed(notify: impl Fn() + Send + Sync + 'static) {
     }
 }
 
-#[cfg(any(
-    test,
-    target_arch = "wasm32",
-    feature = "desktop",
-    feature = "kittest",
-    feature = "terminal"
-))]
+#[cfg(font_listeners)]
 fn fonts_changed() {
     GENERATION.fetch_add(1, Ordering::Release);
     wake_font_listeners();
 }
 
-#[cfg(any(
-    test,
-    target_arch = "wasm32",
-    feature = "desktop",
-    feature = "kittest",
-    feature = "terminal"
-))]
+#[cfg(font_listeners)]
 pub(crate) fn wake_font_listeners() {
     let notify = ON_CHANGE.read().ok().and_then(|guard| guard.clone());
     if let Some(notify) = notify {
@@ -86,7 +62,7 @@ pub(crate) fn wake_font_listeners() {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(host)]
 pub fn set_default_fonts(fonts: DefaultFonts) {
     if let Ok(mut guard) = DEFAULT_FONTS.write() {
         *guard = DefaultFontSource::Custom(fonts);
@@ -95,7 +71,7 @@ pub fn set_default_fonts(fonts: DefaultFonts) {
     }
 }
 
-#[cfg(all(feature = "scene", any(feature = "desktop", feature = "terminal")))]
+#[cfg(all(feature = "scene", app_host))]
 pub(crate) fn set_fallback_fonts(faces: &[FallbackFace]) {
     if faces.is_empty() {
         return;

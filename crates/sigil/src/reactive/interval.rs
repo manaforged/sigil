@@ -138,7 +138,7 @@ fn invoke(id: SourceId, owner: Owner) -> bool {
 kittest_pub! {
     /// Earliest next fire time of the registered intervals and timeouts.
     #[must_use]
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    #[cfg(host)]
     pub fn next_interval_deadline() -> Option<Instant> {
         with_sources(|sources| {
             sources
@@ -154,19 +154,19 @@ kittest_pub! {
 }
 
 /// Sets the interval clock.
-#[cfg(any(test, feature = "test-clock"))]
+#[cfg(feature = "test-clock")]
 pub fn __test_set_clock(clock: Instant) {
     with_sources(|sources| sources.test_clock = Some(clock));
 }
 
 /// Moves the interval clock forward by `delta`.
-#[cfg(any(test, feature = "test-clock"))]
+#[cfg(feature = "test-clock")]
 pub fn __test_advance_clock(delta: Duration) {
     with_sources(|sources| sources.test_clock = Some(sources.now() + delta));
 }
 
 /// Returns the interval clock to system time.
-#[cfg(any(test, feature = "test-clock"))]
+#[cfg(feature = "test-clock")]
 pub fn __test_clear_clock() {
     with_sources(|sources| sources.test_clock = None);
 }

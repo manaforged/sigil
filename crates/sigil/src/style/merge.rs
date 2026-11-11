@@ -47,7 +47,7 @@ pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> us
 }
 
 /// Number of unknown class names seen.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub fn unknown_class_warning_count() -> usize {
     UNKNOWN_CLASS.load(Ordering::Relaxed)
@@ -180,7 +180,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         StyleAtom::Transform(_) => ResolvedSlot::Transform,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
@@ -311,7 +311,7 @@ pub(crate) enum ResolvedSlot {
     BorderColor,
     Shadow,
     Opacity,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Transform,
     FontSize,
     FontWeight,

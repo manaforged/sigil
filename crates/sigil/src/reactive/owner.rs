@@ -6,11 +6,11 @@ use crate::reactive::runtime::{OwnerKey, OwnerSlot, RuntimeState, with_rt};
 impl RuntimeState {
     pub(crate) fn insert_owner(
         &mut self,
-        #[cfg_attr(not(any(test, feature = "kittest")), allow(unused_variables))]
-        name: &'static str,
+        #[cfg_attr(not(feature = "kittest"), allow(unused_variables))] name: &'static str,
         parent: Option<OwnerKey>,
-        #[cfg_attr(not(any(test, feature = "kittest")), allow(unused_variables))]
-        location: &'static Location<'static>,
+        #[cfg_attr(not(feature = "kittest"), allow(unused_variables))] location: &'static Location<
+            'static,
+        >,
     ) -> OwnerKey {
         let index_in_parent = parent.and_then(|pk| self.owners.get(pk).map(|p| p.children.len()));
         let key = self.owners.insert(OwnerSlot {
@@ -20,9 +20,9 @@ impl RuntimeState {
             signals: Vec::new(),
             effects: Vec::new(),
             cleanups: Vec::new(),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             name,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             location,
         });
         if let Some(p) = parent.and_then(|pk| self.owners.get_mut(pk)) {

@@ -256,7 +256,7 @@ pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         SceneCommand::Pattern(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::GlyphRun(draw) => draw.shift(dx, dy),
         SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),
         SceneCommand::Path(draw) => draw.shift(dx, dy),
@@ -266,15 +266,11 @@ pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         }
         SceneCommand::PushLayer(scope) => shift_layer(scope, dx, dy),
         SceneCommand::PopClip | SceneCommand::PopLayer => {}
-        #[cfg(any(
-            test,
-            feature = "kittest",
-            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-        ))]
+        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         SceneCommand::SaveLayer { .. } => {}
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         SceneCommand::RestoreLayer => {}
     }
 }

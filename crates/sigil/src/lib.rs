@@ -1,8 +1,5 @@
 #![cfg_attr(
-    all(
-        feature = "scene",
-        not(any(test, feature = "desktop", feature = "kittest"))
-    ),
+    all(feature = "scene", not(window_host)),
     allow(
         dead_code,
         reason = "a build without a window uses only the CPU capture path"
@@ -65,7 +62,7 @@ pub mod hal;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod hal;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) mod hud;
 /// The icon catalog and icon baking.
 #[cfg(feature = "scene")]
@@ -86,18 +83,18 @@ pub(crate) mod layout;
 pub mod profile;
 /// Signals, effects, owners, and channels.
 pub mod reactive;
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub mod renderer;
-#[cfg(all(feature = "scene", not(feature = "kittest")))]
+#[cfg(scene_internal)]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod renderer;
 /// The drawing commands a frame produces.
 pub mod scene;
-#[cfg(all(feature = "desktop", feature = "kittest"))]
+#[cfg(desktop_harness)]
 #[doc(hidden)]
 pub mod shell;
-#[cfg(all(feature = "desktop", not(feature = "kittest")))]
+#[cfg(live_desktop)]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod shell;
 /// Tokens, themes, colors, and style values.
@@ -107,10 +104,10 @@ pub mod tasks;
 /// The terminal host.
 #[cfg(feature = "terminal")]
 pub mod terminal;
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub mod text;
-#[cfg(all(feature = "scene", not(feature = "kittest")))]
+#[cfg(scene_internal)]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod text;
 /// The widget catalog.
@@ -126,7 +123,7 @@ pub use crate::layout::IntoPx;
 pub use crate::view::View;
 
 /// Run the app component on the host that `config` selects.
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub fn run<C, F, N>(config: C, app: F) -> AppResult
 where
     C: Into<AppConfig>,
@@ -156,7 +153,7 @@ where
 
 /// Read and write the system clipboard.
 pub mod clipboard;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub mod testing;
 
 #[cfg(fuzzing)]
@@ -190,7 +187,7 @@ pub mod fuzzing {
 pub mod prelude {
     #[cfg(feature = "desktop")]
     pub use crate::app::open;
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::request_focus;
     pub use crate::events::{
@@ -221,7 +218,7 @@ pub mod prelude {
         TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub use crate::run;
     pub use crate::style::{
         Color, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States, TextRole, Theme,

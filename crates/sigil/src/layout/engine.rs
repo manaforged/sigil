@@ -78,7 +78,7 @@ impl LayoutEngine {
         std::mem::replace(&mut self.republished, false)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn mirrored_node_count(&self) -> usize {
         self.core_to_handle.len()

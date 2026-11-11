@@ -95,7 +95,7 @@ impl Clip {
         Self::Path(draw)
     }
 
-    #[cfg(any(test, feature = "scene", feature = "terminal"))]
+    #[cfg(vector_paint)]
     pub(crate) const fn bounds(&self) -> Rect {
         match self {
             Self::Rect(rect) | Self::Rounded(rect, _) => *rect,
@@ -124,10 +124,7 @@ impl Clip {
         }
     }
 
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(scene_host)]
     pub(crate) const fn mask(&self) -> Option<&DrawPath> {
         match self {
             Self::Path(draw) => Some(draw),

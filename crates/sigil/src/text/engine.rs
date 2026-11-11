@@ -22,11 +22,11 @@ mod spans;
 
 use lines::{LineFit, LineStrut, break_lines};
 use shape::char_script;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use shape::script_name;
 #[cfg(test)]
 use shape::{PushRunArgs, push_run, run_has_disallowed_notdef, shape_validated};
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use spans::shape_segments;
 use spans::{shape_spans, style_spans};
 
@@ -34,7 +34,7 @@ pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
     font_gen: Cell<u64>,
     font_epoch: Cell<u64>,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     style: TextStyle,
     cache: RefCell<ParagraphCache>,
     chains: RefCell<AHashMap<ChainKey, Arc<[Font]>>>,
@@ -59,13 +59,13 @@ type ChainKey = (u64, u16, ChainScripts);
 impl OwnedTextEngine {
     #[must_use]
     pub fn new(style: TextStyle) -> Self {
-        #[cfg(not(any(test, feature = "kittest")))]
+        #[cfg(not(feature = "kittest"))]
         drop(style);
         Self {
             fonts: RefCell::new(FontCollection::with_default()),
             font_gen: Cell::new(crate::text::fonts::default_fonts_generation()),
             font_epoch: Cell::new(0),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             style,
             cache: RefCell::new(ParagraphCache::new()),
             chains: RefCell::new(AHashMap::new()),
@@ -107,13 +107,13 @@ impl OwnedTextEngine {
         self.font_epoch.get()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
     }
 
     /// Lays out text in the engine's own style.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn layout_paragraph(
         &self,
         text: &str,
@@ -192,13 +192,13 @@ impl OwnedTextEngine {
         self.layout_paragraph_styled(&out, None, style)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn fonts(&self) -> std::cell::Ref<'_, FontCollection> {
         self.fonts.borrow()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
         let fonts = self.fonts.borrow();
@@ -212,7 +212,7 @@ impl OwnedTextEngine {
             .collect()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), crate::Error> {
         self.fonts.borrow_mut().register(bytes, face_index)?;
         self.fonts_changed();
@@ -220,7 +220,7 @@ impl OwnedTextEngine {
         Ok(())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn register_font_family(
         &mut self,
         family: &str,

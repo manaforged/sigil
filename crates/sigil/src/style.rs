@@ -89,7 +89,7 @@ kittest_pub! {
     pub use focus_ring::FocusRing;
 }
 pub use font_family::FontFamily;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
@@ -98,7 +98,7 @@ pub use locale::{DateOrder, Locale};
 pub(crate) use merge::merge_classes;
 #[cfg(test)]
 pub(crate) use merge::merge_warning_count_for_component;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use merge::unknown_class_warning_count;
 pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};

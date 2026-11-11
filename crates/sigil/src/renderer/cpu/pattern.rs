@@ -6,14 +6,14 @@
 )]
 
 use crate::geometry::Rect;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use crate::style::Color;
 use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, SpreadMode, Transform};
 
 use crate::renderer::scene_command::PatternKind;
 
 use super::bound::{CpuBound, corners, extent};
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use super::shapes::rgba_table;
 
 pub(super) struct PatternPlacement {
@@ -83,13 +83,13 @@ fn paint_field(pixmap: &mut Pixmap, field: &Field, [x0, y0]: [u32; 2]) {
 }
 
 enum Look {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Checker {
         a: [u8; 4],
         b: [u8; 4],
         cell: f64,
     },
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Slash {
         table: Box<[[u8; 4]; 256]>,
         period: f64,
@@ -110,7 +110,7 @@ impl Field {
     fn of(place: &PatternPlacement, inverse: Transform) -> Self {
         let kind = place.kind.normalized();
         let look = match kind {
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             PatternKind::Checker {
                 color_a,
                 color_b,
@@ -120,7 +120,7 @@ impl Field {
                 b: full(color_b),
                 cell: f64::from(cell),
             },
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             PatternKind::Slash {
                 color,
                 period,
@@ -152,12 +152,12 @@ impl Field {
         let u = (f64::from(p.x) - ox).rem_euclid(self.tile);
         let v = (f64::from(p.y) - oy).rem_euclid(self.tile);
         match &self.look {
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             Look::Checker { a, b, cell } => {
                 let parity = ((u / cell).floor() + (v / cell).floor()).rem_euclid(2.0);
                 if parity < 1.0 { *a } else { *b }
             }
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             Look::Slash {
                 table,
                 period,
@@ -173,7 +173,7 @@ impl Field {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 fn slash_mask(diagonal: f64, period: f64, line: f64, aa: f64) -> f64 {
     if line <= 0.0 {
         return 0.0;
@@ -187,7 +187,7 @@ fn slash_mask(diagonal: f64, period: f64, line: f64, aa: f64) -> f64 {
     1.0 - smoothstep(-aa, aa, edge)
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     if hi <= lo {
         return if x < lo { 0.0 } else { 1.0 };
@@ -196,7 +196,7 @@ fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     t * t * 2.0f64.mul_add(-t, 3.0)
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 fn full(color: Color) -> [u8; 4] {
     rgba_table(color, 1.0).last().copied().unwrap_or_default()
 }

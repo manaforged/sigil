@@ -29,7 +29,7 @@ mod quad;
 mod shadow;
 mod shadow_field;
 mod shapes;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 mod sprite_tint;
 mod stroke;
 
@@ -96,7 +96,7 @@ impl CpuRenderer {
         self.transparent
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn last_frame_stats(&self) -> FrameStats {
         self.stats

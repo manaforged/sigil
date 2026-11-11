@@ -161,7 +161,7 @@ impl SceneWalk<'_> {
         let space = BlendSpace::from_format(self.ctx.format);
         let stops = match draw.pattern {
             PatternKind::Wash(wash) => gradient_stop_records(&wash_stops(wash), space),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             _ => Vec::new(),
         };
         let range = [
@@ -195,9 +195,9 @@ impl SceneWalk<'_> {
             Some(view) => trim_to_view(rect, radii, view, margin)?,
             None => Trimmed::whole(rect, radii),
         };
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         let dash = trimmed.dash_origin(rect, band);
-        #[cfg(not(any(test, feature = "kittest")))]
+        #[cfg(not(feature = "kittest"))]
         let dash = [0.0; 2];
         Some((transform, trimmed, dash))
     }

@@ -15,7 +15,7 @@ pub(crate) use detect::{detect, detect_mux};
 pub(crate) use encode::base64;
 #[cfg(test)]
 pub(crate) use encode::blocks_window;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use encode::{blocks, png, sextants};
 pub(crate) use encode::{png_window, sextant, sextants_window};
 

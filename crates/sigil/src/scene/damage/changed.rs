@@ -9,11 +9,7 @@ use crate::scene::{LayerEffect, LayerScope, SceneCommand};
 enum ChangeBound {
     Nothing,
     Rect(Option<Rect>),
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     Full,
 }
 
@@ -41,11 +37,7 @@ pub(super) fn changed_ink(
         }
         if marked {
             let ink = match structural_ink(commands, index, &state, &layers, (area, scale)) {
-                #[cfg(any(
-                    test,
-                    feature = "kittest",
-                    all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-                ))]
+                #[cfg(scene_paint)]
                 Some(ChangeBound::Full) => return None,
                 Some(ChangeBound::Rect(rect)) => rect,
                 Some(ChangeBound::Nothing) => None,
@@ -71,21 +63,13 @@ const fn scope_edge(command: &SceneCommand) -> Option<bool> {
     match command {
         SceneCommand::PushClip(_) | SceneCommand::PushLayer(_) => Some(true),
         SceneCommand::PopClip | SceneCommand::PopLayer => Some(false),
-        #[cfg(any(
-            test,
-            feature = "kittest",
-            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-        ))]
+        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) => Some(true),
-        #[cfg(any(
-            test,
-            feature = "kittest",
-            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-        ))]
+        #[cfg(scene_paint)]
         SceneCommand::PopTransform => Some(false),
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         SceneCommand::SaveLayer { .. } => Some(true),
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         SceneCommand::RestoreLayer => Some(false),
         _ => None,
     }
@@ -106,26 +90,18 @@ fn structural_ink(
             layers,
         )),
         SceneCommand::PushLayer(_) => ChangeBound::Rect(command_ink(command, state, layers, scale)),
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         SceneCommand::SaveLayer { .. } => {
             let end = SceneState::group_end(commands, index + 1);
             let children = commands.get(index + 1..end).unwrap_or_default();
             ChangeBound::Rect(state.draw_bounds(children, area, scale))
         }
-        #[cfg(any(
-            test,
-            feature = "kittest",
-            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-        ))]
+        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) => ChangeBound::Full,
         SceneCommand::PopClip | SceneCommand::PopLayer => ChangeBound::Nothing,
-        #[cfg(any(
-            test,
-            feature = "kittest",
-            all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-        ))]
+        #[cfg(scene_paint)]
         SceneCommand::PopTransform => ChangeBound::Nothing,
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         SceneCommand::RestoreLayer => ChangeBound::Nothing,
         _ => return None,
     })

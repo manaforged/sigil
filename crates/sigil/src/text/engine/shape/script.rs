@@ -27,7 +27,7 @@ pub(in crate::text::engine) fn char_script(ch: char) -> Script {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(in crate::text::engine) const fn script_name(script: Script) -> &'static str {
     match script {
         Script::Latin => "Latin",

@@ -13,7 +13,7 @@ use face::{FaceSpan, cell_width, coalesce_face_spans, fit_cells, shape_in_chain}
 mod script;
 
 pub(super) use script::char_script;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(super) use script::script_name;
 
 pub(super) struct ShapedSegment {
@@ -25,7 +25,7 @@ pub(super) struct ShapedSegment {
     pub(super) breakable_before: bool,
     pub(super) is_hard_break: bool,
     pub(super) level: u8,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(super) script: Script,
     pub(super) face_slot: u16,
 }
@@ -128,7 +128,7 @@ impl RunAccumulator {
             fragment: &ctx.word[self.start..end_offset],
             start_byte: ctx.word_start + self.start,
             level: self.level.unwrap_or(0),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             script: self.script.unwrap_or(Script::Common),
             is_break_opportunity: ctx.is_ws,
         };
@@ -150,7 +150,7 @@ pub(super) struct PushRunArgs<'a> {
     pub(super) fragment: &'a str,
     pub(super) start_byte: usize,
     pub(super) level: u8,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(super) script: Script,
     pub(super) is_break_opportunity: bool,
 }
@@ -234,7 +234,7 @@ fn segment(args: &PushRunArgs<'_>, span: WordSpan) -> ShapedSegment {
         breakable_before: false,
         is_hard_break: false,
         level: args.level,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         script: args.script,
         face_slot: span.face_slot,
     }

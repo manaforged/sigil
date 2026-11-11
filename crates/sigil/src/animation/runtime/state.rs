@@ -107,13 +107,13 @@ impl AnimatorId {
         })
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn peek_value(self) -> Option<f32> {
         with_sources(|sources| animator_mut(sources, self.0).map(|entry| entry.motion.value()))
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(host)]
 pub(crate) fn finish_all() {
     batch(|| {
         retain_animators(|entry| {

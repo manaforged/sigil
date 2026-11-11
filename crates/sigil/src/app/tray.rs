@@ -220,7 +220,7 @@ pub enum TrayEvent {
 }
 
 /// Delivers `event` as if the pointer caused it.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub fn simulate(event: TrayEvent) {
     Tray::events().emit(event);
 }

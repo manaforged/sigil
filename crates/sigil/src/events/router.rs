@@ -2,7 +2,7 @@ use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent};
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use accesskit::TreeUpdate;
 
 use crate::events::focus::{FocusDirection, FocusManager};
@@ -145,13 +145,13 @@ impl EventRouter {
         self.focus.tab_edges(cx)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn focus_next(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
         crate::events::note_focus_source(true);
         self.focus.focus_next(cx, Some(layout));
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn focus_prev(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
         crate::events::note_focus_source(true);
         self.focus.focus_prev(cx, Some(layout));
@@ -184,7 +184,7 @@ impl EventRouter {
         self.focus.a11y_focus_update()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[cfg(not(feature = "kittest"))]
     pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
         self.focus.a11y_focus_update()

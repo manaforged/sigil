@@ -3,14 +3,14 @@ use crate::geometry::Rect;
 use super::effects::DecorationKind;
 use super::payloads::DrawDecoration;
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 const WAVE_STROKE: f32 = 0.8;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 const WAVE_AMPLITUDE: f32 = 0.75;
 const WAVE_MIN_PERIOD: f32 = 1.0;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 const WAVE_PERIOD_PER_REACH: f32 = 4.0;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 const TAU: f32 = std::f32::consts::TAU;
 
 /// The position and size of a text decoration.
@@ -29,7 +29,7 @@ pub(crate) struct DecorationGeometry {
 }
 
 impl DecorationGeometry {
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     /// Returns the height of a wavy line at `x`.
     #[must_use]
     pub(crate) fn wave_y(&self, x: f32) -> f32 {
@@ -47,7 +47,7 @@ impl DecorationGeometry {
         )
     }
 
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     /// Returns the reach.
     #[must_use]
     pub(crate) fn reach(&self) -> f32 {
@@ -77,13 +77,13 @@ impl DrawDecoration {
         };
         match self.kind {
             DecorationKind::Underline | DecorationKind::Strikethrough => Some(straight),
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             DecorationKind::WavyUnderline => Some(wave(straight, width, self.period)),
         }
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 fn wave(straight: DecorationGeometry, width: f32, period: f32) -> DecorationGeometry {
     let height = straight.band.height;
     let thickness = (width * WAVE_STROKE).min(height / 2.0);

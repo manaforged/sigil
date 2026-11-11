@@ -90,7 +90,7 @@ impl SplitEncoder {
                 SceneCommand::Pattern(draw) => {
                     let stops = match draw.pattern {
                         PatternKind::Wash(_) => MAX_PIGMENTS + 1,
-                        #[cfg(any(test, feature = "kittest"))]
+                        #[cfg(feature = "kittest")]
                         _ => 1,
                     };
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
@@ -304,7 +304,7 @@ impl SplitEncoder {
         (self.uploads, self.timer)
     }
 
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
         self.end_pass();
         self.flush();
@@ -400,7 +400,7 @@ fn reusable_target<'a>(desc: &wgpu::RenderPassDescriptor<'a>) -> Option<&'a wgpu
 const fn draws_quad(command: &SceneCommand) -> bool {
     match command {
         SceneCommand::Image(_) => true,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         SceneCommand::Sprite(_) => true,
         _ => false,
     }

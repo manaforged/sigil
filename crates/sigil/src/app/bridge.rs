@@ -1,22 +1,22 @@
 #[cfg(feature = "menu")]
 use std::cell::Cell;
 use std::cell::RefCell;
-#[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+#[cfg(not(native_commands))]
 use std::marker::PhantomData;
 
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::app::Wake;
-#[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+#[cfg(native_commands)]
 use crate::reactive::EventChannel;
 
 pub(crate) struct Native<Cmd, Handle, Ev: 'static> {
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     pending: RefCell<Option<Cmd>>,
-    #[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+    #[cfg(not(native_commands))]
     _command: PhantomData<Cmd>,
     installed: RefCell<Option<Handle>>,
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     events: EventChannel<Ev>,
     tx: Sender<Ev>,
     rx: Receiver<Ev>,
@@ -28,12 +28,12 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
     pub(crate) fn new() -> Self {
         let (tx, rx) = channel();
         Self {
-            #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+            #[cfg(native_commands)]
             pending: RefCell::new(None),
-            #[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+            #[cfg(not(native_commands))]
             _command: PhantomData,
             installed: RefCell::new(None),
-            #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+            #[cfg(native_commands)]
             events: EventChannel::new(),
             tx,
             rx,
@@ -42,22 +42,22 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
         }
     }
 
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     pub(crate) fn queue(&self, command: Cmd) {
         *self.pending.borrow_mut() = Some(command);
     }
 
-    #[cfg(any(feature = "menu", feature = "tray"))]
+    #[cfg(feature = "menu")]
     pub(crate) fn has_pending(&self) -> bool {
         self.pending.borrow().is_some()
     }
 
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     pub(crate) fn take(&self) -> Option<Cmd> {
         self.pending.borrow_mut().take()
     }
 
-    #[cfg(any(feature = "menu", feature = "tray"))]
+    #[cfg(feature = "menu")]
     pub(crate) fn install<E>(
         &self,
         build: impl FnOnce(Cmd) -> Result<Handle, E>,
@@ -70,17 +70,12 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
         Ok(true)
     }
 
-    #[cfg(any(
-        feature = "tray",
-        feature = "media",
-        all(feature = "hotkey", not(target_arch = "wasm32")),
-        test
-    ))]
+    #[cfg(any(feature = "tray", feature = "media", global_hotkey, test))]
     pub(crate) fn installed<R>(&self, visit: impl FnOnce(&mut Option<Handle>) -> R) -> R {
         visit(&mut self.installed.borrow_mut())
     }
 
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     pub(crate) fn events(&self) -> EventChannel<Ev> {
         self.events.clone()
     }
@@ -101,7 +96,7 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
         (!self.connected.replace(true)).then(|| self.sink(wake))
     }
 
-    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
+    #[cfg(native_commands)]
     pub(crate) fn pump(&self) {
         self.drain().for_each(|value| self.events.emit(value));
     }

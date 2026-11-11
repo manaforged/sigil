@@ -49,7 +49,7 @@ mod text;
 
 #[cfg(feature = "desktop")]
 pub(crate) use hooks::CloseHook;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) use hooks::ExitHook;
 #[cfg(feature = "terminal")]
 pub(crate) use hooks::TerminalHooks;
@@ -59,7 +59,7 @@ pub(crate) use terminal::TerminalOptions;
 #[doc = include_str!("../../docs/app-config.md")]
 #[derive(Debug, Clone)]
 pub struct AppConfig {
-    #[cfg(any(test, feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) title: String,
     pub(crate) size: (u32, u32),
     pub(crate) quit: QuitKeys,
@@ -75,7 +75,7 @@ pub struct AppConfig {
     pub(crate) theme_file: Option<std::path::PathBuf>,
     #[cfg(feature = "desktop")]
     pub(crate) user_zoom: f32,
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) host: crate::kernel::HostMode,
     #[cfg(feature = "desktop")]
     pub(crate) min_size: Option<(u32, u32)>,
@@ -83,7 +83,7 @@ pub struct AppConfig {
     pub(crate) resize: Resize,
     #[cfg(feature = "desktop")]
     pub(crate) on_close: CloseHook,
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) on_exit: ExitHook,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
@@ -107,10 +107,10 @@ impl AppConfig {
     /// Creates an app config.
     #[must_use]
     pub fn new(title: impl Into<String>) -> Self {
-        #[cfg(not(any(test, feature = "desktop", feature = "terminal")))]
+        #[cfg(not(app_host))]
         drop(title);
         let config = Self::defaults();
-        #[cfg(any(test, feature = "desktop", feature = "terminal"))]
+        #[cfg(app_host)]
         let config = Self {
             title: title.into(),
             ..config
@@ -303,7 +303,7 @@ impl AppConfig {
     }
 
     /// Sets the callback that runs once when the app exits, on every host.
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     #[must_use]
     pub fn on_exit(mut self, run: impl Fn() + 'static) -> Self {
         self.on_exit = ExitHook(Some(std::rc::Rc::new(run)));

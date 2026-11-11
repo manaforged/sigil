@@ -43,10 +43,10 @@ mod units;
 pub use builder_ext::{column, grid, row};
 pub use engine::LayoutEngine;
 pub(crate) use engine::{Popup, PopupSide, ViewportOverlay};
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use intent::LayoutStyle;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use measure::FakeMeasure;
 pub use measure::TextMeasure;
@@ -55,16 +55,16 @@ pub(crate) use reactive_position::SizeReactive;
 pub use reactive_position::{BoundsReactive, ReactivePosition};
 pub use result::LayoutResult;
 pub use space::Space;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use style_adapter::apply_style_atoms;
 pub use style_data::{
     AlignContent, AlignItems, Axes, BoxSizing, Display, Edges, FlexDirection, FlexWrap,
     JustifyContent, Length, Overflow, Position, StyleData, TrackSize,
 };
-#[cfg(all(feature = "scene", any(test, feature = "kittest")))]
+#[cfg(scene_harness)]
 pub use text_adapter::TextEngineMeasure;
 pub use text_geometry::CaretGeometry;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use text_geometry::set_text_geometry;
 pub(crate) use text_geometry::{TextStyleCapture, with_text_geometry};
 #[cfg(feature = "pty")]

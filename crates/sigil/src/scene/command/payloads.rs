@@ -9,18 +9,14 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     pub use marks::DrawSprite;
 }
 kittest_pub! {
     #[doc(hidden)]
     pub use path::DrawPath;
 }
-#[cfg(any(feature = "scene", feature = "terminal"))]
+#[cfg(vector_paint)]
 pub(crate) use path::MITER_LIMIT;
 pub(crate) use path::{PathCmd, PathStroke, outline_key, rounded_outline};
 
@@ -333,12 +329,12 @@ kittest_pub! {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "scene"))]
+#[cfg(raster)]
 const RASTER_MAX_SIDE: f32 = 4096.0;
 
 impl DrawImage {
     kittest_pub! {
-        if any(test, feature = "scene");
+        if feature = "scene";
         /// The image and destination to paint at `scale`.
         #[allow(
             clippy::cast_possible_truncation,

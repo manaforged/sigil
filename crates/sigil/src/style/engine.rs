@@ -119,7 +119,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             StyleAtom::Transform(transform) => render.transform = transform,
             StyleAtom::PaddingAll(_)
             | StyleAtom::PaddingX(_)
@@ -323,7 +323,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         StyleAtom::Transform(_) => {}
     }
 }

@@ -24,7 +24,7 @@ impl LayoutForest {
         Ok(())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), Error> {
         self.live_mut(child)?;
         self.live_mut(parent)?.children.push(child);

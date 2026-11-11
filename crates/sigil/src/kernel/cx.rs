@@ -345,7 +345,7 @@ impl Cx {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<Owner> {
         self.owner_for_node.get(&id).copied()

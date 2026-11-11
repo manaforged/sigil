@@ -1,50 +1,32 @@
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(window_host)]
 pub(crate) mod backdrop;
 pub(crate) mod builder;
 pub(crate) mod canvas;
 pub(crate) mod command;
 pub(crate) mod corner_radii;
-#[cfg(any(
-    test,
-    feature = "terminal",
-    feature = "desktop",
-    all(feature = "scene", feature = "kittest")
-))]
+#[cfg(scene_emit)]
 pub(crate) mod damage;
 pub(crate) mod emit;
 pub(crate) mod emit_cache;
-#[cfg(any(
-    test,
-    feature = "terminal",
-    feature = "desktop",
-    all(feature = "scene", feature = "kittest")
-))]
+#[cfg(scene_emit)]
 pub(crate) mod geometry;
-#[cfg(any(feature = "scene", feature = "terminal"))]
+#[cfg(vector_paint)]
 pub(crate) mod path_raster;
 pub(crate) mod shadow;
-#[cfg(any(
-    test,
-    feature = "terminal",
-    feature = "desktop",
-    all(feature = "scene", feature = "kittest")
-))]
+#[cfg(scene_emit)]
 pub(crate) mod state;
 pub(crate) mod style_adapter;
 
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(window_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use backdrop::paint_backdrop;
 }
 pub use builder::SceneBuilder;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use command::PaintFill;
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
@@ -63,11 +45,7 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     pub use command::{DrawSprite, SpriteKind, SpriteSource};
 }
 kittest_pub! {
@@ -78,7 +56,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use corner_radii::CornerRadii;
 }
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use emit::EmitDiff;

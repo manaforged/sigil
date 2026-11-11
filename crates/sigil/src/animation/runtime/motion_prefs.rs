@@ -22,7 +22,7 @@ impl MotionPrefs {
     }
 
     kittest_pub! {
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         pub fn set(preferred: bool) {
             REDUCED_MOTION.with(|cell| cell.set(preferred));
             if preferred {

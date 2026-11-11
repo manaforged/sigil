@@ -34,7 +34,7 @@ pub use window_command::request_window_command;
 #[cfg(feature = "desktop")]
 pub(crate) use window_command::take_window_commands;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub fn invoke_node(
     cx: &crate::kernel::Cx,

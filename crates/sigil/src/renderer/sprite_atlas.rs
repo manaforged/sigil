@@ -40,7 +40,7 @@ impl MaskShape {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[allow(
     clippy::cast_precision_loss,
     reason = "atlas coordinates are far below the f32 integer limit"

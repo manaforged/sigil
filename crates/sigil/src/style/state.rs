@@ -175,7 +175,7 @@ impl StateStyle {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 impl StateStyle {
     /// Sets the atoms of one state slot.
     #[must_use]

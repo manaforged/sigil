@@ -120,7 +120,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::DISPLAY)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the flex direction.
     #[must_use]
     #[doc(hidden)]
@@ -143,7 +143,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::ALIGN_ITEMS)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the align content.
     #[must_use]
     #[doc(hidden)]
@@ -166,7 +166,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::ALIGN_SELF)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the box sizing.
     #[must_use]
     #[doc(hidden)]
@@ -182,7 +182,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::POSITION)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     #[must_use]
     pub fn with_layout(mut self, mutate: impl FnOnce(&mut StyleData)) -> Self {

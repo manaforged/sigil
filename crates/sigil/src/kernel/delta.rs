@@ -40,7 +40,7 @@ thread_local! {
 }
 
 impl FrameDelta {
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         !self.structure && self.paint.is_empty() && self.layout.is_empty()
@@ -64,7 +64,7 @@ impl NodeTag {
         Self { cx, id }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn id(self) -> NodeId {
         self.id

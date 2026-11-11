@@ -15,7 +15,7 @@ impl CornerRadii {
     }
 
     kittest_pub! {
-        if any(test, feature = "scene");
+        if feature = "scene";
         /// Creates a corner radii.
         #[must_use]
         pub const fn new(
@@ -72,7 +72,7 @@ impl CornerRadii {
         }
     }
 
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    #[cfg(raster)]
     #[must_use]
     pub(crate) fn nonnegative_array(self) -> [f32; 4] {
         self.0.map(|radius| {
@@ -85,7 +85,7 @@ impl CornerRadii {
     }
 
     kittest_pub! {
-        if any(test, feature = "scene");
+        if feature = "scene";
         /// Scales the radii to fit a box of this size.
         #[must_use]
         pub fn normalized_for(self, width: f32, height: f32) -> [f32; 4] {
@@ -101,7 +101,7 @@ impl CornerRadii {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "scene"))]
+#[cfg(raster)]
 fn edge_factor(edge: f32, radii: f32) -> f32 {
     if radii > 0.0 {
         (edge.max(0.0) / radii).min(1.0)

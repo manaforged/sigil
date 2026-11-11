@@ -37,13 +37,7 @@ pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce
     });
 }
 
-#[cfg(any(
-    test,
-    all(
-        feature = "scene",
-        any(feature = "desktop", feature = "kittest", feature = "terminal")
-    )
-))]
+#[cfg(scene_host)]
 pub(crate) fn gpu_pass(label: &'static str, ns: u64) {
     use crate::profile::key::{Counter, Phase, accumulate};
 

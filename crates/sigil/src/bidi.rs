@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "scene"))]
+#[cfg(feature = "scene")]
 use smallvec::SmallVec;
 #[cfg(test)]
 use unicode_bidi::BidiInfo;
@@ -12,7 +12,7 @@ pub(crate) fn paragraph_levels(input: &str) -> SmallVec<[u8; 64]> {
     level_numbers(&BidiInfo::new(input, None).levels)
 }
 
-#[cfg(any(test, feature = "scene"))]
+#[cfg(feature = "scene")]
 fn level_numbers(levels: &[unicode_bidi::Level]) -> SmallVec<[u8; 64]> {
     levels.iter().map(unicode_bidi::Level::number).collect()
 }
@@ -21,7 +21,7 @@ fn is_latin_only(input: &str) -> bool {
     input.chars().all(|c| c <= '\u{024F}')
 }
 
-#[cfg(any(test, feature = "scene"))]
+#[cfg(feature = "scene")]
 #[must_use]
 pub(crate) fn visual_order(levels: &[u8]) -> Vec<usize> {
     if levels.len() <= 1 {
@@ -83,7 +83,7 @@ impl<'a> ParagraphBidi<'a> {
             .then(|| first.is_ltr())
     }
 
-    #[cfg(any(test, feature = "scene"))]
+    #[cfg(feature = "scene")]
     #[must_use]
     pub(crate) fn levels(&self) -> SmallVec<[u8; 64]> {
         self.info.as_ref().map_or_else(
@@ -92,7 +92,7 @@ impl<'a> ParagraphBidi<'a> {
         )
     }
 
-    #[cfg(any(test, feature = "scene"))]
+    #[cfg(feature = "scene")]
     #[must_use]
     pub(crate) fn visual_order_for_line(
         &self,

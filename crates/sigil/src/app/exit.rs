@@ -34,7 +34,7 @@ pub(crate) fn take_exit() -> bool {
     outside_frame
 }
 
-#[cfg(any(test, feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) fn clear_exit() {
     if let Some(cell) = TARGET.with(|slot| slot.borrow().clone()) {
         cell.set(false);
