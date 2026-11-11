@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 use crate::style::{ControlSize, Metrics, space};
 
+use super::super::field::FIELD_GAP;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
@@ -20,7 +21,6 @@ use super::builder::CommandMenuBuilder;
 use super::nav::{CommandPalette, MenuLevel, PaletteEntry, SubmitObserver};
 
 const LEVEL_GAP: f32 = space(2);
-const FIELD_GAP: f32 = space(1);
 const MAX_ROWS: usize = 12;
 
 #[derive(Clone, Copy)]

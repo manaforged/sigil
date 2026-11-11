@@ -53,6 +53,8 @@ impl Paragraph {
             .get_or_init(|| self.rendered_glyphs_in(0, usize::MAX))
     }
 
+    /// Returns a copy of all positioned glyphs.
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
         self.rendered_glyphs_slice().to_vec()

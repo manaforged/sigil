@@ -56,14 +56,7 @@ fn fill_key(inherited: &Inherited<'_>) -> u64 {
         ^ emit_cache::shadow_key(inherited.text_shadows.as_deref().unwrap_or_default())
 }
 
-pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {
-    [
-        rect.origin.x.to_bits(),
-        rect.origin.y.to_bits(),
-        rect.width.to_bits(),
-        rect.height.to_bits(),
-    ]
-}
+pub(super) use crate::scene::emit_cache::rect_bits;
 
 #[cfg(terminal_host)]
 kittest_pub! {
@@ -121,7 +114,7 @@ pub(super) struct Open {
 
 #[cfg(host)]
 impl<'t> SpanTrack<'t> {
-    pub(super) fn recording(
+    pub(super) const fn recording(
         prior: Option<Prior<'t>>,
         next: SecondaryMap<DefaultKey, SubtreeSpan>,
         want_diff: bool,
@@ -194,8 +187,18 @@ impl<'t> EmitWalk<'_, 't> {
                 len: span.len,
             });
         }
+        self.remap_copied_spans(id, prior, (span.start, span.len, start));
+        true
+    }
+
+    fn remap_copied_spans(
+        &mut self,
+        id: NodeId,
+        prior: Prior<'t>,
+        (old, len, start): (usize, usize, usize),
+    ) {
         let next = &mut self.track.next;
-        let (old, end) = (span.start, span.start + span.len);
+        let end = old + len;
         let mut stack = SmallVec::<[NodeId; 16]>::new();
         stack.push(id);
         while let Some(inner) = stack.pop() {
@@ -219,7 +222,6 @@ impl<'t> EmitWalk<'_, 't> {
                 }
             }
         }
-        true
     }
 
     pub(super) const fn open_span(&self) -> Open {

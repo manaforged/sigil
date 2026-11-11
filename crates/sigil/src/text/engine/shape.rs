@@ -312,14 +312,4 @@ fn run_total_advance(run: &ShapedRun) -> f32 {
     run.glyphs.iter().map(|g| g.advance).sum()
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    reason = "values are bounded to the target range before the cast"
-)]
-pub(super) const fn u32_clamp(v: usize) -> u32 {
-    if v > u32::MAX as usize {
-        u32::MAX
-    } else {
-        v as u32
-    }
-}
+pub(super) use crate::text::paragraph::u32_clamp;

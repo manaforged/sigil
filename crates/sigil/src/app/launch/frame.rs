@@ -17,7 +17,7 @@ use super::event_wiring::{
 use super::menu_hwnd;
 use super::record::{SignalWrite, WindowRecord, WindowView};
 use super::scene_cache::PaintRequest;
-#[cfg(native_events)]
+#[cfg(any(native_commands, global_hotkey))]
 use super::wake_fn;
 
 struct FrameEnv<'a> {
@@ -133,22 +133,19 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
     reason = "menu/tray builds add non-const bodies"
 )]
 fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, title: &str) {
+    #[cfg(any(native_commands, global_hotkey))]
+    let wake = || -> crate::app::Wake { std::sync::Arc::new(wake_fn(shell)) };
+    #[cfg(native_commands)]
+    let hwnd = menu_hwnd(shell, window_handle);
     #[cfg(feature = "menu")]
-    crate::app::menu::install(
-        menu_hwnd(shell, window_handle),
-        std::sync::Arc::new(wake_fn(shell)),
-    );
+    crate::app::menu::install(hwnd, wake);
     #[cfg(feature = "tray")]
-    crate::app::tray::install(std::sync::Arc::new(wake_fn(shell)));
+    crate::app::tray::install(wake);
     #[cfg(global_hotkey)]
-    crate::app::hotkey::install(std::sync::Arc::new(wake_fn(shell)));
+    crate::app::hotkey::install(wake);
     #[cfg(feature = "media")]
-    crate::app::media::install(
-        title,
-        menu_hwnd(shell, window_handle),
-        std::sync::Arc::new(wake_fn(shell)),
-    );
-    #[cfg(not(native_events))]
+    crate::app::media::install(title, hwnd, wake);
+    #[cfg(not(any(native_commands, global_hotkey)))]
     let _ = shell;
     #[cfg(not(native_commands))]
     let _ = window_handle;

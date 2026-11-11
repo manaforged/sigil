@@ -112,7 +112,7 @@ impl LayoutLine {
     }
 }
 
-const fn u32_clamp(v: usize) -> u32 {
+pub(super) const fn u32_clamp(v: usize) -> u32 {
     if v > u32::MAX as usize {
         u32::MAX
     } else {

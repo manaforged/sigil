@@ -68,7 +68,7 @@ impl Host {
     }
 
     #[cfg(feature = "terminal")]
-    pub(crate) fn take_cell_screen(&mut self) -> Option<Box<crate::terminal::Screen>> {
+    pub(crate) const fn take_cell_screen(&mut self) -> Option<Box<crate::terminal::Screen>> {
         self.cell_screen.take()
     }
 

@@ -229,9 +229,9 @@ pub(crate) fn has_pending() -> bool {
     NATIVE.with(Native::has_pending)
 }
 
-pub(crate) fn install(wake: Wake) {
+pub(crate) fn install(wake: impl FnOnce() -> Wake) {
     if has_pending() {
-        install_tray(wake);
+        install_tray(wake());
     }
 }
 
@@ -242,7 +242,7 @@ pub(crate) fn pump() {
 fn install_tray(wake: Wake) {
     let built = NATIVE.with(|native| {
         native.install(|tray| {
-            crate::app::menu::connect(std::sync::Arc::clone(&wake));
+            crate::app::menu::connect(|| std::sync::Arc::clone(&wake));
             tray.native()
         })
     });

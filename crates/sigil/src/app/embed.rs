@@ -75,8 +75,8 @@ impl Host {
             HostMode::Pixel => Self::pixels(),
             HostMode::Cell => Self::with_env(
                 HostMode::Cell,
-                (Self::CELL, Rc::new(CellGeometry::new(Self::CELL))),
-                Box::new(CellGeometry::new(Self::CELL)),
+                Self::CELL,
+                Rc::new(CellGeometry::new(Self::CELL)),
                 false,
             ),
         }
@@ -84,16 +84,11 @@ impl Host {
 
     fn pixels() -> Self {
         #[cfg(feature = "scene")]
-        let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
-            Rc::new(crate::layout::text_adapter::TextEngineMeasure::default()),
-            Box::new(crate::layout::text_adapter::TextEngineMeasure::default()),
-        );
+        let geometry: Rc<dyn TextMeasure> =
+            Rc::new(crate::layout::text_adapter::TextEngineMeasure::default());
         #[cfg(not(feature = "scene"))]
-        let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
-            Rc::new(CellGeometry::new(Self::CELL)),
-            Box::new(CellGeometry::new(Self::CELL)),
-        );
-        Self::with_env(HostMode::Pixel, (0.0, geometry), measure, true)
+        let geometry: Rc<dyn TextMeasure> = Rc::new(CellGeometry::new(Self::CELL));
+        Self::with_env(HostMode::Pixel, 0.0, geometry, true)
     }
 
     /// The width of one terminal cell in layout units.
@@ -101,10 +96,11 @@ impl Host {
 
     fn with_env(
         mode: HostMode,
-        (cell, geometry): (f32, Rc<dyn TextMeasure>),
-        measure: Box<dyn TextMeasure>,
+        cell: f32,
+        geometry: Rc<dyn TextMeasure>,
         visual_transforms: bool,
     ) -> Self {
+        let measure: Box<dyn TextMeasure> = Box::new(Rc::clone(&geometry));
         let mut cx = Cx::new_root();
         cx.set_host_mode(mode);
         let env = HostEnv::new(cell, geometry, cx.root_owner());
@@ -374,7 +370,7 @@ impl Host {
     pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
         #[cfg(host)]
         {
-            return self.emit_cached(viewport);
+            self.emit_cached(viewport)
         }
         #[cfg(not(host))]
         {

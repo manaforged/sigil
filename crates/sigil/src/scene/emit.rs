@@ -122,7 +122,7 @@ pub(crate) fn emit_scene_since(
     (scene, diff)
 }
 
-#[cfg(window_host)]
+#[cfg(feature = "desktop")]
 pub(crate) fn emit_scene_into(
     cx: &Cx,
     (root, clip): (NodeId, Option<Rect>),

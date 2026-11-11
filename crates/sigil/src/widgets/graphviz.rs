@@ -1,10 +1,9 @@
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, signal};
-use crate::style::space;
 use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
-use crate::widgets::{bound_source, frame_source};
+use crate::widgets::{bound_source, frame_source, lines_extent, scrolled_diagram};
 
 #[cfg(feature = "scene")]
 mod bounds;
@@ -25,16 +24,7 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
     if !crate::style::Metrics::current().is_grid()
         && let Some((diagram, width)) = picture(&bounded)
     {
-        let centred = container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .fill_width()
-                    .min_size(width, 0.0)
-                    .justify_content(crate::layout::JustifyContent::Center),
-            )
-            .child(diagram);
-        return Horizontal::new(signal(width), None)
-            .wrap(centred)
+        return scrolled_diagram(diagram, width)
             .role(Role::Figure)
             .label(graph_name(source))
             .description(bounded.trim_end().to_string());
@@ -43,12 +33,7 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
 }
 
 fn framed_figure(source: &str, lines: &[String]) -> NodeBuilder {
-    let width = lines
-        .iter()
-        .map(|line| line.chars().count())
-        .max()
-        .unwrap_or(0);
-    let extent = f32::from(u16::try_from(width).unwrap_or(u16::MAX)) * space(2);
+    let extent = lines_extent(lines);
     let mut col = container()
         .layout(LayoutStyle::flex_column().fill_width())
         .class("font-mono text-sm");

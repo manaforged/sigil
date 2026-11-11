@@ -84,7 +84,7 @@ impl core::fmt::Debug for StyleBinding {
             .field("state_overlay_slot", &self.state_overlay_slot.is_some())
             .field("widget_channels", &self.widget_channels)
             .field("user_slots", &self.user_slots)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

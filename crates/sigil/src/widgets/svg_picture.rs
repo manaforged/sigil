@@ -27,6 +27,7 @@ mod vector;
 pub use lower::{SvgMode, svg_scene};
 
 pub(crate) const FONT_FAMILY: &str = "Fira Sans";
+const AA_MARGIN: f32 = 2.0;
 const MAX_SIDE: f32 = 4096.0;
 const TREE_CAP: usize = 256;
 

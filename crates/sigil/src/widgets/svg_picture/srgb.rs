@@ -3,7 +3,7 @@ use std::mem::take;
 use crate::geometry::Rect;
 use crate::scene::command::{LayerScope, SceneCommand};
 
-const AA_MARGIN: f32 = 2.0;
+use super::AA_MARGIN;
 
 /// Wraps each draw run that lands on pixels its layer already painted in an sRGB layer, since renderers mix a later run with those pixels in linear light where resvg mixes in sRGB.
 pub(super) fn separated(commands: Vec<SceneCommand>) -> Vec<SceneCommand> {

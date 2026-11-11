@@ -59,6 +59,10 @@ impl core::fmt::Debug for SharedGlyph {
 }
 
 impl SharedGlyph {
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "scene builds read Paragraph through Arc"
+    )]
     fn glyph_count(&self) -> usize {
         if let Some(glyphs) = &self.positioned_glyphs {
             return glyphs.len();

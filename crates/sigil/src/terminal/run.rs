@@ -129,13 +129,10 @@ impl Host {
         cols: u16,
         rows: u16,
     ) -> Result<Grid, Error> {
-        let mut screen = match self.take_cell_screen() {
-            Some(screen) => screen,
-            None => {
-                self.reset_emit();
-                Box::new(Screen::new(cols, rows))
-            }
-        };
+        let mut screen = self.take_cell_screen().unwrap_or_else(|| {
+            self.reset_emit();
+            Box::new(Screen::new(cols, rows))
+        });
         let out = screen.grid_frame(self, events, (cols, rows));
         self.put_cell_screen(screen);
         out

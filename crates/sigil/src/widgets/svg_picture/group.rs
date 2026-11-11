@@ -7,11 +7,9 @@ use crate::scene::command::{
 };
 use crate::scene::corner_radii::CornerRadii;
 
-use super::clip;
+use super::{AA_MARGIN, clip};
 use super::filter::filters;
 use super::lower::Walk;
-
-const AA_MARGIN: f32 = 2.0;
 
 /// The layers and clips opened around a group's children, closed in reverse.
 #[derive(Default)]

@@ -128,7 +128,7 @@ impl SceneCache {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "inspect"))]
 pub(super) fn window_scene(
     cx: &Cx,
     root: NodeId,

@@ -5,10 +5,10 @@ use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
 use crate::reactive::{Reactive, signal};
-use crate::style::space;
 use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
-use crate::widgets::{bound_source, frame_source};
+pub(super) use crate::widgets::scrolled_diagram as scrolled;
+use crate::widgets::{bound_source, frame_source, lines_extent};
 
 mod canvas;
 #[cfg(feature = "scene")]
@@ -136,26 +136,9 @@ fn vector(source: &str) -> Option<Drawn> {
     })
 }
 
-fn scrolled(diagram: NodeBuilder, width: f32) -> NodeBuilder {
-    let centred = container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .min_size(width, 0.0)
-                .justify_content(crate::layout::JustifyContent::Center),
-        )
-        .child(diagram);
-    Horizontal::new(signal(width), None).wrap(centred)
-}
-
 fn text_figure(source: &str) -> NodeBuilder {
     let lines = draw(source);
-    let width = lines
-        .iter()
-        .map(|line| line.chars().count())
-        .max()
-        .unwrap_or(0);
-    let extent = f32::from(u16::try_from(width).unwrap_or(u16::MAX)) * space(2);
+    let extent = lines_extent(&lines);
     let col = container()
         .layout(LayoutStyle::flex_column().fill_width())
         .class("font-mono text-sm");

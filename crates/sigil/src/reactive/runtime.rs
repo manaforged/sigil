@@ -115,6 +115,7 @@ impl RuntimeState {
             .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
     }
 
+    #[cfg(event_channel)]
     pub(crate) const fn has_active_owner(&self) -> bool {
         self.current_owner.is_some() || self.lazy_effect_owner.is_some()
     }

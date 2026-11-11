@@ -269,7 +269,7 @@ pub(crate) fn has_pending() -> bool {
     NATIVE.with(Native::has_pending)
 }
 
-pub(crate) fn install(hwnd: Option<isize>, wake: Wake) {
+pub(crate) fn install(hwnd: Option<isize>, wake: impl Fn() -> Wake) {
     if !has_pending() {
         return;
     }
@@ -279,8 +279,8 @@ pub(crate) fn install(hwnd: Option<isize>, wake: Wake) {
     }
 }
 
-pub(crate) fn connect(wake: Wake) {
-    let Some(sink) = NATIVE.with(|native| native.sink_once(wake)) else {
+pub(crate) fn connect(wake: impl Fn() -> Wake) {
+    let Some(sink) = NATIVE.with(|native| native.sink_once(&wake)) else {
         return;
     };
     MenuEvent::set_event_handler(Some(move |event: MenuEvent| sink(event.id.0)));
