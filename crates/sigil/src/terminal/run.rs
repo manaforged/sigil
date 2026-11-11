@@ -89,6 +89,9 @@ pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'stati
     let result = Owner::scope("sigil-terminal", || {
         live(config, tree, hooks, inspect_pending)
     });
+    if let Some(hook) = &config.on_exit.0 {
+        hook();
+    }
     profile::dump_if_enabled();
     result
 }

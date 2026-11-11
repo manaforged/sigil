@@ -50,7 +50,8 @@ mod text;
 #[cfg(feature = "terminal")]
 pub(crate) use hooks::TerminalHooks;
 #[cfg(feature = "desktop")]
-pub(crate) use hooks::{CloseHook, ExitHook};
+pub(crate) use hooks::CloseHook;
+pub(crate) use hooks::ExitHook;
 #[cfg(feature = "terminal")]
 pub(crate) use terminal::TerminalOptions;
 
@@ -81,7 +82,6 @@ pub struct AppConfig {
     pub(crate) resize: Resize,
     #[cfg(feature = "desktop")]
     pub(crate) on_close: CloseHook,
-    #[cfg(feature = "desktop")]
     pub(crate) on_exit: ExitHook,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
@@ -300,8 +300,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the callback that runs on exit.
-    #[cfg(feature = "desktop")]
+    /// Sets the callback that runs once when the app exits, on every host.
     #[must_use]
     pub fn on_exit(mut self, run: impl Fn() + 'static) -> Self {
         self.on_exit = ExitHook(Some(std::rc::Rc::new(run)));
