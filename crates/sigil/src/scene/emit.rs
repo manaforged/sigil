@@ -78,7 +78,7 @@ fn emit_with_memo(
     want_diff: bool,
 ) -> (CommandScene, SpanTrack<'static>) {
     let selection = crate::events::selection::ranges(cx);
-    let usable = memo.usable(cx, root, &prev.commands);
+    let usable = memo.usable(cx, (root, clip), &prev.commands);
     let (can_copy, dirty) = memo.dirty(cx, (root, usable), delta, &selection);
     let spans = std::mem::take(&mut memo.spans);
     let mut next = std::mem::take(&mut memo.scratch);

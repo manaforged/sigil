@@ -178,10 +178,17 @@ impl CleanScene {
 }
 
 impl EmitMemo {
-    pub(super) fn usable(&self, cx: &Cx, root: NodeId, prev: &[SceneCommand]) -> bool {
+    pub(super) fn usable(
+        &self,
+        cx: &Cx,
+        (root, clip): (NodeId, Option<Rect>),
+        prev: &[SceneCommand],
+    ) -> bool {
         self.prev_len == Some(prev.len())
             && self.root == Some(root)
             && self.scale == cx.scale().to_bits()
+            && self.clip == clip.map(rect_bits)
+            && self.theme_epoch == emit_cache::theme_epoch()
     }
 
     pub(crate) fn clean(

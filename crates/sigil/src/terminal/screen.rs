@@ -151,6 +151,38 @@ impl Screen {
         events: impl IntoIterator<Item = Event>,
         size: (u16, u16),
     ) -> Result<&Grid, Error> {
+        host.drop_cell_screen();
+        self.frame_inner(host, events, size)
+    }
+
+    pub(crate) fn grid_frame(
+        &mut self,
+        host: &mut Host,
+        events: impl IntoIterator<Item = Event>,
+        size: (u16, u16),
+    ) -> Result<Grid, Error> {
+        let out = self.frame_inner(host, events, size)?.clone();
+        if self.dirty {
+            if self.fresh
+                || self.prev.cols() != self.grid.cols()
+                || self.prev.rows() != self.grid.rows()
+            {
+                self.fresh = false;
+                self.stale = None;
+                self.prev.mirror(&self.grid);
+            }
+            self.dirty = false;
+            core::mem::swap(&mut self.prev, &mut self.grid);
+        }
+        Ok(out)
+    }
+
+    fn frame_inner(
+        &mut self,
+        host: &mut Host,
+        events: impl IntoIterator<Item = Event>,
+        size: (u16, u16),
+    ) -> Result<&Grid, Error> {
         let (cols, rows) = size;
         if self.grid.cols() != usize::from(cols) || self.grid.rows() != usize::from(rows) {
             profile::interact(crate::profile::Cause::Resize);

@@ -129,9 +129,16 @@ impl Host {
         cols: u16,
         rows: u16,
     ) -> Result<Grid, Error> {
-        Screen::new(cols, rows)
-            .frame(self, events, (cols, rows))
-            .cloned()
+        let mut screen = match self.take_cell_screen() {
+            Some(screen) => screen,
+            None => {
+                self.reset_emit();
+                Box::new(Screen::new(cols, rows))
+            }
+        };
+        let out = screen.grid_frame(self, events, (cols, rows));
+        self.put_cell_screen(screen);
+        out
     }
 
     /// Writes the ANSI bytes that turn the `prev` grid into the `next` grid.

@@ -43,6 +43,8 @@ pub struct Host {
     visual_transforms: bool,
     #[cfg(terminal_host)]
     emitted: EmitMemo,
+    #[cfg(feature = "terminal")]
+    cell_screen: Option<Box<crate::terminal::Screen>>,
     #[cfg(host)]
     clean_emit: CleanScene,
     env: HostEnv,
@@ -116,6 +118,8 @@ impl Host {
             visual_transforms,
             #[cfg(terminal_host)]
             emitted: EmitMemo::default(),
+            #[cfg(feature = "terminal")]
+            cell_screen: None,
             #[cfg(host)]
             clean_emit: CleanScene::default(),
             env,

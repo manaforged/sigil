@@ -67,12 +67,33 @@ impl Host {
         })
     }
 
+    #[cfg(feature = "terminal")]
+    pub(crate) fn take_cell_screen(&mut self) -> Option<Box<crate::terminal::Screen>> {
+        self.cell_screen.take()
+    }
+
+    #[cfg(feature = "terminal")]
+    pub(crate) fn put_cell_screen(&mut self, screen: Box<crate::terminal::Screen>) {
+        self.cell_screen = Some(screen);
+    }
+
+    #[cfg(feature = "terminal")]
+    pub(crate) fn drop_cell_screen(&mut self) {
+        if self.cell_screen.take().is_some() {
+            self.emitted = EmitMemo::default();
+        }
+    }
+
     kittest_pub! {
         /// Clears the memo that incremental painting reuses.
         pub fn reset_emit(&mut self) {
             #[cfg(terminal_host)]
             {
                 self.emitted = EmitMemo::default();
+            }
+            #[cfg(feature = "terminal")]
+            {
+                self.cell_screen = None;
             }
             self.clean_emit = CleanScene::default();
         }
