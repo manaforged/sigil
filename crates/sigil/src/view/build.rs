@@ -3,7 +3,10 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, TextContent, fragment, show, text};
 use crate::layout::{column, row};
 use crate::style::{ClassSource, Paint};
-use crate::widgets::{Widget, button, card, checkbox, field, scroll, spacer, text_field};
+use crate::widgets::{
+    Orientation, Widget, button, card, checkbox, divider, field, scroll, spacer, text_edit,
+    text_field, toggle,
+};
 
 use super::parse::{Attrs, Item, Variant};
 use super::vocab::Kind;
@@ -63,6 +66,9 @@ fn shown(item: &Rc<Item>) -> Box<dyn IntoNode> {
         Kind::Button => button_of(item),
         Kind::TextField => text_field_of(item),
         Kind::Checkbox => checkbox_of(item),
+        Kind::Toggle => toggle_of(item),
+        Kind::TextEdit => text_edit_of(item),
+        Kind::Divider => Box::new(styled(divider(Orientation::Horizontal), attrs)),
         Kind::Spacer => Box::new(styled(spacer(), attrs)),
         Kind::Slot => item.slot.as_ref().map_or_else(
             || -> Box<dyn IntoNode> { Box::new(fragment()) },
@@ -71,15 +77,72 @@ fn shown(item: &Rc<Item>) -> Box<dyn IntoNode> {
     }
 }
 
+macro_rules! input_of {
+    ($item:expr, $widget:path) => {{
+        let attrs = &$item.attrs;
+        attrs.value.map(|value| {
+            let mut node = $widget(value);
+            if let Some(placeholder) = &attrs.placeholder {
+                node = node.placeholder(TextContent::from(placeholder));
+            }
+            if let Some(flag) = attrs.disabled {
+                node = node.disabled(flag);
+            }
+            if let Some(action) = attrs.submit.clone() {
+                node = node.submit(move |_| action());
+            }
+            styled(node, attrs)
+        })
+    }};
+}
+
+macro_rules! check_of {
+    ($item:expr, $widget:path) => {{
+        let attrs = &$item.attrs;
+        attrs.checked.map(|checked| {
+            let mut node = $widget(checked);
+            if let Some(words) = $item.label.as_ref().map(TextContent::from) {
+                node = node.label(words);
+            }
+            if let Some(flag) = attrs.disabled {
+                node = node.disabled(flag);
+            }
+            if let Some(action) = attrs.change.clone() {
+                node = node.change(move |_| action());
+            }
+            styled(node, attrs)
+        })
+    }};
+}
+
+fn boxed(node: Option<impl IntoNode + 'static>) -> Box<dyn IntoNode> {
+    node.map_or_else(
+        || -> Box<dyn IntoNode> { Box::new(fragment()) },
+        |node| Box::new(node),
+    )
+}
+
 fn field_of(item: &Item) -> Box<dyn IntoNode> {
-    let control = item
+    let attrs = &item.attrs;
+    let child = item
         .children
         .first()
-        .map_or_else(|| -> Box<dyn IntoNode> { Box::new(fragment()) }, build);
-    Box::new(styled(
-        NodeBuilder::wrapping(field(label(item), control)),
-        &item.attrs,
-    ))
+        .filter(|child| child.attrs.show.is_none());
+    match child.map(|child| (child.kind, child)) {
+        Some((Kind::TextField, child)) => {
+            boxed(input_of!(child, text_field).map(|node| styled(field(label(item), node), attrs)))
+        }
+        Some((Kind::TextEdit, child)) => {
+            boxed(input_of!(child, text_edit).map(|node| styled(field(label(item), node), attrs)))
+        }
+        _ => {
+            let control = item
+                .children
+                .iter()
+                .fold(fragment(), |control, child| control.child(build(child)));
+            Box::new(styled(field(label(item), control), attrs))
+        }
+    }
 }
 
 fn text_of(item: &Item) -> Box<dyn IntoNode> {
@@ -97,6 +160,7 @@ fn button_of(item: &Item) -> Box<dyn IntoNode> {
         Some(Variant::Primary) => node.primary(),
         Some(Variant::Outline) => node.outline(),
         Some(Variant::Ghost) => node.ghost(),
+        Some(Variant::Destructive) => node.destructive(),
         None => node,
     };
     if let Some(flag) = attrs.disabled {
@@ -109,31 +173,17 @@ fn button_of(item: &Item) -> Box<dyn IntoNode> {
 }
 
 fn text_field_of(item: &Item) -> Box<dyn IntoNode> {
-    let attrs = &item.attrs;
-    let Some(value) = attrs.value else {
-        return Box::new(fragment());
-    };
-    let mut node = text_field(value);
-    if let Some(placeholder) = &attrs.placeholder {
-        node = node.placeholder(TextContent::from(placeholder));
-    }
-    if let Some(flag) = attrs.disabled {
-        node = node.disabled(flag);
-    }
-    Box::new(styled(node, attrs))
+    boxed(input_of!(item, text_field))
+}
+
+fn text_edit_of(item: &Item) -> Box<dyn IntoNode> {
+    boxed(input_of!(item, text_edit))
 }
 
 fn checkbox_of(item: &Item) -> Box<dyn IntoNode> {
-    let attrs = &item.attrs;
-    let Some(checked) = attrs.checked else {
-        return Box::new(fragment());
-    };
-    let mut node = checkbox(checked);
-    if let Some(words) = item.label.as_ref().map(TextContent::from) {
-        node = node.label(words);
-    }
-    if let Some(flag) = attrs.disabled {
-        node = node.disabled(flag);
-    }
-    Box::new(styled(node, attrs))
+    boxed(check_of!(item, checkbox))
+}
+
+fn toggle_of(item: &Item) -> Box<dyn IntoNode> {
+    boxed(check_of!(item, toggle))
 }

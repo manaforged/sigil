@@ -36,9 +36,10 @@ Each line is one widget. A `{ }` block holds its children.
 | `column`, `row`, `card`, `scroll` | children | `gap` |
 | `field` | `"label"` or `$name`, and one child | |
 | `text` | `"words"` or `$name` | `role` |
-| `button` | `"label"` or `$name` | `primary`, `outline`, `ghost`, `activate=@name`, `disabled=$name` |
-| `text_field` | | `value=$name` (required), `placeholder`, `disabled=$name` |
-| `checkbox` | optional `"label"` or `$name` | `checked=$name` (required), `disabled=$name` |
+| `button` | `"label"` or `$name` | `primary`, `outline`, `ghost`, `destructive`, `activate=@name`, `disabled=$name` |
+| `text_field`, `text_edit` | | `value=$name` (required), `placeholder`, `disabled=$name`, `submit=@name` |
+| `checkbox`, `toggle` | optional `"label"` or `$name` | `checked=$name` (required), `disabled=$name`, `change=@name` |
+| `divider` | | |
 | `spacer` | | |
 | `slot` | a name | |
 

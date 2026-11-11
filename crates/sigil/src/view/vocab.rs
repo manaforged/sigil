@@ -12,6 +12,9 @@ pub(super) enum Kind {
     Button,
     TextField,
     Checkbox,
+    Toggle,
+    TextEdit,
+    Divider,
     Spacer,
     Slot,
 }
@@ -27,11 +30,14 @@ pub(super) enum Prop {
     Primary,
     Outline,
     Ghost,
+    Destructive,
     Activate,
     Value,
     Checked,
     Placeholder,
     Disabled,
+    Submit,
+    Change,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -76,11 +82,12 @@ const BUTTON: &[Prop] = &[
     Prop::Primary,
     Prop::Outline,
     Prop::Ghost,
+    Prop::Destructive,
     Prop::Activate,
     Prop::Disabled,
 ];
-const INPUT: &[Prop] = &[Prop::Value, Prop::Placeholder, Prop::Disabled];
-const CHECK: &[Prop] = &[Prop::Checked, Prop::Disabled];
+const INPUT: &[Prop] = &[Prop::Value, Prop::Placeholder, Prop::Disabled, Prop::Submit];
+const CHECK: &[Prop] = &[Prop::Checked, Prop::Disabled, Prop::Change];
 
 pub(super) const WIDGETS: &[Spec] = &[
     Spec {
@@ -118,6 +125,17 @@ pub(super) const WIDGETS: &[Spec] = &[
         required: Some(Prop::Checked),
         ..spec("checkbox", Kind::Checkbox, Head::OptionalLabel, Body::Leaf)
     },
+    Spec {
+        props: CHECK,
+        required: Some(Prop::Checked),
+        ..spec("toggle", Kind::Toggle, Head::OptionalLabel, Body::Leaf)
+    },
+    Spec {
+        props: INPUT,
+        required: Some(Prop::Value),
+        ..spec("text_edit", Kind::TextEdit, Head::Nothing, Body::Leaf)
+    },
+    spec("divider", Kind::Divider, Head::Nothing, Body::Leaf),
     spec("spacer", Kind::Spacer, Head::Nothing, Body::Leaf),
     spec("slot", Kind::Slot, Head::Name, Body::Leaf),
 ];
@@ -132,11 +150,14 @@ pub(super) const PROPS: &[(&str, Prop)] = &[
     ("primary", Prop::Primary),
     ("outline", Prop::Outline),
     ("ghost", Prop::Ghost),
+    ("destructive", Prop::Destructive),
     ("activate", Prop::Activate),
     ("value", Prop::Value),
     ("checked", Prop::Checked),
     ("placeholder", Prop::Placeholder),
     ("disabled", Prop::Disabled),
+    ("submit", Prop::Submit),
+    ("change", Prop::Change),
 ];
 
 pub(super) const SPACES: &[(&str, Space)] = &[

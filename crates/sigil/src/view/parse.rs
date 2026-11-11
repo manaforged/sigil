@@ -63,6 +63,7 @@ pub(super) enum Variant {
     Primary,
     Outline,
     Ghost,
+    Destructive,
 }
 
 pub(super) type Action = Rc<dyn Fn()>;
@@ -82,6 +83,8 @@ pub(super) struct Attrs {
     pub(super) checked: Option<Signal<bool>>,
     pub(super) placeholder: Option<Content>,
     pub(super) disabled: Option<Signal<bool>>,
+    pub(super) submit: Option<Action>,
+    pub(super) change: Option<Action>,
 }
 
 pub(super) struct Item {
@@ -335,6 +338,7 @@ impl<'a> Parser<'a> {
             Prop::Primary => Some(Variant::Primary),
             Prop::Outline => Some(Variant::Outline),
             Prop::Ghost => Some(Variant::Ghost),
+            Prop::Destructive => Some(Variant::Destructive),
             _ => None,
         };
         if variant.is_some() {
@@ -361,7 +365,9 @@ impl<'a> Parser<'a> {
             Prop::Value => attrs.value = Some(self.text_signal()?),
             Prop::Placeholder => attrs.placeholder = Some(self.content()?),
             Prop::Activate => attrs.activate = Some(self.action()?),
-            Prop::Primary | Prop::Outline | Prop::Ghost => {}
+            Prop::Submit => attrs.submit = Some(self.action()?),
+            Prop::Change => attrs.change = Some(self.action()?),
+            Prop::Primary | Prop::Outline | Prop::Ghost | Prop::Destructive => {}
         }
         Ok(())
     }
