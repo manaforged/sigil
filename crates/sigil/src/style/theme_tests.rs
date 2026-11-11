@@ -102,15 +102,15 @@ fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
             },
         ),
     ] {
-        assert_eq!(t.resolve_color(ColorAtom::parse(name)), expected, "{name}");
+        assert_eq!(t.color(ColorAtom::parse(name)), expected, "{name}");
     }
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
-    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), t.accent);
-    assert_ne!(t.resolve_color(ColorAtom::parse("accent")), rgb(38, 38, 38));
+    assert_eq!(t.color(ColorAtom::parse("accent")), t.accent);
+    assert_ne!(t.color(ColorAtom::parse("accent")), rgb(38, 38, 38));
 }
 
 #[test]
@@ -120,12 +120,12 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     let t = Theme::dark()
         .token("accent", gold)
         .token("on-accent", navy);
-    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), gold);
+    assert_eq!(t.color(ColorAtom::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
     assert_ne!(
-        t.resolve_color(ColorAtom::parse("accent")),
+        t.color(ColorAtom::parse("accent")),
         Theme::dark().accent
     );
 }

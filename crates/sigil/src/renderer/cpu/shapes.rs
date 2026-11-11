@@ -82,11 +82,7 @@ pub(super) fn rgba_table(color: Color, opacity: f32) -> [[u8; 4]; 256] {
     coverage_table(decode_rgb(color), unit(color.a) * opacity)
 }
 
-pub(super) fn ts_color(color: Color, opacity: f32) -> TsColor {
-    let alpha = (unit(color.a) * opacity).clamp(0.0, 1.0);
-    TsColor::from_rgba(unit(color.r), unit(color.g), unit(color.b), alpha)
-        .unwrap_or(TsColor::TRANSPARENT)
-}
+pub(super) use crate::scene::path_raster::gradient::ts_color;
 
 pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::Gamma2;
 

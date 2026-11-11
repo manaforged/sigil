@@ -1,4 +1,5 @@
 use crate::style::Color;
+use crate::style::srgb::unit;
 
 pub(super) fn tint_toward_hue(c: Color, target_hue_degrees: f32) -> Color {
     let (_, s, v) = rgb_to_hsv(c);
@@ -6,9 +7,7 @@ pub(super) fn tint_toward_hue(c: Color, target_hue_degrees: f32) -> Color {
 }
 
 pub(super) fn rgb_to_hsv(c: Color) -> (f32, f32, f32) {
-    let r = f32::from(c.r) / 255.0;
-    let g = f32::from(c.g) / 255.0;
-    let b = f32::from(c.b) / 255.0;
+    let [r, g, b] = [c.r, c.g, c.b].map(unit);
     let max = r.max(g).max(b);
     let min = r.min(g).min(b);
     let delta = max - min;

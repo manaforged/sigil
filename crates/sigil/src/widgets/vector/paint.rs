@@ -24,7 +24,7 @@ pub(super) fn resolve(
             .collect()
     };
     let fill = fill.map(|fill| match fill {
-        PathFill::Solid(color) => PathPaint::Solid(theme.resolve_color(*color)),
+        PathFill::Solid(color) => PathPaint::Solid(theme.color(*color)),
         PathFill::Linear {
             start,
             end,
@@ -48,7 +48,7 @@ pub(super) fn resolve(
             PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
     });
-    let stroke = stroke.map(|(color, width)| (theme.resolve_color(color), width));
+    let stroke = stroke.map(|(color, width)| (theme.color(color), width));
     (fill, stroke)
 }
 

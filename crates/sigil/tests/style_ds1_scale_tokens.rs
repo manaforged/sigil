@@ -50,7 +50,7 @@ fn dark_theme_flips_every_scale_and_semantic_alias() {
 
 #[test]
 fn customizing_accent_scale_propagates_through_role_tokens() {
-    let theme = Theme::default().with_accent_scale(ruby_light());
+    let theme = Theme::default().accent_scale(ruby_light());
     assert_eq!(theme.color(Token::Accent9), ruby_light().step(9));
     assert_eq!(theme.color(Token::Accent3), ruby_light().step(3));
     assert_eq!(theme.accent, ruby_light().step(9));

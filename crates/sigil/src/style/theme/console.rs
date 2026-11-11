@@ -48,6 +48,6 @@ impl Theme {
     /// Returns the console dark theme.
     #[must_use]
     pub fn console_dark() -> Self {
-        Self::dark().with_theme_tokens(&TOKENS)
+        Self::dark().theme_tokens(&TOKENS)
     }
 }

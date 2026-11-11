@@ -2,7 +2,7 @@
 
 use crate::geometry::Rect;
 use crate::style::Color;
-use crate::style::srgb::unit;
+use crate::style::srgb::{decode, unit};
 use bytemuck::{Pod, Zeroable};
 use half::f16;
 
@@ -13,7 +13,7 @@ use crate::renderer::scene_command::{
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::command::{Gradient, GradientKind};
 use crate::scene::corner_radii::CornerRadii;
-pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_linear};
+pub(crate) use crate::scene::shadow::expanded_shadow_rect;
 
 mod helpers;
 
@@ -38,7 +38,7 @@ impl BlendSpace {
 
     fn channel(self, channel: u8) -> f32 {
         match self {
-            Self::Linear => srgb_channel_to_linear(channel),
+            Self::Linear => decode(channel),
             Self::Gamma => unit(channel),
         }
     }

@@ -102,10 +102,10 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Replace one color scale of a theme.
+    /// Sets the gray scale and the surface, border and text colors drawn from it.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_gray_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn gray(mut self, scale: ColorScale) -> Self {
         self.gray = scale;
         self.surface = scale.step(2);
         self.surface_hover = scale.step(4);
@@ -120,7 +120,7 @@ impl Theme {
     /// Sets the accent scale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_accent_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn accent_scale(mut self, scale: ColorScale) -> Self {
         self.accent_scale = scale;
         self.accent = scale.step(9);
         self.accent_hover = scale.step(10);
@@ -131,7 +131,7 @@ impl Theme {
     /// Sets the success scale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_success_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn success(mut self, scale: ColorScale) -> Self {
         self.success = scale;
         self
     }
@@ -140,7 +140,7 @@ impl Theme {
     /// Sets the warn scale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_warn_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn warn(mut self, scale: ColorScale) -> Self {
         self.warn = scale;
         self
     }
@@ -149,7 +149,7 @@ impl Theme {
     /// Sets the error scale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_error_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn error(mut self, scale: ColorScale) -> Self {
         self.error = scale;
         self
     }
@@ -158,14 +158,14 @@ impl Theme {
     /// Sets the info scale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_info_scale(mut self, scale: ColorScale) -> Self {
+    pub const fn info(mut self, scale: ColorScale) -> Self {
         self.info = scale;
         self
     }
 
     /// Sets the direction.
     #[must_use]
-    pub const fn with_direction(mut self, direction: Direction) -> Self {
+    pub const fn direction(mut self, direction: Direction) -> Self {
         self.direction = direction;
         self
     }
@@ -174,7 +174,7 @@ impl Theme {
     /// Sets the locale.
     #[must_use]
     #[doc(hidden)]
-    pub const fn with_locale(mut self, locale: Locale) -> Self {
+    pub const fn locale(mut self, locale: Locale) -> Self {
         self.locale = locale;
         self
     }
@@ -183,28 +183,11 @@ impl Theme {
     /// Sets the strings.
     #[must_use]
     #[doc(hidden)]
-    pub fn with_strings(mut self, strings: Strings) -> Self {
+    pub fn strings(mut self, strings: Strings) -> Self {
         self.strings = strings;
         self
     }
 
-    /// Returns the text muted.
-    #[must_use]
-    pub const fn text_muted(&self) -> Color {
-        self.gray.step(11)
-    }
-
-    /// Returns the surface subtle.
-    #[must_use]
-    pub const fn surface_subtle(&self) -> Color {
-        self.gray.step(3)
-    }
-
-    /// Returns the border strong.
-    #[must_use]
-    pub const fn border_strong(&self) -> Color {
-        self.gray.step(8)
-    }
 }
 
 fn readable_hover(accent: ColorScale, on: Color) -> Color {

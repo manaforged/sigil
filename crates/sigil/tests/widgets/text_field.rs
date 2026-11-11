@@ -142,7 +142,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
             })
             .expect("placeholder glyph run");
 
-        assert_eq!(placeholder.color(), Theme::default().text_muted());
+        assert_eq!(placeholder.color(), Theme::default().color(sigil::style::Token::OnSurfaceMuted));
     });
 }
 

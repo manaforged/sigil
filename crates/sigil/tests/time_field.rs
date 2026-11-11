@@ -14,7 +14,7 @@ const fn time(hour: u8, minute: u8, second: u8) -> Time {
 }
 
 fn open<T: TimeValue>(locale: Locale, start: T, seconds: bool) -> (Harness, Signal<T>) {
-    open_in(Theme::light().with_locale(locale), start, seconds)
+    open_in(Theme::light().locale(locale), start, seconds)
 }
 
 fn open_in<T: TimeValue>(theme: Theme, start: T, seconds: bool) -> (Harness, Signal<T>) {
@@ -71,8 +71,8 @@ fn a_12_hour_clock_shows_and_reads_the_day_periods_of_the_theme_strings() {
         .with(StringKey::Am, "\u{635}")
         .with(StringKey::Pm, "\u{645}");
     let theme = Theme::light()
-        .with_locale(Locale::ar())
-        .with_strings(arabic);
+        .locale(Locale::ar())
+        .strings(arabic);
     let (mut ui, value) = open_in(theme, time(18, 5, 0), false);
     assert_eq!(shown(&mut ui), "\u{666}:\u{660}\u{665} \u{645}");
     retype(&mut ui, "\u{667}:\u{663}\u{660} \u{635}");

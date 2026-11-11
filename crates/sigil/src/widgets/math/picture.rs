@@ -5,6 +5,7 @@ use ratex_types::color::Color as MathColor;
 use ratex_types::math_style::MathStyle;
 
 use crate::kernel::NodeBuilder;
+use crate::style::srgb::unit;
 use crate::style::{Color, Theme, Token};
 use crate::widgets::svg_picture::picture;
 
@@ -33,8 +34,4 @@ fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
         font_dir: String::new(),
     };
     Some(render_to_svg(&to_display_list(&tree), &svg))
-}
-
-fn unit(channel: u8) -> f32 {
-    f32::from(channel) / 255.0
 }
