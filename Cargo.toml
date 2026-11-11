@@ -115,7 +115,6 @@ toml = { version = "1", default-features = false, features = ["parse", "serde"] 
 arboard = { version = "3", default-features = false }
 sigil-ui = { path = "crates/sigil", version = "0.2.0" }
 sigil-fonts = { path = "crates/sigil-fonts", version = "0.2.0" }
-sigil-sign = { path = "crates/sign", version = "0.2.0" }
 minisign = "0.7"
 base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
