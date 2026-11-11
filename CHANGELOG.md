@@ -6,28 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-
-- A signal write runs each effect that depends on it one time, in dependency order. Before, an effect that read two `derived` values ran one time with one new value and one old value, and then again.
-- A write outside `batch` follows the `batch` rules. When an effect runs because of a write, the writes it makes run their dependent effects after it returns. Before, they ran inside the write.
-- `NodeBuilder` has `.disabled(..)` and `.activate(..)`. Any node is an interactive element: it dims and ignores input when disabled, and runs the action on a primary click, Enter, or Space. `interactive()` and `InteractiveBuilder` are removed. Migration: `interactive(node).hover(..)` becomes `node.hover(..)`; `interactive(node).disabled(d)` becomes `node.disabled(d)`. The control hover fill is no longer implied: add `.hover(|s| s.background(Token::SurfaceHover))`.
-- A disabled node runs no pointer press, key, shortcut, or accessibility action handlers. Pointer enter and leave and focus out still run so hover and focus state stay correct. Before, only `.activate` checked the disabled flag.
-- A disabled node also runs no `.paste`, `.gesture`, or `.ime` handlers. An input method end still reaches it. A control that becomes busy or disabled during a press releases its pressed state on pointer up and shows no hover or press style while blocked. A radio option is selected only by a release that follows a press on that option. A node that mounts or moves under the pointer shows its hover style on the first frame, with no transition.
-- A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
-- A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
-- `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
-- A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
-- `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
-- Vega-Lite figures are behind the `vega` feature, which is on by default. `scene` no longer pulls in the QuickJS engine. Migration: a build with `default-features = false` that wants figures adds `features = ["vega"]`.
-- The terminal backdrop watcher stops at once when the app exits. Before, exit waited up to 250 ms.
-- `sigil-ui` no longer depends on `crossbeam-channel`, and `notify` builds only with the `desktop` or `terminal` feature.
-
-### Added
-
-- `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
-- The recipes have a Lists section on per-row signals.
-
-## [0.2.0] - 2026-11-07
+## [0.2.0] - 2026-11-11
 
 First public release.
 
@@ -313,6 +292,19 @@ First public release.
 - Gradient text draws conic, elliptical radial and repeating gradients.
 - A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
 - Layout is set with the container functions `row`, `column`, `grid`, and `container` and with the layout setters on `Widget` (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest). `LayoutStyle` and the raw `.layout(LayoutStyle)` setter are public only under feature `kittest`, and `Widget` no longer has a `layout` method; the migration table maps each constructor and method.
+- A signal write runs each effect that depends on it one time, in dependency order. Before, an effect that read two `derived` values ran one time with one new value and one old value, and then again.
+- A write outside `batch` follows the `batch` rules. When an effect runs because of a write, the writes it makes run their dependent effects after it returns. Before, they ran inside the write.
+- `NodeBuilder` has `.disabled(..)` and `.activate(..)`. Any node is an interactive element: it dims and ignores input when disabled, and runs the action on a primary click, Enter, or Space. `interactive()` and `InteractiveBuilder` are removed. Migration: `interactive(node).hover(..)` becomes `node.hover(..)`; `interactive(node).disabled(d)` becomes `node.disabled(d)`. The control hover fill is no longer implied: add `.hover(|s| s.background(Token::SurfaceHover))`.
+- A disabled node runs no pointer press, key, shortcut, or accessibility action handlers. Pointer enter and leave and focus out still run so hover and focus state stay correct. Before, only `.activate` checked the disabled flag.
+- A disabled node also runs no `.paste`, `.gesture`, or `.ime` handlers. An input method end still reaches it. A control that becomes busy or disabled during a press releases its pressed state on pointer up and shows no hover or press style while blocked. A radio option is selected only by a release that follows a press on that option. A node that mounts or moves under the pointer shows its hover style on the first frame, with no transition.
+- A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
+- A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
+- `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
+- A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
+- `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
+- Vega-Lite figures are behind the `vega` feature, which is on by default. `scene` no longer pulls in the QuickJS engine. Migration: a build with `default-features = false` that wants figures adds `features = ["vega"]`.
+- The terminal backdrop watcher stops at once when the app exits. Before, exit waited up to 250 ms.
+- `sigil-ui` no longer depends on `crossbeam-channel`, and `notify` builds only with the `desktop` or `terminal` feature.
 
 ### Fixed
 
@@ -475,3 +467,5 @@ First public release.
 
 - Bundled Fira Sans, Cascadia Mono, and a Noto Color Emoji subset in `sigil-fonts` under SIL Open Font License 1.1. The DejaVu Sans symbol subset uses the Bitstream Vera license; the crate license is OFL-1.1 AND Bitstream-Vera.
 - Lucide icons through `Icon` and `icon`, tinted by the active text color.
+- `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
+- The recipes have a Lists section on per-row signals.
