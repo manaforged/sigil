@@ -34,3 +34,26 @@ impl CacheLimits {
         vector_stale_frames: 120,
     };
 }
+
+pub(crate) fn make_room<E>(
+    entries: &mut Vec<E>,
+    frame: u64,
+    (need, limit): (u64, u64),
+    used: impl Fn(&E) -> u64,
+    area: impl Fn(&E) -> u64,
+) -> bool {
+    let mut held: u64 = entries.iter().map(&area).sum();
+    while held + need > limit {
+        let Some(oldest) = entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| used(entry) < frame)
+            .min_by_key(|(_, entry)| used(entry))
+            .map(|(index, _)| index)
+        else {
+            return false;
+        };
+        held -= area(&entries.swap_remove(oldest));
+    }
+    true
+}

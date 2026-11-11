@@ -11,7 +11,7 @@ pub(super) fn mix_f32(hash: &mut u64, value: f32) {
 }
 
 fn mix_rgba(hash: &mut u64, color: Color) {
-    *hash = crate::fnv::bytes(*hash, &[color.r, color.g, color.b, color.a]);
+    *hash = crate::fnv::mix(*hash, crate::fnv::rgba(color));
 }
 
 fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {

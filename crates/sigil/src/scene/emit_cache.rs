@@ -183,7 +183,7 @@ pub(crate) fn theme_key(theme: &Theme, stamp: u64) -> u64 {
 }
 
 pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Color>, text_style: &TextStyle) -> u64 {
-    let color = text_color.map_or(0, |c| u64::from(u32::from_le_bytes([c.r, c.g, c.b, c.a])));
+    let color = text_color.map_or(0, crate::fnv::rgba);
     let key = mix(theme_key(theme, theme_stamp()), color);
     mix(
         mix_f32(key, text_style.font_size),

@@ -107,16 +107,10 @@ fn sign(cells: &[Cell]) -> u64 {
     })
 }
 
-const fn ink(ink: Ink) -> u64 {
+fn ink(ink: Ink) -> u64 {
     match ink {
         Ink::Bare => 0,
         Ink::Of(tone) => 1 + tone as u64,
-        Ink::Exact(colour) => {
-            1 << 32
-                | (colour.r as u64) << 24
-                | (colour.g as u64) << 16
-                | (colour.b as u64) << 8
-                | colour.a as u64
-        }
+        Ink::Exact(colour) => 1 << 32 | crate::fnv::rgba(colour),
     }
 }

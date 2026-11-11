@@ -197,8 +197,7 @@ fn run(render: &impl Fn(&Theme) -> Option<String>, theme: &Theme) -> Option<Stri
 
 fn theme_key(key: u64, theme: &Theme) -> u64 {
     Token::ALL.iter().fold(key, |key, token| {
-        let Color { r, g, b, a } = theme.color(*token);
-        mix(key, u64::from(u32::from_le_bytes([r, g, b, a])))
+        mix(key, crate::fnv::rgba(theme.color(*token)))
     })
 }
 

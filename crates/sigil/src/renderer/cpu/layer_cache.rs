@@ -1,7 +1,7 @@
 use tiny_skia::{Pixmap, Transform as TsTransform};
 
 use crate::geometry::{Point, Rect};
-use crate::renderer::cache_limits::CacheLimits;
+use crate::renderer::cache_limits::{CacheLimits, make_room};
 use crate::renderer::plan::PlanNode;
 use crate::renderer::scene_command::state::SceneState;
 use crate::scene::command::{LayerScope, SceneCommand, Transform};
@@ -54,12 +54,15 @@ impl LayerCache {
             return;
         }
         let area = |pixmap: &Pixmap| u64::from(pixmap.width()) * u64::from(pixmap.height());
-        let mut held: u64 = self.entries.iter().map(|entry| area(&entry.pixels)).sum();
-        while held + area(pixels) > limits.cpu_layer_pixels {
-            let Some(oldest) = self.oldest() else {
-                return;
-            };
-            held -= area(&self.entries.swap_remove(oldest).pixels);
+        let room = make_room(
+            &mut self.entries,
+            self.frame,
+            (area(pixels), limits.cpu_layer_pixels),
+            |entry| entry.used,
+            |entry| area(&entry.pixels),
+        );
+        if !room {
+            return;
         }
         self.entries.push(Entry {
             key,
@@ -67,15 +70,6 @@ impl LayerCache {
             pixels: pixels.clone(),
             used: self.frame,
         });
-    }
-
-    fn oldest(&self) -> Option<usize> {
-        self.entries
-            .iter()
-            .enumerate()
-            .filter(|(_, entry)| entry.used < self.frame)
-            .min_by_key(|(_, entry)| entry.used)
-            .map(|(index, _)| index)
     }
 }
 

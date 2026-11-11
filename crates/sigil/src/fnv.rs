@@ -10,6 +10,10 @@ pub(crate) fn mix_f32(hash: u64, value: f32) -> u64 {
     mix(hash, u64::from(value.to_bits()))
 }
 
+pub(crate) fn rgba(color: crate::style::Color) -> u64 {
+    u64::from(u32::from_le_bytes([color.r, color.g, color.b, color.a]))
+}
+
 pub(crate) fn bytes(hash: u64, data: &[u8]) -> u64 {
     data.iter()
         .fold(hash, |hash, byte| mix(hash, u64::from(*byte)))

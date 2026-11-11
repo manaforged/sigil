@@ -60,25 +60,14 @@ impl KeptLayers {
         self.entries.retain(|entry| entry.used + stale >= frame);
     }
 
-    fn oldest(&self) -> Option<usize> {
-        self.entries
-            .iter()
-            .enumerate()
-            .filter(|(_, entry)| entry.used < self.frame)
-            .min_by_key(|(_, entry)| entry.used)
-            .map(|(index, _)| index)
-    }
-
     fn make_room(&mut self, pixels: u64) -> bool {
-        let area = |handle: &LayerHandle| u64::from(handle.width) * u64::from(handle.height);
-        let mut held: u64 = self.entries.iter().map(|entry| area(&entry.handle)).sum();
-        while held + pixels > CacheLimits::DEFAULT.kept_layer_pixels {
-            let Some(oldest) = self.oldest() else {
-                return false;
-            };
-            held -= area(&self.entries.swap_remove(oldest).handle);
-        }
-        true
+        crate::renderer::cache_limits::make_room(
+            &mut self.entries,
+            self.frame,
+            (pixels, CacheLimits::DEFAULT.kept_layer_pixels),
+            |entry| entry.used,
+            |entry| u64::from(entry.handle.width) * u64::from(entry.handle.height),
+        )
     }
 }
 
