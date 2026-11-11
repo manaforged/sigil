@@ -23,7 +23,7 @@ pub(crate) struct Wiring {
 }
 
 impl Wiring {
-    const fn is_inert(&self) -> bool {
+    pub(crate) const fn is_inert(&self) -> bool {
         self.disabled.is_none()
             && self.activate.is_none()
             && self.state.is_none()

@@ -348,6 +348,15 @@ impl NodeBuilder {
         &mut self.style
     }
 
+    fn styled(mut self) -> Self {
+        let style = std::mem::take(&mut self.style);
+        if style.is_empty() && self.wiring.is_inert() {
+            self
+        } else {
+            crate::style::attach_style(self, style)
+        }
+    }
+
     pub(crate) const fn wiring_mut(&mut self) -> &mut Wiring {
         &mut self.wiring
     }
@@ -371,9 +380,8 @@ impl PaintTarget for NodeBuilder {
 }
 
 impl IntoNode for NodeBuilder {
-    fn build(mut self, cx: &mut Cx) -> NodeId {
-        let style = std::mem::take(&mut self.style);
-        let mut this = crate::style::attach_style(self, style);
+    fn build(self, cx: &mut Cx) -> NodeId {
+        let mut this = self.styled();
         if let Some(widget) = this.wraps.take() {
             return this.build_onto(widget, cx);
         }

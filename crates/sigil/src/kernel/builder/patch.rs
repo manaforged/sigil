@@ -128,7 +128,7 @@ impl Cx {
 }
 
 impl NodeBuilder {
-    pub(super) fn patch_onto(mut self, cx: &mut Cx, id: NodeId) -> NodePatch<Self> {
+    pub(super) fn patch_onto(self, cx: &mut Cx, id: NodeId) -> NodePatch<Self> {
         if self.wraps.is_some() {
             return NodePatch::Unsupported(self);
         }
@@ -136,8 +136,7 @@ impl NodeBuilder {
             return NodePatch::Mismatch(self);
         }
         cx.refill(id, |cx| {
-            let style = std::mem::take(&mut self.style);
-            let mut this = crate::style::attach_style(self, style);
+            let mut this = self.styled();
             let kind = std::mem::replace(&mut this.kind, NodeType::Container).into_live();
             cx.reset_node(id, kind, std::mem::take(&mut this.a11y));
             crate::kernel::text::track_delta(cx, id);
