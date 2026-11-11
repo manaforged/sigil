@@ -8,6 +8,9 @@ use crate::widgets::Widget;
 use super::layout_ext::LayoutOverrides;
 use super::shared::caller_style;
 
+pub(crate) const DISMISS_GLYPH: &str = "\u{d7}";
+pub(crate) const CHECK_GLYPH: &str = "\u{2713}";
+
 #[cfg(feature = "scene")]
 mod svg;
 

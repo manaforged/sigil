@@ -123,7 +123,7 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
         .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
         .class(Radius::Sm.atom())
         .child(
-            text("\u{00D7}")
+            text(crate::widgets::icon::DISMISS_GLYPH)
                 .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
                 .class(Token::OnSurface.text()),
         )

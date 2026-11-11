@@ -2,6 +2,7 @@ mod chrome;
 mod columns;
 mod density;
 mod derive;
+mod edit;
 mod header;
 mod hscroll;
 mod identity;

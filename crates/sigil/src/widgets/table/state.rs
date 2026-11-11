@@ -8,6 +8,7 @@ use crate::reactive::{Signal, effect, signal};
 use super::super::listbox::{only, span, toggle};
 use super::columns::{ColumnWidth, MIN_COL_WIDTH, TableColumn};
 use super::derive::{compute_visible, retain_visible, reuse_identity};
+use super::edit::CellRef;
 use super::identity::{self, Identifiable};
 
 /// Table sort column and direction.
@@ -52,6 +53,7 @@ pub struct TableState<Row: 'static> {
     layout: Signal<Rc<ColumnLayout>>,
     remap: Option<Remap<Row>>,
     row_eq: Option<RowEq<Row>>,
+    editing: Signal<Option<CellRef>>,
 }
 
 impl<Row: 'static> core::fmt::Debug for TableState<Row> {
@@ -78,6 +80,7 @@ impl<Row: 'static> Clone for TableState<Row> {
             layout: self.layout,
             remap: self.remap.clone(),
             row_eq: self.row_eq.clone(),
+            editing: self.editing,
         }
     }
 }
@@ -121,6 +124,7 @@ impl<Row: 'static> TableState<Row> {
             layout,
             remap: None,
             row_eq: None,
+            editing: signal(None),
         }
     }
 
@@ -153,15 +157,30 @@ impl<Row: 'static> TableState<Row> {
             clippy::cast_possible_truncation,
             reason = "values are bounded to the target range before the cast"
         )]
-        let (selected, anchor) = self.remap.as_ref().map_or_else(
-            || identity::retain_in_range(rows.len() as u32, &selection, anchor),
-            |remap| remap(&previous, &rows, &selection, anchor),
-        );
+        let follow = |kept: &HashSet<u32>, mark: Option<u32>| {
+            self.remap.as_ref().map_or_else(
+                || identity::retain_in_range(rows.len() as u32, kept, mark),
+                |remap| remap(&previous, &rows, kept, mark),
+            )
+        };
+        let (selected, anchor) = follow(&selection, anchor);
+        let editing = self.editing.peek().and_then(|cell| {
+            follow(&HashSet::new(), Some(cell.row))
+                .1
+                .map(|row| CellRef { row, ..cell })
+        });
         self.rows.set_always(rows);
         if *self.selection.peek() != selected {
             self.selection.set(Rc::new(selected));
         }
         self.select_anchor.set(anchor);
+        if self.editing.peek() != editing {
+            self.editing.set(editing);
+        }
+    }
+
+    pub(super) const fn editing(&self) -> Signal<Option<CellRef>> {
+        self.editing
     }
 
     /// Returns the selected index.

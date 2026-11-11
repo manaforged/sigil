@@ -13,8 +13,9 @@ use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
 use super::super::shared::{DIMMED, caller_style};
-use super::super::virtual_list::virtual_list;
+use super::super::virtual_list::{EndReached, virtual_list};
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
+use super::columns::TableColumn;
 use super::density::Density;
 use super::header::{HeaderSpec, header_row};
 use super::hscroll;
@@ -30,6 +31,12 @@ static FRAMED: &[StyleAtom] = &[
 ];
 static UNFRAMED: &[StyleAtom] = &[Token::Surface.background()];
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
+
+struct BodySpec {
+    viewport: Option<f32>,
+    scroll_y: Option<Signal<f32>>,
+    end_reached: Option<EndReached>,
+}
 
 /// Builder of a table.
 #[must_use]
@@ -47,6 +54,7 @@ pub struct TableBuilder<Row: 'static> {
     striped: bool,
     frame: &'static [StyleAtom],
     scroll_y: Option<Signal<f32>>,
+    end_reached: Option<EndReached>,
     disabled: Option<Signal<bool>>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
@@ -82,6 +90,7 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         striped: false,
         frame: FRAMED,
         scroll_y: None,
+        end_reached: None,
         disabled: None,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
@@ -151,6 +160,12 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
+    /// Runs `f` once each time the user scrolls within `rows` rows of the end, for load-more paging.
+    pub fn end_reached(mut self, rows: usize, f: impl Fn() + 'static) -> Self {
+        self.end_reached = Some(EndReached::new(rows, f));
+        self
+    }
+
     /// Sets the disabled.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
@@ -169,19 +184,23 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
+    fn row_spec(&self) -> RowSpec {
+        RowSpec {
+            row_height: snap::line(self.row_height),
+            select: self.select,
+            pad_x: self.density.pad_x(),
+            striped: self.striped,
+            disabled: self.disabled,
+        }
+    }
+
     fn root(self) -> NodeBuilder {
+        let row = self.row_spec();
         let state = self.state;
         let chrome = TableChrome::new(self.row_menu, self.row_activate);
         let pad_x = self.density.pad_x();
         let prefix = if self.select { select::WIDTH } else { 0.0 };
         let hscroll = hscroll::bind(&state, self.viewport_width, prefix);
-        let row = RowSpec {
-            row_height: snap::line(self.row_height),
-            select: self.select,
-            pad_x,
-            striped: self.striped,
-            disabled: self.disabled,
-        };
         let fill = self.layout_overrides.fills_height();
         let viewport = (!fill).then_some(self.viewport_height);
         let body = body_view(
@@ -189,7 +208,11 @@ impl<Row: 'static> TableBuilder<Row> {
             chrome.clone(),
             row,
             hscroll,
-            (viewport, self.scroll_y),
+            BodySpec {
+                viewport,
+                scroll_y: self.scroll_y,
+                end_reached: self.end_reached,
+            },
         );
         let header = HeaderSpec {
             height: snap::line(self.header_height),
@@ -261,17 +284,30 @@ fn body_view<Row: 'static>(
     chrome: TableChrome<Row>,
     row: RowSpec,
     hs: hscroll::HScroll,
-    (viewport, scroll_y): (Option<f32>, Option<Signal<f32>>),
+    spec: BodySpec,
 ) -> impl IntoNode {
+    let follow = state
+        .columns()
+        .iter()
+        .any(TableColumn::is_editable)
+        .then_some(chrome.edit.follow);
     let body = virtual_list(state.visible(), body_row(state, row, chrome, hs))
         .key_by(|_, id| u64::from(*id))
         .row_height(row.row_height)
         .scroll_x_bind(hs.scroll_x, hs.max, hs.viewport);
-    let body = match scroll_y {
+    let body = match spec.scroll_y {
         Some(scroll_y) => body.scroll_bind(scroll_y),
         None => body,
     };
-    match viewport {
+    let body = match follow {
+        Some(follow) => body.follow_row(follow),
+        None => body,
+    };
+    let body = match spec.end_reached {
+        Some(hook) => body.end_hook(hook),
+        None => body,
+    };
+    match spec.viewport {
         Some(height) => body.viewport_height(height).shrink_to_content(),
         None => body.fill(),
     }

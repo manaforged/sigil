@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use web_time::Instant;
 
 use crate::events::handlers::EventHandlers;
-use crate::events::{ClickConfig, ModifiersState, MouseButton, PointerEvent, PointerPhase};
+use crate::events::pointer_dispatch::Clicks;
+use crate::events::{ModifiersState, MouseButton, PointerEvent, PointerPhase};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{Cx, NodeId};
@@ -41,7 +41,7 @@ pub(crate) struct TextSelection {
 
 thread_local! {
     static STATE: RefCell<Option<TextSelection>> = const { RefCell::new(None) };
-    static LAST_DOWN: RefCell<Option<(Instant, Point)>> = const { RefCell::new(None) };
+    static CLICKS: RefCell<Clicks<()>> = RefCell::new(Clicks::default());
 }
 
 pub(crate) fn clear() {
@@ -158,12 +158,7 @@ fn press_span(
 }
 
 fn note_down(point: Point) -> bool {
-    let now = Instant::now();
-    LAST_DOWN
-        .replace(Some((now, point)))
-        .is_some_and(|(at, prev)| {
-            ClickConfig::current().is_repeat(now.duration_since(at), prev, point)
-        })
+    CLICKS.with_borrow_mut(|clicks| clicks.press((), point)) >= 2
 }
 
 fn shift_extend(cx: &Cx, region: NodeId, endpoint: Endpoint, point: Point) {

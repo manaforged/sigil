@@ -128,7 +128,7 @@ fn main() -> AppResult<()> {
 
 A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `Theme: FromStr` returns `Err` if the document is not valid.
 
-A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `Theme: FromStr` return `Err`.
+A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`, and `hour12` as `true` for a 12-hour clock in `time_field`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `Theme: FromStr` return `Err`.
 
 ```toml
 base = "light"

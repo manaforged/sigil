@@ -10,13 +10,11 @@ use crate::style::theme::ambient::theme_text;
 use crate::style::{StyleAtom, Token, space};
 use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
-use super::color_field::ColorFieldBuilder;
-use super::number_field::{NumberFieldBuilder, NumericKind};
 use super::text_field::TextFieldBuilder;
 
 mod parsed;
 
-pub(crate) use parsed::{FieldParser, ParsedField};
+pub(crate) use parsed::{FieldParser, ParsedField, parsed_controls};
 
 const FIELD_GAP: f32 = space(1);
 fn shown(visible: bool) -> &'static [StyleAtom] {
@@ -46,7 +44,7 @@ pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -
     }
 }
 
-/// A control that can paint an invalid state: `text_field`, `number_field`, `color_field`.
+/// A control that can show an invalid state: `text_field`, `number_field`, `color_field`, `date_field`, `time_field`.
 pub trait FieldControl: IntoNode + Sized + 'static {
     /// Marks the control invalid while the value is true.
     #[must_use]
@@ -54,18 +52,6 @@ pub trait FieldControl: IntoNode + Sized + 'static {
 }
 
 impl FieldControl for TextFieldBuilder {
-    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
-        Self::invalid_when(self, invalid)
-    }
-}
-
-impl<T: NumericKind + 'static> FieldControl for NumberFieldBuilder<T> {
-    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
-        Self::invalid_when(self, invalid)
-    }
-}
-
-impl FieldControl for ColorFieldBuilder {
     fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
         Self::invalid_when(self, invalid)
     }
@@ -93,9 +79,6 @@ impl<C> FieldBuilder<C> {
 
 impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
     fn build(self, cx: &mut Cx) -> NodeId {
-        let invalid = self
-            .error
-            .map(|error| derived(move || error.get().is_some()));
         let required = self.required;
         let mut root = container()
             .role(Role::GenericContainer)
@@ -125,7 +108,6 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
                     target.a11y.labelled_by = Some(label_id);
                     target.a11y.name = AccessibleName::None;
                     target.a11y.described_by = error_id;
-                    target.a11y.invalid = invalid;
                     target.a11y.required = required;
                 }
             });

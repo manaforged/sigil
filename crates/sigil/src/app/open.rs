@@ -3,7 +3,7 @@ use std::process::Command;
 
 use crate::{AppResult, Error};
 
-/// Open a file or URL with the OS handler (feature `desktop`).
+/// Opens an http, https, or mailto URL with the OS handler (feature `desktop` or `terminal`).
 pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
     if !allowed(target.as_ref()) {
         return Err(Error::io(std::io::Error::new(
