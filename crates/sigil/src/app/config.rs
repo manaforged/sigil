@@ -47,11 +47,11 @@ mod hooks;
 mod terminal;
 mod text;
 
-#[cfg(feature = "terminal")]
-pub(crate) use hooks::TerminalHooks;
 #[cfg(feature = "desktop")]
 pub(crate) use hooks::CloseHook;
 pub(crate) use hooks::ExitHook;
+#[cfg(feature = "terminal")]
+pub(crate) use hooks::TerminalHooks;
 #[cfg(feature = "terminal")]
 pub(crate) use terminal::TerminalOptions;
 
