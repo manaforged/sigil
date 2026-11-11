@@ -21,25 +21,23 @@ impl ImageSource {
         use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         encoded.hash(&mut hasher);
-        crate::kernel::cached_image(hasher.finish(), || {
-            let decoded = ::image::load_from_memory(encoded).ok()?.into_rgba8();
-            let (width, height) = decoded.dimensions();
-            Self::from_rgba8(width, height, decoded.into_raw())
-        })
+        crate::kernel::cached_image(hasher.finish(), || Self::decode_uncached(encoded).ok())
+    }
+
+    #[cfg(feature = "image-decode")]
+    pub(crate) fn decode_uncached(encoded: &[u8]) -> Result<Self, crate::Error> {
+        let decoded = ::image::load_from_memory(encoded)
+            .map_err(|err| crate::Error::message(crate::ErrorKind::Other, err))?
+            .into_rgba8();
+        let (width, height) = decoded.dimensions();
+        Self::from_rgba8(width, height, decoded.into_raw())
+            .ok_or_else(|| crate::Error::fixed(crate::ErrorKind::Other, "the image has no pixels"))
     }
 
     /// Decodes a base64 raster `data:` URI; SVG and non-base64 URIs are refused.
     #[cfg(feature = "image-decode")]
     pub(crate) fn from_data_uri(uri: &str) -> Option<Self> {
-        use base64::Engine;
-        let (meta, payload) = uri.strip_prefix("data:")?.split_once(',')?;
-        if !meta.ends_with(";base64") || meta.contains("svg") {
-            return None;
-        }
-        let bytes = base64::engine::general_purpose::STANDARD
-            .decode(payload)
-            .ok()?;
-        Self::decode(&bytes)
+        Self::decode(&data_uri_bytes(uri)?)
     }
 
     /// Creates an image source from rgba8.
@@ -111,6 +109,18 @@ impl core::fmt::Debug for ImageSource {
             .field("bytes", &self.rgba.len())
             .finish()
     }
+}
+
+#[cfg(feature = "image-decode")]
+pub(crate) fn data_uri_bytes(uri: &str) -> Option<Vec<u8>> {
+    use base64::Engine;
+    let (meta, payload) = uri.strip_prefix("data:")?.split_once(',')?;
+    if !meta.ends_with(";base64") || meta.contains("svg") {
+        return None;
+    }
+    base64::engine::general_purpose::STANDARD
+        .decode(payload)
+        .ok()
 }
 
 fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {

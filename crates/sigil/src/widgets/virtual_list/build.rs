@@ -7,6 +7,7 @@ use crate::widgets::{Layout, Widget};
 
 use std::ops::Deref;
 
+use super::end;
 use super::keyboard::{KeyboardRuntime, attach_key_handlers};
 use super::measure::Measure;
 use super::render::{content_container, viewport_container, width_spec};
@@ -77,6 +78,9 @@ where
             .map(|bound| std::rc::Rc::clone(&bound.count));
         scroll::bind_extent(axes, self.content_height_bind, self.max_scroll_bind);
         scroll::anchor(axes);
+        if let (Some(hook), Some(bound)) = (self.end_reached.take(), self.bound.as_ref()) {
+            end::watch(axes, bound.live_rows, hook);
+        }
         if let Some(target) = self.follow {
             scroll::follow(target, axes, move || {
                 count.as_ref().map_or(0, |count| count())
@@ -134,6 +138,7 @@ where
             .take()
             .expect("build_bound called without a bound list");
         let sizing = self.effective_sizing();
+        apply_bound_scroll(axes, self.initial_scroll, self.pin_bottom);
         let content = (bound.thunk)(
             BoundStrip {
                 render: std::rc::Rc::new(self.render),
@@ -149,7 +154,6 @@ where
             },
             axes.scroll_y,
         );
-        apply_bound_scroll(axes, self.initial_scroll, self.pin_bottom);
         let root = with_scrollbar(
             self.scrollbar,
             viewport_container(axes.viewport_height, axes.width).child(content),

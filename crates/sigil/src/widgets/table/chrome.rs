@@ -10,6 +10,7 @@ use crate::widgets::{Layout, Widget};
 
 use super::super::menu::PANEL_INSET;
 use super::super::menu::{MenuItem, menu};
+use super::edit::CellEditor;
 use super::state::TableState;
 use crate::kernel::SortDirection;
 
@@ -30,6 +31,7 @@ pub(super) struct TableChrome<Row: 'static> {
     pub row_menu: Option<RowMenu<Row>>,
     pub row_activate: Option<RowActivate<Row>>,
     pub host: Option<Owner>,
+    pub edit: CellEditor,
 }
 
 impl<Row: 'static> Clone for TableChrome<Row> {
@@ -42,6 +44,7 @@ impl<Row: 'static> Clone for TableChrome<Row> {
             row_menu: self.row_menu.clone(),
             row_activate: self.row_activate.clone(),
             host: self.host,
+            edit: self.edit,
         }
     }
 }
@@ -59,6 +62,7 @@ impl<Row: 'static> TableChrome<Row> {
             row_menu,
             row_activate,
             host: Owner::current(),
+            edit: CellEditor::new(),
         }
     }
 

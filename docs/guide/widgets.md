@@ -4,13 +4,13 @@ The catalog ships in `sigil`. Every widget constructs from a lowercase function 
 
 The family pages carry signatures, options, and behavior notes:
 
-- [Controls](widgets/controls.md): button, icon_button, checkbox, toggle, radio_group, slider.
+- [Controls](widgets/controls.md): button, icon_button, checkbox, toggle, radio_group, slider, range_slider, link.
 - [Indicators](widgets/indicators.md): chip, dot, spinner, gauge, progress.
-- [Fields](widgets/fields.md): text_field, text_edit, number_field, date_field, color_field, combobox, dropdown.
-- [Data](widgets/data.md): table, virtual_list, heatmap.
-- [Content](widgets/content.md): text, label, icon, image, path, chart.
+- [Fields](widgets/fields.md): text_field, text_edit, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
+- [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
+- [Content](widgets/content.md): text, label, icon, image, load_image, path, chart.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
-- [Chrome](widgets/chrome.md): app_shell, panel, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers.
+- [Chrome](widgets/chrome.md): app_shell, panel, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers, including badge, skeleton, pagination, breadcrumbs, and stepper.
 - [Overlays](widgets/overlays.md): modal, sheet, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
 - [Plumbing](widgets/plumbing.md): interactive, axis_drag, drag/drop, clipboard, terminal.
 

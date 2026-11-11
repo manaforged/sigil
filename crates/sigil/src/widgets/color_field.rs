@@ -1,13 +1,13 @@
-use super::field::{FieldParser, ParsedField};
+use super::field::{FieldParser, ParsedField, parsed_controls};
 use super::shared::disabled_look;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols};
-use crate::reactive::Reactive;
 use crate::reactive::Signal;
-use crate::style::locale::Locale;
-use crate::style::{BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Token};
+use crate::style::{
+    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Theme, Token,
+};
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
@@ -17,7 +17,6 @@ use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Wi
 pub struct ColorFieldBuilder {
     value: Signal<Color>,
     field: ParsedField<HexParser>,
-    disabled: Option<Signal<bool>>,
     layout_overrides: LayoutOverrides,
 }
 
@@ -26,27 +25,15 @@ pub fn color_field(value: Signal<Color>) -> ColorFieldBuilder {
     ColorFieldBuilder {
         value,
         field: ParsedField::new(value, HexParser),
-        disabled: None,
         layout_overrides: LayoutOverrides::new(),
     }
 }
 
+parsed_controls!([] ColorFieldBuilder);
+
 impl ColorFieldBuilder {
-    /// Sets the disabled.
-    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        let disabled = disabled.into_signal();
-        self.field = self.field.disabled(disabled);
-        self.disabled = Some(disabled);
-        self
-    }
-
-    /// Sets the invalid when.
-    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
-        self.field = self.field.invalid_when(invalid);
-        self
-    }
-
     fn into_node_builder(self) -> NodeBuilder {
+        let disabled = self.field.disabled_flag();
         let field = self.field.text_field().layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
@@ -60,7 +47,7 @@ impl ColorFieldBuilder {
                     .align_items(AlignItems::Center)
                     .gap(Space::Sm),
             )
-            .child(disabled_look(swatch(self.value), self.disabled))
+            .child(disabled_look(swatch(self.value), disabled))
             .child(field)
     }
 }
@@ -106,14 +93,14 @@ struct HexParser;
 impl FieldParser for HexParser {
     type Value = Color;
 
-    fn parse(&self, raw: &str, _locale: &Locale) -> Option<Color> {
+    fn parse(&self, raw: &str, _theme: &Theme) -> Option<Color> {
         let raw = raw.trim();
         (raw.starts_with('#') && raw.len() <= 7)
             .then(|| raw.parse().ok())
             .flatten()
     }
 
-    fn render(&self, value: &Color, _locale: &Locale) -> String {
+    fn render(&self, value: &Color, _theme: &Theme) -> String {
         value.to_hex()
     }
 }

@@ -53,6 +53,7 @@ fn apply_locale_field(locale: &mut Locale, name: &str, value: &toml::Value) -> O
     match name {
         "preset" => {}
         "decimal" => locale.decimal = single_char(value)?,
+        "hour12" => locale.hour12 = value.as_bool()?,
         "group" => {
             let text = value.as_str()?;
             locale.group = if text.is_empty() {

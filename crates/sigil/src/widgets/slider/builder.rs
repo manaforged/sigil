@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::kernel::Action;
 
 use crate::events::PointerEvent;
-use crate::kernel::{NodeBuilder, Role, TextContent, container};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container};
 use crate::layout::Orientation;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
@@ -16,7 +16,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::{accessible_name_or, caller_style, control, disabled_now};
-use super::handlers::{attach_key_handlers, attach_pointer_drag};
+use super::handlers::{Grip, attach_key_handlers, attach_pointer_drag};
+use super::thumb::Thumb;
 use super::track::{slider_thumb, track};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
@@ -34,7 +35,7 @@ pub(super) struct SliderRange {
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct SliderRuntime {
-    pub(super) value: Signal<f32>,
+    pub(super) value: Thumb,
     pub(super) range: SliderRange,
     pub(super) step: f32,
     pub(super) disabled: Option<Signal<bool>>,
@@ -71,9 +72,31 @@ pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
     SliderBuilder::new(value, range)
 }
 
+/// A slider with two thumbs that edits a range inside `range`; the start thumb never passes the end thumb.
+///
+/// ```
+/// use sigil::prelude::*;
+/// use sigil::widgets::range_slider;
+///
+/// fn price_filter() -> impl IntoNode {
+///     let price = signal(20.0_f32..=80.0);
+///     range_slider(price, 0.0..=100.0).step(5.0).label("Price")
+/// }
+/// ```
+pub fn range_slider(
+    value: Signal<RangeInclusive<f32>>,
+    range: RangeInclusive<f32>,
+) -> SliderBuilder {
+    SliderBuilder::with_thumb(Thumb::Start(value), range)
+}
+
 impl SliderBuilder {
     /// Creates a slider builder.
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
+        Self::with_thumb(Thumb::Only(value), range)
+    }
+
+    fn with_thumb(value: Thumb, range: RangeInclusive<f32>) -> Self {
         let (start, end) = range.into_inner();
         Self {
             runtime: SliderRuntime {
@@ -148,11 +171,19 @@ impl SliderBuilder {
         let runtime = self.runtime;
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let style = std::mem::take(&mut self.style_accumulator);
-        let mut root = control(slider_node(&self), runtime.disabled).active();
-        let interaction = root.interaction();
-        let root = slider_parts(root, runtime, interaction);
-        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
-        let dragged = attach_pointer_drag(keyed, interaction, runtime, Rc::clone(&on_change));
+        let dragged = match runtime.value {
+            Thumb::Start(range) | Thumb::End(range) => {
+                super::range::range_root(runtime, range, self.label.as_deref(), &on_change)
+            }
+            Thumb::Only(_) => {
+                let mut root = control(slider_node(&self), runtime.disabled).active();
+                let interaction = root.interaction();
+                let root = slider_parts(root, runtime, interaction);
+                let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+                let grip = Grip::new(interaction);
+                attach_pointer_drag(keyed, runtime, [grip.clone(), grip], Rc::clone(&on_change))
+            }
+        };
         let mut node = caller_style(dragged, style);
         if let Some(caption) = self.label {
             node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
@@ -193,7 +224,7 @@ impl SliderRuntime {
         steps.mul_add(step, min).clamp(min, max)
     }
 
-    pub(super) fn set_from_position(self, event: &PointerEvent) {
+    pub(super) fn value_at(self, event: &PointerEvent) -> f32 {
         let (extent, fallback) = match self.orientation {
             Orientation::Horizontal => (event.target_size.width, HORIZONTAL_WIDTH),
             Orientation::Vertical => (event.target_size.height, VERTICAL_HEIGHT),
@@ -203,11 +234,19 @@ impl SliderRuntime {
             Orientation::Horizontal => event.position.x / extent,
             Orientation::Vertical => 1.0 - (event.position.y / extent),
         };
-        let raw = self
-            .range
-            .span()
-            .mul_add(ratio.clamp(0.0, 1.0), self.range.min);
-        self.value.set(self.quantize(raw));
+        self.quantize(
+            self.range
+                .span()
+                .mul_add(ratio.clamp(0.0, 1.0), self.range.min),
+        )
+    }
+
+    pub(super) fn ratio(self) -> f32 {
+        (self.value.get() - self.range.min) / self.range.span()
+    }
+
+    pub(super) const fn on(self, value: Thumb) -> Self {
+        Self { value, ..self }
     }
 
     pub(super) fn nudge(self, steps: f32) {
@@ -220,14 +259,21 @@ fn slider_node(builder: &SliderBuilder) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
     let label = builder.label.clone().map(TextContent::Static);
+    slider_semantics(
+        runtime,
+        accessible_name_or(label.as_ref(), StringKey::Slider),
+    )
+    .layout(layout)
+}
+
+pub(super) fn slider_semantics(runtime: SliderRuntime, name: AccessibleName) -> NodeBuilder {
     container()
         .role(Role::Slider)
-        .label(accessible_name_or(label.as_ref(), StringKey::Slider))
+        .label(name)
         .action(Action::Increment)
         .action(Action::Decrement)
-        .value(runtime.value, runtime.range.min, runtime.range.max)
+        .value(runtime.value.signal(), runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(layout)
 }
 
 fn slider_parts(
@@ -248,7 +294,11 @@ fn slider_parts(
     }
 }
 
-fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool) -> LayoutStyle {
+pub(super) fn slider_layout(
+    orientation: Orientation,
+    length: Option<f32>,
+    captioned: bool,
+) -> LayoutStyle {
     match orientation {
         Orientation::Horizontal => {
             let base = LayoutStyle::flex_row()

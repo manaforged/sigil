@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::sync::OnceLock;
 
 use crate::reactive::{Signal, derived, untrack};
-use crate::style::locale::Locale;
 use crate::style::strings::StringKey;
 
 use super::Theme;
@@ -33,10 +32,6 @@ impl ActiveTheme {
             Some(theme) => theme.with(read),
             None => read(fallback_theme()),
         }
-    }
-
-    pub(crate) fn locale(self) -> Locale {
-        self.with(|theme| theme.locale)
     }
 
     pub(crate) fn string(self, key: StringKey) -> String {

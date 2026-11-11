@@ -46,11 +46,13 @@ pub(super) fn build_base_node(
     let displayed = displayed_text(&runtime, placeholder.clone());
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
     let disabled = runtime.input.disabled;
-    let channel = field_style_channel(interaction, disabled, inputs.invalid, Rc::clone(&slot_cell));
+    let invalid = inputs.invalid;
+    let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
     let text_style = runtime.input.text_style;
     let mut node = container()
         .mutate(move |node| {
             let _ = node.attach(TextStyleCapture::new(text_style));
+            node.a11y.invalid = invalid;
         })
         .role(if runtime.password {
             Role::PasswordInput

@@ -60,7 +60,7 @@ number_field(quantity, 1..=99);
 # };
 ```
 
-The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer. Float kinds reject non-finite input. `.disabled(Signal<bool>)` works as in `text_field`. `.invalid_when(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
+The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer, and Enter or leaving the field rewrites it to the stored value, so "500" in `0..=100` shows "100". Float kinds reject non-finite input. `.disabled(Signal<bool>)` works as in `text_field`. `.invalid_when(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
 
 ## date_field
 
@@ -71,6 +71,14 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 ## color_field
 
 `color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
+
+## time_field
+
+`time_field(Signal<T>)` where `T` is `Time` or `DateTime`. A text field over the same buffer pattern. It reads and writes `hh:mm`, or `hh:mm:ss` with `.seconds(true)`, on a 24-hour clock, or on a 12-hour clock with the `Am` and `Pm` strings when `Locale::hour12` is set. A `DateTime` field reads the date first, as `date_field` does. `Time::new(hour, minute, second)` validates the parts. `.disabled`, `.invalid_when`, and `.text_field()` work as in `number_field`.
+
+## tag_input
+
+`tag_input(options, Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options`; Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(Signal<bool>)`.
 
 ## combobox
 

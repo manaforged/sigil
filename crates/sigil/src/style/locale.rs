@@ -1,5 +1,7 @@
 use std::fmt::Write as _;
 
+use super::strings::{StringKey, Strings};
+
 /// Layout direction.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Direction {
@@ -95,6 +97,8 @@ pub struct Locale {
     pub date_order: DateOrder,
     /// The date separator.
     pub date_separator: char,
+    /// Whether times show a 12-hour clock with AM and PM.
+    pub hour12: bool,
 }
 
 impl Default for Locale {
@@ -114,6 +118,7 @@ impl Locale {
             zero: '0',
             date_order: DateOrder::Ymd,
             date_separator: '-',
+            hour12: false,
         }
     }
 
@@ -126,7 +131,9 @@ impl Locale {
     /// Returns the en locale.
     #[must_use]
     pub const fn en() -> Self {
-        Self::new('.', Some(',')).with_date(DateOrder::Mdy, '/')
+        let mut locale = Self::new('.', Some(',')).with_date(DateOrder::Mdy, '/');
+        locale.hour12 = true;
+        locale
     }
 
     /// Returns the de locale.
@@ -138,9 +145,11 @@ impl Locale {
     /// Returns the ar locale.
     #[must_use]
     pub const fn ar() -> Self {
-        Self::new('\u{066B}', Some('\u{066C}'))
+        let mut locale = Self::new('\u{066B}', Some('\u{066C}'))
             .with_date(DateOrder::Dmy, '/')
-            .with_zero('\u{0660}')
+            .with_zero('\u{0660}');
+        locale.hour12 = true;
+        locale
     }
 
     /// Sets the date order.
@@ -280,11 +289,7 @@ impl Locale {
     /// Parses a date in this locale's order.
     #[must_use]
     pub fn parse_date(&self, input: &str) -> Option<(i32, u8, u8)> {
-        let ascii: String = input
-            .trim()
-            .chars()
-            .map(|c| self.digit_value(c).unwrap_or(c))
-            .collect();
+        let ascii = self.ascii_digits(input);
         let mut fields = ascii.splitn(3, self.date_separator);
         let (mut year, mut month, mut day) = (None, None, None);
         for part in self.date_order.parts() {
@@ -297,4 +302,81 @@ impl Locale {
         }
         Some((year?, month?, day?))
     }
+
+    /// Formats a time of day as `hour:minute` or `hour:minute:second`, on a 12-hour clock with the `Am` and `Pm` texts of `strings` when `hour12` is set.
+    #[must_use]
+    pub fn format_time(
+        &self,
+        hour: u8,
+        minute: u8,
+        second: Option<u8>,
+        strings: &Strings,
+    ) -> String {
+        let hour = hour % 24;
+        let mut out = String::with_capacity(11);
+        let _ = if self.hour12 {
+            write!(out, "{}:{minute:02}", (hour + 11) % 12 + 1)
+        } else {
+            write!(out, "{hour:02}:{minute:02}")
+        };
+        if let Some(second) = second {
+            let _ = write!(out, ":{second:02}");
+        }
+        let mut out: String = out.chars().map(|c| self.local_digit(c)).collect();
+        if self.hour12 {
+            out.push(' ');
+            out.push_str(strings.get(if hour < 12 {
+                StringKey::Am
+            } else {
+                StringKey::Pm
+            }));
+        }
+        out
+    }
+
+    /// Parses a time of day as 24-hour `hour:minute[:second]`, or 12-hour with the `Am` or `Pm` text of `strings` as a suffix.
+    #[must_use]
+    pub fn parse_time(&self, input: &str, strings: &Strings) -> Option<(u8, u8, Option<u8>)> {
+        let upper = self.ascii_digits(input).to_uppercase();
+        let trimmed = upper.trim_end();
+        let (clock, pm) = [(StringKey::Pm, true), (StringKey::Am, false)]
+            .into_iter()
+            .find_map(|(key, pm)| {
+                let suffix = strings.get(key).to_uppercase();
+                (!suffix.is_empty())
+                    .then(|| trimmed.strip_suffix(suffix.as_str()))
+                    .flatten()
+                    .map(|rest| (rest, Some(pm)))
+            })
+            .unwrap_or((trimmed, None));
+        let mut fields = clock.trim().split(':');
+        let hour = fields.next()?.trim().parse::<u8>().ok()?;
+        let minute = two_digits(fields.next()?)?;
+        let second = match fields.next() {
+            Some(field) => Some(two_digits(field)?),
+            None => None,
+        };
+        if fields.next().is_some() {
+            return None;
+        }
+        let hour = match pm {
+            Some(pm) if (1..=12).contains(&hour) => hour % 12 + if pm { 12 } else { 0 },
+            Some(_) => return None,
+            None => hour,
+        };
+        Some((hour, minute, second))
+    }
+
+    fn ascii_digits(&self, input: &str) -> String {
+        input
+            .trim()
+            .chars()
+            .map(|c| self.digit_value(c).unwrap_or(c))
+            .collect()
+    }
+}
+
+fn two_digits(field: &str) -> Option<u8> {
+    let field = field.trim();
+    (field.len() == 2).then(|| field.parse().ok()).flatten()
 }

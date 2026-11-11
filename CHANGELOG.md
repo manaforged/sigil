@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
+- The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.
+- `DateFieldBuilder` implements `FieldControl`, so `field(..).error(..)` accepts it.
+- `Locale` has a new `hour12` field. Migration: a `Locale { .. }` struct literal adds `hour12: false` for a 24-hour clock.
+- `virtual_list` with a fixed `viewport_height` and `follow_end`, `initial_scroll` or a scroll to a row no longer paints a blank viewport on first frame.
+- `open` and `link` URLs work in terminal-only builds (feature `terminal`).
+- Parsed fields (`date_field`, `number_field`, `color_field`, `time_field`) no longer reformat the text while the user types; before, a date field turned "2026-08-1" into "2026-08-01" under the caret. The text is rewritten to the stored value when the user presses Enter or leaves the field, when the app sets the value, and when the locale changes, so "500" in a `0..=100` field shows "100" and "1.50" shows "1.5".
 - `splitter` and `tabs` free their drag state when they unmount. Before, each mount leaked it.
 - `AppConfig::on_exit` runs on the terminal host and in builds without the `desktop` feature. Before, the terminal host never called it.
 - A text selection belongs to the host where it was made. Before, a frame in a second window or host could clear it or highlight text in the wrong tree.
@@ -38,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `TableColumn::editable(text, commit)` edits a cell in place. Double-click or Enter starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. The result is written into the table's rows, and an open edit follows its row by `Identifiable` id when the app replaces the rows.
+- `virtual_list(..).end_reached(rows, f)` and `table(..).end_reached(rows, f)` run `f` once each time the user scrolls within `rows` rows of the end, for load-more paging.
+- `link(label)`: focusable text that opens `href` or runs an action, with role link, theme hover and focus styles, and an OSC 8 hyperlink on the terminal host.
+- `Log` and `log_view(log)`: an append-only log that drops its oldest lines past a limit and follows the tail until the user scrolls up. `Log::push` splits at `\n` or `\r\n` and adds no empty line for a trailing break.
+- `badge`, `skeleton`, `pagination`, `breadcrumbs` and `stepper` patterns. `pagination` moves the page into range when the page count shrinks.
+- `range_slider(value, range)`: two thumbs on one track editing a `Signal<RangeInclusive<f32>>`. The start never passes the end, each thumb takes focus and keys, and a drag moves the nearest thumb. When both thumbs sit on one value, the drag direction picks the thumb.
+- `time_field` with `Time` and `DateTime` (both ordered): a time, or a date and time, input with a 12- or 24-hour clock from the new `Locale::hour12` field, and `Locale::format_time` and `parse_time`. `TimeFieldBuilder` implements `FieldControl`.
+- `tag_input(options, selected)`: a filterable multi-select whose chosen options show as removable tags. Backspace in an empty input removes the last tag.
+- `load_image(location)` loads an image from a file path, `file://` URL or `data:` URI off the UI thread, with a placeholder while loading and an error view with the reason. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`. Loads are cached by location and, for a file, its modified time and size, so a changed file loads again.
+- In a browser (wasm32), `load_image` and `ImageSource::load` also fetch http(s) URLs. Native builds report that http URLs are not supported yet.
 - `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
 - The recipes have a Lists section on per-row signals.
 

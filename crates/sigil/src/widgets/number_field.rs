@@ -1,11 +1,10 @@
 use std::ops::RangeInclusive;
 
-use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Reactive, Signal};
+use crate::reactive::Signal;
+use crate::style::Theme;
 use crate::style::locale::Locale;
 
-use super::field::{FieldParser, ParsedField};
-use super::text_field::TextFieldBuilder;
+use super::field::{FieldParser, ParsedField, parsed_controls};
 
 /// Number types that `number_field` accepts.
 pub trait NumericKind: Copy + PartialOrd + 'static + private::Sealed {
@@ -55,20 +54,20 @@ impl<T: NumericKind> FieldParser for NumberParser<T> {
     type Value = T;
     const REVERT: bool = true;
 
-    fn parse(&self, raw: &str, locale: &Locale) -> Option<T> {
-        T::parse(raw, locale)
+    fn parse(&self, raw: &str, theme: &Theme) -> Option<T> {
+        T::parse(raw, &theme.locale)
     }
 
-    fn render(&self, value: &T, locale: &Locale) -> String {
-        value.render(locale)
+    fn render(&self, value: &T, theme: &Theme) -> String {
+        value.render(&theme.locale)
     }
 
     fn normalize(&self, value: T) -> T {
         value.clamp_to(&self.0)
     }
 
-    fn accepts(&self, raw: &str, locale: &Locale) -> bool {
-        T::parse(raw, locale).is_some_and(|parsed| parsed == parsed.clamp_to(&self.0))
+    fn accepts(&self, raw: &str, theme: &Theme) -> bool {
+        T::parse(raw, &theme.locale).is_some_and(|parsed| parsed == parsed.clamp_to(&self.0))
     }
 }
 
@@ -79,30 +78,7 @@ pub struct NumberFieldBuilder<T: NumericKind> {
     field: ParsedField<NumberParser<T>>,
 }
 
-impl<T: NumericKind> NumberFieldBuilder<T> {
-    /// Sets the disabled.
-    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.field = self.field.disabled(disabled);
-        self
-    }
-
-    /// Sets the invalid when.
-    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
-        self.field = self.field.invalid_when(invalid);
-        self
-    }
-
-    /// Returns the text field.
-    pub fn text_field(self) -> TextFieldBuilder {
-        self.field.text_field()
-    }
-}
-
-impl<T: NumericKind> IntoNode for NumberFieldBuilder<T> {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.text_field().build(cx)
-    }
-}
+parsed_controls!([T: NumericKind] NumberFieldBuilder<T>, text_field);
 
 /// A numeric input.
 pub fn number_field<T: NumericKind>(

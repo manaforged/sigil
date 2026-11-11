@@ -81,6 +81,8 @@ pub mod layout;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod layout;
+#[cfg(target_arch = "wasm32")]
+mod net;
 /// Frame timing, counters, and profile output.
 pub mod profile;
 /// Signals, effects, owners, and channels.
@@ -187,7 +189,7 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
-    #[cfg(feature = "desktop")]
+    #[cfg(app_host)]
     pub use crate::app::open;
     #[cfg(app_host)]
     pub use crate::app::{ThemeWatcher, watch_theme};
@@ -206,6 +208,8 @@ pub mod prelude {
         ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each,
         fragment, image, node, show, switch, text,
     };
+    #[cfg(feature = "image-decode")]
+    pub use crate::kernel::{ImageLoadBuilder, load_image};
     pub use crate::layout::audit::Flaw;
     kittest_pub! {
         #[doc(hidden)]
@@ -232,16 +236,17 @@ pub mod prelude {
     pub use crate::widgets::a2ui;
     pub use crate::widgets::{
         ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
-        ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
-        SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, app_shell, avatar,
-        axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
-        command_menu, context_menu, date_field, diff, divider, dot, drag_ghost, dropdown,
-        empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
-        hint_overlay, html, icon, icon_button, kv_grid, kv_row, list_row, markdown, markdown_edit,
-        markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band, number_field, panel,
-        path, progress, radio_group, scroll, section_label, segmented, sheet, sidebar, slider,
-        spacer, sparkline, spinner, splitter, stat, status_bar, surface, table, tabs, terminal,
-        text_edit, text_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
+        ListRowSlots, Log, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
+        SortDirection, SortKey, TableColumn, TableState, Time, ToastQueue, Widget, app_shell,
+        avatar, axis_drag, badge, breadcrumbs, button, card, chart, checkbox, chip, code_edit,
+        color_field, combobox, command_menu, context_menu, date_field, diff, divider, dot,
+        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight,
+        hint_bar, hint_overlay, html, icon, icon_button, kv_grid, kv_row, link, list_row, log_view,
+        markdown, markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal,
+        notice_band, number_field, pagination, panel, path, progress, radio_group, range_slider,
+        scroll, section_label, segmented, sheet, sidebar, skeleton, slider, spacer, sparkline,
+        spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input, terminal,
+        text_edit, text_field, time_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

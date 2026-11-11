@@ -185,3 +185,41 @@ pub(crate) fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {
     path.reverse();
     path
 }
+
+/// Counts quick presses on one target, for double and triple clicks.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Clicks<K> {
+    last: Option<(web_time::Instant, K, Point)>,
+    count: u32,
+}
+
+impl<K> Default for Clicks<K> {
+    fn default() -> Self {
+        Self {
+            last: None,
+            count: 0,
+        }
+    }
+}
+
+impl<K: Copy + PartialEq> Clicks<K> {
+    /// Records a press on `target` at `point` and returns its place in the run: 1, 2, 3, ...
+    pub(crate) fn press(&mut self, target: K, point: Point) -> u32 {
+        let now = web_time::Instant::now();
+        let repeat = self.last.is_some_and(|(at, last, from)| {
+            last == target
+                && crate::events::ClickConfig::current().is_repeat(
+                    now.duration_since(at),
+                    from,
+                    point,
+                )
+        });
+        self.count = if repeat {
+            self.count.saturating_add(1)
+        } else {
+            1
+        };
+        self.last = Some((now, target, point));
+        self.count
+    }
+}

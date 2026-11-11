@@ -36,6 +36,7 @@ Key options:
 - `.scroll_into_view(index)`, `.initial_scroll(ScrollAnchor)` (`Top`/`Bottom`/`Index`): initial position.
 - `.follow_end(bool)`: start at the end and keep the view pinned to the last row while rows grow, until the user scrolls up (chat/log behavior).
 - `.follow_row(Signal<usize>)`: an effect that scrolls the target row into view whenever it changes. It scrolls the least whole rows that show the row, and uses the measured viewport with `.fill()`. When the content grows, the list follows only if the view was at the bottom and the target is the last row; a list that opens empty and fills later stays at the target row. If the user scrolls up, the view stays, also when a new row moves the target. The list follows again after the view returns to the bottom. A target write with no new rows always scrolls to the target row, so `target.update(|row| *row = last)` jumps to the tail.
+- `.end_reached(rows, Fn())`: runs once each time the user scrolls within `rows` rows of the end, for load-more paging. It fires again after the list grows.
 - `.keyboard(bool)`: keyboard is on by default: Arrow Up/Down move the focused row, PageUp/PageDown move a page, Home/End jump to the ends. A page uses the row tops, so `.measured()` lists page by the measured heights. The focused list draws the shared focus ring.
 
 ## table
@@ -68,6 +69,7 @@ table(state).striped().fill_height();
 - `.sortable(Fn(&Row, &Row) -> Ordering)` / `.sort_by(key)`: clicking the header cycles ascending/descending/off via `toggle_sort`.
 - `.filterable(Fn(&Row, &str) -> bool)`: participates in the quick filter.
 - `.cell(Fn(&Row) -> impl IntoNode)`: the cell content; a column without it renders an empty `Role::GridCell`.
+- `.editable(text, commit)`: edits the cell in place. `text(&Row) -> String` fills the editor and `commit(&mut Row, String)` writes the result into the table's rows. Double-click or Enter on a row starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. With `TableState::identified`, an open edit follows its row when the app calls `replace_rows`.
 
 `TableState<Row>` is the live model:
 
@@ -78,9 +80,13 @@ table(state).striped().fill_height();
 - `sort_key() -> Signal<Option<SortKey>>`, `toggle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
 - Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 
-`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
+`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column), `.end_reached(rows, Fn())` (as on `virtual_list`).
 
 The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
+
+## log_view
+
+`log_view(Log)`. A `virtual_list` of mono text lines that follows the tail until the user scrolls up. `Log::new(max_lines)` keeps the newest lines; `push(text)` splits at line breaks, `clear()` empties it, and `len()` counts the lines. `Log` is `Copy`, so a task can hold it and push while the view shows it.
 
 ## heatmap
 

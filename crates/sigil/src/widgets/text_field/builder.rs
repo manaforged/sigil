@@ -115,9 +115,13 @@ impl TextFieldBuilder {
         self
     }
 
-    /// Sets the invalid when.
-    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
-        self.invalid = Some(invalid.into_signal());
+    /// Marks the field invalid while `invalid` is true, in paint and for screen readers; each call adds a condition.
+    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
+        let added = invalid.into_signal();
+        self.invalid = Some(match self.invalid {
+            Some(before) => derived(move || before.get() || added.get()),
+            None => added,
+        });
         self
     }
 

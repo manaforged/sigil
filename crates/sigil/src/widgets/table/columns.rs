@@ -2,6 +2,7 @@ use crate::layout::Space;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
+use super::edit::ColumnEdit;
 use crate::kernel::IntoNode;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow};
 
@@ -45,6 +46,7 @@ pub struct TableColumn<Row> {
     compare: Option<CompareFn<Row>>,
     filter: Option<FilterFn<Row>>,
     cell: Option<CellFn<Row>>,
+    edit: Option<ColumnEdit<Row>>,
     width: ColumnWidth,
     min_width: f32,
     align: ColumnAlign,
@@ -60,6 +62,7 @@ impl<Row> core::fmt::Debug for TableColumn<Row> {
             .field("min_width", &self.min_width)
             .field("align", &self.align)
             .field("numeric", &self.numeric)
+            .field("editable", &self.is_editable())
             .finish_non_exhaustive()
     }
 }
@@ -72,6 +75,7 @@ impl<Row> Clone for TableColumn<Row> {
             compare: self.compare.clone(),
             filter: self.filter.clone(),
             cell: self.cell.clone(),
+            edit: self.edit.clone(),
             width: self.width,
             min_width: self.min_width,
             align: self.align,
@@ -90,6 +94,7 @@ impl<Row> TableColumn<Row> {
             compare: None,
             filter: None,
             cell: None,
+            edit: None,
             width: ColumnWidth::Fraction(1.0),
             min_width: MIN_COL_WIDTH,
             align: ColumnAlign::Start,
@@ -143,6 +148,46 @@ impl<Row> TableColumn<Row> {
     {
         self.cell = Some(Rc::new(move |row| Box::new(render(row))));
         self
+    }
+
+    /// Lets the user edit each cell in place: `text` gives the starting text and `commit` writes the result into the row.
+    ///
+    /// ```
+    /// use sigil::prelude::*;
+    ///
+    /// #[derive(Clone)]
+    /// struct Person {
+    ///     name: String,
+    /// }
+    ///
+    /// fn people() -> impl IntoNode {
+    ///     let name = TableColumn::new("name", "Name")
+    ///         .cell(|p: &Person| text(p.name.clone()))
+    ///         .editable(|p| p.name.clone(), |p, text| p.name = text);
+    ///     table(TableState::new(vec![Person { name: "Ada".into() }], vec![name]))
+    /// }
+    /// ```
+    #[must_use]
+    pub fn editable(
+        mut self,
+        text: impl Fn(&Row) -> String + 'static,
+        commit: impl Fn(&mut Row, String) + 'static,
+    ) -> Self
+    where
+        Row: Clone + 'static,
+    {
+        self.edit = Some(ColumnEdit::new(text, commit));
+        self
+    }
+
+    /// Returns whether the user can edit this column's cells.
+    #[must_use]
+    pub const fn is_editable(&self) -> bool {
+        self.edit.is_some()
+    }
+
+    pub(super) const fn cell_edit(&self) -> Option<&ColumnEdit<Row>> {
+        self.edit.as_ref()
     }
 
     /// Sets the width.

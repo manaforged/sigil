@@ -31,7 +31,7 @@ pub mod menu;
 /// Desktop notifications.
 #[cfg(feature = "notify")]
 pub mod notify;
-#[cfg(feature = "desktop")]
+#[cfg(app_host)]
 mod open;
 #[cfg(any(native_commands, global_hotkey, inspector))]
 pub(crate) type Wake = std::sync::Arc<dyn Fn() + Send + Sync + 'static>;
@@ -103,7 +103,7 @@ pub(crate) use host_env::HostCaps;
 pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]
 pub(crate) use launch::launch;
-#[cfg(feature = "desktop")]
+#[cfg(app_host)]
 pub use open::open;
 #[cfg(feature = "pty")]
 pub use pty::Session;

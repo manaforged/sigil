@@ -95,6 +95,14 @@ Key options:
 
 Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown move ten steps, Home/End jump to the range ends. Drag captures the pointer, so a slide that leaves the track still updates.
 
+## range_slider
+
+`range_slider(Signal<RangeInclusive<f32>>, RangeInclusive<f32>) -> SliderBuilder`. Two thumbs on one track. Each thumb is a focusable `Role::Slider` named "minimum" and "maximum" after the slider label, and takes the same keys as `slider`. The start never passes the end. A press or drag moves the nearest thumb; when both thumbs sit on one value, the drag direction picks the thumb. `.change(Fn(f32))` reports the moved thumb's value; read the whole range from the signal.
+
+## link
+
+`link(label) -> LinkBuilder`. Focusable text with `Role::Link`. Click, Enter, or Space runs `.activate(Fn())`; without an action it opens `.href(url)` with the OS handler (features `desktop` or `terminal`). On the terminal host the URL is also written as an OSC 8 hyperlink.
+
 ## States, keys, and accessibility
 
 The visual catalog captures each control in the states in the table. Hover, pressed, and focused come from the pointer and the keyboard. Disabled comes from `.disabled(Signal<bool>)`.

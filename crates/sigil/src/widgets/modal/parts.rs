@@ -13,7 +13,6 @@ use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
 
 const TITLE_HEIGHT: f32 = 24.0;
 pub(super) const BODY_GUTTER: f32 = SCROLLBAR_WIDTH;
-const CLOSE_GLYPH: &str = "\u{00D7}";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum CloseControl {
@@ -41,7 +40,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
         );
     match close {
         Some(show) => row.child(
-            icon_button(CLOSE_GLYPH, move || show.set(false))
+            icon_button(crate::widgets::icon::DISMISS_GLYPH, move || show.set(false))
                 .accessible(theme_label(StringKey::Close))
                 .size(ControlSize::Compact),
         ),

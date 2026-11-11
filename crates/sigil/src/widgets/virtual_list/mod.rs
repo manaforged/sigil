@@ -5,6 +5,7 @@
 )]
 
 mod build;
+mod end;
 mod keyboard;
 mod measure;
 mod render;
@@ -22,6 +23,7 @@ use std::ops::Deref;
 use super::layout_ext::LayoutOverrides;
 use super::scroll::ScrollAxis;
 use super::table::Identifiable;
+pub(crate) use end::EndReached;
 pub use row::RowRender;
 pub use selection::{SelectionMode, SelectionState};
 
@@ -101,6 +103,7 @@ where
     estimate: Option<f32>,
     location: &'static core::panic::Location<'static>,
     scrollbar: bool,
+    end_reached: Option<end::EndReached>,
     style_accumulator: crate::style::Style,
 }
 
@@ -194,6 +197,7 @@ where
         estimate: None,
         location: core::panic::Location::caller(),
         scrollbar: false,
+        end_reached: None,
         style_accumulator: crate::style::Style::new(),
     }
 }

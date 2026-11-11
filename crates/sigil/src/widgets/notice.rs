@@ -8,6 +8,8 @@ use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
 use crate::widgets::{Layout, Widget};
 
+use super::icon::CHECK_GLYPH;
+
 static NOTICE_BAND: &[StyleAtom] = &[
     Radius::Md.atom(),
     StyleAtom::BgToneStep(3),
@@ -69,7 +71,7 @@ fn cell_band(band: NodeBuilder, tone: Tone) -> NodeBuilder {
     let marker = match tone {
         Tone::Error => "✗",
         Tone::Warning => "!",
-        Tone::Success => "✓",
+        Tone::Success => CHECK_GLYPH,
         Tone::Info | Tone::Primary | Tone::Neutral => "▌",
     };
     band.layout(

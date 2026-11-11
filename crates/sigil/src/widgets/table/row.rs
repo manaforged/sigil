@@ -2,7 +2,7 @@ use crate::layout::Space;
 use std::sync::Arc;
 
 use crate::events::{Key, MouseButton, PointerEvent};
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
 use crate::style::strings::StringKey;
@@ -14,6 +14,8 @@ use super::super::interaction::InteractionState;
 use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};
 use super::super::shared::{DIMMED, disabled_a11y, reactive_style_state};
 use super::chrome::{ContextKind, TableChrome};
+use super::columns::TableColumn;
+use super::edit::{CellEditor, editable_cell};
 use super::header::track_layout;
 use super::hscroll::HScroll;
 use super::select;
@@ -114,9 +116,12 @@ fn build_row<Row: 'static>(
         eq: eq.clone(),
     });
     let state_cells = state.clone();
+    let editor = chrome.edit;
     let track = container()
         .layout(track_layout(row_height))
-        .children_reactive(move || row_cells(&state_cells, spec, row_index, &row_value.get()));
+        .children_reactive(move || {
+            row_cells(&state_cells, (spec, editor), row_index, &row_value.get())
+        });
     let cells = container()
         .role(Role::Row)
         .label(theme_fill_once(StringKey::Row, &[&(visible_pos + 1)]))
@@ -146,16 +151,24 @@ fn activate_key<Row: 'static>(
     chrome: &TableChrome<Row>,
     target: (u32, Option<Signal<bool>>),
 ) -> NodeBuilder {
-    if chrome.row_activate.is_none() {
+    let editable = state.columns().iter().any(TableColumn::is_editable);
+    if chrome.row_activate.is_none() && !editable {
         return row;
     }
     let (row_index, disabled) = target;
+    let row = if editable {
+        row.focus_when(chrome.edit.refocus_trigger(row_index))
+    } else {
+        row
+    };
     let (state, chrome) = (state.clone(), chrome.clone());
     row.focusable(true).key(Key::Enter, move |event| {
         if disabled.is_some_and(|off| off.get()) {
             return;
         }
-        chrome.activate(&state, row_index);
+        if !chrome.edit.begin_row(&state, row_index) {
+            chrome.activate(&state, row_index);
+        }
         event.stop_propagation();
     })
 }
@@ -179,14 +192,14 @@ fn row_states(
 
 fn row_cells<Row: 'static>(
     state: &TableState<Row>,
-    spec: RowSpec,
+    (spec, editor): (RowSpec, CellEditor),
     row_index: u32,
     value: &RowValue<Row>,
 ) -> Vec<NodeBuilder> {
     let layout = state.column_layout().get();
-    let Some(live_row) = value.rows.get(value.index) else {
+    if value.rows.get(value.index).is_none() {
         return Vec::new();
-    };
+    }
     let offset = usize::from(spec.select);
     let mut cells = Vec::new();
     if spec.select {
@@ -197,7 +210,8 @@ fn row_cells<Row: 'static>(
             .visible_columns()
             .into_iter()
             .map(|(def_index, column)| {
-                let content = column.cell_render().map(|render| render(live_row));
+                let content =
+                    cell_content(state, column, (spec, editor), (row_index, def_index), value);
                 let cell = container()
                     .role(Role::GridCell)
                     .column_index(def_index + offset + 1)
@@ -206,7 +220,7 @@ fn row_cells<Row: 'static>(
                         spec.row_height,
                         Some(spec.pad_x),
                     ))
-                    .child(content.unwrap_or_else(|| Box::new(container())));
+                    .child(content);
                 if column.is_numeric() {
                     cell.class(NUMERIC_CLASS)
                 } else {
@@ -215,6 +229,35 @@ fn row_cells<Row: 'static>(
             }),
     );
     cells
+}
+
+fn cell_content<Row: 'static>(
+    state: &TableState<Row>,
+    column: &TableColumn<Row>,
+    (spec, editor): (RowSpec, CellEditor),
+    cell: (u32, usize),
+    value: &RowValue<Row>,
+) -> Box<dyn IntoNode> {
+    let render = column.cell_render().cloned();
+    let rows = Arc::clone(&value.rows);
+    let index = value.index;
+    let content = move || -> Box<dyn IntoNode> {
+        render.as_ref().zip(rows.get(index)).map_or_else(
+            || -> Box<dyn IntoNode> { Box::new(container()) },
+            |(render, row)| render(row),
+        )
+    };
+    if column.is_editable() {
+        Box::new(editable_cell(
+            state,
+            editor,
+            cell,
+            spec.disabled,
+            move || container().child(content()),
+        ))
+    } else {
+        content()
+    }
 }
 
 fn row_layout(height: f32, pad_x: f32) -> LayoutStyle {

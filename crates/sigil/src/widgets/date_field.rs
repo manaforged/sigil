@@ -1,12 +1,11 @@
-use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Reactive, Signal};
+use crate::reactive::Signal;
+use crate::style::Theme;
 use crate::style::locale::Locale;
 
-use super::field::{FieldParser, ParsedField};
-use super::text_field::TextFieldBuilder;
+use super::field::{FieldParser, ParsedField, parsed_controls};
 
 /// A calendar date.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Date {
     /// The year.
     pub year: i32,
@@ -73,12 +72,12 @@ struct DateParser;
 impl FieldParser for DateParser {
     type Value = Date;
 
-    fn parse(&self, raw: &str, locale: &Locale) -> Option<Date> {
-        Date::parse_in(raw, locale)
+    fn parse(&self, raw: &str, theme: &Theme) -> Option<Date> {
+        Date::parse_in(raw, &theme.locale)
     }
 
-    fn render(&self, value: &Date, locale: &Locale) -> String {
-        value.render_in(locale)
+    fn render(&self, value: &Date, theme: &Theme) -> String {
+        value.render_in(&theme.locale)
     }
 }
 
@@ -89,30 +88,7 @@ pub struct DateFieldBuilder {
     field: ParsedField<DateParser>,
 }
 
-impl DateFieldBuilder {
-    /// Sets the disabled.
-    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.field = self.field.disabled(disabled);
-        self
-    }
-
-    /// Sets the invalid when.
-    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
-        self.field = self.field.invalid_when(invalid);
-        self
-    }
-
-    /// Returns the text field.
-    pub fn text_field(self) -> TextFieldBuilder {
-        self.field.text_field()
-    }
-}
-
-impl IntoNode for DateFieldBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.text_field().build(cx)
-    }
-}
+parsed_controls!([] DateFieldBuilder, text_field);
 
 /// A date input.
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {

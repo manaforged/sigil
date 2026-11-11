@@ -95,7 +95,19 @@ static GLASS_THUMB_DISABLED: &[StyleAtom] = &[
 ];
 
 pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
-    let layout = if filled {
+    if filled {
+        segment(runtime, true, Some(Box::new(move || runtime.ratio())))
+    } else {
+        segment(runtime, false, None)
+    }
+}
+
+pub(super) fn segment(
+    runtime: SliderRuntime,
+    filled: bool,
+    ratio: Option<Box<dyn Fn() -> f32>>,
+) -> NodeBuilder {
+    let layout = if ratio.is_some() {
         LayoutStyle::block()
     } else {
         LayoutStyle::block().grow(1.0)
@@ -116,13 +128,9 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
         .layout(layout)
         .style(Style::new().radius_px(3))
         .class(class);
-    if filled {
-        node.style_reactive(move || {
-            let ratio = (runtime.value.get() - runtime.range.min) / runtime.range.span();
-            cached_fill_atoms(runtime.orientation, ratio)
-        })
-    } else {
-        node
+    match ratio {
+        Some(ratio) => node.style_reactive(move || cached_fill_atoms(runtime.orientation, ratio())),
+        None => node,
     }
 }
 
@@ -165,7 +173,7 @@ fn cell_thumb(
                 .shrink(0.0),
         )
         .class(CELL_THUMB_ATOMS)
-        .child(text(CELL_THUMB))
+        .child(text(CELL_THUMB).hittable(false))
 }
 
 fn window_thumb(

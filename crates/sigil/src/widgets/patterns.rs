@@ -267,14 +267,18 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
 mod card;
 mod disclosure;
 mod list_row;
+mod navigation;
 mod sidebar;
+mod status;
 
 pub use card::{CardBuilder, card};
 pub use disclosure::disclosure;
 use list_row::row_height;
 pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
+pub use navigation::{breadcrumbs, pagination};
 pub use sidebar::{SidebarBuilder, sidebar};
+pub use status::{badge, skeleton, stepper};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

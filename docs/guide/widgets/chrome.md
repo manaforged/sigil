@@ -97,6 +97,11 @@ Small composites in `sigil::widgets`:
 - `hint_overlay(hints)`: a popup-surface list of shortcut rows with 8 px gaps.
 - `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
+- `badge(count, tone)`: a small count pill that hides at zero and reads `99+` past 99.
+- `skeleton(lines)`: muted placeholder bars with `Role::Status` named "Loading".
+- `pagination(page, pages)`: previous, page, and next buttons over a zero-based `Signal<usize>`. More than seven pages collapse around the current page, and the page moves into range when `pages` shrinks.
+- `breadcrumbs(segments, activate)`: a path whose segments before the last are links that run `activate(index)`.
+- `stepper(steps, current)`: numbered steps; the ones before `current` show a check mark.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.
 

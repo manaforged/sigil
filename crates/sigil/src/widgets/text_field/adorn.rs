@@ -3,7 +3,10 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, NodeId, container};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::widgets::button::icon_button;
+use crate::widgets::icon::DISMISS_GLYPH;
 use crate::widgets::{Layout, Widget};
 
 use super::handlers::TextFieldRuntime;
@@ -18,13 +21,10 @@ pub(super) struct Adornments {
 
 pub(super) type FocusSlot = Rc<Cell<Option<NodeId>>>;
 
-const CLEAR_GLYPH: &str = "\u{d7}";
-const CLEAR_LABEL: &str = "Clear";
-
 pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> NodeBuilder {
     let value = runtime.input.value;
     let input = runtime.input.clone();
-    let button = icon_button(CLEAR_GLYPH, move || {
+    let button = icon_button(DISMISS_GLYPH, move || {
         if input.disabled() {
             return;
         }
@@ -36,7 +36,7 @@ pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> Nod
             crate::events::request_focus(id);
         }
     })
-    .accessible(CLEAR_LABEL);
+    .accessible(theme_label(StringKey::Clear));
     container()
         .layout(
             LayoutStyle::flex_row()

@@ -31,7 +31,6 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                 .justify_content(JustifyContent::SpaceBetween),
         )
         .children_reactive(move || {
-            let current = runtime.value.get();
             let last = marks.len().saturating_sub(1).max(1);
             marks
                 .iter()
@@ -44,7 +43,7 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                             .span()
                             .mul_add(index as f32 / last as f32, runtime.range.min),
                     );
-                    let tone = if (at - current).abs() < f32::EPSILON {
+                    let tone = if runtime.value.holds(at) {
                         Token::Accent11
                     } else {
                         Token::Gray10
@@ -54,8 +53,9 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                         .child(text(mark.clone()).class("text-xs").class(tone.text()))
                         .pointer_down(move |event| {
                             if !runtime.disabled() {
-                                runtime.value.set(at);
-                                change(at);
+                                let thumb = runtime.value.nearest(at);
+                                thumb.set(at);
+                                change(thumb.peek());
                                 event.stop_propagation();
                             }
                         })

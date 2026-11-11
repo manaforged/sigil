@@ -213,7 +213,9 @@ mod icon;
 mod interactive;
 mod kernel_builders;
 pub(crate) mod layout_ext;
+mod link;
 mod listbox;
+mod log_view;
 mod markdown;
 pub(crate) mod math;
 mod menu;
@@ -245,10 +247,12 @@ mod surface;
 mod svg_picture;
 mod table;
 mod tabs;
+mod tag_input;
 mod terminal;
 mod text_edit;
 mod text_field;
 mod text_search;
+mod time_field;
 mod toast;
 mod toast_queue;
 mod toggle;
@@ -293,7 +297,9 @@ pub use html::html;
 pub use icon::icon_svg;
 pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
+pub use link::{LinkBuilder, link};
 pub use listbox::{CursorEdge, ListState};
+pub use log_view::{Log, log_view};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
 pub use math::math;
 pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
@@ -306,14 +312,14 @@ pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
     CardBuilder, Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
-    app_shell, avatar, card, disclosure, empty_state, hint_bar, hint_overlay, kv_grid, list_row,
-    notice_band, section_label, sidebar, spacer,
+    app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
+    kv_grid, list_row, notice_band, pagination, section_label, sidebar, skeleton, spacer, stepper,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll};
 pub use segmented::{SegmentedBuilder, segmented};
-pub use slider::{SliderBuilder, slider};
+pub use slider::{SliderBuilder, range_slider, slider};
 #[cfg(feature = "terminal")]
 pub(crate) use sparkline::spark_glyph;
 pub use sparkline::{SparkFill, SparkMark, SparklineBuilder, sparkline};
@@ -332,9 +338,11 @@ kittest_pub! {
 #[cfg(feature = "a2ui")]
 pub use a2ui::{A2UI_CATALOG, A2uiBuilder, a2ui};
 pub use tabs::{TabsBuilder, tabs};
+pub use tag_input::{TagInputBuilder, tag_input};
 pub use terminal::terminal;
 pub use text_edit::{SubmitKey, TextEditBuilder, TextEditState, text_edit};
 pub use text_field::{TextFieldBuilder, text_field};
+pub use time_field::{DateTime, Time, TimeFieldBuilder, TimeValue, time_field};
 pub use toast::toast;
 pub use toast_queue::{ToastQueue, toast_queue};
 pub use toggle::{ToggleBuilder, toggle};

@@ -36,6 +36,10 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
 
+## load_image
+
+`load_image(location) -> ImageLoadBuilder` (feature `image-decode`). Loads a file path, a `file://` URL, or a base64 `data:` URI off the UI thread; in a browser it also fetches http(s) URLs. `.alt(text)`, `.fit(ObjectFit)`, `.placeholder(Fn() -> impl IntoNode)` for the loading view, and `.error(Fn(&Error) -> impl IntoNode)` for the failure view. Loads are cached by location and, for a file, its modified time and size. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`.
+
 ## path
 
 `path(width, height) -> PathNode`: a tiny vector canvas rasterized through tiny-skia into an image. Build with commands:
