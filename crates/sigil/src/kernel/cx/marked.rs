@@ -16,6 +16,7 @@ impl Marked {
         self.ids.insert(id);
     }
 
+    #[cfg(feature = "kittest")]
     pub(super) const fn rescan(&mut self) {
         self.rescan = true;
     }

@@ -84,9 +84,9 @@ impl SceneBuilder {
     #[doc(hidden)]
     pub fn draw_shadow(&mut self, rect: Rect, radii: CornerRadii, shadow: Shadow) {
         self.commands.push(SceneCommand::DrawShadow {
-            rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
-            radii,
-            shadow,
+        rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
+        radii,
+        shadow,
         });
     }
     }
@@ -132,7 +132,7 @@ impl SceneBuilder {
     }
 
     /// Appends a run of glyphs that belongs to `node`.
-    pub fn draw_glyph_run_for_node(&mut self, node: NodeId, run: GlyphRun) {
+    pub(crate) fn draw_glyph_run_for_node(&mut self, node: NodeId, run: GlyphRun) {
         self.commands
             .push(SceneCommand::GlyphRun(run.with_node(node)));
     }
@@ -205,9 +205,11 @@ impl SceneBuilder {
         self.commands.push(SceneCommand::PushLayer(scope));
     }
 
-    /// Closes the last open layer.
-    pub fn pop_layer(&mut self) {
-        self.commands.push(SceneCommand::PopLayer);
+    kittest_pub! {
+        /// Closes the last open layer.
+        pub fn pop_layer(&mut self) {
+            self.commands.push(SceneCommand::PopLayer);
+        }
     }
 
     /// Returns the finish.

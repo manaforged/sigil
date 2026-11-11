@@ -50,8 +50,10 @@ impl Host {
         })
     }
 
-    /// Clears the memo that incremental painting reuses.
-    pub fn reset_emit(&mut self) {
-        self.emitted = EmitMemo::default();
+    kittest_pub! {
+        /// Clears the memo that incremental painting reuses.
+        pub fn reset_emit(&mut self) {
+            self.emitted = EmitMemo::default();
+        }
     }
 }

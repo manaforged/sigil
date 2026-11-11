@@ -177,7 +177,7 @@ impl<T: Clone + 'static> Signal<T> {
     /// Reads the value without tracking, or `None` once its owner is disposed.
     #[inline]
     #[must_use]
-    pub fn try_peek(self) -> Option<T> {
+    pub(crate) fn try_peek(self) -> Option<T> {
         self.try_peek_with(T::clone)
     }
 

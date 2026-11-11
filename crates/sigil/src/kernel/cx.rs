@@ -66,7 +66,7 @@ impl Cx {
 
     /// Returns the host mode.
     #[must_use]
-    pub const fn host_mode(&self) -> HostMode {
+    pub(crate) const fn host_mode(&self) -> HostMode {
         self.host_mode
     }
 
@@ -76,13 +76,13 @@ impl Cx {
 
     /// Returns the root owner.
     #[must_use]
-    pub const fn root_owner(&self) -> Owner {
+    pub(crate) const fn root_owner(&self) -> Owner {
         self.root_owner
     }
 
     /// Returns the instance id.
     #[must_use]
-    pub const fn instance_id(&self) -> u64 {
+    pub(crate) const fn instance_id(&self) -> u64 {
         self.instance_id
     }
 
@@ -102,20 +102,20 @@ impl Cx {
         /// Creates an empty node and returns its id.
         #[doc(hidden)]
         pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
-            let owner = Owner::current().unwrap_or_else(|| {
-                tracing::warn!(
-                    target: "sigil::kernel",
-                    "Cx::new_node called outside an IntoNode::build scope; using the root owner"
-                );
-                self.root_owner()
-            });
-            let cx = self.instance_id;
-            let id = NodeId(self.nodes.insert_with_key(|key| {
-                Node::new(kind, a11y, owner).tagged(NodeTag::new(cx, NodeId(key)))
-            }));
-            self.mark_dirty(id);
-            self.bump_generation();
-            id
+        let owner = Owner::current().unwrap_or_else(|| {
+            tracing::warn!(
+                target: "sigil::kernel",
+                "Cx::new_node called outside an IntoNode::build scope; using the root owner"
+            );
+            self.root_owner()
+        });
+        let cx = self.instance_id;
+        let id = NodeId(self.nodes.insert_with_key(|key| {
+            Node::new(kind, a11y, owner).tagged(NodeTag::new(cx, NodeId(key)))
+        }));
+        self.mark_dirty(id);
+        self.bump_generation();
+        id
         }
     }
 
@@ -276,61 +276,71 @@ impl Cx {
     }
 
     /// Returns the node with this id for writing without marking it changed.
-    pub fn get_mut_untracked(&mut self, id: NodeId) -> Option<&mut Node> {
+    pub(crate) fn get_mut_untracked(&mut self, id: NodeId) -> Option<&mut Node> {
         self.nodes.get_mut(id.key())
     }
 
-    /// Returns the dirty.
-    pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
-        self.dirty_all
-            .then(|| self.nodes.keys().map(NodeId))
-            .into_iter()
-            .flatten()
-            .chain(self.dirty.iter().copied())
+    kittest_pub! {
+        /// Returns the dirty.
+        pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
+            self.dirty_all
+                .then(|| self.nodes.keys().map(NodeId))
+                .into_iter()
+                .flatten()
+                .chain(self.dirty.iter().copied())
+        }
     }
 
     /// Returns whether dirty all is set.
     #[must_use]
-    pub const fn dirty_all(&self) -> bool {
+    pub(crate) const fn dirty_all(&self) -> bool {
         self.dirty_all
     }
 
     /// Returns whether this cx has specific dirty.
     #[must_use]
-    pub fn has_specific_dirty(&self) -> bool {
+    pub(crate) fn has_specific_dirty(&self) -> bool {
         !self.dirty_all && !self.dirty.is_empty()
     }
 
-    /// Clears the set of changed nodes.
-    pub fn clear_dirty(&mut self) {
-        self.dirty.clear();
-        self.dirty_all = false;
+    kittest_pub! {
+        /// Clears the set of changed nodes.
+        pub fn clear_dirty(&mut self) {
+            self.dirty.clear();
+            self.dirty_all = false;
+        }
     }
 
     /// Marks the tree as changed.
+    #[doc(hidden)]
+    #[cfg(feature = "kittest")]
     pub fn mark_mutated(&mut self) {
         self.bump_generation();
         self.dirty_all = true;
         self.marked.get_mut().rescan();
     }
 
-    /// Returns the scale.
-    #[must_use]
-    pub const fn scale(&self) -> f32 {
-        self.scale
+    kittest_pub! {
+        /// Returns the scale.
+        #[must_use]
+        pub const fn scale(&self) -> f32 {
+            self.scale
+        }
     }
 
-    /// Sets the scale; a non-finite or non-positive value becomes 1.0.
-    pub fn set_scale(&mut self, scale: f32) {
-        let scale = Scale::new(scale).factor();
-        if self.scale.to_bits() == scale.to_bits() {
-            return;
-        }
-        self.scale = scale;
-        self.bump_generation();
-        let roots = self.roots.clone();
-        for root in roots {
-            self.mark_dirty(root);
+    kittest_pub! {
+        /// Sets the scale; a non-finite or non-positive value becomes 1.0.
+        pub fn set_scale(&mut self, scale: f32) {
+            let scale = Scale::new(scale).factor();
+            if self.scale.to_bits() == scale.to_bits() {
+                return;
+            }
+            self.scale = scale;
+            self.bump_generation();
+            let roots = self.roots.clone();
+            for root in roots {
+                self.mark_dirty(root);
+            }
         }
     }
 
@@ -342,14 +352,16 @@ impl Cx {
 
     /// Returns the roots.
     #[must_use]
-    pub fn roots(&self) -> &[NodeId] {
+    pub(crate) fn roots(&self) -> &[NodeId] {
         &self.roots
     }
 
-    /// Returns the mutation generation.
-    #[must_use]
-    pub const fn mutation_generation(&self) -> u64 {
-        self.mutation_generation
+    kittest_pub! {
+        /// Returns the mutation generation.
+        #[must_use]
+        pub const fn mutation_generation(&self) -> u64 {
+            self.mutation_generation
+        }
     }
 
     /// Returns the len.

@@ -88,6 +88,8 @@ kittest_pub! {
     pub use focus_ring::FocusRing;
 }
 pub use font_family::FontFamily;
+#[cfg(any(test, feature = "kittest"))]
+#[doc(hidden)]
 pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
@@ -125,7 +127,10 @@ kittest_pub! {
     #[doc(hidden)]
     pub use state::{StateSlot, StateStyle, StyleState};
 }
-pub use strings::StringKey;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use strings::StringKey;
+}
 kittest_pub! {
     #[doc(hidden)]
     pub use strings::Strings;

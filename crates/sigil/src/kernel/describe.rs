@@ -8,7 +8,7 @@ const ANCESTOR_HOPS: usize = 4;
 impl Cx {
     /// A short label for one node: its role, then its accessible name, its text, or the nearest named ancestor.
     #[must_use]
-    pub fn describe(&self, id: NodeId) -> String {
+    pub(crate) fn describe(&self, id: NodeId) -> String {
         let Some(node) = self.get(id) else {
             return format!("{id:?}");
         };

@@ -141,9 +141,11 @@ impl Host {
         crate::terminal::write::render(out, prev, next, depth)
     }
 
-    /// Draws a scene into a cell grid with this host's theme.
-    pub fn paint_cells(&self, grid: &mut Grid, scene: &crate::scene::CommandScene) {
-        crate::terminal::paint::raster_into(grid, scene, self.theme(), CELL);
+    kittest_pub! {
+        /// Draws a scene into a cell grid with this host's theme.
+        pub fn paint_cells(&self, grid: &mut Grid, scene: &crate::scene::CommandScene) {
+            crate::terminal::paint::raster_into(grid, scene, self.theme(), CELL);
+        }
     }
 }
 

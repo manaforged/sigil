@@ -21,6 +21,8 @@ impl Cx {
 
     /// Returns the first child of this node.
     #[must_use]
+    #[doc(hidden)]
+    #[cfg(feature = "kittest")]
     pub fn first_child(&self, id: NodeId) -> Option<NodeId> {
         self.nodes
             .get(id.key())
