@@ -4,7 +4,7 @@ Issues are welcome. Pull requests are by invitation: open an issue first, and se
 
 ## Build
 
-Use the Rust 1.98.1 toolchain pinned in `rust-toolchain.toml`. The declared minimum supported Rust version is 1.95. On Linux, install the libraries that the window host links against:
+Use the Rust 1.98.1 toolchain pinned in `rust-toolchain.toml`. The declared minimum supported Rust version is 1.96. On Linux, install the libraries that the window host links against:
 
 ```bash
 sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev \

@@ -35,6 +35,7 @@ fn aliases() -> Vec<(&'static str, bool)> {
     let native_commands = feature("menu") || feature("media");
     let native_events = native_commands || feature("hotkey");
     let vendor_os = macos || target("TARGET_OS", "windows");
+    let native_http = feature("image-http") && !wasm;
 
     vec![
         ("app_host", app_host),
@@ -60,6 +61,8 @@ fn aliases() -> Vec<(&'static str, bool)> {
         ("hot_patch", feature("hot") && !wasm),
         ("global_hotkey", feature("hotkey") && !wasm),
         ("vega_js", feature("vega") && !wasm),
+        ("native_http", native_http),
+        ("http_fetch", wasm || native_http),
         ("font_listeners", wasm || host),
         ("vendor_os", vendor_os),
         (
