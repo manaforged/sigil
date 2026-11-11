@@ -15,8 +15,8 @@ impl Wash {
     }
 
     pub(crate) fn dark(&self) -> bool {
-        let [r, g, b] = [self.paper.r, self.paper.g, self.paper.b].map(f32::from);
-        0.0722f32.mul_add(b, 0.7152f32.mul_add(g, 0.2126 * r)) / 255.0 < 0.5
+        let rgb = [self.paper.r, self.paper.g, self.paper.b].map(f32::from);
+        crate::style::srgb::luma(rgb) / 255.0 < 0.5
     }
 
     /// The colour at `(x, y)` pixels from the top-left of an area centred on `centre`, in 0..1 sRGB.

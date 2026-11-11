@@ -350,41 +350,45 @@ pub struct StyleData {
     pub direction: crate::style::Direction,
 }
 
+impl StyleData {
+    pub(crate) const DEFAULT: Self = Self {
+        display: Display::Block,
+        position: Position::Relative,
+        overflow: Axes::splat(Overflow::Visible),
+        flex_direction: FlexDirection::Row,
+        flex_wrap: FlexWrap::NoWrap,
+        flex_grow: 0.0,
+        flex_shrink: 1.0,
+        stretch_width: false,
+        flex_basis: Length::Auto,
+        justify_content: None,
+        align_items: None,
+        align_content: None,
+        align_self: None,
+        gap: Axes::splat(Length::Px(0.0)),
+        margin: Edges::splat(Length::Px(0.0)),
+        inset: Edges::splat(Length::Auto),
+        padding: Edges::splat(Length::Px(0.0)),
+        border: Edges::splat(Length::Px(0.0)),
+        size: Axes::splat(Length::Auto),
+        min_size: Axes::splat(Length::Auto),
+        max_size: Axes::splat(Length::Auto),
+        order: 0,
+        box_sizing: BoxSizing::ContentBox,
+        grid_template_columns: Vec::new(),
+        grid_template_rows: Vec::new(),
+        grid_column_span: 1,
+        grid_row_span: 1,
+        grid_column_start: 0,
+        grid_row_start: 0,
+        direction: crate::style::Direction::Ltr,
+        grid_auto_flow_dense: false,
+    };
+}
+
 impl Default for StyleData {
     fn default() -> Self {
-        Self {
-            display: Display::Block,
-            position: Position::Relative,
-            overflow: Axes::splat(Overflow::Visible),
-            flex_direction: FlexDirection::Row,
-            flex_wrap: FlexWrap::NoWrap,
-            flex_grow: 0.0,
-            flex_shrink: 1.0,
-            stretch_width: false,
-            flex_basis: Length::Auto,
-            justify_content: None,
-            align_items: None,
-            align_content: None,
-            align_self: None,
-            gap: Axes::splat(Length::Px(0.0)),
-            margin: Edges::splat(Length::Px(0.0)),
-            inset: Edges::splat(Length::Auto),
-            padding: Edges::splat(Length::Px(0.0)),
-            border: Edges::splat(Length::Px(0.0)),
-            size: Axes::splat(Length::Auto),
-            min_size: Axes::splat(Length::Auto),
-            max_size: Axes::splat(Length::Auto),
-            order: 0,
-            box_sizing: BoxSizing::ContentBox,
-            grid_template_columns: Vec::new(),
-            grid_template_rows: Vec::new(),
-            grid_column_span: 1,
-            grid_row_span: 1,
-            grid_column_start: 0,
-            grid_row_start: 0,
-            direction: crate::style::Direction::Ltr,
-            grid_auto_flow_dense: false,
-        }
+        Self::DEFAULT
     }
 }
 

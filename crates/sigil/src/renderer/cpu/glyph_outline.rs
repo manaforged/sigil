@@ -5,17 +5,15 @@
     reason = "coverage bytes and target sizes are bounded; float-to-byte rounding is the rasterizer contract"
 )]
 
-use skrifa::instance::{LocationRef, NormalizedCoord, Size};
-use skrifa::outline::{DrawSettings, OutlinePen};
-use skrifa::{FontRef, GlyphId, MetadataProvider};
+use skrifa::outline::OutlinePen;
 use tiny_skia::{
     FillRule, Mask, Path, PathBuilder, Pixmap, Rect as TsRect, Transform as TsTransform,
 };
 
 use crate::geometry::Point;
 use crate::renderer::glyph_place::{coverage_curve, pen_shift, text_gamma};
-use crate::renderer::oblique::Oblique;
 use crate::renderer::scene_command::{GlyphRun, Transform};
+use crate::text::outline::{Oblique, for_each_outline};
 
 use super::shapes::{self, Brush, decode, solid};
 
@@ -62,36 +60,19 @@ pub(super) fn run_paths(run: &GlyphRun, transform: Transform, scale: f32) -> Vec
     let glyphs = run.positioned_glyphs();
     let origin = run.rect.origin;
     let mut paths = Vec::new();
-    paragraph.for_each_font(|font_id, bytes, font_index| {
-        let Ok(font) = FontRef::from_index(bytes, font_index) else {
-            return;
+    for_each_outline(paragraph, glyphs, |g, glyph, settings| {
+        let pen = Point::new(origin.x + g.x, origin.y + g.y);
+        let shift = pen_shift(transform, pen, scale);
+        let mut builder = PathBuilder::new();
+        let mut pen = GlyphPen {
+            builder: &mut builder,
+            x: pen.x + shift.x,
+            y: pen.y + shift.y,
         };
-        let outlines = font.outline_glyphs();
-        for g in glyphs
-            .iter()
-            .filter(|g| g.font_id == font_id && g.font_index == font_index)
+        if glyph
+            .draw(settings, &mut Oblique::new(&mut pen, g.skew))
+            .is_ok()
         {
-            let Some(glyph) = outlines.get(GlyphId::new(g.glyph_id)) else {
-                continue;
-            };
-            let pen = Point::new(origin.x + g.x, origin.y + g.y);
-            let shift = pen_shift(transform, pen, scale);
-            let mut builder = PathBuilder::new();
-            let mut pen = GlyphPen {
-                builder: &mut builder,
-                x: pen.x + shift.x,
-                y: pen.y + shift.y,
-            };
-            let coords: Vec<NormalizedCoord> = g
-                .variation_coords
-                .iter()
-                .map(|&c| NormalizedCoord::from_bits(c))
-                .collect();
-            let mut sheared = Oblique::new(&mut pen, g.skew);
-            let settings = DrawSettings::unhinted(Size::new(g.size), LocationRef::new(&coords));
-            if glyph.draw(settings, &mut sheared).is_err() {
-                continue;
-            }
             paths.extend(builder.finish());
         }
     });

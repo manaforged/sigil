@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use tokio::sync::oneshot;
 
-use crate::fnv::{OFFSET, mix};
+use crate::fnv::OFFSET;
 
 use super::script::Script;
 
@@ -44,9 +44,7 @@ pub(super) struct Job {
 
 impl Job {
     pub(super) fn new(spec: &Arc<str>, source: u64, config: String) -> Self {
-        let theme = config
-            .bytes()
-            .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+        let theme = crate::fnv::bytes(OFFSET, config.as_bytes());
         Self {
             spec: Arc::clone(spec),
             config: config.into(),

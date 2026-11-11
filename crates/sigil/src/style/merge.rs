@@ -1,11 +1,10 @@
-use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, OnceLock};
 
 use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
 use crate::style::atom::{Amount, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot};
+use crate::style::diagnostic::Seen;
 
 /// Identifies a component's style.
 pub(crate) type ComponentId = u64;
@@ -29,21 +28,13 @@ pub(crate) fn merge_classes(
     merged.into_iter().map(|(_slot, atom)| atom).collect()
 }
 
-static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
+static WARNED: Seen<(ResolvedSlot, ComponentId)> = Seen::new();
 static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
 
 #[cfg(test)]
 #[must_use]
 pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
-    WARNED
-        .get()
-        .and_then(|warned| warned.lock().ok())
-        .map_or(0, |warned| {
-            warned
-                .iter()
-                .filter(|(_slot, warned_component)| *warned_component == component_id)
-                .count()
-        })
+    WARNED.count_where(|(_slot, warned_component)| *warned_component == component_id)
 }
 
 /// Number of unknown class names seen.
@@ -58,11 +49,7 @@ pub(crate) fn bump_unknown_class_count() {
 }
 
 fn warn_conflict(slot: ResolvedSlot, component_id: ComponentId) {
-    let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));
-    let Ok(mut warned) = warned.lock() else {
-        return;
-    };
-    if warned.insert((slot, component_id)) {
+    if WARNED.first((slot, component_id)) {
         eprintln!(
             "sigil-style merge conflict for component {component_id} slot {slot:?}; override wins",
         );

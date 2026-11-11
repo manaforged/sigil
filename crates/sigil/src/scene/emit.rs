@@ -112,7 +112,7 @@ fn run<'t>(
     let theme = crate::style::theme::fallback_theme();
     let inherited = Inherited {
         theme,
-        theme_stamp: std::ptr::from_ref(theme) as u64,
+        theme_stamp: emit_cache::theme_key(theme, 0),
         text_color: None,
         text_style: Rc::new(TextStyle::default()),
         text_fill: None,
@@ -363,7 +363,7 @@ fn child_inherited<'t>(
             .map_or((inherited.theme, inherited.theme_stamp), |theme| {
                 (
                     theme,
-                    std::ptr::from_ref(theme) as u64 ^ u64::from(node.version()).rotate_left(32),
+                    emit_cache::theme_key(theme, u64::from(node.version())),
                 )
             });
     let text_fill =

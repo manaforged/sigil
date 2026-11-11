@@ -9,6 +9,7 @@ use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{
     DrawPath, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin, outline_key, rounded_outline,
 };
+use crate::scene::geometry::IDENTITY;
 use crate::scene::style_adapter::corner_radii_for;
 use crate::style::Color;
 use crate::style::atom::BorderStyle;
@@ -16,7 +17,6 @@ use crate::style::atom::BorderStyle;
 use super::borders::{border_color, border_edges, borders_uniform};
 use super::paint::NodePaint;
 
-const IDENTITY: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 const THIN: f32 = 3.0;
 const DOT: f32 = 0.01;
 
@@ -147,5 +147,5 @@ fn seed(width: f32, line: &Line) -> u64 {
         BorderStyle::Dashed => 1,
         BorderStyle::Dotted => 2,
     };
-    crate::fnv::mix(crate::fnv::mix(color, style), u64::from(width.to_bits()))
+    crate::fnv::mix_f32(crate::fnv::mix(color, style), width)
 }

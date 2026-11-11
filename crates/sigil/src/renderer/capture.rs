@@ -9,7 +9,7 @@ use crate::{Error, ErrorKind};
 #[cfg(capture)]
 mod gpu;
 #[cfg(capture)]
-pub use gpu::{CaptureExtent, FORMAT, capture_texture, read_texture};
+pub use gpu::{BYTES_PER_PIXEL, CaptureExtent, FORMAT, capture_texture, read_texture};
 
 #[derive(Debug)]
 pub enum ImageRenderer<'a> {

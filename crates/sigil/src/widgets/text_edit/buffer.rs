@@ -2,7 +2,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi::{CaretStep, ParagraphBidi};
 
-use crate::widgets::grapheme::{
+use crate::grapheme::{
     clamp_to_len_boundary, line_end, line_start, next_boundary, previous_boundary, selection_range,
     word_end_after, word_start_before,
 };

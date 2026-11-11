@@ -28,6 +28,8 @@ use std::rc::Rc;
 use parse::Block;
 use render::TokenTone;
 
+const MAX_MATH_BYTES: usize = 512;
+
 /// Rendered markdown.
 #[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {

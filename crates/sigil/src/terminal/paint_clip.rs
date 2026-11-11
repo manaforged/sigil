@@ -1,4 +1,4 @@
-use crate::app::{cell_text_lines, cell_width};
+use crate::app::{cell_text_lines, cell_width, ellipsize_cells};
 use crate::geometry::Rect;
 use crate::kernel::{ImageCrop, ImageSource};
 use crate::scene::TextFlow;
@@ -79,28 +79,10 @@ pub(super) const fn signed_cell(value: f32) -> isize {
     value.floor() as isize
 }
 
-fn fit(text: &str, cells: usize) -> String {
-    if cell_width(text) <= cells {
-        return text.to_owned();
-    }
-    let mut out = String::new();
-    let mut used = 0;
-    for grapheme in text.graphemes(true) {
-        let step = cell_width(grapheme);
-        if used + step >= cells {
-            break;
-        }
-        used += step;
-        out.push_str(grapheme);
-    }
-    out.push('\u{2026}');
-    out
-}
-
 fn fitted(node: &Text<'_>, width: usize, room: usize) -> String {
     match node.flow {
-        TextFlow::Ellipsis => fit(node.content, width),
-        TextFlow::Line if room > 0 => fit(node.content, room),
+        TextFlow::Ellipsis => ellipsize_cells(node.content, width),
+        TextFlow::Line if room > 0 => ellipsize_cells(node.content, room),
         TextFlow::Line | TextFlow::Wrap => node.content.to_owned(),
     }
 }

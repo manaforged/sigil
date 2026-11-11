@@ -10,7 +10,7 @@ use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Color, TextLineHeight, TextStyle};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels};
 
-const BYTES_PER_PIXEL: u32 = 4;
+use sigil::renderer::capture::BYTES_PER_PIXEL;
 
 const LOGICAL_W: f32 = 120.0;
 const LOGICAL_H: f32 = 48.0;

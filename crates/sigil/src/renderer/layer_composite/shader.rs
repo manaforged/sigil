@@ -1,18 +1,6 @@
 macro_rules! blend_wgsl {
     () => {
         r"
-fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
-    let low = c * 12.92;
-    let high = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-    return select(high, low, c <= vec3<f32>(0.0031308));
-}
-
-fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
-    let low = c / 12.92;
-    let high = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-    return select(high, low, c <= vec3<f32>(0.04045));
-}
-
 fn encoded(c: vec4<f32>) -> vec3<f32> {
     return srgb_encode(clamp(c.rgb / max(c.a, 0.000001), vec3<f32>(0.0), vec3<f32>(1.0)));
 }
@@ -115,6 +103,7 @@ pub(super) const LAYER_SHADER: &str = concat!(
     viewport_uniforms!(),
     vertex_in!(),
     crate::renderer::fill_paint::sdf_helpers!(),
+    crate::renderer::fill_paint::srgb_wgsl!(),
     r"
 @group(1) @binding(0) var layer_tex: texture_2d<f32>;
 @group(1) @binding(1) var layer_sampler: sampler;
@@ -212,10 +201,7 @@ fn fs_blend(in: LayerVertexOut) -> @location(0) vec4<f32> {
 
 fn mask_luminance(texel: vec4<f32>) -> f32 {
     let linear = clamp(texel.rgb / max(texel.a, 0.0001), vec3<f32>(0.0), vec3<f32>(1.0));
-    let low = linear * 12.92;
-    let high = 1.055 * pow(linear, vec3<f32>(1.0 / 2.4)) - 0.055;
-    let encoded = select(high, low, linear <= vec3<f32>(0.0031308));
-    return dot(encoded, vec3<f32>(0.2125, 0.7154, 0.0721)) * texel.a;
+    return dot(srgb_encode(linear), vec3<f32>(0.2125, 0.7154, 0.0721)) * texel.a;
 }
 ",
     blend_wgsl!(),

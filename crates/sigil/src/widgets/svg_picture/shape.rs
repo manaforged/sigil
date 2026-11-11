@@ -4,7 +4,7 @@ use resvg::usvg::tiny_skia_path::{Path, PathSegment};
 use resvg::usvg::{self, LineCap, LineJoin, Transform};
 use smallvec::SmallVec;
 
-use crate::fnv::mix;
+use crate::fnv::mix_f32;
 use crate::scene::command::{PathCmd, StrokeCap, StrokeJoin, Transform as SceneTransform};
 
 const DEFAULT_MITER: f32 = 4.0;
@@ -36,7 +36,7 @@ pub(super) const fn scene_transform(t: Transform) -> SceneTransform {
 pub(super) fn transform_key(seed: u64, t: Transform) -> u64 {
     [t.sx, t.kx, t.tx, t.ky, t.sy, t.ty]
         .into_iter()
-        .fold(seed, |hash, value| mix(hash, u64::from(value.to_bits())))
+        .fold(seed, mix_f32)
 }
 
 pub(super) fn native(path: &Path, stroke: &usvg::Stroke) -> Option<Native> {

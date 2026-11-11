@@ -66,7 +66,7 @@ pub(crate) fn text_gamma(linear: [f32; 4], encoded: bool) -> f32 {
         return 1.0;
     }
     let [r, g, b, _] = linear;
-    let lum = 0.0722f32.mul_add(b, 0.7152f32.mul_add(g, 0.2126 * r));
+    let lum = crate::style::srgb::luma([r, g, b]);
     let perceptual = if encoded {
         crate::style::srgb::encode(lum)
     } else {

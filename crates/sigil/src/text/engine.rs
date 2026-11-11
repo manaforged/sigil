@@ -8,6 +8,7 @@ use crate::style::{TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
+use crate::cache::Bounded;
 use crate::text::FaceSpec;
 use crate::text::cache::ParagraphCache;
 use crate::text::paragraph::{FaceTable, Paragraph, TextMetrics, face_table};
@@ -38,7 +39,7 @@ pub struct OwnedTextEngine {
     style: TextStyle,
     cache: RefCell<ParagraphCache>,
     chains: RefCell<AHashMap<ChainKey, Arc<[Font]>>>,
-    face_tables: RefCell<AHashMap<FaceKey, FaceTable>>,
+    face_tables: RefCell<Bounded<FaceKey, FaceTable, FACE_TABLES_CAP>>,
 }
 
 impl core::fmt::Debug for OwnedTextEngine {
@@ -69,7 +70,7 @@ impl OwnedTextEngine {
             style,
             cache: RefCell::new(ParagraphCache::new()),
             chains: RefCell::new(AHashMap::new()),
-            face_tables: RefCell::new(AHashMap::new()),
+            face_tables: RefCell::new(Bounded::default()),
         }
     }
 
@@ -263,11 +264,9 @@ impl OwnedTextEngine {
             return std::sync::Arc::clone(hit);
         }
         let table = face_table(faces, size_px);
-        let mut tables = self.face_tables.borrow_mut();
-        if tables.len() >= FACE_TABLES_CAP {
-            tables.clear();
-        }
-        tables.insert(key, std::sync::Arc::clone(&table));
+        self.face_tables
+            .borrow_mut()
+            .insert(key, std::sync::Arc::clone(&table));
         table
     }
 

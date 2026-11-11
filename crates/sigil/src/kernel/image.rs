@@ -114,16 +114,9 @@ impl core::fmt::Debug for ImageSource {
 }
 
 fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
-    let mut hash = crate::fnv::OFFSET;
-    for byte in width
-        .to_le_bytes()
-        .into_iter()
-        .chain(height.to_le_bytes())
-        .chain(rgba.iter().copied())
-    {
-        hash = crate::fnv::mix(hash, u64::from(byte));
-    }
-    hash
+    let hash = crate::fnv::bytes(crate::fnv::OFFSET, &width.to_le_bytes());
+    let hash = crate::fnv::bytes(hash, &height.to_le_bytes());
+    crate::fnv::bytes(hash, rgba)
 }
 
 #[cfg(raster)]

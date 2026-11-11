@@ -74,15 +74,25 @@ fn table_index(linear: f32) -> usize {
 /// The WCAG 2.2 AA contrast ratio for body text.
 pub(crate) const AA_TEXT: f32 = 4.5;
 
+/// The Rec. 709 weights of red, green and blue in luma and relative luminance.
+pub(crate) const LUMA: [f32; 3] = [0.2126, 0.7152, 0.0722];
+
+/// Weights red, green and blue by [`LUMA`].
+#[must_use]
+pub(crate) fn luma([r, g, b]: [f32; 3]) -> f32 {
+    let [wr, wg, wb] = LUMA;
+    wb.mul_add(b, wg.mul_add(g, wr * r))
+}
+
+/// Returns the WCAG relative luminance of an opaque color.
+#[must_use]
+pub(crate) fn luminance(color: crate::style::Color) -> f32 {
+    luma([color.r, color.g, color.b].map(decode))
+}
+
 /// Returns the WCAG contrast ratio of two opaque colors.
 #[must_use]
 pub(crate) fn contrast(a: crate::style::Color, b: crate::style::Color) -> f32 {
-    let luminance = |color: crate::style::Color| {
-        0.0722_f32.mul_add(
-            decode(color.b),
-            0.7152_f32.mul_add(decode(color.g), 0.2126 * decode(color.r)),
-        )
-    };
     let (a, b) = (luminance(a), luminance(b));
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }

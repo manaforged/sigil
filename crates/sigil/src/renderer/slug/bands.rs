@@ -1,10 +1,10 @@
 use skrifa::{
     FontRef, GlyphId, MetadataProvider,
-    instance::{LocationRef, NormalizedCoord, Size},
+    instance::{LocationRef, Size},
     outline::{DrawSettings, pen::PathElement},
 };
 
-use crate::renderer::oblique::Oblique;
+use crate::text::outline::{Oblique, coords};
 
 use super::curve::{QuadBez, cubic_to_quads, line_to_quad};
 
@@ -56,10 +56,7 @@ pub(super) fn preprocess_glyph(
         .metrics(Size::unscaled(), LocationRef::default())
         .units_per_em;
     let glyph = font.outline_glyphs().get(GlyphId::new(glyph_id))?;
-    let coords: Vec<NormalizedCoord> = variation_coords
-        .iter()
-        .map(|&c| NormalizedCoord::from_bits(c))
-        .collect();
+    let coords = coords(variation_coords);
     let settings = DrawSettings::unhinted(Size::unscaled(), LocationRef::new(&coords));
     let mut elements: Vec<PathElement> = Vec::new();
     glyph

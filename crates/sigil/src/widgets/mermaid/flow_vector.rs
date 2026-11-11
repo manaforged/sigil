@@ -1,5 +1,6 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
+use crate::scene::geometry::KAPPA as CIRCLE_K;
 use crate::style::{BORDER_WIDTH, Paint, Radius, Token, space};
 use crate::widgets::Layout;
 use crate::widgets::vector::{PathNode, path};
@@ -24,7 +25,6 @@ const OVERLAP: f32 = 12.0;
 const LANE: f32 = space(4);
 const LABEL_H: f32 = 20.0;
 const LABEL_CHAR: f32 = 7.0;
-const CIRCLE_K: f32 = 0.552_284_8;
 
 pub(super) type Point = (f32, f32);
 

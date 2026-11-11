@@ -1,6 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::geometry::Point;
+use crate::scene::geometry::MIN_EXTENT;
 
 use super::fills::{GradientStop, LinearGradient, normalize_stops};
 
@@ -87,7 +88,7 @@ impl Gradient {
         #[must_use]
         pub fn repeat_span(&self) -> Option<[f32; 2]> {
             let (first, last) = (self.stops.first()?.offset, self.stops.last()?.offset);
-            (self.repeat && last - first > MIN_SPAN).then_some([first, last])
+            (self.repeat && last - first > MIN_EXTENT).then_some([first, last])
         }
     }
 
@@ -106,7 +107,6 @@ impl Gradient {
     }
 
     pub(crate) fn key(&self, seed: u64) -> u64 {
-        let mix = |hash: u64, value: f32| crate::fnv::mix(hash, u64::from(value.to_bits()));
         let (tag, values) = match self.kind {
             GradientKind::Linear { start, end } => (1, [start.x, start.y, end.x, end.y]),
             GradientKind::Radial { center, radius } => {
@@ -114,13 +114,14 @@ impl Gradient {
             }
             GradientKind::Conic { center, angle } => (3, [center.x, center.y, angle, 0.0]),
         };
-        let hash = values
-            .into_iter()
-            .fold(crate::fnv::mix(seed, tag + 4 * u64::from(self.repeat)), mix);
+        let hash = values.into_iter().fold(
+            crate::fnv::mix(seed, tag + 4 * u64::from(self.repeat)),
+            crate::fnv::mix_f32,
+        );
         self.stops.iter().fold(hash, |hash, stop| {
             let color =
                 u32::from_le_bytes([stop.color.r, stop.color.g, stop.color.b, stop.color.a]);
-            crate::fnv::mix(mix(hash, stop.offset), u64::from(color))
+            crate::fnv::mix(crate::fnv::mix_f32(hash, stop.offset), u64::from(color))
         })
     }
 
@@ -146,14 +147,12 @@ impl Gradient {
                 LinearGradient::new(start, end, SmallVec::new()).is_degenerate()
             }
             GradientKind::Radial { radius, .. } => {
-                radius.iter().any(|r| r.is_nan() || *r < MIN_SPAN)
+                radius.iter().any(|r| r.is_nan() || *r < MIN_EXTENT)
             }
             GradientKind::Conic { angle, .. } => !angle.is_finite(),
         }
     }
 }
-
-const MIN_SPAN: f32 = 1.0 / 4096.0;
 
 impl From<LinearGradient> for Gradient {
     fn from(linear: LinearGradient) -> Self {

@@ -1,11 +1,12 @@
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 
-use ahash::{AHashMap, AHasher};
+use ahash::AHasher;
 use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
+use crate::cache::Bounded;
 use crate::text::glyph::{GlyphPos, ShapedRun};
 use crate::text::shaper::{FaceStyle, Font, TextSegment};
 
@@ -29,7 +30,7 @@ struct GlyphEntry {
 }
 
 thread_local! {
-    static CACHE: RefCell<AHashMap<NumericKey, Option<GlyphEntry>>> = RefCell::new(AHashMap::new());
+    static CACHE: RefCell<Bounded<NumericKey, Option<GlyphEntry>, MAX_ENTRIES>> = RefCell::new(Bounded::default());
 }
 
 pub(crate) fn is_simple(text: &str) -> bool {
@@ -67,11 +68,7 @@ pub(crate) fn shape(
                 return *hit;
             }
             let entry = shape_char(ch, segment.level, style, font, &full);
-            let mut cache = cache.borrow_mut();
-            if cache.len() >= MAX_ENTRIES {
-                cache.clear();
-            }
-            cache.insert(key, entry);
+            cache.borrow_mut().insert(key, entry);
             entry
         })?;
         let mut glyph = entry.glyph;

@@ -10,11 +10,11 @@ use tiny_skia::{
 
 use crate::renderer::scene_command::walk::intersect_rect;
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::geometry::KAPPA;
 
 #[path = "outline.rs"]
 mod outline;
 
-const KAPPA: f32 = 0.552_284_8;
 const ANTIALIAS_REACH: f32 = 1.0;
 const MAX_DEVICE_EXTENT: f32 = 16_000.0;
 

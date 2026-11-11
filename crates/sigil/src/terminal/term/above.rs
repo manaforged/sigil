@@ -7,10 +7,9 @@ use std::sync::atomic::Ordering;
 use crossterm::style::Print;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
-use unicode_segmentation::UnicodeSegmentation;
 
 use super::{INLINE, LIVE, LIVE_ROWS, REDRAW, RESTORED, current_caps};
-use crate::app::cell_width;
+use crate::app::clip_cells as clip;
 use crate::{Error, ErrorKind};
 
 const fn unsupported(kind: ErrorKind, message: &'static str) -> crate::Error {
@@ -52,7 +51,8 @@ pub fn print_above(text: &str) -> Result<(), crate::Error> {
         if rows > 1 {
             queue!(out, cursor::MoveUp(rows - 1))?;
         }
-        let line = clip(&strip(line), cols);
+        let line = strip(line);
+        let line = clip(&line, cols);
         queue!(out, Clear(ClearType::CurrentLine), Print(line))?;
         queue!(out, cursor::MoveToColumn(0))?;
         if rows > 1 {
@@ -107,19 +107,6 @@ fn skip_string(chars: &mut Peekable<Chars<'_>>) {
             _ => {}
         }
     }
-}
-
-fn clip(line: &str, cols: usize) -> String {
-    let mut out = String::with_capacity(line.len());
-    let mut used = 0_usize;
-    for grapheme in line.graphemes(true) {
-        used = used.saturating_add(cell_width(grapheme));
-        if used > cols {
-            break;
-        }
-        out.push_str(grapheme);
-    }
-    out
 }
 
 #[cfg(test)]

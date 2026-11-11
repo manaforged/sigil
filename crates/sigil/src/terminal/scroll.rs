@@ -102,10 +102,7 @@ impl Shift {
 fn sign(cells: &[Cell]) -> u64 {
     use crate::fnv::{OFFSET, mix};
     cells.iter().fold(OFFSET, |hash, cell| {
-        let hash = cell
-            .text
-            .bytes()
-            .fold(hash, |hash, byte| mix(hash, u64::from(byte)));
+        let hash = crate::fnv::bytes(hash, cell.text.as_bytes());
         mix(mix(hash, ink(cell.fg)), ink(cell.bg))
     })
 }

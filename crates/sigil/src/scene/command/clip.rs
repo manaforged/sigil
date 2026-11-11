@@ -4,10 +4,9 @@ use crate::geometry::{Point, Rect};
 use crate::scene::command::fills::{FillRule, PathPaint};
 use crate::scene::command::payloads::{DrawPath, PathCmd};
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::geometry::{IDENTITY, KAPPA};
 use crate::style::Color;
 
-const IDENTITY: crate::scene::command::Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-const KAPPA: f32 = 0.552_284_8;
 const OPAQUE: Color = Color {
     r: 255,
     g: 255,
@@ -165,8 +164,7 @@ fn outline_key(outline: &[PathCmd], rule: FillRule) -> u64 {
         points
             .iter()
             .take(len)
-            .fold(crate::fnv::mix(hash, verb), |hash, value| {
-                crate::fnv::mix(hash, u64::from(value.to_bits()))
-            })
+            .copied()
+            .fold(crate::fnv::mix(hash, verb), crate::fnv::mix_f32)
     })
 }

@@ -261,17 +261,6 @@ impl KeyEvent {
         }
     }
 
-    /// Stops the event from reaching ancestor nodes.
-    pub const fn stop_propagation(&mut self) {
-        self.propagation_stopped = true;
-    }
-
-    /// Returns whether propagation stopped is set.
-    #[must_use]
-    pub const fn propagation_stopped(&self) -> bool {
-        self.propagation_stopped
-    }
-
     /// Returns the normalized modifiers.
     #[must_use]
     pub const fn normalized_modifiers(&self) -> ModifiersState {
@@ -342,18 +331,26 @@ impl ScrollEvent {
             propagation_stopped: false,
         }
     }
-
-    /// Stops the event from reaching ancestor nodes.
-    pub const fn stop_propagation(&mut self) {
-        self.propagation_stopped = true;
-    }
-
-    /// Returns whether propagation stopped is set.
-    #[must_use]
-    pub const fn propagation_stopped(&self) -> bool {
-        self.propagation_stopped
-    }
 }
+
+macro_rules! propagation {
+    ($($ty:ty),+) => {
+        $(impl $ty {
+            /// Stops the event from reaching ancestor nodes.
+            pub const fn stop_propagation(&mut self) {
+                self.propagation_stopped = true;
+            }
+
+            /// Returns whether propagation stopped is set.
+            #[must_use]
+            pub const fn propagation_stopped(&self) -> bool {
+                self.propagation_stopped
+            }
+        })+
+    };
+}
+
+propagation!(PointerEvent, KeyEvent, ScrollEvent, GestureEvent);
 
 /// Resize, focus, and close events of the window.
 #[derive(Clone, Debug, PartialEq)]

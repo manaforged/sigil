@@ -8,7 +8,6 @@ pub(crate) mod corner_radii;
 pub(crate) mod damage;
 pub(crate) mod emit;
 pub(crate) mod emit_cache;
-#[cfg(scene_emit)]
 pub(crate) mod geometry;
 #[cfg(vector_paint)]
 pub(crate) mod path_raster;

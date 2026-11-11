@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
-use crate::fnv::{OFFSET, mix};
+use crate::fnv::{OFFSET, bytes};
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Owner, Signal, signal};
@@ -18,15 +18,13 @@ use crate::widgets::scroll::Horizontal;
 use crate::widgets::source_too_large;
 use crate::widgets::svg_picture::picture;
 
-use super::Fallback;
 use super::engine::{self, Chart, Failure, Job, Outcome};
 use super::theme::config;
+use super::{Fallback, MAX_HEIGHT, PLOT_HEIGHT};
 
 const RENDERING: &str = "Rendering chart";
 const UNTITLED: &str = "Chart";
-const PLOT_HEIGHT: f32 = 300.0;
 const AXIS_HEIGHT: f32 = 50.0;
-const MAX_HEIGHT: f32 = 1200.0;
 
 struct Spec {
     source: Arc<str>,
@@ -71,9 +69,7 @@ pub(super) fn figure(source: &str, fallback: Fallback) -> Option<NodeBuilder> {
     let object = value.as_object()?;
     let spec = Rc::new(Spec {
         source: source.into(),
-        key: source
-            .bytes()
-            .fold(OFFSET, |key, byte| mix(key, u64::from(byte))),
+        key: bytes(OFFSET, source.as_bytes()),
         name: name(object),
         about: object
             .get("description")

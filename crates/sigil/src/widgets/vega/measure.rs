@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::LazyLock;
 
 use resvg::usvg::{self, Node, Tree};
 
+use crate::cache::Bounded;
 use crate::widgets::svg_picture::{FONT_FAMILY, fonts};
 
 const MAX_ENTRIES: usize = 16_384;
@@ -23,7 +23,7 @@ pub(super) struct Font<'a> {
 
 #[derive(Default)]
 pub(super) struct Widths {
-    known: HashMap<(String, String), f64>,
+    known: Bounded<(String, String), f64, MAX_ENTRIES>,
 }
 
 impl Widths {
@@ -40,9 +40,6 @@ impl Widths {
             return *width;
         }
         let width = measure(text, font);
-        if self.known.len() >= MAX_ENTRIES {
-            self.known.clear();
-        }
         self.known.insert(key, width);
         width
     }

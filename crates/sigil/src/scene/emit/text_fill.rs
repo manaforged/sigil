@@ -1,27 +1,23 @@
 use std::sync::Arc;
 
-use skrifa::instance::{LocationRef, NormalizedCoord, Size};
-use skrifa::outline::{DrawSettings, OutlinePen};
-use skrifa::{FontRef, GlyphId, MetadataProvider};
+use skrifa::outline::OutlinePen;
 
 use crate::scene::command::fills::{FillRule, color_at};
-use crate::scene::command::{
-    DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, Transform, outline_key,
-};
+use crate::scene::command::{DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, outline_key};
+use crate::scene::geometry::IDENTITY;
+use crate::text::outline::{Oblique, for_each_outline};
 
-const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 const TEXT_FILL_SEED: u64 = 0x7478_7466;
 
 struct Pen<'a> {
     out: &'a mut Vec<PathCmd>,
     x: f32,
     y: f32,
-    skew: f32,
 }
 
 impl Pen<'_> {
     fn at(&self, x: f32, y: f32) -> (f32, f32) {
-        (self.skew.mul_add(y, self.x + x), self.y - y)
+        (self.x + x, self.y - y)
     }
 }
 
@@ -79,35 +75,16 @@ fn outlines(run: &GlyphRun) -> Vec<PathCmd> {
     };
     let glyphs = run.positioned_glyphs();
     let origin = run.rect.origin;
-    paragraph.for_each_font(|font_id, bytes, font_index| {
-        let Ok(font) = FontRef::from_index(bytes, font_index) else {
-            return;
+    for_each_outline(paragraph, glyphs, |g, glyph, settings| {
+        let start = out.len();
+        let mut pen = Pen {
+            out: &mut out,
+            x: origin.x + g.x,
+            y: origin.y + g.y,
         };
-        let outlines = font.outline_glyphs();
-        for g in glyphs
-            .iter()
-            .filter(|g| g.font_id == font_id && g.font_index == font_index)
-        {
-            let Some(glyph) = outlines.get(GlyphId::new(g.glyph_id)) else {
-                continue;
-            };
-            let coords: Vec<NormalizedCoord> = g
-                .variation_coords
-                .iter()
-                .map(|&c| NormalizedCoord::from_bits(c))
-                .collect();
-            let mut pen = Pen {
-                out: &mut out,
-                x: origin.x + g.x,
-                y: origin.y + g.y,
-                skew: g.skew,
-            };
-            let settings = DrawSettings::unhinted(Size::new(g.size), LocationRef::new(&coords));
-            let start = pen.out.len();
-            if let Err(error) = glyph.draw(settings, &mut pen) {
-                tracing::warn!(glyph = g.glyph_id, %error, "gradient text skips a glyph it cannot outline");
-                pen.out.truncate(start);
-            }
+        if let Err(error) = glyph.draw(settings, &mut Oblique::new(&mut pen, g.skew)) {
+            tracing::warn!(glyph = g.glyph_id, %error, "gradient text skips a glyph it cannot outline");
+            out.truncate(start);
         }
     });
     out

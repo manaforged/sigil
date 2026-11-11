@@ -2,6 +2,7 @@ use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
 use crate::style::scale::rgb;
+use crate::style::srgb;
 use crate::style::{Color, ColorAtom, Token};
 
 const SCRIM: Color = Color {
@@ -120,14 +121,14 @@ impl Theme {
     }
 
     pub(crate) fn legible(color: Color, background: Color) -> Color {
-        let target = if luminance(background) < 0.18 {
+        let target = if srgb::luminance(background) < 0.18 {
             WHITE
         } else {
             BLACK
         };
         let mut out = color;
         for step in 1..=10_u8 {
-            if contrast(out, background) >= LEGIBLE {
+            if srgb::contrast(out, background) >= srgb::AA_TEXT {
                 return out;
             }
             out = alpha_mix(color, target, f32::from(step) / 10.0);
@@ -169,29 +170,8 @@ impl Theme {
     }
 }
 
-const LEGIBLE: f32 = 4.5;
 const WHITE: Color = rgb(255, 255, 255);
 const BLACK: Color = rgb(0, 0, 0);
-
-fn luminance(color: Color) -> f32 {
-    let channel = |value: u8| {
-        let c = f32::from(value) / 255.0;
-        if c <= 0.039_28 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    0.0722f32.mul_add(
-        channel(color.b),
-        0.2126f32.mul_add(channel(color.r), 0.7152 * channel(color.g)),
-    )
-}
-
-fn contrast(a: Color, b: Color) -> f32 {
-    let (x, y) = (luminance(a), luminance(b));
-    (x.max(y) + 0.05) / (x.min(y) + 0.05)
-}
 
 #[cfg(debug_assertions)]
 fn nearest_tokens(token: &str, registered: &[String]) -> [String; 3] {
@@ -222,15 +202,13 @@ mod diagnostic {
 
 #[cfg(not(debug_assertions))]
 mod diagnostic {
-    use std::collections::HashSet;
-    use std::sync::{Mutex, OnceLock};
+    use crate::style::diagnostic::Seen;
 
-    static WARNED: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+    static WARNED: Seen<&'static str> = Seen::new();
 
     #[cold]
     pub(super) fn warn_unknown_once(token: &'static str) {
-        let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));
-        if warned.lock().is_ok_and(|mut set| set.insert(token)) {
+        if WARNED.first(token) {
             tracing::warn!(token, "unknown theme token");
         }
     }

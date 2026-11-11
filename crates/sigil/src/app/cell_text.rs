@@ -304,9 +304,21 @@ impl TextMeasure for CellGeometry {
     }
 }
 
+/// Cuts `text` to the longest grapheme prefix that fits in `cells` cells.
+#[must_use]
+#[cfg(feature = "terminal")]
+pub(crate) fn clip_cells(text: &str, cells: usize) -> &str {
+    let mut used = 0_usize;
+    let end = text.grapheme_indices(true).find_map(|(index, grapheme)| {
+        used = used.saturating_add(cell_width(grapheme));
+        (used > cells).then_some(index)
+    });
+    &text[..end.unwrap_or(text.len())]
+}
+
 /// Shortens `text` to `width` cells with an ellipsis at the end.
 #[must_use]
-#[cfg(test)]
+#[cfg(feature = "terminal")]
 pub(crate) fn ellipsize_cells(text: &str, width: usize) -> String {
     if cell_width(text) <= width {
         return text.to_string();
@@ -314,12 +326,7 @@ pub(crate) fn ellipsize_cells(text: &str, width: usize) -> String {
     if width == 0 {
         return String::new();
     }
-    let mut used = 0;
-    let end = text.grapheme_indices(true).find_map(|(index, grapheme)| {
-        used += cell_width(grapheme);
-        (used > width - 1).then_some(index)
-    });
-    format!("{}…", &text[..end.unwrap_or(text.len())])
+    format!("{}…", clip_cells(text, width - 1))
 }
 
 /// Shortens `text` to `width` cells with an ellipsis at the start.

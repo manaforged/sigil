@@ -1,9 +1,9 @@
 use crate::scene::command::Filter;
+use crate::style::srgb::LUMA;
 
 pub(crate) type ColorMatrix = [[f32; 5]; 4];
 
 const IDENTITY: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-const LUMA: [f32; 3] = [0.2126, 0.7152, 0.0722];
 const SATURATE_LUMA: [f32; 3] = [0.213, 0.715, 0.072];
 const SEPIA: [[f32; 3]; 3] = [
     [0.393, 0.769, 0.189],

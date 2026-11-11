@@ -10,6 +10,7 @@ use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::{
     DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
+use crate::scene::geometry::IDENTITY;
 use crate::style::{Color, ColorAtom, Theme};
 use crate::widgets::Layout;
 use crate::widgets::layout_ext::LayoutOverrides;
@@ -22,8 +23,6 @@ pub(crate) use crate::scene::command::PathCmd;
 pub(crate) use values::PathFill;
 
 type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
-
-const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
 /// Builder of a vector path.
 #[derive(Debug)]

@@ -7,15 +7,11 @@ pub(super) fn mix(hash: &mut u64, byte: u8) {
 }
 
 pub(super) fn mix_f32(hash: &mut u64, value: f32) {
-    for byte in value.to_bits().to_le_bytes() {
-        mix(hash, byte);
-    }
+    *hash = crate::fnv::bytes(*hash, &value.to_bits().to_le_bytes());
 }
 
 fn mix_rgba(hash: &mut u64, color: Color) {
-    for byte in [color.r, color.g, color.b, color.a] {
-        mix(hash, byte);
-    }
+    *hash = crate::fnv::bytes(*hash, &[color.r, color.g, color.b, color.a]);
 }
 
 fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {

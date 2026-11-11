@@ -4,6 +4,8 @@ use crate::style::{Color, Tone};
 use crate::terminal::caps::ColorDepth;
 use crate::terminal::paint::Ink;
 
+pub(super) const CUBE_LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
+
 pub(crate) fn cube(colour: Color) -> u8 {
     let (red, r) = nearest_level(colour.r);
     let (green, g) = nearest_level(colour.g);
@@ -21,9 +23,8 @@ pub(crate) fn cube(colour: Color) -> u8 {
 }
 
 fn nearest_level(channel: u8) -> (u8, u8) {
-    const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
     (0_u8..)
-        .zip(LEVELS)
+        .zip(CUBE_LEVELS)
         .min_by_key(|(_, level)| channel.abs_diff(*level))
         .map_or((0, 0), |(index, level)| (level, index))
 }

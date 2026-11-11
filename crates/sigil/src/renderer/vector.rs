@@ -9,6 +9,7 @@ use crate::scene::command::{
     DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCmd, PathPaint, PathStroke,
     StrokeCap, StrokeJoin, Transform,
 };
+use crate::scene::geometry::MIN_EXTENT;
 use crate::style::Color;
 
 pub(crate) trait PathSink {
@@ -188,7 +189,7 @@ fn shape(kind: GradientKind, first: f32, last: f32) -> (Shape, Affine) {
             )
         }
         GradientKind::Radial { center, radius } => {
-            let [rx, ry] = radius.map(|r| f64::from(r.max(MIN_RADIUS)));
+            let [rx, ry] = radius.map(|r| f64::from(r.max(MIN_EXTENT)));
             let place = Affine::translate(point(center)) * Affine::scale_non_uniform(rx, ry);
             (
                 Shape::new_two_point_radial((0.0, 0.0), first, (0.0, 0.0), last),
@@ -205,4 +206,3 @@ fn shape(kind: GradientKind, first: f32, last: f32) -> (Shape, Affine) {
 
 const QUARTER: f32 = 90.0;
 const TAU: f32 = std::f32::consts::TAU;
-const MIN_RADIUS: f32 = 1.0 / 4096.0;

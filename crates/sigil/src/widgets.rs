@@ -101,6 +101,32 @@ macro_rules! builder_impls {
             }
         }
     };
+    (@kernel [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> crate::widgets::Sealed for $ty {
+            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
+                self.node = edit.apply(self.node);
+                self
+            }
+
+            fn map_target(
+                self,
+                f: impl FnOnce(crate::kernel::NodeBuilder) -> crate::kernel::NodeBuilder + 'static,
+            ) -> Self {
+                crate::widgets::Widget::map_node(self, f)
+            }
+        }
+
+        impl<$($g)*> crate::widgets::Widget for $ty {
+            fn map_node(
+                mut self,
+                f: impl FnOnce(crate::kernel::NodeBuilder) -> crate::kernel::NodeBuilder + 'static,
+            ) -> Self {
+                self.hooks
+                    .push(Box::new(move |node| node.map_keeping_kind(f)));
+                self
+            }
+        }
+    };
     (@forward [$($g:tt)*] $ty:ty, $field:ident) => {
         impl<$($g)*> crate::widgets::Sealed for $ty {
             fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
@@ -180,7 +206,6 @@ mod dropdown;
 mod field;
 mod fuzzy;
 mod gauge;
-mod grapheme;
 mod graphviz;
 mod highlight;
 mod html;
