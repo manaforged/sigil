@@ -83,11 +83,14 @@ fn emit_with_memo(
     let spans = memo.spans.take();
     let mut next = memo.scratch.take().unwrap_or_default();
     next.clear();
-    let prior = can_copy.then_some(()).and(spans.as_ref()).map(|spans| Prior {
-        commands: &prev.commands,
-        spans,
-        dirty: &dirty,
-    });
+    let prior = can_copy
+        .then_some(())
+        .and(spans.as_ref())
+        .map(|spans| Prior {
+            commands: &prev.commands,
+            spans,
+            dirty: &dirty,
+        });
     let mut track = SpanTrack::recording(prior, next, want_diff);
     let scene = run(cx, root, clip, &selection, &mut track);
     let SpanTrack {

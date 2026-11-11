@@ -37,7 +37,8 @@ impl TextMeasure for TextEngineMeasure {
             Dim::Fixed(w) => Some(w),
             Dim::MinContent | Dim::MaxContent => None,
         };
-        let result = source.with_str(|text| self.engine.layout_paragraph_styled(text, max_width, style));
+        let result =
+            source.with_str(|text| self.engine.layout_paragraph_styled(text, max_width, style));
         let para = match result {
             Ok(para) => para,
             Err(err) => {

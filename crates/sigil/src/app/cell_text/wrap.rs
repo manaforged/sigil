@@ -32,7 +32,9 @@ pub(super) fn measure_lines(text: &str, max_cells: Option<usize>) -> (usize, usi
         });
         return (wide, count);
     };
-    if text.is_ascii() && text.len() <= max_cells && !text.bytes().any(|b| matches!(b, b'\n' | b'\r'))
+    if text.is_ascii()
+        && text.len() <= max_cells
+        && !text.bytes().any(|b| matches!(b, b'\n' | b'\r'))
     {
         return (cell_width(text), 1);
     }

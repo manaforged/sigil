@@ -47,7 +47,10 @@ pub(crate) fn oversize_block() -> markdown::parse::Block {
     markdown::parse::Block::Paragraph(vec![markdown::parse::Inline::Text(oversize_message())])
 }
 
-pub(crate) fn scrolled_diagram(diagram: crate::kernel::NodeBuilder, width: f32) -> crate::kernel::NodeBuilder {
+pub(crate) fn scrolled_diagram(
+    diagram: crate::kernel::NodeBuilder,
+    width: f32,
+) -> crate::kernel::NodeBuilder {
     let centred = crate::kernel::container()
         .layout(
             crate::layout::LayoutStyle::flex_row()

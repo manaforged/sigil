@@ -54,7 +54,10 @@ const fn shift_box(cb: ComputedBox, dx: f32, dy: f32) -> ComputedBox {
 
 impl LayoutForest {
     pub(crate) fn fills_get(&self, id: LocalId) -> Option<bool> {
-        let code = self.node(id).and_then(|_| self.fills.get(id.index as usize))?.get();
+        let code = self
+            .node(id)
+            .and_then(|_| self.fills.get(id.index as usize))?
+            .get();
         match code {
             1 => Some(false),
             2 => Some(true),
@@ -63,7 +66,10 @@ impl LayoutForest {
     }
 
     pub(crate) fn fills_put(&self, id: LocalId, fills: bool) {
-        if let Some(slot) = self.node(id).and_then(|_| self.fills.get(id.index as usize)) {
+        if let Some(slot) = self
+            .node(id)
+            .and_then(|_| self.fills.get(id.index as usize))
+        {
             slot.set(if fills { 2 } else { 1 });
         }
     }
@@ -82,12 +88,7 @@ impl LayoutForest {
         }
     }
 
-    pub(crate) fn replay_subtree(
-        &self,
-        id: LocalId,
-        key: SolvedKey,
-        origin: (f32, f32),
-    ) -> bool {
+    pub(crate) fn replay_subtree(&self, id: LocalId, key: SolvedKey, origin: (f32, f32)) -> bool {
         let Some(solved) = self.live_solved(id).and_then(Cell::get) else {
             return false;
         };
@@ -204,13 +205,7 @@ impl LayoutForest {
         }
     }
 
-    fn shift_replayed_node(
-        &self,
-        id: LocalId,
-        prev_frame: u32,
-        now: u32,
-        (dx, dy): (f32, f32),
-    ) {
+    fn shift_replayed_node(&self, id: LocalId, prev_frame: u32, now: u32, (dx, dy): (f32, f32)) {
         let idx = id.index as usize;
         if let Some(cell) = self.boxes.get(idx)
             && cell.frame() == prev_frame

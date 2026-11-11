@@ -254,7 +254,8 @@ impl LayoutDrive {
         let root_frame = self.forest.frame_for(root.0).unwrap_or(0);
         self.forest.invalidate_solved_ancestors(root.0);
         for handle in handles {
-            self.forest.shift_solved_from(handle.0, root_frame, (dx, dy));
+            self.forest
+                .shift_solved_from(handle.0, root_frame, (dx, dy));
             if self.forest.frame_for(handle.0).unwrap_or(0) < root_frame {
                 continue;
             }

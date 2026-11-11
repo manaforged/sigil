@@ -285,8 +285,12 @@ impl LayoutEngine {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
         }
-        if node.get_extension::<crate::layout::SizeReactive>().is_some()
-            || node.get_extension::<crate::layout::BoundsReactive>().is_some()
+        if node
+            .get_extension::<crate::layout::SizeReactive>()
+            .is_some()
+            || node
+                .get_extension::<crate::layout::BoundsReactive>()
+                .is_some()
         {
             self.geometry_reactive.insert(id.key());
         } else {

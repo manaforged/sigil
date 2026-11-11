@@ -222,7 +222,8 @@ impl EmitMemo {
         delta: &FrameDelta,
         selection: &HashMap<NodeId, (usize, usize)>,
     ) -> (bool, AHashSet<NodeId>) {
-        let mass_dirty = !delta.structure && (delta.layout.len() + delta.paint.len()) * 4 > cx.len();
+        let mass_dirty =
+            !delta.structure && (delta.layout.len() + delta.paint.len()) * 4 > cx.len();
         if !usable || mass_dirty {
             self.seed_seen(cx, root);
             return (false, AHashSet::new());

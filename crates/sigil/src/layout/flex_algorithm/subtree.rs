@@ -60,11 +60,8 @@ pub(crate) fn layout_item_subtree(
             dispatch_flex_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))?;
         }
         Display::Grid => {
-            let nested = crate::layout::forest::MeasureScope::new(
-                forest,
-                scope.text(),
-                scope.available(),
-            );
+            let nested =
+                crate::layout::forest::MeasureScope::new(forest, scope.text(), scope.available());
             let pre = block_origin(style, origin, w);
             crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)?;
         }
@@ -96,7 +93,11 @@ fn dispatch_flex_subtree(
         assigned_h,
     };
     let m = NodeEdges::build(style, w).margin.or_zero();
-    layout_root(&nested, node, Position2::new(origin.x - m.left, origin.y - m.top))
+    layout_root(
+        &nested,
+        node,
+        Position2::new(origin.x - m.left, origin.y - m.top),
+    )
 }
 
 fn dispatch_block_subtree(

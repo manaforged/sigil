@@ -101,10 +101,7 @@ impl ParagraphCache {
             if width_bits == key.width_bits {
                 continue;
             }
-            let candidate = CacheKey {
-                width_bits,
-                ..key
-            };
+            let candidate = CacheKey { width_bits, ..key };
             let Some(entry) = self.map.get(&candidate) else {
                 continue;
             };
