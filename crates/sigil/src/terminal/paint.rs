@@ -26,7 +26,9 @@ pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;
 #[cfg(test)]
 pub(crate) use scene::raster;
-pub(crate) use scene::{CellPaint, raster_into, raster_with};
+#[cfg(any(test, feature = "kittest"))]
+pub(crate) use scene::raster_into;
+pub(crate) use scene::{CellPaint, raster_with};
 
 /// The text of a cell that continues a wide character.
 pub(crate) const CONTINUES: &str = "";

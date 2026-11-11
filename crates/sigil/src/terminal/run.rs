@@ -142,6 +142,8 @@ impl Host {
     }
 
     /// Draws a scene into a cell grid with this host's theme.
+    #[doc(hidden)]
+    #[cfg(feature = "kittest")]
     pub fn paint_cells(&self, grid: &mut Grid, scene: &crate::scene::CommandScene) {
         crate::terminal::paint::raster_into(grid, scene, self.theme(), CELL);
     }

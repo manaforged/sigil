@@ -163,7 +163,6 @@ impl Scoped {
 }
 
 pub(super) struct HostEnv {
-    pub(super) exit: Rc<Cell<bool>>,
     viewport: Signal<LogicalSize>,
     pub(super) caps: HostCaps,
     pub(super) theme: Signal<crate::style::Theme>,
@@ -202,18 +201,16 @@ impl HostEnv {
             ));
         });
         let (viewport, theme) = signals.expect("host root owner is live");
-        let exit = Rc::new(Cell::new(false));
         let scoped = Scoped {
             cell,
             geometry: Some(geometry),
-            exit: Some(Rc::clone(&exit)),
+            exit: Some(Rc::new(Cell::new(false))),
             focus_source: Some(Rc::new(Cell::new(true))),
             viewport: Some(viewport),
             theme: Some(theme),
             ..Scoped::default()
         };
         Self {
-            exit,
             viewport,
             caps: HostCaps::window(),
             theme,
