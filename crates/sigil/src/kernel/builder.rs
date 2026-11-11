@@ -30,7 +30,7 @@ pub struct NodeBuilder {
     pub(super) on_added: Vec<AddedHook>,
     style: Option<Box<Style>>,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
-    wiring: Wiring,
+    wiring: Option<Box<Wiring>>,
 }
 
 impl core::fmt::Debug for NodeBuilder {
@@ -78,7 +78,7 @@ impl NodeBuilder {
             on_added: Vec::new(),
             style: None,
             wraps: None,
-            wiring: Wiring::default(),
+            wiring: None,
         }
     }
 
@@ -352,13 +352,17 @@ impl NodeBuilder {
         let style = self.style.take().filter(|style| !style.is_empty());
         match style {
             Some(style) => crate::style::attach_style(self, *style),
-            None if self.wiring.is_inert() => self,
+            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert()) => self,
             None => crate::style::attach_style(self, Style::new()),
         }
     }
 
-    pub(crate) const fn wiring_mut(&mut self) -> &mut Wiring {
-        &mut self.wiring
+    pub(crate) fn wiring_mut(&mut self) -> &mut Wiring {
+        self.wiring.get_or_insert_default()
+    }
+
+    pub(crate) fn take_wiring(&mut self) -> Wiring {
+        self.wiring.take().map(|wiring| *wiring).unwrap_or_default()
     }
 
     pub(crate) const fn is_focusable(&self) -> bool {
