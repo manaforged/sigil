@@ -31,26 +31,48 @@ pub fn dump_subtree(owner: Owner) -> String {
 
 #[cfg(feature = "kittest")]
 fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
-    let Some(children) = with_rt(|rt| {
-        rt.owners.get(key).map(|slot| {
-            out.push_str(&render_line(slot, depth));
-            slot.children.clone()
-        })
+    let Some((children, lazy_runs)) = with_rt(|rt| {
+        let slot = rt.owners.get(key)?;
+        let lazy_runs: Vec<&'static core::panic::Location<'static>> = slot
+            .effects
+            .iter()
+            .filter_map(|&eff| {
+                let effect = rt.effects.get(eff)?;
+                effect.run_owner.is_none().then_some(effect.location)
+            })
+            .collect();
+        out.push_str(&render_line_with(slot, depth, lazy_runs.len()));
+        Some((slot.children.clone(), lazy_runs))
     }) else {
         return;
     };
     for child in children {
         write_subtree(out, child, depth + 1);
     }
+    for loc in lazy_runs {
+        let _ = writeln!(
+            out,
+            "{}<effect-run>  at {}:{}",
+            "  ".repeat(depth + 1),
+            loc.file(),
+            loc.line()
+        );
+    }
 }
 
 #[cfg(feature = "kittest")]
+#[cfg(test)]
 fn render_line(slot: &OwnerSlot, depth: usize) -> String {
+    render_line_with(slot, depth, 0)
+}
+
+#[cfg(feature = "kittest")]
+fn render_line_with(slot: &OwnerSlot, depth: usize, extra_owners: usize) -> String {
     let counts = [
         ("signals", slot.signals.len()),
         ("effects", slot.effects.len()),
         ("cleanups", slot.cleanups.len()),
-        ("owners", slot.children.len()),
+        ("owners", slot.children.len() + extra_owners),
     ];
     let parts: Vec<String> = counts
         .iter()

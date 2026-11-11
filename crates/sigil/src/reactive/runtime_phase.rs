@@ -122,6 +122,12 @@ fn clear_dead_current(rt: &mut RuntimeState) {
         rt.current_owner = None;
     }
     if rt
+        .lazy_effect_owner
+        .is_some_and(|key| !rt.effects.contains(key))
+    {
+        rt.lazy_effect_owner = None;
+    }
+    if rt
         .current_effect
         .is_some_and(|key| !rt.effects.contains(key))
     {

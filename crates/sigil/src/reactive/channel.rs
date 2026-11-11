@@ -65,7 +65,7 @@ impl<T: Clone + 'static> EventChannel<T> {
             inner.subs.push((id, Rc::new(f)));
             id
         };
-        if with_rt(|rt| rt.current_owner.is_some()) {
+        if with_rt(|rt| rt.has_active_owner()) {
             let inner = Rc::clone(&self.inner);
             on_cleanup(move || remove_sub(&inner, id));
         }
