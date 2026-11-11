@@ -22,7 +22,7 @@ Key options:
 - `.change(Fn(&str))`: runs after each committed edit. Each call to `.change`, `.submit` or `.blur` adds a callback.
 - `.submit(Fn(&str))`: runs on Enter.
 - `.blur(Fn())`: runs when the field loses focus.
-- `.disabled(Signal<bool>)`: blocks input and paints disabled.
+- `.disabled(impl Reactive<bool>)`: blocks input and paints disabled.
 - `.invalid_when(Signal<bool>)`: paints the error frame; a failed clipboard write also raises it.
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).
 - `.password()`: masks the glyphs with `*`; the signal stays plaintext.
@@ -60,17 +60,17 @@ number_field(quantity, 1..=99);
 # };
 ```
 
-The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer, and Enter or leaving the field rewrites it to the stored value, so "500" in `0..=100` shows "100". Float kinds reject non-finite input. `.disabled(Signal<bool>)` works as in `text_field`. `.invalid_when(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
+The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer, and Enter or leaving the field rewrites it to the stored value, so "500" in `0..=100` shows "100". Float kinds reject non-finite input. `.disabled(impl Reactive<bool>)` works as in `text_field`. `.invalid_when(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
 
 ## date_field
 
 `date_field(Signal<Date>)`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
 
-`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(Signal<bool>)` and `.invalid_when(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
+`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid_when(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
 
 ## color_field
 
-`color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
+`color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(impl Reactive<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
 
 ## time_field
 
@@ -78,7 +78,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## tag_input
 
-`tag_input(options, Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options`; Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(Signal<bool>)`.
+`tag_input(options, Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options`; Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
 
 ## combobox
 
@@ -93,7 +93,7 @@ combobox(state);
 # };
 ```
 
-`Combobox` holds the option list, the query, the selection, the popup open flag, and the cursor. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_cursor(delta)`. `.disabled(Signal<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
+`Combobox` holds the option list, the query, the selection, the popup open flag, and the cursor. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_cursor(delta)`. `.disabled(impl Reactive<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
 
 Typing opens the popup and clears the selection unless the text equals the committed label. Arrow Down opens or moves the cursor, Arrow Up moves it, Enter commits the cursor row, Escape closes. The popup also closes when the text field loses focus. The popup caps at eight 28 px rows and scrolls past that. Committing bumps a session signal that rebuilds the field so the label repaints.
 
@@ -110,7 +110,7 @@ dropdown(choice, vec!["Small".into(), "Large".into()])
 # };
 ```
 
-`.label()` names the control for accessibility (default "Dropdown"); `.disabled(Signal<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
+`.label()` names the control for accessibility (default "Dropdown"); `.disabled(impl Reactive<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
 
 Enter opens or commits, Escape closes, the arrows move the cursor, and pointer enter moves it too. `focus_out` on the root closes the popup. The popup is a `TopLayer` list of `Role::ListBoxOption` rows capped at six visible options; longer lists scroll inside the popup.
 
@@ -131,7 +131,7 @@ The visual catalog captures each field in the states in the table. Invalid comes
 | `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |
 | `combobox` | default, hover, pressed, focused, disabled, open | Typing, Arrow keys, Enter, Escape | `ComboBox`, popup `ListBox` | The placeholder, else "Combobox" |
 
-`field` adds a visible label but does not name the control. Set the placeholder, or `.label()` on a dropdown, so assistive technology reads the same name.
+`field` labels its control: the control is `labelled_by` the visible label, so assistive technology and `Harness::type_into("Name", ..)` find it by that text.
 
 ## Terminal notes
 

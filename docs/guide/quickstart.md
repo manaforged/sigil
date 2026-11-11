@@ -112,7 +112,7 @@ container()
 
 `class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 
-Spacing and size numbers are pixels. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
+Padding, margin, and gap take a `Space` step such as `Space::Md`; width and height take a number of pixels or a `Length`. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
 
 ### Typed theme tokens
 

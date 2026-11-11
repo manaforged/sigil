@@ -24,7 +24,7 @@ Key options:
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
 - `.enabled(bool)`: static disable; the node is not focusable.
-- `.disabled(Signal<bool>)`: reactive disable.
+- `.disabled(impl Reactive<bool>)`: reactive disable.
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
@@ -46,13 +46,13 @@ checkbox(agreed).label("Accept terms").change(|on| {
 # };
 ```
 
-Key options: `.label(impl Into<TextContent>)` puts a label beside the box and makes the row fill its width; `.tone(Tone)`: `Tone::Neutral` checks in gray scale step 9, every other tone checks in `accent`; `.change(Fn(bool))` is a side effect, and the widget writes the signal first, then calls the closure; `.disabled(Signal<bool>)` blocks input and paints the whole row, box and label, at the disabled opacity. A disabled checked box keeps its tone fill.
+Key options: `.label(impl Into<TextContent>)` puts a label beside the box and makes the row fill its width; `.tone(Tone)`: `Tone::Neutral` checks in gray scale step 9, every other tone checks in `accent`; `.change(Fn(bool))` is a side effect, and the widget writes the signal first, then calls the closure; `.disabled(impl Reactive<bool>)` blocks input and paints the whole row, box and label, at the disabled opacity. A disabled checked box keeps its tone fill.
 
 Pointer release, Enter, and Space flip the value. In the terminal host the indicator degrades to `[x]` / `[ ]` text.
 
 ## toggle
 
-`toggle(Signal<bool>)`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(Signal<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
+`toggle(Signal<bool>)`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(impl Reactive<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
 
 ## radio_group
 
@@ -69,7 +69,7 @@ radio_group(mode)
 # };
 ```
 
-`.option(key, label)` appends a row (`Role::RadioButton`, publishes `checked`). Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(Signal<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
+`.option(key, label)` appends a row (`Role::RadioButton`, publishes `checked`). Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(impl Reactive<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
 
 ## slider
 
@@ -91,7 +91,7 @@ Key options:
 - `.change(Fn(f32))`: fires on drag release and on each key step, not continuously during the drag.
 - `.orientation(Orientation::Vertical)`: default Horizontal.
 - `.length(px)`: fixes the track extent; the default fills the parent.
-- `.disabled(Signal<bool>)`: dims the slider; the thumb stays opaque with a gray border so it reads in light and dark themes.
+- `.disabled(impl Reactive<bool>)`: dims the slider; the thumb stays opaque with a gray border so it reads in light and dark themes.
 
 Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown move ten steps, Home/End jump to the range ends. Drag captures the pointer, so a slide that leaves the track still updates.
 
@@ -105,7 +105,7 @@ Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown mov
 
 ## States, keys, and accessibility
 
-The visual catalog captures each control in the states in the table. Hover, pressed, and focused come from the pointer and the keyboard. Disabled comes from `.disabled(Signal<bool>)`.
+The visual catalog captures each control in the states in the table. Hover, pressed, and focused come from the pointer and the keyboard. Disabled comes from `.disabled(impl Reactive<bool>)`.
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
