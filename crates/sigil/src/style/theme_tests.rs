@@ -118,8 +118,8 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     let gold = rgb(0xE8, 0xC0, 0x60);
     let navy = rgb(0x0D, 0x12, 0x20);
     let t = Theme::dark()
-        .with_token("accent", ThemeValue::Color(gold))
-        .with_token("on-accent", ThemeValue::Color(navy));
+        .token("accent", gold)
+        .token("on-accent", navy);
     assert_eq!(t.resolve_color(ColorAtom::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);

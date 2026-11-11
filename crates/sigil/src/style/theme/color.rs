@@ -5,6 +5,12 @@ use crate::style::scale::rgb;
 use crate::style::srgb;
 use crate::style::{Color, ColorAtom, Token};
 
+impl From<Color> for ThemeValue {
+    fn from(color: Color) -> Self {
+        Self::Color(color)
+    }
+}
+
 const SCRIM: Color = Color {
     r: 0,
     g: 0,
@@ -35,12 +41,15 @@ impl Theme {
             .unwrap_or_else(|| self.missing_color(name))
     }
 
-    /// Stores a custom token and returns its old value.
-    pub fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
+    /// Sets the token `name`, built-in or custom, to `value`.
+    #[must_use]
+    pub fn token(mut self, name: &str, value: impl Into<ThemeValue>) -> Self {
+        let value = value.into();
         if let (Some(token), ThemeValue::Color(color)) = (Token::from_name(name), value) {
             self.sync_runtime_color(token, color);
         }
-        self.tokens.overrides.insert(name, value)
+        self.tokens.overrides.insert(name, value);
+        self
     }
 
     /// Fill the theme table layer from static data.
@@ -49,13 +58,6 @@ impl Theme {
         for (name, value) in tokens {
             self.tokens.theme.insert(name, *value);
         }
-        self
-    }
-
-    /// Sets one custom token.
-    #[must_use]
-    pub fn with_token(mut self, name: &str, value: ThemeValue) -> Self {
-        self.register_token(name, value);
         self
     }
 

@@ -65,7 +65,7 @@ where
 
 impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
     /// Sets the placeholder.
-    pub const fn placeholder(mut self, text: &'static str) -> Self {
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.state = self.state.placeholder(text);
         self
     }
@@ -105,7 +105,7 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
             }
         });
         let group = container().role(Role::Group);
-        let group = if placeholder.is_empty() {
+        let group = if placeholder.peek().is_empty() {
             group
         } else {
             group.label(placeholder)

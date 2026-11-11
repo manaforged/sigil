@@ -5,7 +5,6 @@
 #![cfg(feature = "kittest")]
 
 use sigil::prelude::*;
-use sigil::style::ThemeValue;
 use sigil::widgets::icon_svg;
 use sigil_kittest::Harness;
 
@@ -69,7 +68,7 @@ fn a_translucent_token_tints_an_icon_at_its_own_alpha() {
         b: 255,
         a: 128,
     };
-    let theme = Theme::dark().with_token("gray-11", ThemeValue::Color(glow));
+    let theme = Theme::dark().token("gray-11", glow);
     let app = move || {
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24"/></svg>"#;
         column()

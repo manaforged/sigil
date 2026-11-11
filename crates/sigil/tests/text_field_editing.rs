@@ -169,3 +169,30 @@ fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
         .physical(physical)
         .modifiers(ModifiersState::CONTROL)
 }
+
+#[test]
+fn a_submit_added_to_a_number_field_keeps_its_clamp() {
+    sigil::reactive::Owner::scope("text-field-submit-chain", || {
+        let value = signal(50_i32);
+        let submitted = signal(String::new());
+        let field = number_field(value, 0..=100)
+            .text_field()
+            .submit(move |text| submitted.set(text.to_owned()));
+        let mut ui = sigil_kittest::Harness::new(move || column().child(field)).pixels(400, 120);
+        ui.settle();
+        let input = ui.get(&sigil_kittest::Query::role(Role::TextInput));
+        ui.click(&input).press(Key::End);
+        for _ in 0..4 {
+            ui.press(Key::Backspace);
+        }
+        ui.type_text("500").press(Key::Enter).settle();
+        let shown = ui
+            .get(&sigil_kittest::Query::role(Role::TextInput))
+            .value()
+            .map(str::to_owned);
+        assert_eq!(
+            (value.peek(), shown, submitted.peek()),
+            (100, Some("100".to_owned()), "500".to_owned())
+        );
+    });
+}

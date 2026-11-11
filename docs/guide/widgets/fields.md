@@ -19,7 +19,7 @@ text_field(name)
 Key options:
 
 - `.placeholder(impl Into<TextContent>)`: ghost text while empty.
-- `.change(Fn(&str))`: runs after each committed edit.
+- `.change(Fn(&str))`: runs after each committed edit. Each call to `.change`, `.submit` or `.blur` adds a callback.
 - `.submit(Fn(&str))`: runs on Enter.
 - `.blur(Fn())`: runs when the field loses focus.
 - `.disabled(Signal<bool>)`: blocks input and paints disabled.

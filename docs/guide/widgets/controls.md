@@ -97,7 +97,7 @@ Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown mov
 
 ## range_slider
 
-`range_slider(Signal<RangeInclusive<f32>>, RangeInclusive<f32>) -> SliderBuilder`. Two thumbs on one track. Each thumb is a focusable `Role::Slider` named "minimum" and "maximum" after the slider label, and takes the same keys as `slider`. The start never passes the end. A press or drag moves the nearest thumb; when both thumbs sit on one value, the drag direction picks the thumb. `.change(Fn(f32))` reports the moved thumb's value; read the whole range from the signal.
+`range_slider(Signal<RangeInclusive<f32>>, RangeInclusive<f32>) -> SliderBuilder<RangeInclusive<f32>>`. Two thumbs on one track. Each thumb is a focusable `Role::Slider` named "minimum" and "maximum" after the slider label, and takes the same keys as `slider`. The start never passes the end. A press or drag moves the nearest thumb; when both thumbs sit on one value, the drag direction picks the thumb. `.change(Fn(RangeInclusive<f32>))` reports the whole range after either thumb moves.
 
 ## link
 

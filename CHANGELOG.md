@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - The minimum supported Rust version is 1.96. Before, it was 1.95.
+- `Combobox::placeholder` and `TagInputBuilder::placeholder` take `impl Into<String>`. Before, they took `&'static str`.
+- `TextFieldBuilder::change`, `submit` and `blur` add a callback on each call. Before, a second call replaced the first, so `number_field(..).text_field().submit(f)` dropped the clamp on commit.
+- `range_slider` returns `SliderBuilder<RangeInclusive<f32>>`, and its `.change` gets the whole range after either thumb moves. Before, it got one thumb's value.
+- `Theme::token(name, value)` sets a theme token and takes a `Color`. It replaces `Theme::register_token` and `Theme::with_token`.
+- A table cell edit commits and closes when focus leaves the editor. Before, it stayed open.
 - A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
 - A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
 - The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.
@@ -26,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `ButtonGlyph`, `IconSource` and `IntoIconSource` are one type, `widgets::Glyph` (`#[non_exhaustive]`, variants `Text` and `Icon`). `icon`, `icon_button` and `TreeNode::leading` take `impl Into<Glyph>`, so the same values work.
 - `ScrollBuilder::extent` takes `impl Reactive<f32>`: a number, a `Signal<f32>`, or a closure. `IntoScrollExtent` is removed.
 - `GlyphRun` no longer derefs to `SharedGlyph`. Read a run with `text()`, `color()`, `style()`, `opacity()` and `tone()`. `SharedGlyph` is crate-private. Migration: `run.text.clone()` becomes `run.text().to_owned()`.
-- `Theme::tokens` is crate-private, and `TokenTable` and `TokenLayer` are no longer exported. Read a token with `Theme::color` or `Theme::resolve_color` and set one with `Theme::register_token`. Writing the field directly left `accent` and its scale stale. A `Theme` is no longer built with `..Theme::default()` outside the crate; start from `Theme::default()` and set fields.
+- `Theme::tokens` is crate-private, and `TokenTable` and `TokenLayer` are no longer exported. Read a token with `Theme::color` or `Theme::resolve_color` and set one with `Theme::token`. Writing the field directly left `accent` and its scale stale. A `Theme` is no longer built with `..Theme::default()` outside the crate; start from `Theme::default()` and set fields.
 - `app::FrameInputHook`, `FrameLayoutHook` and `FramePaintHook` are public, like `FrameHooks` that names them. `render_style_for` (feature `kittest`) no longer takes an unused node id.
 - `terminal::Capabilities` and `terminal::Notices` fields are private. Read them with getters of the same names, for example `caps.backdrop()`. `Screen::with_caps` and `Screen::set_caps` are public only under feature `kittest`; a host gets its capabilities from `Capabilities::detect` or `probe`. `terminal::ClipRoute` and `terminal::Fills` are `#[non_exhaustive]`.
 - `StyleAtom` and its payload types, the scene command types other than those above, `emit_scene`, `CommandScene::commands`, and the terminal `map_key` and `map_mouse` are public only under feature `kittest`.
