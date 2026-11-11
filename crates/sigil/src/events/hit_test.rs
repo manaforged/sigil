@@ -20,6 +20,7 @@ type HitItems = SmallVec<[HitItem; 64]>;
 pub(crate) struct HitTestCache {
     cx_generation: u64,
     layout_generation: u64,
+    transform_generation: u64,
     items: HitItems,
     transforms: SmallVec<[HitTransform; 64]>,
     query: u64,
@@ -47,6 +48,7 @@ impl Default for HitTestCache {
         Self {
             cx_generation: u64::MAX,
             layout_generation: u64::MAX,
+            transform_generation: u64::MAX,
             items: HitItems::new(),
             transforms: SmallVec::new(),
             query: 0,
@@ -71,7 +73,11 @@ impl HitTestCache {
     fn refresh(&mut self, cx: &Cx, layout: &LayoutEngine) {
         let cx_generation = cx.mutation_generation();
         let layout_generation = layout.generation();
-        if self.cx_generation == cx_generation && self.layout_generation == layout_generation {
+        let transform_generation = crate::style::binding::transform_generation();
+        if self.cx_generation == cx_generation
+            && self.layout_generation == layout_generation
+            && self.transform_generation == transform_generation
+        {
             return;
         }
         let _refresh = crate::profile::span(crate::profile::Phase::HitRefresh);
@@ -86,6 +92,7 @@ impl HitTestCache {
         self.transformed = self.transforms.iter().any(|item| item.transformed);
         self.cx_generation = cx_generation;
         self.layout_generation = layout_generation;
+        self.transform_generation = transform_generation;
     }
 
     pub(super) const fn uses_transforms(&self) -> bool {
@@ -317,7 +324,7 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
             continue;
         };
         if let Some(binding) = node.get_extension::<StyleBinding>()
-            && (binding.may_transform() || binding.animator_overlay().is_some())
+            && binding.may_transform()
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
             && let Some(transform) = node_transform(cx, id, binding, result.rect())
         {
@@ -342,6 +349,7 @@ pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Optio
     for id in chain.into_iter().rev() {
         let node = cx.get(id)?;
         if let Some(binding) = node.get_extension::<StyleBinding>()
+            && binding.may_transform()
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
         {
             point = to_local(cx, id, binding, result.rect(), point)?;

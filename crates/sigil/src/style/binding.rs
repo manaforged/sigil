@@ -1,7 +1,19 @@
 use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use smallvec::SmallVec;
+
+static TRANSFORM_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+pub(crate) fn bump_transform_generation() {
+    TRANSFORM_GENERATION.fetch_add(1, Ordering::Relaxed);
+}
+
+#[must_use]
+pub(crate) fn transform_generation() -> u64 {
+    TRANSFORM_GENERATION.load(Ordering::Relaxed)
+}
 
 use crate::animation::Property;
 use crate::animation::runtime::style::StyleAnimator;
@@ -39,6 +51,7 @@ kittest_pub! {
         state_overlay_slot: Option<ReactiveStateSlot>,
         widget_channels: Option<usize>,
         user_slots: SlotSet,
+        may_transform_fixed: bool,
     }
 }
 
@@ -64,20 +77,24 @@ impl core::fmt::Debug for StyleBinding {
 impl StyleBinding {
     #[must_use]
     pub(crate) fn static_atoms(static_atoms: &'static [StyleAtom]) -> Self {
-        Self {
+        let mut binding = Self {
             static_atoms,
             ..Self::default()
-        }
+        };
+        binding.recompute_may_transform();
+        binding
     }
 
     kittest_pub! {
         #[must_use]
         #[doc(hidden)]
         pub fn owned_atoms(dynamic_atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-            Self {
+            let mut binding = Self {
                 dynamic_atoms,
                 ..Self::default()
-            }
+            };
+            binding.recompute_may_transform();
+            binding
         }
     }
 
@@ -129,18 +146,30 @@ impl StyleBinding {
     }
 
     pub(crate) fn may_transform(&self) -> bool {
-        self.has_reactive()
+        self.may_transform_fixed
+            || self.attached_animators.get().is_some()
             || self
-                .static_atoms
+                .reactive_channels
                 .iter()
-                .chain(&self.dynamic_atoms)
-                .any(|atom| {
-                    #[cfg(feature = "kittest")]
-                    if matches!(atom, StyleAtom::Transform(_)) {
-                        return true;
-                    }
-                    matches!(atom, StyleAtom::Space(_))
-                })
+                .any(|atoms| atoms.get().iter().copied().any(StyleAtom::may_transform))
+    }
+
+    fn recompute_may_transform(&mut self) {
+        self.may_transform_fixed = self
+            .static_atoms
+            .iter()
+            .chain(&self.dynamic_atoms)
+            .copied()
+            .any(StyleAtom::may_transform)
+            || self
+                .state_overlay
+                .as_deref()
+                .is_some_and(StyleOverlay::may_transform)
+            || self.animated_values.iter().any(|entry| {
+                (entry.property)(0.0)
+                    .kind()
+                    .is_some_and(NumericAtomKind::affects_transform)
+            });
     }
 
     pub(crate) fn has_transition(&self) -> bool {
@@ -223,6 +252,7 @@ impl StyleBinding {
         } else {
             self.animated_values.push(driven);
         }
+        self.recompute_may_transform();
     }
 
     pub(crate) fn update_animations(
@@ -273,6 +303,7 @@ impl StyleBinding {
         };
         self.state_overlay = Some(merged);
         self.state_overlay_slot = Some(slot);
+        self.recompute_may_transform();
     }
 
     pub(crate) fn all_atoms(&self) -> SmallVec<[StyleAtom; 32]> {
@@ -285,6 +316,7 @@ impl StyleBinding {
     pub(crate) fn replace_owned(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
         self.static_atoms = &[];
         self.dynamic_atoms = atoms;
+        self.recompute_may_transform();
     }
 
     pub(crate) fn add_reactive(&mut self, atoms: ReactiveStyleAtoms) {

@@ -167,6 +167,24 @@ impl NumericAtomKind {
         )
     }
 
+    pub(crate) const fn affects_transform(self) -> bool {
+        matches!(
+            self,
+            Self::TranslateX
+                | Self::TranslateY
+                | Self::ScaleX
+                | Self::ScaleY
+                | Self::Rotation
+                | Self::TranslateXFraction
+                | Self::TranslateYFraction
+                | Self::RotationX
+                | Self::RotationY
+                | Self::RotationZ
+                | Self::TranslateZ
+                | Self::Perspective
+        )
+    }
+
     pub(crate) const fn initial(self) -> f32 {
         match self {
             Self::Opacity => OPACITY_UNITS,

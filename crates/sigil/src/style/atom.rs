@@ -387,6 +387,18 @@ impl StyleAtom {
             )
         }
     }
+
+    #[must_use]
+    pub(crate) const fn may_transform(self) -> bool {
+        #[cfg(feature = "kittest")]
+        if matches!(self, Self::Transform(_)) {
+            return true;
+        }
+        matches!(
+            self,
+            Self::Space(_) | Self::Transition(_) | Self::Animation(_)
+        )
+    }
 }
 
 pub(crate) const ATOM_PX: u8 = 0;

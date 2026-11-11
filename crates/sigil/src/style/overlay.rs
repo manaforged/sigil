@@ -54,6 +54,16 @@ impl StyleOverlay {
     pub(crate) fn atoms_for(&self, slot: StateSlot) -> &[StyleAtom] {
         self.slots.get(slot)
     }
+
+    #[must_use]
+    pub(crate) fn may_transform(&self) -> bool {
+        self.slots
+            .each()
+            .into_iter()
+            .flatten()
+            .copied()
+            .any(StyleAtom::may_transform)
+    }
 }
 
 #[cfg(test)]
