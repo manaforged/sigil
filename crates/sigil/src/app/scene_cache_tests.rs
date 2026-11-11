@@ -20,11 +20,11 @@ fn replays_only_when_context_root_viewport_and_scale_match() {
         let (cx, root) = laid_out();
         let mut cache = SceneCache::default();
 
-        let _ = cache.scene(&cx, root, (100.0, 80.0), false);
-        let _ = cache.scene(&cx, root, (100.0, 80.0), true);
+        let _ = cache.scene(&cx, (root, (100.0, 80.0)), (false, None));
+        let _ = cache.scene(&cx, (root, (100.0, 80.0)), (true, None));
         assert_eq!(cache.emissions, 1, "matching expose redraw replays");
 
-        let _ = cache.scene(&cx, root, (120.0, 80.0), true);
+        let _ = cache.scene(&cx, (root, (120.0, 80.0)), (true, None));
         assert_eq!(cache.emissions, 2, "viewport change rebuilds");
     });
 }

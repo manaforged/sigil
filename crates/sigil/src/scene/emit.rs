@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-#[cfg(terminal_host)]
+#[cfg(host)]
 use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::scene::canvas::CanvasPaint;
+use crate::style::text_identity::DiscreteTextStyle;
 use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
 
 use crate::scene::builder::SceneBuilder;
@@ -27,19 +28,19 @@ use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
 mod filter;
 mod mask;
-#[cfg(terminal_host)]
+#[cfg(host)]
 mod memo;
 mod subtree;
 mod text_clip;
 mod top_layer;
-#[cfg(terminal_host)]
-pub(crate) use memo::EmitMemo;
+#[cfg(host)]
+pub(crate) use memo::{CleanScene, EmitMemo};
 #[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use subtree::EmitDiff;
 }
-#[cfg(terminal_host)]
+#[cfg(host)]
 use subtree::Prior;
 use subtree::SpanTrack;
 use text_clip::TextFill;
@@ -68,6 +69,42 @@ pub(crate) fn emit_unchanged(
     memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection)
 }
 
+#[cfg(host)]
+fn emit_with_memo(
+    cx: &Cx,
+    (root, clip): (NodeId, Option<Rect>),
+    (delta, prev): (&FrameDelta, &CommandScene),
+    memo: &mut EmitMemo,
+    want_diff: bool,
+) -> (CommandScene, SpanTrack<'static>) {
+    let selection = crate::events::selection::ranges(cx);
+    let usable = memo.usable(cx, root, &prev.commands);
+    let (can_copy, dirty) = memo.dirty(cx, (root, usable), delta, &selection);
+    let spans = std::mem::take(&mut memo.spans);
+    let mut next = std::mem::take(&mut memo.scratch);
+    next.clear();
+    let prior = can_copy.then_some(Prior {
+        commands: &prev.commands,
+        spans: &spans,
+        dirty: &dirty,
+    });
+    let mut track = SpanTrack::recording(prior, next, want_diff);
+    let scene = run(cx, root, clip, &selection, &mut track);
+    let SpanTrack {
+        next: built,
+        #[cfg(terminal_host)]
+        copies,
+        ..
+    } = track;
+    memo.scratch = spans;
+    memo.commit(cx, root, (built, scene.commands.len(), clip), &selection);
+    #[cfg(terminal_host)]
+    let out_track = SpanTrack::with_copies(copies);
+    #[cfg(not(terminal_host))]
+    let out_track = SpanTrack::off();
+    (scene, out_track)
+}
+
 #[cfg(terminal_host)]
 pub(crate) fn emit_scene_since(
     cx: &Cx,
@@ -80,24 +117,26 @@ pub(crate) fn emit_scene_since(
     if memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection) {
         return (prev.clone(), EmitDiff::default());
     }
-    let usable = memo.usable(cx, root, &prev.commands);
-    let dirty = memo.dirty(cx, root, delta, &selection);
-    let spans = std::mem::take(&mut memo.spans);
-    let prior = usable.then_some(Prior {
-        commands: &prev.commands,
-        spans: &spans,
-        dirty: &dirty,
-    });
-    let mut track = SpanTrack::recording(prior);
-    let scene = run(cx, root, clip, &selection, &mut track);
+    let (scene, track) = emit_with_memo(cx, (root, clip), (delta, prev), memo, true);
     let diff = EmitDiff::between(&prev.commands, &scene.commands, &track.copies);
-    memo.commit(
-        cx,
-        root,
-        (std::mem::take(&mut track.next), scene.commands.len(), clip),
-        &selection,
-    );
     (scene, diff)
+}
+
+#[cfg(window_host)]
+pub(crate) fn emit_scene_into(
+    cx: &Cx,
+    (root, clip): (NodeId, Option<Rect>),
+    delta: &FrameDelta,
+    body: &mut CommandScene,
+    memo: &mut EmitMemo,
+) -> bool {
+    let selection = crate::events::selection::ranges(cx);
+    if memo.clean(cx, (root, clip), (delta, body.commands.len()), &selection) {
+        return false;
+    }
+    let (scene, _) = emit_with_memo(cx, (root, clip), (delta, body), memo, false);
+    *body = scene;
+    true
 }
 
 fn run<'t>(
@@ -110,11 +149,14 @@ fn run<'t>(
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
     let theme = crate::style::theme::fallback_theme();
+    let text_style = Rc::new(TextStyle::default());
+    let text_style_stamp = DiscreteTextStyle::identity(&text_style);
     let inherited = Inherited {
         theme,
         theme_stamp: emit_cache::theme_key(theme, 0),
         text_color: None,
-        text_style: Rc::new(TextStyle::default()),
+        text_style,
+        text_style_stamp,
         text_fill: None,
         text_shadows: None,
     };
@@ -149,6 +191,7 @@ struct Inherited<'t> {
     theme_stamp: u64,
     text_color: Option<Color>,
     text_style: Rc<TextStyle>,
+    text_style_stamp: u64,
     text_fill: Option<Rc<TextFill>>,
     text_shadows: Option<Rc<[Shadow]>>,
 }
@@ -351,12 +394,16 @@ fn child_inherited<'t>(
     inherited: &Inherited<'t>,
     style: &RenderStyle,
 ) -> Inherited<'t> {
-    let text_style = node
+    let (text_style, text_style_stamp) = node
         .get_extension::<StyleBinding>()
         .filter(|binding| TextStyle::binding_layers_text(binding))
         .map_or_else(
-            || Rc::clone(&inherited.text_style),
-            |binding| emit_cache::layered_text(&inherited.text_style, binding),
+            || (Rc::clone(&inherited.text_style), inherited.text_style_stamp),
+            |binding| {
+                let layered = emit_cache::layered_text(&inherited.text_style, binding);
+                let stamp = DiscreteTextStyle::identity(&layered);
+                (layered, stamp)
+            },
         );
     let (theme, theme_stamp) =
         node.get_extension::<Theme>()
@@ -378,6 +425,7 @@ fn child_inherited<'t>(
         theme_stamp,
         text_color: style.text_color.or(inherited.text_color),
         text_style,
+        text_style_stamp,
         text_fill,
         text_shadows,
     }

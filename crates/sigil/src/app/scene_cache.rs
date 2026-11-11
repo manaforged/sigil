@@ -1,12 +1,13 @@
-use crate::kernel::{Cx, Node, NodeId};
+use crate::kernel::{Cx, FrameDelta, Node, NodeId};
 use crate::profile::{Counter, Phase};
 use crate::reactive::Runtime;
+use crate::scene::emit::{EmitMemo, emit_scene_into};
 use crate::scene::{CommandScene, SceneCommand, paint_backdrop};
 use crate::style::Theme;
 
 use crate::app::launch::backend::{Backend, RenderSurface};
 
-use crate::app::embed::emit_viewport_scene;
+use crate::app::embed::{emit_viewport_scene, viewport_rect};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SceneKey {
@@ -30,8 +31,11 @@ impl SceneKey {
 #[derive(Default)]
 pub(super) struct SceneCache {
     key: Option<SceneKey>,
+    body: CommandScene,
     scene: CommandScene,
+    memo: EmitMemo,
     backdrop: bool,
+    built_backdrop: bool,
     #[cfg(test)]
     emissions: usize,
 }
@@ -40,24 +44,55 @@ impl SceneCache {
     pub(super) fn scene(
         &mut self,
         cx: &Cx,
-        root: NodeId,
-        viewport: (f32, f32),
-        allow_replay: bool,
+        (root, viewport): (NodeId, (f32, f32)),
+        (allow_replay, delta): (bool, Option<&FrameDelta>),
     ) -> &CommandScene {
         let key = SceneKey::new(cx, root, viewport);
-        if !allow_replay || self.key != Some(key) {
+        if allow_replay && self.key == Some(key) && self.built_backdrop == self.backdrop {
+            crate::profile::count(Counter::SceneReplay);
+        } else {
             crate::profile::count(Counter::SceneEmit);
-            self.scene = window_scene(cx, root, viewport, self.backdrop);
-            self.key = Some(key);
+            self.rebuild(cx, (root, viewport, key), delta);
             #[cfg(test)]
             {
                 self.emissions += 1;
             }
-        } else {
-            crate::profile::count(Counter::SceneReplay);
         }
         note_scene(&self.scene);
         &self.scene
+    }
+
+    fn rebuild(
+        &mut self,
+        cx: &Cx,
+        (root, viewport, key): (NodeId, (f32, f32), SceneKey),
+        delta: Option<&FrameDelta>,
+    ) {
+        let clip = Some(viewport_rect(viewport));
+        let changed = match delta {
+            Some(delta) if self.key == Some(key) => {
+                emit_scene_into(cx, (root, clip), delta, &mut self.body, &mut self.memo)
+            }
+            Some(delta) => {
+                self.body.commands.clear();
+                emit_scene_into(cx, (root, clip), delta, &mut self.body, &mut self.memo)
+            }
+            None => {
+                self.memo = EmitMemo::default();
+                self.body = emit_viewport_scene(cx, root, viewport);
+                true
+            }
+        };
+        if changed || self.key != Some(key) || self.built_backdrop != self.backdrop {
+            compose_window_scene(
+                cx,
+                (root, viewport, self.backdrop),
+                &self.body,
+                &mut self.scene,
+            );
+            self.built_backdrop = self.backdrop;
+        }
+        self.key = Some(key);
     }
 
     pub(super) fn paint(&mut self, request: PaintRequest<'_>) {
@@ -68,6 +103,7 @@ impl SceneCache {
             surface,
             viewport,
             allow_replay,
+            delta,
         } = request;
         self.backdrop = !renderer.is_transparent();
         let Some(surface) = surface.as_mut() else {
@@ -75,7 +111,7 @@ impl SceneCache {
         };
         {
             let _emit = crate::profile::span(Phase::Emit);
-            self.scene(cx, root, viewport, allow_replay);
+            self.scene(cx, (root, viewport), (allow_replay, delta));
         }
         let base = self.scene.commands.len();
         if crate::hud::enabled() {
@@ -92,21 +128,36 @@ impl SceneCache {
     }
 }
 
+#[cfg(test)]
 pub(super) fn window_scene(
     cx: &Cx,
     root: NodeId,
     viewport: (f32, f32),
     backdrop: bool,
 ) -> CommandScene {
-    let mut scene = emit_viewport_scene(cx, root, viewport);
+    let body = emit_viewport_scene(cx, root, viewport);
+    let mut scene = CommandScene::default();
+    compose_window_scene(cx, (root, viewport, backdrop), &body, &mut scene);
+    scene
+}
+
+fn compose_window_scene(
+    cx: &Cx,
+    (root, viewport, backdrop): (NodeId, (f32, f32), bool),
+    body: &CommandScene,
+    out: &mut CommandScene,
+) {
+    out.commands.clear();
+    out.commands
+        .reserve(body.commands.len() + usize::from(backdrop));
     if backdrop {
         let theme = cx
             .get(root)
             .and_then(Node::get_extension::<Theme>)
             .unwrap_or_else(crate::style::theme::fallback_theme);
-        paint_backdrop(&mut scene, theme, viewport);
+        paint_backdrop(out, theme, viewport);
     }
-    scene
+    out.commands.extend_from_slice(&body.commands);
 }
 
 fn note_scene(scene: &CommandScene) {
@@ -138,6 +189,7 @@ pub(super) struct PaintRequest<'a> {
     pub(super) surface: &'a mut Option<RenderSurface>,
     pub(super) viewport: (f32, f32),
     pub(super) allow_replay: bool,
+    pub(super) delta: Option<&'a FrameDelta>,
 }
 
 #[cfg(test)]

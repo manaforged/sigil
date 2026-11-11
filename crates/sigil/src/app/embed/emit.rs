@@ -1,10 +1,27 @@
+#[cfg(terminal_host)]
 use crate::kernel::FrameDelta;
 use crate::scene::CommandScene;
+use crate::scene::emit::CleanScene;
+#[cfg(terminal_host)]
 use crate::scene::emit::{EmitDiff, EmitMemo, emit_scene_since};
 
 use super::{Host, viewport_rect};
 
 impl Host {
+    pub(super) fn emit_cached(&mut self, viewport: (f32, f32)) -> CommandScene {
+        let _env = self.enter();
+        self.apply_pending_theme();
+        let Some(root) = self.root else {
+            self.reset_emit();
+            return CommandScene::default();
+        };
+        self.clean_emit.emit(
+            &self.cx,
+            (root, Some(viewport_rect(viewport))),
+            self.layout.generation(),
+        )
+    }
+
     #[cfg(terminal_host)]
     #[must_use]
     pub(crate) fn emit_since(
@@ -53,7 +70,11 @@ impl Host {
     kittest_pub! {
         /// Clears the memo that incremental painting reuses.
         pub fn reset_emit(&mut self) {
-            self.emitted = EmitMemo::default();
+            #[cfg(terminal_host)]
+            {
+                self.emitted = EmitMemo::default();
+            }
+            self.clean_emit = CleanScene::default();
         }
     }
 }

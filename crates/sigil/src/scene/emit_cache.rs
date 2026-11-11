@@ -156,8 +156,11 @@ pub(crate) fn content_key(node: &Node) -> u64 {
             wrote = true;
         }
         if let Some(overlay) = binding.animator_overlay() {
-            overlay.cache_key().hash(&mut hasher);
-            wrote = true;
+            let key = overlay.cache_key();
+            if key != 0 {
+                key.hash(&mut hasher);
+                wrote = true;
+            }
         }
     }
     if !wrote {

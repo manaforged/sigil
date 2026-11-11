@@ -56,13 +56,13 @@ impl StyleOverlay {
     }
 
     #[must_use]
+    pub(crate) fn any(&self, pred: fn(StyleAtom) -> bool) -> bool {
+        self.slots.each().into_iter().flatten().copied().any(pred)
+    }
+
+    #[must_use]
     pub(crate) fn may_transform(&self) -> bool {
-        self.slots
-            .each()
-            .into_iter()
-            .flatten()
-            .copied()
-            .any(StyleAtom::may_transform)
+        self.any(StyleAtom::may_transform)
     }
 }
 

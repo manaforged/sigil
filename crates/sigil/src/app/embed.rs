@@ -13,16 +13,20 @@ use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
 mod access;
-#[cfg(terminal_host)]
+#[cfg(host)]
 mod emit;
 #[cfg(hot_patch)]
 mod hot;
 #[cfg(feature = "terminal")]
 mod quit;
 use super::host_env::{EnvGuard, HostEnv};
+use crate::scene::CommandScene;
+#[cfg(host)]
+use crate::scene::emit::CleanScene;
 #[cfg(terminal_host)]
 use crate::scene::emit::EmitMemo;
-use crate::scene::{CommandScene, emit_scene};
+#[cfg(any(not(host), feature = "desktop"))]
+use crate::scene::emit_scene;
 
 type AccessibilityTree = accesskit::TreeUpdate;
 
@@ -39,6 +43,8 @@ pub struct Host {
     visual_transforms: bool,
     #[cfg(terminal_host)]
     emitted: EmitMemo,
+    #[cfg(host)]
+    clean_emit: CleanScene,
     env: HostEnv,
     #[cfg(feature = "dialog")]
     dialogs: Vec<super::dialog::layer::Mounted>,
@@ -110,6 +116,8 @@ impl Host {
             visual_transforms,
             #[cfg(terminal_host)]
             emitted: EmitMemo::default(),
+            #[cfg(host)]
+            clean_emit: CleanScene::default(),
             env,
             #[cfg(feature = "dialog")]
             dialogs: Vec::new(),
@@ -172,6 +180,8 @@ impl Host {
         if let Some(root) = self.root.take() {
             self.cx.remove(root);
         }
+        #[cfg(host)]
+        self.reset_emit();
         let root = install(&mut self.cx);
         if self.fill_root {
             super::tree_root::fill_root(&mut self.cx, root);
@@ -358,27 +368,37 @@ impl Host {
     /// Paints the laid-out tree into a new scene.
     #[must_use]
     pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
-        let _env = self.enter();
-        self.apply_pending_theme();
-        self.root.map_or_else(CommandScene::default, |root| {
-            emit_viewport_scene(&self.cx, root, viewport)
-        })
+        #[cfg(host)]
+        {
+            return self.emit_cached(viewport);
+        }
+        #[cfg(not(host))]
+        {
+            let _env = self.enter();
+            self.apply_pending_theme();
+            self.root.map_or_else(CommandScene::default, |root| {
+                emit_viewport_scene(&self.cx, root, viewport)
+            })
+        }
     }
 
     /// Lays out the tree for `viewport` and paints it into a new scene.
     pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, Error> {
         let _env = self.enter();
-        let Some(root) = self.layout(viewport)? else {
+        if self.layout(viewport)?.is_none() {
+            #[cfg(host)]
+            self.reset_emit();
             return Ok(CommandScene::default());
-        };
-        Ok(emit_viewport_scene(&self.cx, root, viewport))
+        }
+        Ok(self.emit(viewport))
     }
 }
 
+#[cfg(any(not(host), feature = "desktop"))]
 pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -> CommandScene {
     emit_scene(cx, root, Some(viewport_rect(viewport)))
 }
 
-const fn viewport_rect(viewport: (f32, f32)) -> Rect {
+pub(crate) const fn viewport_rect(viewport: (f32, f32)) -> Rect {
     Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)
 }

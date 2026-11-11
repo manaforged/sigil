@@ -188,6 +188,7 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &FrameInfo) {
             surface: &mut env.view.surface,
             viewport: env.view.viewport,
             allow_replay,
+            delta: Some(&info.delta),
         });
     }
     let _a11y = crate::profile::span(crate::profile::Phase::A11y);

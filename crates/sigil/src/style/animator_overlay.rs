@@ -246,14 +246,7 @@ pub(crate) trait AnimatorOverlay {
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color>;
 
     fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
-        for kind in NumericAtomKind::ALL
-            .into_iter()
-            .filter(|kind| kind.affects_layout())
-        {
-            if let Some(value) = self.value_for(kind) {
-                visit(kind, value);
-            }
-        }
+        default_visit_layout_values(self, visit);
     }
 
     fn update(
@@ -266,19 +259,40 @@ pub(crate) trait AnimatorOverlay {
     }
 
     fn cache_key(&self) -> u64 {
-        let mut hasher = AHasher::default();
-        for kind in NumericAtomKind::ALL {
-            if let Some(value) = self.value_for(kind) {
-                kind.hash(&mut hasher);
-                value.to_bits().hash(&mut hasher);
-            }
-        }
-        for kind in ColorAtomKind::ALL {
-            if let Some(color) = self.value_for_color(kind) {
-                kind.hash(&mut hasher);
-                color.hash(&mut hasher);
-            }
-        }
-        hasher.finish()
+        default_cache_key(self)
     }
+}
+
+pub(crate) fn default_visit_layout_values<T: AnimatorOverlay + ?Sized>(
+    overlay: &T,
+    visit: &mut dyn FnMut(NumericAtomKind, f32),
+) {
+    for kind in NumericAtomKind::ALL
+        .into_iter()
+        .filter(|kind| kind.affects_layout())
+    {
+        if let Some(value) = overlay.value_for(kind) {
+            visit(kind, value);
+        }
+    }
+}
+
+pub(crate) fn default_cache_key<T: AnimatorOverlay + ?Sized>(overlay: &T) -> u64 {
+    let mut hasher = AHasher::default();
+    let mut active = false;
+    for kind in NumericAtomKind::ALL {
+        if let Some(value) = overlay.value_for(kind) {
+            kind.hash(&mut hasher);
+            value.to_bits().hash(&mut hasher);
+            active = true;
+        }
+    }
+    for kind in ColorAtomKind::ALL {
+        if let Some(color) = overlay.value_for_color(kind) {
+            kind.hash(&mut hasher);
+            color.hash(&mut hasher);
+            active = true;
+        }
+    }
+    if active { hasher.finish() } else { 0 }
 }
