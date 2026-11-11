@@ -187,7 +187,6 @@ impl Theme {
         self.strings = strings;
         self
     }
-
 }
 
 fn readable_hover(accent: ColorScale, on: Color) -> Color {

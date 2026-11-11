@@ -242,10 +242,7 @@ fn a_later_background_replaces_the_earlier_one() {
         let render = applied(&theme, atoms);
         assert_eq!(render.paint.gradient, None, "{atoms:?}");
         assert_eq!(render.paint.shape(), None, "{atoms:?}");
-        assert_eq!(
-            render.background_color,
-            Some(theme.color(Token::Surface)),
-        );
+        assert_eq!(render.background_color, Some(theme.color(Token::Surface)),);
     }
 }
 

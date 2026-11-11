@@ -70,9 +70,7 @@ fn a_12_hour_clock_shows_and_reads_the_day_periods_of_the_theme_strings() {
     let arabic = Strings::english()
         .with(StringKey::Am, "\u{635}")
         .with(StringKey::Pm, "\u{645}");
-    let theme = Theme::light()
-        .locale(Locale::ar())
-        .strings(arabic);
+    let theme = Theme::light().locale(Locale::ar()).strings(arabic);
     let (mut ui, value) = open_in(theme, time(18, 5, 0), false);
     assert_eq!(shown(&mut ui), "\u{666}:\u{660}\u{665} \u{645}");
     retype(&mut ui, "\u{667}:\u{663}\u{660} \u{635}");

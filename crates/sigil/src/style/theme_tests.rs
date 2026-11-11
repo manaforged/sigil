@@ -117,15 +117,10 @@ fn dark_built_in_accent_unaffected_by_token_first_resolution() {
 fn runtime_token_rebinding_accent_wins_over_builtin() {
     let gold = rgb(0xE8, 0xC0, 0x60);
     let navy = rgb(0x0D, 0x12, 0x20);
-    let t = Theme::dark()
-        .token("accent", gold)
-        .token("on-accent", navy);
+    let t = Theme::dark().token("accent", gold).token("on-accent", navy);
     assert_eq!(t.color(ColorAtom::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
-    assert_ne!(
-        t.color(ColorAtom::parse("accent")),
-        Theme::dark().accent
-    );
+    assert_ne!(t.color(ColorAtom::parse("accent")), Theme::dark().accent);
 }
