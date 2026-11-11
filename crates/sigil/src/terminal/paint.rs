@@ -368,6 +368,12 @@ fn cell_edge(value: f32) -> usize {
     floor_cell(value + 0.5)
 }
 
+fn snapped_span(start: f32, extent: f32) -> (usize, usize) {
+    let first = cell_edge(start);
+    let end = cell_edge(start + extent);
+    (first, end.saturating_sub(first))
+}
+
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,

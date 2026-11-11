@@ -96,13 +96,8 @@ fn clip_cells(
     cell: f32,
 ) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
     let range = |start: f32, extent: f32, limit: usize| {
-        let first = cell_edge(start / cell);
-        let end = cell_edge((start + extent) / cell);
-        let end = if extent > 0.0 {
-            end.max(first + 1)
-        } else {
-            end
-        };
+        let (first, len) = super::snapped_span(start / cell, extent / cell);
+        let end = first + if extent > 0.0 { len.max(1) } else { len };
         first..end.min(limit)
     };
     grid.bound(

@@ -15,7 +15,7 @@ use super::decoration::{self, BorderEdge};
 use super::fill::{self, FillSurface};
 use super::marks::Marks;
 use super::paint_clip::{Text, image_crop, paint_text};
-use super::{Face, Grid, Ink, Underline, cell_edge, floor_cell};
+use super::{Face, Grid, Ink, Underline, floor_cell, snapped_span};
 
 mod image;
 mod path;
@@ -107,10 +107,9 @@ fn signed_span(start: f32, extent: f32) -> (i32, u16) {
 }
 
 fn span(start: f32, extent: f32) -> (usize, usize) {
-    let first = cell_edge(start);
-    let end = cell_edge(start + extent);
-    if end > first {
-        (first, end - first)
+    let (first, len) = snapped_span(start, extent);
+    if len > 0 {
+        (first, len)
     } else {
         (floor_cell(extent.mul_add(0.5, start)), 1)
     }
@@ -271,7 +270,7 @@ impl CellWalk<'_> {
             self.grid.cursor = Some((origin.0, floor_cell(middle)));
             return;
         }
-        if !draw.outline {
+        if !draw.outline && visible.width > 0.0 && visible.height > 0.0 {
             let color = self.fade(draw.color, draw.opacity);
             let ink = Ink::pick(color, draw.tone);
             if ink.set() {
