@@ -8,25 +8,17 @@ use sigil::terminal::{Grid, Ink};
 
 const CELLS: u16 = 8;
 
-fn painted_toned(value: f32, tone: Option<Tone>) -> Grid {
+fn painted(value: f32) -> Grid {
     sigil::reactive::Owner::scope("progress-cells", || {
         let mut host = sigil::Host::new(HostMode::Cell);
         host.mount(move || {
-            let bar = match tone {
-                Some(tone) => progress(signal(value), 100.0).tone(tone),
-                None => progress(signal(value), 100.0),
-            };
             container()
                 .layout(LayoutStyle::block().width(f32::from(CELLS) * sigil::Host::CELL))
-                .child(bar)
+                .child(progress(signal(value), 100.0))
         });
         drop(host.grid([], 20, 3).unwrap());
         host.grid([], 20, 3).unwrap()
     })
-}
-
-fn painted(value: f32) -> Grid {
-    painted_toned(value, None)
 }
 
 fn row(grid: &Grid) -> Vec<(String, Ink)> {
