@@ -16,7 +16,7 @@ use crate::style::{FocusRing, StyleBinding};
 
 #[cfg(terminal_host)]
 use super::subtree::{Copied, EmitDiff};
-use super::subtree::{SpanTrack, SubtreeSpan, rect_bits};
+use super::subtree::{SpanMap, SpanTrack, rect_bits};
 
 #[derive(Clone, Copy, PartialEq)]
 struct Seen {
@@ -27,9 +27,9 @@ struct Seen {
 
 #[derive(Default)]
 pub(crate) struct EmitMemo {
-    seen: SecondaryMap<DefaultKey, Seen>,
-    pub(super) spans: SecondaryMap<DefaultKey, SubtreeSpan>,
-    pub(super) scratch: SecondaryMap<DefaultKey, SubtreeSpan>,
+    seen: Option<SecondaryMap<DefaultKey, Seen>>,
+    pub(super) spans: Option<SpanMap>,
+    pub(super) scratch: Option<SpanMap>,
     selected: HashMap<NodeId, (usize, usize)>,
     watched: Vec<NodeId>,
     prev_len: Option<usize>,
@@ -205,10 +205,14 @@ impl EmitMemo {
             && self.clip == clip.map(rect_bits)
             && self.theme_epoch == emit_cache::theme_epoch()
             && self.selected == *selection
-            && self
-                .watched
-                .iter()
-                .all(|id| cx.get(*id).map(seen_of) == self.seen.get(id.key()).copied())
+            && self.watched.iter().all(|id| {
+                cx.get(*id).map(seen_of)
+                    == self
+                        .seen
+                        .as_ref()
+                        .and_then(|seen| seen.get(id.key()))
+                        .copied()
+            })
     }
 
     pub(super) fn dirty(
@@ -232,7 +236,8 @@ impl EmitMemo {
     }
 
     fn seed_seen(&mut self, cx: &Cx, root: NodeId) {
-        let (seen, watched) = (&mut self.seen, &mut self.watched);
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
+        let watched = &mut self.watched;
         seen.clear();
         watched.clear();
         walk_tree(cx, root, |id, node| {
@@ -252,7 +257,8 @@ impl EmitMemo {
     ) -> Vec<NodeId> {
         let mut direct: Vec<NodeId> = delta.paint.iter().chain(&delta.layout).copied().collect();
         self.push_selection_diff(selection, &mut direct);
-        let (seen, watched) = (&mut self.seen, &mut self.watched);
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
+        let watched = &mut self.watched;
         watched.clear();
         walk_tree(cx, root, |id, node| {
             let now = seen_of(node);
@@ -273,20 +279,21 @@ impl EmitMemo {
         selection: &HashMap<NodeId, (usize, usize)>,
     ) -> Vec<NodeId> {
         let mut direct = Vec::with_capacity(delta.paint.len() + delta.layout.len() + 4);
+        self.push_selection_diff(selection, &mut direct);
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
         for &id in delta.paint.iter().chain(&delta.layout) {
             direct.push(id);
             if let Some(node) = cx.get(id) {
-                let _ = self.seen.insert(id.key(), seen_of(node));
+                let _ = seen.insert(id.key(), seen_of(node));
                 if watches(node) && !self.watched.contains(&id) {
                     self.watched.push(id);
                 }
             }
         }
-        self.push_selection_diff(selection, &mut direct);
         for &id in &self.watched {
             if let Some(node) = cx.get(id) {
                 let now = seen_of(node);
-                if self.seen.insert(id.key(), now) != Some(now) {
+                if seen.insert(id.key(), now) != Some(now) {
                     direct.push(id);
                 }
             }
@@ -309,7 +316,7 @@ impl EmitMemo {
         &mut self,
         cx: &Cx,
         root: NodeId,
-        (spans, len, clip): (SecondaryMap<DefaultKey, SubtreeSpan>, usize, Option<Rect>),
+        (spans, len, clip): (Option<SpanMap>, usize, Option<Rect>),
         selection: &HashMap<NodeId, (usize, usize)>,
     ) {
         self.spans = spans;

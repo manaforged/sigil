@@ -87,21 +87,21 @@ pub(super) struct Copied {
     pub(super) len: usize,
 }
 
+pub(super) type SpanMap = SecondaryMap<DefaultKey, SubtreeSpan>;
+
 #[derive(Clone, Copy)]
 pub(super) struct Prior<'t> {
     pub(super) commands: &'t [SceneCommand],
-    pub(super) spans: &'t SecondaryMap<DefaultKey, SubtreeSpan>,
+    pub(super) spans: &'t SpanMap,
     pub(super) dirty: &'t AHashSet<NodeId>,
 }
 
-#[derive(Default)]
 pub(super) struct SpanTrack<'t> {
     prior: Option<Prior<'t>>,
-    record: bool,
     #[cfg(terminal_host)]
     want_diff: bool,
     nodes: u64,
-    pub(super) next: SecondaryMap<DefaultKey, SubtreeSpan>,
+    pub(super) next: Option<SpanMap>,
     #[cfg(terminal_host)]
     pub(super) copies: Vec<Copied>,
 }
@@ -116,18 +116,17 @@ pub(super) struct Open {
 impl<'t> SpanTrack<'t> {
     pub(super) const fn recording(
         prior: Option<Prior<'t>>,
-        next: SecondaryMap<DefaultKey, SubtreeSpan>,
+        next: SpanMap,
         want_diff: bool,
     ) -> Self {
         #[cfg(not(terminal_host))]
         let _ = want_diff;
         Self {
             prior,
-            record: true,
             #[cfg(terminal_host)]
             want_diff,
             nodes: 0,
-            next,
+            next: Some(next),
             #[cfg(terminal_host)]
             copies: Vec::new(),
         }
@@ -135,15 +134,26 @@ impl<'t> SpanTrack<'t> {
 }
 
 impl SpanTrack<'_> {
-    pub(super) fn off() -> Self {
-        Self::default()
+    pub(super) const fn off() -> Self {
+        Self {
+            prior: None,
+            #[cfg(terminal_host)]
+            want_diff: false,
+            nodes: 0,
+            next: None,
+            #[cfg(terminal_host)]
+            copies: Vec::new(),
+        }
     }
 
     #[cfg(terminal_host)]
-    pub(super) fn with_copies(copies: Vec<Copied>) -> Self {
+    pub(super) const fn with_copies(copies: Vec<Copied>) -> Self {
         Self {
+            prior: None,
+            want_diff: false,
+            nodes: 0,
+            next: None,
             copies,
-            ..Self::default()
         }
     }
 
@@ -197,7 +207,9 @@ impl<'t> EmitWalk<'_, 't> {
         prior: Prior<'t>,
         (old, len, start): (usize, usize, usize),
     ) {
-        let next = &mut self.track.next;
+        let Some(next) = &mut self.track.next else {
+            return;
+        };
         let end = old + len;
         let mut stack = SmallVec::<[NodeId; 16]>::new();
         stack.push(id);
@@ -239,15 +251,20 @@ impl<'t> EmitWalk<'_, 't> {
         clip: Option<Rect>,
         open: &Open,
     ) {
-        if !self.track.record || self.deferred.len() != open.deferred {
+        if self.deferred.len() != open.deferred {
             return;
         }
+        let len = self.scene.command_len() - open.start;
+        let nodes = self.track.nodes - open.nodes;
+        let Some(next) = &mut self.track.next else {
+            return;
+        };
         let span = SubtreeSpan {
             start: open.start,
-            len: self.scene.command_len() - open.start,
-            nodes: self.track.nodes - open.nodes,
+            len,
+            nodes,
             key: SpanKey::of(inherited, clip),
         };
-        let _ = self.track.next.insert(id.key(), span);
+        let _ = next.insert(id.key(), span);
     }
 }

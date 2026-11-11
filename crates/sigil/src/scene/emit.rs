@@ -80,12 +80,12 @@ fn emit_with_memo(
     let selection = crate::events::selection::ranges(cx);
     let usable = memo.usable(cx, (root, clip), &prev.commands);
     let (can_copy, dirty) = memo.dirty(cx, (root, usable), delta, &selection);
-    let spans = std::mem::take(&mut memo.spans);
-    let mut next = std::mem::take(&mut memo.scratch);
+    let spans = memo.spans.take();
+    let mut next = memo.scratch.take().unwrap_or_default();
     next.clear();
-    let prior = can_copy.then_some(Prior {
+    let prior = can_copy.then_some(()).and(spans.as_ref()).map(|spans| Prior {
         commands: &prev.commands,
-        spans: &spans,
+        spans,
         dirty: &dirty,
     });
     let mut track = SpanTrack::recording(prior, next, want_diff);
