@@ -71,8 +71,10 @@ impl HeatGrid {
         if width == 0 || height == 0 {
             return None;
         }
-        let mut key = self.key;
-        key ^= u64::from(width).rotate_left(17) ^ u64::from(height).rotate_left(41);
+        let key = crate::fnv::mix(
+            crate::fnv::mix(self.key, u64::from(width)),
+            u64::from(height),
+        );
         cached_image(key, || {
             let area = usize::try_from(u64::from(width) * u64::from(height) * 4).ok()?;
             let mut rgba = Vec::with_capacity(area);

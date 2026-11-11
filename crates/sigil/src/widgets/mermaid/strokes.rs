@@ -1,5 +1,6 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
+use crate::scene::geometry::KAPPA;
 use crate::style::{BORDER_WIDTH, Token, space};
 use crate::widgets::Layout;
 use crate::widgets::vector::{PathNode, path};
@@ -8,7 +9,6 @@ use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};
 
 const CELL_W: f32 = space(2);
 const CELL_H: f32 = space(4);
-const CIRCLE_K: f32 = 0.552_284_8;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum StrokeMark {
@@ -253,7 +253,7 @@ fn arrow(node: PathNode, x0: f32, y0: f32, dir: u8) -> PathNode {
 }
 
 fn dot(node: PathNode, cx: f32, cy: f32, radius: f32) -> PathNode {
-    let k = radius * CIRCLE_K;
+    let k = radius * KAPPA;
     node.move_to(cx + radius, cy)
         .cubic_to(cx + radius, cy + k, cx + k, cy + radius, cx, cy + radius)
         .cubic_to(cx - k, cy + radius, cx - radius, cy + k, cx - radius, cy)

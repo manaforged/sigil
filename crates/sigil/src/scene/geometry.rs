@@ -1,8 +1,12 @@
+#[cfg(scene_emit)]
 use crate::geometry::{Point, Rect};
 use crate::scene::command::Transform;
 
 pub(crate) const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+pub(crate) const KAPPA: f32 = 0.552_284_8;
+pub(crate) const MIN_EXTENT: f32 = 1.0 / 4096.0;
 
+#[cfg(scene_emit)]
 pub(crate) fn compose(parent: Transform, child: Transform) -> Transform {
     [
         [
@@ -18,6 +22,7 @@ pub(crate) fn compose(parent: Transform, child: Transform) -> Transform {
     ]
 }
 
+#[cfg(scene_emit)]
 pub(crate) fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {
     let x0 = left.origin.x.max(right.origin.x);
     let y0 = left.origin.y.max(right.origin.y);

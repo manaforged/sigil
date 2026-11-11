@@ -3,9 +3,8 @@ use std::ops::Range;
 
 use pulldown_cmark::{Event, Parser, Tag};
 
+use super::MAX_MATH_BYTES;
 use super::events::OPTIONS;
-
-const MAX_MATH_BYTES: usize = 512;
 
 struct Pair {
     open: &'static str,

@@ -55,6 +55,27 @@ fn stroke_mask(d: f32, local: vec2<f32>, band: vec4<f32>, aa: f32) -> f32 {
 
 pub(in crate::renderer) use sdf_helpers;
 
+macro_rules! srgb_wgsl {
+    () => {
+        "
+fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
+    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let high = 1.055 * pow(v, vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
+    return select(high, v * 12.92, v <= vec3<f32>(0.0031308));
+}
+
+fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
+    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let high = pow((v + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
+    return select(high, v / 12.92, v <= vec3<f32>(0.04045));
+}
+
+"
+    };
+}
+
+pub(in crate::renderer) use srgb_wgsl;
+
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<crate::renderer::scene_instance::FillInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
@@ -98,7 +119,11 @@ impl FillPipeline {
             format,
             QuadDesc {
                 label: "sigil-renderer fill paint",
-                wgsl: concat!(sdf_helpers!(), include_str!("fill_paint.wgsl")),
+                wgsl: concat!(
+                    sdf_helpers!(),
+                    srgb_wgsl!(),
+                    include_str!("fill_paint.wgsl")
+                ),
                 groups: &[Some(&uniform_layout), Some(&stops_layout)],
                 instance: INSTANCE_LAYOUT,
                 fs_entry: "fs_main",

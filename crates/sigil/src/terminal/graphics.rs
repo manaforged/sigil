@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
+use std::collections::HashSet;
 use std::io::{self, Write};
 
+use crate::cache::Bounded;
 use crate::kernel::ImageSource;
 use crossterm::{cursor, queue};
 
@@ -121,8 +121,8 @@ pub(crate) struct ImageFrame<'a> {
 pub(crate) struct ImagePainter {
     sent: HashSet<u32>,
     shown: Vec<Placement>,
-    encoded: HashMap<(u64, u32, u32), String>,
-    sixel: HashMap<(u64, u32, u32, u16, u16), String>,
+    encoded: Bounded<(u64, u32, u32), String, CACHE>,
+    sixel: Bounded<(u64, u32, u32, u16, u16), String, CACHE>,
     cell: Option<[u16; 2]>,
 }
 
@@ -245,20 +245,23 @@ impl ImagePainter {
                 ))
             }
             Protocol::Iterm2 => {
-                let data = cached(&mut self.encoded, (place.source.id(), top, height), || {
-                    base64(&png_window(&place.source, top, height))
-                });
+                let data = self
+                    .encoded
+                    .get_or_insert_with((place.source.id(), top, height), || {
+                        base64(&png_window(&place.source, top, height))
+                    });
                 Cow::Owned(format!(
                     "\x1b]1337;File=inline=1;width={cols};height={rows};preserveAspectRatio=0:{data}\x07"
                 ))
             }
             Protocol::Sixel => {
                 let cell = self.cell;
-                Cow::Borrowed(cached(
-                    &mut self.sixel,
-                    (place.source.id(), top, height, cols, rows),
-                    || sixel::encode(&place.source, (top, height), (cols, rows), cell),
-                ))
+                Cow::Borrowed(
+                    self.sixel
+                        .get_or_insert_with((place.source.id(), top, height, cols, rows), || {
+                            sixel::encode(&place.source, (top, height), (cols, rows), cell)
+                        }),
+                )
             }
         };
         if protocol != Protocol::Kitty {
@@ -266,17 +269,6 @@ impl ImagePainter {
         }
         write_mux(out, &seq, mux)
     }
-}
-
-fn cached<K: Hash + Eq>(
-    map: &mut HashMap<K, String>,
-    key: K,
-    make: impl FnOnce() -> String,
-) -> &str {
-    if map.len() >= CACHE && !map.contains_key(&key) {
-        map.clear();
-    }
-    map.entry(key).or_insert_with(make)
 }
 
 pub(crate) fn kitty_id(source: &ImageSource) -> u32 {

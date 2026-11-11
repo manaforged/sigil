@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::LayoutStyle;
 use crate::style::Token;
+use crate::widgets::vega::{MAX_HEIGHT, PLOT_HEIGHT};
 use crate::widgets::{Layout, Widget};
 
 use super::palette::Hue;
@@ -25,8 +26,6 @@ use table::Pivot;
 
 const MAX_BYTES: usize = 256 * 1024;
 const MAX_WIDTH: f32 = 2000.0;
-const MAX_HEIGHT: f32 = 1200.0;
-const PLOT_HEIGHT: f32 = 300.0;
 
 type Row = Map<String, Value>;
 

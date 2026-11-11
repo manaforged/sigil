@@ -12,6 +12,7 @@ mod font_family;
 mod font_url;
 pub(crate) mod fonts;
 mod numeric_run;
+pub(crate) mod outline;
 mod paragraph;
 mod script_fonts;
 mod system_fonts;

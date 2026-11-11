@@ -27,7 +27,7 @@ pub struct GestureEvent {
     pub position: Point,
     /// The modifiers.
     pub modifiers: ModifiersState,
-    propagation_stopped: bool,
+    pub(super) propagation_stopped: bool,
 }
 
 impl GestureEvent {
@@ -39,16 +39,5 @@ impl GestureEvent {
             modifiers: ModifiersState::empty(),
             propagation_stopped: false,
         }
-    }
-
-    /// Stops the event from reaching ancestor nodes.
-    pub const fn stop_propagation(&mut self) {
-        self.propagation_stopped = true;
-    }
-
-    /// Returns whether propagation stopped is set.
-    #[must_use]
-    pub const fn propagation_stopped(&self) -> bool {
-        self.propagation_stopped
     }
 }

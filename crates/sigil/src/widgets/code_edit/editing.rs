@@ -2,10 +2,10 @@ use crate::clipboard::clipboard;
 use std::rc::Rc;
 
 use crate::events::Key;
+use crate::grapheme::col_count;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
 use crate::widgets::Widget;
-use crate::widgets::grapheme::col_count;
 use crate::widgets::text_edit::{
     KeyProfile, LineStep, TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit,
     attach_ime_handlers, clipboard_keys, edit_keys, edit_value, history_keys, move_caret,

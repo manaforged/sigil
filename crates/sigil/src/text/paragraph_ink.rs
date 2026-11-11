@@ -1,8 +1,9 @@
-use skrifa::instance::{LocationRef, NormalizedCoord, Size};
+use skrifa::instance::{LocationRef, Size};
 use skrifa::metrics::{BoundingBox, GlyphMetrics};
 use skrifa::{FontRef, GlyphId};
 
 use crate::geometry::{Point, Rect};
+use crate::text::outline::coords;
 
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph};
 
@@ -16,11 +17,7 @@ impl Paragraph {
         let mut ink: Option<Rect> = None;
         for (slot, face) in self.inner.fonts.iter().enumerate() {
             let font = FontRef::from_index(&face.bytes, face.index).ok();
-            let coords: Vec<NormalizedCoord> = face
-                .variation_coords
-                .iter()
-                .map(|&coord| NormalizedCoord::from_bits(coord))
-                .collect();
+            let coords = coords(&face.variation_coords);
             let metrics = font
                 .as_ref()
                 .map(|font| GlyphMetrics::new(font, size, LocationRef::new(&coords)));

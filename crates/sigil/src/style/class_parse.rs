@@ -56,16 +56,11 @@ pub(crate) mod diagnostic {
     #[cfg(not(debug_assertions))]
     #[cold]
     pub(crate) fn class_parse(input: &str, err: &ParseError) {
-        use std::collections::HashSet;
-        use std::sync::{Mutex, OnceLock};
+        use crate::style::diagnostic::Seen;
 
-        static WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+        static WARNED: Seen<String> = Seen::new();
         bump_unknown_class_count();
-        let first = WARNED
-            .get_or_init(Mutex::default)
-            .lock()
-            .map_or(true, |mut seen| seen.insert(err.to_string()));
-        if first {
+        if WARNED.first(err.to_string()) {
             tracing::warn!(
                 target: "sigil_style::class",
                 input,

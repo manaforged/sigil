@@ -1,5 +1,6 @@
 pub(crate) const FILTER_SHADER: &str = concat!(
     vertex_in!(),
+    crate::renderer::fill_paint::srgb_wgsl!(),
     r"
 struct FilterUniforms {
     viewport: vec2<f32>,
@@ -35,15 +36,6 @@ fn vs_main(v: VertexIn, inst: FilterInstance) -> FilterOut {
     return out;
 }
 
-fn encode(c: vec3<f32>) -> vec3<f32> {
-    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-    return select(1.055 * pow(v, vec3<f32>(1.0 / 2.4)) - 0.055, v * 12.92, v <= vec3<f32>(0.0031308));
-}
-
-fn decode(c: vec3<f32>) -> vec3<f32> {
-    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
-}
-
 fn transform(c: vec4<f32>, base: u32) -> vec4<f32> {
     let bias = u.rows[base + 4u];
     let out = vec4<f32>(
@@ -62,11 +54,11 @@ fn fs_matrix(in: FilterOut) -> @location(0) vec4<f32> {
         return vec4<f32>(0.0);
     }
     let alpha = min(px.a, 1.0);
-    var c = vec4<f32>(encode(px.rgb / alpha), alpha);
+    var c = vec4<f32>(srgb_encode(px.rgb / alpha), alpha);
     for (var i = 0u; i < u.count.x; i = i + 1u) {
         c = transform(c, i * 5u);
     }
-    return vec4<f32>(decode(c.rgb) * c.a, c.a);
+    return vec4<f32>(srgb_decode(c.rgb) * c.a, c.a);
 }
 
 @fragment

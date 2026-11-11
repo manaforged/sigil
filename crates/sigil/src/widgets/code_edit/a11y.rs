@@ -1,5 +1,5 @@
+use crate::grapheme::{byte_at_col, col_at_byte, col_count};
 use crate::kernel::NodeBuilder;
-use crate::widgets::grapheme::{byte_at_col, col_at_byte, col_count};
 use crate::widgets::text_edit::TextEditRuntime;
 
 pub(super) const fn expose(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {

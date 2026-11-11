@@ -1,5 +1,6 @@
 pub(crate) const BLUR_SHADER: &str = concat!(
     vertex_in!(),
+    crate::renderer::fill_paint::srgb_wgsl!(),
     r"
 struct BlurUniforms {
     viewport: vec2<f32>,
@@ -35,24 +36,12 @@ fn vs_main(v: VertexIn, inst: BlurInstance) -> BlurVertexOut {
     return out;
 }
 
-fn encode(c: vec3<f32>) -> vec3<f32> {
-    let low = c * 12.92;
-    let high = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
-    return select(high, low, c <= vec3<f32>(0.0031308));
-}
-
-fn decode(c: vec3<f32>) -> vec3<f32> {
-    let low = c / 12.92;
-    let high = pow((c + 0.055) / 1.055, vec3<f32>(2.4));
-    return select(high, low, c <= vec3<f32>(0.04045));
-}
-
 fn encoded(texel: vec4<f32>) -> vec4<f32> {
     if texel.a <= 0.0 {
         return vec4<f32>(0.0);
     }
     let color = clamp(texel.rgb / texel.a, vec3<f32>(0.0), vec3<f32>(1.0));
-    return vec4<f32>(encode(color) * texel.a, texel.a);
+    return vec4<f32>(srgb_encode(color) * texel.a, texel.a);
 }
 
 fn decoded(texel: vec4<f32>) -> vec4<f32> {
@@ -60,7 +49,7 @@ fn decoded(texel: vec4<f32>) -> vec4<f32> {
         return vec4<f32>(0.0);
     }
     let color = clamp(texel.rgb / texel.a, vec3<f32>(0.0), vec3<f32>(1.0));
-    return vec4<f32>(decode(color) * texel.a, texel.a);
+    return vec4<f32>(srgb_decode(color) * texel.a, texel.a);
 }
 
 @fragment

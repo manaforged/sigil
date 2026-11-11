@@ -1,10 +1,10 @@
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use std::hash::{Hash as _, Hasher as _};
 
-use crate::fnv::mix;
+use crate::cache::Bounded;
+use crate::fnv::{OFFSET, mix, mix_f32};
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
 use crate::style::text_identity::DiscreteTextStyle;
@@ -32,8 +32,8 @@ struct Layered {
 }
 
 thread_local! {
-    static CACHE: RefCell<HashMap<(u64, NodeId), EmitEntry>> = RefCell::new(HashMap::new());
-    static LAYERED: RefCell<HashMap<u64, Layered>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<Bounded<(u64, NodeId), EmitEntry, CAP>> = RefCell::new(Bounded::default());
+    static LAYERED: RefCell<Bounded<u64, Layered, CAP>> = RefCell::new(Bounded::default());
     static THEME_EPOCH: Cell<u64> = const { Cell::new(0) };
 }
 
@@ -54,9 +54,6 @@ pub(crate) fn layered_text(base: &Rc<TextStyle>, binding: &StyleBinding) -> Rc<T
     let style =
         Rc::new(TextStyle::layered_over_binding(base, binding).unwrap_or_else(|| (**base).clone()));
     LAYERED.with_borrow_mut(|cache| {
-        if cache.len() >= CAP {
-            cache.clear();
-        }
         cache.insert(
             key,
             Layered {
@@ -130,9 +127,6 @@ pub(crate) fn store(
 ) {
     CACHE.with(|cell| {
         let mut cache = cell.borrow_mut();
-        if cache.len() >= CAP && !cache.contains_key(&key) {
-            cache.clear();
-        }
         cache.insert(
             key,
             EmitEntry {
@@ -181,15 +175,20 @@ pub(crate) fn theme_changed() {
 }
 
 pub(crate) fn theme_stamp() -> u64 {
-    theme_epoch().rotate_left(37)
+    mix(OFFSET, theme_epoch())
+}
+
+pub(crate) fn theme_key(theme: &Theme, stamp: u64) -> u64 {
+    mix(mix(OFFSET, std::ptr::from_ref(theme) as u64), stamp)
 }
 
 pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Color>, text_style: &TextStyle) -> u64 {
-    let theme_p = std::ptr::from_ref(theme) as u64 ^ theme_stamp();
     let color = text_color.map_or(0, |c| u64::from(u32::from_le_bytes([c.r, c.g, c.b, c.a])));
-    let size = u64::from(text_style.font_size.to_bits());
-    let weight = u64::from(text_style.font_weight);
-    theme_p ^ color.rotate_left(7) ^ size.rotate_left(17) ^ weight.rotate_left(27)
+    let key = mix(theme_key(theme, theme_stamp()), color);
+    mix(
+        mix_f32(key, text_style.font_size),
+        u64::from(text_style.font_weight),
+    )
 }
 
 /// A key that changes when any inherited text shadow changes.
@@ -206,9 +205,7 @@ pub(crate) fn shadow_key(shadows: &[Shadow]) -> u64 {
             .into_iter()
             .chain(offset)
             .chain([blur, spread])
-            .fold(key.rotate_left(5), |key, value| {
-                mix(key, u64::from(value.to_bits()))
-            })
+            .fold(key, mix_f32)
     })
 }
 

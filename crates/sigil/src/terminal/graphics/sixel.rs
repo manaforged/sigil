@@ -3,11 +3,11 @@ use std::fmt::Write as _;
 
 use super::encode::{Sample, premultiplied};
 use crate::kernel::ImageSource;
+use crate::terminal::colour::CUBE_LEVELS;
 
 const DEFAULT_CELL: [u16; 2] = [8, 16];
 const BAND: usize = 6;
 const EMPTY: u8 = 0;
-const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
 
 pub(crate) fn encode(
     source: &ImageSource,
@@ -65,7 +65,7 @@ fn register_rgb(reg: u8) -> (u8, u8, u8) {
         return (gray, gray, gray);
     }
     let v = reg.saturating_sub(16);
-    let level = |i: u8| LEVELS.get(usize::from(i)).copied().unwrap_or_default();
+    let level = |i: u8| CUBE_LEVELS.get(usize::from(i)).copied().unwrap_or_default();
     (level(v / 36), level((v % 36) / 6), level(v % 6))
 }
 

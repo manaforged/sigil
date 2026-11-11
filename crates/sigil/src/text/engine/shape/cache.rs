@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
 
-use ahash::AHashMap;
 use smallvec::SmallVec;
 
 use super::{PushRunArgs, ShapedSegment, segment, u32_clamp};
+use crate::cache::Bounded;
 use crate::text::glyph::ShapedRun;
 use crate::text::shaper::{FaceStyle, Font};
 
@@ -38,7 +38,7 @@ impl WordEntry {
 }
 
 thread_local! {
-    static WORDS: RefCell<AHashMap<u64, WordEntry>> = RefCell::new(AHashMap::new());
+    static WORDS: RefCell<Bounded<u64, WordEntry, WORD_ENTRIES>> = RefCell::new(Bounded::default());
 }
 
 pub(super) fn replay(
@@ -78,9 +78,6 @@ pub(super) fn remember(
         })
         .collect();
     WORDS.with_borrow_mut(|words| {
-        if words.len() >= WORD_ENTRIES {
-            words.clear();
-        }
         words.insert(
             key,
             WordEntry {

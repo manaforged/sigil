@@ -7,6 +7,8 @@ use crate::style::TextStyle;
 use crate::style::text_identity::{DiscreteTextStyle, hasher};
 use ahash::AHashMap;
 
+use crate::cache::Bounded;
+
 use crate::text::Paragraph;
 
 const MAX_ENTRIES: usize = 16_384;
@@ -30,7 +32,7 @@ struct CacheEntry {
 
 pub(crate) struct ParagraphCache {
     map: AHashMap<CacheKey, CacheEntry>,
-    styles: AHashMap<DiscreteTextStyle, Rc<TextStyle>>,
+    styles: Bounded<DiscreteTextStyle, Rc<TextStyle>, MAX_STYLES>,
     clock: Cell<u64>,
 }
 
@@ -38,7 +40,7 @@ impl ParagraphCache {
     pub(crate) fn new() -> Self {
         Self {
             map: AHashMap::new(),
-            styles: AHashMap::new(),
+            styles: Bounded::default(),
             clock: Cell::new(0),
         }
     }
@@ -94,9 +96,6 @@ impl ParagraphCache {
             .filter(|known| ***known == *style)
         {
             return Rc::clone(known);
-        }
-        if self.styles.len() >= MAX_STYLES {
-            self.styles.clear();
         }
         let interned = Rc::new(style.clone());
         self.styles.insert(identity, Rc::clone(&interned));

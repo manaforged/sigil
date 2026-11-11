@@ -10,7 +10,7 @@ use crate::{Error, ErrorKind};
 
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
-const BYTES_PER_PIXEL: u32 = 4;
+pub const BYTES_PER_PIXEL: u32 = 4;
 
 pub(super) fn gpu_pixels(
     renderer: &mut WgpuRenderer,

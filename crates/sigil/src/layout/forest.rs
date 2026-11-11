@@ -8,20 +8,20 @@ use crate::Error;
 use crate::layout::StyleData;
 
 mod box_cell;
-mod default_style;
 mod intrinsic;
 mod links;
 mod measure;
 mod text_memo;
 
 pub(crate) use box_cell::BoxCell;
-use default_style::DEFAULT_STYLE;
 pub(crate) use intrinsic::IntrinsicKey;
 use intrinsic::IntrinsicMemo;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
 use text_memo::TextMemo;
 #[cfg(test)]
 use text_memo::{TEXT_MEMO_LIVE, TextMemoKey};
+
+static DEFAULT_STYLE: StyleData = StyleData::DEFAULT;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct LocalId {

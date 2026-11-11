@@ -19,6 +19,7 @@ pub(crate) mod atom;
 pub(crate) mod binding;
 pub(crate) mod builder_ext;
 pub(crate) mod class_parse;
+pub(crate) mod diagnostic;
 pub(crate) mod engine;
 pub(crate) mod focus_ring;
 pub(crate) mod font_family;

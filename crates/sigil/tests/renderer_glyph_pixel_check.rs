@@ -12,7 +12,7 @@ use sigil::style::{Color, TextLineHeight, TextStyle};
 use sigil::text::OwnedTextEngine;
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels, shared_device};
 
-const BYTES_PER_PIXEL: u32 = 4;
+use sigil::renderer::capture::BYTES_PER_PIXEL;
 
 const LOGICAL_W: f32 = 240.0;
 const LOGICAL_H: f32 = 100.0;

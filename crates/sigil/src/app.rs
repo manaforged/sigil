@@ -77,6 +77,8 @@ pub(crate) use cell_text::cell_glyph;
 #[cfg(feature = "terminal")]
 pub(crate) use cell_text::cell_text_lines;
 pub use cell_text::cell_width;
+#[cfg(feature = "terminal")]
+pub(crate) use cell_text::{clip_cells, ellipsize_cells};
 #[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]

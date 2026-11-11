@@ -106,18 +106,6 @@ fn read_stop(base: u32, index: u32) -> StopData {
     return out;
 }
 
-fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
-    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-    let high = 1.055 * pow(v, vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
-    return select(high, v * 12.92, v <= vec3<f32>(0.0031308));
-}
-
-fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
-    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-    let high = pow((v + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
-    return select(high, v / 12.92, v <= vec3<f32>(0.04045));
-}
-
 fn gamma_premultiplied(color: vec4<f32>, linear: bool) -> vec4<f32> {
     let rgb = select(color.rgb, srgb_encode(color.rgb), linear);
     return vec4<f32>(rgb * color.a, color.a);

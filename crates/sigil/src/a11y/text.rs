@@ -1,6 +1,7 @@
 use accesskit::{Action, Node as AkNode, NodeId as AkNodeId, Role, TextPosition, TextSelection};
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::grapheme;
 use crate::kernel::{A11yProps, NodeId};
 
 pub(super) type RunNodes = Vec<(AkNodeId, AkNode)>;
@@ -47,19 +48,13 @@ fn position(runs: &[AccessRun<'_>], byte: usize) -> Option<TextPosition> {
     let prefix = run.text.get(..end)?;
     Some(TextPosition {
         node: run.id,
-        character_index: prefix.graphemes(true).count(),
+        character_index: grapheme::col_count(prefix),
     })
 }
 
 fn byte_of(runs: &[AccessRun<'_>], position: TextPosition) -> Option<usize> {
     let run = runs.iter().find(|run| run.id == position.node)?;
-    let offset: usize = run
-        .text
-        .graphemes(true)
-        .take(position.character_index)
-        .map(str::len)
-        .sum();
-    Some(run.start + offset)
+    Some(run.start + grapheme::byte_at_col(run.text, position.character_index))
 }
 
 fn run_node(run: &AccessRun<'_>) -> AkNode {

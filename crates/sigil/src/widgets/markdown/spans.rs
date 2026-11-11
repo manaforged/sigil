@@ -1,10 +1,10 @@
 use std::ops::Range;
 
+use super::MAX_MATH_BYTES;
 use super::events::Builder;
 use super::parse::Inline;
 
 const MAX_SPANS: usize = 32;
-const MAX_MATH_BYTES: usize = 512;
 
 pub(super) enum SpanKind {
     Base,

@@ -25,27 +25,29 @@ pub(crate) fn classify_segment_script(segment: &TextSegment<'_>) -> Script {
     for ch in segment.text.chars() {
         match ch.script() {
             UScript::Common | UScript::Inherited | UScript::Unknown => {}
-            other => return map_u_script(other),
+            other => return Script::from(other),
         }
     }
     Script::Common
 }
 
-const fn map_u_script(s: UScript) -> Script {
-    match s {
-        UScript::Latin | UScript::Greek | UScript::Cyrillic => Script::Latin,
-        UScript::Han
-        | UScript::Hiragana
-        | UScript::Katakana
-        | UScript::Hangul
-        | UScript::Bopomofo => Script::Cjk,
-        UScript::Arabic => Script::Arabic,
-        UScript::Hebrew => Script::Hebrew,
-        UScript::Devanagari => Script::Devanagari,
-        UScript::Khmer => Script::Khmer,
-        UScript::Thai => Script::Thai,
-        UScript::Lao => Script::Lao,
-        _ => Script::Other,
+impl From<UScript> for Script {
+    fn from(script: UScript) -> Self {
+        match script {
+            UScript::Latin | UScript::Greek | UScript::Cyrillic => Self::Latin,
+            UScript::Han
+            | UScript::Hiragana
+            | UScript::Katakana
+            | UScript::Hangul
+            | UScript::Bopomofo => Self::Cjk,
+            UScript::Arabic => Self::Arabic,
+            UScript::Hebrew => Self::Hebrew,
+            UScript::Devanagari => Self::Devanagari,
+            UScript::Khmer => Self::Khmer,
+            UScript::Thai => Self::Thai,
+            UScript::Lao => Self::Lao,
+            _ => Self::Other,
+        }
     }
 }
 

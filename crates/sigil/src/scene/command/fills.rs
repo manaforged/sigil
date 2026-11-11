@@ -1,5 +1,6 @@
 use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
+use crate::scene::geometry::MIN_EXTENT;
 use crate::style::Color;
 use smallvec::SmallVec;
 
@@ -158,7 +159,7 @@ impl LinearGradient {
 
     pub(super) fn is_degenerate(&self) -> bool {
         let length = (self.end.x - self.start.x).hypot(self.end.y - self.start.y);
-        length.is_nan() || length < DEGENERATE_LENGTH
+        length.is_nan() || length < MIN_EXTENT
     }
 }
 
@@ -181,8 +182,6 @@ pub(super) fn normalize_stops(
         Some(_) => clamp_stops(&placed),
     }
 }
-
-const DEGENERATE_LENGTH: f32 = 1.0 / 4096.0;
 
 fn clamp_stops(sorted: &[GradientStop]) -> SmallVec<[GradientStop; 4]> {
     let mut out: SmallVec<[GradientStop; 4]> = SmallVec::new();

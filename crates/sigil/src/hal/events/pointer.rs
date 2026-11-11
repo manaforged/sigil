@@ -130,7 +130,7 @@ pub struct PointerEvent {
     pub tilt: Option<PointerTilt>,
     capture_requested: bool,
     captured: bool,
-    propagation_stopped: bool,
+    pub(super) propagation_stopped: bool,
 }
 
 impl PointerEvent {
@@ -168,11 +168,6 @@ impl PointerEvent {
         self
     }
 
-    /// Stops the event from reaching ancestor nodes.
-    pub const fn stop_propagation(&mut self) {
-        self.propagation_stopped = true;
-    }
-
     /// Sends later pointer events to this node until release.
     pub const fn capture_pointer(&mut self) {
         self.capture_requested = true;
@@ -182,12 +177,6 @@ impl PointerEvent {
     #[must_use]
     pub const fn is_captured(&self) -> bool {
         self.captured
-    }
-
-    /// Returns whether propagation stopped is set.
-    #[must_use]
-    pub const fn propagation_stopped(&self) -> bool {
-        self.propagation_stopped
     }
 
     /// Returns whether capture requested is set.

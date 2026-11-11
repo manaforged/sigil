@@ -1,4 +1,6 @@
-const SHADER: &str = r"
+const SHADER: &str = concat!(
+    crate::renderer::fill_paint::srgb_wgsl!(),
+    r"
 @group(0) @binding(0) var source: texture_2d<f32>;
 
 @vertex
@@ -14,11 +16,10 @@ fn fs_main(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
         return vec4<f32>(0.0);
     }
     let straight = clamp(texel.rgb / texel.a, vec3<f32>(0.0), vec3<f32>(1.0));
-    let curve = pow((straight + 0.055) / 1.055, vec3<f32>(2.4));
-    let linear = select(curve, straight / 12.92, straight <= vec3<f32>(0.04045));
-    return vec4<f32>(linear * texel.a, texel.a);
+    return vec4<f32>(srgb_decode(straight) * texel.a, texel.a);
 }
-";
+",
+);
 
 pub(super) struct Linearize {
     pipeline: wgpu::RenderPipeline,

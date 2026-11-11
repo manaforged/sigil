@@ -7,6 +7,7 @@ use crate::kernel::NodeId;
 use crate::scene::command::Transform;
 use crate::scene::command::effects::transform_rect;
 use crate::scene::command::fills::{FillRule, PathPaint, StrokeCap, StrokeJoin};
+use crate::scene::geometry::KAPPA;
 
 /// One verb of a path outline with its points.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -64,16 +65,13 @@ impl PathStroke {
 
 pub(crate) const MITER_LIMIT: f32 = 4.0;
 
-const KAPPA: f32 = 0.552_284_8;
-
 /// A hash of `outline` mixed into `seed`.
 pub(crate) fn outline_key(seed: u64, outline: &[PathCmd]) -> u64 {
-    let mix = |hash: u64, value: f32| crate::fnv::mix(hash, u64::from(value.to_bits()));
     outline.iter().fold(seed, |hash, cmd| {
         cmd.points()
             .iter()
             .fold(crate::fnv::mix(hash, 1), |hash, (x, y)| {
-                mix(mix(hash, *x), *y)
+                crate::fnv::mix_f32(crate::fnv::mix_f32(hash, *x), *y)
             })
     })
 }
@@ -160,9 +158,7 @@ impl DrawPath {
     pub(crate) fn key_at(&self, scale: f32) -> u64 {
         [scale, self.bounds.width, self.bounds.height]
             .into_iter()
-            .fold(self.key, |hash, value| {
-                crate::fnv::mix(hash, u64::from(value.to_bits()))
-            })
+            .fold(self.key, crate::fnv::mix_f32)
     }
 
     fn measured(mut self) -> Self {

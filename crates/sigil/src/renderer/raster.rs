@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::hal::RenderedGlyph;
 use crate::renderer::cache_limits::CacheLimits;
-use crate::renderer::oblique::Oblique;
+use crate::text::outline::{Oblique, coords};
 
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{
@@ -100,10 +100,7 @@ impl Hinters {
         let glyph = outlines.get(GlyphId::new(key.glyph_id))?;
         let physical_px = f32::from_bits(key.physical_px_bits);
         let size = Size::new(physical_px.max(1.0));
-        let coords: Vec<NormalizedCoord> = variation_coords
-            .iter()
-            .map(|&c| NormalizedCoord::from_bits(c))
-            .collect();
+        let coords = coords(variation_coords);
 
         let mut pen = ZenoPen {
             commands: Vec::with_capacity(32),

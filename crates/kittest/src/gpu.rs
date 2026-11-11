@@ -3,7 +3,8 @@ use std::sync::OnceLock;
 use sigil::geometry::PhysicalSize;
 pub use sigil::renderer::capture::FORMAT;
 use sigil::renderer::capture::{
-    CaptureExtent, ImageRenderer, ImageTarget, capture_texture, read_texture, render_to_image,
+    BYTES_PER_PIXEL, CaptureExtent, ImageRenderer, ImageTarget, capture_texture, read_texture,
+    render_to_image,
 };
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::CommandScene;
@@ -11,7 +12,6 @@ use sigil::style::Rgba;
 
 use crate::{Error, ErrorKind};
 
-const BYTES_PER_PIXEL: u32 = 4;
 pub(crate) const CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 1.0);
 
 pub type Gpu = (wgpu::Device, wgpu::Queue);

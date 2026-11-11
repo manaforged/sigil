@@ -1,12 +1,12 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, LazyLock};
 
 use resvg::tiny_skia::{Pixmap, PixmapMut, Transform};
 use resvg::usvg::{self, Tree, fontdb};
 
-use crate::fnv::{OFFSET, mix};
+use crate::cache::Bounded;
+use crate::fnv::{OFFSET, bytes, mix, mix_f32};
 use crate::kernel::{ImageSource, NodeBuilder, cached_image};
 use crate::style::{Color, Theme, Token};
 
@@ -48,7 +48,7 @@ static FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
 });
 
 thread_local! {
-    static TREES: RefCell<HashMap<u64, Arc<Tree>>> = RefCell::new(HashMap::new());
+    static TREES: RefCell<Bounded<u64, Arc<Tree>, TREE_CAP>> = RefCell::new(Bounded::default());
 }
 
 /// The faces every SVG picture lays out its text with.
@@ -100,10 +100,7 @@ fn drawn(key: &str, render: Render, fit: Option<(f32, f32)>) -> Option<(NodeBuil
     let svg = run(&render, &light)?;
     let tree = parse(&svg)?;
     let size = fit.unwrap_or_else(|| (tree.size().width(), tree.size().height()));
-    let hash = key
-        .bytes()
-        .chain(svg.bytes())
-        .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+    let hash = bytes(bytes(OFFSET, key.as_bytes()), svg.as_bytes());
     let picture = Picture {
         render,
         key: hash,
@@ -119,20 +116,12 @@ pub(crate) fn hex(theme: &Theme, token: Token) -> String {
 }
 
 fn parse(svg: &str) -> Option<Arc<Tree>> {
-    let hash = svg
-        .bytes()
-        .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+    let hash = bytes(OFFSET, svg.as_bytes());
     if let Some(tree) = TREES.with(|trees| trees.borrow().get(&hash).cloned()) {
         return Some(tree);
     }
     let tree = Arc::new(parse_tree(svg)?);
-    TREES.with(|trees| {
-        let mut trees = trees.borrow_mut();
-        if trees.len() >= TREE_CAP {
-            trees.clear();
-        }
-        trees.insert(hash, Arc::clone(&tree));
-    });
+    TREES.with_borrow_mut(|trees| trees.insert(hash, Arc::clone(&tree)));
     Some(tree)
 }
 
@@ -186,10 +175,7 @@ fn raster_with(
     let shrink = (MAX_SIDE / width.max(height)).min(1.0);
     let width = (width * shrink).round().clamp(1.0, MAX_SIDE);
     let height = (height * shrink).round().clamp(1.0, MAX_SIDE);
-    let sized = mix(
-        mix(key, u64::from(width.to_bits())),
-        u64::from(height.to_bits()),
-    );
+    let sized = mix_f32(mix_f32(key, width), height);
     cached_image(sized, || {
         let mut pixmap = Pixmap::new(width as u32, height as u32)?;
         paint(&mut pixmap.as_mut(), (width, height));

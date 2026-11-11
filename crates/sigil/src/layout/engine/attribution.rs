@@ -38,7 +38,10 @@ pub(super) fn note_roots(cx: &Cx, roots: &[NodeId], resized: &[NodeId]) {
             .copied()
             .find(|id| contains(cx, root, *id))
             .or_else(|| resized.first().copied());
-        let pair = key(root) ^ trigger.map_or(0, |id| key(id).rotate_left(32));
+        let pair = crate::fnv::mix(
+            crate::fnv::mix(crate::fnv::OFFSET, key(root)),
+            trigger.map_or(0, key),
+        );
         crate::profile::attribute(Hotspot::LayoutRoot, nodes, pair, || {
             trigger.map_or_else(
                 || cx.describe(root),

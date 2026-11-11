@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::cache::Bounded;
 use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
 use crate::kernel::{ImageSource, NodeId, ObjectFit};
@@ -39,13 +40,13 @@ pub(crate) fn emit_color_glyphs(
 type ColorFontEntry = (Arc<Vec<u8>>, u32);
 type ColorFont = Option<ColorFontEntry>;
 type ColorFonts = HashMap<u64, ColorFontEntry>;
-type RasterCacheMap = HashMap<(u64, u32, u32, [u32; 4]), Option<ImageSource>>;
-
 const RASTER_CAP: usize = 1_024;
+
+type RasterCacheMap = Bounded<(u64, u32, u32, [u32; 4]), Option<ImageSource>, RASTER_CAP>;
 
 thread_local! {
     static FONTS: RefCell<HashMap<u64, ColorFont>> = RefCell::new(HashMap::new());
-    static RASTERS: RefCell<RasterCacheMap> = RefCell::new(HashMap::new());
+    static RASTERS: RefCell<RasterCacheMap> = RefCell::new(Bounded::default());
 }
 
 fn collect_color_fonts(para: &Paragraph) -> ColorFonts {
@@ -87,9 +88,6 @@ fn cached_raster(glyph: &RenderedGlyph, bytes: &[u8], index: u32) -> Option<Imag
         let mut rasters = cell.borrow_mut();
         if let Some(found) = rasters.get(&key) {
             return found.clone();
-        }
-        if rasters.len() >= RASTER_CAP {
-            rasters.clear();
         }
         let source = rasterize(glyph, bytes, index);
         rasters.insert(key, source.clone());

@@ -1,9 +1,9 @@
+use crate::grapheme::{col_bytes, col_count};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{ColorAtom, Paint, Token};
 use crate::widgets::Layout;
-use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::super::highlight::Highlight;
 use super::{

@@ -50,12 +50,14 @@ pub mod animation;
 /// Windows, the frame loop, dialogs, menus, and other platform services.
 pub mod app;
 pub(crate) mod bidi;
+mod cache;
 mod error;
 /// Input events, shortcuts, and focus requests.
 pub mod events;
 mod fnv;
 /// Points, sizes, and rectangles.
 pub mod geometry;
+mod grapheme;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub mod hal;

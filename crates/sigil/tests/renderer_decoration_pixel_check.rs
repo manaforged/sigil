@@ -10,7 +10,7 @@ use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const BYTES_PER_PIXEL: u32 = 4;
+use sigil::renderer::capture::BYTES_PER_PIXEL;
 
 const UNDERLINE_MID_Y: u32 = 43;
 const STRIKETHROUGH_MID_Y: u32 = 102;
