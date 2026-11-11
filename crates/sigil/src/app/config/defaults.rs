@@ -29,6 +29,7 @@ impl AppConfig {
             resize: Resize::Free,
             #[cfg(feature = "desktop")]
             on_close: CloseHook::default(),
+            #[cfg(any(feature = "desktop", feature = "terminal"))]
             on_exit: ExitHook::default(),
             inline: false,
             frame_interval: FRAME_INTERVAL,

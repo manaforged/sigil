@@ -18,13 +18,11 @@ impl std::fmt::Debug for TerminalHooks {
     }
 }
 
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 #[derive(Clone, Default)]
-#[cfg_attr(
-    not(any(feature = "desktop", feature = "terminal")),
-    allow(dead_code, reason = "only a host runs the exit hook")
-)]
 pub(crate) struct ExitHook(pub(crate) Option<std::rc::Rc<dyn Fn()>>);
 
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 impl std::fmt::Debug for ExitHook {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ExitHook")
