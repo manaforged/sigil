@@ -142,18 +142,18 @@ impl LayerPool {
         self.free.iter().any(|handle| handle.view == *view)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn clear(&mut self) {
         self.free.clear();
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn len(&self) -> usize {
         self.free.len()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.free.is_empty()

@@ -2,9 +2,9 @@ mod submit;
 
 pub(crate) use submit::record_clear;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 mod screen;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use screen::ScreenSubmission;
 mod surface_frame;
 
@@ -97,7 +97,7 @@ impl WgpuRenderer {
         self.state.is_lost()
     }
 
-    #[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+    #[cfg(native_desktop)]
     pub(crate) fn set_on_lost(&mut self, on_lost: OnLost) {
         self.on_lost = Some(on_lost);
     }
@@ -124,31 +124,31 @@ impl WgpuRenderer {
         self.transparent
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn last_frame_stats(&self) -> FrameStats {
         self.last_frame_stats
     }
 
     #[must_use]
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn instance(&self) -> &wgpu::Instance {
         self.state.instance()
     }
 
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     #[must_use]
     pub fn device(&self) -> Option<&wgpu::Device> {
         self.state.ready().ok().map(|ready| &ready.device)
     }
 
     #[must_use]
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn queue(&self) -> Option<&wgpu::Queue> {
         self.state.ready().ok().map(|ready| &ready.queue)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn pipeline_cache_counts(&self) -> Option<(usize, usize, usize, usize, usize)> {
         self.state.ready().ok().map(|ready| {
@@ -162,7 +162,7 @@ impl WgpuRenderer {
         })
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn decoration_pipeline_cache_count(&self) -> Option<usize> {
         self.state
@@ -171,7 +171,7 @@ impl WgpuRenderer {
             .map(|ready| ready.pipelines.decoration_pipelines.len())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn layer_pool_ready_for_tests(&self) -> bool {
         self.state
@@ -179,18 +179,18 @@ impl WgpuRenderer {
             .is_ok_and(|ready| ready.pipelines.layer_pool.is_some())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn ensure_headless_for_tests(&mut self) -> Result<(), Error> {
         self.state.ensure_ready_headless().map(|_| ())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn headless_device_for_tests() -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), Error>
     {
         DeviceState::request_headless()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn attach_headless_for_tests(
         &mut self,
         adapter: &wgpu::Adapter,

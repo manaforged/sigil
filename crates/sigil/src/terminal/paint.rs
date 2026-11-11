@@ -26,7 +26,7 @@ pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;
 #[cfg(test)]
 pub(crate) use scene::raster;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) use scene::raster_into;
 pub(crate) use scene::{CellPaint, raster_with};
 

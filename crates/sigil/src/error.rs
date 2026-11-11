@@ -170,24 +170,17 @@ impl Error {
         Self::with_kind(ErrorKind::Window, err)
     }
 
-    #[cfg(any(
-        test,
-        feature = "desktop",
-        feature = "terminal",
-        feature = "pty",
-        feature = "audio",
-        feature = "clipboard"
-    ))]
+    #[cfg(any(app_host, feature = "pty", feature = "audio", feature = "clipboard"))]
     pub(crate) fn io<E: StdError + Send + Sync + 'static>(err: E) -> Self {
         Self::with_kind(ErrorKind::Io, err)
     }
 
-    #[cfg(any(feature = "desktop", feature = "pty", feature = "terminal"))]
+    #[cfg(any(app_host, feature = "pty"))]
     pub(crate) fn task<E: StdError + Send + Sync + 'static>(err: E) -> Self {
         Self::with_kind(ErrorKind::Task, err)
     }
 
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) fn config<E: StdError + Send + Sync + 'static>(err: E) -> Self {
         Self::with_kind(ErrorKind::Config, err)
     }
@@ -229,10 +222,7 @@ impl StdError for Error {
 }
 
 impl Error {
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(scene_host)]
     pub(crate) fn gpu_device(err: wgpu::RequestDeviceError) -> Self {
         Self {
             kind: ErrorKind::Gpu,
@@ -241,10 +231,7 @@ impl Error {
         }
     }
 
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(scene_host)]
     pub(crate) fn gpu_surface(err: wgpu::CreateSurfaceError) -> Self {
         Self {
             kind: ErrorKind::Gpu,

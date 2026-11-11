@@ -13,14 +13,14 @@ use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
 mod access;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 mod emit;
-#[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+#[cfg(hot_patch)]
 mod hot;
 #[cfg(feature = "terminal")]
 mod quit;
 use super::host_env::{EnvGuard, HostEnv};
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 use crate::scene::emit::EmitMemo;
 use crate::scene::{CommandScene, emit_scene};
 
@@ -37,12 +37,12 @@ pub struct Host {
     fill_root: bool,
     theme: Theme,
     visual_transforms: bool,
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     emitted: EmitMemo,
     env: HostEnv,
     #[cfg(feature = "dialog")]
     dialogs: Vec<super::dialog::layer::Mounted>,
-    #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+    #[cfg(hot_patch)]
     hot: Option<hot::HotRoot>,
 }
 
@@ -108,12 +108,12 @@ impl Host {
             fill_root: false,
             theme: Theme::default(),
             visual_transforms,
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             emitted: EmitMemo::default(),
             env,
             #[cfg(feature = "dialog")]
             dialogs: Vec::new(),
-            #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+            #[cfg(hot_patch)]
             hot: None,
         }
     }
@@ -143,23 +143,23 @@ impl Host {
 
     /// Builds `app` and makes it the root of the tree.
     pub fn mount(&mut self, app: impl crate::kernel::IntoNode) {
-        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        #[cfg(hot_patch)]
         {
             self.hot = None;
         }
         self.replace_root(|cx| cx.add(app));
     }
 
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) fn mount_app<F, N>(&mut self, app: F)
     where
         F: Fn() -> N + 'static,
         N: crate::kernel::IntoNode,
     {
         self.fill_root = true;
-        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        #[cfg(hot_patch)]
         self.mount_hot(app);
-        #[cfg(not(all(feature = "hot", not(target_arch = "wasm32"))))]
+        #[cfg(not(hot_patch))]
         self.mount(app);
     }
 
@@ -237,12 +237,7 @@ impl Host {
         });
     }
 
-    #[cfg(any(
-        test,
-        debug_assertions,
-        feature = "kittest",
-        all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(any(debug_assertions, feature = "kittest", inspector))]
     #[must_use]
     pub(crate) fn flaws(
         &self,
@@ -315,7 +310,7 @@ impl Host {
         self.router.focus()
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub const fn parts(&mut self) -> (&mut Cx, &LayoutEngine, &mut EventRouter) {
         (&mut self.cx, &self.layout, &mut self.router)
     }

@@ -15,7 +15,7 @@ impl LayoutResult {
         self.rect
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn content_size(&self) -> Point {
         self.content_size

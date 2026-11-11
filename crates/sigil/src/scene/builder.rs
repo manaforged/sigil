@@ -1,12 +1,12 @@
 #![allow(clippy::redundant_pub_crate)]
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use crate::scene::command::DrawSprite;
 use crate::scene::command::{DrawPattern, PatternKind, Wash};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use crate::scene::command::Transform;
 use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
@@ -69,7 +69,7 @@ impl SceneBuilder {
     }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Appends a pattern fill.
     #[doc(hidden)]
     pub fn draw_pattern(&mut self, draw: DrawPattern) {
@@ -123,7 +123,7 @@ impl SceneBuilder {
             .push(SceneCommand::Gradient(draw.with_node(node).with_cell(cell)));
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Appends a sprite.
     #[doc(hidden)]
     pub fn draw_sprite(&mut self, draw: DrawSprite) -> &mut Self {
@@ -189,7 +189,7 @@ impl SceneBuilder {
     }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Draw `body` under `transform`.
     #[doc(hidden)]
     pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
@@ -197,7 +197,7 @@ impl SceneBuilder {
         self.with_scope(open, SceneCommand::PopTransform, body);
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Draw `body` into a layer composited at `opacity`.
     #[doc(hidden)]
     pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
@@ -213,7 +213,7 @@ impl SceneBuilder {
     }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Opens a layer.
     #[doc(hidden)]
     pub fn push_layer(&mut self, scope: LayerScope) {

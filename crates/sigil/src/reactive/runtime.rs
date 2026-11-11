@@ -139,7 +139,7 @@ kittest_pub! {
 }
 
 impl Runtime {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn current_phase() -> DrawPhase {
         with_rt(|rt| rt.phase)

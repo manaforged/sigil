@@ -62,7 +62,7 @@ impl Shell for WinitShell {
         Ok(self.queue_window(title, PendingWindowSize::Logical(initial), opts))
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     fn drain_events(&mut self) -> std::vec::IntoIter<Event> {
         self.drain_tagged_events()
             .map(|(_, event)| event)

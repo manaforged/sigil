@@ -136,11 +136,7 @@ pub(super) fn decorate(
         match line.kind {
             DecorationKind::Strikethrough => cell.lines.strike = true,
             DecorationKind::Underline => cell.lines.underline = Underline::Straight,
-            #[cfg(any(
-                test,
-                feature = "kittest",
-                all(feature = "scene", feature = "terminal")
-            ))]
+            #[cfg(cpu_paint)]
             DecorationKind::WavyUnderline => cell.lines.underline = Underline::Curly,
         }
         if !matches!(line.kind, DecorationKind::Strikethrough) {

@@ -6,8 +6,7 @@ use backend::{Controls, apply, create};
 
 #[cfg_attr(
     not(any(
-        target_os = "macos",
-        target_os = "windows",
+        vendor_os,
         target_os = "linux",
         target_os = "freebsd",
         target_os = "openbsd",
@@ -31,7 +30,7 @@ pub fn events() -> EventChannel<MediaKey> {
     NATIVE.with(Native::events)
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub fn simulate(key: MediaKey) {
     events().emit(key);
 }

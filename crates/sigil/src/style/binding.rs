@@ -91,13 +91,13 @@ impl StyleBinding {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn static_slice(&self) -> &'static [StyleAtom] {
         self.static_atoms
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn dynamic_slice(&self) -> &[StyleAtom] {
         &self.dynamic_atoms
@@ -110,7 +110,7 @@ impl StyleBinding {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn reactive_contains(&self, target: &StyleAtom) -> bool {
         self.reactive_channels().any(|slice| slice.contains(target))
@@ -135,7 +135,7 @@ impl StyleBinding {
                 .iter()
                 .chain(&self.dynamic_atoms)
                 .any(|atom| {
-                    #[cfg(any(test, feature = "kittest"))]
+                    #[cfg(feature = "kittest")]
                     if matches!(atom, StyleAtom::Transform(_)) {
                         return true;
                     }

@@ -191,14 +191,14 @@ impl DeviceState {
             .map(|ready| &*ready)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn request_headless() -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), Error> {
         let (adapter, device, queue, _lost, _forced) =
             request_blocking(&new_instance(), None, None)?;
         Ok((adapter, device, queue))
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn adopt_headless(
         &mut self,
         adapter: wgpu::Adapter,
@@ -213,7 +213,7 @@ impl DeviceState {
         ));
     }
 
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, Error> {
         self.ensure_ready_for(None, None)
     }

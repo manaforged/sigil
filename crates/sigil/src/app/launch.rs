@@ -174,7 +174,7 @@ where
         .map_err(Error::window)
 }
 
-#[cfg(all(any(feature = "menu", feature = "media"), target_os = "windows"))]
+#[cfg(all(native_commands, target_os = "windows"))]
 fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     let window = shell.window_for(handle)?;
@@ -184,7 +184,7 @@ fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     }
 }
 
-#[cfg(all(any(feature = "menu", feature = "media"), not(target_os = "windows")))]
+#[cfg(all(native_commands, not(target_os = "windows")))]
 const fn menu_hwnd(_shell: &WinitShell, _handle: WinitWindowHandle) -> Option<isize> {
     None
 }
@@ -208,7 +208,7 @@ fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) -> AppResult<()> {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
     Runtime::begin_effect();
     Runtime::begin_layout();

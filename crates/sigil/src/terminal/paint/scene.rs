@@ -35,7 +35,7 @@ pub(crate) fn raster(scene: &CommandScene, theme: &Theme, cols: u16, rows: u16, 
     grid
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32) {
     let marks = Marks::default();
     let paint = CellPaint {
@@ -166,17 +166,13 @@ impl CellWalk<'_> {
             | SceneCommand::PopClip
             | SceneCommand::PushLayer(_)
             | SceneCommand::PopLayer => {}
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SceneCommand::Sprite(_) => {}
-            #[cfg(any(
-                test,
-                feature = "kittest",
-                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-            ))]
+            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
-            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            #[cfg(host)]
             SceneCommand::SaveLayer { .. } => {}
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             SceneCommand::RestoreLayer => {}
         }
     }

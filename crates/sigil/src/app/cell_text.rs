@@ -6,13 +6,13 @@ use crate::kernel::TextContent;
 use crate::layout::{CaretGeometry, TextMeasure};
 use crate::style::TextStyle;
 use unicode_segmentation::UnicodeSegmentation;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 use unicode_width::UnicodeWidthChar;
 use unicode_width::UnicodeWidthStr;
 
 mod wrap;
 
-#[cfg(any(test, feature = "terminal"))]
+#[cfg(feature = "terminal")]
 pub(crate) use wrap::cell_text_lines;
 use wrap::{hard_break_at, ranges};
 
@@ -24,7 +24,7 @@ kittest_pub! {
         #[default]
         Unicode,
         /// The scalar cell width.
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         Scalar {
             /// The joiner.
             joiner: usize,
@@ -46,15 +46,15 @@ macro_rules! ambiguous {
             #[default]
             Narrow,
             /// The wide ambiguous.
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             Wide,
         }
     };
 }
 
-#[cfg(any(feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 ambiguous!(pub);
-#[cfg(not(any(feature = "kittest", feature = "terminal")))]
+#[cfg(not(terminal_host))]
 ambiguous!(pub(crate));
 
 thread_local! {
@@ -62,7 +62,7 @@ thread_local! {
     static AMBIGUOUS: Cell<Ambiguous> = const { Cell::new(Ambiguous::Narrow) };
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
 /// Sets how text width in cells is measured.
 #[doc(hidden)]
@@ -71,7 +71,7 @@ pub fn set_cell_width(width: CellWidth) {
 }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
 /// Sets the width of East Asian ambiguous characters.
 #[doc(hidden)]
@@ -80,11 +80,11 @@ pub fn set_ambiguous(width: Ambiguous) {
 }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 fn char_width(ch: char) -> usize {
     match AMBIGUOUS.get() {
         Ambiguous::Narrow => UnicodeWidthChar::width(ch),
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         Ambiguous::Wide => UnicodeWidthChar::width_cjk(ch),
     }
     .unwrap_or(0)
@@ -106,10 +106,10 @@ pub fn cell_width(text: &str) -> usize {
     match CELL_WIDTH.get() {
         CellWidth::Unicode => match AMBIGUOUS.get() {
             Ambiguous::Narrow => UnicodeWidthStr::width(text),
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             Ambiguous::Wide => UnicodeWidthStr::width_cjk(text),
         },
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         CellWidth::Scalar {
             joiner,
             nonjoiner,

@@ -48,12 +48,12 @@ fn sans_candidates() -> Vec<FamilyName> {
     titles(&["Helvetica Neue", "Helvetica"], FamilyName::SansSerif)
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(target_os = "windows")]
 fn sans_candidates() -> Vec<FamilyName> {
     titles(&["Segoe UI Variable", "Segoe UI"], FamilyName::SansSerif)
 }
 
-#[cfg(not(any(target_os = "macos", target_family = "windows")))]
+#[cfg(not(vendor_os))]
 fn sans_candidates() -> Vec<FamilyName> {
     titles(
         &["Inter", "Noto Sans", "DejaVu Sans"],
@@ -66,12 +66,12 @@ fn mono_candidates() -> Vec<FamilyName> {
     titles(&[".SF NS Mono", "Menlo"], FamilyName::Monospace)
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(target_os = "windows")]
 fn mono_candidates() -> Vec<FamilyName> {
     titles(&["Cascadia Mono", "Consolas"], FamilyName::Monospace)
 }
 
-#[cfg(not(any(target_os = "macos", target_family = "windows")))]
+#[cfg(not(vendor_os))]
 fn mono_candidates() -> Vec<FamilyName> {
     titles(
         &["JetBrains Mono", "Noto Sans Mono", "DejaVu Sans Mono"],
@@ -84,12 +84,12 @@ fn serif_candidates() -> Vec<FamilyName> {
     titles(&["New York", "Times New Roman"], FamilyName::Serif)
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(target_os = "windows")]
 fn serif_candidates() -> Vec<FamilyName> {
     titles(&["Georgia", "Times New Roman"], FamilyName::Serif)
 }
 
-#[cfg(not(any(target_os = "macos", target_family = "windows")))]
+#[cfg(not(vendor_os))]
 fn serif_candidates() -> Vec<FamilyName> {
     titles(&["Noto Serif", "DejaVu Serif"], FamilyName::Serif)
 }

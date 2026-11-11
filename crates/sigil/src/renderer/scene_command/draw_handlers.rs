@@ -157,20 +157,20 @@ impl SceneWalk<'_> {
             &DrawParams {
                 device: ctx.device,
                 queue: ctx.queue,
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 view: ctx.view,
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 surface_width: ctx.viewport.0,
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 surface_height: ctx.viewport.1,
                 scale: ctx.scale,
                 paragraph,
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 glyphs: Some(glyphs),
                 origin,
                 transform,
                 color: Some(color),
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 clip: None,
             },
         )

@@ -10,7 +10,7 @@ mod graphics;
 pub(crate) mod hud;
 mod input;
 mod keys;
-#[cfg(all(fuzzing, unix))]
+#[cfg(fuzz_replies)]
 pub(crate) use caps::fuzz_reply;
 #[cfg(fuzzing)]
 pub(crate) use keys::fuzz_strip;
@@ -46,7 +46,7 @@ kittest_pub! {
     pub use keys::map_key;
 }
 pub use mouse::MouseTracking;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use mouse::cell_point;
 kittest_pub! {
@@ -59,10 +59,7 @@ pub use pixels::{pixels, set_pixels};
 #[cfg(test)]
 pub(crate) use run::present;
 pub(crate) use run::run;
-#[cfg(all(
-    test,
-    any(feature = "dialog", all(feature = "hot", not(target_arch = "wasm32")))
-))]
+#[cfg(all(test, any(feature = "dialog", hot_patch)))]
 pub(crate) use run::step;
 pub use run::{Hooks, calibrate};
 pub use screen::Screen;

@@ -1,13 +1,9 @@
 mod attr;
 mod chrome;
 mod event;
-#[cfg(all(
-    feature = "scene",
-    not(target_arch = "wasm32"),
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(all(scene_host, not(target_arch = "wasm32")))]
 pub(crate) mod gpu;
-#[cfg(any(test, feature = "desktop", feature = "kittest"))]
+#[cfg(window_host)]
 mod input;
 mod key;
 mod report;
@@ -16,7 +12,7 @@ mod site;
 mod span;
 mod store;
 
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) use self::{attr::budget_ns, chrome::site_name, store::with_frames};
 pub use key::{Backend, BackendStatus, Cause, Counter, FallbackCause, Phase};
 kittest_pub! {
@@ -85,13 +81,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use attr::Attribution;
 }
-#[cfg(any(
-    test,
-    all(
-        feature = "scene",
-        any(feature = "desktop", feature = "kittest", feature = "terminal")
-    )
-))]
+#[cfg(scene_host)]
 pub(crate) use attr::gpu_pass;
 
 /// Records the current value of a gauge.
@@ -100,7 +90,7 @@ pub(crate) fn gauge(counter: Counter, value: u64) {
     store::gauge(counter, value);
 }
 
-#[cfg(any(test, feature = "desktop", feature = "kittest"))]
+#[cfg(window_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use input::note_input;
@@ -126,12 +116,12 @@ pub fn dump(path: impl AsRef<std::path::Path>) -> Result<(), crate::Error> {
     Ok(())
 }
 
-#[cfg(all(feature = "inspect", any(feature = "desktop", feature = "terminal")))]
+#[cfg(inspector)]
 pub(crate) fn dump_path() -> Option<std::path::PathBuf> {
     store::dump_path()
 }
 
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) fn dump_if_enabled() {
     if let Some(path) = store::dump_path()
         && let Err(err) = dump(&path)
@@ -141,7 +131,7 @@ pub(crate) fn dump_if_enabled() {
 }
 
 kittest_pub! {
-    if any(test, all(feature = "inspect", any(feature = "desktop", feature = "terminal")));
+    if any(test, inspector);
     /// Returns the recorded frames.
     #[doc(hidden)]
     #[must_use]
@@ -151,11 +141,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(any(feature = "kittest", inspector))]
     #[doc(hidden)]
     #[must_use]
     pub fn summary() -> String {

@@ -15,7 +15,7 @@ use crate::text::glyph::ShapedRun;
 
 #[path = "paragraph_geometry.rs"]
 mod geometry;
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(host)]
 #[path = "paragraph_ink.rs"]
 mod ink;
 
@@ -165,7 +165,7 @@ pub(crate) struct SegmentAppend<'a> {
 #[derive(Clone, Copy, Default)]
 struct ContentWidths {
     min: f32,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     max: f32,
 }
 
@@ -221,7 +221,7 @@ struct ParagraphInner {
     fonts: FaceTable,
     min_content_hint: f32,
     content_widths: std::sync::OnceLock<ContentWidths>,
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    #[cfg(host)]
     ink: std::sync::OnceLock<Option<Rect>>,
 }
 
@@ -254,7 +254,7 @@ impl Paragraph {
                 fonts,
                 min_content_hint,
                 content_widths: std::sync::OnceLock::new(),
-                #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+                #[cfg(host)]
                 ink: std::sync::OnceLock::new(),
             }),
         }
@@ -281,7 +281,7 @@ impl Paragraph {
         };
         ContentWidths {
             min: min.min(max),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             max,
         }
     }
@@ -344,7 +344,7 @@ impl Paragraph {
         rects
     }
 
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    #[cfg(raster)]
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),

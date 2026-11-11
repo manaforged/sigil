@@ -5,9 +5,9 @@ use crate::renderer::scene_instance::affine_rows;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum QuadKind {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Mono,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     Subpixel,
     Poly,
     Mask,
@@ -22,9 +22,9 @@ pub(crate) enum QuadBlend {
 impl QuadKind {
     const fn code(self) -> f32 {
         match self {
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             Self::Mono => 0.0,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             Self::Subpixel => 1.0,
             Self::Poly => 2.0,
             Self::Mask => 3.0,
@@ -43,9 +43,9 @@ impl QuadKind {
 impl From<SpriteKind> for QuadKind {
     fn from(kind: SpriteKind) -> Self {
         match kind {
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SpriteKind::Mono => Self::Mono,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SpriteKind::Subpixel => Self::Subpixel,
             SpriteKind::Poly => Self::Poly,
         }

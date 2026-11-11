@@ -4,12 +4,7 @@ use windows_core as _;
 mod appearance;
 #[cfg(feature = "audio")]
 pub(crate) mod audio;
-#[cfg(any(
-    feature = "menu",
-    feature = "tray",
-    all(feature = "hotkey", not(target_arch = "wasm32")),
-    feature = "media"
-))]
+#[cfg(any(native_commands, global_hotkey))]
 mod bridge;
 mod cell_text;
 pub(crate) mod config;
@@ -21,9 +16,9 @@ pub(crate) mod exit;
 mod frame;
 mod host_env;
 /// System-wide keyboard shortcuts.
-#[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+#[cfg(global_hotkey)]
 pub mod hotkey;
-#[cfg(all(feature = "inspect", any(feature = "desktop", feature = "terminal")))]
+#[cfg(inspector)]
 pub(crate) mod inspect;
 #[cfg(feature = "desktop")]
 mod launch;
@@ -38,21 +33,15 @@ pub mod menu;
 pub mod notify;
 #[cfg(feature = "desktop")]
 mod open;
-#[cfg(any(
-    feature = "menu",
-    feature = "tray",
-    all(feature = "hotkey", not(target_arch = "wasm32")),
-    feature = "media",
-    all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
-))]
+#[cfg(any(native_commands, global_hotkey, inspector))]
 pub(crate) type Wake = std::sync::Arc<dyn Fn() + Send + Sync + 'static>;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]
 pub(crate) mod pty;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 mod theme_file;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 mod theme_watch;
 /// The system tray.
 #[cfg(feature = "tray")]
@@ -61,22 +50,22 @@ pub(crate) mod tree_root;
 #[cfg(feature = "desktop")]
 pub(crate) mod window;
 
-#[cfg(all(feature = "desktop", feature = "kittest"))]
+#[cfg(desktop_harness)]
 #[doc(hidden)]
 pub use crate::hal::shell::WindowOpts;
-#[cfg(all(feature = "desktop", not(feature = "kittest")))]
+#[cfg(live_desktop)]
 pub(crate) use crate::hal::shell::WindowOpts;
 #[cfg(feature = "desktop")]
 pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowLevel};
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub use crate::text::fonts::{DefaultFonts, set_default_fonts};
 #[cfg(all(feature = "scene", target_arch = "wasm32"))]
 pub use crate::text::load_font_url;
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub use crate::text::web_fallbacks;
 #[cfg(feature = "scene")]
@@ -88,15 +77,15 @@ pub(crate) use cell_text::cell_glyph;
 #[cfg(feature = "terminal")]
 pub(crate) use cell_text::cell_text_lines;
 pub use cell_text::cell_width;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use cell_text::{set_ambiguous, set_cell_width};
 }
-#[cfg(any(feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 pub use cell_text::Ambiguous;
 kittest_pub! {
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     #[doc(hidden)]
     pub use cell_text::CellWidth;
 }
@@ -118,14 +107,14 @@ pub(crate) use launch::launch;
 pub use open::open;
 #[cfg(feature = "pty")]
 pub use pty::Session;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub(crate) use theme_file::launch as launch_theme;
-#[cfg(any(feature = "desktop", feature = "terminal"))]
+#[cfg(app_host)]
 pub use theme_watch::{ThemeWatcher, watch_theme};
 #[cfg(feature = "desktop")]
 pub(crate) use window::current_window;
 #[cfg(feature = "desktop")]
 pub use window::{CloseAction, WindowId};
 
-#[cfg(all(feature = "desktop", any(test, feature = "kittest")))]
+#[cfg(desktop_harness)]
 pub use launch::__drive_test_frame;

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use smallvec::{SmallVec, smallvec};
 
@@ -195,7 +195,7 @@ impl FocusManager {
             .map(|(_, id)| id)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
         TreeUpdate {
             nodes: Vec::new(),

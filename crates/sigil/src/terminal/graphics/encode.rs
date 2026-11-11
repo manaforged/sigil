@@ -4,14 +4,14 @@ use crate::style::Color;
 const STORED: usize = 65_535;
 
 /// Converts an image to half-block rows.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub fn blocks(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(Color, Color)>> {
     blocks_window(source, (0, source.height()), cols, rows)
 }
 
 /// Converts one vertical window of an image to half-block rows.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub(crate) fn blocks_window(
     source: &ImageSource,
@@ -27,7 +27,7 @@ pub(crate) fn blocks_window(
 }
 
 /// Converts an image to sextant rows.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub fn sextants(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(char, Color, Color)>> {
     sextants_window(source, (0, source.height()), cols, rows)
@@ -169,7 +169,7 @@ pub(crate) fn base64(bytes: &[u8]) -> String {
 }
 
 /// Encodes an image as PNG.
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub fn png(source: &ImageSource) -> Vec<u8> {
     png_window(source, 0, source.height())

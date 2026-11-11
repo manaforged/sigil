@@ -28,7 +28,7 @@ pub(crate) fn trace_effect_fire(
     test_hook::maybe_record(&line);
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub mod test_hook {
     use std::cell::{Cell, RefCell};
 
@@ -66,7 +66,7 @@ pub mod test_hook {
     }
 }
 
-#[cfg(not(any(test, feature = "kittest")))]
+#[cfg(not(feature = "kittest"))]
 mod test_hook {
     pub(crate) const fn capture_enabled() -> bool {
         false

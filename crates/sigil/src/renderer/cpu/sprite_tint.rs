@@ -67,19 +67,19 @@ pub(super) fn tint(atlas: &Pixmap, region: Rect, draw: &DrawSprite) -> Option<Pi
         let (row, col) = (index / row_len, index % row_len);
         *px = match draw.kind {
             SpriteKind::Poly => texels.at(row, col),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SpriteKind::Mono => table
                 .get(usize::from(texels.at(row, col)[3]))
                 .copied()
                 .unwrap_or_default(),
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SpriteKind::Subpixel => subpixel(draw, &texels, row, col),
         };
     }
     Some(out)
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 fn subpixel(draw: &DrawSprite, texels: &Texels<'_>, row: usize, col: usize) -> [u8; 4] {
     let center = col as f32 + 0.5 + draw.source.phase;
     let [r, g, b] = SUBPIXEL_TAPS.map(|tap| texels.alpha_at(row, center + tap));

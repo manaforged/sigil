@@ -3,7 +3,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use super::cell_width;
 
 /// Wraps text to `max_cells` terminal cells and returns the byte range of each line.
-#[cfg(any(test, feature = "terminal"))]
+#[cfg(feature = "terminal")]
 pub(crate) fn cell_text_lines(text: &str, max_cells: usize) -> Vec<(usize, usize)> {
     ranges(text, (max_cells > 0).then_some(max_cells))
 }

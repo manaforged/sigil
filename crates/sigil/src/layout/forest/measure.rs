@@ -19,7 +19,7 @@ pub(crate) struct AvailableSpace {
 }
 
 impl AvailableSpace {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub(crate) const fn definite(w: f32, h: f32) -> Self {
         Self {

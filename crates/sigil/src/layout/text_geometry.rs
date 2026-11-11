@@ -41,7 +41,7 @@ thread_local! {
     static TEXT_GEOMETRY: RefCell<Option<Rc<dyn TextMeasure>>> = const { RefCell::new(None) };
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub fn set_text_geometry(geometry: Rc<dyn TextMeasure>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }

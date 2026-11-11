@@ -5,13 +5,7 @@ use criterion as _;
 
 mod arena;
 mod batch;
-#[cfg(any(
-    test,
-    feature = "hotkey",
-    feature = "kittest",
-    feature = "media",
-    feature = "menu"
-))]
+#[cfg(event_channel)]
 mod channel;
 kittest_pub! {
     /// Diagnostics for the reactive graph.
@@ -37,13 +31,7 @@ mod source;
 mod trace;
 
 pub use batch::batch;
-#[cfg(any(
-    test,
-    feature = "hotkey",
-    feature = "kittest",
-    feature = "media",
-    feature = "menu"
-))]
+#[cfg(event_channel)]
 pub use channel::{EventChannel, Subscription};
 pub use derived::derived;
 pub(crate) use effect::effect_at;
@@ -52,13 +40,13 @@ pub(crate) use effect::effect_named;
 pub(crate) use effect::{current_effect_owner, run_dispatch_deferred};
 pub use effect::{defer, effect, untrack};
 pub(crate) use frame::tick_frame;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) use interval::tick_intervals;
-#[cfg(any(test, feature = "test-clock"))]
+#[cfg(feature = "test-clock")]
 pub use interval::{__test_advance_clock, __test_clear_clock, __test_set_clock};
 pub use interval::{IntervalId, interval, timeout};
 kittest_pub! {
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    #[cfg(host)]
     #[doc(hidden)]
     pub use interval::next_interval_deadline;
 }
@@ -76,7 +64,7 @@ pub(crate) use signal::SendableSignal;
 pub use signal::{Signal, signal};
 pub use source::Reactive;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use trace::test_hook as __trace_test_hook;
 
 #[cfg(feature = "kittest")]

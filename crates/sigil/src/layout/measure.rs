@@ -57,7 +57,7 @@ pub trait TextMeasure {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FakeMeasure {
@@ -66,7 +66,7 @@ pub struct FakeMeasure {
     per_char: bool,
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 impl FakeMeasure {
     const CARET_ADVANCE: f32 = 10.0;
     const CARET_HEIGHT: f32 = 16.0;
@@ -90,7 +90,7 @@ impl FakeMeasure {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 impl TextMeasure for FakeMeasure {
     #[allow(
         clippy::cast_precision_loss,

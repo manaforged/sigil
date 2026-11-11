@@ -36,7 +36,7 @@ impl FontCollection {
             return Self::from_system();
         }
         let over = match source {
-            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            #[cfg(host)]
             DefaultFontSource::Custom(fonts) => Some(fonts),
             DefaultFontSource::Bundled => None,
             #[cfg(feature = "desktop")]
@@ -84,13 +84,13 @@ impl FontCollection {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn primary(&self) -> &Font {
         self.sans.select(400)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn select(&self, family: &str) -> &Font {
         self.select_weight(family, 400)
@@ -120,14 +120,14 @@ impl FontCollection {
         (font, if italic { OBLIQUE_SKEW } else { 0.0 })
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn register(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), crate::Error> {
         let font = Font::from_bytes(bytes, face_index)?;
         self.sans.replace(font);
         Ok(())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn register_family(
         &mut self,
         family: &str,
@@ -158,7 +158,7 @@ impl FontCollection {
         Ok(())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16, text: &str) -> Vec<Font> {
         self.chain_for(primary, weight, &chain_scripts(text))

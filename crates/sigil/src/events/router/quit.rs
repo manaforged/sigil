@@ -6,7 +6,7 @@ use crate::layout::LayoutEngine;
 use super::EventRouter;
 
 impl EventRouter {
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) const fn set_quit(&mut self, quit: QuitKeys) {
         self.quit = Some(quit);
     }

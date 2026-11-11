@@ -279,7 +279,7 @@ kittest_pub! {
         /// The opacity style atom.
         Opacity(u16),
         /// The transform style atom.
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         Transform(Transform2D),
         /// The font size style atom.
         FontSize(i16),

@@ -47,11 +47,7 @@ impl CpuBound {
         Self::new(transform, target.width(), target.height())
     }
 
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", feature = "terminal")
-    ))]
+    #[cfg(cpu_paint)]
     pub(super) const fn padded(self, pad: f32) -> Self {
         Self { pad, ..self }
     }

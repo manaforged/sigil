@@ -22,7 +22,7 @@ impl Paragraph {
     }
 
     /// Returns the number of lines.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn line_count(&self) -> usize {
         self.inner.lines.len()
@@ -35,7 +35,7 @@ impl Paragraph {
     }
 
     /// Returns the width of the text laid out on one line.
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn max_content_width(&self) -> f32 {
         self.content_widths().max

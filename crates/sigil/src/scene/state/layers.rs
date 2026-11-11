@@ -55,15 +55,11 @@ impl SceneState {
     pub(crate) const fn draws(command: &SceneCommand) -> bool {
         match command {
             SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => false,
-            #[cfg(any(
-                test,
-                feature = "kittest",
-                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-            ))]
+            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => false,
-            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            #[cfg(host)]
             SceneCommand::SaveLayer { .. } => false,
-            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            #[cfg(terminal_host)]
             SceneCommand::RestoreLayer => false,
             _ => true,
         }

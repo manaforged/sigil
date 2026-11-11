@@ -15,7 +15,7 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
     }
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(target_os = "windows")]
 pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
     match script {
         Script::Cjk => &["Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic"],
@@ -27,7 +27,7 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_family = "windows")))]
+#[cfg(not(vendor_os))]
 pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
     match script {
         Script::Cjk => &[

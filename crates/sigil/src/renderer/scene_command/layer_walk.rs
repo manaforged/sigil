@@ -129,7 +129,7 @@ fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
     let sprites = |list: &[SceneCommand]| {
         list.iter().any(|command| match command {
             SceneCommand::Image(_) => true,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SceneCommand::Sprite(_) => true,
             _ => false,
         })

@@ -1,6 +1,6 @@
 mod entries;
 pub(crate) mod layer;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub mod mock;
 #[cfg(feature = "native-dialog")]
 mod native;
@@ -77,7 +77,7 @@ impl FileDialog {
     /// Returns the open files.
     #[must_use]
     pub fn open_files(self) -> Picked<Vec<PathBuf>> {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         if let Some(response) = mock::take_paths() {
             return signal(Status::Ok(response));
         }
@@ -105,7 +105,7 @@ impl FileDialog {
     }
 
     fn pick_one(self, kind: PickKind) -> Picked<PathBuf> {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         if let Some(response) = mock::take_path() {
             return signal(Status::Ok(response));
         }
@@ -166,7 +166,7 @@ pub fn confirm(
 }
 
 fn alert(kind: AlertKind, title: String, body: String) -> Signal<Status<bool, Infallible>> {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     if let Some(ok) = mock::take_alert() {
         return signal(Status::Ok(ok));
     }

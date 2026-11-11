@@ -37,7 +37,7 @@ impl FontFaces {
             .expect("FontFamily always contains at least one face")
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn replace(&mut self, font: Font) {
         self.faces.clear();
         self.faces.push(WeightedFace { weight: 400, font });

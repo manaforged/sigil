@@ -45,7 +45,7 @@ impl LayoutDrive {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn insert(&mut self, style: StyleData) -> NodeHandle {
         NodeHandle(self.forest.insert(None, style))
     }
@@ -78,7 +78,7 @@ impl LayoutDrive {
         self.forest.text_for(node.0)
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn attach(&mut self, parent: NodeHandle, child: NodeHandle) -> Result<(), Error> {
         self.forest.attach(parent.0, child.0)
     }
@@ -106,7 +106,7 @@ impl LayoutDrive {
         Ok(())
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub fn count(&self) -> usize {
         self.forest.count()
@@ -128,7 +128,7 @@ impl LayoutDrive {
         self.text.begin_frame();
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn measure(&mut self, root: NodeHandle, viewport: Axes<f32>) -> Result<(), Error> {
         self.measure_with_constraints(
             root,

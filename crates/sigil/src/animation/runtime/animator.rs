@@ -15,7 +15,7 @@ kittest_pub! {
 }
 
 impl Animator {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     /// Creates an animator that drives `signal` with a spring preset.
     #[must_use]
@@ -23,7 +23,7 @@ impl Animator {
         Self::new(signal, AnimationConfig::Spring { preset })
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     /// Creates an animator that drives `signal` with a tween of `ms` milliseconds.
     #[must_use]
@@ -91,7 +91,7 @@ impl Animator {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[doc(hidden)]
     /// Returns the value.
     #[must_use]

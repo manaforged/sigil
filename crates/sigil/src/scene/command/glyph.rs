@@ -120,10 +120,7 @@ impl GlyphRun {
         &self.shared.positioned_glyphs
     }
 
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(scene_host)]
     pub(crate) fn ink_rect(&self) -> Option<Rect> {
         let Some(paragraph) = self.paragraph() else {
             return Some(self.rect);
@@ -138,7 +135,7 @@ impl GlyphRun {
     }
 
     #[cfg(not(feature = "scene"))]
-    #[cfg(any(test, feature = "terminal"))]
+    #[cfg(feature = "terminal")]
     #[expect(
         clippy::unnecessary_wraps,
         reason = "one signature with the shaped version, which can find no ink"
@@ -173,7 +170,7 @@ impl GlyphRun {
         self
     }
 
-    #[cfg(any(feature = "scene", feature = "terminal"))]
+    #[cfg(vector_paint)]
     pub(crate) fn inks(&self) -> &[RunInk] {
         &self.shared.inks
     }
@@ -283,10 +280,7 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && same_paragraph(this, other)
 }
 
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 kittest_pub! {
     /// A shaped `GlyphRun`, which `SceneCommand::GlyphRun` holds.
     #[must_use]

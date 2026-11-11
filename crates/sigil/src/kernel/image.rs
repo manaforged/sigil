@@ -126,14 +126,14 @@ fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
     hash
 }
 
-#[cfg(any(test, feature = "scene", feature = "kittest"))]
+#[cfg(raster)]
 type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync;
 
 /// Resolution-independent source of an image.
 #[derive(Clone)]
 pub struct ImageRaster {
     key: u64,
-    #[cfg(any(test, feature = "scene", feature = "kittest"))]
+    #[cfg(raster)]
     raster: std::sync::Arc<RasterFn>,
 }
 
@@ -142,16 +142,16 @@ impl ImageRaster {
         key: u64,
         raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync + 'static,
     ) -> Self {
-        #[cfg(not(any(test, feature = "scene", feature = "kittest")))]
+        #[cfg(not(raster))]
         let _ = raster;
         Self {
             key,
-            #[cfg(any(test, feature = "scene", feature = "kittest"))]
+            #[cfg(raster)]
             raster: std::sync::Arc::new(raster),
         }
     }
 
-    #[cfg(any(test, feature = "scene", feature = "kittest"))]
+    #[cfg(raster)]
     /// Pixels for a physical size in device pixels at `scale`.
     #[must_use]
     pub fn at(&self, width: u32, height: u32, scale: f32) -> Option<ImageSource> {

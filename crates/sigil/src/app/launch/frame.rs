@@ -13,16 +13,11 @@ use super::backend::Backend;
 use super::event_wiring::{
     self, DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime,
 };
-#[cfg(any(feature = "menu", feature = "media"))]
+#[cfg(native_commands)]
 use super::menu_hwnd;
 use super::record::{SignalWrite, WindowRecord, WindowView};
 use super::scene_cache::PaintRequest;
-#[cfg(any(
-    feature = "menu",
-    feature = "tray",
-    feature = "media",
-    feature = "hotkey"
-))]
+#[cfg(native_events)]
 use super::wake_fn;
 
 struct FrameEnv<'a> {
@@ -145,7 +140,7 @@ fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, 
     );
     #[cfg(feature = "tray")]
     crate::app::tray::install(std::sync::Arc::new(wake_fn(shell)));
-    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+    #[cfg(global_hotkey)]
     crate::app::hotkey::install(std::sync::Arc::new(wake_fn(shell)));
     #[cfg(feature = "media")]
     crate::app::media::install(
@@ -153,14 +148,9 @@ fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, 
         menu_hwnd(shell, window_handle),
         std::sync::Arc::new(wake_fn(shell)),
     );
-    #[cfg(not(any(
-        feature = "menu",
-        feature = "tray",
-        feature = "media",
-        feature = "hotkey"
-    )))]
+    #[cfg(not(native_events))]
     let _ = shell;
-    #[cfg(not(any(feature = "menu", feature = "media")))]
+    #[cfg(not(native_commands))]
     let _ = window_handle;
     #[cfg(not(feature = "media"))]
     let _ = title;
@@ -175,7 +165,7 @@ fn pump_shell_features() {
     crate::app::menu::pump();
     #[cfg(feature = "tray")]
     crate::app::tray::pump();
-    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+    #[cfg(global_hotkey)]
     crate::app::hotkey::pump();
     #[cfg(feature = "media")]
     crate::app::media::pump();

@@ -1,20 +1,20 @@
 use crate::kernel::NodeBuilder;
 
-#[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+#[cfg(vega_js)]
 mod engine;
-#[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+#[cfg(vega_js)]
 mod measure;
-#[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+#[cfg(vega_js)]
 mod script;
-#[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+#[cfg(vega_js)]
 mod theme;
-#[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+#[cfg(vega_js)]
 mod view;
 
 pub(crate) type Fallback = fn(&str) -> NodeBuilder;
 
 pub(crate) fn figure(source: &str, fallback: Fallback) -> NodeBuilder {
-    #[cfg(all(feature = "vega", not(target_arch = "wasm32")))]
+    #[cfg(vega_js)]
     if let Some(node) = view::figure(source, fallback) {
         return node;
     }

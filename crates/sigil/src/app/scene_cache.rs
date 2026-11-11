@@ -123,7 +123,7 @@ fn note_scene(scene: &CommandScene) {
                 rects += 1;
             }
             SceneCommand::Image(_) => images += 1,
-            #[cfg(any(test, feature = "kittest"))]
+            #[cfg(feature = "kittest")]
             SceneCommand::Sprite(_) => images += 1,
             _ => {}
         }

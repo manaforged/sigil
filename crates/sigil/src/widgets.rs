@@ -241,7 +241,7 @@ pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, chip};
 pub use code_edit::{Change, CodeEditBuilder, Diagnostic, Severity, code_edit};
 pub use color_field::{ColorFieldBuilder, color_field};
-#[cfg(all(feature = "scene", feature = "kittest"))]
+#[cfg(scene_harness)]
 #[doc(hidden)]
 pub use svg_picture::{SvgMode, svg_scene};
 

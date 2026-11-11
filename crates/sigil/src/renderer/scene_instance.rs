@@ -57,9 +57,9 @@ impl BlendSpace {
 }
 
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
 pub(crate) const FILL_KIND_WASH: u32 = 3;
 pub(crate) const FILL_KIND_RADIAL: u32 = 4;
@@ -245,7 +245,7 @@ pub(crate) fn draw_pattern_instance(
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
     let (fill_kind, line, pattern_a, mut pattern_b) = match draw.pattern.normalized() {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         PatternKind::Slash {
             color,
             period,
@@ -256,7 +256,7 @@ pub(crate) fn draw_pattern_instance(
             premultiplied(space, color),
             [0.0; 4],
         ),
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         PatternKind::Checker {
             color_a,
             color_b,
@@ -334,7 +334,7 @@ pub(crate) fn wash_stops(wash: crate::scene::Wash) -> Vec<GradientStop> {
         .collect()
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 fn premultiplied(space: BlendSpace, color: Color) -> [f32; 4] {
     let [r, g, b, a] = space.rgba(color);
     [r * a, g * a, b * a, a]

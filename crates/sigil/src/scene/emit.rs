@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
@@ -27,19 +27,19 @@ use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
 mod filter;
 mod mask;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 mod memo;
 mod subtree;
 mod text_clip;
 mod top_layer;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 pub(crate) use memo::EmitMemo;
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use subtree::EmitDiff;
 }
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 use subtree::Prior;
 use subtree::SpanTrack;
 use text_clip::TextFill;
@@ -68,7 +68,7 @@ pub(crate) fn emit_unchanged(
     memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection)
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 pub(crate) fn emit_scene_since(
     cx: &Cx,
     root: NodeId,

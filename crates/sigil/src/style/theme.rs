@@ -101,7 +101,7 @@ impl Theme {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Replace one color scale of a theme.
     #[must_use]
     #[doc(hidden)]
@@ -116,7 +116,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the accent scale.
     #[must_use]
     #[doc(hidden)]
@@ -127,7 +127,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the success scale.
     #[must_use]
     #[doc(hidden)]
@@ -136,7 +136,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the warn scale.
     #[must_use]
     #[doc(hidden)]
@@ -145,7 +145,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the error scale.
     #[must_use]
     #[doc(hidden)]
@@ -154,7 +154,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the info scale.
     #[must_use]
     #[doc(hidden)]
@@ -170,7 +170,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the locale.
     #[must_use]
     #[doc(hidden)]
@@ -179,7 +179,7 @@ impl Theme {
         self
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     /// Sets the strings.
     #[must_use]
     #[doc(hidden)]

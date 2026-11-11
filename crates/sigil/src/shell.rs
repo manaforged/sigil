@@ -12,7 +12,7 @@ pub(crate) mod shell;
 pub(crate) mod waker;
 
 pub use shell::WinitShell;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use waker::WAKE_DELIVERED_COUNT;
 pub use waker::{WakeEvent, WinitWaker};
 
@@ -20,7 +20,7 @@ pub use waker::{WakeEvent, WinitWaker};
 pub struct WinitWindowHandle(u64);
 
 impl WinitWindowHandle {
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     #[must_use]
     pub const fn id(self) -> u64 {
         self.0

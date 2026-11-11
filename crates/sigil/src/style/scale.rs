@@ -74,7 +74,7 @@ kittest_pub! {
 
 /// The light iris scale.
 #[must_use]
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub const fn iris_light() -> ColorScale {
     ColorScale::from_steps([
         rgb(0xFD, 0xFD, 0xFF),
@@ -205,7 +205,7 @@ kittest_pub! {
 
 /// The dark iris scale.
 #[must_use]
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub const fn iris_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x13, 0x13, 0x1E),

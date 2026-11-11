@@ -3,7 +3,7 @@ use crate::geometry::Point;
 use crate::style::Color;
 use smallvec::SmallVec;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 /// The fill of a painted area: solid color, gradient, or pattern.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PaintFill {
@@ -20,7 +20,7 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum PatternKind {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The slash pattern kind.
         Slash {
             /// The color.
@@ -30,7 +30,7 @@ kittest_pub! {
             /// The line width.
             line_width: f32,
         },
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The checker pattern kind.
         Checker {
             /// The color a.
@@ -47,12 +47,12 @@ kittest_pub! {
 
 impl PatternKind {
     kittest_pub! {
-        if any(test, feature = "scene");
+        if feature = "scene";
         /// Returns this pattern with its values in range.
         #[must_use]
         pub const fn normalized(self) -> Self {
             match self {
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 Self::Slash {
                     color,
                     period,
@@ -70,7 +70,7 @@ impl PatternKind {
                         line_width,
                     }
                 }
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 Self::Checker {
                     color_a,
                     color_b,
@@ -86,14 +86,14 @@ impl PatternKind {
     }
 
     kittest_pub! {
-        if any(test, feature = "scene");
+        if feature = "scene";
         /// Returns the tile extent.
         #[must_use]
         pub const fn tile_extent(self) -> f32 {
             match self.normalized() {
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 Self::Slash { period, .. } => period,
-                #[cfg(any(test, feature = "kittest"))]
+                #[cfg(feature = "kittest")]
                 Self::Checker { cell, .. } => cell * 2.0,
                 Self::Wash(_) => WASH_EXTENT,
             }
@@ -101,7 +101,7 @@ impl PatternKind {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "scene"))]
+#[cfg(raster)]
 const WASH_EXTENT: f32 = 1.0e6;
 
 pub(crate) const TRANSPARENT: Color = Color {
@@ -111,12 +111,12 @@ pub(crate) const TRANSPARENT: Color = Color {
     a: 0,
 };
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 const MIN_PATTERN_LENGTH: f32 = 1.0;
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 const MAX_PATTERN_LENGTH: f32 = 1024.0;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 const fn pattern_length(length: f32) -> f32 {
     if length.is_nan() {
         MIN_PATTERN_LENGTH
@@ -244,7 +244,7 @@ kittest_pub! {
     pub enum StrokeStyle {
         /// The solid stroke style.
         Solid,
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The dashed stroke style.
         Dashed(f32),
     }
@@ -255,7 +255,7 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum StrokeAlign {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The centered stroke align.
         Centered,
         /// The inside stroke align.

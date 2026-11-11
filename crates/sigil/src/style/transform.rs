@@ -185,7 +185,7 @@ impl Transform2D {
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         let transform = binding.cascade().fold(Self::IDENTITY, |transform, atom| {
             if let super::StyleAtom::Transform(value) = atom {
                 value
@@ -193,7 +193,7 @@ impl Transform2D {
                 transform
             }
         });
-        #[cfg(not(any(test, feature = "kittest")))]
+        #[cfg(not(feature = "kittest"))]
         let transform = Self::IDENTITY;
         binding
             .animator_overlay()

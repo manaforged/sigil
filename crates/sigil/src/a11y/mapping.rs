@@ -35,7 +35,7 @@ impl AccessWalk<'_> {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(window_host)]
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
     tree_scoped(cx, focus, bounds, TreeScope::Full)
@@ -148,7 +148,7 @@ fn retain_emitted(top: &mut Vec<NodeId>, nodes: &mut [(AkNodeId, AkNode)]) {
     }
 }
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     project(cx, id, bounds, crate::events::hit_test::visible(cx, id)).0

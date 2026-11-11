@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 mod budget;
 mod changed;
 mod reason;
-#[cfg(any(test, feature = "terminal"))]
+#[cfg(feature = "terminal")]
 mod regions;
 
 #[cfg(feature = "scene")]
@@ -44,10 +44,10 @@ pub(crate) fn scene_damage<R: FromIterator<Rect>>(
     }
 }
 
-#[cfg(any(test, feature = "terminal"))]
+#[cfg(feature = "terminal")]
 const TERMINAL_SCALE: f32 = 1.0;
 
-#[cfg(any(test, feature = "terminal"))]
+#[cfg(feature = "terminal")]
 pub(crate) fn cell_damage(
     (previous, next): (&CommandScene, &CommandScene),
     changed: Option<&[Changed]>,

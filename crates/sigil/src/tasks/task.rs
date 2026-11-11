@@ -26,7 +26,7 @@ impl TaskHandle {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) fn finished() -> Self {
         let handle = Self::new();
         handle.finish();

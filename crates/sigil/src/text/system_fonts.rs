@@ -1,4 +1,4 @@
-#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+#[cfg(native_desktop)]
 use std::sync::OnceLock;
 
 #[cfg(feature = "desktop")]
@@ -13,7 +13,7 @@ pub(crate) struct SystemFonts {
     pub(crate) serif: Option<FontFaces>,
 }
 
-#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+#[cfg(native_desktop)]
 pub(crate) fn load() -> SystemFonts {
     static SYSTEM_FONTS: OnceLock<SystemFonts> = OnceLock::new();
     SYSTEM_FONTS.get_or_init(native::load).clone()

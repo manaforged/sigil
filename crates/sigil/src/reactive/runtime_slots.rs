@@ -16,9 +16,9 @@ pub(crate) struct OwnerSlot {
     pub(crate) signals: Vec<SignalKey>,
     pub(crate) effects: Vec<EffectKey>,
     pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) name: &'static str,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub(crate) location: &'static Location<'static>,
 }
 

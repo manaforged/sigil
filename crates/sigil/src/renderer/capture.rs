@@ -1,19 +1,19 @@
 use crate::geometry::PhysicalSize;
 use crate::renderer::cpu::CpuRenderer;
-#[cfg(any(test, feature = "inspect", feature = "kittest"))]
+#[cfg(capture)]
 use crate::renderer::renderer::WgpuRenderer;
 use crate::renderer::scene_command::CommandScene;
 use crate::style::Rgba;
 use crate::{Error, ErrorKind};
 
-#[cfg(any(test, feature = "inspect", feature = "kittest"))]
+#[cfg(capture)]
 mod gpu;
-#[cfg(any(test, feature = "inspect", feature = "kittest"))]
+#[cfg(capture)]
 pub use gpu::{CaptureExtent, FORMAT, capture_texture, read_texture};
 
 #[derive(Debug)]
 pub enum ImageRenderer<'a> {
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     Gpu(&'a mut WgpuRenderer),
     Cpu(&'a mut CpuRenderer),
 }
@@ -30,7 +30,7 @@ impl ImageTarget {
         clippy::cast_precision_loss,
         reason = "image dimensions are far below the f32 mantissa limit"
     )]
-    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    #[cfg(capture)]
     fn scale(self) -> f32 {
         self.size.width as f32 / self.viewport.0.max(1.0)
     }
@@ -48,7 +48,7 @@ pub fn render_to_image(
         ));
     }
     let rgba = match renderer {
-        #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+        #[cfg(capture)]
         ImageRenderer::Gpu(renderer) => gpu::gpu_pixels(renderer, scene, target)?,
         ImageRenderer::Cpu(renderer) => cpu_pixels(renderer, scene, target)?,
     };

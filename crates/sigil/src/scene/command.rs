@@ -4,10 +4,7 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 
 mod clip;
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 mod decoration;
 pub(crate) mod effects;
 pub(crate) mod fills;
@@ -15,16 +12,10 @@ mod glyph;
 pub(crate) mod gradient;
 pub(crate) mod image_fit;
 pub(crate) mod payloads;
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 pub(crate) mod stroke_band;
 pub(crate) mod transform3d;
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 pub(crate) mod trim;
 mod wash;
 
@@ -32,10 +23,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use clip::Clip;
 }
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 pub(crate) use decoration::DecorationGeometry;
 pub use effects::BlendMode;
 kittest_pub! {
@@ -46,14 +34,10 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     pub use effects::{SpriteKind, SpriteSource};
 }
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 pub use fills::PaintFill;
 pub(crate) use fills::{FillRule, PathPaint};
 pub use fills::{StrokeCap, StrokeJoin};
@@ -66,10 +50,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use glyph::TextFlow;
 }
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use glyph::shape_glyph_run;
@@ -80,7 +61,7 @@ kittest_pub! {
     pub use gradient::{Gradient, GradientKind};
 }
 pub(crate) use payloads::CellRect;
-#[cfg(any(feature = "scene", feature = "terminal"))]
+#[cfg(vector_paint)]
 pub(crate) use payloads::MITER_LIMIT;
 kittest_pub! {
     #[doc(hidden)]
@@ -93,30 +74,20 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    #[cfg(any(
-        test,
-        feature = "kittest",
-        all(feature = "scene", any(feature = "desktop", feature = "terminal"))
-    ))]
+    #[cfg(scene_paint)]
     pub use payloads::DrawSprite;
 }
 pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 pub(crate) use stroke_band::StrokeBand;
-#[cfg(all(feature = "scene", any(test, feature = "kittest")))]
+#[cfg(scene_harness)]
 pub(crate) use stroke_band::StrokeDash;
 kittest_pub! {
     #[doc(hidden)]
     pub use transform3d::Transform3D;
 }
 pub use wash::Wash;
-#[cfg(all(
-    feature = "scene",
-    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-))]
+#[cfg(scene_host)]
 pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
 
 /// The ordered drawing commands of one frame.
@@ -160,19 +131,19 @@ kittest_pub! {
         PushClip(Clip),
         /// The pop clip scene command.
         PopClip,
-        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        #[cfg(scene_paint)]
         /// The push transform scene command.
         PushTransform(Transform),
-        #[cfg(any(test, feature = "kittest", all(feature = "scene", any(feature = "desktop", feature = "terminal"))))]
+        #[cfg(scene_paint)]
         /// The pop transform scene command.
         PopTransform,
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         /// The save layer scene command.
         SaveLayer {
             /// The opacity.
             opacity: f32,
         },
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         /// The restore layer scene command.
         RestoreLayer,
         /// The push layer scene command.
@@ -196,7 +167,7 @@ kittest_pub! {
         },
         /// The glyph run scene command.
         GlyphRun(GlyphRun),
-        #[cfg(any(test, feature = "kittest"))]
+        #[cfg(feature = "kittest")]
         /// The sprite scene command.
         Sprite(DrawSprite),
         /// The image scene command.

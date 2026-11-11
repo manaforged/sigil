@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 use core::ops::Range;
 use std::rc::Rc;
 
@@ -65,7 +65,7 @@ pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {
     ]
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 kittest_pub! {
     /// What `Host::emit_since` changed: pairs of old and new command ranges that differ.
     #[doc(hidden)]
@@ -75,7 +75,7 @@ kittest_pub! {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 impl EmitDiff {
     kittest_pub! {
         /// Returns whether unchanged is set.
@@ -86,7 +86,7 @@ impl EmitDiff {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 #[derive(Clone, Copy)]
 pub(super) struct Copied {
     pub(super) old: usize,
@@ -107,7 +107,7 @@ pub(super) struct SpanTrack<'t> {
     record: bool,
     nodes: u64,
     pub(super) next: AHashMap<NodeId, SubtreeSpan>,
-    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+    #[cfg(terminal_host)]
     pub(super) copies: Vec<Copied>,
 }
 
@@ -117,7 +117,7 @@ pub(super) struct Open {
     nodes: u64,
 }
 
-#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[cfg(terminal_host)]
 impl<'t> SpanTrack<'t> {
     pub(super) fn recording(prior: Option<Prior<'t>>) -> Self {
         Self {
@@ -165,7 +165,7 @@ impl<'t> EmitWalk<'_, 't> {
         self.scene.extend_commands(commands.iter().cloned());
         count_add(Counter::EmitCopied, span.nodes);
         self.track.nodes += span.nodes;
-        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+        #[cfg(terminal_host)]
         self.track.copies.push(Copied {
             old: span.start,
             new: start,

@@ -9,7 +9,7 @@ use crate::style::Rgba;
 use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(feature = "kittest")]
 use crate::Error;
 use crate::renderer::fill_paint::setup::begin_pass;
 use crate::renderer::frame_stats::FrameStats;
@@ -26,20 +26,20 @@ use crate::renderer::split_encoder::SplitEncoder;
 pub struct DrawParams<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub view: &'a wgpu::TextureView,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub surface_width: f32,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub surface_height: f32,
     pub scale: f32,
     pub paragraph: &'a Paragraph,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub glyphs: Option<&'a [RenderedGlyph]>,
     pub origin: (f32, f32),
     pub transform: [[f32; 3]; 2],
     pub color: Option<Rgba>,
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub clip: Option<Rect>,
 }
 
@@ -120,7 +120,7 @@ impl SlugTextPipeline {
         self.format
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    #[cfg(feature = "kittest")]
     pub fn record_paragraph(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,

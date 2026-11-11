@@ -82,7 +82,7 @@ impl Gradient {
     }
 
     kittest_pub! {
-        if any(test, feature = "scene", feature = "terminal");
+        if vector_paint;
         /// Returns the offsets of the first and last stop when the gradient repeats.
         #[must_use]
         pub fn repeat_span(&self) -> Option<[f32; 2]> {
@@ -91,7 +91,7 @@ impl Gradient {
         }
     }
 
-    #[cfg(any(feature = "scene", feature = "terminal"))]
+    #[cfg(vector_paint)]
     pub(crate) fn spread(&self) -> ([f32; 2], SmallVec<[GradientStop; 4]>) {
         let [first, last] = self.repeat_span().unwrap_or([0.0, 1.0]);
         let width = (last - first).max(f32::EPSILON);

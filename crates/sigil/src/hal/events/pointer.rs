@@ -227,7 +227,7 @@ impl ClickConfig {
         CLICK.with(core::cell::Cell::get).unwrap_or_default()
     }
 
-    #[cfg(any(test, feature = "desktop", feature = "terminal"))]
+    #[cfg(app_host)]
     pub(crate) fn set(config: Self) {
         CLICK.with(|cell| cell.set(Some(config)));
     }

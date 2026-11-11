@@ -1,6 +1,6 @@
 use crate::events::ImeEvent;
 use crate::events::handlers::{EventArg, EventHandlers, EventKind, Phase, fire};
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(window_host)]
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::CaretGeometry;
@@ -26,12 +26,12 @@ fn wants_ime(node: &Node) -> bool {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(
-    not(any(test, feature = "kittest", feature = "desktop")),
+    not(window_host),
     allow(dead_code, reason = "only the window host reads the caret anchor")
 )]
 pub(crate) struct CaretAnchorExt(pub(crate) std::rc::Rc<std::cell::Cell<Option<CaretGeometry>>>);
 
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(window_host)]
 const CARET_ANCHOR_W: f32 = 2.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -84,7 +84,7 @@ impl EventRouter {
     }
 
     kittest_pub! {
-        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[cfg(window_host)]
         #[must_use]
         #[doc(hidden)]
         pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
@@ -95,7 +95,7 @@ impl EventRouter {
     }
 
     kittest_pub! {
-        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[cfg(window_host)]
         #[must_use]
         #[doc(hidden)]
         pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {

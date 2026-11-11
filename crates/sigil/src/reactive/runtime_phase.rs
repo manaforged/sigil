@@ -1,7 +1,7 @@
 #[cfg(any(test, feature = "desktop"))]
 use core::panic::Location;
 
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(host)]
 use crate::reactive::owner_dispose::dispose_owner;
 use crate::reactive::phase::DrawPhase;
 use crate::reactive::runtime::{Runtime, RuntimeState, with_rt};
@@ -9,7 +9,7 @@ use crate::reactive::runtime::{Runtime, RuntimeState, with_rt};
 impl Runtime {
     kittest_pub! {
         /// Resets the runtime after a caught panic.
-        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        #[cfg(host)]
         pub fn recover_from_panic() {
             let run_owners = with_rt(|rt| {
                 let deferred = core::mem::take(&mut rt.dispose_after_run);
