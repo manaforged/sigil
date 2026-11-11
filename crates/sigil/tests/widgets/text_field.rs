@@ -137,12 +137,12 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
             .commands
             .iter()
             .find_map(|command| match command {
-                SceneCommand::GlyphRun(run) if run.text == "Add note" => Some(run),
+                SceneCommand::GlyphRun(run) if run.text() == "Add note" => Some(run),
                 _ => None,
             })
             .expect("placeholder glyph run");
 
-        assert_eq!(placeholder.color, Theme::default().text_muted());
+        assert_eq!(placeholder.color(), Theme::default().text_muted());
     });
 }
 

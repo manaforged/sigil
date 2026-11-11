@@ -126,14 +126,7 @@ pub(crate) fn walk_layer_command_scene(
 }
 
 fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
-    let sprites = |list: &[SceneCommand]| {
-        list.iter().any(|command| match command {
-            SceneCommand::Image(_) => true,
-            #[cfg(feature = "kittest")]
-            SceneCommand::Sprite(_) => true,
-            _ => false,
-        })
-    };
+    let sprites = |list: &[SceneCommand]| list.iter().any(SceneCommand::is_image);
     let masks: Vec<&[SceneCommand]> = mask::mask_commands(commands)
         .filter(|list| sprites(list))
         .collect();

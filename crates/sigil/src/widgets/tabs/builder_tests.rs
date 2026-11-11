@@ -72,7 +72,7 @@ fn selection_moves_the_painted_highlight_between_existing_tabs() {
         cx.flush_reactive_children();
         let first = find(&cx, root, Role::Tab, "A");
         let second = find(&cx, root, Role::Tab, "B");
-        let color = |id| render_style_for(id, cx.get(id).unwrap(), &theme, None).background_color;
+        let color = |id| render_style_for(cx.get(id).unwrap(), &theme, None).background_color;
         let selected = Some(theme.color(Token::SurfacePressed));
         let resting = Some(theme.color(Token::Surface));
         assert_ne!(selected, resting);

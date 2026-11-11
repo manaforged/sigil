@@ -259,7 +259,7 @@ mod vega;
 mod virtual_list;
 mod widget;
 
-pub use button::{ButtonBuilder, ButtonGlyph, button, icon_button};
+pub use button::{ButtonBuilder, button, icon_button};
 pub use canvas::{CanvasBuilder, canvas};
 pub use chart::{ChartBuilder, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
@@ -291,7 +291,7 @@ pub use highlight::{Highlight, highlight};
 pub use html::html;
 #[cfg(feature = "scene")]
 pub use icon::icon_svg;
-pub use icon::{IconBuilder, IconSource, IntoIconSource, icon};
+pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use listbox::{CursorEdge, ListState};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
@@ -311,7 +311,7 @@ pub use patterns::{
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
-pub use scroll::{IntoScrollExtent, ScrollBuilder, scroll};
+pub use scroll::{ScrollBuilder, scroll};
 pub use segmented::{SegmentedBuilder, segmented};
 pub use slider::{SliderBuilder, slider};
 #[cfg(feature = "terminal")]

@@ -351,6 +351,6 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
 
 fn inherited_text(cx: &Cx, target: NodeId, theme: &Theme) -> Color {
     std::iter::successors(cx.parent(target), |&id| cx.parent(id))
-        .find_map(|id| crate::style::render_style_for(id, cx.get(id)?, theme, None).text_color)
+        .find_map(|id| crate::style::render_style_for(cx.get(id)?, theme, None).text_color)
         .unwrap_or(theme.on_surface)
 }

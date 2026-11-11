@@ -86,8 +86,9 @@ pub(super) fn fill_glyphs(
     opacity: f32,
     brush: &Brush<'_>,
 ) {
-    let paint = solid(run.color, opacity);
-    let linear = [run.color.r, run.color.g, run.color.b].map(decode);
+    let color = run.color();
+    let paint = solid(color, opacity);
+    let linear = [color.r, color.g, color.b].map(decode);
     let gamma = text_gamma([linear[0], linear[1], linear[2], 1.0], true);
     for path in paths {
         if (gamma - 1.0).abs() < f32::EPSILON {

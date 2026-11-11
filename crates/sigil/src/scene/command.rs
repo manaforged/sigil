@@ -45,7 +45,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use fills::{GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeStyle};
 }
-pub use glyph::{GlyphRun, SharedGlyph};
+pub use glyph::GlyphRun;
 kittest_pub! {
     #[doc(hidden)]
     pub use glyph::TextFlow;
@@ -117,7 +117,7 @@ impl CommandScene {
     /// Returns the first text run whose text equals `expected`.
     #[must_use]
     pub fn find_text(&self, expected: &str) -> Option<&GlyphRun> {
-        self.glyph_runs().find(|draw| draw.text == expected)
+        self.glyph_runs().find(|draw| draw.text() == expected)
     }
 }
 
@@ -176,5 +176,17 @@ kittest_pub! {
         Path(DrawPath),
         /// The decoration scene command.
         Decoration(DrawDecoration),
+    }
+}
+
+impl SceneCommand {
+    #[cfg(feature = "scene")]
+    pub(crate) const fn is_image(&self) -> bool {
+        match self {
+            Self::Image(_) => true,
+            #[cfg(feature = "kittest")]
+            Self::Sprite(_) => true,
+            _ => false,
+        }
     }
 }

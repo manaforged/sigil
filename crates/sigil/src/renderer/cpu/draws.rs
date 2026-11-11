@@ -224,7 +224,7 @@ impl CpuPainter<'_> {
         if clip.is_some_and(|c| intersect_rect(c, plan.bounds).is_none()) {
             return;
         }
-        let opacity = opacity_of(run.opacity, self.state.current_opacity());
+        let opacity = opacity_of(run.opacity(), self.state.current_opacity());
         match plan.mode {
             GlyphMode::Mask => {
                 let place = RunPlacement {
@@ -232,7 +232,7 @@ impl CpuPainter<'_> {
                     scale: self.scale,
                     offset: self.origin,
                     clip,
-                    table: rgba_table(run.color, opacity),
+                    table: rgba_table(run.color(), opacity),
                 };
                 self.quads.draw_run(self.target, run, &place);
             }

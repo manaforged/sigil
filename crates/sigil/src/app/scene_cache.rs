@@ -122,9 +122,7 @@ fn note_scene(scene: &CommandScene) {
             SceneCommand::Rect(_) | SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => {
                 rects += 1;
             }
-            SceneCommand::Image(_) => images += 1,
-            #[cfg(feature = "kittest")]
-            SceneCommand::Sprite(_) => images += 1,
+            command if command.is_image() => images += 1,
             _ => {}
         }
     }

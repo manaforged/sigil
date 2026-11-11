@@ -7,6 +7,7 @@ use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
 use crate::widgets::{Layout, Widget};
 
+use super::icon::Glyph;
 use super::layout_ext::LayoutOverrides;
 use super::shared::{Activate, accessible_name, caller_style, noop_activate};
 
@@ -58,8 +59,13 @@ pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
 }
 
 /// A button that shows one glyph: text or an `Icon`.
-pub fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static) -> ButtonBuilder {
-    let mut builder = glyph.into().into_button().ghost().activate(activate);
+pub fn icon_button(glyph: impl Into<Glyph>, activate: impl Fn() + 'static) -> ButtonBuilder {
+    let builder = match glyph.into() {
+        Glyph::Text(text) => button(text),
+        #[cfg(feature = "scene")]
+        Glyph::Icon(icon) => button(icon.name()).icon(icon).accessible(icon.name()),
+    };
+    let mut builder = builder.ghost().activate(activate);
     builder.square = true;
     builder
 }
@@ -250,10 +256,7 @@ impl ButtonBuilder {
 builder_impls!([] ButtonBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 mod content;
-mod glyph;
 mod parts;
-
-pub use glyph::ButtonGlyph;
 
 use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
 

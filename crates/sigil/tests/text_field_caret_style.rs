@@ -19,13 +19,13 @@ fn caret_uses_the_fields_resolved_typography() {
         let scene = focused_field_scene();
         let text = scene.find_text(VALUE).expect("field text is painted");
         assert!(
-            (text.style.font_size - 14.0).abs() <= f32::EPSILON,
+            (text.style().font_size - 14.0).abs() <= f32::EPSILON,
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
         let expected = sigil::layout::TextEngineMeasure::default().caret(
             VALUE,
-            &text.style,
+            text.style(),
             None,
             HitPosition {
                 byte_index: VALUE.len(),

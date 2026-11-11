@@ -173,7 +173,7 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         }
         let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
-        let style = render_style_for(id, node, theme, inherited.text_color);
+        let style = render_style_for(node, theme, inherited.text_color);
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
             || style.opacity < 10_000

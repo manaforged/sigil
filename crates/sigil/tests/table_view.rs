@@ -64,7 +64,7 @@ fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
         .commands
         .iter()
         .filter_map(|c| match c {
-            SceneCommand::GlyphRun(d) => Some(d.text.clone()),
+            SceneCommand::GlyphRun(d) => Some(d.text().to_owned()),
             _ => None,
         })
         .collect()

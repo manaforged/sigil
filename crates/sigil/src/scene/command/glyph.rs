@@ -1,5 +1,4 @@
 use core::fmt;
-use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::geometry::Rect;
@@ -30,24 +29,14 @@ pub(crate) struct RunInk {
     pub(crate) background: Option<Color>,
 }
 
-/// The text, style, and shaped glyphs that a `GlyphRun` shares between clones.
 #[derive(Clone)]
-pub struct SharedGlyph {
-    /// The text.
-    pub text: String,
-    /// The color.
-    pub color: Color,
-    /// The text style.
-    pub style: TextStyle,
-    /// The opacity.
-    pub opacity: u16,
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    pub flow: TextFlow,
-    #[cfg(not(feature = "kittest"))]
+pub(crate) struct SharedGlyph {
+    pub(crate) text: String,
+    pub(crate) color: Color,
+    pub(crate) style: TextStyle,
+    pub(crate) opacity: u16,
     pub(crate) flow: TextFlow,
-    /// The tone, if any.
-    pub tone: Option<Tone>,
+    pub(crate) tone: Option<Tone>,
     inks: Vec<RunInk>,
     positioned_glyphs: Vec<RenderedGlyph>,
     #[cfg(feature = "scene")]
@@ -106,6 +95,41 @@ impl GlyphRun {
                 fill: None,
             }),
         }
+    }
+
+    /// The text.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.shared.text
+    }
+
+    /// The color.
+    #[must_use]
+    pub fn color(&self) -> Color {
+        self.shared.color
+    }
+
+    /// The text style.
+    #[must_use]
+    pub fn style(&self) -> &TextStyle {
+        &self.shared.style
+    }
+
+    /// The opacity.
+    #[must_use]
+    pub fn opacity(&self) -> u16 {
+        self.shared.opacity
+    }
+
+    /// The tone, if any.
+    #[must_use]
+    pub fn tone(&self) -> Option<Tone> {
+        self.shared.tone
+    }
+
+    #[cfg(vector_paint)]
+    pub(crate) fn flow(&self) -> TextFlow {
+        self.shared.flow
     }
 
     /// Returns the number of positioned glyphs in this run.
@@ -232,14 +256,6 @@ const fn same_paragraph(_: &SharedGlyph, _: &SharedGlyph) -> bool {
     true
 }
 
-impl Deref for GlyphRun {
-    type Target = SharedGlyph;
-
-    fn deref(&self) -> &SharedGlyph {
-        &self.shared
-    }
-}
-
 impl fmt::Debug for GlyphRun {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = f.debug_struct("GlyphRun");
@@ -312,10 +328,12 @@ const fn shape_paragraph(run: GlyphRun) -> GlyphRun {
 fn shape_paragraph(run: GlyphRun) -> GlyphRun {
     let max_width = run.rect.width.max(1.0);
     let engine = crate::text::OwnedTextEngine::thread();
-    let paragraph = match run.flow {
-        TextFlow::Ellipsis => engine.layout_paragraph_ellipsized(&run.text, max_width, &run.style),
-        TextFlow::Line => engine.layout_paragraph_styled(&run.text, None, &run.style),
-        TextFlow::Wrap => engine.layout_paragraph_styled(&run.text, Some(max_width), &run.style),
+    let paragraph = match run.flow() {
+        TextFlow::Ellipsis => {
+            engine.layout_paragraph_ellipsized(run.text(), max_width, run.style())
+        }
+        TextFlow::Line => engine.layout_paragraph_styled(run.text(), None, run.style()),
+        TextFlow::Wrap => engine.layout_paragraph_styled(run.text(), Some(max_width), run.style()),
     };
     match paragraph {
         Ok(paragraph) => run.with_paragraph(paragraph),

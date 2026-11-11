@@ -46,7 +46,7 @@ pub(super) const fn split(_: &mut SceneBuilder, _: NodeId, run: GlyphRun) -> Gly
 pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> GlyphRun {
     use crate::scene::command::{CellRect, DrawRect};
     use crate::scene::corner_radii::CornerRadii;
-    let Some(runs) = run.style.runs.clone() else {
+    let Some(runs) = run.style().runs.clone() else {
         return run;
     };
     let Some(paragraph) = run.paragraph().cloned() else {
@@ -67,13 +67,19 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
                 };
                 DrawRect::new(rect, background)
                     .border_radius(CornerRadii::uniform(radius))
-                    .opacity(run.opacity)
+                    .opacity(run.opacity())
             };
             for rect in &rects {
                 scene.draw_rect_for_node(id, style(*rect), CellRect::default());
             }
         }
-        decorate(scene, &rects, ink.color.unwrap_or(run.color), &run, face);
+        decorate(
+            scene,
+            &rects,
+            ink.color.unwrap_or_else(|| run.color()),
+            &run,
+            face,
+        );
         let Some(color) = ink.color else {
             continue;
         };
@@ -83,7 +89,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         scene.draw_glyph_run_for_node(id, run.clone().with_glyphs(color, glyphs));
     }
     base.extend(paragraph.rendered_glyphs_in(at, usize::MAX));
-    let color = run.color;
+    let color = run.color();
     run.with_glyphs(color, base)
 }
 
@@ -156,7 +162,7 @@ fn line(
     use crate::geometry::{Point, Rect};
     use crate::scene::command::DecorationKind;
     use crate::scene::command::DrawDecoration;
-    let thickness = (run.style.font_size * 0.06).max(1.0);
+    let thickness = (run.style().font_size * 0.06).max(1.0);
     for rect in rects {
         let y = if kind == DecorationKind::Strikethrough {
             rect.origin.y + (rect.height - thickness) / 2.0
@@ -166,7 +172,7 @@ fn line(
         let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
         scene.draw_decoration(
             DrawDecoration::new(kind, band, color)
-                .opacity(run.opacity)
+                .opacity(run.opacity())
                 .line_width(thickness),
         );
     }

@@ -5,7 +5,7 @@ use crate::style::{Color, ColorAtom, Token};
 
 /// One layer: a fixed array per `Token` plus a map for custom names.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TokenLayer {
+pub(crate) struct TokenLayer {
     tokens: [Option<Color>; Token::COUNT],
     custom: HashMap<String, ThemeValue>,
 }
@@ -26,7 +26,7 @@ impl TokenLayer {
 
     /// Returns the color of `key`, if set.
     #[must_use]
-    pub fn color(&self, key: ColorAtom) -> Option<Color> {
+    pub(crate) fn color(&self, key: ColorAtom) -> Option<Color> {
         match key {
             ColorAtom::Color(color) => Some(color),
             ColorAtom::Token(token) => self.token(token),
@@ -38,8 +38,9 @@ impl TokenLayer {
     }
 
     /// Returns the value of the token `name`, if set.
+    #[cfg(test)]
     #[must_use]
-    pub fn value(&self, name: &str) -> Option<ThemeValue> {
+    pub(crate) fn value(&self, name: &str) -> Option<ThemeValue> {
         Token::from_name(name).map_or_else(
             || self.custom.get(name).copied(),
             |token| self.token(token).map(ThemeValue::Color),
@@ -47,7 +48,7 @@ impl TokenLayer {
     }
 
     /// Stores a token value and returns the old value.
-    pub fn insert(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
+    pub(crate) fn insert(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
         let slot = Token::from_name(name).and_then(|token| self.tokens.get_mut(token.index()));
         match (slot, value) {
             (Some(slot), ThemeValue::Color(color)) => slot.replace(color).map(ThemeValue::Color),
@@ -56,7 +57,8 @@ impl TokenLayer {
     }
 
     /// Returns the names.
-    pub fn names(&self) -> impl Iterator<Item = &str> {
+    #[cfg(debug_assertions)]
+    pub(crate) fn names(&self) -> impl Iterator<Item = &str> {
         Token::ALL
             .iter()
             .filter(|token| self.token(**token).is_some())
@@ -67,9 +69,9 @@ impl TokenLayer {
 
 /// The runtime override and theme layers of `Theme::tokens`.
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct TokenTable {
+pub(crate) struct TokenTable {
     /// The overrides.
-    pub overrides: TokenLayer,
+    pub(crate) overrides: TokenLayer,
     /// The theme.
-    pub theme: TokenLayer,
+    pub(crate) theme: TokenLayer,
 }

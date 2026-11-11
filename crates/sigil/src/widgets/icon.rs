@@ -14,7 +14,7 @@ mod svg;
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
 #[derive(Clone, Debug)]
-enum Glyph {
+enum Mark {
     Text(TextContent),
     #[cfg(feature = "scene")]
     Svg(std::sync::Arc<str>),
@@ -24,7 +24,7 @@ enum Glyph {
 #[derive(Debug)]
 #[must_use]
 pub struct IconBuilder {
-    glyph: Glyph,
+    glyph: Mark,
     tone: Tone,
     size: ControlSize,
     px: Option<f32>,
@@ -36,37 +36,42 @@ pub struct IconBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// What `icon` accepts: a bundled `Icon` or any text glyph.
+/// What an icon or an icon button shows: a bundled `Icon` or a text glyph.
 #[derive(Clone, Debug)]
-pub struct IconSource(Glyph);
-
-impl IntoIconSource for IconSource {
-    fn into_icon_source(self) -> IconSource {
-        self
-    }
+#[non_exhaustive]
+pub enum Glyph {
+    /// A text glyph.
+    Text(TextContent),
+    /// A bundled icon.
+    #[cfg(feature = "scene")]
+    Icon(crate::icons::Icon),
 }
 
-/// A value that can be drawn as an icon.
-pub trait IntoIconSource {
-    /// Converts this into icon source to icon source.
-    fn into_icon_source(self) -> IconSource;
-}
-
-impl<T: Into<TextContent>> IntoIconSource for T {
-    fn into_icon_source(self) -> IconSource {
-        IconSource(Glyph::Text(self.into()))
+impl<T: Into<TextContent>> From<T> for Glyph {
+    fn from(text: T) -> Self {
+        Self::Text(text.into())
     }
 }
 
 #[cfg(feature = "scene")]
-impl IntoIconSource for crate::icons::Icon {
-    fn into_icon_source(self) -> IconSource {
-        IconSource(Glyph::Svg(std::sync::Arc::from(self.svg())))
+impl From<crate::icons::Icon> for Glyph {
+    fn from(icon: crate::icons::Icon) -> Self {
+        Self::Icon(icon)
+    }
+}
+
+impl From<Glyph> for Mark {
+    fn from(glyph: Glyph) -> Self {
+        match glyph {
+            Glyph::Text(text) => Self::Text(text),
+            #[cfg(feature = "scene")]
+            Glyph::Icon(icon) => Self::Svg(std::sync::Arc::from(icon.svg())),
+        }
     }
 }
 
 /// An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph.
-pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
+pub fn icon(glyph: impl Into<Glyph>) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
@@ -74,15 +79,15 @@ pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
 #[cfg(feature = "scene")]
 pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
     let mut builder = IconBuilder::new("");
-    builder.glyph = Glyph::Svg(svg.into());
+    builder.glyph = Mark::Svg(svg.into());
     builder
 }
 
 impl IconBuilder {
     /// Creates an icon builder.
-    pub fn new(glyph: impl IntoIconSource) -> Self {
+    pub fn new(glyph: impl Into<Glyph>) -> Self {
         Self {
-            glyph: glyph.into_icon_source().0,
+            glyph: Mark::from(glyph.into()),
             tone: Tone::Neutral,
             size: ControlSize::Default,
             px: None,
@@ -152,7 +157,7 @@ impl IconBuilder {
             .justify_content(JustifyContent::Center);
         let container_node = container().role(role).with(layout).tone_scope(self.tone);
         let mut container_node = match self.glyph {
-            Glyph::Text(glyph) => container_node.child(
+            Mark::Text(glyph) => container_node.child(
                 text(glyph)
                     .class(glyph_class)
                     .class(ICON_GLYPH_COLOR)
@@ -160,7 +165,7 @@ impl IconBuilder {
                     .hittable(false),
             ),
             #[cfg(feature = "scene")]
-            Glyph::Svg(svg) => {
+            Mark::Svg(svg) => {
                 let token = if self.on_solid {
                     Token::OnSolid
                 } else {

@@ -5,7 +5,7 @@ use sigil::Host;
 use sigil::events::Event;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::CommandScene;
+use sigil::scene::{CommandScene, GlyphRun};
 
 const fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
     let (button, buttons) = match phase {
@@ -73,5 +73,5 @@ fn main() {
 }
 
 fn scene_text(scene: &CommandScene) -> Vec<&str> {
-    scene.glyph_runs().map(|draw| draw.text.as_str()).collect()
+    scene.glyph_runs().map(GlyphRun::text).collect()
 }

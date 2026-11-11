@@ -42,7 +42,7 @@ fn replacing_rows_repaints_the_table() {
             .commands
             .iter()
             .filter_map(|command| match command {
-                sigil::scene::SceneCommand::GlyphRun(draw) => Some(draw.text.as_str()),
+                sigil::scene::SceneCommand::GlyphRun(draw) => Some(draw.text()),
                 _ => None,
             })
             .collect();

@@ -322,9 +322,9 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         let after = frame(&mut cx, Some("token"));
         for c in emit_scene(&cx, root, None).commands {
             if let SceneCommand::GlyphRun(d) = c
-                && d.text.contains("token")
+                && d.text().contains("token")
             {
-                eprintln!("PAINTED {:?} @ y={}", d.text, d.rect.origin.y);
+                eprintln!("PAINTED {:?} @ y={}", d.text(), d.rect.origin.y);
             }
         }
         assert_eq!(

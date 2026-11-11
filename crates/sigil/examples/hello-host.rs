@@ -32,7 +32,11 @@ fn main() {
             let rect = draw.rect;
             println!(
                 "{} @ ({:.0},{:.0}) {}x{}",
-                draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
+                draw.text(),
+                rect.origin.x,
+                rect.origin.y,
+                rect.width,
+                rect.height
             );
         }
         for (key, rect) in host.surfaces() {

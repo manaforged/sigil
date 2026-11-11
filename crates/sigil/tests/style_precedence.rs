@@ -91,7 +91,7 @@ fn a_border_set_on_a_text_field_holds_at_rest() {
         let (cx, root, _) = laid_out(text_field(value).border_color(Token::Accent9));
         let node = cx.get(root).expect("the field is in the tree");
         let theme = Theme::light();
-        let style = render_style_for(root, node, &theme, None);
+        let style = render_style_for(node, &theme, None);
         assert_eq!(style.border_color, Some(theme.color(Token::Accent9)));
     });
 }

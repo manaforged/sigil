@@ -166,26 +166,24 @@ fn state_style_resolve_1000_widgets(c: &mut Criterion) {
 
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
-    let accent_theme = Theme {
-        accent: Color {
-            r: 220,
-            g: 38,
-            b: 38,
-            a: 255,
-        },
-        accent_hover: Color {
-            r: 185,
-            g: 28,
-            b: 28,
-            a: 255,
-        },
-        on_accent: Color {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255,
-        },
-        ..Theme::default()
+    let mut accent_theme = Theme::default();
+    accent_theme.accent = Color {
+        r: 220,
+        g: 38,
+        b: 38,
+        a: 255,
+    };
+    accent_theme.accent_hover = Color {
+        r: 185,
+        g: 28,
+        b: 28,
+        a: 255,
+    };
+    accent_theme.on_accent = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
     };
     let mut render_styles = vec![RenderStyle::default(); 10_000];
     let mut use_accent_theme = false;

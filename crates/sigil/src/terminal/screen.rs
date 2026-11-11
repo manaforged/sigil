@@ -86,20 +86,26 @@ impl Screen {
         }
     }
 
-    /// Creates a screen with these capabilities.
-    #[must_use]
-    pub fn with_caps(cols: u16, rows: u16, caps: Capabilities) -> Self {
-        let mut screen = Self::new(cols, rows);
-        screen.set_caps(caps);
-        screen
+    kittest_pub! {
+        /// Creates a screen with these capabilities.
+        #[doc(hidden)]
+        #[must_use]
+        pub fn with_caps(cols: u16, rows: u16, caps: Capabilities) -> Self {
+            let mut screen = Self::new(cols, rows);
+            screen.set_caps(caps);
+            screen
+        }
     }
 
-    /// Sets the caps.
-    pub const fn set_caps(&mut self, caps: Capabilities) {
-        self.caps = caps;
-        self.grid.set_graphics(caps.graphics.is_some());
-        self.prev.set_graphics(caps.graphics.is_some());
-        self.fresh = true;
+    kittest_pub! {
+        /// Sets the caps.
+        #[doc(hidden)]
+        pub const fn set_caps(&mut self, caps: Capabilities) {
+            self.caps = caps;
+            self.grid.set_graphics(caps.graphics.is_some());
+            self.prev.set_graphics(caps.graphics.is_some());
+            self.fresh = true;
+        }
     }
 
     /// Sets the access.
