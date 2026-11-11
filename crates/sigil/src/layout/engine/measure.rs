@@ -135,10 +135,16 @@ impl LayoutEngine {
     }
 
     fn attach_results(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
+        let has_geometry_reactive = !self.geometry_reactive.is_empty();
         for id in ids {
             let Some(result) = self.fresh(id) else {
                 continue;
             };
+            let unchanged = self.published_result.get(id.key()).copied() == Some(result);
+            if unchanged && (!has_geometry_reactive || !self.geometry_reactive.contains(&id.key()))
+            {
+                continue;
+            }
             let rect = result.rect();
             let node = cx
                 .get_mut_untracked(id)
@@ -150,7 +156,7 @@ impl LayoutEngine {
                 self.republished |=
                     bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
             }
-            if self.published_result.get(id.key()).copied() == Some(result) {
+            if unchanged {
                 continue;
             }
             let _ = node.attach_untracked(result);

@@ -30,6 +30,10 @@ impl BoxCell {
         self.frame.set(frame);
     }
 
+    pub(crate) fn stamp(&self, frame: u32) {
+        self.frame.set(frame);
+    }
+
     pub(crate) fn reset(&self) {
         self.cb.set(ComputedBox::default());
         self.frame.set(0);

@@ -44,7 +44,6 @@ impl WrapBounds {
 
 pub(crate) struct CachedParagraph {
     pub(crate) paragraph: Paragraph,
-    pub(crate) fit: f32,
     pub(crate) bounds: WrapBounds,
 }
 
@@ -59,7 +58,6 @@ struct CacheEntry {
     text: Box<str>,
     style: Rc<TextStyle>,
     paragraph: Paragraph,
-    fit: f32,
     bounds: WrapBounds,
     used: Cell<u64>,
 }
@@ -83,36 +81,31 @@ impl ParagraphCache {
         }
     }
 
-    pub(crate) fn get(
+    pub(crate) fn lookup(
         &self,
         text: &str,
         max_width: Option<f32>,
         style: &TextStyle,
-    ) -> Option<(&Paragraph, f32)> {
-        let entry = self.map.get(&Self::key(text, max_width, style))?;
-        if &*entry.text != text || *entry.style != *style {
-            return None;
-        }
-        entry.used.set(self.tick());
-        Some((&entry.paragraph, entry.fit))
-    }
-
-    pub(crate) fn get_compatible(
-        &self,
-        text: &str,
-        limit: f32,
-        style: &TextStyle,
     ) -> Option<&Paragraph> {
-        let text_hash = hasher().hash_one(text);
-        let discrete = DiscreteTextStyle::from(style);
-        let widths = self.by_text.get(&(text_hash, discrete))?;
+        let key = Self::key(text, max_width, style);
+        if let Some(entry) = self.map.get(&key)
+            && &*entry.text == text
+            && *entry.style == *style
+        {
+            entry.used.set(self.tick());
+            return Some(&entry.paragraph);
+        }
+        let limit = max_width?;
+        let widths = self.by_text.get(&(key.text_hash, key.style))?;
         for &width_bits in widths {
-            let key = CacheKey {
-                text_hash,
+            if width_bits == key.width_bits {
+                continue;
+            }
+            let candidate = CacheKey {
                 width_bits,
-                style: discrete,
+                ..key
             };
-            let Some(entry) = self.map.get(&key) else {
+            let Some(entry) = self.map.get(&candidate) else {
                 continue;
             };
             if &*entry.text == text && *entry.style == *style && entry.bounds.contains(limit) {
@@ -143,7 +136,6 @@ impl ParagraphCache {
                 text: text.into(),
                 style,
                 paragraph: value.paragraph,
-                fit: value.fit,
                 bounds: value.bounds,
                 used,
             },

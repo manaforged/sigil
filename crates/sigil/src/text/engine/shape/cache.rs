@@ -50,7 +50,7 @@ pub(super) struct WordSpan {
 pub(in crate::text::engine) struct WordEntry {
     word: Box<str>,
     level: u8,
-    span_hash: u64,
+    hash: u64,
     faces: SmallVec<[u64; 8]>,
     style: FaceStyle,
     spans: SmallVec<[WordSpan; 1]>,
@@ -58,7 +58,7 @@ pub(in crate::text::engine) struct WordEntry {
 
 impl WordEntry {
     fn matches(&self, args: &PushRunArgs<'_>, span_key: &SpanKey, style: &FaceStyle) -> bool {
-        self.span_hash == span_key.hash
+        self.hash == span_key.hash
             && self.level == args.level
             && self.word.as_ref() == args.fragment
             && self.style == *style
@@ -113,7 +113,7 @@ pub(super) fn remember(
         WordEntry {
             word: args.fragment.into(),
             level: args.level,
-            span_hash: span_key.hash,
+            hash: span_key.hash,
             faces: span_key.faces.clone(),
             style: style.clone(),
             spans,

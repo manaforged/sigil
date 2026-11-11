@@ -30,7 +30,6 @@ fn seeded(text: &str, style: &TextStyle) -> ParagraphCache {
         style,
         CachedParagraph {
             paragraph: make_paragraph(text, style),
-            fit: 0.0,
             bounds: WrapBounds::OPEN,
         },
     );
@@ -41,8 +40,8 @@ fn seeded(text: &str, style: &TextStyle) -> ParagraphCache {
 fn identical_key_hits_with_identical_metrics() {
     let style = style_at(16.0);
     let cache = seeded("Typography", &style);
-    let (hit, _) = cache
-        .get("Typography", None, &style)
+    let hit = cache
+        .lookup("Typography", None, &style)
         .expect("identical key must hit the cache");
     let original_width = make_paragraph("Typography", &style).width();
     assert!((hit.width() - original_width).abs() < f32::EPSILON);
@@ -53,11 +52,11 @@ fn differing_text_or_style_misses() {
     let style = style_at(16.0);
     let cache = seeded("Hello", &style);
     assert!(
-        cache.get("Hello", None, &style_at(32.0)).is_none(),
+        cache.lookup("Hello", None, &style_at(32.0)).is_none(),
         "differing style must miss the cache (same text, different size)",
     );
     assert!(
-        cache.get("World", None, &style).is_none(),
+        cache.lookup("World", None, &style).is_none(),
         "different text must miss the cache"
     );
 }
@@ -72,7 +71,7 @@ fn collision_on_same_hashed_key_returns_miss_not_stale_layout() {
         entry.text = "text-B".into();
     }
 
-    let hit_a = cache.get("text-A", None, &style);
+    let hit_a = cache.lookup("text-A", None, &style);
     assert!(
         hit_a.is_none(),
         "after a collision the verifier must reject the stale entry",
@@ -89,7 +88,6 @@ fn near_equal_widths_keep_separate_entries() {
         &style,
         CachedParagraph {
             paragraph: make_paragraph("Hello", &style),
-            fit: 0.0,
             bounds: WrapBounds {
                 min_nowrap: 100.2,
                 min_wrap: 100.3,
@@ -102,13 +100,12 @@ fn near_equal_widths_keep_separate_entries() {
         &style,
         CachedParagraph {
             paragraph: make_paragraph("Hello", &style),
-            fit: 0.0,
             bounds: WrapBounds {
                 min_nowrap: 100.4,
                 min_wrap: 100.5,
             },
         },
     );
-    assert!(cache.get("Hello", Some(100.2), &style).is_some());
-    assert!(cache.get("Hello", Some(100.4), &style).is_some());
+    assert!(cache.lookup("Hello", Some(100.2), &style).is_some());
+    assert!(cache.lookup("Hello", Some(100.4), &style).is_some());
 }

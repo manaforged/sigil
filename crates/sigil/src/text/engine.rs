@@ -150,7 +150,6 @@ impl OwnedTextEngine {
             style,
             CachedParagraph {
                 paragraph: para.clone(),
-                fit: fit.width,
                 bounds: fit.bounds,
             },
         );
@@ -283,12 +282,7 @@ impl OwnedTextEngine {
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Option<Paragraph> {
-        let cache = self.cache.borrow();
-        if let Some((cached, _)) = cache.get(text, max_width, style) {
-            return Some(cached.clone());
-        }
-        let limit = max_width?;
-        cache.get_compatible(text, limit, style).cloned()
+        self.cache.borrow().lookup(text, max_width, style).cloned()
     }
 
     fn build_paragraph(

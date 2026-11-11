@@ -28,7 +28,6 @@ impl LineStrut {
 struct PendingLine<'a> {
     segs: SmallVec<[&'a ShapedSegment; 16]>,
     width: f32,
-    peak: f32,
 }
 
 impl<'a> PendingLine<'a> {
@@ -36,7 +35,6 @@ impl<'a> PendingLine<'a> {
         Self {
             segs: SmallVec::new(),
             width: 0.0,
-            peak: 0.0,
         }
     }
 
@@ -46,7 +44,6 @@ impl<'a> PendingLine<'a> {
 
     fn push(&mut self, seg: &'a ShapedSegment) {
         self.width += seg.advance;
-        self.peak = self.peak.max(self.width);
         self.segs.push(seg);
     }
 }
@@ -54,7 +51,6 @@ impl<'a> PendingLine<'a> {
 #[derive(Clone, Copy, Default)]
 pub(super) struct LineFit {
     pub(super) wrapped: bool,
-    pub(super) width: f32,
     pub(super) bounds: WrapBounds,
 }
 
@@ -76,7 +72,6 @@ pub(super) fn break_lines(
     let mut fit = LineFit::default();
     for seg in segments {
         if seg.is_hard_break {
-            fit.width = fit.width.max(pending.peak);
             push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
             pending = PendingLine::new();
             cursor = seg.end;
@@ -84,7 +79,6 @@ pub(super) fn break_lines(
         }
         if check_wrap(&pending, seg, max_width, &mut fit.bounds) {
             fit.wrapped = true;
-            fit.width = fit.width.max(pending.peak);
             push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
             pending = PendingLine::new();
             cursor = seg.start;
@@ -94,7 +88,6 @@ pub(super) fn break_lines(
         }
         pending.push(seg);
     }
-    fit.width = fit.width.max(pending.peak);
     push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
     (lines, fit)
 }

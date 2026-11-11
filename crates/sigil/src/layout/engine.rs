@@ -31,6 +31,7 @@ pub struct LayoutEngine {
     text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
     prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
+    geometry_reactive: AHashSet<slotmap::DefaultKey>,
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     hidden: AHashSet<NodeId>,
@@ -66,6 +67,7 @@ impl LayoutEngine {
             text_sizes: SecondaryMap::new(),
             prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
+            geometry_reactive: AHashSet::new(),
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
             hidden: AHashSet::new(),
@@ -252,6 +254,7 @@ impl LayoutEngine {
                 let _ = self.published_result.remove(core_id.key());
                 self.hidden.remove(&core_id);
                 self.reactive_layout.remove(&core_id.key());
+                self.geometry_reactive.remove(&core_id.key());
             }
         }
         self.drive.remove(handle)
@@ -265,6 +268,7 @@ impl LayoutEngine {
         self.core_to_handle.clear();
         self.hidden.clear();
         self.reactive_layout.clear();
+        self.geometry_reactive.clear();
         self.positions.clear();
         self.text_sizes.clear();
         self.prepared.clear();
@@ -280,6 +284,13 @@ impl LayoutEngine {
         } else {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
+        }
+        if node.get_extension::<crate::layout::SizeReactive>().is_some()
+            || node.get_extension::<crate::layout::BoundsReactive>().is_some()
+        {
+            self.geometry_reactive.insert(id.key());
+        } else {
+            self.geometry_reactive.remove(&id.key());
         }
         if let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() {
             self.positions.insert(id.key(), pos.get());

@@ -1,8 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use std::cell::{Cell, RefCell};
-
-use ahash::AHashMap;
+use std::cell::Cell;
 
 use crate::Error;
 use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
@@ -14,15 +12,13 @@ use crate::layout::style_data::{Display, FlexDirection, Length, Position};
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
     intrinsic_stores: Cell<u32>,
-    fills: RefCell<AHashMap<LocalId, bool>>,
 }
 
 impl<'a> FlexSolver<'a> {
-    pub(crate) fn new(scope: MeasureScope<'a>) -> Self {
+    pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
         Self {
             scope,
             intrinsic_stores: Cell::new(0),
-            fills: RefCell::new(AHashMap::new()),
         }
     }
 
@@ -33,10 +29,10 @@ impl<'a> FlexSolver<'a> {
         {
             return false;
         }
-        if let Some(known) = self.fills.borrow().get(&node.id()).copied() {
+        let forest = self.scope.forest();
+        if let Some(known) = forest.fills_get(node.id()) {
             return known;
         }
-        let forest = self.scope.forest();
         let row = matches!(style.display, Display::Flex)
             && matches!(
                 style.flex_direction,
@@ -54,7 +50,7 @@ impl<'a> FlexSolver<'a> {
                         || (row && child_style.flex_grow > 0.0)
                         || self.fills_width(child))
             });
-        self.fills.borrow_mut().insert(node.id(), fills);
+        forest.fills_put(node.id(), fills);
         fills
     }
 

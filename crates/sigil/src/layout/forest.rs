@@ -11,12 +11,15 @@ mod box_cell;
 mod intrinsic;
 mod links;
 mod measure;
+mod solved;
 mod text_memo;
 
 pub(crate) use box_cell::BoxCell;
 pub(crate) use intrinsic::IntrinsicKey;
 use intrinsic::IntrinsicMemo;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
+pub(crate) use solved::SolvedKey;
+use solved::SolvedSubtree;
 use text_memo::TextMemo;
 #[cfg(test)]
 use text_memo::{TEXT_MEMO_LIVE, TextMemoKey};
@@ -88,6 +91,8 @@ pub(crate) struct LayoutForest {
     frame: u32,
     text_memo: std::cell::RefCell<TextMemo>,
     intrinsic: Vec<IntrinsicMemo>,
+    fills: Vec<std::cell::Cell<u8>>,
+    solved: Vec<std::cell::Cell<Option<SolvedSubtree>>>,
 }
 
 impl LayoutForest {
@@ -100,11 +105,20 @@ impl LayoutForest {
             frame: 1,
             text_memo: std::cell::RefCell::new(TextMemo::default()),
             intrinsic: Vec::new(),
+            fills: Vec::new(),
+            solved: Vec::new(),
         }
     }
 
-    pub(crate) const fn next_frame(&mut self) -> u32 {
+    pub(crate) fn next_frame(&mut self) -> u32 {
         self.frame = self.frame.wrapping_add(1);
+        if self.frame == 0 {
+            self.frame = 1;
+            for cell in &self.boxes {
+                cell.stamp(0);
+            }
+            self.clear_solved();
+        }
         self.frame
     }
 
@@ -143,6 +157,8 @@ impl LayoutForest {
             self.nodes.push(node);
             self.boxes.push(BoxCell::new(ComputedBox::default()));
             self.intrinsic.push(IntrinsicMemo::default());
+            self.fills.push(std::cell::Cell::new(0));
+            self.solved.push(std::cell::Cell::new(None));
         }
         id
     }
@@ -198,8 +214,16 @@ impl LayoutForest {
     }
 
     pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), Error> {
+        self.write_at_frame(id, value, self.frame)
+    }
+
+    pub(crate) fn write_at_frame(
+        &mut self,
+        id: LocalId,
+        value: ComputedBox,
+        frame: u32,
+    ) -> Result<(), Error> {
         self.node(id).ok_or_else(|| stale(id))?;
-        let frame = self.frame;
         self.boxes
             .get_mut(id.index as usize)
             .ok_or_else(|| stale(id))?

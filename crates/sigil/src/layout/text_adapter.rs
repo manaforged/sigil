@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
@@ -34,12 +33,12 @@ impl TextMeasure for TextEngineMeasure {
 
     fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
         crate::profile::count(crate::profile::Counter::TextMeasure);
-        let text = resolve_text(source);
         let max_width = match space.width {
             Dim::Fixed(w) => Some(w),
             Dim::MinContent | Dim::MaxContent => None,
         };
-        let para = match self.engine.layout_paragraph_styled(&text, max_width, style) {
+        let result = source.with_str(|text| self.engine.layout_paragraph_styled(text, max_width, style));
+        let para = match result {
             Ok(para) => para,
             Err(err) => {
                 tracing::warn!(target: "sigil::text", error = %err, "text measure failed; reporting zero size");
@@ -106,12 +105,5 @@ impl TextMeasure for TextEngineMeasure {
         self.engine
             .layout_paragraph_styled(text, width, style)
             .map_or_else(|_| Vec::new(), |para| para.selection_rects(anchor, focus))
-    }
-}
-
-fn resolve_text(source: &TextContent) -> Cow<'_, str> {
-    match source {
-        TextContent::Static(s) => Cow::Borrowed(s),
-        TextContent::Reactive(_) | TextContent::Compute(_) => Cow::Owned(source.resolve()),
     }
 }
