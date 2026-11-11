@@ -54,3 +54,53 @@ fn an_opaque_window_paints_the_theme_surface_behind_the_tree() {
         assert_eq!(clear.commands.len() + 1, opaque.commands.len());
     });
 }
+
+#[test]
+fn a_frame_whose_paint_was_skipped_keeps_the_next_scene_current() {
+    use crate::app::FrameHooks;
+    use crate::app::embed::Host;
+    use crate::kernel::HostMode;
+    use crate::prelude::*;
+    const VIEW: (f32, f32) = (300.0, 200.0);
+    Owner::scope("scene-cache-skipped-paint", || {
+        let first = signal(String::from("alpha"));
+        let second = signal(String::from("beta"));
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(move || {
+            let mut rows = column()
+                .child(text(move || first.get()))
+                .child(text(move || second.get()));
+            for index in 0..40 {
+                rows = rows.child(text(format!("row {index}")));
+            }
+            rows
+        });
+        let mut cache = SceneCache::default();
+        let frame = |host: &mut Host, cache: &mut SceneCache, paint: bool| {
+            let hooks = FrameHooks {
+                input: None,
+                after_layout: None,
+                paint: Some(Box::new(|host: &mut Host, info: &crate::app::FrameInfo| {
+                    if !paint {
+                        cache.skip();
+                    } else if let Some((cx, _, _, root)) = host.tree() {
+                        let _ = cache.scene(cx, (root, VIEW), (false, Some(&info.delta)));
+                    }
+                })),
+            };
+            let _ = host.frame(VIEW, 0.0, hooks);
+        };
+        frame(&mut host, &mut cache, true);
+        frame(&mut host, &mut cache, true);
+        first.set(String::from("omega"));
+        frame(&mut host, &mut cache, false);
+        second.set(String::from("delta"));
+        frame(&mut host, &mut cache, true);
+        let (cx, _, _, root) = host.tree().expect("tree");
+        let fresh = super::window_scene(cx, root, VIEW, false);
+        assert!(
+            cache.scene.commands == fresh.commands,
+            "cached scene differs from a fresh emit after a frame whose paint was skipped"
+        );
+    });
+}

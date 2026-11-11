@@ -71,6 +71,8 @@ impl Host {
     ) -> FrameOutput {
         #[cfg(hot_patch)]
         self.remount_patched();
+        #[cfg(feature = "terminal")]
+        self.drop_cell_screen();
         let _env = self.enter();
         Runtime::begin_effect();
         if let Some(next) = hooks.input.and_then(|input| input(self)) {

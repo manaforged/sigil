@@ -36,6 +36,7 @@ pub(super) struct SceneCache {
     memo: EmitMemo,
     backdrop: bool,
     built_backdrop: bool,
+    missed: bool,
     #[cfg(test)]
     emissions: usize,
 }
@@ -48,7 +49,11 @@ impl SceneCache {
         (allow_replay, delta): (bool, Option<&FrameDelta>),
     ) -> &CommandScene {
         let key = SceneKey::new(cx, root, viewport);
-        if allow_replay && self.key == Some(key) && self.built_backdrop == self.backdrop {
+        if allow_replay
+            && !self.missed
+            && self.key == Some(key)
+            && self.built_backdrop == self.backdrop
+        {
             crate::profile::count(Counter::SceneReplay);
         } else {
             crate::profile::count(Counter::SceneEmit);
@@ -69,6 +74,11 @@ impl SceneCache {
         delta: Option<&FrameDelta>,
     ) {
         let clip = Some(viewport_rect(viewport));
+        let delta = if std::mem::take(&mut self.missed) {
+            None
+        } else {
+            delta
+        };
         let changed = match delta {
             Some(delta) if self.key == Some(key) => {
                 emit_scene_into(cx, (root, clip), delta, &mut self.body, &mut self.memo)
@@ -95,6 +105,10 @@ impl SceneCache {
         self.key = Some(key);
     }
 
+    pub(super) const fn skip(&mut self) {
+        self.missed = true;
+    }
+
     pub(super) fn paint(&mut self, request: PaintRequest<'_>) {
         let PaintRequest {
             cx,
@@ -107,6 +121,7 @@ impl SceneCache {
         } = request;
         self.backdrop = !renderer.is_transparent();
         let Some(surface) = surface.as_mut() else {
+            self.skip();
             return;
         };
         {

@@ -187,6 +187,8 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &FrameInfo) {
             allow_replay,
             delta: Some(&info.delta),
         });
+    } else if info.dirty {
+        env.view.scene_cache.skip();
     }
     let _a11y = crate::profile::span(crate::profile::Phase::A11y);
     if let Some((cx, layout, router, _)) = host.tree() {
