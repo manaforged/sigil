@@ -4,7 +4,7 @@ use crate::reactive::Owner;
 use smallvec::SmallVec;
 
 use crate::kernel::delta::NodeTag;
-use crate::kernel::{A11yProps, NodeId, TextContent, TextCursor};
+use crate::kernel::{A11yProps, NodeId, TextContent};
 
 /// Marker of a node that paints above the tree.
 #[derive(Debug, Clone, Copy)]
@@ -32,8 +32,7 @@ pub struct Node {
     pub(crate) a11y: A11yProps,
     pub(crate) parent: Option<NodeId>,
     pub(crate) children: SmallVec<[NodeId; 4]>,
-    /// The owner.
-    pub owner: Owner,
+    pub(crate) owner: Owner,
     pub(crate) extensions: Option<Box<NodeExtensions>>,
     pub(crate) version: u32,
     tag: Option<NodeTag>,
@@ -53,12 +52,6 @@ impl Node {
         }
     }
 
-    /// Returns the text cursor of a text input node, if any.
-    #[must_use]
-    pub const fn text_cursor(&self) -> Option<TextCursor> {
-        self.a11y.text_cursor
-    }
-
     pub(crate) const fn tagged(mut self, tag: NodeTag) -> Self {
         self.tag = Some(tag);
         self
@@ -74,11 +67,13 @@ impl Node {
         self.version = self.version.wrapping_add(1);
     }
 
-    /// Returns the version.
-    #[must_use]
-    #[inline]
-    pub const fn version(&self) -> u32 {
-        self.version
+    kittest_pub! {
+        /// Returns the version.
+        #[must_use]
+        #[inline]
+        pub const fn version(&self) -> u32 {
+            self.version
+        }
     }
 
     /// Stores an extension value and returns the old value of that type.
@@ -88,7 +83,7 @@ impl Node {
     }
 
     /// Stores an extension value without marking the node changed.
-    pub fn attach_untracked<T: 'static>(&mut self, value: T) -> Option<T> {
+    pub(crate) fn attach_untracked<T: 'static>(&mut self, value: T) -> Option<T> {
         self.extensions
             .get_or_insert_with(|| Box::new(NodeExtensions::default()))
             .attach(value)
@@ -107,7 +102,7 @@ impl Node {
     }
 
     /// Returns the extension of type `T` for writing without marking the node changed.
-    pub fn get_extension_mut_untracked<T: 'static>(&mut self) -> Option<&mut T> {
+    pub(crate) fn get_extension_mut_untracked<T: 'static>(&mut self) -> Option<&mut T> {
         self.extensions.as_mut().and_then(|bag| bag.get_mut::<T>())
     }
 

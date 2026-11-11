@@ -348,15 +348,17 @@ fn mount_keyed<K: Clone + Eq + Hash>(
 }
 
 impl Cx {
-    /// Rebuilds the reactive children that changed.
-    pub fn flush_reactive_children(&mut self) {
-        loop {
-            let pending = drain_pending();
-            if pending.is_empty() {
-                return;
-            }
-            for mut rebuild in pending {
-                (rebuild.apply)(self);
+    kittest_pub! {
+        /// Rebuilds the reactive children that changed.
+        pub fn flush_reactive_children(&mut self) {
+            loop {
+                let pending = drain_pending();
+                if pending.is_empty() {
+                    return;
+                }
+                for mut rebuild in pending {
+                    (rebuild.apply)(self);
+                }
             }
         }
     }
