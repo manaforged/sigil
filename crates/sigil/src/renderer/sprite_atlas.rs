@@ -1,12 +1,10 @@
-#![allow(unreachable_pub)]
-
 const COLUMN_ROWS: u32 = 204;
 const MASK_SIDE: u32 = 128;
 const MASKS_PER_ROW: u32 = 4;
 const MASK_ROWS: u32 = 2;
 
-pub const BUILTIN_ATLAS_WIDTH: u32 = 600;
-pub const BUILTIN_ATLAS_HEIGHT: u32 = COLUMN_ROWS + MASK_SIDE * MASK_ROWS;
+pub(crate) const BUILTIN_ATLAS_WIDTH: u32 = 600;
+pub(crate) const BUILTIN_ATLAS_HEIGHT: u32 = COLUMN_ROWS + MASK_SIDE * MASK_ROWS;
 
 #[derive(Clone, Copy)]
 pub(crate) enum MaskShape {
@@ -55,7 +53,7 @@ pub(crate) const fn mask_origin(shape: MaskShape) -> (f32, f32) {
     )
 }
 
-pub fn builtin_atlas_rgba8() -> Vec<u8> {
+pub(crate) fn builtin_atlas_rgba8() -> Vec<u8> {
     let w = BUILTIN_ATLAS_WIDTH as usize;
     let h = BUILTIN_ATLAS_HEIGHT as usize;
     let mut out = vec![0u8; w * h * 4];

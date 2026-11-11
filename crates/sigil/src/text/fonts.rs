@@ -95,7 +95,7 @@ pub fn set_default_fonts(fonts: DefaultFonts) {
     }
 }
 
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+#[cfg(all(feature = "scene", any(feature = "desktop", feature = "terminal")))]
 pub(crate) fn set_fallback_fonts(faces: &[FallbackFace]) {
     if faces.is_empty() {
         return;

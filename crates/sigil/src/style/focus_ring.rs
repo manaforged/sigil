@@ -2,14 +2,16 @@ use crate::reactive::Signal;
 
 use crate::style::{ColorAtom, Metrics, Token};
 
-/// Focus ring settings on a node.
-#[derive(Clone, Debug)]
-pub struct FocusRing {
-    visible: Option<Signal<bool>>,
-    pub(crate) color: ColorAtom,
-    pub(crate) width: Option<f32>,
-    pub(crate) offset: Option<f32>,
-    pub(crate) opacity: u16,
+kittest_pub! {
+    /// Focus ring settings on a node.
+    #[derive(Clone, Debug)]
+    pub struct FocusRing {
+        visible: Option<Signal<bool>>,
+        pub(crate) color: ColorAtom,
+        pub(crate) width: Option<f32>,
+        pub(crate) offset: Option<f32>,
+        pub(crate) opacity: u16,
+    }
 }
 
 impl Default for FocusRing {
@@ -29,10 +31,12 @@ impl FocusRing {
         self.visible = Some(visible);
     }
 
-    /// Returns whether the ring is shown now.
-    #[must_use]
-    pub fn visible(&self) -> bool {
-        self.visible.is_some_and(|visible| visible.get())
+    kittest_pub! {
+        /// Returns whether the ring is shown now.
+        #[must_use]
+        pub fn visible(&self) -> bool {
+            self.visible.is_some_and(|visible| visible.get())
+        }
     }
 
     pub(crate) const fn color_atom(&self) -> ColorAtom {

@@ -28,9 +28,12 @@ pub enum MaskSize {
     Contain,
 }
 
-/// A mask style atom.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MaskAtom(pub(crate) MaskPart);
+kittest_pub! {
+    #[doc(hidden)]
+    /// A mask style atom.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct MaskAtom(pub(crate) MaskPart);
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum MaskKind {

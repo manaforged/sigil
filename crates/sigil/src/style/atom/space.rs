@@ -2,48 +2,56 @@ use std::hash::{Hash, Hasher};
 
 use crate::style::{AnimatorOverlay, NumericAtomKind};
 
-/// Whether a node's back shows when it turns away, like CSS `backface-visibility`.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum Backface {
-    /// The back shows, mirrored.
-    #[default]
-    Visible,
-    /// The node draws nothing while its back faces the viewer.
-    Hidden,
+kittest_pub! {
+    #[doc(hidden)]
+    /// Whether a node's back shows when it turns away, like CSS `backface-visibility`.
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    pub enum Backface {
+        /// The back shows, mirrored.
+        #[default]
+        Visible,
+        /// The node draws nothing while its back faces the viewer.
+        Hidden,
+    }
 }
 
-/// A 3D transform style atom.
-#[derive(Debug, Clone, Copy)]
-pub enum SpaceAtom {
-    /// A turn around the x axis in radians.
-    RotateX(f32),
-    /// A turn around the y axis in radians.
-    RotateY(f32),
-    /// A turn around the z axis in radians.
-    RotateZ(f32),
-    /// A move along the z axis in px.
-    TranslateZ(f32),
-    /// The perspective distance this node gives its children; `None` removes it.
-    Perspective(Option<f32>),
-    /// The perspective origin in ten-thousandths of the width and height.
-    PerspectiveOrigin([u16; 2]),
-    /// The backface visibility.
-    Backface(Backface),
+kittest_pub! {
+    #[doc(hidden)]
+    /// A 3D transform style atom.
+    #[derive(Debug, Clone, Copy)]
+    pub enum SpaceAtom {
+        /// A turn around the x axis in radians.
+        RotateX(f32),
+        /// A turn around the y axis in radians.
+        RotateY(f32),
+        /// A turn around the z axis in radians.
+        RotateZ(f32),
+        /// A move along the z axis in px.
+        TranslateZ(f32),
+        /// The perspective distance this node gives its children; `None` removes it.
+        Perspective(Option<f32>),
+        /// The perspective origin in ten-thousandths of the width and height.
+        PerspectiveOrigin([u16; 2]),
+        /// The backface visibility.
+        Backface(Backface),
+    }
 }
 
-/// The resolved 3D transform style of one node.
-#[derive(Debug, Clone, Copy)]
-pub struct SpaceStyle {
-    /// The x, y, and z turns in radians.
-    pub turn: [f32; 3],
-    /// The z move in px.
-    pub depth: f32,
-    /// The perspective distance this node gives its children.
-    pub perspective: Option<f32>,
-    /// The perspective origin in ten-thousandths.
-    pub perspective_origin: [u16; 2],
-    /// The backface visibility.
-    pub backface: Backface,
+kittest_pub! {
+    /// The resolved 3D transform style of one node.
+    #[derive(Debug, Clone, Copy)]
+    pub struct SpaceStyle {
+        /// The x, y, and z turns in radians.
+        pub turn: [f32; 3],
+        /// The z move in px.
+        pub depth: f32,
+        /// The perspective distance this node gives its children.
+        pub perspective: Option<f32>,
+        /// The perspective origin in ten-thousandths.
+        pub perspective_origin: [u16; 2],
+        /// The backface visibility.
+        pub backface: Backface,
+    }
 }
 
 impl SpaceStyle {

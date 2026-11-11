@@ -41,6 +41,7 @@ pub enum Side {
 }
 
 /// Builder of a modal or sheet.
+#[must_use]
 pub struct ModalBuilder {
     show: Signal<bool>,
     title: Option<TextContent>,
@@ -72,13 +73,11 @@ impl core::fmt::Debug for ModalBuilder {
 }
 
 /// A modal dialog.
-#[must_use]
 pub fn modal(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
 }
 
 /// A panel that slides in from a side.
-#[must_use]
 pub fn sheet(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
         .side(Side::Right)
@@ -87,7 +86,6 @@ pub fn sheet(show: Signal<bool>) -> ModalBuilder {
 
 impl ModalBuilder {
     /// Creates a modal builder.
-    #[must_use]
     pub fn new(show: Signal<bool>) -> Self {
         Self {
             show,
@@ -105,49 +103,42 @@ impl ModalBuilder {
     }
 
     /// Sets the side.
-    #[must_use]
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
         self
     }
 
     /// Sets the title.
-    #[must_use]
     pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
         self
     }
 
     /// Sets the show.
-    #[must_use]
     pub const fn show(mut self, show: Signal<bool>) -> Self {
         self.show = show;
         self
     }
 
     /// Sets the trap.
-    #[must_use]
     pub const fn trap(mut self, enabled: bool) -> Self {
         self.trap = enabled;
         self
     }
 
     /// Sets the escape closes.
-    #[must_use]
     pub const fn escape_closes(mut self, enabled: bool) -> Self {
         self.escape_closes = enabled;
         self
     }
 
     /// Sets the dismiss on backdrop.
-    #[must_use]
     pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
         self.dismiss_on_backdrop = enabled;
         self
     }
 
     /// Sets the close button.
-    #[must_use]
     pub const fn close_button(mut self, enabled: bool) -> Self {
         self.close_button = if enabled {
             CloseControl::Shown
@@ -158,21 +149,18 @@ impl ModalBuilder {
     }
 
     /// Adds a child.
-    #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.children.push(Box::new(child));
         self
     }
 
     /// Sets the footer.
-    #[must_use]
     pub fn footer(mut self, action: impl IntoNode + 'static) -> Self {
         self.actions.push(Box::new(action));
         self
     }
 
     /// Sets the actions.
-    #[must_use]
     pub fn actions(
         self,
         cancel: impl IntoNode + 'static,

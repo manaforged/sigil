@@ -8,11 +8,13 @@ use crate::reactive::{Owner, on_cleanup};
 const CAPACITY: usize = 256;
 const KEEP_RECENT: u64 = 128;
 
-/// Names one keyframe animation in the shared store, so a style atom stays `Copy`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct KeyframesId {
-    slot: u32,
-    generation: u32,
+kittest_pub! {
+    /// Names one keyframe animation in the shared store, so a style atom stays `Copy`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct KeyframesId {
+        slot: u32,
+        generation: u32,
+    }
 }
 
 struct Slot {

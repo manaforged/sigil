@@ -8,6 +8,7 @@ use crate::scene::canvas::{CanvasPaint, Recorder};
 use crate::style::Theme;
 
 /// Builds a canvas that paints with a closure.
+#[must_use]
 pub struct CanvasBuilder {
     record: Recorder,
     version: Option<Signal<u64>>,
@@ -24,7 +25,6 @@ impl core::fmt::Debug for CanvasBuilder {
 }
 
 /// Creates a canvas widget.
-#[must_use]
 pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder {
     CanvasBuilder {
         record: Rc::new(move |scene: &mut SceneBuilder, rect: Rect, _: &Theme| record(scene, rect)),
@@ -35,7 +35,6 @@ pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuild
 
 impl CanvasBuilder {
     /// Sets the redraw on.
-    #[must_use]
     pub const fn redraw_on(mut self, version: Signal<u64>) -> Self {
         self.version = Some(version);
         self

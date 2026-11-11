@@ -53,6 +53,7 @@ impl Default for WgpuRenderer {
 }
 
 impl WgpuRenderer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: DeviceState::new(),
@@ -112,10 +113,12 @@ impl WgpuRenderer {
         self.state.ready().ok().map(ReadyState::backend_status)
     }
 
+    #[cfg(feature = "desktop")]
     pub(crate) const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub(crate) const fn is_transparent(&self) -> bool {
         self.transparent

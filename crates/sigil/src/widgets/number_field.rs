@@ -21,6 +21,7 @@ pub trait NumericKind: Copy + PartialOrd + 'static + private::Sealed {
 }
 
 mod private {
+    #[allow(unnameable_types, reason = "sealed")]
     pub trait Sealed {}
     impl Sealed for i32 {}
     impl Sealed for i64 {}
@@ -73,27 +74,25 @@ impl<T: NumericKind> FieldParser for NumberParser<T> {
 
 /// Builder of a numeric input.
 #[derive(Debug)]
+#[must_use]
 pub struct NumberFieldBuilder<T: NumericKind> {
     field: ParsedField<NumberParser<T>>,
 }
 
 impl<T: NumericKind> NumberFieldBuilder<T> {
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.field = self.field.disabled(disabled);
         self
     }
 
     /// Sets the invalid when.
-    #[must_use]
     pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
         self.field = self.field.invalid_when(invalid);
         self
     }
 
     /// Returns the text field.
-    #[must_use]
     pub fn text_field(self) -> TextFieldBuilder {
         self.field.text_field()
     }
@@ -106,7 +105,6 @@ impl<T: NumericKind> IntoNode for NumberFieldBuilder<T> {
 }
 
 /// A numeric input.
-#[must_use]
 pub fn number_field<T: NumericKind>(
     value: Signal<T>,
     range: RangeInclusive<T>,

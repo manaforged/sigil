@@ -9,11 +9,7 @@
     )
 )]
 #![doc = include_str!("../docs/overview.md")]
-#![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
-#![cfg_attr(
-    not(feature = "kittest"),
-    allow(unreachable_pub, reason = "items hidden behind kittest stay pub")
-)]
+#![allow(clippy::wildcard_imports)]
 
 extern crate alloc;
 
@@ -50,7 +46,7 @@ macro_rules! kittest_pub {
 #[doc(hidden)]
 pub mod a11y;
 #[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod a11y;
 /// Tweens, springs, and animators.
 pub mod animation;
@@ -67,7 +63,7 @@ pub mod geometry;
 #[doc(hidden)]
 pub mod hal;
 #[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod hal;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) mod hud;
@@ -78,13 +74,13 @@ pub mod icons;
 #[doc(hidden)]
 pub mod kernel;
 #[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod kernel;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub mod layout;
 #[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod layout;
 /// Frame timing, counters, and profile output.
 pub mod profile;
@@ -94,7 +90,7 @@ pub mod reactive;
 #[doc(hidden)]
 pub mod renderer;
 #[cfg(all(feature = "scene", not(feature = "kittest")))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod renderer;
 /// The drawing commands a frame produces.
 pub mod scene;
@@ -102,7 +98,7 @@ pub mod scene;
 #[doc(hidden)]
 pub mod shell;
 #[cfg(all(feature = "desktop", not(feature = "kittest")))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod shell;
 /// Tokens, themes, colors, and style values.
 pub mod style;
@@ -115,7 +111,7 @@ pub mod terminal;
 #[doc(hidden)]
 pub mod text;
 #[cfg(all(feature = "scene", not(feature = "kittest")))]
-#[allow(unused_imports, reason = "public only under kittest")]
+#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod text;
 /// The widget catalog.
 mod view;
@@ -126,6 +122,7 @@ pub use crate::app::embed::Host;
 pub use crate::app::exit::request_exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
+pub use crate::layout::IntoPx;
 pub use crate::view::View;
 
 /// Run the app component on the host that `config` selects.
@@ -203,10 +200,12 @@ pub mod prelude {
     pub use crate::geometry::{Point, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
+    #[doc(hidden)]
+    pub use crate::kernel::NodePatch;
     pub use crate::kernel::{
-        Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder, ObjectFit, Role,
-        TextBuilder, TextContent, TextCursor, container, for_each, fragment, image, node, show,
-        switch, text,
+        AccessibleName, Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder,
+        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each,
+        fragment, image, node, show, switch, text,
     };
     pub use crate::layout::audit::Flaw;
     kittest_pub! {
@@ -218,8 +217,8 @@ pub mod prelude {
         pub use crate::widgets::Layout;
     }
     pub use crate::layout::{
-        AlignItems, FlexWrap, JustifyContent, Length, Overflow, Position, Space, TrackSize, cols,
-        column, em, grid, row, rows,
+        AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, Space,
+        TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]

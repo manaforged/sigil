@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::geometry::{Point, Rect};
 
-use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding};
+use super::{AnimatorOverlay, NumericAtomKind, StyleBinding};
 
 const SHIFT_UNITS: f32 = 2_048.0;
 
@@ -16,14 +16,17 @@ fn shift_units(fraction: f32) -> i16 {
         .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
 }
 
-/// Holds a 2D translation, scale, and rotation for a node.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Transform2D {
-    translation: [f32; 2],
-    shift: [i16; 2],
-    scale: [f32; 2],
-    rotation: f32,
-    origin: [u16; 2],
+kittest_pub! {
+    #[doc(hidden)]
+    /// Holds a 2D translation, scale, and rotation for a node.
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Transform2D {
+        translation: [f32; 2],
+        shift: [i16; 2],
+        scale: [f32; 2],
+        rotation: f32,
+        origin: [u16; 2],
+    }
 }
 
 impl Eq for Transform2D {}
@@ -50,40 +53,54 @@ impl Default for Transform2D {
 }
 
 impl Transform2D {
-    /// The transform that changes nothing.
-    pub const IDENTITY: Self = Self {
-        translation: [0.0, 0.0],
-        shift: [0, 0],
-        scale: [1.0, 1.0],
-        rotation: 0.0,
-        origin: [5_000, 5_000],
-    };
-
-    /// Adds a translation.
-    #[must_use]
-    pub fn translate(mut self, x: f32, y: f32) -> Self {
-        assert!(x.is_finite() && y.is_finite());
-        self.translation = [x, y];
-        self
+    kittest_pub! {
+        #[doc(hidden)]
+        /// The transform that changes nothing.
+        pub const IDENTITY: Self = Self {
+            translation: [0.0, 0.0],
+            shift: [0, 0],
+            scale: [1.0, 1.0],
+            rotation: 0.0,
+            origin: [5_000, 5_000],
+        };
     }
 
-    /// Adds a scale.
-    #[must_use]
-    pub fn scale(mut self, x: f32, y: f32) -> Self {
-        assert!(x.is_finite() && y.is_finite());
-        self.scale = [x, y];
-        self
+    kittest_pub! {
+        #[doc(hidden)]
+        /// Adds a translation.
+        #[must_use]
+        pub fn translate(mut self, x: f32, y: f32) -> Self {
+            assert!(x.is_finite() && y.is_finite());
+            self.translation = [x, y];
+            self
+        }
     }
 
-    /// Adds a rotation.
-    #[must_use]
-    pub fn rotate(mut self, radians: f32) -> Self {
-        assert!(radians.is_finite());
-        self.rotation = radians;
-        self
+    kittest_pub! {
+        #[doc(hidden)]
+        /// Adds a scale.
+        #[must_use]
+        pub fn scale(mut self, x: f32, y: f32) -> Self {
+            assert!(x.is_finite() && y.is_finite());
+            self.scale = [x, y];
+            self
+        }
+    }
+
+    kittest_pub! {
+        #[doc(hidden)]
+        /// Adds a rotation.
+        #[must_use]
+        pub fn rotate(mut self, radians: f32) -> Self {
+            assert!(radians.is_finite());
+            self.rotation = radians;
+            self
+        }
     }
 
     /// Sets the point the transform turns around.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     #[must_use]
     #[expect(
         clippy::cast_possible_truncation,
@@ -168,12 +185,16 @@ impl Transform2D {
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
-        let mut transform = Self::IDENTITY;
-        for atom in binding.cascade() {
-            if let StyleAtom::Transform(value) = atom {
-                transform = value;
+        #[cfg(any(test, feature = "kittest"))]
+        let transform = binding.cascade().fold(Self::IDENTITY, |transform, atom| {
+            if let super::StyleAtom::Transform(value) = atom {
+                value
+            } else {
+                transform
             }
-        }
+        });
+        #[cfg(not(any(test, feature = "kittest")))]
+        let transform = Self::IDENTITY;
         binding
             .animator_overlay()
             .map_or(transform, |overlay| transform.overlay(overlay))

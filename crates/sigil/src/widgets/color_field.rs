@@ -7,15 +7,13 @@ use crate::layout::{AlignItems, LayoutStyle, Length, cols};
 use crate::reactive::Reactive;
 use crate::reactive::Signal;
 use crate::style::locale::Locale;
-use crate::style::{
-    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StateSlot, StyleAtom, Token,
-};
+use crate::style::{BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Token};
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Edit, Layout, Sealed, StateTarget, Widget};
-use smallvec::SmallVec;
+use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
 #[derive(Debug)]
+#[must_use]
 pub struct ColorFieldBuilder {
     value: Signal<Color>,
     field: ParsedField<HexParser>,
@@ -24,7 +22,6 @@ pub struct ColorFieldBuilder {
 }
 
 /// A color input.
-#[must_use]
 pub fn color_field(value: Signal<Color>) -> ColorFieldBuilder {
     ColorFieldBuilder {
         value,
@@ -36,7 +33,6 @@ pub fn color_field(value: Signal<Color>) -> ColorFieldBuilder {
 
 impl ColorFieldBuilder {
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         let disabled = disabled.into_signal();
         self.field = self.field.disabled(disabled);
@@ -45,7 +41,6 @@ impl ColorFieldBuilder {
     }
 
     /// Sets the invalid when.
-    #[must_use]
     pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
         self.field = self.field.invalid_when(invalid);
         self
@@ -71,10 +66,10 @@ impl ColorFieldBuilder {
 }
 
 impl Sealed for ColorFieldBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         match edit {
             Edit::Layout(edit) => self.layout_overrides.edit(edit),
-            focus => self.field = self.field.map(move |field| field.edit(focus)),
+            focus => self.field = self.field.map(move |field| field.edit(NodeEdit(focus))),
         }
         self
     }
@@ -86,8 +81,8 @@ impl Sealed for ColorFieldBuilder {
 }
 
 impl StateTarget for ColorFieldBuilder {
-    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-        self.field = self.field.map(move |field| field.set_state(slot, atoms));
+    fn set_state(mut self, state: StatePaint) -> Self {
+        self.field = self.field.map(move |field| field.set_state(state));
         self
     }
 }

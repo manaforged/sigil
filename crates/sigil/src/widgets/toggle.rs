@@ -22,6 +22,7 @@ use super::shared::{
 };
 
 /// Builder of a switch.
+#[must_use]
 pub struct ToggleBuilder {
     on: Signal<bool>,
     label: Option<TextContent>,
@@ -88,14 +89,12 @@ static CELL_ON: &[StyleAtom] = &[Token::Accent.text()];
 static CELL_OFF: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
 /// An on/off switch.
-#[must_use]
 pub fn toggle(on: Signal<bool>) -> ToggleBuilder {
     ToggleBuilder::new(on)
 }
 
 impl ToggleBuilder {
     /// Creates a toggle builder.
-    #[must_use]
     pub fn new(on: Signal<bool>) -> Self {
         Self {
             on,
@@ -109,28 +108,24 @@ impl ToggleBuilder {
     }
 
     /// Sets the accessible.
-    #[must_use]
     pub fn accessible(mut self, name: impl Into<String>) -> Self {
         self.accessible = Some(name.into());
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self

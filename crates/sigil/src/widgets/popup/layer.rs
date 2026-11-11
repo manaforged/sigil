@@ -173,6 +173,10 @@ fn register_escape(show: Signal<bool>) {
 }
 
 /// Closes the topmost open popup; false when none is open.
+#[allow(
+    clippy::must_use_candidate,
+    reason = "closes the top popup; the result is optional"
+)]
 pub fn close_top_escape() -> bool {
     ESCAPE_LAYERS.with(|stack| {
         let top = stack

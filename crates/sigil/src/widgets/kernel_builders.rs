@@ -1,11 +1,8 @@
-use smallvec::SmallVec;
-
 use crate::kernel::{ImageBuilder, NodeBuilder, TextBuilder};
-use crate::style::{StateSlot, StyleAtom};
-use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use crate::widgets::{NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
 impl Sealed for TextBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         self.node = edit.apply(self.node);
         self
     }
@@ -16,8 +13,8 @@ impl Sealed for TextBuilder {
 }
 
 impl StateTarget for TextBuilder {
-    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-        self.node = self.node.set_state(slot, atoms);
+    fn set_state(mut self, state: StatePaint) -> Self {
+        self.node = self.node.set_state(state);
         self
     }
 }
@@ -31,7 +28,7 @@ impl Widget for TextBuilder {
 }
 
 impl Sealed for ImageBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         self.node = edit.apply(self.node);
         self
     }

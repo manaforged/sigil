@@ -6,12 +6,14 @@
 )]
 
 use crate::geometry::Rect;
+#[cfg(any(test, feature = "kittest"))]
 use crate::style::Color;
 use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, SpreadMode, Transform};
 
 use crate::renderer::scene_command::PatternKind;
 
 use super::bound::{CpuBound, corners, extent};
+#[cfg(any(test, feature = "kittest"))]
 use super::shapes::rgba_table;
 
 pub(super) struct PatternPlacement {
@@ -32,7 +34,7 @@ pub(super) fn shader<'a>(
     let inverse = place.transform.invert()?;
     let pixmap = scratch(slot, x1 - x0, y1 - y0)?;
     let field = Field::of(place, inverse);
-    paint_field(pixmap, &field, inverse, [x0, y0]);
+    paint_field(pixmap, &field, [x0, y0]);
     let pixmap: &'a Pixmap = pixmap;
     Some(Pattern::new(
         pixmap.as_ref(),
@@ -67,7 +69,7 @@ fn scratch(slot: &mut Option<Pixmap>, width: u32, height: u32) -> Option<&mut Pi
     slot.as_mut()
 }
 
-fn paint_field(pixmap: &mut Pixmap, field: &Field, inverse: Transform, [x0, y0]: [u32; 2]) {
+fn paint_field(pixmap: &mut Pixmap, field: &Field, [x0, y0]: [u32; 2]) {
     let row = pixmap.width() as usize;
     let (pixels, _) = pixmap.data_mut().as_chunks_mut::<4>();
     for (index, pixel) in pixels.iter_mut().enumerate() {
@@ -75,17 +77,19 @@ fn paint_field(pixmap: &mut Pixmap, field: &Field, inverse: Transform, [x0, y0]:
             (x0 as usize + index % row) as f32 + 0.5,
             (y0 as usize + index / row) as f32 + 0.5,
         );
-        inverse.map_point(&mut p);
+        field.inverse.map_point(&mut p);
         *pixel = field.sample(p);
     }
 }
 
 enum Look {
+    #[cfg(any(test, feature = "kittest"))]
     Checker {
         a: [u8; 4],
         b: [u8; 4],
         cell: f64,
     },
+    #[cfg(any(test, feature = "kittest"))]
     Slash {
         table: Box<[[u8; 4]; 256]>,
         period: f64,
@@ -97,6 +101,7 @@ enum Look {
 
 struct Field {
     look: Look,
+    inverse: Transform,
     origin: [f64; 2],
     tile: f64,
 }
@@ -105,6 +110,7 @@ impl Field {
     fn of(place: &PatternPlacement, inverse: Transform) -> Self {
         let kind = place.kind.normalized();
         let look = match kind {
+            #[cfg(any(test, feature = "kittest"))]
             PatternKind::Checker {
                 color_a,
                 color_b,
@@ -114,6 +120,7 @@ impl Field {
                 b: full(color_b),
                 cell: f64::from(cell),
             },
+            #[cfg(any(test, feature = "kittest"))]
             PatternKind::Slash {
                 color,
                 period,
@@ -131,6 +138,7 @@ impl Field {
         };
         Self {
             look,
+            inverse,
             origin: [
                 f64::from(place.rect.origin.x),
                 f64::from(place.rect.origin.y),
@@ -144,10 +152,12 @@ impl Field {
         let u = (f64::from(p.x) - ox).rem_euclid(self.tile);
         let v = (f64::from(p.y) - oy).rem_euclid(self.tile);
         match &self.look {
+            #[cfg(any(test, feature = "kittest"))]
             Look::Checker { a, b, cell } => {
                 let parity = ((u / cell).floor() + (v / cell).floor()).rem_euclid(2.0);
                 if parity < 1.0 { *a } else { *b }
             }
+            #[cfg(any(test, feature = "kittest"))]
             Look::Slash {
                 table,
                 period,
@@ -163,6 +173,7 @@ impl Field {
     }
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn slash_mask(diagonal: f64, period: f64, line: f64, aa: f64) -> f64 {
     if line <= 0.0 {
         return 0.0;
@@ -176,6 +187,7 @@ fn slash_mask(diagonal: f64, period: f64, line: f64, aa: f64) -> f64 {
     1.0 - smoothstep(-aa, aa, edge)
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     if hi <= lo {
         return if x < lo { 0.0 } else { 1.0 };
@@ -184,6 +196,7 @@ fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     t * t * 2.0f64.mul_add(-t, 3.0)
 }
 
+#[cfg(any(test, feature = "kittest"))]
 fn full(color: Color) -> [u8; 4] {
     rgba_table(color, 1.0).last().copied().unwrap_or_default()
 }

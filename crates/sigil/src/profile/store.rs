@@ -16,7 +16,9 @@ use crate::profile::site::Site;
 
 mod frame;
 
-pub use frame::Frame;
+kittest_pub! {
+    pub use frame::Frame;
+}
 
 const MAX_EVENTS: usize = 65_536;
 const MAX_FRAMES: usize = 4_096;

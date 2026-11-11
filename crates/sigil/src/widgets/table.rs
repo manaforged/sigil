@@ -20,4 +20,4 @@ pub use columns::{ColumnAlign, ColumnWidth, TableColumn};
 pub use density::Density;
 pub use identity::Identifiable;
 pub use state::{SortKey, TableState};
-pub use view::table;
+pub use view::{TableBuilder, table};

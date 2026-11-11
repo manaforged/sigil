@@ -1,5 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
-
 use bytemuck::{Pod, Zeroable};
 use std::collections::HashMap;
 

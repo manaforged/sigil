@@ -10,6 +10,7 @@ use super::shared::caller_style;
 
 /// Builder of a status dot.
 #[derive(Debug)]
+#[must_use]
 pub struct DotBuilder {
     tone: Tone,
     size: ControlSize,
@@ -18,14 +19,12 @@ pub struct DotBuilder {
 }
 
 /// A status dot.
-#[must_use]
 pub fn dot(tone: Tone) -> DotBuilder {
     DotBuilder::new(tone)
 }
 
 impl DotBuilder {
     /// Creates a dot builder.
-    #[must_use]
     pub fn new(tone: Tone) -> Self {
         Self {
             tone,
@@ -36,7 +35,6 @@ impl DotBuilder {
     }
 
     /// Sets the size.
-    #[must_use]
     pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self

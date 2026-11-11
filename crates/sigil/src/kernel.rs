@@ -25,6 +25,8 @@ mod top_layer;
 pub use access::{Action, Live, Role, SortDirection};
 pub use announce::announce;
 pub use builder::{NodeBuilder, container, fragment};
+#[doc(hidden)]
+pub use component::NodePatch;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use component::WithCx;
 #[cfg(feature = "kittest")]

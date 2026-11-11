@@ -24,27 +24,27 @@ const CACHE: usize = 16;
 
 /// An image placed on the cell grid.
 #[derive(Clone, Debug)]
-pub struct Placement {
+pub(crate) struct Placement {
     /// The col.
-    pub col: u16,
+    pub(crate) col: u16,
     /// The row.
-    pub row: u16,
+    pub(crate) row: u16,
     /// The cols.
-    pub cols: u16,
+    pub(crate) cols: u16,
     /// The rows.
-    pub rows: u16,
+    pub(crate) rows: u16,
     /// The mark col.
-    pub mark_col: u16,
+    pub(crate) mark_col: u16,
     /// The mark row.
-    pub mark_row: u16,
+    pub(crate) mark_row: u16,
     /// The span cols.
-    pub span_cols: u16,
+    pub(crate) span_cols: u16,
     /// The span rows.
-    pub span_rows: u16,
+    pub(crate) span_rows: u16,
     /// The source.
-    pub source: ImageSource,
+    pub(crate) source: ImageSource,
     /// The crop, if any.
-    pub crop: Option<(u32, u32)>,
+    pub(crate) crop: Option<(u32, u32)>,
 }
 
 impl PartialEq for Placement {
@@ -94,7 +94,7 @@ impl Same {
 impl Placement {
     /// Returns whether the two placements show the same image in the same place.
     #[must_use]
-    pub fn same(&self, other: &Self) -> bool {
+    pub(crate) fn same(&self, other: &Self) -> bool {
         self.col == other.col && self.row == other.row && self.anchored(other)
     }
 

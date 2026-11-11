@@ -1,6 +1,6 @@
 use super::StateStyleBuilder;
 use crate::style::StateSlot;
-use crate::widgets::{StateTarget, Widget};
+use crate::widgets::{StatePaint, StateTarget, Widget};
 
 /// Paint per interaction state, on builders that track hover, focus, press, and disabled.
 pub trait States: Widget + StateTarget {
@@ -57,5 +57,8 @@ where
     W: StateTarget,
     F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
 {
-    widget.set_state(slot, configure(StateStyleBuilder::new()).into_atoms())
+    widget.set_state(StatePaint {
+        slot,
+        atoms: configure(StateStyleBuilder::new()).into_atoms(),
+    })
 }

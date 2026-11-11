@@ -27,15 +27,17 @@ pub fn clock() -> Signal<f64> {
     seconds
 }
 
-#[must_use]
-pub fn running_clocks() -> usize {
-    with_sources(|sources| {
-        sources
-            .map
-            .values()
-            .filter(|source| matches!(source, FrameSource::Clock(_)))
-            .count()
-    }) + crate::animation::runtime::state::perpetual_count()
+kittest_pub! {
+    #[must_use]
+    pub fn running_clocks() -> usize {
+        with_sources(|sources| {
+            sources
+                .map
+                .values()
+                .filter(|source| matches!(source, FrameSource::Clock(_)))
+                .count()
+        }) + crate::animation::runtime::state::perpetual_count()
+    }
 }
 
 pub(crate) fn tick_clocks(dt: f32) {

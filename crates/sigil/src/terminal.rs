@@ -29,11 +29,11 @@ mod write;
 
 pub use access::{Access, FocusCursor};
 pub use backdrop::backdrop;
-pub use caps::{Backdrop, Borders, Capabilities, ColorDepth, Cursor, Fills, Keyboard, Notify};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use glyphs::Glyphs;
-}
+pub use caps::{
+    Backdrop, Borders, Capabilities, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard,
+    Notices, Notify,
+};
+pub use glyphs::Glyphs;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use glyphs::glyphs;

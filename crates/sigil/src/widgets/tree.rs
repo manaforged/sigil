@@ -101,6 +101,7 @@ type ActivateKey<K> = Rc<dyn Fn(&K)>;
 type NodesFn<K> = Box<dyn Fn() -> Vec<TreeNode<K>>>;
 
 /// Builder of a `tree`.
+#[must_use]
 pub struct TreeBuilder<K: Clone + Eq + Hash + 'static> {
     nodes: NodesFn<K>,
     expanded: Option<Signal<Vec<K>>>,
@@ -124,7 +125,6 @@ impl<K: Clone + Eq + Hash + 'static> core::fmt::Debug for TreeBuilder<K> {
 }
 
 /// A tree view for explorers, outlines, and settings.
-#[must_use]
 pub fn tree<K: Clone + Eq + Hash + 'static>(
     nodes: impl Reactive<Vec<TreeNode<K>>>,
 ) -> TreeBuilder<K> {
@@ -141,35 +141,30 @@ pub fn tree<K: Clone + Eq + Hash + 'static>(
 
 impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
     /// Sets the expanded.
-    #[must_use]
     pub const fn expanded(mut self, expanded: Signal<Vec<K>>) -> Self {
         self.expanded = Some(expanded);
         self
     }
 
     /// Sets the selected.
-    #[must_use]
     pub const fn selected(mut self, selected: Signal<Option<K>>) -> Self {
         self.selected = Some(selected);
         self
     }
 
     /// Sets the activate.
-    #[must_use]
     pub fn activate(mut self, activate: impl Fn(&K) + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
     /// Sets the indent.
-    #[must_use]
     pub const fn indent(mut self, cols: f32) -> Self {
         self.indent = Some(cols);
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self

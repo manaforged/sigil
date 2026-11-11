@@ -1,12 +1,18 @@
 use std::fmt;
 
 macro_rules! named {
-    ($(#[$attr:meta])* $vis:vis $ty:ident { $($(#[$vattr:meta])* $variant:ident => $name:literal),+ $(,)? }) => {
+    ($(#[$attr:meta])* kittest $ty:ident $body:tt) => {
+        #[cfg(feature = "kittest")]
+        named!($(#[$attr])* pub $ty $body);
+        #[cfg(not(feature = "kittest"))]
+        named!($(#[$attr])* pub(crate) $ty $body);
+    };
+    ($(#[$attr:meta])* $vis:vis $ty:ident { $($(#[$vattr:meta])* $variant:ident $(if $cond:meta)? => $name:literal),+ $(,)? }) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         $(#[$attr])*
         #[non_exhaustive]
         $vis enum $ty {
-            $($(#[$vattr])* #[doc = concat!("The `", $name, "` ", stringify!($ty), ".")] $variant),+
+            $($(#[$vattr])* $(#[cfg($cond)])? #[doc = concat!("The `", $name, "` ", stringify!($ty), ".")] $variant),+
         }
 
         impl $ty {
@@ -14,7 +20,7 @@ macro_rules! named {
             #[must_use]
             $vis const fn name(self) -> &'static str {
                 match self {
-                    $(Self::$variant => $name),+
+                    $($(#[cfg($cond)])? Self::$variant => $name),+
                 }
             }
         }
@@ -245,15 +251,14 @@ named!(
 
 named!(
     /// A cost that the profile attributes to a subject.
-    pub Hotspot {
+    kittest Hotspot {
     LayoutDirtyKernel => "layout.dirty.kernel",
     LayoutDirtySeed => "layout.dirty.seed",
     LayoutResized => "layout.resized",
     LayoutRoot => "layout.root",
     EmitResolved => "emit.resolved",
-    GpuLayer => "gpu.layer",
-    GpuFullRepaint => "gpu.full_repaint",
-    RowRebuild => "widget.row_rebuild",
+    GpuLayer if feature = "scene" => "gpu.layer",
+    GpuFullRepaint if feature = "scene" => "gpu.full_repaint",
 });
 
 impl Hotspot {
@@ -261,6 +266,7 @@ impl Hotspot {
     #[must_use]
     pub(crate) const fn unit(self) -> &'static str {
         match self {
+            #[cfg(feature = "scene")]
             Self::GpuLayer => " px",
             _ => "",
         }
@@ -269,7 +275,7 @@ impl Hotspot {
 
 named!(
     /// What a timed source line was doing.
-    pub SiteKind {
+    kittest SiteKind {
     Effect => "effect",
     Mount => "mount",
     Message => "message",

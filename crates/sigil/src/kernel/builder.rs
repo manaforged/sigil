@@ -3,7 +3,7 @@ use crate::kernel::{Action, Role, SortDirection};
 use crate::reactive::Signal;
 use smallvec::SmallVec;
 
-use crate::kernel::component::{ErasedComponent, IntoNode, Patch};
+use crate::kernel::component::{ErasedComponent, IntoNode, NodePatch};
 use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
@@ -383,7 +383,7 @@ impl IntoNode for NodeBuilder {
         this.finish(cx, id)
     }
 
-    fn patch(self, cx: &mut Cx, existing: NodeId) -> Patch<Self> {
+    fn patch(self, cx: &mut Cx, existing: NodeId) -> NodePatch<Self> {
         self.patch_onto(cx, existing)
     }
 }

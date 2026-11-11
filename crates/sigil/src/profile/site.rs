@@ -5,19 +5,21 @@ use web_time::Instant;
 use crate::profile::key::SiteKind;
 use crate::profile::store;
 
-/// The time one source line spent in a frame.
-#[derive(Clone, Copy, Debug)]
-pub struct Site {
-    /// The line that created the effect or child list.
-    pub location: &'static Location<'static>,
-    /// The kind.
-    pub kind: SiteKind,
-    /// The time spent in this site, minus nested sites.
-    pub self_ns: u64,
-    /// The time spent in this site, with nested sites.
-    pub total_ns: u64,
-    /// The runs.
-    pub runs: u32,
+kittest_pub! {
+    /// The time one source line spent in a frame.
+    #[derive(Clone, Copy, Debug)]
+    pub struct Site {
+        /// The line that created the effect or child list.
+        pub location: &'static Location<'static>,
+        /// The kind.
+        pub kind: SiteKind,
+        /// The time spent in this site, minus nested sites.
+        pub self_ns: u64,
+        /// The time spent in this site, with nested sites.
+        pub total_ns: u64,
+        /// The runs.
+        pub runs: u32,
+    }
 }
 
 /// Times one run of a site from creation until drop.

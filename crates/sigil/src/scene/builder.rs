@@ -6,10 +6,12 @@ use crate::scene::command::{DrawPattern, PatternKind, Wash};
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
 
+#[cfg(any(test, feature = "kittest"))]
+use crate::scene::command::Transform;
 use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
     CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
-    SceneCommand, Transform,
+    SceneCommand,
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
@@ -23,12 +25,15 @@ pub struct SceneBuilder {
 }
 
 impl SceneBuilder {
+    kittest_pub! {
     /// Creates a scene builder.
+    #[doc(hidden)]
     #[must_use]
     pub const fn new() -> Self {
         Self {
             commands: Vec::new(),
         }
+    }
     }
 
     /// Fills `rect` with a watercolour wash.
@@ -137,7 +142,9 @@ impl SceneBuilder {
             .push(SceneCommand::GlyphRun(run.with_node(node)));
     }
 
+    kittest_pub! {
     /// Draws `shadow` behind `run` like CSS `text-shadow`, with `shadow.blur` as the standard deviation; draw a run's shadows last to first, then the run.
+    #[doc(hidden)]
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -171,20 +178,28 @@ impl SceneBuilder {
             },
         );
     }
+    }
 
+    kittest_pub! {
     /// Clips the commands that `body` appends to `clip`.
+    #[doc(hidden)]
     pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
         let open = SceneCommand::PushClip(clip.into());
         self.with_scope(open, SceneCommand::PopClip, body);
     }
+    }
 
+    #[cfg(any(test, feature = "kittest"))]
     /// Draw `body` under `transform`.
+    #[doc(hidden)]
     pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
         let open = SceneCommand::PushTransform(transform);
         self.with_scope(open, SceneCommand::PopTransform, body);
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     /// Draw `body` into a layer composited at `opacity`.
+    #[doc(hidden)]
     pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
         let open = SceneCommand::SaveLayer { opacity };
         self.with_scope(open, SceneCommand::RestoreLayer, body);
@@ -213,10 +228,13 @@ impl SceneBuilder {
         }
     }
 
+    kittest_pub! {
     /// Returns the finish.
+    #[doc(hidden)]
     #[must_use]
     pub fn finish(self) -> CommandScene {
         CommandScene::new(self.commands)
+    }
     }
 
     pub(crate) const fn command_len(&self) -> usize {
@@ -243,6 +261,7 @@ impl SceneBuilder {
     }
 }
 
+#[cfg(feature = "kittest")]
 impl Default for SceneBuilder {
     fn default() -> Self {
         Self::new()

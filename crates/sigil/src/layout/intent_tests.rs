@@ -1,6 +1,5 @@
 use super::*;
-use crate::layout::Space;
-use crate::layout::style_data::{Axes, Display, Edges, FlexDirection, Length, Overflow};
+use crate::layout::style_data::{Axes, Edges, Length, Overflow};
 use crate::layout::{cols, em, rows};
 
 #[test]
@@ -12,22 +11,6 @@ fn text_lengths_are_dimension() {
     assert_eq!(style.data().padding.top, Length::Percent(1.0));
     let auto = LayoutStyle::block().padding(Length::Auto);
     assert_eq!(auto.data().padding.top, Length::Auto);
-}
-
-#[test]
-fn pane_sugar_matches_manual_chain() {
-    let sugared = LayoutStyle::pane(320.0, 200.0);
-    let manual = LayoutStyle::flex_column()
-        .fixed_size(320.0, 200.0)
-        .gap(Space::Xs);
-    let d = sugared.data();
-    assert_eq!(d, manual.data());
-    assert_eq!(
-        (d.display, d.flex_direction),
-        (Display::Flex, FlexDirection::Column)
-    );
-    assert_eq!(d.size, Axes::new(Length::Px(320.0), Length::Px(200.0)));
-    assert_eq!(d.gap, Axes::splat(Length::Px(4.0)));
 }
 
 #[test]

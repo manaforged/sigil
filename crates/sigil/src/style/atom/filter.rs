@@ -41,9 +41,12 @@ pub(crate) fn shadow_color(shadow: Shadow) -> Color {
     }
 }
 
-/// A filter or text shadow style atom.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FilterAtom(pub(crate) FilterPart);
+kittest_pub! {
+    #[doc(hidden)]
+    /// A filter or text shadow style atom.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct FilterAtom(pub(crate) FilterPart);
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct ShadowSpec {

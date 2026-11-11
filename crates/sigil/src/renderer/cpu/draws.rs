@@ -9,11 +9,12 @@
 use crate::geometry::{Point, Rect};
 use tiny_skia::{ColorSpace, Paint, Path, Pixmap, Shader};
 
+#[cfg(any(test, feature = "kittest"))]
+use crate::renderer::scene_command::DrawSprite;
 use crate::renderer::scene_command::state::shadow_reach;
 use crate::renderer::scene_command::walk::{intersect_rect, transform_rect};
 use crate::renderer::scene_command::{
-    DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun, Stroke,
-    StrokeBand,
+    DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, GlyphRun, Stroke, StrokeBand,
 };
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
@@ -94,6 +95,7 @@ impl CpuPainter<'_> {
         transform_rect(self.state.current_transform(), rect)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) fn sprite(&mut self, draw: &DrawSprite) {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         let bounds = self.placed(draw.destination);

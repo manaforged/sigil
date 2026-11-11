@@ -134,7 +134,13 @@ impl StyleBinding {
                 .static_atoms
                 .iter()
                 .chain(&self.dynamic_atoms)
-                .any(|atom| matches!(atom, StyleAtom::Transform(_) | StyleAtom::Space(_)))
+                .any(|atom| {
+                    #[cfg(any(test, feature = "kittest"))]
+                    if matches!(atom, StyleAtom::Transform(_)) {
+                        return true;
+                    }
+                    matches!(atom, StyleAtom::Space(_))
+                })
     }
 
     pub(crate) fn has_transition(&self) -> bool {

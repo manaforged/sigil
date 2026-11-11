@@ -85,6 +85,7 @@ impl MenuItem {
 
 /// Builder of a popup menu.
 #[derive(Debug)]
+#[must_use]
 pub struct MenuBuilder {
     open: Signal<bool>,
     host: Option<Owner>,
@@ -96,14 +97,12 @@ pub struct MenuBuilder {
 }
 
 /// A popup menu.
-#[must_use]
 pub fn menu(open: Signal<bool>) -> MenuBuilder {
     MenuBuilder::new(open)
 }
 
 impl MenuBuilder {
     /// Creates a menu builder.
-    #[must_use]
     pub fn new(open: Signal<bool>) -> Self {
         Self {
             open,
@@ -117,35 +116,30 @@ impl MenuBuilder {
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Sets the host.
-    #[must_use]
     pub const fn host(mut self, owner: Owner) -> Self {
         self.host = Some(owner);
         self
     }
 
     /// Sets the anchor.
-    #[must_use]
     pub const fn anchor(mut self, x: f32, y: f32) -> Self {
         self.anchor = Some((x, y));
         self
     }
 
     /// Adds an item.
-    #[must_use]
     pub fn item(mut self, item: MenuItem) -> Self {
         self.rows.push(Row::Item(item));
         self
     }
 
     /// Applies the separator option.
-    #[must_use]
     pub fn separator(mut self) -> Self {
         self.rows.push(Row::Separator);
         self

@@ -59,18 +59,22 @@ impl Tone {
     }
 }
 
-/// Carries the tone that descendants resolve tone colors against.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct ToneContext {
-    /// The tone.
-    pub tone: Tone,
+kittest_pub! {
+    /// Carries the tone that descendants resolve tone colors against.
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    pub struct ToneContext {
+        /// The tone.
+        pub tone: Tone,
+    }
 }
 
 impl ToneContext {
-    /// Creates a tone context.
-    #[must_use]
-    pub const fn new(tone: Tone) -> Self {
-        Self { tone }
+    kittest_pub! {
+        /// Creates a tone context.
+        #[must_use]
+        pub const fn new(tone: Tone) -> Self {
+            Self { tone }
+        }
     }
 }
 

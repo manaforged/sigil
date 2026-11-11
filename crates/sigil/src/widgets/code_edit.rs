@@ -100,6 +100,7 @@ pub struct Diagnostic {
 type Diagnostics = Signal<Vec<Diagnostic>>;
 
 /// Builder of a code editor.
+#[must_use]
 pub struct CodeEditBuilder {
     lines: Signal<Vec<String>>,
     caret: Signal<(usize, usize)>,
@@ -130,7 +131,6 @@ impl core::fmt::Debug for CodeEditBuilder {
 }
 
 /// A code editor with built-in `text_edit` editing.
-#[must_use]
 pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> CodeEditBuilder {
     CodeEditBuilder {
         lines,
@@ -148,49 +148,42 @@ pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> C
 
 impl CodeEditBuilder {
     /// Sets the selection.
-    #[must_use]
     pub const fn selection(mut self, anchor: Signal<Option<(usize, usize)>>) -> Self {
         self.selection = Some(anchor);
         self
     }
 
     /// Sets the key handler.
-    #[must_use]
     pub fn key_handler(mut self, f: impl Fn(&mut KeyEvent) + 'static) -> Self {
         self.on_key = Some(Rc::new(f));
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the highlights.
-    #[must_use]
     pub const fn highlights(mut self, spans: Signal<Vec<Vec<Highlight>>>) -> Self {
         self.highlights = Some(spans);
         self
     }
 
     /// Sets the row height.
-    #[must_use]
     pub const fn row_height(mut self, h: f32) -> Self {
         self.row_h = Some(h);
         self
     }
 
     /// Sets the gutter.
-    #[must_use]
     pub const fn gutter(mut self, marks: GutterMarks) -> Self {
         self.gutter = Some(marks);
         self
     }
 
     /// Sets the diagnostics.
-    #[must_use]
     pub const fn diagnostics(mut self, spans: Diagnostics) -> Self {
         self.diagnostics = Some(spans);
         self

@@ -124,29 +124,33 @@ pub(crate) fn finish_all() {
     });
 }
 
-pub fn tick(dt: f32) {
-    if !dt.is_finite() || dt <= 0.0 {
-        return;
-    }
-    batch(|| {
-        retain_animators(|entry| {
-            if entry.motion.is_settled() {
-                return true;
-            }
-            entry.motion.tick(dt);
-            Runtime::mark_frame_dirty();
-            entry.signal.try_set(entry.motion.value())
+kittest_pub! {
+    pub fn tick(dt: f32) {
+        if !dt.is_finite() || dt <= 0.0 {
+            return;
+        }
+        batch(|| {
+            retain_animators(|entry| {
+                if entry.motion.is_settled() {
+                    return true;
+                }
+                entry.motion.tick(dt);
+                Runtime::mark_frame_dirty();
+                entry.signal.try_set(entry.motion.value())
+            });
         });
-    });
+    }
 }
 
-#[must_use]
-pub fn active_count() -> usize {
-    with_sources(|sources| {
-        animators(sources)
-            .filter(|entry| !entry.motion.is_settled() && !entry.motion.is_perpetual())
-            .count()
-    })
+kittest_pub! {
+    #[must_use]
+    pub fn active_count() -> usize {
+        with_sources(|sources| {
+            animators(sources)
+                .filter(|entry| !entry.motion.is_settled() && !entry.motion.is_perpetual())
+                .count()
+        })
+    }
 }
 
 pub(crate) fn perpetual_count() -> usize {

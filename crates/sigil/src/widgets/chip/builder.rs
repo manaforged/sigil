@@ -13,6 +13,7 @@ use super::super::shared::Activate;
 use super::chip_class;
 
 /// Builder of a chip.
+#[must_use]
 pub struct ChipBuilder {
     label: crate::kernel::TextContent,
     tone: Tone,
@@ -36,7 +37,6 @@ impl core::fmt::Debug for ChipBuilder {
 }
 
 impl ChipBuilder {
-    #[must_use]
     pub(crate) fn new(label: impl Into<crate::kernel::TextContent>, tone: Tone) -> Self {
         Self {
             label: label.into(),
@@ -50,7 +50,6 @@ impl ChipBuilder {
     }
 
     /// Sets the tone.
-    #[must_use]
     pub fn tone(mut self, tone: impl Reactive<Tone>) -> Self {
         self.tone = tone.read();
         self.tone_signal = Some(tone.into_signal());
@@ -58,21 +57,18 @@ impl ChipBuilder {
     }
 
     /// Sets the leading.
-    #[must_use]
     pub fn leading(mut self, node: impl IntoNode + 'static) -> Self {
         self.leading = Some(Box::new(node));
         self
     }
 
     /// Applies the dot option.
-    #[must_use]
     pub const fn dot(mut self) -> Self {
         self.dot = true;
         self
     }
 
     /// Sets the activate.
-    #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self

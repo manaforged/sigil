@@ -15,9 +15,8 @@ mod raw;
 
 #[cfg(unix)]
 use ask::{Question, Questions, Version};
-pub(crate) use known::Notices;
-pub use known::Notify;
 pub(in crate::terminal) use known::{Known, known_env};
+pub use known::{Notices, Notify};
 #[cfg(unix)]
 pub(crate) use probe::exchange;
 

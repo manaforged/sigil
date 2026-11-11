@@ -15,6 +15,7 @@ const GAUGE_GAP: f32 = space(2);
 
 /// Builder of a gauge.
 #[derive(Debug)]
+#[must_use]
 pub struct GaugeBuilder {
     value: Signal<f32>,
     max: f32,
@@ -25,14 +26,12 @@ pub struct GaugeBuilder {
 }
 
 /// A labelled meter bar that shows a value against a maximum.
-#[must_use]
 pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
     GaugeBuilder::new(value)
 }
 
 impl GaugeBuilder {
     /// Creates a gauge builder.
-    #[must_use]
     pub fn new(value: Signal<f32>) -> Self {
         Self {
             value,
@@ -45,7 +44,6 @@ impl GaugeBuilder {
     }
 
     /// Sets the max.
-    #[must_use]
     pub const fn max(mut self, max: f32) -> Self {
         self.max = if max > f32::EPSILON {
             max
@@ -56,14 +54,12 @@ impl GaugeBuilder {
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Sets the warn.
-    #[must_use]
     pub const fn warn(mut self, threshold: f32) -> Self {
         self.warn_threshold = Some(threshold);
         self

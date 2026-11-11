@@ -45,33 +45,36 @@ fn centre(col: u16, row: u16, cell: f32) -> Point {
     Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
 }
 
-/// Converts a crossterm mouse event to a Sigil event.
-#[must_use]
-pub fn map_mouse(event: MouseEvent, cell: f32, last: &mut Point) -> Event {
-    let at = centre(event.column, event.row, cell);
-    let delta = Point::new(at.x - last.x, at.y - last.y);
-    *last = at;
-    let modifiers = crate::terminal::keys::held(event.modifiers);
-    let (phase, button) = match event.kind {
-        MouseEventKind::Down(button) => (PointerPhase::Down, Some(button)),
-        MouseEventKind::Up(button) => (PointerPhase::Up, Some(button)),
-        MouseEventKind::Drag(button) => (PointerPhase::Move, Some(button)),
-        MouseEventKind::Moved => (PointerPhase::Move, None),
-        MouseEventKind::ScrollUp => return scroll(at, 0.0, NOTCH, modifiers),
-        MouseEventKind::ScrollDown => return scroll(at, 0.0, -NOTCH, modifiers),
-        MouseEventKind::ScrollLeft => return scroll(at, NOTCH, 0.0, modifiers),
-        MouseEventKind::ScrollRight => return scroll(at, -NOTCH, 0.0, modifiers),
-    };
-    let button = button.map(press);
-    let held = match phase {
-        PointerPhase::Up => MouseButtons::empty(),
-        _ => button.map_or_else(MouseButtons::empty, bit),
-    };
-    Event::pointer(phase, at)
-        .delta(delta)
-        .button(button)
-        .buttons(held)
-        .modifiers(modifiers)
+kittest_pub! {
+    /// Converts a crossterm mouse event to a Sigil event.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn map_mouse(event: MouseEvent, cell: f32, last: &mut Point) -> Event {
+        let at = centre(event.column, event.row, cell);
+        let delta = Point::new(at.x - last.x, at.y - last.y);
+        *last = at;
+        let modifiers = crate::terminal::keys::held(event.modifiers);
+        let (phase, button) = match event.kind {
+            MouseEventKind::Down(button) => (PointerPhase::Down, Some(button)),
+            MouseEventKind::Up(button) => (PointerPhase::Up, Some(button)),
+            MouseEventKind::Drag(button) => (PointerPhase::Move, Some(button)),
+            MouseEventKind::Moved => (PointerPhase::Move, None),
+            MouseEventKind::ScrollUp => return scroll(at, 0.0, NOTCH, modifiers),
+            MouseEventKind::ScrollDown => return scroll(at, 0.0, -NOTCH, modifiers),
+            MouseEventKind::ScrollLeft => return scroll(at, NOTCH, 0.0, modifiers),
+            MouseEventKind::ScrollRight => return scroll(at, -NOTCH, 0.0, modifiers),
+        };
+        let button = button.map(press);
+        let held = match phase {
+            PointerPhase::Up => MouseButtons::empty(),
+            _ => button.map_or_else(MouseButtons::empty, bit),
+        };
+        Event::pointer(phase, at)
+            .delta(delta)
+            .button(button)
+            .buttons(held)
+            .modifiers(modifiers)
+    }
 }
 
 const fn scroll(at: Point, x: f32, y: f32, modifiers: ModifiersState) -> Event {

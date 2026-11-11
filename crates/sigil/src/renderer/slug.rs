@@ -1,4 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod atlas;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]

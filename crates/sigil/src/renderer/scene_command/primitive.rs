@@ -159,8 +159,11 @@ impl SceneWalk<'_> {
         local.border_radius = trimmed.radii;
         let phase = tile_phase(trimmed.shift, draw.pattern.tile_extent());
         let space = BlendSpace::from_format(self.ctx.format);
-        let stops = wash_stops(draw.pattern)
-            .map_or_else(Vec::new, |stops| gradient_stop_records(&stops, space));
+        let stops = match draw.pattern {
+            PatternKind::Wash(wash) => gradient_stop_records(&wash_stops(wash), space),
+            #[cfg(any(test, feature = "kittest"))]
+            _ => Vec::new(),
+        };
         let range = [
             u32::try_from(self.ctx.pending.stops.len()).unwrap_or(u32::MAX),
             u32::try_from(stops.len()).unwrap_or(u32::MAX),
@@ -192,7 +195,11 @@ impl SceneWalk<'_> {
             Some(view) => trim_to_view(rect, radii, view, margin)?,
             None => Trimmed::whole(rect, radii),
         };
-        Some((transform, trimmed, trimmed.dash_origin(rect, band)))
+        #[cfg(any(test, feature = "kittest"))]
+        let dash = trimmed.dash_origin(rect, band);
+        #[cfg(not(any(test, feature = "kittest")))]
+        let dash = [0.0; 2];
+        Some((transform, trimmed, dash))
     }
 
     pub(super) fn queue_shadow(&mut self, rect: [f32; 4], radii: CornerRadii, shadow: Shadow) {

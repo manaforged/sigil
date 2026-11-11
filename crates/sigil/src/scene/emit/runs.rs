@@ -158,9 +158,10 @@ fn line(
     use crate::scene::command::DrawDecoration;
     let thickness = (run.style.font_size * 0.06).max(1.0);
     for rect in rects {
-        let y = match kind {
-            DecorationKind::Strikethrough => rect.origin.y + (rect.height - thickness) / 2.0,
-            _ => rect.origin.y + rect.height - thickness * 2.0,
+        let y = if kind == DecorationKind::Strikethrough {
+            rect.origin.y + (rect.height - thickness) / 2.0
+        } else {
+            rect.origin.y + rect.height - thickness * 2.0
         };
         let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
         scene.draw_decoration(

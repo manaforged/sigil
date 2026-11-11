@@ -10,7 +10,9 @@ mod sample;
 mod store;
 
 pub use property::Property;
-pub(crate) use store::KeyframesId;
+kittest_pub! {
+    pub use store::KeyframesId;
+}
 
 /// A CSS keyframe animation: property values at offsets of one pass, its timing, and its repeats.
 #[derive(Clone, Debug)]

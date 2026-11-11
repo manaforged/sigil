@@ -21,10 +21,10 @@ fn a_drop_reaches_only_the_pane_under_the_pointer() {
             Harness::new(move || row().child(pane("left")).child(pane("right"))).pixels(500, 220);
         ui.settle();
         ui.send([Event::pointer_move(Point::new(300.0, 100.0))]);
-        ui.send([Event::FileDrop(FileDropEvent {
-            path: Some("/tmp/notes.txt".to_owned()),
-            phase: FileDropPhase::Dropped,
-        })]);
+        ui.send([Event::file_drop(
+            Some("/tmp/notes.txt".to_owned()),
+            FileDropPhase::Dropped,
+        )]);
         ui.settle();
         assert_eq!(got.peek(), vec!["right"]);
     });

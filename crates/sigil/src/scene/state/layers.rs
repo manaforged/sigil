@@ -53,16 +53,20 @@ impl SceneState {
     }
 
     pub(crate) const fn draws(command: &SceneCommand) -> bool {
-        !matches!(
-            command,
-            SceneCommand::PushClip(_)
-                | SceneCommand::PopClip
-                | SceneCommand::PushTransform(_)
-                | SceneCommand::PopTransform
-                | SceneCommand::SaveLayer { .. }
-                | SceneCommand::RestoreLayer
-                | SceneCommand::PopLayer
-        )
+        match command {
+            SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => false,
+            #[cfg(any(
+                test,
+                feature = "kittest",
+                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+            ))]
+            SceneCommand::PushTransform(_) | SceneCommand::PopTransform => false,
+            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+            SceneCommand::SaveLayer { .. } => false,
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
+            SceneCommand::RestoreLayer => false,
+            _ => true,
+        }
     }
 
     pub(crate) fn composites_group(children: &[SceneCommand]) -> bool {

@@ -132,9 +132,11 @@ pub(crate) fn runtime_id() -> u64 {
     })
 }
 
-/// Run code inside a reactive runtime.
-#[derive(Debug)]
-pub struct Runtime;
+kittest_pub! {
+    /// Run code inside a reactive runtime.
+    #[derive(Debug)]
+    pub struct Runtime;
+}
 
 impl Runtime {
     #[cfg(any(test, feature = "kittest"))]

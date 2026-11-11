@@ -1,4 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use crate::profile::{Counter, count_add, enabled};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

@@ -19,6 +19,7 @@ pub(super) use crate::widgets::shared::TextChange;
 use crate::widgets::shared::caller_style;
 
 /// Builder of a text input.
+#[must_use]
 pub struct TextFieldBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
@@ -62,14 +63,12 @@ impl core::fmt::Debug for TextFieldBuilder {
 }
 
 /// A single-line text input.
-#[must_use]
 pub fn text_field(value: Signal<String>) -> TextFieldBuilder {
     TextFieldBuilder::new(value)
 }
 
 impl TextFieldBuilder {
     /// Creates a text field builder.
-    #[must_use]
     pub fn new(value: Signal<String>) -> Self {
         Self {
             value,
@@ -105,84 +104,72 @@ impl TextFieldBuilder {
     }
 
     /// Sets the placeholder.
-    #[must_use]
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
         self.disabled = Some(flag.into_signal());
         self
     }
 
     /// Sets the invalid when.
-    #[must_use]
     pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
         self.invalid = Some(invalid.into_signal());
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
         self
     }
 
     /// Sets the submit.
-    #[must_use]
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
         self
     }
 
     /// Sets the blur.
-    #[must_use]
     pub fn blur(mut self, f: impl Fn() + 'static) -> Self {
         self.blur = Some(Rc::new(f));
         self
     }
 
     /// Sets the clipboard.
-    #[must_use]
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self
     }
 
     /// Applies the password option.
-    #[must_use]
     pub const fn password(mut self) -> Self {
         self.password = true;
         self
     }
 
     /// Sets the reveal.
-    #[must_use]
     pub const fn reveal(mut self, show: Signal<bool>) -> Self {
         self.reveal = Some(show);
         self
     }
 
     /// Sets the leading.
-    #[must_use]
     pub fn leading(mut self, node: impl IntoNode + 'static) -> Self {
         self.adorn.leading = Some(Box::new(node));
         self
     }
 
     /// Sets the trailing.
-    #[must_use]
     pub fn trailing(mut self, node: impl IntoNode + 'static) -> Self {
         self.adorn.trailing = Some(Box::new(node));
         self
     }
 
     /// Applies the clearable option.
-    #[must_use]
     pub const fn clearable(mut self) -> Self {
         self.clearable = true;
         self

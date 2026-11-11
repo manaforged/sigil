@@ -52,6 +52,7 @@ struct SparkShape {
 }
 
 /// Builder of a sparkline.
+#[must_use]
 pub struct SparklineBuilder {
     values: Rc<dyn Reactive<Vec<f32>>>,
     shape: SparkShape,
@@ -68,7 +69,6 @@ impl core::fmt::Debug for SparklineBuilder {
 }
 
 /// A sparkline.
-#[must_use]
 pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
     SparklineBuilder {
         values: Rc::new(values),
@@ -86,42 +86,36 @@ pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
 
 impl SparklineBuilder {
     /// Sets the range.
-    #[must_use]
     pub const fn range(mut self, low: f32, high: f32) -> Self {
         self.shape.range = Some((low, high));
         self
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.shape.tone = tone;
         self
     }
 
     /// Sets the tones.
-    #[must_use]
     pub fn tones(mut self, tones: impl IntoIterator<Item = Option<Tone>>) -> Self {
         self.shape.tones = tones.into_iter().collect();
         self
     }
 
     /// Sets the mark.
-    #[must_use]
     pub const fn mark(mut self, mark: SparkMark) -> Self {
         self.shape.mark = mark;
         self
     }
 
     /// Sets how the area under the line is drawn.
-    #[must_use]
     pub const fn area(mut self, fill: SparkFill) -> Self {
         self.shape.fill = fill;
         self
     }
 
     /// Sets the rows.
-    #[must_use]
     pub fn rows(mut self, rows: usize) -> Self {
         self.shape.rows = rows.max(1);
         self

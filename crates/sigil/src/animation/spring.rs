@@ -1,28 +1,32 @@
-/// Spring constants.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum SpringPreset {
-    /// The gentle spring preset.
-    Gentle,
-    /// The smooth spring preset.
-    Smooth,
-    /// The snappy spring preset.
-    Snappy,
-    /// The bouncy spring preset.
-    Bouncy,
-    /// The stiff spring preset.
-    Stiff,
+kittest_pub! {
+    /// Spring constants.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum SpringPreset {
+        /// The gentle spring preset.
+        Gentle,
+        /// The smooth spring preset.
+        Smooth,
+        /// The snappy spring preset.
+        Snappy,
+        /// The bouncy spring preset.
+        Bouncy,
+        /// The stiff spring preset.
+        Stiff,
+    }
 }
 
 impl SpringPreset {
-    /// Returns the parameters.
-    #[must_use]
-    pub const fn parameters(self) -> (f32, f32, f32) {
-        match self {
-            Self::Gentle => (80.0, 14.0, 1.0),
-            Self::Smooth => (180.0, 20.0, 1.0),
-            Self::Snappy => (260.0, 26.0, 1.0),
-            Self::Bouncy => (300.0, 12.0, 1.0),
-            Self::Stiff => (500.0, 40.0, 1.0),
+    kittest_pub! {
+        /// Returns the parameters.
+        #[must_use]
+        pub const fn parameters(self) -> (f32, f32, f32) {
+            match self {
+                Self::Gentle => (80.0, 14.0, 1.0),
+                Self::Smooth => (180.0, 20.0, 1.0),
+                Self::Snappy => (260.0, 26.0, 1.0),
+                Self::Bouncy => (300.0, 12.0, 1.0),
+                Self::Stiff => (500.0, 40.0, 1.0),
+            }
         }
     }
 }

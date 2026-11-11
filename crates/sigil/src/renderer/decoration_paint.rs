@@ -102,6 +102,11 @@ pub(crate) fn decoration_instance(
     let kind_f32 = match draw.kind {
         DecorationKind::Underline => 0.0_f32,
         DecorationKind::Strikethrough => 1.0_f32,
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", feature = "terminal")
+        ))]
         DecorationKind::WavyUnderline => 2.0_f32,
     };
     let band = geometry.band;

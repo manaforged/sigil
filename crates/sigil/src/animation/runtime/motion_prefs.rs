@@ -10,8 +10,10 @@ pub fn reduced_motion() -> bool {
     MotionPrefs::reduced()
 }
 
-#[derive(Debug)]
-pub struct MotionPrefs;
+kittest_pub! {
+    #[derive(Debug)]
+    pub struct MotionPrefs;
+}
 
 impl MotionPrefs {
     #[must_use]
@@ -19,11 +21,13 @@ impl MotionPrefs {
         REDUCED_MOTION.with(Cell::get)
     }
 
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-    pub fn set(preferred: bool) {
-        REDUCED_MOTION.with(|cell| cell.set(preferred));
-        if preferred {
-            crate::animation::runtime::state::finish_all();
+    kittest_pub! {
+        #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+        pub fn set(preferred: bool) {
+            REDUCED_MOTION.with(|cell| cell.set(preferred));
+            if preferred {
+                crate::animation::runtime::state::finish_all();
+            }
         }
     }
 }

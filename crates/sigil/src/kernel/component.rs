@@ -1,18 +1,23 @@
 use crate::kernel::{Cx, NodeId};
 
+/// The outcome of `IntoNode::patch`: patched in place, or the value back for a fresh mount.
+#[doc(hidden)]
 #[derive(Debug)]
-pub enum Patch<T> {
+pub enum NodePatch<T> {
+    /// The node was updated in place.
     Patched,
+    /// The node has another kind; the value comes back to mount.
     Mismatch(T),
+    /// The value cannot patch; it comes back to mount.
     Unsupported(T),
 }
 
-impl<T> Patch<T> {
-    pub(crate) fn map<U>(self, wrap: impl FnOnce(T) -> U) -> Patch<U> {
+impl<T> NodePatch<T> {
+    pub(crate) fn map<U>(self, wrap: impl FnOnce(T) -> U) -> NodePatch<U> {
         match self {
-            Self::Patched => Patch::Patched,
-            Self::Mismatch(value) => Patch::Mismatch(wrap(value)),
-            Self::Unsupported(value) => Patch::Unsupported(wrap(value)),
+            Self::Patched => NodePatch::Patched,
+            Self::Mismatch(value) => NodePatch::Mismatch(wrap(value)),
+            Self::Unsupported(value) => NodePatch::Unsupported(wrap(value)),
         }
     }
 }
@@ -24,14 +29,15 @@ pub trait IntoNode: IntoNodeBox {
 
     /// Updates the existing node in place when this value allows it.
     #[doc(hidden)]
-    fn patch(self, _cx: &mut Cx, _existing: NodeId) -> Patch<Self>
+    fn patch(self, _cx: &mut Cx, _existing: NodeId) -> NodePatch<Self>
     where
         Self: Sized,
     {
-        Patch::Unsupported(self)
+        NodePatch::Unsupported(self)
     }
 }
 
+#[allow(unnameable_types, reason = "object-safe helper supertrait of IntoNode")]
 pub trait IntoNodeBox {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
 }
@@ -104,8 +110,11 @@ into_node_builder!(crate::kernel::TextBuilder, crate::kernel::ImageBuilder,);
 pub(crate) trait ErasedComponent {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
 
-    fn patch_box(self: Box<Self>, cx: &mut Cx, existing: NodeId)
-    -> Patch<Box<dyn ErasedComponent>>;
+    fn patch_box(
+        self: Box<Self>,
+        cx: &mut Cx,
+        existing: NodeId,
+    ) -> NodePatch<Box<dyn ErasedComponent>>;
 }
 
 impl<T> ErasedComponent for T
@@ -120,7 +129,7 @@ where
         self: Box<Self>,
         cx: &mut Cx,
         existing: NodeId,
-    ) -> Patch<Box<dyn ErasedComponent>> {
+    ) -> NodePatch<Box<dyn ErasedComponent>> {
         (*self)
             .patch(cx, existing)
             .map(|value| Box::new(value) as Box<dyn ErasedComponent>)

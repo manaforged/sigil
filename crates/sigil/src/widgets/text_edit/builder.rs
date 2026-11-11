@@ -29,6 +29,7 @@ pub enum SubmitKey {
 }
 
 /// Builder of a text editor.
+#[must_use]
 pub struct TextEditBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
@@ -67,14 +68,12 @@ impl core::fmt::Debug for TextEditBuilder {
 }
 
 /// A multi-line text editor.
-#[must_use]
 pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
     TextEditBuilder::new(value)
 }
 
 impl TextEditBuilder {
     /// Creates a text edit builder.
-    #[must_use]
     pub fn new(value: Signal<String>) -> Self {
         Self {
             value,
@@ -101,35 +100,30 @@ impl TextEditBuilder {
     }
 
     /// Sets the caret position.
-    #[must_use]
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
         self
     }
 
     /// Sets the caret rect.
-    #[must_use]
     pub const fn caret_rect(mut self, rect: Signal<Option<Rect>>) -> Self {
         self.caret_rect = Some(rect);
         self
     }
 
     /// Sets the content padding.
-    #[must_use]
     pub const fn content_padding(mut self, horizontal: f32, vertical: f32) -> Self {
         self.content_padding = (horizontal, vertical);
         self
     }
 
     /// Sets the chrome.
-    #[must_use]
     pub const fn chrome(mut self, enabled: bool) -> Self {
         self.chrome = enabled;
         self
     }
 
     /// Sets the state.
-    #[must_use]
     pub fn state(mut self, state: TextEditState) -> Self {
         self.value = state.value;
         self.caret_position = Some(state.caret);
@@ -138,42 +132,36 @@ impl TextEditBuilder {
     }
 
     /// Sets the placeholder.
-    #[must_use]
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
         self.disabled = Some(flag.into_signal());
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
         self
     }
 
     /// Sets the key that submits.
-    #[must_use]
     pub const fn submit_on(mut self, key: SubmitKey) -> Self {
         self.submit_key = key;
         self
     }
 
     /// Sets the submit.
-    #[must_use]
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
         self
     }
 
     /// Sets the clipboard.
-    #[must_use]
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self

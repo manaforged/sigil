@@ -87,40 +87,54 @@ pub enum GradientAxis {
     RightToLeft,
 }
 
-/// A color and offset of a background gradient.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GradientStopKey {
-    /// The offset.
-    pub offset: u16,
-    /// The color.
-    pub color: ColorAtom,
+kittest_pub! {
+    #[doc(hidden)]
+    /// A color and offset of a background gradient.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct GradientStopKey {
+        /// The offset.
+        pub offset: u16,
+        /// The color.
+        pub color: ColorAtom,
+    }
 }
 
 impl GradientStopKey {
-    /// Creates a gradient stop key.
-    #[must_use]
-    pub const fn new(offset: u16, color: ColorAtom) -> Self {
-        Self { offset, color }
+    kittest_pub! {
+        #[doc(hidden)]
+        /// Creates a gradient stop key.
+        #[must_use]
+        pub const fn new(offset: u16, color: ColorAtom) -> Self {
+            Self { offset, color }
+        }
     }
 }
 
-/// A background gradient in a style.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BgGradient {
-    /// The axis.
-    pub axis: GradientAxis,
-    /// The stops.
-    pub stops: &'static [GradientStopKey],
+kittest_pub! {
+    #[doc(hidden)]
+    /// A background gradient in a style.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct BgGradient {
+        /// The axis.
+        pub axis: GradientAxis,
+        /// The stops.
+        pub stops: &'static [GradientStopKey],
+    }
 }
 
 impl BgGradient {
-    /// Creates a bg gradient.
-    #[must_use]
-    pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
-        Self { axis, stops }
+    kittest_pub! {
+        #[doc(hidden)]
+        /// Creates a bg gradient.
+        #[must_use]
+        pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
+            Self { axis, stops }
+        }
     }
 
     /// Creates a gradient from owned stops.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     #[must_use]
     pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
         Self::new(axis, crate::style::intern::intern(stops))

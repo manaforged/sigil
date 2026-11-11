@@ -5,12 +5,12 @@ use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot};
 
 /// Builds the paint for one interaction state.
 #[derive(Debug)]
+#[must_use]
 pub struct StateStyleBuilder {
     style: Style,
 }
 
 impl StateStyleBuilder {
-    #[must_use]
     pub(crate) fn new() -> Self {
         Self {
             style: Style::new(),

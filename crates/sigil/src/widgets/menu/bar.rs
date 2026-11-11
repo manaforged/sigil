@@ -37,6 +37,7 @@ struct MenuSlot {
 
 /// Builder of a menu bar.
 #[derive(Debug)]
+#[must_use]
 pub struct MenuBarBuilder {
     slots: Vec<MenuSlot>,
     style_accumulator: Style,
@@ -44,7 +45,6 @@ pub struct MenuBarBuilder {
 }
 
 /// An in-window menu bar, as wide as its menus.
-#[must_use]
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
         slots: Vec::new(),
@@ -55,7 +55,6 @@ pub fn menu_bar() -> MenuBarBuilder {
 
 impl MenuBarBuilder {
     /// Sets the menu.
-    #[must_use]
     pub fn menu(
         mut self,
         label: impl Into<String>,

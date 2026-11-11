@@ -48,14 +48,27 @@ impl SceneState {
         match command {
             SceneCommand::PushClip(clip) => self.push_clip(clip.bounds()),
             SceneCommand::PopClip => self.pop_clip(),
+            #[cfg(any(
+                test,
+                feature = "kittest",
+                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+            ))]
             SceneCommand::PushTransform(transform) => self.push_transform(*transform),
+            #[cfg(any(
+                test,
+                feature = "kittest",
+                all(feature = "scene", any(feature = "desktop", feature = "terminal"))
+            ))]
             SceneCommand::PopTransform => self.pop_transform(),
+            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
             SceneCommand::SaveLayer { opacity } => self
                 .opacities
                 .push(self.current_opacity() * opacity.clamp(0.0, 1.0)),
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             SceneCommand::RestoreLayer if self.opacities.len() > 1 => {
                 let _ = self.opacities.pop();
             }
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             SceneCommand::RestoreLayer => {}
             _ => return false,
         }
@@ -125,7 +138,9 @@ impl SceneState {
 
     pub(crate) fn group_end(commands: &[SceneCommand], start: usize) -> usize {
         matching_end(commands, start, |command| match command {
+            #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
             SceneCommand::SaveLayer { .. } => Some(true),
+            #[cfg(any(test, feature = "kittest", feature = "terminal"))]
             SceneCommand::RestoreLayer => Some(false),
             _ => None,
         })

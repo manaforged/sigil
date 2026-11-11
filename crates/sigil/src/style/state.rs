@@ -1,36 +1,41 @@
 use crate::style::StyleAtom;
 
-/// Interaction state for a style variant.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[allow(
-    clippy::struct_excessive_bools,
-    reason = "intentional, reviewed trade-off"
-)]
-pub struct StyleState {
-    /// Whether disabled.
-    pub disabled: bool,
-    /// Whether hovered.
-    pub hovered: bool,
-    /// Whether pressed.
-    pub pressed: bool,
-    /// Whether focused.
-    pub focused: bool,
+kittest_pub! {
+    /// Interaction state for a style variant.
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    #[allow(
+        clippy::struct_excessive_bools,
+        reason = "intentional, reviewed trade-off"
+    )]
+    pub struct StyleState {
+        /// Whether disabled.
+        pub disabled: bool,
+        /// Whether hovered.
+        pub hovered: bool,
+        /// Whether pressed.
+        pub pressed: bool,
+        /// Whether focused.
+        pub focused: bool,
+    }
 }
 
-/// Names the interaction state that selects state style atoms.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum StateSlot {
-    /// The rest state slot.
-    #[default]
-    Rest,
-    /// The focused state slot.
-    Focused,
-    /// The hovered state slot.
-    Hovered,
-    /// The pressed state slot.
-    Pressed,
-    /// The disabled state slot.
-    Disabled,
+kittest_pub! {
+    #[doc(hidden)]
+    /// Names the interaction state that selects state style atoms.
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    pub enum StateSlot {
+        /// The rest state slot.
+        #[default]
+        Rest,
+        /// The focused state slot.
+        Focused,
+        /// The hovered state slot.
+        Hovered,
+        /// The pressed state slot.
+        Pressed,
+        /// The disabled state slot.
+        Disabled,
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -102,59 +107,71 @@ impl<T> PerState<T> {
 }
 
 impl StyleState {
-    /// Returns the slot.
-    #[must_use]
-    pub const fn slot(self) -> StateSlot {
-        if self.disabled {
-            StateSlot::Disabled
-        } else if self.pressed {
-            StateSlot::Pressed
-        } else if self.hovered {
-            StateSlot::Hovered
-        } else if self.focused {
-            StateSlot::Focused
-        } else {
-            StateSlot::Rest
+    kittest_pub! {
+        /// Returns the slot.
+        #[must_use]
+        pub const fn slot(self) -> StateSlot {
+            if self.disabled {
+                StateSlot::Disabled
+            } else if self.pressed {
+                StateSlot::Pressed
+            } else if self.hovered {
+                StateSlot::Hovered
+            } else if self.focused {
+                StateSlot::Focused
+            } else {
+                StateSlot::Rest
+            }
         }
     }
 }
 
-/// Atoms per interaction state.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct StateStyle {
-    slots: PerState<&'static [StyleAtom]>,
+kittest_pub! {
+    /// Atoms per interaction state.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub struct StateStyle {
+        slots: PerState<&'static [StyleAtom]>,
+    }
 }
 
 impl StateStyle {
-    /// A state style with no atoms.
-    pub const EMPTY: Self = Self {
-        slots: PerState::new(&[], &[], &[], &[], &[]),
-    };
+    kittest_pub! {
+        /// A state style with no atoms.
+        pub const EMPTY: Self = Self {
+            slots: PerState::new(&[], &[], &[], &[], &[]),
+        };
+    }
 
-    /// Creates a state style.
-    #[must_use]
-    pub const fn new(
-        rest: &'static [StyleAtom],
-        focused: &'static [StyleAtom],
-        hovered: &'static [StyleAtom],
-        pressed: &'static [StyleAtom],
-        disabled: &'static [StyleAtom],
-    ) -> Self {
-        Self {
-            slots: PerState::new(rest, focused, hovered, pressed, disabled),
+    kittest_pub! {
+        /// Creates a state style.
+        #[must_use]
+        pub const fn new(
+            rest: &'static [StyleAtom],
+            focused: &'static [StyleAtom],
+            hovered: &'static [StyleAtom],
+            pressed: &'static [StyleAtom],
+            disabled: &'static [StyleAtom],
+        ) -> Self {
+            Self {
+                slots: PerState::new(rest, focused, hovered, pressed, disabled),
+            }
         }
     }
 
-    /// Returns the atoms of one slot.
-    #[must_use]
-    pub const fn get(self, slot: StateSlot) -> &'static [StyleAtom] {
-        self.slots.at(slot)
+    kittest_pub! {
+        /// Returns the atoms of one slot.
+        #[must_use]
+        pub const fn get(self, slot: StateSlot) -> &'static [StyleAtom] {
+            self.slots.at(slot)
+        }
     }
 
-    /// Returns the atoms that apply in `state`.
-    #[must_use]
-    pub const fn resolve(self, state: StyleState) -> &'static [StyleAtom] {
-        self.get(state.slot())
+    kittest_pub! {
+        /// Returns the atoms that apply in `state`.
+        #[must_use]
+        pub const fn resolve(self, state: StyleState) -> &'static [StyleAtom] {
+            self.get(state.slot())
+        }
     }
 }
 

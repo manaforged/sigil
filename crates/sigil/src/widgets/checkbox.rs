@@ -25,6 +25,7 @@ const CHECKBOX_BOX_SIZE: f32 = 16.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
 /// Builder of a checkbox.
+#[must_use]
 pub struct CheckboxBuilder {
     checked: Signal<bool>,
     partial: Option<Signal<bool>>,
@@ -82,14 +83,12 @@ static MARK_VISIBLE: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
 static MARK_HIDDEN: &[StyleAtom] = &[StyleAtom::Opacity(0)];
 
 /// A checkbox.
-#[must_use]
 pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
     CheckboxBuilder::new(checked)
 }
 
 impl CheckboxBuilder {
     /// Creates a checkbox builder.
-    #[must_use]
     pub fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
@@ -104,35 +103,30 @@ impl CheckboxBuilder {
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the indeterminate.
-    #[must_use]
     pub const fn indeterminate(mut self, partial: Signal<bool>) -> Self {
         self.partial = Some(partial);
         self
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self

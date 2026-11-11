@@ -15,6 +15,7 @@ use super::shared::{caller_style, control, disabled_a11y, disabled_now};
 
 /// Builder of a radio group.
 #[derive(Debug)]
+#[must_use]
 pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<(String, String)>,
@@ -27,14 +28,12 @@ pub struct RadioGroupBuilder {
 }
 
 /// A set of radio options; `.label()` and `.labelled_by()` name the group.
-#[must_use]
 pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
     RadioGroupBuilder::new(selected)
 }
 
 impl RadioGroupBuilder {
     /// Creates a radio group builder.
-    #[must_use]
     pub fn new(selected: Signal<String>) -> Self {
         Self {
             selected,
@@ -49,35 +48,30 @@ impl RadioGroupBuilder {
     }
 
     /// Sets the option.
-    #[must_use]
     pub fn option(mut self, key: impl Into<String>, label: impl Into<String>) -> Self {
         self.options.push((key.into(), label.into()));
         self
     }
 
     /// Sets the tone.
-    #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
     /// Sets the label.
-    #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
         self
     }
 
     /// Sets the labelled by.
-    #[must_use]
     pub const fn labelled_by(mut self, node: NodeId) -> Self {
         self.labelled_by = Some(node);
         self

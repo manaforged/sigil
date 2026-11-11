@@ -10,7 +10,9 @@ pub use gesture::{Gesture, GestureEvent};
 pub use keys::{Key, ModifiersState, PhysicalKey};
 
 pub(crate) use pointer::ClickConfig;
-pub use pointer::{MouseButton, MouseButtons, PointerEvent, PointerPhase, PointerType};
+pub use pointer::{
+    MouseButton, MouseButtons, PointerEvent, PointerPhase, PointerTilt, PointerType,
+};
 
 /// An input event from the host.
 #[derive(Clone, Debug, PartialEq)]
@@ -48,6 +50,7 @@ pub enum FileDropPhase {
 
 /// A file drag over or onto the window.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct FileDropEvent {
     /// The path, if any.
     pub path: Option<alloc::string::String>,

@@ -13,15 +13,17 @@ const BUDGET_ENV: &str = "SIGIL_PROFILE_BUDGET_MS";
 /// The default attribution budget in milliseconds.
 const DEFAULT_BUDGET_MS: f64 = 8.33;
 
-/// The counts per subject of one hotspot.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Attribution {
-    /// The hotspot.
-    pub hotspot: Hotspot,
-    /// The subject.
-    pub subject: String,
-    /// The count.
-    pub count: u64,
+kittest_pub! {
+    /// The counts per subject of one hotspot.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Attribution {
+        /// The hotspot.
+        pub hotspot: Hotspot,
+        /// The subject.
+        pub subject: String,
+        /// The count.
+        pub count: u64,
+    }
 }
 
 /// Adds `n` to `hotspot` for the subject `key` names; `subject` runs once per key per frame.

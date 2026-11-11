@@ -115,78 +115,92 @@ pub(super) const fn percent(value: u8) -> u8 {
     if value > 100 { 100 } else { value }
 }
 
-/// The geometry of a background gradient.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GradientShape {
-    /// A linear gradient along a box axis.
-    Linear(GradientAxis),
-    /// A radial gradient.
-    Radial(Radial),
-    /// A conic gradient.
-    Conic(Conic),
+kittest_pub! {
+    #[doc(hidden)]
+    /// The geometry of a background gradient.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum GradientShape {
+        /// A linear gradient along a box axis.
+        Linear(GradientAxis),
+        /// A radial gradient.
+        Radial(Radial),
+        /// A conic gradient.
+        Conic(Conic),
+    }
 }
 
-/// One of the three Tailwind gradient stops.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StopSlot {
-    /// The `from-*` stop.
-    From,
-    /// The `via-*` stop.
-    Via,
-    /// The `to-*` stop.
-    To,
+kittest_pub! {
+    #[doc(hidden)]
+    /// One of the three Tailwind gradient stops.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum StopSlot {
+        /// The `from-*` stop.
+        From,
+        /// The `via-*` stop.
+        Via,
+        /// The `to-*` stop.
+        To,
+    }
 }
 
-/// The line style of a border.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum BorderStyle {
-    /// A solid line.
-    #[default]
-    Solid,
-    /// Dashes along the edge.
-    Dashed,
-    /// Round dots along the edge.
-    Dotted,
+kittest_pub! {
+    #[doc(hidden)]
+    /// The line style of a border.
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    pub enum BorderStyle {
+        /// A solid line.
+        #[default]
+        Solid,
+        /// Dashes along the edge.
+        Dashed,
+        /// Round dots along the edge.
+        Dotted,
+    }
 }
 
-/// A paint style atom: gradients, stops, clip, image, and border style.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PaintAtom {
-    /// The background gradient geometry.
-    Gradient(GradientShape),
-    /// No background gradient.
-    NoGradient,
-    /// A gradient stop color.
-    Stop(StopSlot, ColorAtom),
-    /// No color at a gradient stop.
-    NoStop(StopSlot),
-    /// A gradient stop position in percent.
-    StopAt(StopSlot, u8),
-    /// No background color and no stop-list gradient.
-    NoColor,
-    /// Paints the background only inside the text glyphs.
-    ClipText,
-    /// A tiled background image, by image id.
-    Image(u64),
-    /// The border line style.
-    Border(BorderStyle),
+kittest_pub! {
+    #[doc(hidden)]
+    /// A paint style atom: gradients, stops, clip, image, and border style.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum PaintAtom {
+        /// The background gradient geometry.
+        Gradient(GradientShape),
+        /// No background gradient.
+        NoGradient,
+        /// A gradient stop color.
+        Stop(StopSlot, ColorAtom),
+        /// No color at a gradient stop.
+        NoStop(StopSlot),
+        /// A gradient stop position in percent.
+        StopAt(StopSlot, u8),
+        /// No background color and no stop-list gradient.
+        NoColor,
+        /// Paints the background only inside the text glyphs.
+        ClipText,
+        /// A tiled background image, by image id.
+        Image(u64),
+        /// The border line style.
+        Border(BorderStyle),
+    }
 }
 
-/// The resolved paint atoms of one node.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct PaintStyle {
-    /// The background gradient geometry, if any.
-    pub gradient: Option<GradientShape>,
-    /// The from, via, and to colors.
-    pub stops: [Option<Color>; 3],
-    /// The from, via, and to positions in percent.
-    pub positions: [Option<u8>; 3],
-    /// Whether the background shows only inside text.
-    pub clip_text: bool,
-    /// The tiled background image id, if any.
-    pub image: Option<u64>,
-    /// The border line style.
-    pub border: BorderStyle,
+kittest_pub! {
+    /// The resolved paint atoms of one node.
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    pub struct PaintStyle {
+        /// The background gradient geometry, if any.
+        pub gradient: Option<GradientShape>,
+        /// The from, via, and to colors.
+        pub stops: [Option<Color>; 3],
+        /// The from, via, and to positions in percent.
+        pub positions: [Option<u8>; 3],
+        /// Whether the background shows only inside text.
+        pub clip_text: bool,
+        /// The tiled background image id, if any.
+        pub image: Option<u64>,
+        /// The border line style.
+        pub border: BorderStyle,
+    }
 }
 
 impl StopSlot {

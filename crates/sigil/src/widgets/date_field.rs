@@ -84,27 +84,25 @@ impl FieldParser for DateParser {
 
 /// Builder of a date input.
 #[derive(Debug)]
+#[must_use]
 pub struct DateFieldBuilder {
     field: ParsedField<DateParser>,
 }
 
 impl DateFieldBuilder {
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.field = self.field.disabled(disabled);
         self
     }
 
     /// Sets the invalid when.
-    #[must_use]
     pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
         self.field = self.field.invalid_when(invalid);
         self
     }
 
     /// Returns the text field.
-    #[must_use]
     pub fn text_field(self) -> TextFieldBuilder {
         self.field.text_field()
     }
@@ -117,7 +115,6 @@ impl IntoNode for DateFieldBuilder {
 }
 
 /// A date input.
-#[must_use]
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
     DateFieldBuilder {
         field: ParsedField::new(value, DateParser),

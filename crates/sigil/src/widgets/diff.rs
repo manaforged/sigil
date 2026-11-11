@@ -20,7 +20,7 @@ mod patch;
 mod rows;
 mod selection;
 
-pub use patch::{Hunk, Line, Patch};
+pub use patch::{Hunk, Line, LineId, LineKind, Patch};
 pub use selection::Selection;
 
 use model::{DiffRow, model};
@@ -86,6 +86,7 @@ struct DiffShape {
 }
 
 /// Builder of a diff view.
+#[must_use]
 pub struct DiffBuilder {
     patch: PatchThunk,
     shape: DiffShape,
@@ -103,7 +104,6 @@ impl core::fmt::Debug for DiffBuilder {
 }
 
 /// A rendered unified diff of text or a parsed `Patch`.
-#[must_use]
 pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
     DiffBuilder {
         patch: Box::new(move || patch.into_patch()),
@@ -123,49 +123,42 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
 
 impl DiffBuilder {
     /// Sets the path.
-    #[must_use]
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.shape.path = Some(path.into());
         self
     }
 
     /// Sets the status.
-    #[must_use]
     pub fn status(mut self, status: impl Into<String>) -> Self {
         self.shape.status = Some(status.into());
         self
     }
 
     /// Sets the view.
-    #[must_use]
     pub const fn view(mut self, view: DiffView) -> Self {
         self.shape.view = view;
         self
     }
 
     /// Sets the max rows.
-    #[must_use]
     pub const fn max_rows(mut self, rows: usize) -> Self {
         self.shape.max_rows = rows;
         self
     }
 
     /// Sets the wrap.
-    #[must_use]
     pub const fn wrap(mut self, on: bool) -> Self {
         self.shape.wrap = on;
         self
     }
 
     /// Sets the change.
-    #[must_use]
     pub fn change(mut self, on_change: impl Fn(DiffView) + 'static) -> Self {
         self.shape.on_change = Some(Rc::new(on_change));
         self
     }
 
     /// Sets the line selection.
-    #[must_use]
     pub const fn select(mut self, selection: Signal<Selection>) -> Self {
         self.shape.selection = Some(selection);
         self

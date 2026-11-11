@@ -9,14 +9,19 @@
 use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
 use crate::renderer::cache_limits::CacheLimits;
+#[cfg(any(test, feature = "kittest"))]
 use crate::renderer::quad_paint::QuadKind;
 use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
 use crate::style::Color;
 use ahash::AHashMap;
 use tiny_skia::{FilterQuality, Paint, Pattern, Pixmap, SpreadMode, Transform};
 
+#[cfg(any(test, feature = "kittest"))]
 use crate::renderer::quad_paint::BUILTIN_SPRITE_ATLAS_ID;
-use crate::renderer::scene_command::{DrawImage, DrawSprite, GlyphRun};
+#[cfg(any(test, feature = "kittest"))]
+use crate::renderer::scene_command::DrawSprite;
+use crate::renderer::scene_command::{DrawImage, GlyphRun};
+#[cfg(any(test, feature = "kittest"))]
 use crate::renderer::sprite_atlas::{
     BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8,
 };
@@ -24,8 +29,10 @@ use crate::renderer::sprite_atlas::{
 use super::bound::CpuBound;
 use super::pattern::{PatternPlacement, shader};
 use super::shapes::{Brush, decode, encode_byte, stored};
+#[cfg(any(test, feature = "kittest"))]
 use super::sprite_tint::tint;
 
+#[cfg(any(test, feature = "kittest"))]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 struct SpriteKey {
     atlas: u32,
@@ -41,7 +48,9 @@ pub(super) struct QuadCache {
     hinters: Hinters,
     images: AHashMap<u64, (Pixmap, u64)>,
     frame: u64,
+    #[cfg(any(test, feature = "kittest"))]
     atlases: AHashMap<u32, Pixmap>,
+    #[cfg(any(test, feature = "kittest"))]
     sprites: AHashMap<SpriteKey, Pixmap>,
     pattern: Option<Pixmap>,
 }
@@ -140,6 +149,7 @@ impl QuadCache {
         fill_scaled(target, pixmap, src_rect, dst_rect, brush);
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) fn sprite(
         &mut self,
         target: &mut Pixmap,
@@ -226,6 +236,7 @@ impl QuadCache {
         }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn atlas(&mut self, id: u32) -> Option<&Pixmap> {
         if id != BUILTIN_SPRITE_ATLAS_ID {
             return None;

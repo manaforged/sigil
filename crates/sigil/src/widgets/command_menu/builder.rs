@@ -6,7 +6,7 @@ use crate::style::Style;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
 use super::nav::{PaletteEntry, SubmitObserver};
-use crate::widgets::{Edit, Sealed, Widget};
+use crate::widgets::{Edit, NodeEdit, Sealed, Widget};
 
 #[derive(Default)]
 pub(super) struct LevelDef {
@@ -49,6 +49,7 @@ impl LevelDef {
 
 /// Builder of a command palette submenu.
 #[derive(Default)]
+#[must_use]
 pub struct SubmenuBuilder {
     level: LevelDef,
 }
@@ -61,21 +62,18 @@ impl core::fmt::Debug for SubmenuBuilder {
 
 impl SubmenuBuilder {
     /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
-    #[must_use]
     pub fn detail(mut self, text: impl Into<String>) -> Self {
         self.level.detail(text);
         self
     }
 
     /// Adds an item.
-    #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
         self.level.item(label, action);
         self
     }
 
     /// Sets the submenu.
-    #[must_use]
     pub fn submenu(mut self, label: impl Into<String>, build: impl FnOnce(Self) -> Self) -> Self {
         let nested = build(Self::default()).level;
         self.level.submenu(label, nested);
@@ -83,7 +81,6 @@ impl SubmenuBuilder {
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, label: impl Into<String>) -> Self {
         self.level.disabled(label);
         self
@@ -92,6 +89,7 @@ impl SubmenuBuilder {
 
 /// A command palette; `layout`, `width`, and `height` size each level panel, and `map_node` changes the root.
 #[derive(Default)]
+#[must_use]
 pub struct CommandMenuBuilder {
     pub(super) level: LevelDef,
     pub(super) on_submit: Option<SubmitObserver>,
@@ -114,28 +112,24 @@ impl core::fmt::Debug for CommandMenuBuilder {
 }
 
 /// A command palette.
-#[must_use]
 pub fn command_menu() -> CommandMenuBuilder {
     CommandMenuBuilder::default()
 }
 
 impl CommandMenuBuilder {
     /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
-    #[must_use]
     pub fn detail(mut self, text: impl Into<String>) -> Self {
         self.level.detail(text);
         self
     }
 
     /// Adds an item.
-    #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
         self.level.item(label, action);
         self
     }
 
     /// Sets the submenu.
-    #[must_use]
     pub fn submenu(
         mut self,
         label: impl Into<String>,
@@ -147,28 +141,24 @@ impl CommandMenuBuilder {
     }
 
     /// Sets the disabled.
-    #[must_use]
     pub fn disabled(mut self, label: impl Into<String>) -> Self {
         self.level.disabled(label);
         self
     }
 
     /// Sets the submit.
-    #[must_use]
     pub fn submit(mut self, cb: impl Fn(&str) + 'static) -> Self {
         self.on_submit = Some(Rc::new(cb));
         self
     }
 
     /// Sets the placeholder.
-    #[must_use]
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
         self
     }
 
     /// Sets the cancel.
-    #[must_use]
     pub fn cancel(mut self, cb: impl Fn() + 'static) -> Self {
         self.on_cancel = Some(Rc::new(cb));
         self
@@ -178,7 +168,7 @@ impl CommandMenuBuilder {
 builder_impls!([] CommandMenuBuilder: paint(style_accumulator), node);
 
 impl Sealed for CommandMenuBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         match edit {
             Edit::Layout(edit) => self.panel_layout.edit(edit),
             other => self

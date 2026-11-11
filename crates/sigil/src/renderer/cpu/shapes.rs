@@ -20,7 +20,17 @@ use crate::renderer::scene_command::{
 
 use super::bound::CpuBound;
 
+#[cfg(any(
+    test,
+    feature = "kittest",
+    all(feature = "scene", feature = "terminal")
+))]
 const WAVE_STEP: f32 = 1.0;
+#[cfg(any(
+    test,
+    feature = "kittest",
+    all(feature = "scene", feature = "terminal")
+))]
 const WAVE_STEPS_PER_PERIOD: f32 = 16.0;
 
 #[derive(Clone, Copy)]
@@ -209,6 +219,11 @@ pub(super) fn decoration(target: &mut Pixmap, draw: &DrawDecoration, brush: &Bru
             };
             target.fill_rect(rect, &paint, brush.transform, brush.mask_for(&paint));
         }
+        #[cfg(any(
+            test,
+            feature = "kittest",
+            all(feature = "scene", feature = "terminal")
+        ))]
         DecorationKind::WavyUnderline => {
             let reach = geometry.reach();
             let Some(path) = wave(&geometry, bound.padded(reach)) else {
@@ -226,6 +241,11 @@ pub(super) fn decoration(target: &mut Pixmap, draw: &DrawDecoration, brush: &Bru
     }
 }
 
+#[cfg(any(
+    test,
+    feature = "kittest",
+    all(feature = "scene", feature = "terminal")
+))]
 fn band_mask(
     target: &Pixmap,
     geometry: &DecorationGeometry,
@@ -251,6 +271,11 @@ fn band_mask(
     Some(mask)
 }
 
+#[cfg(any(
+    test,
+    feature = "kittest",
+    all(feature = "scene", feature = "terminal")
+))]
 fn wave(geometry: &DecorationGeometry, bound: CpuBound) -> Option<Path> {
     let band = geometry.band;
     let reach = geometry.reach();

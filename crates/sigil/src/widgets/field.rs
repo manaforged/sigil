@@ -7,9 +7,8 @@ use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
-use crate::style::{StateSlot, StyleAtom, Token, space};
-use crate::widgets::{Edit, Layout, Sealed, StateTarget, Widget};
-use smallvec::SmallVec;
+use crate::style::{StyleAtom, Token, space};
+use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
 use super::color_field::ColorFieldBuilder;
 use super::number_field::{NumberFieldBuilder, NumericKind};
@@ -27,6 +26,7 @@ fn shown(visible: bool) -> &'static [StyleAtom] {
 
 /// A labelled control; layout and `map_node` change the field root, and style, state, and focus setters change the control.
 #[derive(Debug)]
+#[must_use]
 pub struct FieldBuilder<C> {
     label: TextContent,
     control: C,
@@ -36,7 +36,6 @@ pub struct FieldBuilder<C> {
 }
 
 /// A label above a control.
-#[must_use]
 pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -> FieldBuilder<C> {
     FieldBuilder {
         label: label.into(),
@@ -74,7 +73,6 @@ impl FieldControl for ColorFieldBuilder {
 
 impl<C: FieldControl> FieldBuilder<C> {
     /// Sets the error.
-    #[must_use]
     pub fn error(mut self, error: impl Reactive<Option<String>>) -> Self {
         let error = error.into_signal();
         self.control = self
@@ -87,7 +85,6 @@ impl<C: FieldControl> FieldBuilder<C> {
 
 impl<C> FieldBuilder<C> {
     /// Sets the required.
-    #[must_use]
     pub fn required(mut self, required: impl Reactive<bool>) -> Self {
         self.required = Some(required.into_signal());
         self
@@ -140,10 +137,10 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
 }
 
 impl<C: Widget> Sealed for FieldBuilder<C> {
-    fn edit(mut self, edit: Edit) -> Self {
+    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
         match edit {
             Edit::Layout(edit) => self.layout_overrides.edit(edit),
-            focus => self.control = self.control.edit(focus),
+            focus => self.control = self.control.edit(NodeEdit(focus)),
         }
         self
     }
@@ -155,8 +152,8 @@ impl<C: Widget> Sealed for FieldBuilder<C> {
 }
 
 impl<C: Widget + StateTarget> StateTarget for FieldBuilder<C> {
-    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
-        self.control = self.control.set_state(slot, atoms);
+    fn set_state(mut self, state: StatePaint) -> Self {
+        self.control = self.control.set_state(state);
         self
     }
 }

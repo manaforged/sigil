@@ -59,16 +59,19 @@ impl Combobox {
     }
 
     /// Returns the query.
+    #[must_use]
     pub fn query(self) -> String {
         self.query.get()
     }
 
     /// Returns the selected.
+    #[must_use]
     pub fn selected(self) -> Option<usize> {
         self.selected.get()
     }
 
     /// Returns the selected option.
+    #[must_use]
     pub fn selected_option(self) -> Option<String> {
         self.selected
             .get()
@@ -76,11 +79,13 @@ impl Combobox {
     }
 
     /// Returns the selected signal.
+    #[must_use]
     pub const fn selected_signal(self) -> Signal<Option<usize>> {
         self.selected
     }
 
     /// Returns whether this combobox is open.
+    #[must_use]
     pub fn is_open(self) -> bool {
         self.open.get()
     }
@@ -112,6 +117,7 @@ impl Combobox {
     }
 
     /// Returns the cursor.
+    #[must_use]
     pub fn cursor(self) -> usize {
         self.cursor.get()
     }
@@ -154,7 +160,11 @@ impl Combobox {
         self.session.update(|s| *s += 1);
     }
 
-    /// Returns the commit cursor.
+    /// Commits the highlighted row and returns whether a row was committed.
+    #[allow(
+        clippy::must_use_candidate,
+        reason = "commits the highlighted row; the result is optional"
+    )]
     pub fn commit_cursor(self) -> bool {
         let Some(&(index, _)) = self.filtered().get(self.cursor.peek()) else {
             return false;
