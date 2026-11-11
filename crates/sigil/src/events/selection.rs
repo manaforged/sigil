@@ -29,6 +29,7 @@ pub(crate) enum Unit {
 
 #[derive(Clone, Copy)]
 pub(crate) struct TextSelection {
+    host: u64,
     pub(crate) region: NodeId,
     pub(crate) anchor: Endpoint,
     pub(crate) focus: Endpoint,
@@ -130,6 +131,7 @@ pub(crate) fn down(cx: &Cx, path: &[NodeId], event: &PointerEvent) {
                 )
             });
     STATE.set(Some(TextSelection {
+        host: cx.instance_id(),
         region,
         anchor,
         focus,
@@ -165,11 +167,11 @@ fn note_down(point: Point) -> bool {
 }
 
 fn shift_extend(cx: &Cx, region: NodeId, endpoint: Endpoint, point: Point) {
-    let existing = STATE
-        .with_borrow(|state| *state)
-        .filter(|sel| sel.region == region && live(cx, *sel));
+    let existing = current(cx).filter(|sel| sel.region == region && live(cx, *sel));
+    let host = cx.instance_id();
     let next = existing.map_or(
         TextSelection {
+            host,
             region,
             anchor: endpoint,
             focus: endpoint,
@@ -196,7 +198,7 @@ fn shift_extend(cx: &Cx, region: NodeId, endpoint: Endpoint, point: Point) {
 }
 
 fn extend(cx: &Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
-    let Some(mut selection) = STATE.with_borrow(|state| state.filter(|sel| sel.dragging)) else {
+    let Some(mut selection) = current(cx).filter(|sel| sel.dragging) else {
         return;
     };
     if let Some(endpoint) = endpoint_at(cx, selection.region, event.position) {
@@ -247,6 +249,10 @@ fn deliver(cx: &Cx, region: NodeId, text: &str) {
     }
 }
 
+fn current(cx: &Cx) -> Option<TextSelection> {
+    STATE.with_borrow(|state| state.filter(|sel| sel.host == cx.instance_id()))
+}
+
 fn live(cx: &Cx, sel: TextSelection) -> bool {
     [sel.anchor.node, sel.focus.node]
         .iter()
@@ -254,7 +260,7 @@ fn live(cx: &Cx, sel: TextSelection) -> bool {
 }
 
 pub(crate) fn copy_selection(cx: &Cx) -> bool {
-    let Some(sel) = STATE.with_borrow(|state| state.filter(|sel| sel.moved)) else {
+    let Some(sel) = current(cx).filter(|sel| sel.moved) else {
         return false;
     };
     if !live(cx, sel) {
@@ -270,7 +276,7 @@ pub(crate) fn copy_selection(cx: &Cx) -> bool {
 }
 
 pub(crate) fn ranges(cx: &Cx) -> HashMap<NodeId, (usize, usize)> {
-    let Some(sel) = STATE.with_borrow(|state| *state) else {
+    let Some(sel) = current(cx) else {
         return HashMap::new();
     };
     if !live(cx, sel) {
