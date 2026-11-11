@@ -6,9 +6,9 @@ use crate::reactive::{Signal, signal};
 use crate::layout::Orientation;
 use crate::widgets::drag::axis_drag;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct SplitterState {
-    inner: &'static SplitterStateInner,
+    inner: std::rc::Rc<SplitterStateInner>,
 }
 
 struct SplitterStateInner {
@@ -57,7 +57,7 @@ impl SplitterState {
         if let Some(signal) = binds.sizes {
             signal.set(limits.sizes.clone());
         }
-        let inner = Box::leak(Box::new(SplitterStateInner {
+        let inner = std::rc::Rc::new(SplitterStateInner {
             orientation,
             sizes: RefCell::new(limits.sizes),
             mins: limits.mins,
@@ -70,24 +70,24 @@ impl SplitterState {
             proportional: limits.proportional,
             extent: Cell::new(0.0),
             revision: signal(0),
-        }));
+        });
         Self { inner }
     }
 
-    pub(super) const fn orientation(self) -> Orientation {
+    pub(super) fn orientation(&self) -> Orientation {
         self.inner.orientation
     }
 
-    pub(super) fn size_at(self, pane: usize) -> f32 {
+    pub(super) fn size_at(&self, pane: usize) -> f32 {
         self.inner.sizes.borrow().get(pane).copied().unwrap_or(0.0)
     }
 
-    pub(super) fn tracked_size(self, pane: usize) -> f32 {
+    pub(super) fn tracked_size(&self, pane: usize) -> f32 {
         self.inner.revision.track();
         self.size_at(pane)
     }
 
-    pub(super) fn bounds(self, handle: usize) -> (f32, f32) {
+    pub(super) fn bounds(&self, handle: usize) -> (f32, f32) {
         let min = self.inner.mins.get(handle).copied().unwrap_or(0.0);
         let max = self
             .inner
@@ -99,12 +99,12 @@ impl SplitterState {
         (min, if max.is_finite() { max } else { span.max(min) })
     }
 
-    pub(super) fn nudge(self, handle: usize, delta: f32) {
+    pub(super) fn nudge(&self, handle: usize, delta: f32) {
         let snapshot = self.inner.sizes.borrow().clone();
         self.resize(&snapshot, handle, delta);
     }
 
-    fn resize(self, snapshot: &[f32], handle: usize, delta: f32) {
+    fn resize(&self, snapshot: &[f32], handle: usize, delta: f32) {
         let bounds = PaneBounds {
             mins: &self.inner.mins,
             maxs: &self.inner.maxs,
@@ -114,7 +114,7 @@ impl SplitterState {
         self.replace(next);
     }
 
-    fn replace(self, next: Vec<f32>) {
+    fn replace(&self, next: Vec<f32>) {
         *self.inner.sizes.borrow_mut() = next;
         self.inner
             .revision
@@ -125,7 +125,7 @@ impl SplitterState {
     }
 
     /// Scales the panes to fill `extent` pixels, keeping their shares, in proportional mode.
-    pub(super) fn fit(self, extent: f32) {
+    pub(super) fn fit(&self, extent: f32) {
         let previous = self.inner.extent.get();
         if !self.inner.proportional || extent <= 0.0 || (extent - previous).abs() < 0.5 {
             return;
@@ -147,13 +147,13 @@ impl SplitterState {
     }
 
     /// Reports the sizes to the settle bind once a drag or key move ends.
-    pub(super) fn settle(self) {
+    pub(super) fn settle(&self) {
         if let Some(signal) = self.inner.settle_bind {
             signal.set(self.inner.sizes.borrow().clone());
         }
     }
 
-    fn snap(self, handle: usize) {
+    fn snap(&self, handle: usize) {
         let Some(points) = self.inner.snap_points.get(handle) else {
             return;
         };
@@ -226,11 +226,12 @@ pub(super) fn install_handle_hooks(
     handle_index: usize,
 ) -> NodeBuilder {
     let axis = state.orientation();
+    let (read, resize) = (state.clone(), state.clone());
     axis_drag(
         node,
         axis,
-        move || state.inner.sizes.borrow().clone(),
-        move |snapshot, delta| state.resize(&snapshot, handle_index, delta),
+        move || read.inner.sizes.borrow().clone(),
+        move |snapshot, delta| resize.resize(&snapshot, handle_index, delta),
         move || {
             state.snap(handle_index);
             state.settle();
