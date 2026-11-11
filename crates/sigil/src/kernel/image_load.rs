@@ -1,16 +1,12 @@
 use crate::kernel::image::data_uri_bytes;
-use crate::kernel::{
-    Cx, ImageSource, IntoNode, NodeId, ObjectFit, cached_image, fragment, image, node, text,
-};
+use crate::kernel::{ImageSource, cached_image};
 use crate::reactive::{Signal, signal};
 use crate::tasks::Status;
 use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::spawn_into;
 use crate::{Error, ErrorKind};
 
-type Load = Status<ImageSource, Error>;
-type View = Box<dyn Fn() -> Box<dyn IntoNode>>;
-type ErrorView = Box<dyn Fn(&Error) -> Box<dyn IntoNode>>;
+pub(crate) type Load = Status<ImageSource, Error>;
 
 impl ImageSource {
     /// Loads a file path, `file://` URL, base64 `data:` URI, or http(s) URL (feature `image-http` outside a browser) off the UI thread, cached by location and, for a file, its modified time and size.
@@ -84,8 +80,13 @@ const fn fetch(_url: &str) -> Result<ImageSource, Error> {
     ))
 }
 
-fn file_path(location: &str) -> &str {
-    location.strip_prefix("file://").unwrap_or(location)
+fn file_path(location: &str) -> std::path::PathBuf {
+    match url::Url::parse(location) {
+        Ok(url) if url.scheme() == "file" => {
+            url.to_file_path().unwrap_or_else(|()| location.into())
+        }
+        _ => location.into(),
+    }
 }
 
 fn is_http(location: &str) -> bool {
@@ -116,106 +117,9 @@ fn read(location: &str) -> Result<ImageSource, Error> {
         return fetch(location);
     }
     let path = file_path(location);
-    let bytes = std::fs::read(path)
-        .map_err(|err| Error::message(ErrorKind::Io, format_args!("{path}: {err}")))?;
+    let shown = path.display();
+    let bytes = std::fs::read(&path)
+        .map_err(|err| Error::message(ErrorKind::Io, format_args!("{shown}: {err}")))?;
     ImageSource::decode_uncached(&bytes)
-        .map_err(|err| Error::message(err.kind(), format_args!("{path}: {err}")))
-}
-
-/// An image that loads off the UI thread and shows a placeholder, then the image or an error.
-#[must_use]
-pub struct ImageLoadBuilder {
-    status: Signal<Load>,
-    alt: Option<String>,
-    fit: ObjectFit,
-    placeholder: View,
-    error: ErrorView,
-}
-
-/// An image loaded from a file path, `file://` URL, base64 `data:` URI, or http(s) URL (feature `image-http` outside a browser).
-///
-/// ```
-/// use sigil::prelude::*;
-///
-/// fn logo() -> impl IntoNode {
-///     load_image("assets/logo.png")
-///         .alt("Logo")
-///         .placeholder(|| text("Loading logo"))
-///         .error(|err| text(format!("No logo: {err}")))
-/// }
-/// ```
-pub fn load_image(location: impl Into<String>) -> ImageLoadBuilder {
-    ImageLoadBuilder {
-        status: ImageSource::load(location),
-        alt: None,
-        fit: ObjectFit::Fill,
-        placeholder: Box::new(|| node(text("Loading image"))),
-        error: Box::new(|err| node(text(format!("Could not load image: {err}")))),
-    }
-}
-
-impl ImageLoadBuilder {
-    /// Sets the alt text of the loaded image.
-    pub fn alt(mut self, text: impl Into<String>) -> Self {
-        self.alt = Some(text.into());
-        self
-    }
-
-    /// Sets how the loaded image fills its box.
-    pub const fn fit(mut self, fit: ObjectFit) -> Self {
-        self.fit = fit;
-        self
-    }
-
-    /// Sets the view shown while the image loads.
-    pub fn placeholder<N: IntoNode + 'static>(mut self, view: impl Fn() -> N + 'static) -> Self {
-        self.placeholder = Box::new(move || node(view()));
-        self
-    }
-
-    /// Sets the view shown when the image fails to load, given the reason.
-    pub fn error<N: IntoNode + 'static>(mut self, view: impl Fn(&Error) -> N + 'static) -> Self {
-        self.error = Box::new(move |err| node(view(err)));
-        self
-    }
-
-    /// Returns the load status signal.
-    #[must_use]
-    pub const fn status(&self) -> Signal<Load> {
-        self.status
-    }
-
-    fn view(&self, status: Load) -> Box<dyn IntoNode> {
-        match status {
-            Status::Ok(source) => {
-                let shown = image(source).fit(self.fit);
-                node(match &self.alt {
-                    Some(alt) => shown.alt(alt.clone()),
-                    None => shown,
-                })
-            }
-            Status::Err(err) => (self.error)(&err),
-            Status::Panicked(reason) => (self.error)(&Error::message(ErrorKind::Task, reason)),
-            Status::Idle | Status::Pending => (self.placeholder)(),
-        }
-    }
-}
-
-impl core::fmt::Debug for ImageLoadBuilder {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ImageLoadBuilder")
-            .field("status", &self.status)
-            .field("alt", &self.alt)
-            .field("fit", &self.fit)
-            .finish_non_exhaustive()
-    }
-}
-
-impl IntoNode for ImageLoadBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        let status = self.status;
-        fragment()
-            .children_reactive(move || [self.view(status.get())])
-            .build(cx)
-    }
+        .map_err(|err| Error::message(err.kind(), format_args!("{shown}: {err}")))
 }

@@ -6,7 +6,10 @@
     )
 )]
 #![doc = include_str!("../docs/overview.md")]
-#![allow(clippy::wildcard_imports)]
+#![allow(
+    clippy::wildcard_imports,
+    reason = "a module split into files imports its parent with `use super::*`"
+)]
 
 extern crate alloc;
 
@@ -208,9 +211,9 @@ pub mod prelude {
         ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each,
         fragment, image, node, show, switch, text,
     };
-    #[cfg(feature = "image-decode")]
-    pub use crate::kernel::{ImageLoadBuilder, load_image};
     pub use crate::layout::audit::Flaw;
+    #[cfg(feature = "image-decode")]
+    pub use crate::widgets::{ImageLoadBuilder, load_image};
     kittest_pub! {
         #[doc(hidden)]
         pub use crate::layout::LayoutStyle;

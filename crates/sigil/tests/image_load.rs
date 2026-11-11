@@ -3,6 +3,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use sigil::kernel::Role;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 
@@ -47,7 +48,7 @@ fn a_missing_file_shows_the_error_view_with_the_reason() {
 #[test]
 fn the_default_error_view_names_the_path() {
     let reason = std::fs::read("no/such/logo.png").expect_err("the file is missing");
-    Harness::new(|| column().child(load_image("file://no/such/logo.png")))
+    Harness::new(|| column().child(load_image("no/such/logo.png")))
         .expect_text(&format!("Could not load image: no/such/logo.png: {reason}"));
 }
 
@@ -129,4 +130,41 @@ fn an_http_error_status_shows_the_error_view() {
         )
     })
     .expect_text("Failed: Http");
+}
+
+fn file_url(host: &str) -> String {
+    let path = RED.replace('\\', "/");
+    let path = if path.starts_with('/') {
+        path
+    } else {
+        format!("/{path}")
+    };
+    format!("file://{host}{path}")
+}
+
+#[test]
+fn file_urls_with_an_empty_or_localhost_host_load() {
+    for url in [file_url(""), file_url("localhost")] {
+        assert_eq!(loaded_size(&url), Some((4, 4)), "{url}");
+    }
+}
+
+#[test]
+fn a_sized_load_image_fills_its_box() {
+    let mut ui = Harness::new(|| {
+        column().child(
+            load_image(RED)
+                .alt("Red square")
+                .fit(ObjectFit::Contain)
+                .width(40.0)
+                .height(24.0),
+        )
+    })
+    .pixels(200, 120);
+    ui.expect_text("Red square");
+    let bounds = ui
+        .get_by_role(Role::Image, "Red square")
+        .bounds()
+        .expect("image bounds");
+    assert_eq!((bounds.width, bounds.height), (40.0, 24.0));
 }

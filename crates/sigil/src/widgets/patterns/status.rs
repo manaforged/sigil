@@ -40,6 +40,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_row().align_items(AlignItems::Center))
+        .visible_when(shown)
         .children_reactive(move || {
             shown.get().then(|| {
                 chip(move || shown_text.get(), tone)
@@ -50,7 +51,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
 
 static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Token::Gray4.background()];
 
-/// A loading placeholder of `lines` muted bars that reads as busy to screen readers.
+/// A loading placeholder of `lines` muted bars, announced to screen readers as a polite "Loading" status.
 ///
 /// ```
 /// use sigil::prelude::*;

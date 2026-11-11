@@ -1,5 +1,3 @@
-#![allow(clippy::wildcard_imports)]
-
 pub(crate) const MAX_SOURCE_BYTES: usize = 1 << 20;
 
 pub(crate) const fn source_too_large(source: &str) -> bool {
@@ -210,6 +208,8 @@ mod graphviz;
 mod highlight;
 mod html;
 mod icon;
+#[cfg(feature = "image-decode")]
+mod image_load;
 mod interactive;
 mod kernel_builders;
 pub(crate) mod layout_ext;
@@ -270,6 +270,8 @@ pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, chip};
 pub use code_edit::{Change, CodeEditBuilder, Diagnostic, Severity, code_edit};
 pub use color_field::{ColorFieldBuilder, color_field};
+#[cfg(feature = "image-decode")]
+pub use image_load::{ImageLoadBuilder, load_image};
 #[cfg(scene_harness)]
 #[doc(hidden)]
 pub use svg_picture::{SvgMode, svg_scene};

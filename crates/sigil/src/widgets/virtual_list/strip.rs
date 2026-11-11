@@ -273,20 +273,20 @@ where
         let cache_key = row_key_of(spec.row_key.as_ref(), index, item);
         rows.push((
             key,
-            Some(node(deferred_row(items.clone(), index, cache_key, spec))),
+            Some(node(deferred_row(signal, index, cache_key, spec))),
         ));
     }
     rows
 }
 
 fn deferred_row<S, T, R>(
-    items: S,
+    items: Signal<S>,
     index: usize,
     cache_key: u64,
     spec: &BoundStrip<T, R>,
 ) -> impl IntoNode + use<S, T, R>
 where
-    S: Deref + 'static,
+    S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
     R: RowRender<T>,
@@ -299,6 +299,7 @@ where
     let selection = spec.selection;
     let measure = spec.measure.clone();
     crate::kernel::WithCx(move |cx: &mut Cx| {
+        let items = items.peek();
         let slice: &[T] = (*items).as_ref();
         let size = slice.len();
         let row = slice

@@ -53,11 +53,15 @@ impl Log {
         }
     }
 
-    /// Appends text as lines split at `\n` or `\r\n`, with no empty line for a trailing break; the oldest lines drop past the limit.
+    /// Appends text as lines split at `\n` or `\r\n`; empty text adds one empty line, a trailing break adds none, and the oldest lines drop past the limit.
     pub fn push(&self, text: impl AsRef<str>) {
+        let text = text.as_ref();
         self.lines.update(|lines| {
             let lines = Rc::make_mut(lines);
-            for line in text.as_ref().lines() {
+            if text.is_empty() {
+                lines.push(String::new());
+            }
+            for line in text.lines() {
                 lines.push(line.to_owned());
             }
         });

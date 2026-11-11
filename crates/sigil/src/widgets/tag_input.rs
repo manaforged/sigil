@@ -20,8 +20,7 @@ use super::icon::DISMISS_GLYPH;
 pub struct TagInputBuilder<T: 'static> {
     options: Vec<T>,
     selected: Signal<Vec<T>>,
-    placeholder: &'static str,
-    disabled: Option<Signal<bool>>,
+    state: Combobox,
     layout_overrides: LayoutOverrides,
 }
 
@@ -29,8 +28,7 @@ impl<T: 'static> core::fmt::Debug for TagInputBuilder<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("TagInputBuilder")
             .field("options", &self.options.len())
-            .field("placeholder", &self.placeholder)
-            .field("disabled", &self.disabled)
+            .field("state", &self.state)
             .field("layout_overrides", &self.layout_overrides)
             .finish_non_exhaustive()
     }
@@ -56,11 +54,11 @@ pub fn tag_input<T>(
 where
     T: Clone + PartialEq + Display + 'static,
 {
+    let options: Vec<T> = options.into_iter().collect();
     TagInputBuilder {
-        options: options.into_iter().collect(),
+        state: Combobox::new(options.iter().map(ToString::to_string).collect()),
+        options,
         selected,
-        placeholder: "",
-        disabled: None,
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -68,13 +66,13 @@ where
 impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
     /// Sets the placeholder.
     pub const fn placeholder(mut self, text: &'static str) -> Self {
-        self.placeholder = text;
+        self.state = self.state.placeholder(text);
         self
     }
 
     /// Sets the disabled.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.disabled = Some(disabled.into_signal());
+        self.state = self.state.disabled(disabled);
         self
     }
 
@@ -82,15 +80,10 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
         let Self {
             options,
             selected,
-            placeholder,
-            disabled,
+            state,
             ..
         } = self;
-        let mut state = Combobox::new(options.iter().map(ToString::to_string).collect())
-            .placeholder(placeholder);
-        if let Some(disabled) = disabled {
-            state = state.disabled(disabled);
-        }
+        let (placeholder, disabled) = (state.placeholder_text(), state.disabled_flag());
         let picked = state.selected_signal();
         effect(move || {
             let Some(option) = picked.get().and_then(|index| options.get(index)) else {
@@ -153,12 +146,12 @@ where
                 .into_iter()
                 .map(|tag| {
                     let label = tag.to_string();
-                    let remove = icon_button(DISMISS_GLYPH, move || {
-                        if !disabled.is_some_and(|flag| flag.peek()) {
-                            toggle(selected, &tag);
-                        }
-                    })
-                    .accessible(theme.fill(StringKey::RemoveItem, &[&label]));
+                    let remove = icon_button(DISMISS_GLYPH, move || toggle(selected, &tag))
+                        .accessible(theme.fill(StringKey::RemoveItem, &[&label]));
+                    let remove = match disabled {
+                        Some(flag) => remove.disabled(flag),
+                        None => remove,
+                    };
                     container()
                         .role(Role::ListItem)
                         .layout(

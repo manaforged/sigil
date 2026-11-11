@@ -70,3 +70,27 @@ fn each_tag_removes_with_its_button_and_backspace_removes_the_last() {
         "the removed tag still shows"
     );
 }
+
+#[test]
+fn typing_a_whole_option_adds_it_and_clears_the_input() {
+    let (mut ui, labels) = open();
+    type_in(&mut ui, "docs");
+    ui.press(Key::Enter).settle();
+    assert_eq!(tags(labels), ["docs"]);
+    let input = ui.get(&Query::role(Role::TextInput));
+    assert_eq!(input.value().unwrap_or_default(), "");
+    ui.press(Key::Backspace).settle();
+    assert!(tags(labels).is_empty());
+}
+
+#[test]
+fn a_disabled_tag_input_disables_its_remove_buttons() {
+    let mut ui = Harness::new(|| {
+        column().child(
+            tag_input(OPTIONS.map(String::from), signal(vec!["bug".to_owned()])).disabled(true),
+        )
+    })
+    .size(48, 16);
+    ui.settle();
+    assert!(ui.get_by_role(Role::Button, "Remove bug").is_disabled());
+}

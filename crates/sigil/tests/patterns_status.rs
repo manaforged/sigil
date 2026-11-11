@@ -194,3 +194,20 @@ fn pagination_moves_the_page_into_range_when_pages_shrink() {
         );
     });
 }
+
+#[test]
+fn a_badge_at_zero_takes_no_gap_in_its_row() {
+    let place = |with_badge: bool| {
+        let mut ui = Harness::new(move || {
+            let mut line = row().gap(Space::Md).child(text("Inbox"));
+            if with_badge {
+                line = line.child(badge(signal(0_usize), Tone::Error));
+            }
+            line.child(text("Sent"))
+        })
+        .size(40, 4);
+        ui.settle();
+        ui.get_by_text("Sent").bounds().expect("bounds").origin.x
+    };
+    assert!((place(true) - place(false)).abs() < 0.5);
+}

@@ -212,12 +212,7 @@ where
     where
         T: Identifiable,
     {
-        self.key_by(|_, item| {
-            use std::hash::{Hash, Hasher};
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            item.id().hash(&mut hasher);
-            hasher.finish()
-        })
+        self.key_by(|_, item| crate::fnv::hash_of(&item.id()))
     }
 
     /// Sets the key by.

@@ -118,6 +118,7 @@ sigil-ui = { path = "crates/sigil", version = "0.2.0" }
 sigil-fonts = { path = "crates/sigil-fonts", version = "0.2.0" }
 minisign = "0.7"
 base64 = "0.22"
+url = "2.5"
 leyline-http = { version = "0.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
 unicode-width = "0.2"
