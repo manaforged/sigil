@@ -46,9 +46,9 @@ fn a_missing_file_shows_the_error_view_with_the_reason() {
 
 #[test]
 fn the_default_error_view_names_the_path() {
-    Harness::new(|| column().child(load_image("file://no/such/logo.png"))).expect_text(
-        "Could not load image: no/such/logo.png: No such file or directory (os error 2)",
-    );
+    let reason = std::fs::read("no/such/logo.png").expect_err("the file is missing");
+    Harness::new(|| column().child(load_image("file://no/such/logo.png")))
+        .expect_text(&format!("Could not load image: no/such/logo.png: {reason}"));
 }
 
 fn loaded_size(path: &str) -> Option<(u32, u32)> {
