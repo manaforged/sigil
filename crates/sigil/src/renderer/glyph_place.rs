@@ -27,7 +27,7 @@ impl GlyphRun {
         let ink = self.ink_rect()?.expand(1.0 / scale.max(f32::MIN_POSITIVE));
         let mode = if text_tuning().raster
             && transform == IDENTITY
-            && self.style.font_size <= RASTER_MAX_LOGICAL_PX
+            && self.style().font_size <= RASTER_MAX_LOGICAL_PX
         {
             GlyphMode::Mask
         } else {

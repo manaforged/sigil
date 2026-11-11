@@ -59,7 +59,7 @@ pub(super) fn glyph_fill(run: &GlyphRun, gradient: &Gradient) -> Option<DrawPath
     let mut draw =
         DrawPath::new(Arc::from(outline), IDENTITY, key).with_fill(FillRule::NonZero, paint);
     draw.node = run.node;
-    draw.opacity = run.opacity;
+    draw.opacity = run.opacity();
     Some(draw)
 }
 

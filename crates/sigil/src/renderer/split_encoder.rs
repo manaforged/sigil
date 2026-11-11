@@ -98,7 +98,7 @@ impl SplitEncoder {
                 }
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,
                 SceneCommand::Decoration(_) => vertices += size_of::<DecorationInstance>() as u64,
-                command if draws_quad(command) => {
+                command if command.is_image() => {
                     vertices += size_of::<QuadInstance>() as u64;
                     uniforms += self.uniform_alignment;
                 }
@@ -395,13 +395,4 @@ fn reusable_target<'a>(desc: &wgpu::RenderPassDescriptor<'a>) -> Option<&'a wgpu
         && texture.mip_level_count() == 1
         && texture.depth_or_array_layers() == 1)
         .then_some(attachment.view)
-}
-
-const fn draws_quad(command: &SceneCommand) -> bool {
-    match command {
-        SceneCommand::Image(_) => true,
-        #[cfg(feature = "kittest")]
-        SceneCommand::Sprite(_) => true,
-        _ => false,
-    }
 }

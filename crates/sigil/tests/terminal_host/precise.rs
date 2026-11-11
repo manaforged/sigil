@@ -42,10 +42,8 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
                 .child(text(bullet).nowrap())
                 .child(text("steady … line").nowrap())
         });
-        let caps = Capabilities {
-            glyphs: Glyphs::Ascii,
-            ..Capabilities::default()
-        };
+        let mut caps = Capabilities::default();
+        caps.set_glyphs(Glyphs::Ascii);
         let mut screen = Screen::with_caps(COLS, ROWS, caps);
         let shown = |view: &mut Screen, embed: &mut Host| {
             let text = view.frame(embed, [], (COLS, ROWS)).expect("frame").text();
@@ -133,10 +131,8 @@ fn a_changed_link_target_reaches_the_terminal() {
         Owner::scope("precise-link", || {
             let (url, tick) = (signal(String::from("https://a.test")), signal(0_u32));
             let mut host = linked(url, tick);
-            let caps = Capabilities {
-                hyperlinks: true,
-                ..Capabilities::default()
-            };
+            let mut caps = Capabilities::default();
+            caps.set_hyperlinks(true);
             let mut screen = Screen::with_caps(COLS, ROWS, caps);
             for _ in 0..3 {
                 screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");

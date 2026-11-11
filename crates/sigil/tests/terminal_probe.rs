@@ -62,7 +62,7 @@ fn caps_child() {
     if std::env::var_os(CHILD).is_none() {
         return;
     }
-    let keyboard = sigil::terminal::Capabilities::probe().keyboard;
+    let keyboard = sigil::terminal::Capabilities::probe().keyboard();
     let mut out = std::io::stdout();
     write!(out, "keyboard {keyboard:?};").expect("write");
     out.flush().expect("flush");

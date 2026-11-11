@@ -21,7 +21,7 @@ fn text_color(host: &mut Host, label: &str) -> Color {
     host.emit(VIEW)
         .find_text(label)
         .expect("label is drawn")
-        .color
+        .color()
 }
 
 #[test]

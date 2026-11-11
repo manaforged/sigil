@@ -330,20 +330,20 @@ impl CellWalk<'_> {
         let text = Text {
             rect: self.map(run.rect),
             clip: self.clip(),
-            content: &run.text,
-            flow: run.flow,
-            ink: Ink::pick(self.fade(run.color, run.opacity), run.tone),
+            content: run.text(),
+            flow: run.flow(),
+            ink: Ink::pick(self.fade(run.color(), run.opacity()), run.tone()),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
             theme: self.paint.theme,
-            runs: run.style.runs.as_ref().map(|runs| (runs, run.inks())),
+            runs: run.style().runs.as_ref().map(|runs| (runs, run.inks())),
             hyperlinks: self.paint.caps.hyperlinks,
         };
         paint_text(self.grid, &text, visible, self.cell);
     }
 
     fn face(&self, draw: &GlyphRun) -> Face {
-        let style = &draw.style;
+        let style = draw.style();
         let linked = self.paint.marks.link(draw.node).is_some();
         Face {
             bold: style.font_weight >= 700,

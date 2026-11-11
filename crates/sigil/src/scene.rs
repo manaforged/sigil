@@ -30,9 +30,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
-pub use command::{
-    BlendMode, CommandScene, DrawRect, GlyphRun, SharedGlyph, StrokeCap, StrokeJoin, Wash,
-};
+pub use command::{BlendMode, CommandScene, DrawRect, GlyphRun, StrokeCap, StrokeJoin, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::{

@@ -13,13 +13,17 @@ pub enum Notify {
 /// The startup notices about missing terminal features.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Notices {
-    /// The notify, if any.
-    pub notify: Option<Notify>,
-    /// Whether progress.
-    pub progress: bool,
-    /// Whether activity.
-    pub activity: bool,
+    pub(crate) notify: Option<Notify>,
+    pub(crate) progress: bool,
+    pub(crate) activity: bool,
 }
+
+fields!(Notices {
+    "whether the terminal shows task progress" progress set_progress: bool,
+    "whether the terminal shows agent activity" activity set_activity: bool,
+} {
+    "the desktop notification protocol" notify set_notify: Notify,
+});
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::terminal) enum Known {

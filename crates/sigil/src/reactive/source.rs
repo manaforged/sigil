@@ -81,3 +81,13 @@ impl Reactive<Self> for bool {
         signal(self)
     }
 }
+
+impl Reactive<Self> for f32 {
+    fn read(&self) -> Self {
+        *self
+    }
+
+    fn into_signal(self) -> Signal<Self> {
+        signal(self)
+    }
+}

@@ -320,7 +320,7 @@ fn font_methods_emit_typography_atoms() {
     );
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let scene = emit_scene(&cx, root, None);
-    let style = &scene.find_text("Aa").expect("glyph run").style;
+    let style = scene.find_text("Aa").expect("glyph run").style();
     assert_eq!(style.font_size, 14.0);
     assert_eq!(style.font_weight, 600);
     assert_eq!(style.font_family, "mono");

@@ -133,7 +133,7 @@ pub(crate) use styled::node::attach_style;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
 pub use text_style::{TextFace, TextLineHeight, TextRun, TextRuns};
-pub use theme::{Theme, ThemeValue, TokenLayer, TokenTable};
+pub use theme::{Theme, ThemeValue};
 pub use token::Token;
 pub use tone::Tone;
 kittest_pub! {

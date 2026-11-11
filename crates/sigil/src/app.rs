@@ -96,11 +96,9 @@ pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
-pub use frame::{FrameHooks, FrameInfo, FrameOutput};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use frame::{FrameInputHook, FramePaintHook};
-}
+pub use frame::{
+    FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
+};
 pub(crate) use host_env::HostCaps;
 pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]

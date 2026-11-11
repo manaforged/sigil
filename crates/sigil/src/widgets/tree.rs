@@ -10,7 +10,7 @@ use crate::kernel::{NodeBuilder, Role, TextContent};
 use crate::reactive::{Reactive, Signal, signal};
 use crate::style::{Tone, space};
 
-use super::icon::{IconSource, IntoIconSource};
+use super::icon::Glyph;
 use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
 use super::shared::accessible_name;
@@ -28,7 +28,7 @@ pub struct TreeNode<K: Clone + Eq + Hash + 'static> {
     /// The label.
     pub label: TextContent,
     /// The leading, if any.
-    pub leading: Option<IconSource>,
+    pub leading: Option<Glyph>,
     /// The status, if any.
     pub status: Option<(TextContent, Tone)>,
     /// The detail, if any.
@@ -56,8 +56,8 @@ impl<K: Clone + Eq + Hash + 'static> TreeNode<K> {
 
     /// Sets the leading.
     #[must_use]
-    pub fn leading(mut self, glyph: impl IntoIconSource) -> Self {
-        self.leading = Some(glyph.into_icon_source());
+    pub fn leading(mut self, glyph: impl Into<Glyph>) -> Self {
+        self.leading = Some(glyph.into());
         self
     }
 

@@ -2,7 +2,7 @@
 
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, Length, Overflow, StyleData};
-use crate::reactive::{Signal, derived, effect_named, signal};
+use crate::reactive::{Reactive, Signal, derived, effect_named, signal};
 use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
@@ -63,24 +63,6 @@ pub struct ScrollBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// A fixed or reactive extent for a scroll view.
-pub trait IntoScrollExtent {
-    /// Returns the extent as a signal.
-    fn into_extent(self) -> Signal<f32>;
-}
-
-impl IntoScrollExtent for f32 {
-    fn into_extent(self) -> Signal<f32> {
-        signal(self)
-    }
-}
-
-impl IntoScrollExtent for Signal<f32> {
-    fn into_extent(self) -> Signal<f32> {
-        self
-    }
-}
-
 /// A scroll event.
 pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
@@ -96,8 +78,8 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
 
 impl ScrollBuilder {
     /// Sets the extent.
-    pub fn extent(mut self, extent: impl IntoScrollExtent) -> Self {
-        self.extent = Some(extent.into_extent());
+    pub fn extent(mut self, extent: impl Reactive<f32>) -> Self {
+        self.extent = Some(extent.into_signal());
         self
     }
 

@@ -15,8 +15,8 @@ impl<'t> EmitWalk<'_, 't> {
         }
         let base = context();
         for (id, path) in found {
-            let inherited = path.iter().fold(base.clone(), |outer, &(step, step_node)| {
-                let style = render_style_for(step, step_node, outer.theme, outer.text_color);
+            let inherited = path.iter().fold(base.clone(), |outer, &(_, step_node)| {
+                let style = render_style_for(step_node, outer.theme, outer.text_color);
                 child_inherited(step_node, &outer, &style)
             });
             self.deferred.push((id, inherited, None));

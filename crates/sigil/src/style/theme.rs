@@ -23,7 +23,7 @@ mod mix;
 mod table;
 
 pub(crate) use ambient::fallback_theme;
-pub use table::{TokenLayer, TokenTable};
+pub(crate) use table::TokenTable;
 
 /// One theme token value.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -76,7 +76,7 @@ pub struct Theme {
     /// The missing token fallback.
     pub missing_token_fallback: Color,
     /// The tokens.
-    pub tokens: TokenTable,
+    pub(crate) tokens: TokenTable,
     /// The metrics.
     pub metrics: Metrics,
     /// The direction.

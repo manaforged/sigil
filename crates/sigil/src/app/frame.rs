@@ -35,18 +35,14 @@ pub struct FrameOutput {
     pub layout: Result<(), Error>,
 }
 
-kittest_pub! {
-    /// Runs before layout and may return a new viewport.
-    pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
-}
+/// Runs before layout and may return a new viewport.
+pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
 
 /// Runs after layout.
-pub(crate) type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
+pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 
-kittest_pub! {
-    /// Runs when the frame paints.
-    pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
-}
+/// Runs when the frame paints.
+pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
 
 /// The optional hooks that `Host::frame` runs.
 #[derive(Default)]

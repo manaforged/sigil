@@ -4,6 +4,39 @@ use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 use crate::terminal::term::{Calibration, ProbeRow};
 
+macro_rules! fields {
+    ($ty:ident { $($doc:literal $name:ident $set:ident: $field:ty,)* } { $($odoc:literal $oname:ident $oset:ident: $ofield:ty,)* }) => {
+        impl $ty {
+            $(
+                #[doc = concat!("Returns ", $doc, ".")]
+                #[must_use]
+                pub const fn $name(&self) -> $field {
+                    self.$name
+                }
+
+                #[cfg(feature = "kittest")]
+                #[doc(hidden)]
+                pub const fn $set(&mut self, $name: $field) {
+                    self.$name = $name;
+                }
+            )*
+            $(
+                #[doc = concat!("Returns ", $odoc, ", if any.")]
+                #[must_use]
+                pub const fn $oname(&self) -> Option<$ofield> {
+                    self.$oname
+                }
+
+                #[cfg(feature = "kittest")]
+                #[doc(hidden)]
+                pub fn $oset(&mut self, $oname: impl Into<Option<$ofield>>) {
+                    self.$oname = $oname.into();
+                }
+            )*
+        }
+    };
+}
+
 #[cfg(unix)]
 mod ask;
 mod env;
@@ -79,6 +112,7 @@ pub enum Keyboard {
 
 /// How the terminal host reaches the clipboard.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ClipRoute {
     /// The pbcopy clip route.
     Pbcopy,
@@ -100,6 +134,7 @@ pub enum Borders {
 
 /// How the terminal host fills a rectangle that covers part of a cell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Fills {
     /// The partial fills.
     Partial,
@@ -131,42 +166,24 @@ const DEFAULT_CELL_ASPECT: f32 = 0.5;
 /// Terminal capabilities.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Capabilities {
-    /// The color.
-    pub color: ColorDepth,
-    /// The graphics, if any.
-    pub graphics: Option<Protocol>,
-    /// The mux, if any.
-    pub mux: Option<Mux>,
-    /// The keyboard.
-    pub keyboard: Keyboard,
-    /// Whether hyperlinks.
-    pub hyperlinks: bool,
-    /// Whether underline styles.
-    pub underline_styles: bool,
-    /// The borders.
-    pub borders: Borders,
-    /// The glyphs.
-    pub glyphs: Glyphs,
-    /// The ambiguous.
-    pub ambiguous: Ambiguous,
-    /// The erase.
-    pub erase: Erase,
-    /// The cursor.
-    pub cursor: Cursor,
-    /// Whether sync.
-    pub sync: bool,
-    /// The clipboard.
-    pub clipboard: ClipRoute,
-    /// The backdrop, if any.
-    pub backdrop: Option<Backdrop>,
-    /// The background color the terminal reported, if it answered.
-    pub background: Option<Color>,
-    /// The notices.
-    pub notices: Notices,
-    /// The fills.
-    pub fills: Fills,
-    /// One cell's size in pixels as `[width, height]`, when the terminal reports it.
-    pub cell: Option<[u16; 2]>,
+    pub(crate) color: ColorDepth,
+    pub(crate) graphics: Option<Protocol>,
+    pub(crate) mux: Option<Mux>,
+    pub(crate) keyboard: Keyboard,
+    pub(crate) hyperlinks: bool,
+    pub(crate) underline_styles: bool,
+    pub(crate) borders: Borders,
+    pub(crate) glyphs: Glyphs,
+    pub(crate) ambiguous: Ambiguous,
+    pub(crate) erase: Erase,
+    pub(crate) cursor: Cursor,
+    pub(crate) sync: bool,
+    pub(crate) clipboard: ClipRoute,
+    pub(crate) backdrop: Option<Backdrop>,
+    pub(crate) background: Option<Color>,
+    pub(crate) notices: Notices,
+    pub(crate) fills: Fills,
+    pub(crate) cell: Option<[u16; 2]>,
 }
 
 impl Default for Capabilities {
@@ -187,11 +204,7 @@ impl Default for Capabilities {
             clipboard: ClipRoute::Osc52,
             backdrop: None,
             background: None,
-            notices: Notices {
-                notify: None,
-                progress: false,
-                activity: false,
-            },
+            notices: Notices::default(),
             fills: Fills::Partial,
             cell: None,
         }
@@ -221,6 +234,28 @@ struct Draft {
     #[cfg(unix)]
     ask: Questions,
 }
+
+fields!(Capabilities {
+    "the color depth" color set_color: ColorDepth,
+    "the keyboard protocol" keyboard set_keyboard: Keyboard,
+    "whether the terminal shows hyperlinks" hyperlinks set_hyperlinks: bool,
+    "whether the terminal draws underline styles" underline_styles set_underline_styles: bool,
+    "the border characters" borders set_borders: Borders,
+    "the glyph set" glyphs set_glyphs: Glyphs,
+    "the width of ambiguous-width characters" ambiguous set_ambiguous: Ambiguous,
+    "how clearing to the end of a line fills the cleared cells" erase set_erase: Erase,
+    "the text cursor shape" cursor set_cursor: Cursor,
+    "whether the terminal supports synchronized output" sync set_sync: bool,
+    "how the host reaches the clipboard" clipboard set_clipboard: ClipRoute,
+    "the startup notices" notices set_notices: Notices,
+    "how the host fills a rectangle that covers part of a cell" fills set_fills: Fills,
+} {
+    "the image protocol" graphics set_graphics: Protocol,
+    "the terminal multiplexer" mux set_mux: Mux,
+    "the background brightness" backdrop set_backdrop: Backdrop,
+    "the background color the terminal reported" background set_background: Color,
+    "one cell's size in pixels as `[width, height]`" cell set_cell: [u16; 2],
+});
 
 impl Capabilities {
     /// One cell's width over its height, or 0.5 when the terminal did not report its cell size.

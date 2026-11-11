@@ -1,4 +1,4 @@
-use crate::kernel::{Node, NodeId, NodeType};
+use crate::kernel::{Node, NodeType};
 use crate::style::{Color, RenderStyle, StyleBinding, StyleEngine, TextStyle, Theme, ToneContext};
 
 kittest_pub! {
@@ -6,7 +6,6 @@ kittest_pub! {
 #[must_use]
 #[doc(hidden)]
 pub fn render_style_for(
-    _id: NodeId,
     node: &Node,
     inherited: &Theme,
     inherited_text: Option<Color>,
