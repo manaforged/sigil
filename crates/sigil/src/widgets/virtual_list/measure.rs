@@ -1,7 +1,8 @@
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::rc::Rc;
+
+use ahash::{AHashMap, AHashSet};
 
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutStyle;
@@ -14,7 +15,7 @@ use super::{RowKey, bound_slice};
 pub(super) type Tops = Signal<Rc<Vec<f32>>>;
 pub(super) type Keys = Signal<Rc<Vec<u64>>>;
 
-type HeightCache = Rc<RefCell<HashMap<u64, f32>>>;
+type HeightCache = Rc<RefCell<AHashMap<u64, f32>>>;
 
 #[derive(Clone)]
 pub(super) struct Measure {
@@ -37,7 +38,7 @@ where
 {
     effect(move || {
         let items = items.get();
-        let live: HashSet<u64> = bound_slice(&items)
+        let live: AHashSet<u64> = bound_slice(&items)
             .iter()
             .enumerate()
             .map(|(index, item)| row_key_of(row_key.as_ref(), index, item))
