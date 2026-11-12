@@ -4,8 +4,8 @@ use std::sync::LazyLock;
 use iced_core::mouse::{self, Cursor, ScrollDelta};
 use iced_core::text::Wrapping;
 use iced_core::time::Instant;
-use iced_core::widget::operation::{Operation, Scrollable};
 use iced_core::widget::Id;
+use iced_core::widget::operation::{Operation, Scrollable};
 use iced_core::{
     Element, Event, Font, Length, Pixels, Point, Rectangle, Size, Theme, Vector, clipboard,
     renderer, window,
@@ -127,7 +127,9 @@ impl IcedRig {
             }
             _ => {}
         }
-        events.push(Event::Window(window::Event::RedrawRequested(Instant::now())));
+        events.push(Event::Window(
+            window::Event::RedrawRequested(Instant::now()),
+        ));
         events
     }
 

@@ -121,21 +121,6 @@ fn a_raised_layer_casts_a_shadow_and_a_page_layer_does_not() {
 }
 
 #[test]
-fn each_panel_elevation_casts_a_deeper_shadow() {
-    let depth = |tier| {
-        shadow_rows(&frame(move || {
-            page(panel().elevation(tier).child(text("Hg")))
-        }))
-    };
-    let (flat, low, mid, high) = (depth(0), depth(1), depth(2), depth(3));
-    assert_eq!(flat, 0);
-    assert!(
-        low > 0 && low < mid && mid < high,
-        "shadow rows by tier: {low}, {mid}, {high}"
-    );
-}
-
-#[test]
 fn a_card_on_the_terminal_keeps_its_border_and_draws_no_shadow() {
     let mut ui = Harness::new(|| card(text("Hg")));
     let screen = ui.text();

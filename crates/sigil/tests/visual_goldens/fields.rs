@@ -2,17 +2,6 @@ use super::*;
 use sigil::widgets::Layout;
 
 #[test]
-fn panel_default() {
-    let img = Harness::render(|| panel().title("Settings"))
-        .stub()
-        .mode(InteractionMode::Default)
-        .size([340, 92])
-        .hit((1.0, 1.0))
-        .image();
-    Golden::new("panel_default").delta(DELTA_PCT).assert(img);
-}
-
-#[test]
 fn progress_empty() {
     let img = Harness::render(|| {
         let v = signal(0.0_f32);

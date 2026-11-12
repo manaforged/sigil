@@ -331,7 +331,7 @@ fn chrome_page() -> NodeBuilder {
         ))
         .child(section_label("Panel and card"))
         .child(row2(
-            panel().title("Panel").child(text("Panel body").nowrap()),
+            card(text("Card body").nowrap()).title("Card"),
             card(kv_grid([("Host", "wgpu"), ("Backend", "metal")])),
         ))
         .child(section_label("Tabs"))

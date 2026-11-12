@@ -10,7 +10,7 @@ The family pages carry signatures, options, and behavior notes:
 - [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
 - [Content](widgets/content.md): text, label, icon, image, load_image, path, chart.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
-- [Chrome](widgets/chrome.md): app_shell, panel, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers, including badge, skeleton, pagination, breadcrumbs, and stepper.
+- [Chrome](widgets/chrome.md): app_shell, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers, including badge, skeleton, pagination, breadcrumbs, and stepper.
 - [Overlays](widgets/overlays.md): modal, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
 - [Plumbing](widgets/plumbing.md): interactive, axis_drag, drag/drop, clipboard, terminal.
 
@@ -53,7 +53,7 @@ The family pages carry signatures, options, and behavior notes:
 - **card(child)**: a padded surface.
 - **avatar(initials)**: an initials disc.
 - **sidebar(child)**: a fixed-width nav column. Chain `.width(len)` and `.resizable(min, max)`.
-- **panel()**: chain `.title()`, `.padding()`, and `.elevation()`.
+- **card(child)**: chain `.title()` and `.layer(Layer)`.
 - **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).width(px).min_width(px)` on a horizontal splitter, or `.height(px).min_height(px)` on a vertical one, and `.grow(1.0)` for the pane that takes the leftover space; the sash moves the fixed neighbour. Every setter after `.pane(node)` sets that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
 - **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
@@ -110,4 +110,4 @@ modal(open).title("Command").child(
 | Plain containers, avatar | yes |
 | card, sidebar | on `.into_node_builder()` |
 | chip | no style slots; `.activate` is a clickable button |
-| gauge, progress, dot, icon, divider, panel, scroll, modal, menu, command_menu, tooltip | compile error by design (display-only) |
+| gauge, progress, dot, icon, divider, scroll, modal, menu, command_menu, tooltip | compile error by design (display-only) |

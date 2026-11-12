@@ -22,10 +22,6 @@ pub(crate) fn app_shell_demo() -> NodeBuilder {
         ))
 }
 
-pub(crate) fn panel_demo() -> impl IntoNode {
-    panel().title("Panel").child(text("Panel body").nowrap())
-}
-
 pub(crate) fn card_demo() -> impl IntoNode {
     card(kv_grid([("Host", "wgpu"), ("Backend", "metal")]))
 }
@@ -121,7 +117,6 @@ fn build() -> impl IntoNode {
                     .child(tabs_demo(signal(0_usize), &[])),
             )
             .child(tabs_line_demo(signal(0_usize), &[]))
-            .child(panel_demo())
             .child(card_demo())
             .child(splitter_demo())
             .child(scroll_demo())

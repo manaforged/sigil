@@ -29,7 +29,9 @@ const SIDES: &[Side] = &[
         run(side, only, &|| SigilRig::new(Surface::Screen, Tree::Scroll));
     }),
     ("sigil-cell-virtual", |side, only| {
-        run(side, only, &|| SigilRig::new(Surface::Screen, Tree::Virtual));
+        run(side, only, &|| {
+            SigilRig::new(Surface::Screen, Tree::Virtual)
+        });
     }),
     ("ratatui", |side, only| {
         run(side, only, &|| Buffered::new(Extent::Visible));
@@ -53,7 +55,9 @@ const SIDES: &[Side] = &[
         run(side, only, &|| SigilRig::new(Surface::Window, Tree::Scroll));
     }),
     ("sigil-window-virtual", |side, only| {
-        run(side, only, &|| SigilRig::new(Surface::Window, Tree::Virtual));
+        run(side, only, &|| {
+            SigilRig::new(Surface::Window, Tree::Virtual)
+        });
     }),
     ("egui", |side, only| {
         run(side, only, &|| EguiRig::new(Mode::All));

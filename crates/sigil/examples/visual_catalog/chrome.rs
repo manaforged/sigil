@@ -3,7 +3,6 @@ use sigil::prelude::*;
 use super::spec::{Build, State, node};
 
 pub(crate) const BUILDERS: &[(&str, Build)] = &[
-    ("panel", panel_row),
     ("card", card_row),
     ("surface", surface_row),
     ("sidebar", sidebar_row),
@@ -24,10 +23,6 @@ fn active(state: State) -> Signal<usize> {
 
 fn disabled_tabs(state: State) -> &'static [usize] {
     if state == State::Disabled { &[1] } else { &[] }
-}
-
-fn panel_row(_state: State) -> NodeBuilder {
-    node(crate::widget_chrome::panel_demo())
 }
 
 fn card_row(_state: State) -> NodeBuilder {

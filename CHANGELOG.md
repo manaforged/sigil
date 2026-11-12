@@ -255,7 +255,6 @@ First public release.
 | `style::grid(cell)` | `style::cell(cell)` |
 | `ScrollBuilder::fill` | `Widget::fill`, with the same effect. `.fill_height()`, `.height(Length::Percent(..))`, `.min_height(..)`, and `.max_height(..)` on a scroll area now also set the height that the scroll range uses |
 | `menu_bar().fill()` | `menu_bar().fill_width()` |
-| `PanelBuilder::padding`, both the method and the field | `Widget::padding`. `padding`, `padding_x`, and `padding_y` on a panel apply in call order |
 | `sparkline(..).fill(SparkFill)` | `sparkline(..).area(SparkFill)` |
 | a layout setter on a splitter pane, such as `.pane(node).width(180.0)`, set the splitter | it sets the pane. `.width(px)` on a pane of a horizontal splitter and `.height(px)` on a pane of a vertical splitter set its initial size. Call `.commit()` first to set the splitter |
 | `ControlSize::Grow` | `ControlSize::Wide` with `.fill_width()` on the control. On `button`, `Grow` used the `Default` height, so write `.size(ControlSize::Default).fill_width()` there |
@@ -275,6 +274,7 @@ First public release.
 
 ### Changed
 
+- `panel` and `PanelBuilder` are removed; `card` takes a title. Migration: `panel().title("T").child(body)` becomes `card(body).title("T")`, and `.elevation(0)` becomes `.layer(Layer::Page)`. A card has 12 px padding where a panel had 16 px; chain `.layout(LayoutStyle::default().padding(Space::Lg))` to keep it.
 - `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
 - `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.
 - The `icon_svg` function is removed. Migration: `icon_svg(source)` becomes `icon(Glyph::svg(source))`. `Glyph` has a new `Svg` variant and is in the prelude.

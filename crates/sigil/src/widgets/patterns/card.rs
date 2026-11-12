@@ -1,7 +1,7 @@
 use crate::layout::Space;
 use std::rc::Rc;
 
-use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token};
@@ -9,8 +9,6 @@ use crate::widgets::Layout;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
-
-static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
 static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
@@ -24,6 +22,9 @@ static CARD_SELECTED: &[StyleAtom] = &[
 #[must_use]
 pub struct CardBuilder {
     node: NodeBuilder,
+    title: Option<String>,
+    layer: Layer,
+    content: Box<dyn IntoNode>,
     selected: Option<Signal<bool>>,
     activate: Option<Activate>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
@@ -33,25 +34,26 @@ impl core::fmt::Debug for CardBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CardBuilder")
             .field("node", &self.node)
+            .field("title", &self.title)
             .field("selected", &self.selected)
             .field("layout_overrides", &self.layout_overrides)
             .finish_non_exhaustive()
     }
 }
 
-/// A bordered card.
+/// A bordered card. Chain `.title(..)` for a heading and `.layer(Layer)` for another depth.
 pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
     CardBuilder {
-        node: container()
-            .role(Role::GenericContainer)
-            .layout(
-                LayoutStyle::flex_column()
-                    .padding(Space::Md)
-                    .gap(Space::Sm)
-                    .fill_width()
-                    .min_width(0.0),
-            )
-            .child(child),
+        node: container().role(Role::GenericContainer).layout(
+            LayoutStyle::flex_column()
+                .padding(Space::Md)
+                .gap(Space::Sm)
+                .fill_width()
+                .min_width(0.0),
+        ),
+        title: None,
+        layer: Layer::Raised,
+        content: Box::new(child),
         selected: None,
         activate: None,
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
@@ -59,6 +61,18 @@ pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
 }
 
 impl CardBuilder {
+    /// Sets the depth of the card's surface.
+    pub const fn layer(mut self, layer: Layer) -> Self {
+        self.layer = layer;
+        self
+    }
+
+    /// Sets the title shown above the content.
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
     /// Sets the selected.
     pub fn selected(mut self, selected: impl Reactive<bool>) -> Self {
         self.selected = Some(selected.into_signal());
@@ -73,12 +87,21 @@ impl CardBuilder {
 
     #[must_use]
     fn root(self) -> NodeBuilder {
+        let titled = match self.title {
+            Some(title) => self.node.child(
+                text(title)
+                    .class("text-sm font-medium")
+                    .class(Token::OnSurface.text()),
+            ),
+            None => self.node,
+        }
+        .child(self.content);
+        let rest = self.layer.atoms();
         let node = match self.selected {
-            Some(selected) => self
-                .node
+            Some(selected) => titled
                 .selected(selected)
-                .style_reactive(move || if selected.get() { CARD_SELECTED } else { CARD }),
-            None => self.node.class(CARD),
+                .style_reactive(move || if selected.get() { CARD_SELECTED } else { rest }),
+            None => titled.class(rest),
         };
         match self.activate {
             Some(activate) => node.role(Role::Button).activate_with(activate),
