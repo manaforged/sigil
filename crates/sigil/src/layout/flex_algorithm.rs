@@ -196,6 +196,9 @@ fn build_items(
         && matches!(own.flex_wrap, FlexWrap::NoWrap)
         && matches!(own.align_items, None | Some(AlignItems::Stretch))
         && ctx.definite_along(own, true);
+    let open = !ctx.axes.row
+        && matches!(own.flex_wrap, FlexWrap::NoWrap)
+        && !ctx.definite_along(own, false);
     let mut items = Vec::with_capacity(children.len());
     for child_id in children {
         let child = forest
@@ -208,10 +211,15 @@ fn build_items(
         if matches!(style.position, Position::Absolute) {
             continue;
         }
+        let main = if open && ctx.solver.height_free(child) {
+            0.0
+        } else {
+            container_main
+        };
         items.push(FlexItem::build(
             ctx,
             child,
-            container_main,
+            main,
             container_cross,
             stretches,
         ));

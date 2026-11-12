@@ -7,7 +7,7 @@ use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
 use crate::layout::forest::{
     ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef, SpaceConstraint,
 };
-use crate::layout::style_data::{Display, FlexDirection, Length, Position};
+use crate::layout::style_data::{Display, FlexDirection, FlexWrap, Length, Position};
 
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
@@ -52,6 +52,30 @@ impl<'a> FlexSolver<'a> {
             });
         forest.fills_put(node.id(), fills);
         fills
+    }
+
+    pub(crate) fn height_free(&self, node: NodeRef<'_>) -> bool {
+        let forest = self.scope.forest();
+        if let Some(known) = forest.height_free_get(node.id()) {
+            return known;
+        }
+        let style = node.style();
+        let tall = |dim: Length| matches!(dim, Length::Percent(_) | Length::Fill);
+        let free = !matches!(style.display, Display::Grid)
+            && !matches!(style.position, Position::Absolute)
+            && matches!(style.flex_wrap, FlexWrap::NoWrap)
+            && !tall(style.size.height)
+            && !tall(style.min_size.height)
+            && !tall(style.max_size.height)
+            && !tall(style.flex_basis)
+            && !tall(style.gap.height)
+            && node
+                .children()
+                .iter()
+                .filter_map(|id| forest.refer(*id))
+                .all(|child| self.height_free(child));
+        forest.height_free_put(node.id(), free);
+        free
     }
 
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), Error> {

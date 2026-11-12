@@ -52,25 +52,46 @@ const fn shift_box(cb: ComputedBox, dx: f32, dy: f32) -> ComputedBox {
     }
 }
 
+const TRAIT_MASK: u8 = 0b11;
+const FILLS_WIDTH: u8 = 0;
+const HEIGHT_FREE: u8 = 2;
+
 impl LayoutForest {
     pub(crate) fn fills_get(&self, id: LocalId) -> Option<bool> {
+        self.trait_get(id, FILLS_WIDTH)
+    }
+
+    pub(crate) fn fills_put(&self, id: LocalId, fills: bool) {
+        self.trait_put(id, FILLS_WIDTH, fills);
+    }
+
+    pub(crate) fn height_free_get(&self, id: LocalId) -> Option<bool> {
+        self.trait_get(id, HEIGHT_FREE)
+    }
+
+    pub(crate) fn height_free_put(&self, id: LocalId, free: bool) {
+        self.trait_put(id, HEIGHT_FREE, free);
+    }
+
+    fn trait_get(&self, id: LocalId, shift: u8) -> Option<bool> {
         let code = self
             .node(id)
             .and_then(|_| self.fills.get(id.index as usize))?
             .get();
-        match code {
+        match (code >> shift) & TRAIT_MASK {
             1 => Some(false),
             2 => Some(true),
             _ => None,
         }
     }
 
-    pub(crate) fn fills_put(&self, id: LocalId, fills: bool) {
+    fn trait_put(&self, id: LocalId, shift: u8, value: bool) {
         if let Some(slot) = self
             .node(id)
             .and_then(|_| self.fills.get(id.index as usize))
         {
-            slot.set(if fills { 2 } else { 1 });
+            let code = if value { 2 } else { 1 };
+            slot.set((slot.get() & !(TRAIT_MASK << shift)) | (code << shift));
         }
     }
 
