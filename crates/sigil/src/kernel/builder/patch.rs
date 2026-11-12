@@ -123,7 +123,7 @@ impl Cx {
 
     fn mount_child(&mut self, parent: NodeId, builder: Box<dyn ErasedComponent>) -> Fate {
         crate::profile::count_add(Counter::KernelMounted, 1);
-        Fate::Mounted(self.add_boxed_child(parent, builder))
+        Fate::Mounted(self.add_owned_child(parent, builder))
     }
 }
 

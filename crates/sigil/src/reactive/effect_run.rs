@@ -6,6 +6,7 @@ struct RunGuard {
     key: EffectKey,
     prev_owner: Option<OwnerKey>,
     prev_lazy: Option<EffectKey>,
+    prev_deferred: Option<usize>,
     prev_effect: Option<EffectKey>,
     f: Option<Box<dyn FnMut()>>,
     location: &'static core::panic::Location<'static>,
@@ -37,6 +38,7 @@ impl Drop for RunGuard {
             }
             rt.current_owner = self.prev_owner;
             rt.lazy_effect_owner = self.prev_lazy;
+            rt.deferred_at = self.prev_deferred;
             rt.current_effect = self.prev_effect;
             rt.running.remove(&self.key);
             if deferred && run_owner.is_none() {
@@ -152,6 +154,7 @@ fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<O
         key,
         prev_owner: rt.current_owner.take(),
         prev_lazy: rt.lazy_effect_owner.replace(key),
+        prev_deferred: rt.deferred_at.take(),
         prev_effect: rt.current_effect.replace(key),
         f: Some(f),
         location,

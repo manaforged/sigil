@@ -21,6 +21,8 @@ pub(crate) struct RuntimeState {
     pub(crate) effects: Arena<EffectSlot>,
     pub(crate) current_owner: Option<OwnerKey>,
     pub(crate) lazy_effect_owner: Option<EffectKey>,
+    pub(crate) deferred: Vec<super::owner::Deferred>,
+    pub(crate) deferred_at: Option<usize>,
     pub(crate) current_effect: Option<EffectKey>,
     pub(crate) batch_depth: u32,
     pending: Vec<VecDeque<(u64, EffectKey)>>,
@@ -47,6 +49,8 @@ impl RuntimeState {
             effects: Arena::new(),
             current_owner: None,
             lazy_effect_owner: None,
+            deferred: Vec::new(),
+            deferred_at: None,
             current_effect: None,
             batch_depth: 0,
             pending: Vec::new(),
@@ -124,14 +128,25 @@ impl RuntimeState {
 
     #[cfg(event_channel)]
     pub(crate) const fn has_active_owner(&self) -> bool {
-        self.current_owner.is_some() || self.lazy_effect_owner.is_some()
+        self.current_owner.is_some()
+            || self.lazy_effect_owner.is_some()
+            || self.deferred_at.is_some()
     }
 
     pub(crate) fn active_owner(&mut self) -> Option<OwnerKey> {
         if let Some(owner) = self.current_owner {
             return Some(owner);
         }
-        let eff_key = self.lazy_effect_owner.take()?;
+        if let Some(at) = self.deferred_at {
+            return Some(self.materialize(at));
+        }
+        let effect = self.lazy_effect_owner.take()?;
+        let run_owner = self.effect_run_owner(effect)?;
+        self.current_owner = Some(run_owner);
+        Some(run_owner)
+    }
+
+    pub(crate) fn effect_run_owner(&mut self, eff_key: EffectKey) -> Option<OwnerKey> {
         let (parent, location) = self
             .effects
             .get(eff_key)
@@ -141,7 +156,6 @@ impl RuntimeState {
         if let Some(slot) = self.effects.get_mut(eff_key) {
             slot.run_owner = Some(run_owner);
         }
-        self.current_owner = Some(run_owner);
         Some(run_owner)
     }
 }

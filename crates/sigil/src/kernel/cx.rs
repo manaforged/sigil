@@ -102,7 +102,7 @@ impl Cx {
         /// Creates an empty node and returns its id.
         #[doc(hidden)]
         pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
-        let owner = Owner::current().unwrap_or_else(|| {
+        let owner = Owner::settled().unwrap_or_else(|| {
             tracing::warn!(
                 target: "sigil::kernel",
                 "Cx::new_node called outside an IntoNode::build scope; using the root owner"
@@ -127,15 +127,30 @@ impl Cx {
         self.add_with_parent(Some(parent), |cx| child.build_box(cx))
     }
 
+    pub(crate) fn add_owned_child(
+        &mut self,
+        parent: NodeId,
+        child: Box<dyn ErasedComponent>,
+    ) -> NodeId {
+        self.add_with_parent(Some(parent), |cx| {
+            let _owner = Owner::current();
+            child.build_box(cx)
+        })
+    }
+
     fn add_with_parent(
         &mut self,
         parent_node: Option<NodeId>,
         build: impl FnOnce(&mut Self) -> NodeId,
     ) -> NodeId {
-        let parent_owner = Owner::current().unwrap_or(self.root_owner);
-        let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
-        let node_id = owner.with(|| build(self));
-        self.set_component(node_id, owner);
+        let deferred = Owner::defer("sigil-kernel::component", self.root_owner);
+        let node_id = build(self);
+        if self.needs_owner(node_id) {
+            let _owner = Owner::current();
+        }
+        if let Some(owner) = deferred.finish() {
+            self.set_component(node_id, owner);
+        }
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
             return node_id;
@@ -386,7 +401,17 @@ impl Cx {
     pub(crate) fn set_component(&mut self, id: NodeId, owner: Owner) {
         if let Some(node) = self.nodes.get_mut(id.key()) {
             node.component = Some(owner);
+            node.owner = owner;
         }
+    }
+
+    fn needs_owner(&self, id: NodeId) -> bool {
+        self.nodes.get(id.key()).is_some_and(|node| {
+            node.get_extension::<crate::events::EventHandlers>().is_some()
+                || node
+                    .get_extension::<crate::style::StyleBinding>()
+                    .is_some()
+        })
     }
 
     pub(crate) fn take_component(&mut self, id: NodeId) -> Option<Owner> {
