@@ -100,7 +100,7 @@ fn present_row(shown: Signal<bool>, clicks: Signal<i32>) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
                 .focusable(true)
-                .presence_tween(shown, 200, Easing::Linear)
+                .presence(shown, 200, Easing::Linear)
                 .pointer_down(move |_| clicks.set(clicks.peek() + 1)),
         )
         .child(container().layout(LayoutStyle::block().fixed_size(100.0, 10.0)))

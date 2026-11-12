@@ -23,7 +23,7 @@ impl Session {
         let (keys, pasted) = (Rc::clone(self), Rc::clone(self));
         let node = shell(move |event| keys.key(event))
             .child(list)
-            .selectable_text(true)
+            .selectable(true)
             .size_reactive(size)
             .paste(move |text| pasted.paste(text).is_ok());
         pointer(wheel(node, self), self)

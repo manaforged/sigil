@@ -65,12 +65,7 @@ pub trait Widget: Sealed {
 
     /// Fades the node in and out over `ms` as `shown` changes.
     #[must_use]
-    fn presence_tween(
-        self,
-        shown: Signal<bool>,
-        ms: u16,
-        easing: crate::animation::Easing,
-    ) -> Self {
+    fn presence(self, shown: Signal<bool>, ms: u16, easing: crate::animation::Easing) -> Self {
         self.map_target(move |node| {
             look::presence(
                 node,
@@ -203,7 +198,7 @@ pub trait Widget: Sealed {
 
     /// Lets the user select the node's text when `yes` is true.
     #[must_use]
-    fn selectable_text(self, yes: bool) -> Self {
+    fn selectable(self, yes: bool) -> Self {
         self.map_node(move |node| on::selectable_text(node, yes))
     }
 
