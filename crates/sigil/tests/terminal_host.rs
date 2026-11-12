@@ -7,12 +7,12 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::events::{Event, Key};
+use sigil::events::{Event, NamedKey};
 use sigil::kernel::IntoNode;
 use sigil::kernel::{container, text};
 use sigil::prelude::Paint;
 use sigil::prelude::Widget;
-use sigil::reactive::{derived, signal};
+use sigil::reactive::{memo, signal};
 use sigil::widgets::button;
 
 use sigil_kittest::Harness;
@@ -60,7 +60,7 @@ fn fill_cells(grid: &sigil::terminal::Grid) -> usize {
 
 fn counter() -> impl IntoNode {
     let count = signal(0_i32);
-    let label = derived(move || format!("Count: {}", count.get()));
+    let label = memo(move || format!("Count: {}", count.get()));
     container()
         .child(text(label))
         .child(button("Increment").activate(move || {

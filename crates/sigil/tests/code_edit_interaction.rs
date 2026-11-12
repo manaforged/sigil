@@ -38,13 +38,13 @@ const fn scroll_at(x: f32, y: f32, dy: f32) -> Event {
 }
 
 fn char_key(text: &str) -> Event {
-    Event::key(LogicalKey::character(text), KeyPhase::Down)
+    Event::key(Key::character(text), KeyPhase::Down)
         .physical(PhysicalKey::KeyX)
         .text(Some(text.into()))
 }
 
-fn named_key(key: Key, modifiers: ModifiersState) -> Event {
-    Event::key(LogicalKey::Named(key), KeyPhase::Down)
+fn named_key(key: NamedKey, modifiers: Modifiers) -> Event {
+    Event::key(Key::Named(key), KeyPhase::Down)
         .physical(PhysicalKey::KeyX)
         .modifiers(modifiers)
 }

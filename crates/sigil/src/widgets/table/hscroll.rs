@@ -1,4 +1,4 @@
-use crate::reactive::derived;
+use crate::reactive::memo;
 
 use super::columns::ColumnWidth;
 use super::state::TableState;
@@ -12,7 +12,7 @@ pub(super) fn bind<Row: 'static>(
     prefix: f32,
 ) -> HScroll {
     let extent_state = state.clone();
-    let extent = derived(move || prefix + extent_state.content_extent());
+    let extent = memo(move || prefix + extent_state.content_extent());
     HScroll::new(extent, explicit)
 }
 

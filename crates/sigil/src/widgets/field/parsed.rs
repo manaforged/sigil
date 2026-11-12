@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::reactive::{Reactive, Signal, derived, effect, signal};
+use crate::reactive::{Reactive, Signal, effect, memo, signal};
 use crate::style::Theme;
 use crate::style::theme::ambient::ActiveTheme;
 
@@ -92,8 +92,8 @@ impl<P: FieldParser> ParsedField<P> {
         self
     }
 
-    pub(crate) fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
-        self.map(move |inner| inner.invalid_when(invalid))
+    pub(crate) fn invalid(self, invalid: impl Reactive<bool>) -> Self {
+        self.map(move |inner| inner.invalid(invalid))
     }
 
     pub(crate) fn text_field(self) -> TextFieldBuilder {
@@ -104,7 +104,7 @@ impl<P: FieldParser> ParsedField<P> {
             theme,
             ..
         } = self;
-        inner.invalid_when(derived(move || {
+        inner.invalid(memo(move || {
             !theme.with(|current| parser.accepts(&buffer.get(), current))
         }))
     }
@@ -148,15 +148,15 @@ macro_rules! parsed_controls {
             }
 
             /// Marks the field invalid while `invalid` is true, in paint and for screen readers; each call adds a condition.
-            pub fn invalid_when(mut self, invalid: impl $crate::reactive::Reactive<bool>) -> Self {
-                self.field = self.field.invalid_when(invalid);
+            pub fn invalid(mut self, invalid: impl $crate::reactive::Reactive<bool>) -> Self {
+                self.field = self.field.invalid(invalid);
                 self
             }
         }
 
         impl<$($g)*> $crate::widgets::FieldControl for $ty {
-            fn invalid_when(self, invalid: impl $crate::reactive::Reactive<bool>) -> Self {
-                Self::invalid_when(self, invalid)
+            fn invalid(self, invalid: impl $crate::reactive::Reactive<bool>) -> Self {
+                Self::invalid(self, invalid)
             }
         }
     };

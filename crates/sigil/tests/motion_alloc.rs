@@ -17,7 +17,7 @@ fn fade(opacity: f32) -> Keyframes {
 }
 
 fn animate(keyframes: Keyframes) {
-    drop(container().animate(keyframes));
+    drop(container().animation(keyframes));
 }
 
 fn retained(warm: u32, mut keyframes: impl FnMut(u32) -> Keyframes) -> i64 {
@@ -62,7 +62,7 @@ fn keyframes_pinned_by_disposed_scopes_are_released() {
     let bytes = retained(CALLS, |call| {
         let keyframes = fade(0.25 + call as f32 / 8_192.0);
         Owner::scope("pinned-animation", || {
-            drop(container().animate(keyframes.clone()));
+            drop(container().animation(keyframes.clone()));
         });
         keyframes
     });

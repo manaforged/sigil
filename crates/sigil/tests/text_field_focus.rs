@@ -12,7 +12,7 @@ use widget_support::compute;
 const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
 fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> Event {
-    Event::key(LogicalKey::character(ch), phase)
+    Event::key(Key::character(ch), phase)
         .physical(physical)
         .text((phase == KeyPhase::Down).then(|| ch.into()))
 }
@@ -110,8 +110,8 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(320.0, 120.0))
-                .keyboard_shortcut(Shortcut::plain(LogicalKey::character("/")))
-                .key(Shortcut::plain(LogicalKey::character("/")), move |_| {
+                .keyboard_shortcut(Shortcut::plain(Key::character("/")))
+                .key(Shortcut::plain(Key::character("/")), move |_| {
                     trigger.set(trigger.peek() + 1);
                 })
                 .child(text_field(value).focus_when(trigger)),

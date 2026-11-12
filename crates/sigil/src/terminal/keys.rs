@@ -1,4 +1,4 @@
-use crate::events::{Event, Key, KeyPhase, LogicalKey, ModifiersState};
+use crate::events::{Event, Key, KeyPhase, Modifiers, NamedKey};
 use crossterm::event::{
     Event as TermEvent, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode,
 };
@@ -8,7 +8,7 @@ const PASTE_BURST: usize = 8;
 #[cfg(windows)]
 pub(crate) const PASTE_GAP: std::time::Duration = std::time::Duration::from_millis(25);
 
-fn pressed_key(key: LogicalKey, text: Option<String>) -> Event {
+fn pressed_key(key: Key, text: Option<String>) -> Event {
     Event::key(key, KeyPhase::Down).text(text)
 }
 
@@ -42,7 +42,7 @@ kittest_pub! {
         };
         let mut held = modifiers(event);
         if altgr {
-            held -= ModifiersState::CONTROL | ModifiersState::ALT;
+            held -= Modifiers::CTRL | Modifiers::ALT;
         }
         Some(
             Event::key(key, phase)
@@ -62,7 +62,7 @@ pub(crate) fn push_key_text(events: &mut Vec<Event>, event: Event) {
     match merged {
         Some(text) => {
             events.pop();
-            events.push(pressed_key(LogicalKey::Character(text.clone()), Some(text)));
+            events.push(pressed_key(Key::Character(text.clone()), Some(text)));
         }
         None => events.push(event),
     }
@@ -73,9 +73,8 @@ fn composed_text(event: &Event) -> Option<&str> {
         return None;
     };
     let text = key.text.as_deref()?;
-    let plain = key.phase == KeyPhase::Down
-        && !key.repeat
-        && (key.modifiers - ModifiersState::SHIFT).is_empty();
+    let plain =
+        key.phase == KeyPhase::Down && !key.repeat && (key.modifiers - Modifiers::SHIFT).is_empty();
     (plain && !text.is_empty() && !text.is_ascii() && !text.chars().any(char::is_control))
         .then_some(text)
 }
@@ -183,91 +182,88 @@ const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
     }
 }
 
-fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
+fn modifiers(event: &crossterm::event::KeyEvent) -> Modifiers {
     let mut state = held(event.modifiers);
     let shifted_char = matches!(event.code, KeyCode::Char(ch) if ch.is_uppercase());
     if event.code == KeyCode::BackTab || shifted_char {
-        state |= ModifiersState::SHIFT;
+        state |= Modifiers::SHIFT;
     }
     state
 }
 
-pub(crate) fn held(from: KeyModifiers) -> ModifiersState {
-    let mut state = ModifiersState::empty();
-    state.set(ModifiersState::SHIFT, from.contains(KeyModifiers::SHIFT));
-    state.set(
-        ModifiersState::CONTROL,
-        from.contains(KeyModifiers::CONTROL),
-    );
-    state.set(ModifiersState::ALT, from.contains(KeyModifiers::ALT));
+pub(crate) fn held(from: KeyModifiers) -> Modifiers {
+    let mut state = Modifiers::empty();
+    state.set(Modifiers::SHIFT, from.contains(KeyModifiers::SHIFT));
+    state.set(Modifiers::CTRL, from.contains(KeyModifiers::CONTROL));
+    state.set(Modifiers::ALT, from.contains(KeyModifiers::ALT));
     let meta = KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
-    state.set(ModifiersState::META, from.intersects(meta));
+    state.set(Modifiers::META, from.intersects(meta));
     state
 }
 
-fn logical(code: KeyCode) -> Option<LogicalKey> {
+fn logical(code: KeyCode) -> Option<Key> {
     let key = match code {
-        KeyCode::Char(ch) => return Some(LogicalKey::character(ch.to_string())),
-        KeyCode::Enter => Key::Enter,
-        KeyCode::Esc => Key::Escape,
-        KeyCode::Tab | KeyCode::BackTab => Key::Tab,
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Left => Key::ArrowLeft,
-        KeyCode::Right => Key::ArrowRight,
-        KeyCode::Up => Key::ArrowUp,
-        KeyCode::Down => Key::ArrowDown,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
+        KeyCode::Char(ch) => return Some(Key::character(ch.to_string())),
+        KeyCode::Enter => NamedKey::Enter,
+        KeyCode::Esc => NamedKey::Escape,
+        KeyCode::Tab | KeyCode::BackTab => NamedKey::Tab,
+        KeyCode::Backspace => NamedKey::Backspace,
+        KeyCode::Delete => NamedKey::Delete,
+        KeyCode::Left => NamedKey::ArrowLeft,
+        KeyCode::Right => NamedKey::ArrowRight,
+        KeyCode::Up => NamedKey::ArrowUp,
+        KeyCode::Down => NamedKey::ArrowDown,
+        KeyCode::Home => NamedKey::Home,
+        KeyCode::End => NamedKey::End,
+        KeyCode::PageUp => NamedKey::PageUp,
+        KeyCode::PageDown => NamedKey::PageDown,
         KeyCode::F(number) => format!("F{number}").parse().ok()?,
-        KeyCode::Insert => Key::Insert,
-        KeyCode::CapsLock => Key::CapsLock,
-        KeyCode::ScrollLock => Key::ScrollLock,
-        KeyCode::NumLock => Key::NumLock,
-        KeyCode::PrintScreen => Key::PrintScreen,
-        KeyCode::Pause => Key::Pause,
-        KeyCode::Menu => Key::ContextMenu,
+        KeyCode::Insert => NamedKey::Insert,
+        KeyCode::CapsLock => NamedKey::CapsLock,
+        KeyCode::ScrollLock => NamedKey::ScrollLock,
+        KeyCode::NumLock => NamedKey::NumLock,
+        KeyCode::PrintScreen => NamedKey::PrintScreen,
+        KeyCode::Pause => NamedKey::Pause,
+        KeyCode::Menu => NamedKey::ContextMenu,
         KeyCode::Media(media) => media_key(media)?,
         KeyCode::Modifier(modifier) => modifier_key(modifier),
         _ => return None,
     };
-    Some(LogicalKey::Named(key))
+    Some(Key::Named(key))
 }
 
-const fn media_key(media: MediaKeyCode) -> Option<Key> {
+const fn media_key(media: MediaKeyCode) -> Option<NamedKey> {
     Some(match media {
-        MediaKeyCode::Play => Key::MediaPlay,
-        MediaKeyCode::Pause => Key::MediaPause,
-        MediaKeyCode::PlayPause => Key::MediaPlayPause,
-        MediaKeyCode::Stop => Key::MediaStop,
-        MediaKeyCode::TrackNext => Key::MediaTrackNext,
-        MediaKeyCode::TrackPrevious => Key::MediaTrackPrevious,
-        MediaKeyCode::FastForward => Key::MediaFastForward,
-        MediaKeyCode::Rewind => Key::MediaRewind,
-        MediaKeyCode::Record => Key::MediaRecord,
-        MediaKeyCode::LowerVolume => Key::AudioVolumeDown,
-        MediaKeyCode::RaiseVolume => Key::AudioVolumeUp,
-        MediaKeyCode::MuteVolume => Key::AudioVolumeMute,
+        MediaKeyCode::Play => NamedKey::MediaPlay,
+        MediaKeyCode::Pause => NamedKey::MediaPause,
+        MediaKeyCode::PlayPause => NamedKey::MediaPlayPause,
+        MediaKeyCode::Stop => NamedKey::MediaStop,
+        MediaKeyCode::TrackNext => NamedKey::MediaTrackNext,
+        MediaKeyCode::TrackPrevious => NamedKey::MediaTrackPrevious,
+        MediaKeyCode::FastForward => NamedKey::MediaFastForward,
+        MediaKeyCode::Rewind => NamedKey::MediaRewind,
+        MediaKeyCode::Record => NamedKey::MediaRecord,
+        MediaKeyCode::LowerVolume => NamedKey::AudioVolumeDown,
+        MediaKeyCode::RaiseVolume => NamedKey::AudioVolumeUp,
+        MediaKeyCode::MuteVolume => NamedKey::AudioVolumeMute,
         MediaKeyCode::Reverse => return None,
     })
 }
 
-const fn modifier_key(modifier: ModifierKeyCode) -> Key {
+const fn modifier_key(modifier: ModifierKeyCode) -> NamedKey {
     match modifier {
         ModifierKeyCode::LeftShift
         | ModifierKeyCode::RightShift
-        | ModifierKeyCode::IsoLevel5Shift => Key::Shift,
-        ModifierKeyCode::LeftControl | ModifierKeyCode::RightControl => Key::Control,
-        ModifierKeyCode::LeftAlt | ModifierKeyCode::RightAlt => Key::Alt,
+        | ModifierKeyCode::IsoLevel5Shift => NamedKey::Shift,
+        ModifierKeyCode::LeftControl | ModifierKeyCode::RightControl => NamedKey::Control,
+        ModifierKeyCode::LeftAlt | ModifierKeyCode::RightAlt => NamedKey::Alt,
         ModifierKeyCode::LeftSuper
         | ModifierKeyCode::RightSuper
         | ModifierKeyCode::LeftHyper
         | ModifierKeyCode::RightHyper
         | ModifierKeyCode::LeftMeta
-        | ModifierKeyCode::RightMeta => Key::Meta,
-        ModifierKeyCode::IsoLevel3Shift => Key::AltGraph,
+        | ModifierKeyCode::RightMeta => NamedKey::Meta,
+        ModifierKeyCode::IsoLevel3Shift => NamedKey::AltGraph,
     }
 }
 

@@ -2,7 +2,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, t
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutStyle, cols, rows};
-use crate::reactive::derived;
+use crate::reactive::memo;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
@@ -54,15 +54,15 @@ fn announced(key: StringKey, body: &TextContent) -> AccessibleName {
     match body {
         TextContent::Static(text) => {
             let text = text.clone();
-            derived(move || format!("{}: {text}", name.get())).into()
+            memo(move || format!("{}: {text}", name.get())).into()
         }
         TextContent::Reactive(text) => {
             let text = *text;
-            derived(move || format!("{}: {}", name.get(), text.get())).into()
+            memo(move || format!("{}: {}", name.get(), text.get())).into()
         }
         TextContent::Compute(text) => {
             let text = text.clone();
-            derived(move || format!("{}: {}", name.get(), text())).into()
+            memo(move || format!("{}: {}", name.get(), text())).into()
         }
     }
 }

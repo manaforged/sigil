@@ -1,6 +1,6 @@
 use super::{
-    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton,
-    MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
+    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons,
+    NamedKey, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
     ScrollPhase, WindowEvent,
 };
 use crate::geometry::Point;
@@ -8,19 +8,19 @@ use crate::geometry::Point;
 impl Event {
     /// Builds a key event with no modifiers, no text, and an unidentified physical key.
     #[must_use]
-    pub fn key(key: impl Into<LogicalKey>, phase: KeyPhase) -> Self {
+    pub fn key(key: impl Into<Key>, phase: KeyPhase) -> Self {
         Self::Key(KeyEvent::new(key.into(), phase))
     }
 
     /// Builds a key press.
     #[must_use]
-    pub fn key_down(key: impl Into<LogicalKey>) -> Self {
+    pub fn key_down(key: impl Into<Key>) -> Self {
         Self::key(key, KeyPhase::Down)
     }
 
     /// Builds the press and release of a key held with `modifiers`.
     #[must_use]
-    pub fn press(key: impl Into<LogicalKey>, modifiers: ModifiersState) -> [Self; 2] {
+    pub fn press(key: impl Into<Key>, modifiers: Modifiers) -> [Self; 2] {
         let key = key.into();
         [
             Self::key(key.clone(), KeyPhase::Down).modifiers(modifiers),
@@ -31,7 +31,7 @@ impl Event {
     /// Builds the key press that types `text`.
     #[must_use]
     pub fn typed(text: &str) -> Self {
-        Self::key_down(LogicalKey::character(text)).text(Some(text.into()))
+        Self::key_down(Key::character(text)).text(Some(text.into()))
     }
 
     /// Builds the press and release of each character of `text`.
@@ -41,10 +41,7 @@ impl Event {
         text.chars()
             .flat_map(|ch| {
                 let ch: &str = ch.encode_utf8(&mut buffer);
-                [
-                    Self::typed(ch),
-                    Self::key(LogicalKey::character(ch), KeyPhase::Up),
-                ]
+                [Self::typed(ch), Self::key(Key::character(ch), KeyPhase::Up)]
             })
             .collect()
     }
@@ -52,9 +49,9 @@ impl Event {
     /// Builds a press of Tab, or of Shift+Tab when `shift` is true.
     #[must_use]
     pub fn tab(shift: bool) -> Self {
-        let mut modifiers = ModifiersState::empty();
-        modifiers.set(ModifiersState::SHIFT, shift);
-        Self::key_down(Key::Tab)
+        let mut modifiers = Modifiers::empty();
+        modifiers.set(Modifiers::SHIFT, shift);
+        Self::key_down(NamedKey::Tab)
             .physical(PhysicalKey::Tab)
             .modifiers(modifiers)
     }
@@ -154,7 +151,7 @@ impl Event {
 
     /// Sets the modifiers of a key, pointer, scroll, or gesture event; other events stay unchanged.
     #[must_use]
-    pub const fn modifiers(mut self, modifiers: ModifiersState) -> Self {
+    pub const fn modifiers(mut self, modifiers: Modifiers) -> Self {
         match &mut self {
             Self::Key(event) => event.modifiers = modifiers,
             Self::Pointer(event) => event.modifiers = modifiers,

@@ -188,7 +188,7 @@ fn a_reactive_atoms_write_reaches_the_next_emit() {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(80.0, 16.0))
-                        .on_added(move |cx, id| {
+                        .added(move |cx, id| {
                             if let Some(node) = cx.get_mut(id) {
                                 node.attach(StyleBinding::reactive_atoms(attached));
                             }

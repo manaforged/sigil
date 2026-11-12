@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::Space;
 use crate::layout::{JustifyContent, LayoutStyle, Position};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{Token, space};
 use crate::widgets::Layout;
 
@@ -10,7 +10,7 @@ use super::popup::{SURFACE, shown_when};
 /// One transient message.
 #[must_use]
 pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
-    let body = derived(move || message.get().unwrap_or_default());
+    let body = memo(move || message.get().unwrap_or_default());
     container()
         .role(Role::Status)
         .label(body)

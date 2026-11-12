@@ -76,14 +76,14 @@ fn row_click_drives_selection_with_modifiers() {
         router.route(
             &mut cx,
             &layout,
-            pointer(PointerPhase::Down, 50.0, row_y(1), ModifiersState::empty()),
+            pointer(PointerPhase::Down, 50.0, row_y(1), Modifiers::empty()),
         );
         assert!(state.selection().get().contains(&1), "plain click selects");
 
         router.route(
             &mut cx,
             &layout,
-            pointer(PointerPhase::Down, 50.0, row_y(3), ModifiersState::CONTROL),
+            pointer(PointerPhase::Down, 50.0, row_y(3), Modifiers::CTRL),
         );
         let selected = state.selection().get();
         assert!(selected.contains(&1) && selected.contains(&3), "ctrl adds");
@@ -91,7 +91,7 @@ fn row_click_drives_selection_with_modifiers() {
         router.route(
             &mut cx,
             &layout,
-            pointer(PointerPhase::Down, 50.0, row_y(2), ModifiersState::SHIFT),
+            pointer(PointerPhase::Down, 50.0, row_y(2), Modifiers::SHIFT),
         );
         let selected = state.selection().get();
         assert!(selected.contains(&2) && selected.contains(&3) && !selected.contains(&1));
@@ -161,7 +161,7 @@ fn hover_row_paints_hover_slice() {
                 PointerPhase::Move,
                 50.0,
                 HEADER_H + ROW_H / 2.0,
-                ModifiersState::empty(),
+                Modifiers::empty(),
             ),
         );
         assert_eq!(
@@ -175,7 +175,7 @@ fn hover_row_paints_hover_slice() {
         router.route(
             &mut cx,
             &layout,
-            pointer(PointerPhase::Move, 500.0, 400.0, ModifiersState::empty()),
+            pointer(PointerPhase::Move, 500.0, 400.0, Modifiers::empty()),
         );
         assert_eq!(
             rect_colors(&cx, root)

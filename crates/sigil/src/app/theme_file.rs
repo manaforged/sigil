@@ -130,10 +130,10 @@ impl std::str::FromStr for Theme {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         parse(input).ok_or_else(|| {
-            crate::Error::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "theme",
-            ))
+            crate::Error::new(
+                crate::ErrorKind::Other,
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "theme"),
+            )
         })
     }
 }

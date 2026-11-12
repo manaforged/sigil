@@ -11,18 +11,18 @@ A key event goes to the focused node first. Handlers run in two passes along the
 
 A handler calls `event.stop_propagation()` to end both passes.
 
-Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(Key::Tab, f)` on an ancestor owns Tab for its subtree.
+Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(NamedKey::Tab, f)` on an ancestor owns Tab for its subtree.
 
 A `Shortcut` is a key plus modifiers:
 
 | Constructor | Matches |
 | --- | --- |
-| `Shortcut::plain(Key::Enter)` | Enter with no modifiers |
-| `Shortcut::plain(LogicalKey::character("j"))` | The `j` key with no modifiers |
-| `Shortcut::ctrl(LogicalKey::character("s"))` | Ctrl+S |
-| `Shortcut::new(key, ModifiersState::CONTROL \| ModifiersState::SHIFT)` | Any modifier set |
+| `Shortcut::plain(NamedKey::Enter)` | Enter with no modifiers |
+| `Shortcut::plain(Key::character("j"))` | The `j` key with no modifiers |
+| `Shortcut::ctrl(Key::character("s"))` | Ctrl+S |
+| `Shortcut::new(key, Modifiers::CTRL \| Modifiers::SHIFT)` | Any modifier set |
 
-`Key::Escape` converts into a `Shortcut` directly, so `.key(Key::Escape, f)` also works.
+`NamedKey::Escape` converts into a `Shortcut` directly, so `.key(NamedKey::Escape, f)` also works.
 
 ### Bind a key on a focused node
 
@@ -36,10 +36,10 @@ fn tree() -> impl IntoNode {
     container()
         .focusable(true)
         .autofocus()
-        .key(LogicalKey::character("j"), move |_| count.update(|n| *n += 1))
-        .key(LogicalKey::character("k"), move |_| count.update(|n| *n -= 1))
-        .key(Key::Escape, |_| sigil::request_exit())
-        .child(text(derived(move || format!("row {}", count.get()))))
+        .key(Key::character("j"), move |_| count.update(|n| *n += 1))
+        .key(Key::character("k"), move |_| count.update(|n| *n -= 1))
+        .key(NamedKey::Escape, |_| sigil::request_exit())
+        .child(text(memo(move || format!("row {}", count.get()))))
 }
 
 fn main() -> AppResult<()> {
@@ -63,8 +63,8 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let name = signal(String::new());
     container()
-        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
-        .shortcut(Shortcut::ctrl(LogicalKey::character("n")), move |_| name.set(String::new()))
+        .shortcut(Key::character("q"), |_| sigil::request_exit())
+        .shortcut(Shortcut::ctrl(Key::character("n")), move |_| name.set(String::new()))
         .child(text_field(name))
 }
 
@@ -85,7 +85,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let body = signal(String::new());
     container().child(text_edit(body)).key_capture_any(move |event: &mut KeyEvent| {
-        if event.key == LogicalKey::named(Key::Tab) {
+        if event.key == Key::named(NamedKey::Tab) {
             body.update(|text| text.push_str("  "));
             event.stop_propagation();
         }
@@ -101,7 +101,7 @@ fn main() -> AppResult<()> {
 
 ### Keys on a widget builder
 
-Every widget builder implements `Widget`, so it takes the event methods. The handler goes on the root node of the widget and runs after the handlers of the widget. If the widget stops a key that you need, use `key_capture` instead. To use a `NodeBuilder` method that is not on `Widget`, such as `on_added`, call `.map_node(|node| node.on_added(f))`.
+Every widget builder implements `Widget`, so it takes the event methods. The handler goes on the root node of the widget and runs after the handlers of the widget. If the widget stops a key that you need, use `key_capture` instead. To use a `NodeBuilder` method that is not on `Widget`, such as `added`, call `.map_node(|node| node.added(f))`.
 
 ### Helper return types
 
@@ -273,8 +273,8 @@ use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     let size = viewport_size();
-    let wide = derived(move || size.get().width > if is_grid() { 100.0 } else { 900.0 });
-    text(derived(move || if wide.get() { "two columns".to_string() } else { "one column".to_string() }))
+    let wide = memo(move || size.get().width > if is_grid() { 100.0 } else { 900.0 });
+    text(memo(move || if wide.get() { "two columns".to_string() } else { "one column".to_string() }))
 }
 
 fn main() -> AppResult<()> {
@@ -299,7 +299,7 @@ struct Thread {
 }
 
 fn inbox(threads: Signal<Vec<Thread>>) -> impl IntoNode {
-    let unread = derived(move || {
+    let unread = memo(move || {
         threads.with(|all| all.iter().filter(|thread| thread.unread.get()).count())
     });
     column()
@@ -329,7 +329,7 @@ use std::time::Duration;
 
 fn tree() -> impl IntoNode {
     let transcript = signal(String::new());
-    let writer = signal_writer(transcript);
+    let writer = transcript.writer();
     let _done = spawn(async move {
         for word in ["streamed ", "from ", "a ", "task"] {
             sigil::tasks::sleep(Duration::from_millis(200)).await;
@@ -356,7 +356,7 @@ use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     let answer = spawn(async { Ok::<_, String>(6 * 7) });
-    text(derived(move || match answer.get() {
+    text(memo(move || match answer.get() {
         Status::Idle | Status::Pending => "working".to_string(),
         Status::Ok(value) => format!("answer: {value}"),
         Status::Err(err) => format!("error: {err}"),
@@ -432,7 +432,7 @@ use std::rc::Rc;
 
 fn tree() -> impl IntoNode {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
-    let tail = derived(move || messages.get().len().saturating_sub(1));
+    let tail = memo(move || messages.get().len().saturating_sub(1));
     let (scroll, max) = (signal(0.0_f32), signal(0.0_f32));
     let page = 400.0;
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
@@ -442,9 +442,9 @@ fn tree() -> impl IntoNode {
         .max_scroll_bind(max)
         .follow_row(tail);
     let root = container()
-        .key(Key::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
-        .key(Key::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))
-        .key(Key::End, move |_| scroll.set(max.peek()));
+        .key(NamedKey::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
+        .key(NamedKey::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))
+        .key(NamedKey::End, move |_| scroll.set(max.peek()));
     root.child(list)
 }
 ```
@@ -486,13 +486,13 @@ use std::time::Duration;
 fn tree() -> impl IntoNode {
     let left = signal(25 * 60_u32);
     let running = signal(true);
-    let _tick: IntervalId = interval(Duration::from_secs(1), move || {
+    let _tick: Timer = interval(Duration::from_secs(1), move || {
         if running.get() && left.get() > 0 {
             left.update(|s| *s -= 1);
         }
     });
     container()
-        .child(text(derived(move || format!("{:02}:{:02}", left.get() / 60, left.get() % 60))))
+        .child(text(memo(move || format!("{:02}:{:02}", left.get() / 60, left.get() % 60))))
         .child(button("Pause").activate(move || running.update(|r| *r = !*r)))
 }
 
@@ -587,7 +587,7 @@ Give each control a name that a screen reader can say. Widgets take the name fro
 
 ## Tasks in an embed
 
-`sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `signal_writer` work as they do under `sigil::run`. `set_waker` wakes the host's event loop when a result arrives.
+`sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `Signal::writer` work as they do under `sigil::run`. `set_waker` wakes the host's event loop when a result arrives.
 
 ```rust,no_run
 use sigil::app::FrameHooks;

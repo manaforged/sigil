@@ -198,8 +198,8 @@ pub mod prelude {
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::request_focus;
     pub use crate::events::{
-        Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-        PointerEvent, PointerPhase, PointerType, Shortcut,
+        Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PointerEvent,
+        PointerPhase, PointerType, Shortcut,
     };
     pub use crate::geometry::{Point, Size};
     #[cfg(feature = "scene")]
@@ -226,14 +226,14 @@ pub mod prelude {
         AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, Space,
         TrackSize, cols, column, em, grid, row, rows,
     };
-    pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
+    pub use crate::reactive::{Reactive, Signal, Timer, effect, interval, memo, signal};
     #[cfg(app_host)]
     pub use crate::run;
     pub use crate::style::{
         Color, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States, TextRole, Theme,
         Token, Tone,
     };
-    pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
+    pub use crate::tasks::{SignalWriter, Status, Task, spawn, task};
     pub use crate::view::View;
     #[cfg(feature = "a2ui")]
     pub use crate::widgets::a2ui;

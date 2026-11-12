@@ -28,7 +28,7 @@ fn a_log_follows_the_tail_until_the_user_scrolls_up() {
         assert!(screen.contains("line 049"), "tail shown:\n{screen}");
         assert!(!screen.contains("line 000"), "head hidden:\n{screen}");
 
-        ui.focus_next().press(Key::Home).settle();
+        ui.focus_next().press(NamedKey::Home).settle();
         push_lines(log, 50..51);
         let screen2 = ui.settle().text();
         assert!(
@@ -37,7 +37,7 @@ fn a_log_follows_the_tail_until_the_user_scrolls_up() {
         );
         assert!(!screen2.contains("line 050"), "no jump to tail:\n{screen2}");
 
-        ui.press(Key::End).settle();
+        ui.press(NamedKey::End).settle();
         push_lines(log, 51..52);
         let screen3 = ui.settle().text();
         assert!(
@@ -60,7 +60,7 @@ fn a_log_drops_its_oldest_lines_past_the_limit() {
             screen.contains("line"),
             "last pushed text split into rows:\n{screen}"
         );
-        ui.focus_next().press(Key::Home).settle();
+        ui.focus_next().press(NamedKey::Home).settle();
         let screen2 = ui.text();
         assert!(
             screen2.contains("line 017"),

@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use sigil::events::Key;
+use sigil::events::NamedKey;
 use sigil::geometry::Point;
 use sigil::kernel::Role;
 use sigil::prelude::*;
@@ -39,15 +39,15 @@ fn focused(ui: &mut Harness) -> String {
 fn each_thumb_takes_focus_and_keys_without_passing_the_other() {
     let (mut ui, value) = open(20.0..=80.0);
     assert_eq!(focused(&mut ui), "Price minimum");
-    ui.press(Key::ArrowRight).settle();
+    ui.press(NamedKey::ArrowRight).settle();
     assert_eq!(value.peek(), 30.0..=80.0);
-    ui.press(Key::End).settle();
+    ui.press(NamedKey::End).settle();
     assert_eq!(value.peek(), 80.0..=80.0);
     ui.focus_next();
     assert_eq!(focused(&mut ui), "Price maximum");
-    ui.press(Key::Home).settle();
+    ui.press(NamedKey::Home).settle();
     assert_eq!(value.peek(), 80.0..=80.0);
-    ui.press(Key::ArrowRight).settle();
+    ui.press(NamedKey::ArrowRight).settle();
     assert_eq!(value.peek(), 80.0..=90.0);
     assert_eq!(thumbs(&mut ui), (80.0, 90.0));
 }
@@ -100,8 +100,8 @@ fn change_reports_the_whole_range_for_either_thumb() {
     })
     .size(40, 4);
     ui.settle();
-    ui.press(Key::ArrowRight).settle();
+    ui.press(NamedKey::ArrowRight).settle();
     ui.focus_next();
-    ui.press(Key::ArrowRight).settle();
+    ui.press(NamedKey::ArrowRight).settle();
     assert_eq!(*seen.borrow(), vec![30.0..=80.0, 30.0..=90.0]);
 }

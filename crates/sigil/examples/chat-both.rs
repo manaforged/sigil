@@ -130,8 +130,8 @@ fn start() -> (Chat, Sender<Post>) {
     let online = signal("◌ connecting");
     let (posts, rx) = unbounded_channel();
     let backend = Server {
-        messages: signal_writer(messages),
-        online: signal_writer(online),
+        messages: messages.writer(),
+        online: online.writer(),
         posts: rx,
     };
     let server = spawn(async move {
@@ -152,7 +152,7 @@ fn model(
     let names = signal(CHANNELS.split(' ').map(str::to_owned).collect::<Vec<_>>());
     let active = signal(0_usize);
     let seen = signal(vec![0_usize; 6]);
-    let unread = derived(move || {
+    let unread = memo(move || {
         let marks = seen.get();
         messages.with(|all| {
             let count = |(ch, skip): (usize, &usize)| {
@@ -164,7 +164,7 @@ fn model(
             marks.iter().enumerate().map(count).collect::<Vec<_>>()
         })
     });
-    let visible = derived(move || {
+    let visible = memo(move || {
         let current = active.get();
         messages.with(|all| {
             let hit = |(index, msg): (usize, &Msg)| (msg.channel == current).then_some(index);
@@ -223,7 +223,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .fill()
         .gap(Space::None)
         .key_capture(
-            Shortcut::ctrl(LogicalKey::character("k")),
+            Shortcut::ctrl(Key::character("k")),
             move |_: &mut KeyEvent| show_picker(),
         )
         .child(

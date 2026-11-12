@@ -57,6 +57,18 @@ fn a_skeleton_reads_as_loading_until_the_content_arrives() {
     });
 }
 
+const PAGE_BUTTONS: [&str; 9] = [
+    "Previous page",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "…",
+    "12",
+    "Next page",
+];
+
 #[test]
 fn pagination_moves_between_pages_with_buttons_and_keys() {
     Owner::scope("pagination", || {
@@ -76,18 +88,7 @@ fn pagination_moves_between_pages_with_buttons_and_keys() {
             .filter_map(|node| node.name().map(str::to_owned))
             .collect();
         assert_eq!(
-            shown,
-            [
-                "Previous page",
-                "1",
-                "2",
-                "3",
-                "4",
-                "5",
-                "…",
-                "12",
-                "Next page"
-            ],
+            shown, PAGE_BUTTONS,
             "twelve pages collapse around the current one"
         );
         assert!(ui.get_by_role(Role::Button, "Previous page").is_disabled());
@@ -102,7 +103,9 @@ fn pagination_moves_between_pages_with_buttons_and_keys() {
             ui.focused().and_then(|node| node.name().map(str::to_owned)),
             Some("Previous page".to_owned())
         );
-        ui.press(Key::Enter).settle().expect_text("Showing page 10");
+        ui.press(NamedKey::Enter)
+            .settle()
+            .expect_text("Showing page 10");
         assert!(
             ui.get_by_role(Role::Button, "…").is_disabled(),
             "gap is inert"

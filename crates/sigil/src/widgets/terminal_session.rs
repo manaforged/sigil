@@ -6,7 +6,7 @@ use crate::app::pty::{Modes, Mouse, Row};
 use crate::events::{MouseButton, PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, mono_cell, rows};
-use crate::reactive::{Signal, derived, effect_named, signal};
+use crate::reactive::{Signal, effect_named, memo, signal};
 use crate::style::TextRun;
 use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::{Layout, Widget};
@@ -57,7 +57,7 @@ impl Session {
 }
 
 fn screen(lines: Signal<Vec<Row>>) -> NodeBuilder {
-    let count = derived(move || lines.with(Vec::len));
+    let count = memo(move || lines.with(Vec::len));
     container()
         .layout(LayoutStyle::flex_column().fill_width().min_size(0.0, 0.0))
         .children_reactive(move || {
@@ -92,7 +92,7 @@ fn trimmed(row: &Row) -> Row {
 }
 
 fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
-    let row = derived(move || lines.with(|rows| rows.get(at).map(trimmed).unwrap_or_default()));
+    let row = memo(move || lines.with(|rows| rows.get(at).map(trimmed).unwrap_or_default()));
     container()
         .layout(
             LayoutStyle::block()

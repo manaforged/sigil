@@ -8,7 +8,7 @@ fn hidden_reveal_materializes_never_synced_subtree() {
         let hidden_flag = signal(false);
         let wrapper = container()
             .layout(LayoutStyle::flex_column())
-            .visible_when(hidden_flag)
+            .visible(hidden_flag)
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(40.0, 20.0))

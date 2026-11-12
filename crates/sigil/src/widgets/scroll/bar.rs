@@ -2,7 +2,7 @@ use crate::events::PointerEvent;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Display;
 use crate::layout::{LayoutStyle, Position};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::{Radius, StyleAtom, Token};
 use crate::widgets::{Layout, Widget};
 
@@ -76,8 +76,8 @@ fn scrollbar_thumb(
     hovered: Signal<bool>,
 ) -> NodeBuilder {
     let height =
-        derived(move || to_i16(geometry::thumb_metrics(extent.get(), viewport_height.get()).0));
-    let position = derived(move || {
+        memo(move || to_i16(geometry::thumb_metrics(extent.get(), viewport_height.get()).0));
+    let position = memo(move || {
         let (_, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
         (
             0.0,
@@ -85,7 +85,7 @@ fn scrollbar_thumb(
         )
     });
     let dragging = signal(false);
-    let thick = derived(move || hovered.get() || dragging.get());
+    let thick = memo(move || hovered.get() || dragging.get());
 
     let thumb = container()
         .layout(

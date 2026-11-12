@@ -1,5 +1,5 @@
 use crate::events::{
-    Event, ModifiersState, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase,
+    Event, Modifiers, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase,
 };
 use crate::geometry::Point;
 use crossterm::event::{MouseButton as TermButton, MouseEvent, MouseEventKind};
@@ -77,7 +77,7 @@ kittest_pub! {
     }
 }
 
-const fn scroll(at: Point, x: f32, y: f32, modifiers: ModifiersState) -> Event {
+const fn scroll(at: Point, x: f32, y: f32, modifiers: Modifiers) -> Event {
     Event::scroll(at, ScrollDelta::Lines(Point::new(x, y)), ScrollPhase::Moved).modifiers(modifiers)
 }
 

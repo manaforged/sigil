@@ -22,7 +22,7 @@ impl NodeBuilder {
         if let Some(install) = self.reactive_children {
             install(id);
         }
-        for hook in self.on_added {
+        for hook in self.added {
             hook(cx, id);
         }
         id

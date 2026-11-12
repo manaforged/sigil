@@ -17,7 +17,7 @@ impl Default for TerminalOptions {
             mouse_tracking: None,
             other_keys: OtherKeys::Plain,
             suspend: Some(crate::events::Shortcut::ctrl(
-                crate::events::LogicalKey::character("z"),
+                crate::events::Key::character("z"),
             )),
         }
     }

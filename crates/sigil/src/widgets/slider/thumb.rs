@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Thumb {
@@ -43,7 +43,7 @@ impl Thumb {
     pub(super) fn signal(self) -> Signal<f32> {
         match self {
             Self::Only(value) => value,
-            _ => derived(move || self.get()),
+            _ => memo(move || self.get()),
         }
     }
 

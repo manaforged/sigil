@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::CellForm;
 use crate::layout::{IntoPx, rows};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{StyleAtom, Token};
 use crate::widgets::Widget;
 
@@ -106,8 +106,8 @@ fn build_option(
     ctx: OptionCtx,
     on_change: IndexChange,
 ) -> NodeBuilder {
-    let checked = derived(move || ctx.selected.get() == index);
-    let highlight = derived(move || ctx.cursor.get() == index);
+    let checked = memo(move || ctx.selected.get() == index);
+    let highlight = memo(move || ctx.cursor.get() == index);
     let slots = ItemSlots {
         checked: Some(checked),
         ..ItemSlots::new(label)

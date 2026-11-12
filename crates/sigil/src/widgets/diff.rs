@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutStyle, Overflow};
-use crate::reactive::{Reactive, Signal, derived, signal};
+use crate::reactive::{Reactive, Signal, memo, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{BORDER_WIDTH, Paint, Style, Token};
@@ -55,7 +55,7 @@ pub trait DiffSource {
 
 impl<R: Reactive<String>> DiffSource for R {
     fn into_patch(self) -> Signal<Rc<Patch>> {
-        derived(move || Rc::new(Patch::parse(&self.read())))
+        memo(move || Rc::new(Patch::parse(&self.read())))
     }
 }
 
@@ -67,7 +67,7 @@ impl DiffSource for Patch {
 
 impl DiffSource for Signal<Patch> {
     fn into_patch(self) -> Signal<Rc<Patch>> {
-        derived(move || Rc::new(self.get()))
+        memo(move || Rc::new(self.get()))
     }
 }
 
@@ -169,9 +169,9 @@ impl DiffBuilder {
         let shape = self.shape;
         let (view, max_rows) = (shape.view, shape.max_rows);
         let fallback = shape.path.as_deref().and_then(language_for_path);
-        let built = derived(move || patch.with(|patch| model(patch, view, fallback, max_rows)));
-        let rows = derived(move || built.with(|built| Rc::clone(&built.rows)));
-        let summary = derived(move || {
+        let built = memo(move || patch.with(|patch| model(patch, view, fallback, max_rows)));
+        let rows = memo(move || built.with(|built| Rc::clone(&built.rows)));
+        let summary = memo(move || {
             built.with(|built| format!("{} added, {} removed", built.added, built.removed))
         });
         let picker = shape

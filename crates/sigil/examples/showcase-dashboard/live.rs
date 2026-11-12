@@ -1,9 +1,7 @@
 use std::time::Duration;
 
 use sigil::ErrorKind;
-use sigil::prelude::{
-    Error, Signal, SignalWriter, Status, ToastQueue, signal, signal_writer, spawn,
-};
+use sigil::prelude::{Error, Signal, SignalWriter, Status, ToastQueue, signal, spawn};
 use sigil::tasks::sleep;
 
 use super::data::{
@@ -93,10 +91,10 @@ pub(crate) fn start() -> Console {
     let clock = signal(CLOCK_START);
     let durations = signal(DURATIONS.to_vec());
     let backend = Feed {
-        statuses: signal_writer(statuses),
-        log: signal_writer(log),
-        clock: signal_writer(clock),
-        durations: signal_writer(durations),
+        statuses: statuses.writer(),
+        log: log.writer(),
+        clock: clock.writer(),
+        durations: durations.writer(),
     };
     let feed = spawn(async move {
         match backend.run().await {

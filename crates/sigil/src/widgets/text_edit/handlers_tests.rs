@@ -8,7 +8,7 @@ use crate::clipboard::Clipboard;
 use crate::clipboard::clipboard;
 use crate::events::EventRouter;
 use crate::events::Shortcut;
-use crate::events::{Event, KeyPhase, LogicalKey, ModifiersState};
+use crate::events::{Event, Key, KeyPhase, Modifiers};
 use crate::geometry::Size;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -54,9 +54,9 @@ fn edits_undo_and_redo_after_rebuild() {
             assert_eq!(value.peek(), edited);
             assert_eq!(caret.peek(), edited_at);
             assert!(state.selection().is_none());
-            let redo = ModifiersState::CONTROL | ModifiersState::SHIFT;
+            let redo = Modifiers::CTRL | Modifiers::SHIFT;
             let steps = [
-                ("z", ModifiersState::CONTROL, original, undone_at),
+                ("z", Modifiers::CTRL, original, undone_at),
                 ("Z", redo, edited, edited_at),
             ];
             for (key, modifiers, expected, position) in steps {
@@ -114,22 +114,22 @@ impl Clipboard for Memory {
 
 #[test]
 fn editing_shortcuts_copy_cut_paste_and_restore_unicode() {
-    for modifiers in once(ModifiersState::CONTROL)
-        .chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
+    for modifiers in
+        once(Modifiers::CTRL).chain(cfg!(target_os = "macos").then_some(Modifiers::META))
     {
         Owner::scope("clipboard-shortcuts", || {
             let original = "café\n日本語";
             let value = signal(original.to_string());
             let state = TextEditState::new(value, signal(original.len()));
             let copied = Rc::new(RefCell::new(String::new()));
-            let plain = ModifiersState::empty();
+            let plain = Modifiers::empty();
             for (key, shift, expected, clipboard) in [
                 ("a", plain, original, ""),
                 ("c", plain, original, original),
                 ("x", plain, "", original),
                 ("v", plain, original, original),
                 ("z", plain, "", original),
-                ("Z", ModifiersState::SHIFT, original, original),
+                ("Z", Modifiers::SHIFT, original, original),
             ] {
                 let editor = text_edit(value)
                     .state(state.clone())
@@ -167,7 +167,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
         let root = cx.add(
             crate::kernel::container()
                 .key(
-                    Shortcut::new(LogicalKey::character("v"), ModifiersState::CONTROL),
+                    Shortcut::new(Key::character("v"), Modifiers::CTRL),
                     move |_| reached.set(true),
                 )
                 .child(text_edit(value).clipboard(Unreadable)),
@@ -181,7 +181,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
         assert!(editor.is_some(), "the editor mounts under the container");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, editor);
-        router.route(&mut cx, &layout, shortcut("v", ModifiersState::CONTROL));
+        router.route(&mut cx, &layout, shortcut("v", Modifiers::CTRL));
         assert_eq!(value.peek(), "kept");
         assert!(
             reached.peek(),
@@ -190,7 +190,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
     });
 }
 
-fn press(editor: TextEditBuilder, key: &str, modifiers: ModifiersState) {
+fn press(editor: TextEditBuilder, key: &str, modifiers: Modifiers) {
     let mut cx = Cx::new_root();
     let root = cx.add(editor);
     let mut layout =
@@ -203,6 +203,6 @@ fn press(editor: TextEditBuilder, key: &str, modifiers: ModifiersState) {
     router.route(&mut cx, &layout, shortcut(key, modifiers));
 }
 
-fn shortcut(key: &str, modifiers: ModifiersState) -> Event {
-    Event::key(LogicalKey::character(key), KeyPhase::Down).modifiers(modifiers)
+fn shortcut(key: &str, modifiers: Modifiers) -> Event {
+    Event::key(Key::character(key), KeyPhase::Down).modifiers(modifiers)
 }

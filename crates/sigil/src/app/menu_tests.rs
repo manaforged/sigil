@@ -44,32 +44,32 @@ fn install_after_install_queues_again() {
 
 #[test]
 fn accelerator_rejects_a_key_it_cannot_map() {
-    let save = Shortcut::primary(LogicalKey::character("s"));
+    let save = Shortcut::primary(Key::character("s"));
     assert!(accelerator(&save).is_ok());
     for key in [
-        Key::F13,
-        Key::F14,
-        Key::F15,
-        Key::F16,
-        Key::F17,
-        Key::F18,
-        Key::F19,
-        Key::F20,
-        Key::F21,
-        Key::F22,
-        Key::F23,
-        Key::F24,
+        NamedKey::F13,
+        NamedKey::F14,
+        NamedKey::F15,
+        NamedKey::F16,
+        NamedKey::F17,
+        NamedKey::F18,
+        NamedKey::F19,
+        NamedKey::F20,
+        NamedKey::F21,
+        NamedKey::F22,
+        NamedKey::F23,
+        NamedKey::F24,
     ] {
         assert!(accelerator(&Shortcut::plain(key)).is_ok(), "{key} maps");
     }
-    assert!(accelerator(&Shortcut::plain(Key::F25)).is_err());
+    assert!(accelerator(&Shortcut::plain(NamedKey::F25)).is_err());
 }
 
 #[test]
 fn a_shortcut_with_no_native_key_drops_only_the_accelerator() {
-    let f25 = Shortcut::plain(Key::F25);
+    let f25 = Shortcut::plain(NamedKey::F25);
     assert!(item_accelerator(Some(&f25)).is_none());
-    assert!(item_accelerator(Some(&Shortcut::plain(Key::F13))).is_some());
+    assert!(item_accelerator(Some(&Shortcut::plain(NamedKey::F13))).is_some());
     assert!(item_accelerator(None).is_none());
 }
 
@@ -77,8 +77,8 @@ fn a_shortcut_with_no_native_key_drops_only_the_accelerator() {
 #[test]
 fn a_shortcut_with_no_native_key_keeps_its_item() {
     let menu = Menu::new()
-        .item("open", "Open", Some(Shortcut::plain(Key::F25)))
-        .check("wrap", "Wrap", true, Some(Shortcut::plain(Key::F25)))
+        .item("open", "Open", Some(Shortcut::plain(NamedKey::F25)))
+        .check("wrap", "Wrap", true, Some(Shortcut::plain(NamedKey::F25)))
         .native()
         .expect("native menu");
     assert_eq!(menu.items().len(), 2);

@@ -21,7 +21,7 @@ const fn pointer_down_event(x: f32, y: f32) -> Event {
 }
 
 fn enter_key() -> Event {
-    Event::key(Key::Enter, KeyPhase::Down).physical(PhysicalKey::Enter)
+    Event::key(NamedKey::Enter, KeyPhase::Down).physical(PhysicalKey::Enter)
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn slider_focus_changes_value_via_keyboard() {
         router.route(
             &mut cx,
             &layout,
-            Event::key(Key::ArrowRight, KeyPhase::Down).physical(PhysicalKey::ArrowRight),
+            Event::key(NamedKey::ArrowRight, KeyPhase::Down).physical(PhysicalKey::ArrowRight),
         );
         assert!((value.get() - 60.0).abs() < 0.001);
     });
@@ -340,7 +340,7 @@ fn text_field_typing_updates_value() {
         router.route(
             &mut cx,
             &layout,
-            Event::key(LogicalKey::character("h"), KeyPhase::Down)
+            Event::key(Key::character("h"), KeyPhase::Down)
                 .physical(PhysicalKey::KeyH)
                 .text(Some("h".to_string())),
         );

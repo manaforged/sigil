@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Space};
-use crate::reactive::{Reactive, Signal, derived};
+use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{Radius, StyleAtom, Token, Tone, space};
@@ -28,8 +28,8 @@ const MARKER_PX: f32 = space(6);
 #[must_use]
 pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
     let count = count.into_signal();
-    let shown = derived(move || count.get() > 0);
-    let shown_text = derived(move || {
+    let shown = memo(move || count.get() > 0);
+    let shown_text = memo(move || {
         let n = count.get();
         if n > BADGE_MAX {
             format!("{BADGE_MAX}+")
@@ -40,7 +40,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_row().align_items(AlignItems::Center))
-        .visible_when(shown)
+        .visible(shown)
         .children_reactive(move || {
             shown.get().then(|| {
                 chip(move || shown_text.get(), tone)
@@ -126,8 +126,8 @@ pub fn stepper<S: Into<String>>(
 }
 
 fn step(index: usize, name: String, current: Signal<usize>) -> NodeBuilder {
-    let selected = derived(move || current.get() == index);
-    let reached = derived(move || current.get() >= index);
+    let selected = memo(move || current.get() == index);
+    let reached = memo(move || current.get() >= index);
     let number = (index + 1).to_string();
     container()
         .role(Role::ListItem)

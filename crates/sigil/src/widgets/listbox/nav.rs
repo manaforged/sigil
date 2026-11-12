@@ -1,4 +1,4 @@
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::layout::Orientation;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,33 +21,33 @@ enum Binding {
     Hierarchy,
 }
 
-const KEY_MAP: [(Key, Binding, Move); 10] = [
+const KEY_MAP: [(NamedKey, Binding, Move); 10] = [
     (
-        Key::ArrowDown,
+        NamedKey::ArrowDown,
         Binding::Axis(Orientation::Vertical),
         Move::Next,
     ),
     (
-        Key::ArrowUp,
+        NamedKey::ArrowUp,
         Binding::Axis(Orientation::Vertical),
         Move::Prev,
     ),
     (
-        Key::ArrowRight,
+        NamedKey::ArrowRight,
         Binding::Axis(Orientation::Horizontal),
         Move::Next,
     ),
     (
-        Key::ArrowLeft,
+        NamedKey::ArrowLeft,
         Binding::Axis(Orientation::Horizontal),
         Move::Prev,
     ),
-    (Key::PageDown, Binding::Page, Move::PageDown),
-    (Key::PageUp, Binding::Page, Move::PageUp),
-    (Key::Home, Binding::Always, Move::First),
-    (Key::End, Binding::Always, Move::Last),
-    (Key::ArrowLeft, Binding::Hierarchy, Move::Parent),
-    (Key::ArrowRight, Binding::Hierarchy, Move::Child),
+    (NamedKey::PageDown, Binding::Page, Move::PageDown),
+    (NamedKey::PageUp, Binding::Page, Move::PageUp),
+    (NamedKey::Home, Binding::Always, Move::First),
+    (NamedKey::End, Binding::Always, Move::Last),
+    (NamedKey::ArrowLeft, Binding::Hierarchy, Move::Parent),
+    (NamedKey::ArrowRight, Binding::Hierarchy, Move::Child),
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -137,14 +137,14 @@ impl Nav {
         }
     }
 
-    pub(crate) fn bindings(self) -> impl Iterator<Item = (Key, Move)> {
+    pub(crate) fn bindings(self) -> impl Iterator<Item = (NamedKey, Move)> {
         KEY_MAP
             .into_iter()
             .filter(move |(_, binding, _)| self.binds(*binding))
             .map(|(key, _, step)| (key, step))
     }
 
-    pub(crate) fn step_for(self, key: Key) -> Option<Move> {
+    pub(crate) fn step_for(self, key: NamedKey) -> Option<Move> {
         self.bindings()
             .find(|(bound, _)| *bound == key)
             .map(|(_, step)| step)

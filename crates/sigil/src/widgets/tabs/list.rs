@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::events::request_focus;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, derived, effect, untrack};
+use crate::reactive::{Signal, effect, memo, untrack};
 use crate::style::StyleOverlay;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
@@ -59,7 +59,7 @@ impl Roving {
             });
         }
         let ids = Rc::clone(&self.ids);
-        node.on_added(move |_cx, id| {
+        node.added(move |_cx, id| {
             if let Some(slot) = ids.borrow_mut().get_mut(visual) {
                 *slot = Some(id);
             }
@@ -153,7 +153,7 @@ fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
                 spec.user_overlay.clone(),
                 spec.chrome,
             );
-            let tab_stop = derived(move || active.get() == original);
+            let tab_stop = memo(move || active.get() == original);
             let tab = tab.mutate(move |node| node.a11y.tab_stop = Some(tab_stop));
             roving.install(tab, visual_index)
         })

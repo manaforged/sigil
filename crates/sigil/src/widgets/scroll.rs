@@ -2,7 +2,7 @@
 
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, Length, Overflow, StyleData};
-use crate::reactive::{Reactive, Signal, derived, effect_named, signal};
+use crate::reactive::{Reactive, Signal, effect_named, memo, signal};
 use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
@@ -114,7 +114,7 @@ impl ScrollBuilder {
         });
         let (viewport, viewport_height) = viewport_signals(width, height, measured);
 
-        let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
+        let max_scroll = memo(move || (extent.get() - viewport_height.get()).max(0.0));
         if self.follow_end {
             scroll_y.set(max_scroll.peek());
             pin_to_bottom(scroll_y, max_scroll, || true);
@@ -152,7 +152,7 @@ impl ScrollBuilder {
 }
 
 fn overflows(max_scroll: Signal<f32>) -> Signal<bool> {
-    derived(move || max_scroll.get() >= MIN_SCROLL_RANGE)
+    memo(move || max_scroll.get() >= MIN_SCROLL_RANGE)
 }
 
 fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBuilder, Signal<f32>) {
@@ -162,7 +162,7 @@ fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBui
         let measured = signal((0.0_f32, 0.0_f32));
         (
             content.size_reactive(measured),
-            derived(move || measured.get().1.max(0.0)),
+            memo(move || measured.get().1.max(0.0)),
         )
     }
 }
@@ -194,7 +194,7 @@ fn viewport_signals(
     fill: bool,
 ) -> (Signal<(f32, f32)>, Signal<f32>) {
     let viewport = signal((width.unwrap_or(0.0), height));
-    let viewport_height = derived(move || {
+    let viewport_height = memo(move || {
         let measured = viewport.get().1;
         if fill && measured > 0.0 {
             measured
@@ -232,8 +232,8 @@ fn wrap_content(
     extent: Signal<f32>,
     viewport_height: Signal<f32>,
 ) -> NodeBuilder {
-    let height = derived(move || to_i16(extent.get().max(viewport_height.get())));
-    let position = derived(move || (0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
+    let height = memo(move || to_i16(extent.get().max(viewport_height.get())));
+    let position = memo(move || (0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
     let layer = container()
         .layout(LayoutStyle::block().width(Length::Percent(1.0)))
         .position_reactive(position)

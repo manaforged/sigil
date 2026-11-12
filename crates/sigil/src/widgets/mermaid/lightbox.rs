@@ -4,7 +4,7 @@ use crate::icons::Icon;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived, effect, signal, untrack};
+use crate::reactive::{Signal, effect, memo, signal, untrack};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, Token};
@@ -89,12 +89,12 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
         return container().child(text("This diagram cannot be drawn."));
     };
     let window = crate::app::viewport_size();
-    let area_width = derived(move || (window.get().width - CHROME.0).max(MIN_AREA));
-    let area_height = derived(move || (window.get().height - CHROME.1).max(MIN_AREA));
-    let fit = derived(move || (area_width.get() / width).min(area_height.get() / height));
+    let area_width = memo(move || (window.get().width - CHROME.0).max(MIN_AREA));
+    let area_height = memo(move || (window.get().height - CHROME.1).max(MIN_AREA));
+    let fit = memo(move || (area_width.get() / width).min(area_height.get() / height));
     let zoom = camera.zoom;
-    let drawn_width = derived(move || width * fit.get() * zoom.get());
-    let drawn_height = derived(move || height * fit.get() * zoom.get());
+    let drawn_width = memo(move || width * fit.get() * zoom.get());
+    let drawn_height = memo(move || height * fit.get() * zoom.get());
     let picture = picture
         .drive(Property::Width, drawn_width)
         .drive(Property::Height, drawn_height)
@@ -134,7 +134,7 @@ fn pan(area: NodeBuilder, camera: Camera) -> NodeBuilder {
 
 fn controls(camera: Camera) -> NodeBuilder {
     let zoom = camera.zoom;
-    let percent = derived(move || format!("{:.0}%", zoom.get() * 100.0));
+    let percent = memo(move || format!("{:.0}%", zoom.get() * 100.0));
     container()
         .layout(
             LayoutStyle::flex_row()

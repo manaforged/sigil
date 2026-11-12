@@ -1,8 +1,8 @@
 use serde_json::{Value, json};
 
 use crate::events::{
-    Event, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons, PointerPhase,
-    ScrollDelta, ScrollPhase,
+    Event, Key, KeyPhase, Modifiers, MouseButton, MouseButtons, PointerPhase, ScrollDelta,
+    ScrollPhase,
 };
 use crate::geometry::Point;
 
@@ -87,13 +87,13 @@ fn button(request: &Value, phase: PointerPhase) -> Option<MouseButton> {
     }
 }
 
-fn modifiers(request: &Value) -> ModifiersState {
-    let mut mods = ModifiersState::empty();
+fn modifiers(request: &Value) -> Modifiers {
+    let mut mods = Modifiers::empty();
     for (key, flag) in [
-        ("ctrl", ModifiersState::CONTROL),
-        ("shift", ModifiersState::SHIFT),
-        ("alt", ModifiersState::ALT),
-        ("meta", ModifiersState::META),
+        ("ctrl", Modifiers::CTRL),
+        ("shift", Modifiers::SHIFT),
+        ("alt", Modifiers::ALT),
+        ("meta", Modifiers::META),
     ] {
         if request.get(key).and_then(Value::as_bool) == Some(true) {
             mods |= flag;
@@ -134,10 +134,10 @@ fn pointer(
 fn key_event(request: &Value, phase: KeyPhase) -> Option<Event> {
     let name = request.get("key").and_then(Value::as_str)?;
     let (key, text) = if name.chars().count() == 1 {
-        (LogicalKey::character(name), Some(String::from(name)))
+        (Key::character(name), Some(String::from(name)))
     } else {
-        let named: crate::events::Key = name.parse().ok()?;
-        (LogicalKey::named(named), None)
+        let named: crate::events::NamedKey = name.parse().ok()?;
+        (Key::named(named), None)
     };
     Some(
         Event::key(key, phase)

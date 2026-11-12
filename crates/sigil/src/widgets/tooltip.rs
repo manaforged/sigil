@@ -4,13 +4,13 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::animation::runtime::presets;
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide};
-use crate::reactive::{IntervalId, Signal, interval, signal};
+use crate::reactive::{Signal, Timer, interval, signal};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
@@ -128,7 +128,7 @@ builder_impls!([] TooltipBuilder: paint(style_accumulator), widget, node);
 #[derive(Clone)]
 struct Reveal {
     visible: Signal<bool>,
-    pending: Rc<Cell<Option<IntervalId>>>,
+    pending: Rc<Cell<Option<Timer>>>,
     focused: Rc<Cell<bool>>,
 }
 
@@ -224,7 +224,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, reveal: Reveal) {
             focus_out.hide();
         }));
         handlers.add_key(
-            Key::Escape.into(),
+            NamedKey::Escape.into(),
             Box::new(move |event| {
                 if reveal.hide() {
                     event.stop_propagation();

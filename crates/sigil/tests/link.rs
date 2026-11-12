@@ -34,7 +34,7 @@ fn a_link_runs_its_action_on_click_and_on_enter() {
             Some(LABEL.to_owned()),
             "Tab reaches the link"
         );
-        ui.press(Key::Enter).settle().expect_text("Opened: 2");
+        ui.press(NamedKey::Enter).settle().expect_text("Opened: 2");
         let tree = ui.accessibility_tree();
         let described = tree
             .nodes

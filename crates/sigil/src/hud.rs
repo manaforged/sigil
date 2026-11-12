@@ -8,19 +8,39 @@ const UNSET: u8 = 0;
 const OFF: u8 = 1;
 const ON: u8 = 2;
 
+#[cfg(not(test))]
 static STATE: AtomicU8 = AtomicU8::new(UNSET);
-#[cfg(feature = "terminal")]
+#[cfg(all(not(test), feature = "terminal"))]
 static SEEN: AtomicU8 = AtomicU8::new(UNSET);
 
+#[cfg(test)]
+thread_local! {
+    static STATE: AtomicU8 = const { AtomicU8::new(UNSET) };
+    #[cfg(feature = "terminal")]
+    static SEEN: AtomicU8 = const { AtomicU8::new(UNSET) };
+}
+
+#[cfg(not(test))]
+fn with<R>(flag: &'static AtomicU8, read: impl FnOnce(&AtomicU8) -> R) -> R {
+    read(flag)
+}
+
+#[cfg(test)]
+fn with<R>(flag: &'static std::thread::LocalKey<AtomicU8>, read: impl FnOnce(&AtomicU8) -> R) -> R {
+    flag.with(read)
+}
+
 fn state() -> u8 {
-    if STATE.load(Ordering::Relaxed) == UNSET {
+    if with(&STATE, |flag| flag.load(Ordering::Relaxed)) == UNSET {
         set(env::var("SIGIL_HUD").is_ok_and(|value| !value.is_empty() && value != "0"));
     }
-    STATE.load(Ordering::Relaxed)
+    with(&STATE, |flag| flag.load(Ordering::Relaxed))
 }
 
 pub(crate) fn set(on: bool) {
-    STATE.store(if on { ON } else { OFF }, Ordering::Relaxed);
+    with(&STATE, |flag| {
+        flag.store(if on { ON } else { OFF }, Ordering::Relaxed);
+    });
     if on {
         profile::enable();
     }
@@ -35,7 +55,8 @@ pub(crate) static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(feature = "terminal")]
 pub(crate) fn take_state_change() -> bool {
-    SEEN.swap(state(), Ordering::Relaxed) != state()
+    let now = state();
+    with(&SEEN, |flag| flag.swap(now, Ordering::Relaxed)) != now
 }
 
 pub(crate) fn level(work_ns: u64) -> u8 {

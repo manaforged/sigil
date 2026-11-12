@@ -1,13 +1,13 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, derived, effect, signal};
+use sigil::reactive::{Owner, effect, memo, signal};
 
 #[test]
 fn derived_computes_initial_value_on_registration() {
     Owner::scope("derived_initial", || {
         let n = signal(3_i32);
-        let doubled = derived(move || n.get() * 2);
+        let doubled = memo(move || n.get() * 2);
         assert_eq!(
             doubled.get(),
             6,
@@ -20,7 +20,7 @@ fn derived_computes_initial_value_on_registration() {
 fn derived_re_runs_on_subscribed_signal_change() {
     Owner::scope("derived_re_runs", || {
         let n = signal(5_i32);
-        let squared = derived(move || n.get() * n.get());
+        let squared = memo(move || n.get() * n.get());
         assert_eq!(squared.get(), 25);
         n.set(7);
         assert_eq!(squared.get(), 49, "derived recomputes on dependency write");
@@ -33,7 +33,7 @@ fn derived_re_runs_on_subscribed_signal_change() {
 fn derived_reads_are_tracked_by_outer_effects() {
     Owner::scope("derived_tracks_outer", || {
         let n = signal(1_i32);
-        let doubled = derived(move || n.get() * 2);
+        let doubled = memo(move || n.get() * 2);
 
         let seen = Rc::new(Cell::new(-1_i32));
         {
@@ -53,7 +53,7 @@ fn derived_reads_are_tracked_by_outer_effects() {
 fn derived_eq_memoizes_equal_values() {
     Owner::scope("derived_eq_memoizes", || {
         let n = signal(3_i32);
-        let is_pos = derived(move || n.get() > 0);
+        let is_pos = memo(move || n.get() > 0);
 
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -86,8 +86,8 @@ fn derived_eq_memoizes_equal_values() {
 fn derived_of_derived_propagates_correctly() {
     Owner::scope("derived_chain", || {
         let n = signal(2_i32);
-        let plus_one = derived(move || n.get() + 1);
-        let plus_ten = derived(move || plus_one.get() + 10);
+        let plus_one = memo(move || n.get() + 1);
+        let plus_ten = memo(move || plus_one.get() + 10);
 
         let seen = Rc::new(Cell::new(-1_i32));
         {
@@ -108,7 +108,7 @@ fn derived_of_derived_propagates_correctly() {
 fn derived_eq_does_not_fire_outer_effects_when_value_unchanged() {
     Owner::scope("derived_eq_silent_on_unchanged", || {
         let n = signal(10_i32);
-        let bucket = derived(move || n.get() / 51);
+        let bucket = memo(move || n.get() / 51);
 
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -144,7 +144,7 @@ fn derived_calls_f_exactly_once_per_update() {
         let calls = Rc::new(Cell::new(0_u32));
 
         let calls_for_f = Rc::clone(&calls);
-        let d = derived(move || {
+        let d = memo(move || {
             calls_for_f.set(calls_for_f.get() + 1);
             n.get() * 2
         });
@@ -170,7 +170,7 @@ fn derived_eq_calls_f_exactly_once_per_update_even_on_equal_values() {
         let calls = Rc::new(Cell::new(0_u32));
 
         let calls_for_f = Rc::clone(&calls);
-        let is_pos = derived(move || {
+        let is_pos = memo(move || {
             calls_for_f.set(calls_for_f.get() + 1);
             n.get() > 0
         });
@@ -190,7 +190,7 @@ fn derived_is_disposed_with_owner() {
         let child = Owner::new("derived_child", Owner::current());
         let d = child.with(|| {
             let n = signal(0_i32);
-            derived(move || n.get() + 1)
+            memo(move || n.get() + 1)
         });
         child.dispose();
         d
@@ -208,7 +208,7 @@ fn derived_is_disposed_with_owner() {
 fn derived_survives_across_multiple_effect_runs() {
     Owner::scope("derived_survives_reruns", || {
         let n = signal(0_i32);
-        let d = derived(move || n.get() + 100);
+        let d = memo(move || n.get() + 100);
 
         assert_eq!(d.get(), 100);
 

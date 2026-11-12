@@ -30,11 +30,11 @@ fn escape_closes_an_open_modal_before_it_exits() {
         host.set_quit(AppConfig::new("quit").esc_exits(true).quit);
         assert!(!exits(&mut host, []), "the first frame exited");
 
-        let closed = !exits(&mut host, [Event::key_down(Key::Escape)]);
+        let closed = !exits(&mut host, [Event::key_down(NamedKey::Escape)]);
         assert!(closed, "Escape exited the app while a modal was open");
         assert!(!show.peek(), "Escape left the modal open");
 
-        let exited = exits(&mut host, [Event::key_down(Key::Escape)]);
+        let exited = exits(&mut host, [Event::key_down(NamedKey::Escape)]);
         assert!(exited, "Escape with nothing open did not exit the app");
     });
 }
@@ -64,14 +64,13 @@ fn ctrl_c_copies_a_selection_before_it_exits() {
             assert!(!exits(&mut host, [pointer(phase, col)]), "a drag exited");
         }
         copied.borrow_mut().clear();
-        let ctrl_c =
-            || Event::key_down(LogicalKey::character("c")).modifiers(ModifiersState::CONTROL);
+        let ctrl_c = || Event::key_down(Key::character("c")).modifiers(Modifiers::CTRL);
 
         let kept = !exits(&mut host, [ctrl_c()]);
         assert!(kept, "Ctrl+C exited the app while text was selected");
         assert_eq!(copied.borrow().as_slice(), &["quick".to_owned()]);
 
-        assert!(!exits(&mut host, [Event::key_down(Key::Escape)]));
+        assert!(!exits(&mut host, [Event::key_down(NamedKey::Escape)]));
         assert!(
             exits(&mut host, [ctrl_c()]),
             "Ctrl+C with nothing selected did not exit"
@@ -158,7 +157,7 @@ fn ctrl_c_exits_with_an_empty_field_focused() {
         host.mount(move || container().child(text_field(value).autofocus()));
         host.set_quit(AppConfig::new("quit").quit);
         assert!(!exits(&mut host, []), "the first frame exited");
-        let ctrl_c = Event::key_down(LogicalKey::character("c")).modifiers(ModifiersState::CONTROL);
+        let ctrl_c = Event::key_down(Key::character("c")).modifiers(Modifiers::CTRL);
         assert!(
             exits(&mut host, [ctrl_c]),
             "Ctrl+C with an empty field focused did not exit"

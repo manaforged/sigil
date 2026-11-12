@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{Event, Key, KeyPhase, LogicalKey, PhysicalKey};
+use sigil::events::{Event, Key, KeyPhase, NamedKey, PhysicalKey};
 use sigil::kernel::{ImageSource, NodeId, image};
 use sigil::layout::LayoutResult;
 use sigil::prelude::*;
@@ -20,7 +20,7 @@ fn settle(host: &mut Host) {
 }
 
 fn tab_key() -> Event {
-    Event::key(LogicalKey::Named(Key::Tab), KeyPhase::Down).physical(PhysicalKey::Tab)
+    Event::key(Key::Named(NamedKey::Tab), KeyPhase::Down).physical(PhysicalKey::Tab)
 }
 
 fn first_child_height(host: &mut Host) -> f32 {
@@ -48,7 +48,7 @@ fn a_tab_capture_handler_runs_before_focus_moves() {
         let (count, moved) = (Rc::clone(&captured), Rc::clone(&second_focused));
         host.mount(
             column()
-                .key_capture(Key::Tab, move |event| {
+                .key_capture(NamedKey::Tab, move |event| {
                     count.set(count.get() + 1);
                     event.stop_propagation();
                 })

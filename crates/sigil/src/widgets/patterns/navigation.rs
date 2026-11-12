@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Space};
-use crate::reactive::{Reactive, Signal, derived, effect};
+use crate::reactive::{Reactive, Signal, effect, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{StyleAtom, Token};
@@ -56,8 +56,8 @@ fn row_layout() -> LayoutStyle {
 #[must_use]
 pub fn pagination(page: Signal<usize>, pages: impl Reactive<usize>) -> NodeBuilder {
     let pages = pages.into_signal();
-    let count = derived(move || pages.get().min(SLOTS));
-    let last = derived(move || pages.get().saturating_sub(1));
+    let count = memo(move || pages.get().min(SLOTS));
+    let last = memo(move || pages.get().saturating_sub(1));
     effect(move || {
         let last = last.get();
         if page.peek() > last {
@@ -72,7 +72,7 @@ pub fn pagination(page: Signal<usize>, pages: impl Reactive<usize>) -> NodeBuild
             button("‹")
                 .ghost()
                 .accessible(theme_label(StringKey::PreviousPage))
-                .disabled(derived(move || page.get() == 0))
+                .disabled(memo(move || page.get() == 0))
                 .activate(move || page.update(|at| *at = at.saturating_sub(1))),
         )
         .child(container().layout(row_layout()).children_reactive(move || {
@@ -82,21 +82,21 @@ pub fn pagination(page: Signal<usize>, pages: impl Reactive<usize>) -> NodeBuild
             button("›")
                 .ghost()
                 .accessible(theme_label(StringKey::NextPage))
-                .disabled(derived(move || page.get() >= last.get()))
+                .disabled(memo(move || page.get() >= last.get()))
                 .activate(move || page.update(|at| *at = (*at + 1).min(last.peek()))),
         )
 }
 
 fn page_button(index: usize, page: Signal<usize>, pages: Signal<usize>) -> ButtonBuilder {
-    let target = derived(move || slot(index, page.get(), pages.get()));
-    let current = derived(move || target.get() == Some(page.get()));
+    let target = memo(move || slot(index, page.get(), pages.get()));
+    let current = memo(move || target.get() == Some(page.get()));
     button(move || {
         target
             .get()
             .map_or_else(|| GAP.to_owned(), |at| (at + 1).to_string())
     })
     .ghost()
-    .disabled(derived(move || target.get().is_none()))
+    .disabled(memo(move || target.get().is_none()))
     .activate(move || {
         if let Some(at) = target.peek() {
             page.set(at);

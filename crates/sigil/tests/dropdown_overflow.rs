@@ -35,7 +35,7 @@ fn open_popup(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
     router.route(
         cx,
         layout,
-        Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
+        Event::key(NamedKey::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
     );
     layout
         .compute(cx, root, Size::fixed(640.0, 640.0))

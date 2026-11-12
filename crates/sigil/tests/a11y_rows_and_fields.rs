@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use accesskit::Role as AkRole;
-use sigil::events::{Key, LogicalKey};
+use sigil::events::{Key, NamedKey};
 use sigil::prelude::*;
 use sigil::widgets::{ListRowSlots, list_row, virtual_list};
 use sigil_kittest::Harness;
@@ -45,8 +45,8 @@ fn an_activatable_list_row_takes_focus_and_runs_on_enter() {
     .size(40, 4);
     ui.focus_next();
     assert!(ui.focused().is_some(), "Tab did not reach the row");
-    ui.press(Key::Enter);
-    ui.press(LogicalKey::character(" "));
+    ui.press(NamedKey::Enter);
+    ui.press(Key::character(" "));
     assert_eq!(opened.get(), 2);
 }
 

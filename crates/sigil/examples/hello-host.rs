@@ -7,7 +7,7 @@ use sigil::reactive::Owner;
 fn main() {
     Owner::scope("hello-host", || {
         let count = signal(0_i32);
-        let label_text = derived(move || format!("Count: {}", count.get()));
+        let label_text = memo(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             column()

@@ -135,7 +135,7 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TextDecoration(TextDecoration::LineThrough) => style.line_through(),
         StyleAtom::Transition(transition) => style.transition(transition),
         StyleAtom::Animation(id) => {
-            style.animate(crate::animation::Keyframes::clone(&id.get().unwrap()))
+            style.animation(crate::animation::Keyframes::clone(&id.get().unwrap()))
         }
         other => panic!("{other:?} has no typed paint method"),
     }

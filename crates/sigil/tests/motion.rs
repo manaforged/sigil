@@ -152,7 +152,7 @@ fn near_byte(actual: u8, expected: u8, what: &str) {
 fn animated(keyframes: Keyframes, flag: Signal<bool>) -> NodeBuilder {
     square()
         .opacity(0.4)
-        .paint_when(flag, move |state| state.animate(keyframes))
+        .paint_when(flag, move |state| state.animation(keyframes))
 }
 
 #[test]

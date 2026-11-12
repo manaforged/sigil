@@ -6,7 +6,7 @@ use std::rc::Rc;
 use sigil::Host;
 use sigil::app::FrameHooks;
 use sigil::events::{Event, PhysicalKey, Shortcut};
-use sigil::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState};
+use sigil::events::{Key, KeyEvent, KeyPhase, Modifiers, NamedKey};
 
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -91,8 +91,8 @@ fn tabs_follow_their_labels_and_clamp_the_active_tab() {
     });
 }
 
-fn key_down(key: Key) -> Event {
-    Event::key(LogicalKey::Named(key), KeyPhase::Down).physical(PhysicalKey::ArrowRight)
+fn key_down(key: NamedKey) -> Event {
+    Event::key(Key::Named(key), KeyPhase::Down).physical(PhysicalKey::ArrowRight)
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn a_resizable_sidebar_grows_from_its_handle_keys() {
                 input: Some(Box::new(move |target| {
                     let (cx, _, router) = target.parts();
                     router.set_focus(cx, Some(handle));
-                    target.route(key_down(Key::ArrowRight));
+                    target.route(key_down(NamedKey::ArrowRight));
                     None
                 })),
                 ..FrameHooks::default()
@@ -213,8 +213,8 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
     });
 }
 
-fn key_with(key: &str, modifiers: ModifiersState) -> KeyEvent {
-    match Event::press(LogicalKey::character(key), modifiers) {
+fn key_with(key: &str, modifiers: Modifiers) -> KeyEvent {
+    match Event::press(Key::character(key), modifiers) {
         [Event::Key(event), _] => event,
         _ => unreachable!("press starts with a key event"),
     }
@@ -223,23 +223,20 @@ fn key_with(key: &str, modifiers: ModifiersState) -> KeyEvent {
 #[test]
 fn shift_letter_shortcuts_match_the_shifted_character() {
     let shortcut: Shortcut = "shift+p".parse().expect("shortcut");
-    let shifted = key_with("P", ModifiersState::SHIFT);
+    let shifted = key_with("P", Modifiers::SHIFT);
     assert!(shortcut.matches(&shifted));
-    assert!(!shortcut.matches(&key_with("P", ModifiersState::empty())));
-    assert!(!Shortcut::plain(LogicalKey::character("p")).matches(&shifted));
-    assert!(
-        !Shortcut::plain(LogicalKey::character("p"))
-            .matches(&key_with("P", ModifiersState::empty()))
-    );
+    assert!(!shortcut.matches(&key_with("P", Modifiers::empty())));
+    assert!(!Shortcut::plain(Key::character("p")).matches(&shifted));
+    assert!(!Shortcut::plain(Key::character("p")).matches(&key_with("P", Modifiers::empty())));
 }
 
 #[test]
 fn primary_shortcuts_use_the_platform_modifier() {
-    let save = Shortcut::primary(LogicalKey::character("s"));
+    let save = Shortcut::primary(Key::character("s"));
     if cfg!(target_os = "macos") {
-        assert_eq!(save.modifiers, ModifiersState::META);
+        assert_eq!(save.modifiers, Modifiers::META);
     } else {
-        assert_eq!(save.modifiers, ModifiersState::CONTROL);
+        assert_eq!(save.modifiers, Modifiers::CTRL);
     }
 }
 
@@ -265,7 +262,7 @@ fn typing_in_the_command_menu_filters_its_items() {
                 input: Some(Box::new(|target| {
                     for ch in ["w", "a"] {
                         target.route(
-                            Event::key(LogicalKey::character(ch), KeyPhase::Down)
+                            Event::key(Key::character(ch), KeyPhase::Down)
                                 .physical(PhysicalKey::KeyA)
                                 .text(Some(ch.into())),
                         );

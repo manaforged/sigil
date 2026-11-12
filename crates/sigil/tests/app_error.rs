@@ -3,7 +3,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use sigil::Error;
+use sigil::{Error, ErrorKind};
 
 #[derive(Debug)]
 struct DummyErr(&'static str);
@@ -18,13 +18,13 @@ impl StdError for DummyErr {}
 
 #[test]
 fn error_new_wraps_arbitrary_std_error() {
-    let e = Error::new(DummyErr("inner failure"));
+    let e = Error::new(ErrorKind::Other, DummyErr("inner failure"));
     assert!(format!("{e}").contains("inner failure"));
 }
 
 #[test]
 fn error_implements_std_error() {
     fn assert_std<E: StdError>(_: &E) {}
-    let e = Error::new(DummyErr("x"));
+    let e = Error::new(ErrorKind::Other, DummyErr("x"));
     assert_std(&e);
 }

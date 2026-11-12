@@ -51,15 +51,15 @@ pub(crate) fn scope_parts(caller: &'static str) -> Option<(Owner, SpawnParts)> {
     host_parts(caller).map(|parts| (owner, parts))
 }
 
-/// Creates a thread-safe writer for a signal.
-#[must_use]
-#[track_caller]
-pub fn signal_writer<T>(signal: Signal<T>) -> SignalWriter<T>
-where
-    T: Send + 'static,
-{
-    let dispatcher = dispatcher().expect("signal_writer() requires AsyncRuntime::install_current");
-    SignalWriter::new(dispatcher, signal)
+impl<T: Send + 'static> Signal<T> {
+    /// Returns a handle that writes this signal from another thread.
+    #[must_use]
+    #[track_caller]
+    pub fn writer(self) -> SignalWriter<T> {
+        let dispatcher =
+            dispatcher().expect("Signal::writer requires AsyncRuntime::install_current");
+        SignalWriter::new(dispatcher, self)
+    }
 }
 
 pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {

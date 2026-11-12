@@ -6,7 +6,7 @@ use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{
     Color, ColorAtom, ControlSize, Metrics, ReactiveStateSlot, StateSlot, StyleAtom, StyleOverlay,
     space,
@@ -142,7 +142,7 @@ fn displayed_text(runtime: &TextFieldRuntime, placeholder: TextContent) -> Signa
     let caret = runtime.input.caret;
     let password = runtime.password;
     let reveal = runtime.reveal;
-    derived(move || {
+    memo(move || {
         let current = value.get();
         let composing = preedit.get();
         let hiding = super::mask::hiding(password, reveal);

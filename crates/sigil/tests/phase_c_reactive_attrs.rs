@@ -41,7 +41,7 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
         let value = signal(String::new());
         let invalid = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(text_field(value).invalid_when(invalid));
+        let id = cx.add(text_field(value).invalid(invalid));
 
         let before = reactive_slice(&cx, id);
         assert!(
@@ -54,14 +54,14 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
         assert_eq!(
             painted,
             &[StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))],
-            "invalid_when(true) must install the red border overlay, got {painted:?}",
+            "invalid(true) must install the red border overlay, got {painted:?}",
         );
 
         invalid.set(false);
         let cleared = reactive_slice(&cx, id);
         assert!(
             !cleared.contains(&StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))),
-            "invalid_when(false) must remove the red border overlay; got {cleared:?}",
+            "invalid(false) must remove the red border overlay; got {cleared:?}",
         );
     });
 }

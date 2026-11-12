@@ -46,7 +46,7 @@ fn every_property() -> Keyframes {
 fn frame_calls(keyframes: Keyframes) -> u64 {
     Owner::scope("props-alloc", || {
         let flag = signal(false);
-        let mut ui = mount(styled().paint_when(flag, move |state| state.animate(keyframes)));
+        let mut ui = mount(styled().paint_when(flag, move |state| state.animation(keyframes)));
         start(&mut ui, flag);
         let mut step = || {
             let _ = ui.host().frame(VIEW, 1.0 / 60.0, FrameHooks::default());

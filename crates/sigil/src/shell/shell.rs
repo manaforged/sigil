@@ -7,7 +7,7 @@ use std::sync::{
 use web_time::Instant;
 
 use crate::app::WindowOpts;
-use crate::events::{Event, ModifiersState, MouseButtons};
+use crate::events::{Event, Modifiers, MouseButtons};
 use crate::geometry::{LogicalSize, PhysicalSize, Point, Scale};
 use winit::{
     event_loop::{EventLoop, EventLoopProxy},
@@ -59,7 +59,7 @@ pub struct WinitShell {
     redraw_target: Option<WinitWindowHandle>,
     pointer_position: Point,
     pointer_buttons: MouseButtons,
-    modifiers: ModifiersState,
+    modifiers: Modifiers,
     next_handle: u64,
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
@@ -129,7 +129,7 @@ impl WinitShell {
             redraw_target: None,
             pointer_position: Point::new(0.0, 0.0),
             pointer_buttons: MouseButtons::empty(),
-            modifiers: ModifiersState::empty(),
+            modifiers: Modifiers::empty(),
             next_handle: 0,
             deadline_hook: None,
             exit_requested: false,

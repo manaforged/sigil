@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use sigil::reactive::{Owner, signal};
-use sigil::tasks::{AsyncRuntime, Status, signal_writer, spawn};
+use sigil::tasks::{AsyncRuntime, Status, spawn};
 
 fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = std::time::Instant::now();
@@ -62,7 +62,7 @@ fn signal_writer_streams_updates_through_drain() {
         let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
         runtime.install_current();
         let values = signal(Vec::<u32>::new());
-        let writer = signal_writer(values);
+        let writer = values.writer();
 
         std::thread::spawn(move || {
             writer

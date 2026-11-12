@@ -2,7 +2,7 @@ use crate::animation::Property;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Position;
 use crate::layout::{LayoutStyle, Length, Overflow};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::widgets::{Layout, Widget};
 
 use std::ops::Deref;
@@ -36,7 +36,7 @@ where
         S: Deref + Clone + 'static,
         S::Target: AsRef<[T]>,
     {
-        let live_rows = derived(move || bound_slice(&signal.get()).len());
+        let live_rows = memo(move || bound_slice(&signal.get()).len());
         let thunk: Box<BoundVisibleThunk<T, R>> =
             Box::new(move |spec: BoundStrip<T, R>, scroll_y| {
                 let height = strip_height(spec.viewport_height, spec.row_height, spec.overscan);
@@ -219,7 +219,7 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
         return root;
     }
     let viewport_height =
-        derived(move || scroll::viewport_px(axes.viewport.get(), axes.viewport_height));
+        memo(move || scroll::viewport_px(axes.viewport.get(), axes.viewport_height));
     root.child(
         container()
             .layout(
@@ -260,7 +260,7 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
     if !shrinks {
         return root;
     }
-    let height = derived(move || {
+    let height = memo(move || {
         let content = axes.content.get();
         if content > 0.0 {
             content.min(axes.viewport_height)

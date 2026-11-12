@@ -20,5 +20,8 @@ pub(super) fn apply(_controls: &mut Controls, _track: &Track) -> AppResult<()> {
 }
 
 fn unsupported() -> Error {
-    Error::new(std::io::Error::from(std::io::ErrorKind::Unsupported))
+    Error::new(
+        crate::ErrorKind::Other,
+        std::io::Error::from(std::io::ErrorKind::Unsupported),
+    )
 }

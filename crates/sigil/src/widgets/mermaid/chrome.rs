@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::icons::Icon;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
-use crate::reactive::{Signal, derived, signal, timeout};
+use crate::reactive::{Signal, memo, signal, timeout};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
 use crate::style::{ControlSize, Paint, Radius, Token, space};
@@ -71,13 +71,13 @@ impl Chrome {
         };
         container()
             .layout(LayoutStyle::flex_column().fill_width())
-            .child(preview.visible_when(move || !code.get()))
-            .child(code_view(source).visible_when(code))
+            .child(preview.visible(move || !code.get()))
+            .child(code_view(source).visible(code))
     }
 
     fn toolbar(self, source: &str, expandable: bool) -> NodeBuilder {
         let (hover, focus, copied) = (self.hover, self.focus, self.copied);
-        let hidden = derived(move || !(hover.get() || focus.get() || copied.get()));
+        let hidden = memo(move || !(hover.get() || focus.get() || copied.get()));
         let mut bar = container()
             .layout(
                 LayoutStyle::flex_row()
@@ -108,7 +108,7 @@ impl Chrome {
     fn toggle(self) -> ButtonBuilder {
         let code = self.code;
         let theme = ActiveTheme::capture();
-        let name = derived(move || {
+        let name = memo(move || {
             theme.string(if code.get() {
                 StringKey::ShowDiagram
             } else {
@@ -126,7 +126,7 @@ impl Chrome {
         let copied = self.copied;
         let body = source.trim_end().to_string();
         let theme = ActiveTheme::capture();
-        let name = derived(move || {
+        let name = memo(move || {
             theme.string(if copied.get() {
                 StringKey::Copied
             } else {

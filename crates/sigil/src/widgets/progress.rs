@@ -5,7 +5,7 @@ use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, caller_style};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
@@ -134,8 +134,8 @@ fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
 }
 
 fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> NodeBuilder {
-    let filled = derived(move || grow_units(value.get() / max));
-    let empty = derived(move || GROW_SCALE - grow_units(value.get() / max));
+    let filled = memo(move || grow_units(value.get() / max));
+    let empty = memo(move || GROW_SCALE - grow_units(value.get() / max));
     container()
         .layout(LayoutStyle::flex_row().fill_width().height(track_h))
         .child(
@@ -193,11 +193,11 @@ fn grow_atoms(units: u16) -> &'static [StyleAtom] {
 }
 
 fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
-    let lead = derived(move || {
+    let lead = memo(move || {
         let t = phase.get().clamp(0.0, 1.0);
         grow_units(t * (1.0 - INDETERMINATE_RATIO))
     });
-    let trail = derived(move || {
+    let trail = memo(move || {
         let t = phase.get().clamp(0.0, 1.0);
         let used = t * (1.0 - INDETERMINATE_RATIO) + INDETERMINATE_RATIO;
         GROW_SCALE - grow_units(used)

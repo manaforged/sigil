@@ -72,7 +72,7 @@ fn modal_open_pushes_focus_scope() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+            Event::key_down(NamedKey::Tab).physical(PhysicalKey::Tab),
         );
 
         assert_eq!(router.focus(), Some(dialog));
@@ -81,7 +81,7 @@ fn modal_open_pushes_focus_scope() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+            Event::key_down(NamedKey::Tab).physical(PhysicalKey::Tab),
         );
         assert!(!show.get());
     });
@@ -122,7 +122,7 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+            Event::key_down(NamedKey::Tab).physical(PhysicalKey::Tab),
         );
         assert_eq!(router.focus(), Some(dialog));
     });
@@ -152,7 +152,7 @@ fn dismissed_modal_releases_focus_trap() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+            Event::key_down(NamedKey::Tab).physical(PhysicalKey::Tab),
         );
         assert_eq!(router.focus(), Some(dialog), "modal traps focus while open");
 
@@ -163,7 +163,7 @@ fn dismissed_modal_releases_focus_trap() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Tab).physical(PhysicalKey::Tab),
+            Event::key_down(NamedKey::Tab).physical(PhysicalKey::Tab),
         );
         assert_eq!(
             router.focus(),
@@ -187,7 +187,7 @@ fn escape_closes_modal_when_enabled_default() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+            Event::key_down(NamedKey::Escape).physical(PhysicalKey::Escape),
         );
 
         assert!(!show.get());
@@ -253,7 +253,7 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+            Event::key_down(NamedKey::Escape).physical(PhysicalKey::Escape),
         );
         assert_eq!(
             (first.get(), second.get(), third.get()),
@@ -263,7 +263,7 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+            Event::key_down(NamedKey::Escape).physical(PhysicalKey::Escape),
         );
         assert_eq!(
             (first.get(), second.get(), third.get()),
@@ -273,7 +273,7 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Escape).physical(PhysicalKey::Escape),
+            Event::key_down(NamedKey::Escape).physical(PhysicalKey::Escape),
         );
         assert_eq!(
             (first.get(), second.get(), third.get()),

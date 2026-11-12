@@ -25,7 +25,7 @@ fn a_view_renders_widgets_with_their_bindings() {
     let ui = || {
         let name = signal("Ada".to_owned());
         let saved = signal(0_u32);
-        let status = derived(move || format!("saved {}", saved.get()));
+        let status = memo(move || format!("saved {}", saved.get()));
         View::new(
             r#"
             // a settings form
@@ -74,7 +74,7 @@ fn saving_the_file_changes_the_screen_and_keeps_signal_values() {
 fn a_typed_value_survives_a_save() {
     let path = file("typed", "text_field value=$name\ntext \"One\"\n");
     let watched = path.clone();
-    let name = |n: Signal<String>| derived(move || format!("typed {}", n.get()));
+    let name = |n: Signal<String>| memo(move || format!("typed {}", n.get()));
     let mut ui = Harness::new(move || {
         let value = signal(String::new());
         let shown = name(value);
@@ -182,7 +182,7 @@ fn a_view_names_toggles_editors_dividers_and_their_actions() {
         ui.click("Sync");
         assert!(on.peek());
         assert_eq!(changes.peek(), 1);
-        ui.type_into("Search", "ada").press(Key::Enter);
+        ui.type_into("Search", "ada").press(NamedKey::Enter);
         assert_eq!(sent.peek(), 1);
         ui.type_into("Notes", "hello");
         assert_eq!(notes.peek(), "hello");

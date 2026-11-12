@@ -84,6 +84,7 @@ job_wasm() {
 job_test() {
   step test cargo test --workspace --all-features --locked --no-fail-fast --lib --bins --tests
   step doctest cargo test --workspace --all-features --locked --no-fail-fast --doc
+  step terminal-only cargo test --workspace --locked --features sigil-ui/terminal
   if [ "$gpu" = 1 ]; then
     local skips=() name
     while read -r name; do skips+=(--skip "$name"); done < <(node scripts/check-source.mjs --manual-tests)

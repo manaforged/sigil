@@ -13,7 +13,7 @@ const SAMPLES: usize = 64;
 fn increment_layout_emit_under_frame_budget() {
     Owner::scope("click-present", || {
         let count = signal(0_i32);
-        let label = derived(move || format!("Count: {}", count.get()));
+        let label = memo(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             container()

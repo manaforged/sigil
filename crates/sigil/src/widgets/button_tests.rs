@@ -1,10 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use super::*;
-use crate::events::Key;
-use crate::events::{
-    Event, EventRouter, KeyPhase, LogicalKey, MouseButton, MouseButtons, PointerPhase,
-};
+use crate::events::NamedKey;
+use crate::events::{Event, EventRouter, Key, KeyPhase, MouseButton, MouseButtons, PointerPhase};
 use crate::geometry::{Point, Size};
 use crate::kernel::{AccessibleName, Cx, IntoNode, Role};
 use crate::layout::LayoutEngine;
@@ -46,7 +44,7 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
             assert_eq!(router.is_click_target(&cx, &layout, id), enabled);
             click(&mut router, &mut cx, &layout);
             router.set_focus(&mut cx, Some(id));
-            press(&mut router, &mut cx, &layout, Key::Enter);
+            press(&mut router, &mut cx, &layout, NamedKey::Enter);
             assert_eq!(clicks.peek(), expected);
             router.set_focus(&mut cx, None);
             router.focus_prev(&mut cx, &layout);
@@ -67,12 +65,8 @@ fn click(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine) {
     }
 }
 
-fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key) {
-    router.route(
-        cx,
-        layout,
-        Event::key(LogicalKey::Named(key), KeyPhase::Down),
-    );
+fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: NamedKey) {
+    router.route(cx, layout, Event::key(Key::Named(key), KeyPhase::Down));
 }
 
 #[test]

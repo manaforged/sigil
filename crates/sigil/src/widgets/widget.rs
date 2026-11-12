@@ -117,8 +117,8 @@ pub trait Widget: Sealed {
 
     /// Hides the node while `shown` is false.
     #[must_use]
-    fn visible_when(self, shown: impl Reactive<bool>) -> Self {
-        self.map_target(move |node| look::visible_when(node, shown))
+    fn visible(self, shown: impl Reactive<bool>) -> Self {
+        self.map_target(move |node| look::visible(node, shown))
     }
 
     /// Applies the style built by `paint` while `active` is true.

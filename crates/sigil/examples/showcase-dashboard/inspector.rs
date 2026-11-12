@@ -1,8 +1,7 @@
 use sigil::prelude::{
     AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Orientation, Paint, Radius, Space,
-    TextContent, Token, Tone, button, column, container, derived, divider, dropdown, field,
-    kv_grid, number_field, progress, row, scroll, section_label, slider, spacer, text, text_field,
-    toggle,
+    TextContent, Token, Tone, button, column, container, divider, dropdown, field, kv_grid, memo,
+    number_field, progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
 
@@ -45,7 +44,7 @@ fn read(console: Console, pick: fn(&Job) -> String) -> impl Fn() -> String + 'st
 }
 
 fn header(console: Console) -> NodeBuilder {
-    let progress_value = derived(move || console.status_of(console.focus.get()).progress());
+    let progress_value = memo(move || console.status_of(console.focus.get()).progress());
     column()
         .fill_width()
         .padding(Space::Md)

@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player as RodioPlayer, Source};
 
-use crate::reactive::{IntervalId, interval};
+use crate::reactive::{Timer, interval};
 
 use super::Player;
 
@@ -12,7 +12,7 @@ pub(super) struct Device {
     stream: MixerDeviceSink,
     sink: RodioPlayer,
     durations: VecDeque<Option<Duration>>,
-    interval: Option<IntervalId>,
+    interval: Option<Timer>,
 }
 
 impl Device {

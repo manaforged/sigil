@@ -6,7 +6,7 @@ use crate::{Harness, Query};
 
 fn counter() -> impl IntoNode {
     let count = signal(0_i32);
-    let label = derived(move || format!("Count: {}", count.get()));
+    let label = memo(move || format!("Count: {}", count.get()));
     container()
         .child(text(label))
         .child(button("Increment").activate(move || count.set(count.peek() + 1)))
@@ -74,7 +74,7 @@ fn advance_fires_intervals_on_the_virtual_clock() {
     let ticks = || {
         let n = signal(0_u32);
         interval(Duration::from_secs(1), move || n.set(n.peek() + 1));
-        text(derived(move || format!("ticks {}", n.get())))
+        text(memo(move || format!("ticks {}", n.get())))
     };
     let mut ui = Harness::new(ticks).size(20, 2);
     assert!(ui.text().contains("ticks 0"), "{}", ui.text());

@@ -9,7 +9,7 @@ fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (Nod
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(80.0, 32.0))
-                    .visible_when(show),
+                    .visible(show),
             ),
     );
     let child = cx.nth_child(root, 0).expect("child must exist");

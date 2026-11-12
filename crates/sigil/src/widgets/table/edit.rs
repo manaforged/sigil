@@ -3,10 +3,10 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::events::pointer_dispatch::Clicks;
-use crate::events::{Key, KeyEvent, LogicalKey, MouseButton, PointerEvent};
+use crate::events::{Key, KeyEvent, MouseButton, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::widgets::{Layout, Widget};
 
 use super::super::text_field::text_field;
@@ -154,7 +154,7 @@ impl CellEditor {
     pub(super) fn refocus_trigger(self, row: u32) -> Signal<u64> {
         let refocus = self.refocus;
         let mine = Cell::new(0_u64);
-        derived(move || {
+        memo(move || {
             let (target, generation) = refocus.get();
             if target == row {
                 mine.set(generation);
@@ -188,7 +188,7 @@ pub(super) fn editable_cell<Row: 'static>(
 ) -> NodeBuilder {
     let cell = CellRef { row, column };
     let target = state.editing();
-    let editing = derived(move || target.get() == Some(cell));
+    let editing = memo(move || target.get() == Some(cell));
     let title = state
         .columns()
         .get(column)
@@ -237,16 +237,16 @@ fn edit_key<Row: 'static>(
     cell: CellRef,
     event: &mut KeyEvent,
 ) {
-    let LogicalKey::Named(key) = &event.key else {
+    let Key::Named(key) = &event.key else {
         return;
     };
     match *key {
-        Key::Enter => {
+        NamedKey::Enter => {
             editor.commit(state);
             editor.finish(state, cell.row);
         }
-        Key::Escape => editor.finish(state, cell.row),
-        Key::Tab => editor.step(state, cell, !event.modifiers.shift()),
+        NamedKey::Escape => editor.finish(state, cell.row),
+        NamedKey::Tab => editor.step(state, cell, !event.modifiers.shift()),
         _ => return,
     }
     event.stop_propagation();

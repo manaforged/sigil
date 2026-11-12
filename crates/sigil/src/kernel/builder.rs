@@ -27,7 +27,7 @@ pub struct NodeBuilder {
     pub(super) kind: NodeType,
     pub(super) pre_extensions: Vec<NodeMutator>,
     pub(super) reactive_children: Option<ReactiveChildrenInstall>,
-    pub(super) on_added: Vec<AddedHook>,
+    pub(super) added: Vec<AddedHook>,
     style: Option<Box<Style>>,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
     wiring: Option<Box<Wiring>>,
@@ -75,7 +75,7 @@ impl NodeBuilder {
             kind,
             pre_extensions: Vec::new(),
             reactive_children: None,
-            on_added: Vec::new(),
+            added: Vec::new(),
             style: None,
             wraps: None,
             wiring: None,
@@ -281,8 +281,8 @@ impl NodeBuilder {
 
     /// Sets the callback that runs on added.
     #[must_use]
-    pub fn on_added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
-        self.on_added.push(Box::new(hook));
+    pub fn added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
+        self.added.push(Box::new(hook));
         self
     }
 

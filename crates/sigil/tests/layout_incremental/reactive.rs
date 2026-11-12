@@ -33,7 +33,7 @@ fn reactive_display_none_then_empty_shows_box() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(40.0, 20.0))
-                .visible_when(show),
+                .visible(show),
         );
         let mut engine = stub_engine();
 

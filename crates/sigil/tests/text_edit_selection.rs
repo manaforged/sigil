@@ -29,9 +29,9 @@ fn selection_ys(cx: &Cx, root: NodeId) -> Vec<f32> {
 }
 
 fn shift_up() -> Event {
-    Event::key(Key::ArrowUp, KeyPhase::Down)
+    Event::key(NamedKey::ArrowUp, KeyPhase::Down)
         .physical(PhysicalKey::ArrowUp)
-        .modifiers(ModifiersState::SHIFT)
+        .modifiers(Modifiers::SHIFT)
 }
 
 #[test]

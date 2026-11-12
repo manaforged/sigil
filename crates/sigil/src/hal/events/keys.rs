@@ -128,7 +128,7 @@ macro_rules! define_key_enum {
 
 for_each_named_key!(define_key_enum!(
     /// A named key, by its meaning under the active layout.
-    Key prefix [Unidentified]
+    NamedKey prefix [Unidentified]
 ));
 
 for_each_physical_key!(define_key_enum!(
@@ -138,13 +138,13 @@ for_each_physical_key!(define_key_enum!(
 
 /// The modifier keys held during an input event.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct ModifiersState(u8);
+pub struct Modifiers(u8);
 
-impl ModifiersState {
+impl Modifiers {
     /// The shift key.
     pub const SHIFT: Self = Self(1);
     /// The control key.
-    pub const CONTROL: Self = Self(1 << 1);
+    pub const CTRL: Self = Self(1 << 1);
     /// The alt or option key.
     pub const ALT: Self = Self(1 << 2);
     /// The command, windows, or super key.
@@ -201,7 +201,7 @@ impl ModifiersState {
     /// True when control is held.
     #[must_use]
     pub const fn ctrl(self) -> bool {
-        self.contains(Self::CONTROL)
+        self.contains(Self::CTRL)
     }
 
     /// True when alt is held.
@@ -236,7 +236,7 @@ impl ModifiersState {
     }
 }
 
-impl core::ops::BitOr for ModifiersState {
+impl core::ops::BitOr for Modifiers {
     type Output = Self;
 
     fn bitor(self, other: Self) -> Self {
@@ -244,13 +244,13 @@ impl core::ops::BitOr for ModifiersState {
     }
 }
 
-impl core::ops::BitOrAssign for ModifiersState {
+impl core::ops::BitOrAssign for Modifiers {
     fn bitor_assign(&mut self, other: Self) {
         self.insert(other);
     }
 }
 
-impl core::ops::Sub for ModifiersState {
+impl core::ops::Sub for Modifiers {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
@@ -258,7 +258,7 @@ impl core::ops::Sub for ModifiersState {
     }
 }
 
-impl core::ops::SubAssign for ModifiersState {
+impl core::ops::SubAssign for Modifiers {
     fn sub_assign(&mut self, other: Self) {
         self.remove(other);
     }

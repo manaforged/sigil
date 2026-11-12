@@ -95,7 +95,7 @@ pub(super) fn context_overlay<Row: 'static>(
                 .fill_width()
                 .fill_height(),
         )
-        .visible_when(chrome.open)
+        .visible(chrome.open)
         .children_reactive(move || {
             if !chrome.open.get() {
                 return Vec::new();

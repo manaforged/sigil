@@ -49,7 +49,7 @@ fn click_focused(host: &mut Host) {
 }
 
 fn escape() -> Event {
-    Event::key(LogicalKey::Named(Key::Escape), KeyPhase::Down)
+    Event::key(Key::Named(NamedKey::Escape), KeyPhase::Down)
 }
 
 fn speaker(on_click: impl Fn() + 'static) -> Host {

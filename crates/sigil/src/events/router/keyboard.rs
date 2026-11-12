@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, KeyPhase, Modifiers, NamedKey, Shortcut};
 use crate::kernel::{Cx, NodeId, Role};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -155,7 +155,7 @@ impl ShortcutIndex {
         for (shortcut, id) in &self.entries {
             let yields = match focused {
                 Focused::Text => shortcut.is_plain_char(),
-                Focused::Terminal => !shortcut.modifiers.contains(ModifiersState::META),
+                Focused::Terminal => !shortcut.modifiers.contains(Modifiers::META),
                 Focused::Other => false,
             };
             if !visible(cx, *id) || yields {
@@ -183,14 +183,14 @@ impl ShortcutIndex {
 
 impl Shortcut {
     const fn is_plain_char(&self) -> bool {
-        matches!(self.key, LogicalKey::Character(_))
+        matches!(self.key, Key::Character(_))
             && self
                 .modifiers
                 .intersection(
-                    ModifiersState::SHIFT
-                        .union(ModifiersState::CONTROL)
-                        .union(ModifiersState::ALT)
-                        .union(ModifiersState::META),
+                    Modifiers::SHIFT
+                        .union(Modifiers::CTRL)
+                        .union(Modifiers::ALT)
+                        .union(Modifiers::META),
                 )
                 .is_empty()
     }
@@ -213,15 +213,15 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
 
 impl KeyEvent {
     fn is_tab_navigation(&self) -> bool {
-        self.key == LogicalKey::Named(Key::Tab) && !self.modifiers.ctrl() && !self.modifiers.alt()
+        self.key == Key::Named(NamedKey::Tab) && !self.modifiers.ctrl() && !self.modifiers.alt()
     }
 
     pub(super) fn is_escape(&self) -> bool {
-        self.key == LogicalKey::Named(Key::Escape)
+        self.key == Key::Named(NamedKey::Escape)
     }
 
     pub(super) fn is_letter_c(&self) -> bool {
-        matches!(&self.key, LogicalKey::Character(text) if text.eq_ignore_ascii_case("c"))
+        matches!(&self.key, Key::Character(text) if text.eq_ignore_ascii_case("c"))
     }
 }
 

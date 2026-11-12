@@ -154,7 +154,7 @@ impl NodeBuilder {
             }
         }
         if leaf && existing_leaf {
-            for hook in self.on_added {
+            for hook in self.added {
                 hook(cx, id);
             }
             return;
@@ -183,7 +183,7 @@ impl NodeBuilder {
         }
         let tail = cx.others(id, &kept);
         cx.replace_children(id, order.iter().chain(&tail).copied().collect());
-        for hook in self.on_added {
+        for hook in self.added {
             hook(cx, id);
         }
     }

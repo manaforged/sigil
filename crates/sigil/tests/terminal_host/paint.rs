@@ -12,7 +12,10 @@ fn same_tree_paints_label() {
 
 #[test]
 fn enter_increments_the_same_button() {
-    let grid = Harness::new(counter).size(40, 12).press(Key::Enter).text();
+    let grid = Harness::new(counter)
+        .size(40, 12)
+        .press(NamedKey::Enter)
+        .text();
     assert!(
         grid.contains("Count: 1"),
         "expected Count: 1 after Enter in:\n{grid}"

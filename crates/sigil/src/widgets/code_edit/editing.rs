@@ -1,7 +1,7 @@
 use crate::clipboard::clipboard;
 use std::rc::Rc;
 
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::grapheme::col_count;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
@@ -104,7 +104,7 @@ pub(super) fn attach(
         })),
     };
     let enter = runtime.clone();
-    let node = edit_keys(node, runtime, &profile).key(Key::Enter, move |event| {
+    let node = edit_keys(node, runtime, &profile).key(NamedKey::Enter, move |event| {
         edit_value(event, &enter, |edit| edit.insert_str("\n"));
     });
     let node = clipboard_keys(node, runtime);

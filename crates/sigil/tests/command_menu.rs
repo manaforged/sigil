@@ -46,7 +46,7 @@ fn press(
     layout: &mut LayoutEngine,
     router: &mut EventRouter,
     root: NodeId,
-    key: (Key, PhysicalKey),
+    key: (NamedKey, PhysicalKey),
 ) {
     router.route(cx, layout, Event::key_down(key.0).physical(key.1));
     layout
@@ -74,14 +74,14 @@ fn nested_submenu_opens_and_esc_ascends() {
             &mut layout,
             &mut router,
             root,
-            (Key::ArrowDown, PhysicalKey::ArrowDown),
+            (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
         );
         press(
             &mut cx,
             &mut layout,
             &mut router,
             root,
-            (Key::Enter, PhysicalKey::Enter),
+            (NamedKey::Enter, PhysicalKey::Enter),
         );
         assert_eq!(
             panel_count(&cx, root),
@@ -94,7 +94,7 @@ fn nested_submenu_opens_and_esc_ascends() {
             &mut layout,
             &mut router,
             root,
-            (Key::Escape, PhysicalKey::Escape),
+            (NamedKey::Escape, PhysicalKey::Escape),
         );
         assert_eq!(
             panel_count(&cx, root),
@@ -121,14 +121,14 @@ fn disabled_item_skipped_by_navigation() {
             &mut layout,
             &mut router,
             root,
-            (Key::ArrowDown, PhysicalKey::ArrowDown),
+            (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
         );
         press(
             &mut cx,
             &mut layout,
             &mut router,
             root,
-            (Key::Enter, PhysicalKey::Enter),
+            (NamedKey::Enter, PhysicalKey::Enter),
         );
 
         assert_eq!(selected.get(), vec!["C".to_owned()]);
@@ -150,7 +150,7 @@ fn cancel_fires_on_root_esc() {
             &mut layout,
             &mut router,
             root,
-            (Key::Escape, PhysicalKey::Escape),
+            (NamedKey::Escape, PhysicalKey::Escape),
         );
         assert!(cancelled.get(), "esc at the root level must fire cancel");
     });
@@ -173,14 +173,14 @@ fn leaf_select_fires_observer_and_closes() {
             &mut layout,
             &mut router,
             root,
-            (Key::ArrowDown, PhysicalKey::ArrowDown),
+            (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
         );
         press(
             &mut cx,
             &mut layout,
             &mut router,
             root,
-            (Key::Enter, PhysicalKey::Enter),
+            (NamedKey::Enter, PhysicalKey::Enter),
         );
         assert_eq!(panel_count(&cx, root), 2, "enter descends into Ability");
 
@@ -189,7 +189,7 @@ fn leaf_select_fires_observer_and_closes() {
             &mut layout,
             &mut router,
             root,
-            (Key::Enter, PhysicalKey::Enter),
+            (NamedKey::Enter, PhysicalKey::Enter),
         );
         assert_eq!(
             selected_label.get(),
@@ -210,7 +210,7 @@ fn leaf_select_fires_observer_and_closes() {
 
 const DELTA_PCT: f32 = 0.5;
 
-fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
+fn navigate(cx: &mut Cx, root: NodeId, keys: &[(NamedKey, PhysicalKey)]) {
     let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
     layout
         .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
@@ -253,8 +253,8 @@ fn command_menu_nested() {
             cx,
             root,
             &[
-                (Key::ArrowDown, PhysicalKey::ArrowDown),
-                (Key::Enter, PhysicalKey::Enter),
+                (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
+                (NamedKey::Enter, PhysicalKey::Enter),
             ],
         );
         root
@@ -277,8 +277,8 @@ fn command_menu_disabled_item() {
             cx,
             root,
             &[
-                (Key::ArrowDown, PhysicalKey::ArrowDown),
-                (Key::ArrowDown, PhysicalKey::ArrowDown),
+                (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
+                (NamedKey::ArrowDown, PhysicalKey::ArrowDown),
             ],
         );
         root
@@ -299,7 +299,7 @@ fn clicking_a_row_of_a_filtered_list_runs_that_row() {
 }
 
 fn filtered_click() {
-    use sigil::events::{KeyPhase, LogicalKey, ModifiersState};
+    use sigil::events::{Key, KeyPhase, Modifiers};
 
     let chosen: Signal<String> = signal(String::new());
     let mut harness = sigil_kittest::Harness::new(move || {
@@ -314,8 +314,8 @@ fn filtered_click() {
     .pixels(420, 260);
     harness.settle();
     harness
-        .send([Event::key(LogicalKey::character("R"), KeyPhase::Down)
-            .modifiers(ModifiersState::empty())
+        .send([Event::key(Key::character("R"), KeyPhase::Down)
+            .modifiers(Modifiers::empty())
             .text(Some("R".into()))])
         .settle();
     let shown = harness.text();
@@ -369,7 +369,10 @@ fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
             "a long list is cut: row {start_row} panel {start_panel}"
         );
         harness
-            .send((0..29).map(|_| Event::key_down(Key::ArrowDown).physical(PhysicalKey::ArrowDown)))
+            .send(
+                (0..29)
+                    .map(|_| Event::key_down(NamedKey::ArrowDown).physical(PhysicalKey::ArrowDown)),
+            )
             .settle();
         let (panel, row) = bottoms(&mut harness, "Action 30");
         assert!(

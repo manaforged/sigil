@@ -14,7 +14,7 @@ use async_ops_sustained::{
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::reactive::{Owner, effect, signal};
-use sigil::tasks::{AsyncRuntime, signal_writer};
+use sigil::tasks::AsyncRuntime;
 
 pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = Instant::now();
@@ -56,7 +56,7 @@ fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
             }
             scheduler.install_current();
             let observed = signal(0_usize);
-            let writer = signal_writer(observed);
+            let writer = observed.writer();
             b.iter(|| {
                 woke.store(false, Ordering::Release);
                 let writer = writer.clone();
@@ -144,7 +144,7 @@ fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
             }
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
             scheduler.install_current();
-            let writers: Vec<_> = signals.into_iter().map(signal_writer).collect();
+            let writers: Vec<_> = signals.into_iter().map(|signal| signal.writer()).collect();
             b.iter_batched(
                 || {
                     for (i, writer) in writers.iter().enumerate() {

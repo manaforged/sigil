@@ -1,7 +1,7 @@
 use crate::animation::Property;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{JustifyContent, LayoutStyle};
-use crate::reactive::{derived, effect, signal};
+use crate::reactive::{effect, memo, signal};
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::{Layout, Widget};
 
@@ -11,9 +11,9 @@ pub(super) fn fitted(picture: NodeBuilder, (width, height): (f32, f32)) -> NodeB
     let extent = signal(width);
     let scroll = Horizontal::new(extent, None);
     let viewport = scroll.viewport;
-    let scale = derived(move || scale_for(viewport.get(), width));
-    let drawn_width = derived(move || width * scale.get());
-    let drawn_height = derived(move || height * scale.get());
+    let scale = memo(move || scale_for(viewport.get(), width));
+    let drawn_width = memo(move || width * scale.get());
+    let drawn_height = memo(move || height * scale.get());
     effect(move || extent.set(drawn_width.get()));
     let centred = container()
         .layout(

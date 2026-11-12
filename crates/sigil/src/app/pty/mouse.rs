@@ -1,6 +1,6 @@
 use vt100::{MouseProtocolEncoding, MouseProtocolMode};
 
-use crate::events::{ModifiersState, MouseButton};
+use crate::events::{Modifiers, MouseButton};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Mouse {
@@ -43,16 +43,16 @@ const fn code(mouse: Mouse) -> Option<u16> {
     }
 }
 
-fn held(modifiers: ModifiersState) -> u16 {
-    let bit = |key: ModifiersState, value: u16| if modifiers.contains(key) { value } else { 0 };
-    bit(ModifiersState::SHIFT, 4) + bit(ModifiersState::ALT, 8) + bit(ModifiersState::CONTROL, 16)
+fn held(modifiers: Modifiers) -> u16 {
+    let bit = |key: Modifiers, value: u16| if modifiers.contains(key) { value } else { 0 };
+    bit(Modifiers::SHIFT, 4) + bit(Modifiers::ALT, 8) + bit(Modifiers::CTRL, 16)
 }
 
 /// The bytes a program in `mode` expects for `mouse` at the zero-based `(col, row)` cell.
 pub(super) fn report(
     mouse: Mouse,
     at: (u16, u16),
-    modifiers: ModifiersState,
+    modifiers: Modifiers,
     mode: MouseProtocolMode,
     encoding: MouseProtocolEncoding,
 ) -> Option<Vec<u8>> {

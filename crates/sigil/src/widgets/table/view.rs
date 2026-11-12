@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
@@ -224,7 +224,7 @@ impl<Row: 'static> TableBuilder<Row> {
         let root = container()
             .bounds_reactive(chrome.bounds)
             .role(Role::Grid)
-            .row_count(derived(move || root_state.visible().get().len() + 1))
+            .row_count(memo(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len() + usize::from(self.select))
             .class(self.frame)
             .class(self.density.text())

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, NodeId};
 use crate::kernel::{IntoNode, NodeBuilder, container, fragment, node};
-use crate::reactive::{Reactive, Signal, derived};
+use crate::reactive::{Reactive, Signal, memo};
 
 /// Mounts `then()` while `cond` is true and `otherwise()` while it is false.
 #[must_use]
@@ -115,7 +115,7 @@ impl<K: Clone + PartialEq + 'static> SwitchBuilder<K> {
         let (keys, mut views): (Vec<K>, Vec<ViewFn>) = cases.into_iter().unzip();
         let fallback = otherwise.is_some().then_some(keys.len());
         views.extend(otherwise);
-        let slot = derived(move || {
+        let slot = memo(move || {
             let current = key.read();
             keys.iter().position(|k| *k == current).or(fallback)
         });
@@ -142,7 +142,7 @@ fn mount_kept(views: Vec<ViewFn>, slot: Signal<Option<usize>>) -> NodeBuilder {
         seen.iter()
             .filter_map(|&i| views.get(i).map(|view| (i, Rc::clone(view))))
             .map(|(i, view)| {
-                let page = crate::style::builder_ext::visible_when(
+                let page = crate::style::builder_ext::visible(
                     container().child(move || view()),
                     move || slot.get() == Some(i),
                 );

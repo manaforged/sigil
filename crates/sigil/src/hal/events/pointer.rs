@@ -1,4 +1,4 @@
-use crate::events::ModifiersState;
+use crate::events::Modifiers;
 use crate::geometry::{LogicalSize, Point};
 
 /// Pointer device.
@@ -117,7 +117,7 @@ pub struct PointerEvent {
     /// The buttons.
     pub buttons: MouseButtons,
     /// The modifiers.
-    pub modifiers: ModifiersState,
+    pub modifiers: Modifiers,
     /// The phase.
     pub phase: PointerPhase,
     /// The target size.
@@ -142,7 +142,7 @@ impl PointerEvent {
             kind: PointerType::Mouse,
             button: None,
             buttons: MouseButtons::empty(),
-            modifiers: ModifiersState::empty(),
+            modifiers: Modifiers::empty(),
             phase,
             target_size: LogicalSize::new(0.0, 0.0),
             pointer_id: 0,

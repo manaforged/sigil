@@ -1,7 +1,7 @@
 use crate::app::Wake;
 use crate::app::bridge::Native;
 use crate::error::{AppResult, Error, ErrorKind};
-use crate::events::{Key, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, Modifiers, NamedKey, Shortcut};
 use crate::reactive::EventChannel;
 use crate::shell::key_map::same_name_match;
 use muda::accelerator::{Key as NativeKey, KeyAccelerator, Modifiers as NativeModifiers};
@@ -302,9 +302,9 @@ fn install_menu(hwnd: Option<isize>) -> Result<bool, String> {
 
 pub(crate) fn accelerator(shortcut: &Shortcut) -> Result<KeyAccelerator, String> {
     let key = match &shortcut.key {
-        LogicalKey::Named(key) => native_named_key(*key)
+        Key::Named(key) => native_named_key(*key)
             .ok_or_else(|| format!("menu shortcut key {key} has no native key"))?,
-        LogicalKey::Character(text) => NativeKey::Character(text.clone()),
+        Key::Character(text) => NativeKey::Character(text.clone()),
     };
     Ok(KeyAccelerator::new(
         Some(native_modifiers(shortcut.modifiers)),
@@ -312,12 +312,12 @@ pub(crate) fn accelerator(shortcut: &Shortcut) -> Result<KeyAccelerator, String>
     ))
 }
 
-fn native_modifiers(modifiers: ModifiersState) -> NativeModifiers {
+fn native_modifiers(modifiers: Modifiers) -> NativeModifiers {
     let pairs = [
-        (ModifiersState::SHIFT, NativeModifiers::SHIFT),
-        (ModifiersState::CONTROL, NativeModifiers::CONTROL),
-        (ModifiersState::ALT, NativeModifiers::ALT),
-        (ModifiersState::META, NativeModifiers::SUPER),
+        (Modifiers::SHIFT, NativeModifiers::SHIFT),
+        (Modifiers::CTRL, NativeModifiers::CONTROL),
+        (Modifiers::ALT, NativeModifiers::ALT),
+        (Modifiers::META, NativeModifiers::SUPER),
     ];
     pairs
         .into_iter()
@@ -325,9 +325,9 @@ fn native_modifiers(modifiers: ModifiersState) -> NativeModifiers {
         .fold(NativeModifiers::empty(), |acc, (_, native)| acc | native)
 }
 
-const fn native_named_key(key: Key) -> Option<NativeKey> {
+const fn native_named_key(key: NamedKey) -> Option<NativeKey> {
     Some(
-        same_name_match!(key, Key => NativeKey, default: return None, [
+        same_name_match!(key, NamedKey => NativeKey, default: return None, [
             Enter, Tab, Escape, Backspace, Delete, Insert, Home, End, PageUp, PageDown,
             ArrowUp, ArrowDown, ArrowLeft, ArrowRight, PrintScreen, ScrollLock, Pause,
             CapsLock, NumLock, ContextMenu, Help, KanaMode, Convert, NonConvert, WakeUp,

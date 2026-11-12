@@ -12,7 +12,7 @@ fn committing_text_that_does_not_parse_shows_the_stored_value() {
         let input = ui.get(&Query::role(Role::TextInput));
         ui.click(&input)
             .type_text("1.234,56")
-            .press(Key::Enter)
+            .press(NamedKey::Enter)
             .settle();
         let shown = ui
             .get(&Query::role(Role::TextInput))
@@ -26,11 +26,11 @@ fn commit(value_field: impl IntoNode + 'static, text: &str) -> Harness {
     let mut ui = Harness::new(move || column().child(value_field)).pixels(400, 120);
     ui.settle();
     let input = ui.get(&Query::role(Role::TextInput));
-    ui.click(&input).press(Key::End);
+    ui.click(&input).press(NamedKey::End);
     for _ in 0..24 {
-        ui.press(Key::Backspace);
+        ui.press(NamedKey::Backspace);
     }
-    ui.type_text(text).press(Key::Enter).settle();
+    ui.type_text(text).press(NamedKey::Enter).settle();
     ui.focus_next().settle();
     ui
 }

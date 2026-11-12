@@ -1,10 +1,10 @@
 use crate::layout::Space;
 use std::sync::Arc;
 
-use crate::events::{Key, MouseButton, PointerEvent};
+use crate::events::{MouseButton, NamedKey, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
@@ -107,10 +107,10 @@ fn build_row<Row: 'static>(
         return container();
     }
     let selection = state.selection();
-    let is_selected = derived(move || selection.get().contains(&row_index));
+    let is_selected = memo(move || selection.get().contains(&row_index));
     let rows = state.rows();
     let eq = state.row_eq_fn();
-    let row_value = derived(move || RowValue {
+    let row_value = memo(move || RowValue {
         rows: rows.get(),
         index: row_index as usize,
         eq: eq.clone(),
@@ -162,7 +162,7 @@ fn activate_key<Row: 'static>(
         row
     };
     let (state, chrome) = (state.clone(), chrome.clone());
-    row.focusable(true).key(Key::Enter, move |event| {
+    row.focusable(true).key(NamedKey::Enter, move |event| {
         if disabled.is_some_and(|off| off.get()) {
             return;
         }

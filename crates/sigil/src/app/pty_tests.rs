@@ -19,8 +19,8 @@ fn a_mouse_click_reports_in_the_encoding_the_program_chose() {
     use vt100::{MouseProtocolEncoding as Encoding, MouseProtocolMode as Mode};
 
     use super::mouse::report;
-    use crate::events::{ModifiersState, MouseButton};
-    let none = ModifiersState::empty();
+    use crate::events::{Modifiers, MouseButton};
+    let none = Modifiers::empty();
     let down = super::Mouse::Down(MouseButton::Left);
     let up = super::Mouse::Up(MouseButton::Left);
     assert_eq!(report(down, (2, 4), none, Mode::None, Encoding::Sgr), None);

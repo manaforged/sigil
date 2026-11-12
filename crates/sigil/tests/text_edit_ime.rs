@@ -268,15 +268,15 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
     });
 }
 fn arrow_left() -> Event {
-    Event::key(Key::ArrowLeft, KeyPhase::Down).physical(PhysicalKey::ArrowLeft)
+    Event::key(NamedKey::ArrowLeft, KeyPhase::Down).physical(PhysicalKey::ArrowLeft)
 }
 fn backspace() -> Event {
-    Event::key(Key::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
+    Event::key(NamedKey::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
 }
 fn ctrl_a() -> Event {
-    Event::key(LogicalKey::character("a"), KeyPhase::Down)
+    Event::key(Key::character("a"), KeyPhase::Down)
         .physical(PhysicalKey::KeyA)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();

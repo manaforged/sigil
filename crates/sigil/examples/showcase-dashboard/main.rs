@@ -50,7 +50,7 @@ fn work(console: live::Console) -> NodeBuilder {
         .child(nav::rail(console))
         .child(services::panel(console))
         .child(jobs::main_panel(console, &state))
-        .child(inspector::panel(console).visible_when(roomy))
+        .child(inspector::panel(console).visible(roomy))
 }
 
 pub(crate) fn app() -> impl IntoNode {

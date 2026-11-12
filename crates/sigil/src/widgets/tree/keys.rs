@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, LogicalKey};
+use crate::events::{Key, KeyEvent, NamedKey};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -87,8 +87,8 @@ pub(super) fn attach<K: Clone + Eq + Hash + 'static>(
             node = node.key(key, bind(TreeCommand::Level(step)));
         }
     }
-    node.key(Key::Enter, bind(TreeCommand::Activate))
-        .key(LogicalKey::character(" "), bind(TreeCommand::Toggle))
+    node.key(NamedKey::Enter, bind(TreeCommand::Activate))
+        .key(Key::character(" "), bind(TreeCommand::Toggle))
 }
 
 fn run<K: Clone + Eq + Hash + 'static>(

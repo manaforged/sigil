@@ -7,7 +7,7 @@ Seven types cover most apps. Import them with `use sigil::prelude::*;`.
 | `AppConfig` | `AppConfig::new(title)` | Set the title, size, theme file, and host, then pass it to `sigil::run` |
 | `NodeBuilder` | `row()`, `column()`, `container()`, any widget function | Add children, set the role and label for screen readers, attach handlers |
 | `Widget` | implemented by every builder | Set layout, style, and handlers with typed steps: `.gap(Space::Md)`, `.padding(Space::Lg)` |
-| `Signal` | `signal(value)`, `derived(f)` | Hold state; a closure that calls `get` updates when the value changes |
+| `Signal` | `signal(value)`, `memo(f)` | Hold state; a closure that calls `get` updates when the value changes |
 | `View` | `sigil::view!("src/screen.sigil")` | Load a screen from a `.sigil` file and reload it on each save |
 | `Host` | `Host::new(mode)` | Run a tree headless or inside another engine: mount, route events, lay out, paint |
 | `Error` | any `?` | `err.kind()` says what failed |

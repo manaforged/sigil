@@ -9,14 +9,14 @@ use sigil::prelude::*;
 use sigil::widgets::virtual_list;
 use sigil_kittest::stub_text_measure;
 
-fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key) {
+fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: NamedKey) {
     let physical = match key {
-        Key::ArrowDown => PhysicalKey::ArrowDown,
-        Key::ArrowUp => PhysicalKey::ArrowUp,
-        Key::PageDown => PhysicalKey::PageDown,
-        Key::PageUp => PhysicalKey::PageUp,
-        Key::Home => PhysicalKey::Home,
-        Key::End => PhysicalKey::End,
+        NamedKey::ArrowDown => PhysicalKey::ArrowDown,
+        NamedKey::ArrowUp => PhysicalKey::ArrowUp,
+        NamedKey::PageDown => PhysicalKey::PageDown,
+        NamedKey::PageUp => PhysicalKey::PageUp,
+        NamedKey::Home => PhysicalKey::Home,
+        NamedKey::End => PhysicalKey::End,
         _ => PhysicalKey::Unidentified,
     };
     router.route(cx, layout, Event::key_down(key).physical(physical));
@@ -52,20 +52,20 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
 
         assert_eq!(focused_row.get(), 0);
         for _ in 0..20 {
-            press(&mut router, &mut cx, &layout, Key::ArrowDown);
+            press(&mut router, &mut cx, &layout, NamedKey::ArrowDown);
         }
         assert_eq!(focused_row.get(), 20);
         assert_px_eq(scroll_y.get(), 192.0);
 
-        press(&mut router, &mut cx, &layout, Key::PageDown);
+        press(&mut router, &mut cx, &layout, NamedKey::PageDown);
         assert_eq!(focused_row.get(), 35);
         assert_px_eq(scroll_y.get(), 672.0);
 
-        press(&mut router, &mut cx, &layout, Key::End);
+        press(&mut router, &mut cx, &layout, NamedKey::End);
         assert_eq!(focused_row.get(), 99);
         assert_px_eq(scroll_y.get(), 2720.0);
 
-        press(&mut router, &mut cx, &layout, Key::Home);
+        press(&mut router, &mut cx, &layout, NamedKey::Home);
         assert_eq!(focused_row.get(), 0);
         assert_px_eq(scroll_y.get(), 0.0);
     });

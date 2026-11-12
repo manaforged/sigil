@@ -5,7 +5,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder};
-use crate::reactive::{Reactive, Signal, derived};
+use crate::reactive::{Reactive, Signal, memo};
 use crate::style::{Style, Tone};
 use crate::widgets::LayoutEdit;
 
@@ -332,7 +332,7 @@ impl ChartBuilder {
             scales: std::mem::take(&mut self.scales),
         };
         let sources = std::mem::take(&mut self.series);
-        let series = derived(move || {
+        let series = memo(move || {
             sources
                 .iter()
                 .map(|source| ChartSeries {
@@ -346,7 +346,7 @@ impl ChartBuilder {
         let positions = self.positions.take();
         let label_names = Rc::clone(&labels);
         let description =
-            derived(move || series.with(|series| summary::summary(series, &label_names, theme)));
+            memo(move || series.with(|series| summary::summary(series, &label_names, theme)));
         let interact = interact::Interact::new(self.x_range, self.crosshair, self.tooltip);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
         let root = figure::frame(look.frame).mutate(move |target| {

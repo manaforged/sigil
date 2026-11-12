@@ -58,7 +58,7 @@ impl Timer {
 }
 
 fn controls(timer: Timer, settings_open: Signal<bool>) -> NodeBuilder {
-    let start_label = derived(move || {
+    let start_label = memo(move || {
         if timer.running.get() {
             "Pause"
         } else {
@@ -99,12 +99,12 @@ pub(crate) fn app_tree() -> impl IntoNode {
         sessions: signal(0),
     };
     let settings_open = signal(false);
-    let _tick: IntervalId = interval(Duration::from_secs(1), move || timer.tick());
-    let clock = derived(move || {
+    let _tick = interval(Duration::from_secs(1), move || timer.tick());
+    let clock = memo(move || {
         let s = timer.remaining.get();
         format!("{:02}:{:02}", s / 60, s % 60)
     });
-    let phase = derived(move || {
+    let phase = memo(move || {
         if timer.on_break.get() {
             "Break"
         } else {
@@ -112,17 +112,17 @@ pub(crate) fn app_tree() -> impl IntoNode {
         }
         .to_string()
     });
-    let count = derived(move || format!("Sessions: {}", timer.sessions.get()));
-    let space = Shortcut::plain(LogicalKey::character(" "));
-    let r = Shortcut::plain(LogicalKey::character("r"));
+    let count = memo(move || format!("Sessions: {}", timer.sessions.get()));
+    let space = Shortcut::plain(Key::character(" "));
+    let r = Shortcut::plain(Key::character("r"));
     column()
         .fill()
         .gap(rows(1.0))
         .padding(em(1.0))
         .shortcut(space, move |_| timer.toggle())
         .shortcut(r, move |_| timer.reset())
-        .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))
-        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
+        .shortcut(Key::character("s"), move |_| settings_open.set(true))
+        .shortcut(Key::character("q"), |_| sigil::request_exit())
         .child(text(phase))
         .child(text(clock).text_role(TextRole::Title))
         .child(text(count))

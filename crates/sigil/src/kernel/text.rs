@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::Shortcut;
 use crate::kernel::Role;
-use crate::reactive::{Signal, derived, effect_named};
+use crate::reactive::{Signal, effect_named, memo};
 
 use crate::kernel::NodeBuilder;
 use crate::kernel::component::NodePatch;
@@ -68,7 +68,7 @@ impl TextContent {
             Self::Reactive(signal) => Some(*signal),
             Self::Compute(compute) => {
                 let compute = Rc::clone(compute);
-                Some(derived(move || compute()))
+                Some(memo(move || compute()))
             }
         }
     }
@@ -105,7 +105,7 @@ impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
         if let Some(text) = (&value as &dyn std::any::Any).downcast_ref::<Signal<String>>() {
             return Self::Reactive(*text);
         }
-        Self::Reactive(derived(move || value.with(ToString::to_string)))
+        Self::Reactive(memo(move || value.with(ToString::to_string)))
     }
 }
 

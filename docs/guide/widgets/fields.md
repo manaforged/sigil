@@ -23,7 +23,7 @@ Key options:
 - `.submit(Fn(&str))`: runs on Enter.
 - `.blur(Fn())`: runs when the field loses focus.
 - `.disabled(impl Reactive<bool>)`: blocks input and paints disabled.
-- `.invalid_when(Signal<bool>)`: paints the error frame; a failed clipboard write also raises it.
+- `.invalid(Signal<bool>)`: paints the error frame; a failed clipboard write also raises it.
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).
 - `.password()`: masks the glyphs with `*`; the signal stays plaintext.
 - `.reveal(Signal<bool>)`: shows the plaintext while true.
@@ -60,21 +60,21 @@ number_field(quantity, 1..=99);
 # };
 ```
 
-The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer, and Enter or leaving the field rewrites it to the stored value, so "500" in `0..=100` shows "100". Float kinds reject non-finite input. `.disabled(impl Reactive<bool>)` works as in `text_field`. `.invalid_when(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
+The visible buffer is a separate string signal. Edits parse on every change; parseable input is clamped into the range and written to the bound signal, unparseable input stays in the buffer without touching the signal. An external `set` re-renders the buffer, and Enter or leaving the field rewrites it to the stored value, so "500" in `0..=100` shows "100". Float kinds reject non-finite input. `.disabled(impl Reactive<bool>)` works as in `text_field`. `.invalid(Signal<bool>)` paints the error frame through the `text_field` validation state; the frame also shows while the buffer does not parse or is outside the range. `.text_field()` consumes the builder and returns the inner `TextFieldBuilder` so you can chain field options after the numeric wiring.
 
 ## date_field
 
 `date_field(Signal<Date>)`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
 
-`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid_when(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
+`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
 
 ## color_field
 
-`color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(impl Reactive<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
+`color_field(Signal<Color>)`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Color` with alpha 255. The swatch is one control height square. `.disabled(impl Reactive<bool>)` disables the field and dims the swatch. `.invalid(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. To convert in your own code, use `str::parse::<Color>()` and `Color::to_hex`.
 
 ## time_field
 
-`time_field(Signal<T>)` where `T` is `Time` or `DateTime`. A text field over the same buffer pattern. It reads and writes `hh:mm`, or `hh:mm:ss` with `.seconds(true)`, on a 24-hour clock, or on a 12-hour clock with the `Am` and `Pm` strings when `Locale::hour12` is set. A `DateTime` field reads the date first, as `date_field` does. `Time::new(hour, minute, second)` validates the parts. `.disabled`, `.invalid_when`, and `.text_field()` work as in `number_field`.
+`time_field(Signal<T>)` where `T` is `Time` or `DateTime`. A text field over the same buffer pattern. It reads and writes `hh:mm`, or `hh:mm:ss` with `.seconds(true)`, on a 24-hour clock, or on a 12-hour clock with the `Am` and `Pm` strings when `Locale::hour12` is set. A `DateTime` field reads the date first, as `date_field` does. `Time::new(hour, minute, second)` validates the parts. `.disabled`, `.invalid`, and `.text_field()` work as in `number_field`.
 
 ## tag_input
 
@@ -120,7 +120,7 @@ Enter opens or commits, Escape closes, the arrows move the cursor, and pointer e
 
 ## States, keys, and accessibility
 
-The visual catalog captures each field in the states in the table. Invalid comes from `.invalid_when(Signal<bool>)`, from a buffer that does not parse, or from a `field(..).error(..)`. Open is the popup of a dropdown or combobox.
+The visual catalog captures each field in the states in the table. Invalid comes from `.invalid(Signal<bool>)`, from a buffer that does not parse, or from a `field(..).error(..)`. Open is the popup of a dropdown or combobox.
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |

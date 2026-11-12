@@ -160,7 +160,7 @@ pub(crate) fn paint_when(
     node.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
 }
 
-pub(crate) fn visible_when(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {
+pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {
     let hidden = parse_classes("hidden");
     node.style_reactive(move || if shown.read() { EMPTY_ATOMS } else { hidden })
 }

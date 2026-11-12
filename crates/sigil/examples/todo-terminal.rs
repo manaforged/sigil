@@ -47,7 +47,7 @@ impl Todos {
         );
         let filter = signal(0_usize);
         let cursor = signal(0_usize);
-        let visible = derived(move || {
+        let visible = memo(move || {
             let f = filter.get();
             items.with(|all| {
                 all.iter()
@@ -184,16 +184,16 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
         .grow(1.0)
         .min_height(rows(0.0))
         .gap(Space::None)
-        .on_added(move |_, id| list_id.set(Some(id)))
-        .key(Key::Enter, move |_| todos.toggle())
-        .key(LogicalKey::character(" "), move |_| todos.toggle())
-        .key(Key::Delete, move |_| todos.remove())
-        .key(LogicalKey::character("d"), move |_| todos.remove())
-        .key(Key::ArrowDown, move |_| todos.step(1))
-        .key(Key::ArrowUp, move |_| todos.step(-1))
-        .key(LogicalKey::character("j"), move |_| todos.step(1))
-        .key(LogicalKey::character("k"), move |_| todos.step(-1))
-        .key(LogicalKey::character("f"), move |_| todos.cycle_filter())
+        .added(move |_, id| list_id.set(Some(id)))
+        .key(NamedKey::Enter, move |_| todos.toggle())
+        .key(Key::character(" "), move |_| todos.toggle())
+        .key(NamedKey::Delete, move |_| todos.remove())
+        .key(Key::character("d"), move |_| todos.remove())
+        .key(NamedKey::ArrowDown, move |_| todos.step(1))
+        .key(NamedKey::ArrowUp, move |_| todos.step(-1))
+        .key(Key::character("j"), move |_| todos.step(1))
+        .key(Key::character("k"), move |_| todos.step(-1))
+        .key(Key::character("f"), move |_| todos.cycle_filter())
         .child(entries)
 }
 
@@ -218,13 +218,13 @@ pub(crate) fn app() -> impl IntoNode {
     let todos = Todos::new();
     let draft = signal(String::new());
     let list_id = signal(None::<NodeId>);
-    let quit = Shortcut::plain(LogicalKey::character("q"));
+    let quit = Shortcut::plain(Key::character("q"));
     column()
         .fill()
         .gap(Space::None)
         .keyboard_shortcut(quit.clone())
         .key(quit, |_| sigil::request_exit())
-        .key_capture(Key::Escape, move |event| {
+        .key_capture(NamedKey::Escape, move |event| {
             if let Some(id) = list_id.peek() {
                 request_focus(id);
                 event.stop_propagation();

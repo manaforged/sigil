@@ -18,12 +18,16 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, named_key(Key::Home, PhysicalKey::Home));
+        router.route(
+            &mut cx,
+            &layout,
+            named_key(NamedKey::Home, PhysicalKey::Home),
+        );
         for _ in 0..5 {
             router.route(
                 &mut cx,
                 &layout,
-                shift_arrow(Key::ArrowRight, PhysicalKey::ArrowRight),
+                shift_arrow(NamedKey::ArrowRight, PhysicalKey::ArrowRight),
             );
         }
         router.route(&mut cx, &layout, ctrl_key("x", PhysicalKey::KeyX));

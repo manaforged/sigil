@@ -26,21 +26,21 @@ const STEPS: [Step<Spec>; 5] = [
     ("type a", |ui, spec| typed(ui, spec, "a")),
     ("type é", |ui, spec| typed(ui, spec, "é")),
     ("backspace", |ui, spec| {
-        ui.press(Key::Backspace);
+        ui.press(NamedKey::Backspace);
         let mut next = spec.text.clone();
         if next.pop().is_some() {
             spec.edit(next);
         }
     }),
     ("undo", |ui, spec| {
-        ui.press_with(LogicalKey::character("_"), ModifiersState::CONTROL);
+        ui.press_with(Key::character("_"), Modifiers::CTRL);
         if let Some(previous) = spec.past.pop() {
             spec.future
                 .push(std::mem::replace(&mut spec.text, previous));
         }
     }),
     ("redo", |ui, spec| {
-        ui.press_with(LogicalKey::character("y"), ModifiersState::CONTROL);
+        ui.press_with(Key::character("y"), Modifiers::CTRL);
         if let Some(next) = spec.future.pop() {
             spec.past.push(std::mem::replace(&mut spec.text, next));
         }

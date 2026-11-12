@@ -12,7 +12,7 @@ fn main() -> sigil::AppResult<()> {
 }
 
 fn counter(count: Signal<i32>) -> NodeBuilder {
-    let label = derived(move || format!("Count: {}", count.get()));
+    let label = memo(move || format!("Count: {}", count.get()));
     column()
         .gap(Space::Lg)
         .padding(Space::Xxl)

@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::fmt::Display;
 use std::sync::OnceLock;
 
-use crate::reactive::{Signal, derived, untrack};
+use crate::reactive::{Signal, memo, untrack};
 use crate::style::strings::StringKey;
 
 use super::Theme;
@@ -47,7 +47,7 @@ impl ActiveTheme {
     }
 
     pub(crate) fn label(self, key: StringKey) -> Signal<String> {
-        derived(self.text(key))
+        memo(self.text(key))
     }
 }
 

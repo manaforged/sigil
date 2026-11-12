@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, derived, signal, untrack};
+use crate::reactive::{Signal, memo, signal, untrack};
 use crate::style::{Token, space};
 use crate::widgets::{Layout, Orientation, Widget, button, card, divider, tabs};
 
@@ -176,7 +176,7 @@ impl Render {
         let first = self.shown(value);
         self.bound(value).map_or_else(
             || signal(first),
-            |path| derived(move || display(&model.get(&path))),
+            |path| memo(move || display(&model.get(&path))),
         )
     }
 

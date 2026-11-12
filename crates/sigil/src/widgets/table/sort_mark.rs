@@ -1,5 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 
 use super::state::TableState;
 use crate::kernel::SortDirection;
@@ -100,7 +100,7 @@ impl<Row: 'static> TableState<Row> {
 
     fn sort_state(&self, column: &'static str, sortable: bool) -> Signal<SortMark> {
         let sort = self.sort_key();
-        derived(move || match sort.get() {
+        memo(move || match sort.get() {
             Some(key) if key.column == column => match key.dir {
                 SortDirection::Ascending => SortMark::Ascending,
                 SortDirection::Descending => SortMark::Descending,

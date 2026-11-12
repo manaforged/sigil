@@ -250,7 +250,7 @@ pub trait Paint: PaintTarget {
 
     /// Plays a keyframe animation, like Tailwind `animate-*`.
     #[must_use]
-    fn animate(self, keyframes: Keyframes) -> Self {
+    fn animation(self, keyframes: Keyframes) -> Self {
         push(self, StyleAtom::Animation(KeyframesId::new(keyframes)))
     }
 }

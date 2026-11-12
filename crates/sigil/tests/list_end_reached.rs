@@ -34,16 +34,19 @@ fn scrolling_to_the_end_of_a_list_loads_one_page_per_reach() {
                 )
         });
         ui.settle().expect_text("Loads: 0");
-        ui.focus_next().press(Key::End).settle();
+        ui.focus_next().press(NamedKey::End).settle();
         ui.expect_text("Loads: 1").expect_text("Item 59");
-        ui.press(Key::End).settle();
+        ui.press(NamedKey::End).settle();
         ui.expect_text("Loads: 2").expect_text("Item 119");
-        ui.press(Key::ArrowUp)
-            .press(Key::ArrowDown)
-            .press(Key::End)
+        ui.press(NamedKey::ArrowUp)
+            .press(NamedKey::ArrowDown)
+            .press(NamedKey::End)
             .settle();
         ui.expect_text("Loads: 2");
-        ui.press(Key::Home).settle().press(Key::End).settle();
+        ui.press(NamedKey::Home)
+            .settle()
+            .press(NamedKey::End)
+            .settle();
         ui.expect_text("Loads: 3");
     });
 }
@@ -71,9 +74,9 @@ fn scrolling_to_the_end_of_a_table_loads_more_rows() {
                 )
         });
         ui.settle().expect_text("Loads: 0");
-        ui.focus_next().press(Key::End).settle();
+        ui.focus_next().press(NamedKey::End).settle();
         ui.expect_text("Loads: 1").expect_text("Row 59");
-        ui.press(Key::End).settle();
+        ui.press(NamedKey::End).settle();
         ui.expect_text("Loads: 2").expect_text("Row 119");
     });
 }

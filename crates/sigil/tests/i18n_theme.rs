@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use sigil::events::Key;
+use sigil::events::NamedKey;
 use sigil::kernel::Role;
 use sigil::prelude::*;
 use sigil::style::{Direction, Locale, StringKey, Strings, Theme};
@@ -44,7 +44,7 @@ fn a_number_field_reads_the_theme_locale() {
     let input = ui.get(&Query::role(Role::TextInput));
     ui.click(&input)
         .type_text("1.234,56")
-        .press(Key::Enter)
+        .press(NamedKey::Enter)
         .settle();
     let read = value.get().expect("value signal").peek();
     assert!((read - 1234.56).abs() < 0.01, "read {read}");

@@ -4,7 +4,7 @@ use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::with_text_geometry;
 use crate::layout::{LayoutStyle, Overflow, Position};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, Token};
 use crate::widgets::{Layout, Widget};
 
@@ -59,8 +59,8 @@ fn track(
     displayed: Signal<String>,
 ) -> NodeBuilder {
     let scroll = runtime.input.scroll_x;
-    let track_pos = derived(move || (-scroll.get(), 0.0));
-    let placeholder_visible = derived(move || {
+    let track_pos = memo(move || (-scroll.get(), 0.0));
+    let placeholder_visible = memo(move || {
         runtime.input.value.get().is_empty() && runtime.input.ime.preedit.get().is_empty()
     });
     container()

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, FlexWrap, LayoutStyle, Space};
 use crate::reactive::{Reactive, Signal, effect};
@@ -97,7 +97,7 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
                 state.edit_query("");
             }
         });
-        let input = combobox(state).key_capture(Key::Backspace, move |_| {
+        let input = combobox(state).key_capture(NamedKey::Backspace, move |_| {
             if state.query().is_empty() && !disabled.is_some_and(|flag| flag.peek()) {
                 selected.update(|tags| {
                     tags.pop();
@@ -139,7 +139,7 @@ where
                 .align_items(AlignItems::Center)
                 .gap(Space::Xs),
         )
-        .visible_when(move || !selected.get().is_empty())
+        .visible(move || !selected.get().is_empty())
         .children_reactive(move || {
             selected
                 .get()

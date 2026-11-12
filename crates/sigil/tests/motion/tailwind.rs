@@ -129,7 +129,7 @@ fn tailwind_transition_groups_animate_only_their_properties() {
 
 fn preset(keyframes: Keyframes) -> Harness {
     let flag = signal(false);
-    let mut ui = mount(square().paint_when(flag, move |state| state.animate(keyframes)));
+    let mut ui = mount(square().paint_when(flag, move |state| state.animation(keyframes)));
     start(&mut ui, flag);
     ui
 }

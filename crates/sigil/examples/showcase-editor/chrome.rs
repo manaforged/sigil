@@ -36,8 +36,7 @@ impl Command {
     }
 
     pub(crate) fn shortcut(self) -> Option<Shortcut> {
-        self.key()
-            .map(|key| Shortcut::primary(LogicalKey::character(key)))
+        self.key().map(|key| Shortcut::primary(Key::character(key)))
     }
 
     pub(crate) fn hint(self) -> Option<String> {

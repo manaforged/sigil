@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::events::handlers::EventHandlers;
 use crate::events::pointer_dispatch::Clicks;
-use crate::events::{ModifiersState, MouseButton, PointerEvent, PointerPhase};
+use crate::events::{Modifiers, MouseButton, PointerEvent, PointerPhase};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{Cx, NodeId};
@@ -97,7 +97,7 @@ fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
 }
 
 pub(crate) fn down(cx: &Cx, path: &[NodeId], event: &PointerEvent) {
-    let shift_only = event.modifiers == ModifiersState::SHIFT;
+    let shift_only = event.modifiers == Modifiers::SHIFT;
     let plain =
         event.button == Some(MouseButton::Left) && (event.modifiers.is_empty() || shift_only);
     let hit = plain
