@@ -136,10 +136,12 @@ impl Cx {
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let node_id = owner.with(|| build(self));
         self.owner_for_node.insert(node_id, owner);
-        self.mark_dirty(node_id);
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
-        } else if !self.roots.contains(&node_id) {
+            return node_id;
+        }
+        self.mark_dirty(node_id);
+        if !self.roots.contains(&node_id) {
             self.roots.push(node_id);
             self.bump_generation();
         }
