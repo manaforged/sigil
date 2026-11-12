@@ -111,6 +111,7 @@ job_fuzz() {
 }
 
 job_publish() {
+  step publish-clean cargo clean -p sigil-ui -p sigil-fonts -p sigil-kittest -p sigil-sign
   step publish cargo publish --workspace --locked --dry-run
 }
 
