@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 
 use crate::kernel::delta::NodeTag;
 use crate::kernel::{A11yProps, NodeId, TextContent};
+use crate::layout::LayoutResult;
 
 /// Marker of a node that paints above the tree.
 #[derive(Debug, Clone, Copy)]
@@ -35,6 +36,7 @@ pub struct Node {
     pub(crate) owner: Owner,
     pub(crate) component: Option<Owner>,
     pub(crate) extensions: Option<Box<NodeExtensions>>,
+    layout: Option<LayoutResult>,
     pub(crate) version: u32,
     tag: Option<NodeTag>,
 }
@@ -49,6 +51,7 @@ impl Node {
             owner,
             component: None,
             extensions: None,
+            layout: None,
             version: 1,
             tag: None,
         }
@@ -86,6 +89,9 @@ impl Node {
 
     /// Stores an extension value without marking the node changed.
     pub(crate) fn attach_untracked<T: 'static>(&mut self, value: T) -> Option<T> {
+        if let Some(slot) = self.inline_mut::<T>() {
+            return slot.replace(value);
+        }
         self.extensions
             .get_or_insert_with(|| Box::new(NodeExtensions::default()))
             .attach(value)
@@ -94,6 +100,11 @@ impl Node {
     /// Returns the get extension.
     #[must_use]
     pub fn get_extension<T: 'static>(&self) -> Option<&T> {
+        if inline::<T>() {
+            return (&self.layout as &dyn Any)
+                .downcast_ref::<Option<T>>()
+                .and_then(Option::as_ref);
+        }
         self.extensions.as_ref().and_then(|bag| bag.get::<T>())
     }
 
@@ -105,13 +116,23 @@ impl Node {
 
     /// Returns the extension of type `T` for writing without marking the node changed.
     pub(crate) fn get_extension_mut_untracked<T: 'static>(&mut self) -> Option<&mut T> {
+        if inline::<T>() {
+            return self.inline_mut::<T>().and_then(Option::as_mut);
+        }
         self.extensions.as_mut().and_then(|bag| bag.get_mut::<T>())
     }
 
     /// Removes and returns the extension of type `T`.
     pub fn remove_extension<T: 'static>(&mut self) -> Option<T> {
         self.bump_version();
+        if inline::<T>() {
+            return self.inline_mut::<T>().and_then(Option::take);
+        }
         self.extensions.as_mut().and_then(|bag| bag.remove::<T>())
+    }
+
+    fn inline_mut<T: 'static>(&mut self) -> Option<&mut Option<T>> {
+        (&mut self.layout as &mut dyn Any).downcast_mut::<Option<T>>()
     }
 
     /// Returns the parent.
@@ -129,9 +150,11 @@ impl Node {
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn has_extensions(&self) -> bool {
-        self.extensions
-            .as_ref()
-            .is_some_and(|extensions| !extensions.is_empty())
+        self.layout.is_some()
+            || self
+                .extensions
+                .as_ref()
+                .is_some_and(|extensions| !extensions.is_empty())
     }
 }
 
@@ -162,6 +185,10 @@ pub enum NodeType {
 }
 
 type ExtensionEntry = (TypeId, Box<dyn Any>);
+
+fn inline<T: 'static>() -> bool {
+    TypeId::of::<T>() == TypeId::of::<LayoutResult>()
+}
 
 /// Typed data attached to a node.
 #[derive(Default)]
