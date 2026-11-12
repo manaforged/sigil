@@ -122,6 +122,15 @@ impl LayoutForest {
         self.frame
     }
 
+    pub(crate) fn reserve(&mut self, total: usize) {
+        let more = total.saturating_sub(self.nodes.len());
+        self.nodes.reserve(more);
+        self.boxes.reserve(more);
+        self.intrinsic.reserve(more);
+        self.fills.reserve(more);
+        self.solved.reserve(more);
+    }
+
     pub(crate) const fn current_frame(&self) -> u32 {
         self.frame
     }

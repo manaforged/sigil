@@ -113,6 +113,12 @@ impl LayoutEngine {
 
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), Error> {
         self.gc(cx)?;
+        let total = cx.len();
+        self.drive.reserve(total);
+        self.core_to_handle.set_capacity(total);
+        self.synced_version.set_capacity(total);
+        self.synced_text_sig.set_capacity(total);
+        self.published_result.set_capacity(total);
         let root_text = TextStyle::default();
         self.sync_subtree(cx, root, InheritedText::new(&root_text, Direction::Ltr))
             .map(|_handles| ())

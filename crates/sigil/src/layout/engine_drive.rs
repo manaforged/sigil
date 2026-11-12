@@ -54,6 +54,10 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(Some(kernel), style))
     }
 
+    pub(crate) fn reserve(&mut self, total: usize) {
+        self.forest.reserve(total);
+    }
+
     pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<NodeId> {
         self.forest.refer(handle.0)?.kernel()
     }
