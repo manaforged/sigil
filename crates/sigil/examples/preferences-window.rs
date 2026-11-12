@@ -164,7 +164,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
 }
 
 fn appearance(prefs: Prefs) -> NodeBuilder {
-    let scale_text = derived(move || format!("Interface scale: {:.0}%", prefs.scale.get()));
+    let scale_text = memo(move || format!("Interface scale: {:.0}%", prefs.scale.get()));
     page_column()
         .child(text("Appearance").font_size(18.0, "example layout"))
         .child(toggle(prefs.dark).label("Dark theme"))
@@ -176,7 +176,7 @@ fn appearance(prefs: Prefs) -> NodeBuilder {
 }
 
 fn notifications(prefs: Prefs) -> NodeBuilder {
-    let volume_text = derived(move || format!("Alert volume: {:.0}", prefs.volume.get()));
+    let volume_text = memo(move || format!("Alert volume: {:.0}", prefs.volume.get()));
     page_column()
         .child(text("Notifications").font_size(18.0, "example layout"))
         .child(toggle(prefs.notify_email).label("Email digests"))
@@ -188,7 +188,7 @@ fn notifications(prefs: Prefs) -> NodeBuilder {
 }
 
 fn footer(prefs: Prefs, queue: ToastQueue) -> NodeBuilder {
-    let invalid = derived(move || {
+    let invalid = memo(move || {
         name_error(&prefs.name.get()).is_some() || email_error(&prefs.email.get()).is_some()
     });
     row()

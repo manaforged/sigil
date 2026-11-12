@@ -12,7 +12,7 @@ use crate::hal::Shell;
 use crate::kernel::container;
 use crate::layout::LayoutStyle;
 use crate::reactive::{Runtime, signal};
-use crate::tasks::{AsyncRuntime, signal_writer};
+use crate::tasks::AsyncRuntime;
 use crate::widgets::Layout;
 
 use crate::Host;
@@ -40,7 +40,7 @@ fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
         assert!(shows(&host, "Profile 0"));
         let mut async_rt = AsyncRuntime::new().unwrap();
         async_rt.install_current();
-        signal_writer(revision).set(1).unwrap();
+        revision.writer().set(1).unwrap();
 
         Runtime::begin_effect();
         let _ = async_rt.pump();

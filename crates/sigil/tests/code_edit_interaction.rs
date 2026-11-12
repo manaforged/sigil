@@ -43,7 +43,7 @@ fn char_key(text: &str) -> Event {
         .text(Some(text.into()))
 }
 
-fn named_key(key: Key, modifiers: ModifiersState) -> Event {
+fn named_key(key: Key, modifiers: Modifiers) -> Event {
     Event::key(LogicalKey::Named(key), KeyPhase::Down)
         .physical(PhysicalKey::KeyX)
         .modifiers(modifiers)

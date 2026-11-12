@@ -147,9 +147,9 @@ fn set_with_same_value_does_not_fire_effects() {
 fn a_join_of_unequal_paths_sees_each_write_once_and_whole() {
     Owner::scope("join_unequal_paths", || {
         let src = signal(1_i32);
-        let near = derived(move || src.get() * 2);
-        let mid = derived(move || src.get() * 3);
-        let far = derived(move || mid.get() + 1);
+        let near = memo(move || src.get() * 2);
+        let mid = memo(move || src.get() * 3);
+        let far = memo(move || mid.get() + 1);
         let seen = Rc::new(RefCell::new(Vec::new()));
         {
             let seen = Rc::clone(&seen);

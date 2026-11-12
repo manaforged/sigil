@@ -7,7 +7,7 @@ use ahash::{AHashMap, AHashSet};
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::layout::reactive_position::size_sink;
-use crate::reactive::{Signal, derived, effect, signal};
+use crate::reactive::{Signal, effect, memo, signal};
 use crate::widgets::Layout;
 
 use super::render::WidthSpec;
@@ -59,7 +59,7 @@ impl Measure {
         let version = signal(0_u64);
         prune(items, row_key.clone(), Rc::clone(&cache));
         let keys = row_key.clone().map(|key_of| {
-            derived(move || {
+            memo(move || {
                 let items = items.get();
                 Rc::new(
                     bound_slice(&items)
@@ -71,7 +71,7 @@ impl Measure {
             })
         });
         let heights = Rc::clone(&cache);
-        let tops = derived(move || {
+        let tops = memo(move || {
             version.track();
             let items = items.get();
             let slice = bound_slice(&items);

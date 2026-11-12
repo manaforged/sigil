@@ -3,7 +3,7 @@ use crate::style::theme::ambient::theme_label;
 use core::time::Duration;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::reactive::{derived, interval, signal};
+use crate::reactive::{interval, memo, signal};
 use crate::style::Metrics;
 
 use super::shared::ICON_GLYPH;
@@ -59,7 +59,7 @@ pub fn spinner() -> NodeBuilder {
             ))]
         });
     }
-    let frame = derived(move || {
+    let frame = memo(move || {
         if grid {
             spinner_frame(tick.get()).to_owned()
         } else {

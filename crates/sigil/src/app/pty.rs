@@ -1,7 +1,7 @@
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
-use crate::events::ModifiersState;
+use crate::events::Modifiers;
 use crate::reactive::{Signal, signal};
 use crate::style::{Color, TextRun};
 use crate::{AppResult, Error};
@@ -135,7 +135,7 @@ impl Session {
         &self,
         event: Mouse,
         at: (u16, u16),
-        modifiers: ModifiersState,
+        modifiers: Modifiers,
         modes: Modes,
     ) -> bool {
         mouse::report(event, at, modifiers, modes.mouse, modes.encoding)

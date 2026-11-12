@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::selection::drag_active;
 use crate::kernel::NodeBuilder;
-use crate::reactive::{Signal, derived, effect, untrack};
+use crate::reactive::{Signal, effect, memo, untrack};
 use crate::widgets::Widget;
 
 use super::measure::Tops;
@@ -41,9 +41,8 @@ pub(super) fn extent(
     viewport_height: f32,
     content: impl Fn() -> f32 + 'static,
 ) -> (Signal<f32>, Signal<f32>) {
-    let content = derived(content);
-    let max =
-        derived(move || (content.get() - viewport_px(viewport.get(), viewport_height)).max(0.0));
+    let content = memo(content);
+    let max = memo(move || (content.get() - viewport_px(viewport.get(), viewport_height)).max(0.0));
     (content, max)
 }
 

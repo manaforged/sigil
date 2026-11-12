@@ -85,7 +85,7 @@ The family pages carry signatures, options, and behavior notes:
 # let _ = {
 let open = signal(false);
 let query = signal(String::new());
-let hits = derived(move || {
+let hits = memo(move || {
     let q = query.get();
     COMMANDS
         .iter()

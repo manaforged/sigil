@@ -4,7 +4,7 @@ use crate::kernel::{
 use crate::layout::Display;
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
-use crate::reactive::{Reactive, Signal, derived};
+use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
 use crate::style::{StyleAtom, Token, space};
@@ -63,7 +63,7 @@ impl<C: FieldControl> FieldBuilder<C> {
         let error = error.into_signal();
         self.control = self
             .control
-            .invalid_when(derived(move || error.get().is_some()));
+            .invalid_when(memo(move || error.get().is_some()));
         self.error = Some(error);
         self
     }
@@ -89,7 +89,7 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
             )
             .child(label_row(self.label, required))
             .child(self.control)
-            .on_added(move |tree, id| {
+            .added(move |tree, id| {
                 let Some(node) = tree.get(id) else { return };
                 let [row_id, control_id, ..] = *node.children() else {
                     return;

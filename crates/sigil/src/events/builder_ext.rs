@@ -171,11 +171,11 @@ pub(crate) fn selectable_text(node: NodeBuilder, yes: bool) -> NodeBuilder {
 
 pub(crate) fn autofocus(node: NodeBuilder) -> NodeBuilder {
     node.with(crate::events::focus::Autofocus)
-        .on_added(|_, id| crate::events::focus::request_focus(id))
+        .added(|_, id| crate::events::focus::request_focus(id))
 }
 
 pub(crate) fn focus_when(node: NodeBuilder, trigger: Signal<u64>) -> NodeBuilder {
-    node.on_added(move |_, id| {
+    node.added(move |_, id| {
         crate::events::focus::focus_on_trigger(trigger, move || {
             crate::events::focus::request_focus(id);
         });

@@ -9,7 +9,7 @@ use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
-use sigil::reactive::{Owner, derived, signal};
+use sigil::reactive::{Owner, memo, signal};
 use sigil::style::Paint;
 use sigil::widgets::Layout;
 
@@ -250,7 +250,7 @@ fn derived_text_increment_records_layout_path() {
         enable();
         reset();
         let count = signal(0_i32);
-        let label = derived(move || format!("Count: {}", count.get()));
+        let label = memo(move || format!("Count: {}", count.get()));
         let mut cx = Cx::new_root();
         let mut col = container()
             .layout(

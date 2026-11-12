@@ -62,9 +62,10 @@ impl WindowRecord {
         mount(&mut host);
         set_current_window(previous);
         if host.root().is_none() {
-            return Err(Error::new(std::io::Error::other(
-                "the mounted tree has no root node",
-            )));
+            return Err(Error::new(
+                crate::ErrorKind::Other,
+                std::io::Error::other("the mounted tree has no root node"),
+            ));
         }
         let logical = super::logical_size_from_config(config.size);
         let viewport = (

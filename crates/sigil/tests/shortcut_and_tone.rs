@@ -1,11 +1,11 @@
-use sigil::events::{Key, ModifiersState, Shortcut};
+use sigil::events::{Key, Modifiers, Shortcut};
 use sigil::prelude::*;
 
 #[test]
 fn shortcut_label_uses_symbols_on_mac_and_words_elsewhere() {
     let palette = Shortcut::new(
         LogicalKey::character("k"),
-        ModifiersState::META | ModifiersState::SHIFT,
+        Modifiers::META | Modifiers::SHIFT,
     );
     assert_eq!(palette.label_for(true), "⇧⌘K");
     assert_eq!(palette.label_for(false), "Shift+Super+K");

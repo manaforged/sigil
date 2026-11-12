@@ -53,10 +53,10 @@ impl std::str::FromStr for Color {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         parse_hex(input).ok_or_else(|| {
-            crate::Error::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "hex color",
-            ))
+            crate::Error::new(
+                crate::ErrorKind::Other,
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "hex color"),
+            )
         })
     }
 }

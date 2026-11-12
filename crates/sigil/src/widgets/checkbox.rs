@@ -7,7 +7,7 @@ use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
 };
@@ -244,7 +244,7 @@ const fn cell_variant(_tone: Tone, _checked: bool) -> StyleVariant {
 }
 
 fn cell_mark(mark: CheckMark) -> NodeBuilder {
-    container().child(text(derived(move || {
+    container().child(text(memo(move || {
         match (mark.partial.get(), mark.checked.get()) {
             (true, _) => "[-]",
             (false, true) => "[x]",

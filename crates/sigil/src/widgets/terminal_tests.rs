@@ -16,13 +16,13 @@ fn terminal_builds() {
 
 #[test]
 fn keys_reach_the_shell_as_terminal_bytes() {
-    use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState};
-    let pressed = |key: LogicalKey, modifiers: ModifiersState| {
+    use crate::events::{Key, KeyEvent, LogicalKey, Modifiers};
+    let pressed = |key: LogicalKey, modifiers: Modifiers| {
         let mut event = KeyEvent::new(key, crate::events::KeyPhase::Down);
         event.modifiers = modifiers;
         super::key_payload(&event, false)
     };
-    let none = ModifiersState::empty();
+    let none = Modifiers::empty();
     assert_eq!(
         pressed(LogicalKey::Named(Key::ArrowUp), none).as_deref(),
         Some("\u{1b}[A")
@@ -36,7 +36,7 @@ fn keys_reach_the_shell_as_terminal_bytes() {
         Some("\u{1b}")
     );
     assert_eq!(
-        pressed(LogicalKey::Character("c".into()), ModifiersState::CONTROL).as_deref(),
+        pressed(LogicalKey::Character("c".into()), Modifiers::CTRL).as_deref(),
         Some("\u{3}")
     );
 }
@@ -62,7 +62,7 @@ fn only_the_terminal_itself_takes_focus() {
 
 fn press(
     key: crate::events::LogicalKey,
-    modifiers: crate::events::ModifiersState,
+    modifiers: crate::events::Modifiers,
     application: bool,
 ) -> Option<String> {
     let mut event = crate::events::KeyEvent::new(key, crate::events::KeyPhase::Down);
@@ -72,31 +72,26 @@ fn press(
 
 #[test]
 fn a_full_screen_program_gets_the_keys_it_expects() {
-    use crate::events::{Key, LogicalKey, ModifiersState};
-    let none = ModifiersState::empty();
+    use crate::events::{Key, LogicalKey, Modifiers};
+    let none = Modifiers::empty();
     let named = LogicalKey::Named;
     let wanted = [
         (named(Key::ArrowUp), none, true, "\u{1b}OA"),
-        (
-            named(Key::ArrowUp),
-            ModifiersState::CONTROL,
-            true,
-            "\u{1b}[1;5A",
-        ),
-        (named(Key::Tab), ModifiersState::SHIFT, false, "\u{1b}[Z"),
+        (named(Key::ArrowUp), Modifiers::CTRL, true, "\u{1b}[1;5A"),
+        (named(Key::Tab), Modifiers::SHIFT, false, "\u{1b}[Z"),
         (named(Key::F1), none, false, "\u{1b}OP"),
         (named(Key::F5), none, false, "\u{1b}[15~"),
         (named(Key::PageUp), none, false, "\u{1b}[5~"),
-        (named(Key::Enter), ModifiersState::SHIFT, false, "\u{1b}\r"),
+        (named(Key::Enter), Modifiers::SHIFT, false, "\u{1b}\r"),
         (
             LogicalKey::Character("[".into()),
-            ModifiersState::CONTROL,
+            Modifiers::CTRL,
             false,
             "\u{1b}",
         ),
         (
             LogicalKey::Character(" ".into()),
-            ModifiersState::CONTROL,
+            Modifiers::CTRL,
             false,
             "\0",
         ),
@@ -112,24 +107,20 @@ fn a_full_screen_program_gets_the_keys_it_expects() {
 
 #[test]
 fn window_shortcuts_stay_with_the_window() {
-    use crate::events::{Key, LogicalKey, ModifiersState};
+    use crate::events::{Key, LogicalKey, Modifiers};
     let mut command = crate::events::KeyEvent::new(
         LogicalKey::Character("t".into()),
         crate::events::KeyPhase::Down,
     );
-    command.modifiers = ModifiersState::META;
+    command.modifiers = Modifiers::META;
     command.text = Some("t".to_string());
     assert_eq!(super::key_payload(&command, false), None);
     assert_eq!(
-        press(
-            LogicalKey::Character("`".into()),
-            ModifiersState::CONTROL,
-            false
-        ),
+        press(LogicalKey::Character("`".into()), Modifiers::CTRL, false),
         None
     );
     assert_eq!(
-        press(LogicalKey::Named(Key::Tab), ModifiersState::CONTROL, false),
+        press(LogicalKey::Named(Key::Tab), Modifiers::CTRL, false),
         None
     );
 }

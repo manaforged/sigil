@@ -1,7 +1,7 @@
 use crate::app::Wake;
 use crate::app::bridge::Native;
 use crate::error::{AppResult, Error, ErrorKind};
-use crate::events::{Key, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, LogicalKey, Modifiers, Shortcut};
 use crate::reactive::EventChannel;
 use crate::shell::key_map::same_name_match;
 use muda::accelerator::{Key as NativeKey, KeyAccelerator, Modifiers as NativeModifiers};
@@ -312,12 +312,12 @@ pub(crate) fn accelerator(shortcut: &Shortcut) -> Result<KeyAccelerator, String>
     ))
 }
 
-fn native_modifiers(modifiers: ModifiersState) -> NativeModifiers {
+fn native_modifiers(modifiers: Modifiers) -> NativeModifiers {
     let pairs = [
-        (ModifiersState::SHIFT, NativeModifiers::SHIFT),
-        (ModifiersState::CONTROL, NativeModifiers::CONTROL),
-        (ModifiersState::ALT, NativeModifiers::ALT),
-        (ModifiersState::META, NativeModifiers::SUPER),
+        (Modifiers::SHIFT, NativeModifiers::SHIFT),
+        (Modifiers::CTRL, NativeModifiers::CONTROL),
+        (Modifiers::ALT, NativeModifiers::ALT),
+        (Modifiers::META, NativeModifiers::SUPER),
     ];
     pairs
         .into_iter()

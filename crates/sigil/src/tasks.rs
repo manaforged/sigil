@@ -23,7 +23,7 @@ pub use blocking::blocking;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use current::installed;
-pub use current::{signal_writer, spawn};
+pub use current::spawn;
 pub use dispatch::SignalWriter;
 pub use message::{MessageReceiver, on_message};
 pub(crate) use panic::panic_message;

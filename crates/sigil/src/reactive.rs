@@ -12,12 +12,12 @@ kittest_pub! {
     #[doc(hidden)]
     pub mod debug;
 }
-mod derived;
 mod diagnostic;
 mod effect;
 mod effect_run;
 pub(crate) mod frame;
 mod interval;
+mod memo;
 mod owner;
 mod owner_dispose;
 mod phase;
@@ -33,7 +33,6 @@ mod trace;
 pub use batch::batch;
 #[cfg(event_channel)]
 pub use channel::{EventChannel, Subscription};
-pub use derived::derived;
 pub(crate) use effect::effect_at;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use effect::effect_named;
@@ -44,7 +43,8 @@ pub(crate) use frame::tick_frame;
 pub(crate) use interval::tick_intervals;
 #[cfg(feature = "test-clock")]
 pub use interval::{__test_advance_clock, __test_clear_clock, __test_set_clock};
-pub use interval::{IntervalId, interval, timeout};
+pub use interval::{Timer, interval, timeout};
+pub use memo::memo;
 kittest_pub! {
     #[cfg(host)]
     #[doc(hidden)]

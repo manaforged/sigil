@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::animation::runtime::presets;
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
@@ -193,7 +193,7 @@ pub(super) fn build_tab(
 ) -> NodeBuilder {
     let is_disabled = disabled.contains(&index);
     let interaction = InteractionState::new(!is_disabled);
-    let selected = derived(move || active.get() == index);
+    let selected = memo(move || active.get() == index);
 
     let dragged = drag.clone();
     let activate: Activate = Rc::new(move || {

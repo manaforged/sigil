@@ -3,7 +3,7 @@ use crate::layout::PopupSide;
 use crate::layout::Space;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
-use crate::reactive::{Signal, batch, derived, signal};
+use crate::reactive::{Signal, batch, memo, signal};
 use crate::style::{ControlSize, Metrics, space};
 use crate::widgets::{Layout, Widget};
 
@@ -250,7 +250,7 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
         container()
             .role(Role::ComboBox)
             .label(label)
-            .expanded(derived(move || state.shown()))
+            .expanded(memo(move || state.shown()))
             .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT)),
         state,
     )
@@ -354,8 +354,8 @@ fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
 }
 
 fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBuilder {
-    let checked = derived(move || state.selected.get() == Some(index));
-    let highlight = derived(move || state.cursor.get() == row);
+    let checked = memo(move || state.selected.get() == Some(index));
+    let highlight = memo(move || state.cursor.get() == row);
     let slots = ItemSlots {
         checked: Some(checked),
         ..ItemSlots::new(label)

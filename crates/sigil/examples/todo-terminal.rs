@@ -47,7 +47,7 @@ impl Todos {
         );
         let filter = signal(0_usize);
         let cursor = signal(0_usize);
-        let visible = derived(move || {
+        let visible = memo(move || {
             let f = filter.get();
             items.with(|all| {
                 all.iter()
@@ -184,7 +184,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
         .grow(1.0)
         .min_height(rows(0.0))
         .gap(Space::None)
-        .on_added(move |_, id| list_id.set(Some(id)))
+        .added(move |_, id| list_id.set(Some(id)))
         .key(Key::Enter, move |_| todos.toggle())
         .key(LogicalKey::character(" "), move |_| todos.toggle())
         .key(Key::Delete, move |_| todos.remove())

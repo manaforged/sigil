@@ -20,7 +20,7 @@ use crate::layout::Space;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{Radius, Token, Tone as ChartTone, space};
 use crate::widgets::{Layout, Widget};
 use std::rc::Rc;
@@ -34,7 +34,7 @@ const MAX_MATH_BYTES: usize = 512;
 #[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {
     let mut stream = stream::Stream::default();
-    let blocks = derived(move || source.with(|body| stream.update(body)));
+    let blocks = memo(move || source.with(|body| stream.update(body)));
     frame().children_keyed(move || {
         blocks
             .get()

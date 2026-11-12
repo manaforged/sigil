@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::events::{
-    Event, EventRouter, Key, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
+    Event, EventRouter, Key, KeyPhase, LogicalKey, Modifiers, MouseButton, MouseButtons,
     PhysicalKey, PointerEvent, PointerPhase, Shortcut,
 };
 use sigil::geometry::{Point, Size};
@@ -258,7 +258,7 @@ fn tab() -> Event {
 fn ctrl_s() -> Event {
     Event::key(LogicalKey::character("s"), KeyPhase::Down)
         .physical(PhysicalKey::KeyS)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }
 
 struct ZeroTextMeasure;

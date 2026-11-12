@@ -19,7 +19,7 @@ fn settle(host: &mut Host) {
     }
 }
 
-fn press(key: Key, modifiers: ModifiersState) -> Event {
+fn press(key: Key, modifiers: Modifiers) -> Event {
     Event::key(LogicalKey::Named(key), KeyPhase::Down)
         .physical(PhysicalKey::Enter)
         .modifiers(modifiers)
@@ -84,15 +84,15 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
         );
         settle(&mut host);
 
-        send(&mut host, vec![press(Key::Enter, ModifiersState::SHIFT)]);
+        send(&mut host, vec![press(Key::Enter, Modifiers::SHIFT)]);
         assert!(sent.borrow().is_empty());
         assert!(draft.get().contains('\n'), "{:?}", draft.get());
 
         for key in [
-            press(Key::Enter, ModifiersState::ALT),
+            press(Key::Enter, Modifiers::ALT),
             Event::key(LogicalKey::character("j"), KeyPhase::Down)
                 .physical(PhysicalKey::KeyJ)
-                .modifiers(ModifiersState::CONTROL),
+                .modifiers(Modifiers::CTRL),
         ] {
             let lines = draft.get().matches('\n').count();
             send(&mut host, vec![key]);
@@ -105,7 +105,7 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
             );
         }
 
-        send(&mut host, vec![press(Key::Enter, ModifiersState::empty())]);
+        send(&mut host, vec![press(Key::Enter, Modifiers::empty())]);
         assert_eq!(sent.borrow().len(), 1);
     });
 }

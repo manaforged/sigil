@@ -5,7 +5,7 @@ use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::reactive::{Owner, Signal, derived, is_live, owner_by_id, signal};
+use crate::reactive::{Owner, Signal, is_live, memo, owner_by_id, signal};
 use crate::style::{ControlSize, Metrics};
 use crate::widgets::Widget;
 
@@ -133,7 +133,7 @@ fn build_item(item: &MenuItem, index: usize, cursor: Signal<usize>, commit: Comm
         disabled,
         ..ItemSlots::new(item.label.clone())
     };
-    let highlight = derived(move || cursor.get() == index);
+    let highlight = memo(move || cursor.get() == index);
     item_row(slots, highlight)
         .role(Role::MenuItem)
         .hittable(true)

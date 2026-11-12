@@ -70,7 +70,7 @@ fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
         .collect()
 }
 
-const fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: ModifiersState) -> Event {
+const fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: Modifiers) -> Event {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         _ => (None, MouseButtons::empty()),
@@ -85,12 +85,12 @@ fn click(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, x: f32, y
     router.route(
         cx,
         layout,
-        pointer(PointerPhase::Down, x, y, ModifiersState::empty()),
+        pointer(PointerPhase::Down, x, y, Modifiers::empty()),
     );
     router.route(
         cx,
         layout,
-        pointer(PointerPhase::Up, x, y, ModifiersState::empty()),
+        pointer(PointerPhase::Up, x, y, Modifiers::empty()),
     );
 }
 

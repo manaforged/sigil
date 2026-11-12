@@ -2,7 +2,7 @@ use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::widgets::{Layout, Widget};
@@ -239,7 +239,7 @@ fn build_row(entry: &PaletteEntry, idx: usize, row: &MenuRowCtx) -> NodeBuilder 
     };
     let (cursor, active) = (row.cursor, row.active);
     let highlight =
-        derived(move || (active.focused.get() || active.pointed.get()) && cursor.get() == idx);
+        memo(move || (active.focused.get() || active.pointed.get()) && cursor.get() == idx);
     let click = row.clone();
     item_row(slots, highlight)
         .role(Role::MenuItem)

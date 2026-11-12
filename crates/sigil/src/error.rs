@@ -37,8 +37,6 @@ pub enum ErrorKind {
     UnknownKey,
     /// The clipboard error kind.
     Clipboard,
-    /// The svg error kind.
-    Svg,
     /// The event loop error kind.
     EventLoop,
     /// The poisoned error kind.
@@ -117,18 +115,13 @@ impl Eq for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Self::with_kind(ErrorKind::Io, err)
+        Self::new(ErrorKind::Io, err)
     }
 }
 
 impl Error {
-    /// Creates an error.
-    pub fn new<E: StdError + Send + Sync + 'static>(err: E) -> Self {
-        Self::with_kind(ErrorKind::Other, err)
-    }
-
     /// Wraps `err` in an error of the given kind.
-    pub fn with_kind<E: StdError + Send + Sync + 'static>(kind: ErrorKind, err: E) -> Self {
+    pub fn new<E: StdError + Send + Sync + 'static>(kind: ErrorKind, err: E) -> Self {
         Self {
             kind,
             detail: Detail::Wrapped,
@@ -167,22 +160,22 @@ impl Error {
 
     #[cfg(feature = "desktop")]
     pub(crate) fn window<E: StdError + Send + Sync + 'static>(err: E) -> Self {
-        Self::with_kind(ErrorKind::Window, err)
+        Self::new(ErrorKind::Window, err)
     }
 
     #[cfg(any(app_host, feature = "pty", feature = "audio", feature = "clipboard"))]
     pub(crate) fn io<E: StdError + Send + Sync + 'static>(err: E) -> Self {
-        Self::with_kind(ErrorKind::Io, err)
+        Self::new(ErrorKind::Io, err)
     }
 
     #[cfg(any(app_host, feature = "pty"))]
     pub(crate) fn task<E: StdError + Send + Sync + 'static>(err: E) -> Self {
-        Self::with_kind(ErrorKind::Task, err)
+        Self::new(ErrorKind::Task, err)
     }
 
     #[cfg(app_host)]
     pub(crate) fn config<E: StdError + Send + Sync + 'static>(err: E) -> Self {
-        Self::with_kind(ErrorKind::Config, err)
+        Self::new(ErrorKind::Config, err)
     }
 
     /// Returns the kind.

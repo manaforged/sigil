@@ -6,7 +6,7 @@ use crate::kernel::{
     Cx, IntoNode, NodeBuilder, NodeId, container, node, schedule_keyed_rebuild_at,
 };
 use crate::layout::{LayoutStyle, Position};
-use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
+use crate::reactive::{Signal, effect_named, memo, signal as signal_of};
 use crate::widgets::{Layout, Widget};
 
 use super::RowRender;
@@ -54,7 +54,7 @@ where
     for row in first.into_iter().filter_map(|(_, row)| row) {
         strip = strip.child(row);
     }
-    strip.on_added(move |cx, parent| {
+    strip.added(move |cx, parent| {
         let kids = cx.get(parent).map(|node| node.children().to_vec());
         let kids = kids.unwrap_or_default();
         let prior = if seed.len() == kids.len() {
@@ -101,7 +101,7 @@ fn strip_position<T, R>(
 ) -> Signal<(f32, f32)> {
     let rh = spec.row_height;
     let tops = spec.tops;
-    derived(move || {
+    memo(move || {
         let first = anchor.get();
         let top = tops.map_or_else(
             || RowHeights::fixed(first, rh).total(),
@@ -113,7 +113,7 @@ fn strip_position<T, R>(
 
 fn revision<S: Clone + 'static>(signal: Signal<S>) -> Signal<u64> {
     let mut revision = 0_u64;
-    derived(move || {
+    memo(move || {
         drop(signal.get());
         revision += 1;
         revision

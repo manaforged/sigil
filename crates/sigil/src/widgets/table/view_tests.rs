@@ -93,7 +93,7 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
                     let capture = capture.clone();
                     container()
                         .layout(LayoutStyle::flex_column().height(64.0))
-                        .on_added(move |_, id| capture.set(Some(id)))
+                        .added(move |_, id| capture.set(Some(id)))
                 }),
         );
         let mut layout = LayoutEngine::with_text_measure(Box::new(

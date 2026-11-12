@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, LogicalKey, Modifiers, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};
@@ -181,13 +181,13 @@ fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKe
     let (newlines, send) = match submit_key {
         SubmitKey::CtrlEnter => (
             vec![Shortcut::plain(Key::Enter)],
-            Shortcut::new(Key::Enter, ModifiersState::CONTROL),
+            Shortcut::new(Key::Enter, Modifiers::CTRL),
         ),
         SubmitKey::Enter => (
             vec![
-                Shortcut::new(Key::Enter, ModifiersState::SHIFT),
-                Shortcut::new(Key::Enter, ModifiersState::ALT),
-                Shortcut::new(LogicalKey::character("j"), ModifiersState::CONTROL),
+                Shortcut::new(Key::Enter, Modifiers::SHIFT),
+                Shortcut::new(Key::Enter, Modifiers::ALT),
+                Shortcut::new(LogicalKey::character("j"), Modifiers::CTRL),
             ],
             Shortcut::plain(Key::Enter),
         ),
@@ -206,9 +206,7 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
         event.stop_propagation();
         return;
     }
-    if event.modifiers.contains(ModifiersState::CONTROL)
-        || event.modifiers.contains(ModifiersState::META)
-    {
+    if event.modifiers.contains(Modifiers::CTRL) || event.modifiers.contains(Modifiers::META) {
         return;
     }
     let Some(text) = event
@@ -251,7 +249,7 @@ pub(in crate::widgets) fn move_caret(
     event.stop_propagation();
     if !runtime.disabled() {
         let mut state = runtime.edit_mut();
-        let extend = event.modifiers.contains(ModifiersState::SHIFT);
+        let extend = event.modifiers.contains(Modifiers::SHIFT);
         let had_selection = state.selection().is_some();
         let affinity = runtime.caret_affinity.peek();
         edit(&mut state);

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::events::{Key, MouseButton, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
@@ -107,10 +107,10 @@ fn build_row<Row: 'static>(
         return container();
     }
     let selection = state.selection();
-    let is_selected = derived(move || selection.get().contains(&row_index));
+    let is_selected = memo(move || selection.get().contains(&row_index));
     let rows = state.rows();
     let eq = state.row_eq_fn();
-    let row_value = derived(move || RowValue {
+    let row_value = memo(move || RowValue {
         rows: rows.get(),
         index: row_index as usize,
         eq: eq.clone(),

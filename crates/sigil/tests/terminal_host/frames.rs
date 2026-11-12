@@ -115,7 +115,7 @@ fn only_a_change_sends_bytes() {
 
     sigil::reactive::Owner::scope("bytes", || {
         let count = signal(0_i32);
-        let label = sigil::reactive::derived(move || format!("n={}", count.get()));
+        let label = sigil::reactive::memo(move || format!("n={}", count.get()));
         let mut host = Host::new(HostMode::Cell);
         let mut screen = Screen::new(30, 6);
         host.mount(move || container().child(text(label)));

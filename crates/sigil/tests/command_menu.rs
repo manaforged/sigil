@@ -299,7 +299,7 @@ fn clicking_a_row_of_a_filtered_list_runs_that_row() {
 }
 
 fn filtered_click() {
-    use sigil::events::{KeyPhase, LogicalKey, ModifiersState};
+    use sigil::events::{KeyPhase, LogicalKey, Modifiers};
 
     let chosen: Signal<String> = signal(String::new());
     let mut harness = sigil_kittest::Harness::new(move || {
@@ -315,7 +315,7 @@ fn filtered_click() {
     harness.settle();
     harness
         .send([Event::key(LogicalKey::character("R"), KeyPhase::Down)
-            .modifiers(ModifiersState::empty())
+            .modifiers(Modifiers::empty())
             .text(Some("R".into()))])
         .settle();
     let shown = harness.text();

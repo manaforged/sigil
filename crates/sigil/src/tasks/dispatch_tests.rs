@@ -134,7 +134,7 @@ fn a_writer_made_in_a_scope_that_ended_still_writes() {
         let mut tasks = AsyncRuntime::new().expect("build tokio runtime");
         tasks.install_current();
         let total = crate::reactive::signal(0);
-        let writer = Owner::scope("child", || crate::tasks::signal_writer(total));
+        let writer = Owner::scope("child", || total.writer());
         writer.set(7).expect("send");
         let _ = tasks.pump();
         assert_eq!(total.peek(), 7);
@@ -147,7 +147,7 @@ fn a_write_to_a_disposed_signal_is_dropped_without_a_panic() {
         let mut tasks = AsyncRuntime::new().expect("build tokio runtime");
         tasks.install_current();
         let gone = Owner::scope("child", || crate::reactive::signal(0));
-        let writer = crate::tasks::signal_writer(gone);
+        let writer = gone.writer();
         writer.set(7).expect("send");
         writer.update(|value| *value += 1).expect("send");
         let _ = tasks.pump();

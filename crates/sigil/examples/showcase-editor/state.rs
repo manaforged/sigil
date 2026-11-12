@@ -60,7 +60,7 @@ impl Buffer {
             highlights,
             gutter: signal(gutter_marks(file, total)),
             diagnostics: signal(diag_spans(file)),
-            text: derived(move || lines.with(|rows| rows.join("\n"))),
+            text: memo(move || lines.with(|rows| rows.join("\n"))),
         }
     }
 }

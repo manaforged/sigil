@@ -64,8 +64,7 @@ fn ctrl_c_copies_a_selection_before_it_exits() {
             assert!(!exits(&mut host, [pointer(phase, col)]), "a drag exited");
         }
         copied.borrow_mut().clear();
-        let ctrl_c =
-            || Event::key_down(LogicalKey::character("c")).modifiers(ModifiersState::CONTROL);
+        let ctrl_c = || Event::key_down(LogicalKey::character("c")).modifiers(Modifiers::CTRL);
 
         let kept = !exits(&mut host, [ctrl_c()]);
         assert!(kept, "Ctrl+C exited the app while text was selected");
@@ -158,7 +157,7 @@ fn ctrl_c_exits_with_an_empty_field_focused() {
         host.mount(move || container().child(text_field(value).autofocus()));
         host.set_quit(AppConfig::new("quit").quit);
         assert!(!exits(&mut host, []), "the first frame exited");
-        let ctrl_c = Event::key_down(LogicalKey::character("c")).modifiers(ModifiersState::CONTROL);
+        let ctrl_c = Event::key_down(LogicalKey::character("c")).modifiers(Modifiers::CTRL);
         assert!(
             exits(&mut host, [ctrl_c]),
             "Ctrl+C with an empty field focused did not exit"

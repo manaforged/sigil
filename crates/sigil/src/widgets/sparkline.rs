@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::LayoutStyle;
-use crate::reactive::{Reactive, derived};
+use crate::reactive::{Reactive, memo};
 use crate::style::Tone;
 use crate::widgets::Layout;
 
@@ -201,12 +201,11 @@ fn run_text(tone: Tone, layer: SparkLayer, glyphs: String) -> TextBuilder {
 impl SparklineBuilder {
     fn root(self) -> NodeBuilder {
         let source = self.values;
-        let values = derived(move || source.read());
+        let values = memo(move || source.read());
         let shape = self.shape;
         let label_shape = shape.clone();
         let theme = ActiveTheme::capture();
-        let description =
-            derived(move || values.with(|values| label_shape.describe(values, theme)));
+        let description = memo(move || values.with(|values| label_shape.describe(values, theme)));
         container()
             .role(Role::Image)
             .label(theme_label(StringKey::Sparkline))

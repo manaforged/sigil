@@ -2,17 +2,17 @@ use core::str::FromStr;
 
 use crate::{Error, ErrorKind};
 
-use super::{KEY_LABELS, Key, LogicalKey, MODIFIER_LABELS, ModifiersState, Shortcut};
+use super::{KEY_LABELS, Key, LogicalKey, MODIFIER_LABELS, Modifiers, Shortcut};
 
-const MODIFIER_ALIASES: [(ModifiersState, &str); 8] = [
-    (ModifiersState::CONTROL, "control"),
-    (ModifiersState::ALT, "option"),
-    (ModifiersState::ALT, "opt"),
-    (ModifiersState::META, "cmd"),
-    (ModifiersState::META, "command"),
-    (ModifiersState::META, "meta"),
-    (ModifiersState::META, "win"),
-    (ModifiersState::CONTROL, "ctl"),
+const MODIFIER_ALIASES: [(Modifiers, &str); 8] = [
+    (Modifiers::CTRL, "control"),
+    (Modifiers::ALT, "option"),
+    (Modifiers::ALT, "opt"),
+    (Modifiers::META, "cmd"),
+    (Modifiers::META, "command"),
+    (Modifiers::META, "meta"),
+    (Modifiers::META, "win"),
+    (Modifiers::CTRL, "ctl"),
 ];
 
 impl FromStr for Shortcut {
@@ -37,7 +37,7 @@ fn parse_joined(text: &str) -> Result<Shortcut, Error> {
         Some(split) => split,
         None => ("", text),
     };
-    let mut modifiers = ModifiersState::empty();
+    let mut modifiers = Modifiers::empty();
     for part in head
         .split('+')
         .map(str::trim)
@@ -55,7 +55,7 @@ fn parse_joined(text: &str) -> Result<Shortcut, Error> {
 }
 
 fn parse_symbols(text: &str) -> Result<Shortcut, Error> {
-    let mut modifiers = ModifiersState::empty();
+    let mut modifiers = Modifiers::empty();
     let mut rest = text;
     while let Some((flag, tail)) = MODIFIER_LABELS
         .iter()
@@ -68,7 +68,7 @@ fn parse_symbols(text: &str) -> Result<Shortcut, Error> {
     Ok(Shortcut::new(key_named(rest)?, modifiers))
 }
 
-fn modifier_named(name: &str) -> Option<ModifiersState> {
+fn modifier_named(name: &str) -> Option<Modifiers> {
     MODIFIER_LABELS
         .iter()
         .find(|(_, apple, other)| *apple == name || other.eq_ignore_ascii_case(name))

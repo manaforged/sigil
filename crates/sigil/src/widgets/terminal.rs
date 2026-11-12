@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState};
+use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, Modifiers};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{LayoutStyle, rows};
 use crate::reactive::{Signal, signal};
@@ -39,12 +39,12 @@ fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
 }
 
 fn key_payload(event: &KeyEvent, application: bool) -> Option<String> {
-    if event.phase != KeyPhase::Down || event.modifiers.contains(ModifiersState::META) {
+    if event.phase != KeyPhase::Down || event.modifiers.contains(Modifiers::META) {
         return None;
     }
     let named = match &event.key {
         LogicalKey::Named(key) => named_sequence(*key, event.modifiers, application),
-        LogicalKey::Character(text) if event.modifiers.contains(ModifiersState::CONTROL) => {
+        LogicalKey::Character(text) if event.modifiers.contains(Modifiers::CTRL) => {
             control_byte(text)
                 .map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string()))
         }
@@ -54,7 +54,7 @@ fn key_payload(event: &KeyEvent, application: bool) -> Option<String> {
 }
 
 fn typed(event: &KeyEvent) -> Option<String> {
-    if event.modifiers.contains(ModifiersState::CONTROL) {
+    if event.modifiers.contains(Modifiers::CTRL) {
         return None;
     }
     let text = event.text.clone().filter(|text| !text.is_empty())?;
@@ -65,8 +65,8 @@ fn typed(event: &KeyEvent) -> Option<String> {
     })
 }
 
-fn alt_prefixed(modifiers: ModifiersState, text: String) -> String {
-    if modifiers.contains(ModifiersState::ALT) {
+fn alt_prefixed(modifiers: Modifiers, text: String) -> String {
+    if modifiers.contains(Modifiers::ALT) {
         format!("\u{1b}{text}")
     } else {
         text
@@ -90,11 +90,9 @@ const fn control_byte(key: &str) -> Option<u8> {
     }
 }
 
-fn modifier_code(modifiers: ModifiersState) -> u8 {
-    let bit = |key: ModifiersState, value: u8| if modifiers.contains(key) { value } else { 0 };
-    1 + bit(ModifiersState::SHIFT, 1)
-        + bit(ModifiersState::ALT, 2)
-        + bit(ModifiersState::CONTROL, 4)
+fn modifier_code(modifiers: Modifiers) -> u8 {
+    let bit = |key: Modifiers, value: u8| if modifiers.contains(key) { value } else { 0 };
+    1 + bit(Modifiers::SHIFT, 1) + bit(Modifiers::ALT, 2) + bit(Modifiers::CTRL, 4)
 }
 
 fn cursor(end: char, code: u8, application: bool) -> String {
@@ -113,17 +111,15 @@ fn tilde(number: u8, code: u8) -> String {
     }
 }
 
-fn edit_sequence(key: Key, modifiers: ModifiersState) -> Option<String> {
-    let has = |flag: ModifiersState| modifiers.contains(flag);
+fn edit_sequence(key: Key, modifiers: Modifiers) -> Option<String> {
+    let has = |flag: Modifiers| modifiers.contains(flag);
     Some(match key {
-        Key::Enter if has(ModifiersState::SHIFT) || has(ModifiersState::ALT) => {
-            "\u{1b}\r".to_string()
-        }
+        Key::Enter if has(Modifiers::SHIFT) || has(Modifiers::ALT) => "\u{1b}\r".to_string(),
         Key::Enter => "\r".to_string(),
-        Key::Backspace if has(ModifiersState::CONTROL) => "\u{8}".to_string(),
+        Key::Backspace if has(Modifiers::CTRL) => "\u{8}".to_string(),
         Key::Backspace => alt_prefixed(modifiers, "\u{7f}".to_string()),
-        Key::Tab if has(ModifiersState::CONTROL) => return None,
-        Key::Tab if has(ModifiersState::SHIFT) => "\u{1b}[Z".to_string(),
+        Key::Tab if has(Modifiers::CTRL) => return None,
+        Key::Tab if has(Modifiers::SHIFT) => "\u{1b}[Z".to_string(),
         Key::Tab => "\t".to_string(),
         Key::Escape => "\u{1b}".to_string(),
         _ => return None,
@@ -164,7 +160,7 @@ const fn tilde_number(key: Key) -> Option<u8> {
     })
 }
 
-fn named_sequence(key: Key, modifiers: ModifiersState, application: bool) -> Option<String> {
+fn named_sequence(key: Key, modifiers: Modifiers, application: bool) -> Option<String> {
     let code = modifier_code(modifiers);
     if let Some((end, always)) = cursor_end(key) {
         return Some(cursor(end, code, always || application));

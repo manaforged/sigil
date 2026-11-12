@@ -1,4 +1,4 @@
-use crate::events::{ModifiersState, ScrollPhase};
+use crate::events::{Modifiers, ScrollPhase};
 use crate::geometry::Point;
 
 /// The kind of a trackpad or touch gesture.
@@ -26,7 +26,7 @@ pub struct GestureEvent {
     /// The position.
     pub position: Point,
     /// The modifiers.
-    pub modifiers: ModifiersState,
+    pub modifiers: Modifiers,
     pub(super) propagation_stopped: bool,
 }
 
@@ -36,7 +36,7 @@ impl GestureEvent {
             kind,
             phase,
             position,
-            modifiers: ModifiersState::empty(),
+            modifiers: Modifiers::empty(),
             propagation_stopped: false,
         }
     }

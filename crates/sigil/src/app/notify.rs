@@ -38,14 +38,18 @@ impl Notification {
         if let Some(name) = &self.app_name {
             native.appname(name);
         }
-        native.show().map(|_| ()).map_err(Error::new)
+        native
+            .show()
+            .map(|_| ())
+            .map_err(|err| Error::new(crate::ErrorKind::Other, err))
     }
 
     /// Returns an unsupported error on this target.
     #[cfg(not(os_notifications))]
     pub fn send(&self) -> AppResult<()> {
-        Err(Error::new(std::io::Error::from(
-            std::io::ErrorKind::Unsupported,
-        )))
+        Err(Error::new(
+            crate::ErrorKind::Other,
+            std::io::Error::from(std::io::ErrorKind::Unsupported),
+        ))
     }
 }

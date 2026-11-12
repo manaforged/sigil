@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, Orientation};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::widgets::Layout;
@@ -66,7 +66,7 @@ fn thumb(
             .focusable(true)
             .hittable(false)
             .layout(LayoutStyle::block().shrink(0.0))
-            .on_added(move |_, id| record.set(Some(id))),
+            .added(move |_, id| record.set(Some(id))),
         runtime.disabled,
     );
     let interaction = node.interaction();
@@ -82,7 +82,7 @@ fn name(label: Option<&str>, part: Option<StringKey>) -> AccessibleName {
         (base, part) => {
             let fallback = theme_label(StringKey::Slider);
             let part = part.map(theme_label);
-            AccessibleName::Derived(derived(move || {
+            AccessibleName::Derived(memo(move || {
                 let base = base.clone().unwrap_or_else(|| fallback.get());
                 part.map_or_else(|| base.clone(), |part| format!("{base} {}", part.get()))
             }))

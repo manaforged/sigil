@@ -1,7 +1,7 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
     AlignItems, Icon, NodeBuilder, Paint, Space, TableState, Token, Tone, button, chip, column,
-    container, derived, icon, row, spacer, stat, text, text_field,
+    container, icon, memo, row, spacer, stat, text, text_field,
 };
 
 use super::data::{
@@ -39,7 +39,7 @@ pub(crate) fn main_panel(console: Console, state: &TableState<JobRow>) -> NodeBu
 
 fn toolbar(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
     let selection = state.selection();
-    let picked = derived(move || selection.get().len());
+    let picked = memo(move || selection.get().len());
     row()
         .fill_width()
         .gap(Space::Sm)

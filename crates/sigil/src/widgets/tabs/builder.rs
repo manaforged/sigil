@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::reactive::{Reactive, Signal, derived, signal};
+use crate::reactive::{Reactive, Signal, memo, signal};
 use crate::style::{Radius, Style, Token, space};
 use crate::widgets::Layout;
 
@@ -208,7 +208,7 @@ fn label_signal(
 ) -> Signal<Vec<String>> {
     match source {
         None => signal(fixed),
-        Some(source) => derived(move || {
+        Some(source) => memo(move || {
             let mut all = fixed.clone();
             all.extend(source());
             all

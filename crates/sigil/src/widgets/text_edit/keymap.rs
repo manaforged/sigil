@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, Modifiers, Shortcut};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -104,7 +104,7 @@ pub(in crate::widgets) fn edit_keys(
     node = node.key_any(move |event| insert_text(event, &any_key));
     for (key, action) in KEY_ACTIONS {
         if let KeyAction::Edit(op) = action {
-            for shortcut in [key.into(), Shortcut::new(key, ModifiersState::SHIFT)] {
+            for shortcut in [key.into(), Shortcut::new(key, Modifiers::SHIFT)] {
                 let runtime = runtime.clone();
                 node = node.key(shortcut, move |event| {
                     edit_value(event, &runtime, |edit| op.apply(edit));
@@ -114,7 +114,7 @@ pub(in crate::widgets) fn edit_keys(
         }
         for extend in [false, true] {
             let shortcut = if extend {
-                Shortcut::new(key, ModifiersState::SHIFT)
+                Shortcut::new(key, Modifiers::SHIFT)
             } else {
                 key.into()
             };

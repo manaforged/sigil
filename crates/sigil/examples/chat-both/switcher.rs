@@ -29,7 +29,7 @@ fn pick(chat: Chat, picker: Picker, channel: usize) {
 }
 
 pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
-    let hits = derived(move || {
+    let hits = memo(move || {
         let query = picker.query.get();
         chat.names.with(|names| rank(names, &query))
     });

@@ -14,7 +14,7 @@ assert_eq!(err.to_string(), "read-only");
 assert!(!check(&err));
 ```
 
-`Error::new(err)` wraps any `std::error::Error` as `ErrorKind::Other`, `Error::with_kind(kind, err)` wraps it with a kind, and `Error::message(kind, message)` builds one from a kind and a message. `Error::node()` returns the node of an `ErrorKind::NodeMissing` error.
+`Error::new(kind, err)` wraps any `std::error::Error` with a kind, and `Error::message(kind, message)` builds one from a kind and a message. `Error::node()` returns the node of an `ErrorKind::NodeMissing` error.
 
 ## Migrating from the per-module error types
 
@@ -31,7 +31,6 @@ Each error type below is gone. Its messages are unchanged.
 | `events::ShortcutParseError::UnknownModifier(name)` | `ErrorKind::UnknownModifier` |
 | `events::ShortcutParseError::UnknownKey(name)` | `ErrorKind::UnknownKey` |
 | `clipboard::ClipError::new(msg)` | `Error::message(ErrorKind::Clipboard, msg)` |
-| `icons::BakeError` (every variant) | `ErrorKind::Svg` |
 | `shell::ShellError::EventLoop(err)` | `ErrorKind::EventLoop`; `source()` returns the winit error |
 | `shell::ShellError::EventLoopClosed` | `ErrorKind::Closed` |
 | `shell::ShellError::WakerPoisoned` | `ErrorKind::Poisoned` |

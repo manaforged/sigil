@@ -5,7 +5,7 @@ use crate::app::cell_width;
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{IntoPx, JustifyContent, LayoutStyle, Length, cols};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
 use crate::widgets::Layout;
 use crate::widgets::button::button;
@@ -154,7 +154,7 @@ impl Grid {
 
     fn header_cell(&self, column: usize) -> NodeBuilder {
         let sort = self.sort;
-        let current = derived(move || {
+        let current = memo(move || {
             sort.get()
                 .filter(|(at, _)| *at == column)
                 .map(|(_, way)| way)

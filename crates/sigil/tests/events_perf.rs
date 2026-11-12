@@ -6,7 +6,7 @@ use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::{Event, Key, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, *};
+use sigil::events::{Event, Key, KeyPhase, Modifiers, PhysicalKey, PointerEvent, *};
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
@@ -213,5 +213,5 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
 fn ctrl_s() -> Event {
     Event::key(LogicalKey::character("s"), KeyPhase::Down)
         .physical(PhysicalKey::KeyS)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }

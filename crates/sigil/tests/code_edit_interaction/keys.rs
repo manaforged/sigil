@@ -94,11 +94,7 @@ fn trapped_tab_reaches_on_key_and_does_not_move_focus() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(editor));
 
-        router.route(
-            &mut cx,
-            &layout,
-            named_key(Key::Tab, ModifiersState::empty()),
-        );
+        router.route(&mut cx, &layout, named_key(Key::Tab, Modifiers::empty()));
 
         assert_eq!(
             keys_seen.get(),
@@ -135,7 +131,7 @@ fn shift_tab_still_escapes_a_trap_tab_surface() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(editor));
 
-        router.route(&mut cx, &layout, named_key(Key::Tab, ModifiersState::SHIFT));
+        router.route(&mut cx, &layout, named_key(Key::Tab, Modifiers::SHIFT));
 
         assert!(
             router.focus().is_some() && router.focus() != Some(editor),
@@ -166,11 +162,7 @@ fn read_only_surface_does_not_trap_tab() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(editor));
 
-        router.route(
-            &mut cx,
-            &layout,
-            named_key(Key::Tab, ModifiersState::empty()),
-        );
+        router.route(&mut cx, &layout, named_key(Key::Tab, Modifiers::empty()));
 
         assert!(
             router.focus().is_some() && router.focus() != Some(editor),

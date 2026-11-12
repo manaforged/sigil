@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::events::MouseButton;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::Tone;
 use crate::widgets::{Layout, Widget};
 
@@ -32,7 +32,7 @@ pub(super) fn row_cell<Row: 'static>(
     height: f32,
 ) -> NodeBuilder {
     let selection = state.selection();
-    let mark = derived(move || {
+    let mark = memo(move || {
         if selection.get().contains(&row) {
             SelectMark::Full
         } else {
@@ -67,8 +67,8 @@ fn select_box(
     label: impl Into<AccessibleName>,
     toggle: impl Fn() + 'static,
 ) -> NodeBuilder {
-    let checked = derived(move || mark.get() == SelectMark::Full);
-    let partial = derived(move || mark.get() == SelectMark::Partial);
+    let checked = memo(move || mark.get() == SelectMark::Full);
+    let partial = memo(move || mark.get() == SelectMark::Partial);
     let interaction = InteractionState::new(true);
     let node = container()
         .role(Role::CheckBox)
@@ -104,7 +104,7 @@ fn select_box(
 }
 
 fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<SelectMark> {
-    derived(move || {
+    memo(move || {
         let visible = state.visible().get();
         let selection = state.selection().get();
         mark(&*selection, visible.as_slice())

@@ -1,5 +1,5 @@
 use super::{
-    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, LogicalKey, Modifiers, MouseButton,
     MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
     ScrollPhase, WindowEvent,
 };
@@ -20,7 +20,7 @@ impl Event {
 
     /// Builds the press and release of a key held with `modifiers`.
     #[must_use]
-    pub fn press(key: impl Into<LogicalKey>, modifiers: ModifiersState) -> [Self; 2] {
+    pub fn press(key: impl Into<LogicalKey>, modifiers: Modifiers) -> [Self; 2] {
         let key = key.into();
         [
             Self::key(key.clone(), KeyPhase::Down).modifiers(modifiers),
@@ -52,8 +52,8 @@ impl Event {
     /// Builds a press of Tab, or of Shift+Tab when `shift` is true.
     #[must_use]
     pub fn tab(shift: bool) -> Self {
-        let mut modifiers = ModifiersState::empty();
-        modifiers.set(ModifiersState::SHIFT, shift);
+        let mut modifiers = Modifiers::empty();
+        modifiers.set(Modifiers::SHIFT, shift);
         Self::key_down(Key::Tab)
             .physical(PhysicalKey::Tab)
             .modifiers(modifiers)
@@ -154,7 +154,7 @@ impl Event {
 
     /// Sets the modifiers of a key, pointer, scroll, or gesture event; other events stay unchanged.
     #[must_use]
-    pub const fn modifiers(mut self, modifiers: ModifiersState) -> Self {
+    pub const fn modifiers(mut self, modifiers: Modifiers) -> Self {
         match &mut self {
             Self::Key(event) => event.modifiers = modifiers,
             Self::Pointer(event) => event.modifiers = modifiers,

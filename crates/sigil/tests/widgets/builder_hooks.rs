@@ -43,13 +43,13 @@ fn map_node_reports_the_root_id_of_a_list_and_an_image() {
             )
             .map_node({
                 let list_id = Rc::clone(&list_id);
-                move |node| node.on_added(move |_, id| list_id.set(Some(id)))
+                move |node| node.added(move |_, id| list_id.set(Some(id)))
             }),
         );
         let pixels = sigil::kernel::ImageSource::from_rgba8(1, 1, vec![0; 4]).expect("pixels");
         let image = cx.add(image(pixels).map_node({
             let image_id = Rc::clone(&image_id);
-            move |node| node.on_added(move |_, id| image_id.set(Some(id)))
+            move |node| node.added(move |_, id| image_id.set(Some(id)))
         }));
 
         assert_eq!(list_id.get(), Some(list));

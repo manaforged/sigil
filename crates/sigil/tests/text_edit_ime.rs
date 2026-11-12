@@ -276,7 +276,7 @@ fn backspace() -> Event {
 fn ctrl_a() -> Event {
     Event::key(LogicalKey::character("a"), KeyPhase::Down)
         .physical(PhysicalKey::KeyA)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();

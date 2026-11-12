@@ -3,7 +3,7 @@ use std::iter::once;
 use std::rc::Rc;
 
 use crate::events::EventRouter;
-use crate::events::{Event, KeyPhase, LogicalKey, ModifiersState};
+use crate::events::{Event, KeyPhase, LogicalKey, Modifiers};
 use crate::geometry::Size;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -28,8 +28,8 @@ impl Clipboard for Memory {
 
 #[test]
 fn shortcuts_copy_cut_paste_and_restore_unicode() {
-    for modifiers in once(ModifiersState::CONTROL)
-        .chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
+    for modifiers in
+        once(Modifiers::CTRL).chain(cfg!(target_os = "macos").then_some(Modifiers::META))
     {
         Owner::scope("field-shortcuts", || {
             let original = "café 日本語";
@@ -45,14 +45,14 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
                 .expect("field layout");
             let mut router = EventRouter::new();
             router.set_focus(&mut cx, Some(root));
-            let plain = ModifiersState::empty();
+            let plain = Modifiers::empty();
             for (key, shift, expected, clipboard) in [
                 ("a", plain, original, ""),
                 ("c", plain, original, original),
                 ("x", plain, "", original),
                 ("v", plain, original, original),
                 ("z", plain, "", original),
-                ("Z", ModifiersState::SHIFT, original, original),
+                ("Z", Modifiers::SHIFT, original, original),
             ] {
                 router.route(
                     &mut cx,

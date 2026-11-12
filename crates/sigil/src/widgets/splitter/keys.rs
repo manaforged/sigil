@@ -1,6 +1,6 @@
 use crate::events::Key;
 use crate::kernel::NodeBuilder;
-use crate::reactive::derived;
+use crate::reactive::memo;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::widgets::interaction::{ValueStep, step_keys};
@@ -17,7 +17,7 @@ pub(super) fn install_handle_keys(
 ) -> NodeBuilder {
     let (min, max) = state.bounds(handle);
     let tracked = state.clone();
-    let value = derived(move || tracked.tracked_size(handle));
+    let value = memo(move || tracked.tracked_size(handle));
     let (back, forward) = match state.orientation() {
         Orientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
         Orientation::Vertical => (Key::ArrowUp, Key::ArrowDown),

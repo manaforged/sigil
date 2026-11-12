@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 use crate::error::{Error, ErrorKind};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, fragment, show};
 use crate::layout::{LayoutStyle, Space, column};
-use crate::reactive::{Signal, derived, interval, signal};
+use crate::reactive::{Signal, interval, memo, signal};
 use crate::style::Tone;
 use crate::widgets::{Layout, Widget, notice_band};
 
@@ -129,7 +129,7 @@ impl View {
             };
             interval(POLL, move || watch.poll());
         }
-        let failed = derived(move || problem.with(Option::is_some));
+        let failed = memo(move || problem.with(Option::is_some));
         let band = move || notice_band(move || problem.get().unwrap_or_default(), Tone::Error);
         column()
             .layout(LayoutStyle::default().fill_width().grow(1.0))

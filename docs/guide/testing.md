@@ -80,7 +80,7 @@ assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
 
 A target is a label, a `Node`, or a `Point` in layout points. A label waits up to `EXPECT_TIMEOUT` for its control to appear. Every action runs frames until no signal write and no animation is pending. A tree that never settles fails the test after `SETTLE_SAFETY_CAP` frames.
 
-The harness installs a task runtime, so `task`, `spawn`, and `signal_writer` work in a test. Each frame applies the results that finished; `expect_text` waits for them:
+The harness installs a task runtime, so `task`, `spawn`, and `Signal::writer` work in a test. Each frame applies the results that finished; `expect_text` waits for them:
 
 ```rust,ignore
 {{#include ../../crates/sigil/examples/story-06-async.rs}}
@@ -104,7 +104,7 @@ The harness owns the interval clock. `advance(duration)` moves it forward and ru
 let ticks = || {
     let n = signal(0_u32);
     interval(Duration::from_secs(1), move || n.set(n.peek() + 1));
-    text(derived(move || format!("ticks {}", n.get())))
+    text(memo(move || format!("ticks {}", n.get())))
 };
 let mut ui = Harness::new(ticks).size(20, 2);
 ui.advance(Duration::from_secs(3));

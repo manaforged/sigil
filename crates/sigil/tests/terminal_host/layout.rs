@@ -27,7 +27,7 @@ fn a_frame_records_the_siblings_its_layout_moved() {
                             })
                         }),
                 )
-                .child(container().child(text("below")).on_added({
+                .child(container().child(text("below")).added({
                     let seen = std::rc::Rc::clone(&seen);
                     move |_, id| seen.set(Some(id))
                 }))

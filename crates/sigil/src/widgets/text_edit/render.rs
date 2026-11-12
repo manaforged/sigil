@@ -1,6 +1,6 @@
 use crate::animation::Property;
 use crate::animation::runtime::presets;
-use crate::events::{ModifiersState, PointerEvent};
+use crate::events::{Modifiers, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
@@ -10,7 +10,7 @@ use crate::layout::{
     CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
     with_text_geometry,
 };
-use crate::reactive::{Owner, Signal, derived, effect, interval, signal};
+use crate::reactive::{Owner, Signal, effect, interval, memo, signal};
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
     Token, space,
@@ -96,7 +96,7 @@ fn edit_inner(
     let moved = runtime.clone();
     let scroll_y = runtime.scroll_into_view();
     let (padding_x, padding_y) = runtime.content_padding;
-    let offset = derived(move || (0.0, padding_y - scroll_y.get()));
+    let offset = memo(move || (0.0, padding_y - scroll_y.get()));
     let text_box = container()
         .hittable(false)
         .layout(LayoutStyle::block().min_size(0.0, 0.0))
@@ -106,7 +106,7 @@ fn edit_inner(
         .child(caret_layer(runtime, interaction))
         .child(lines);
     let content_size = runtime.content_size;
-    let extent = derived(move || padding_y.mul_add(2.0, content_size.get().1));
+    let extent = memo(move || padding_y.mul_add(2.0, content_size.get().1));
     let body = container()
         .layout(
             LayoutStyle::block()
@@ -218,7 +218,7 @@ fn pointer_drag(
     }
     let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
     let mut edit = runtime.edit_mut();
-    let extend = !down || event.modifiers.contains(ModifiersState::SHIFT);
+    let extend = !down || event.modifiers.contains(Modifiers::SHIFT);
     if down && !extend {
         runtime.anchor_affinity.set(offset.affinity);
     } else if down && edit.selection().is_none() {
@@ -234,7 +234,7 @@ fn pointer_drag(
 
 fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilder {
     let (value, preedit) = (runtime.value, runtime.ime.preedit);
-    let empty = derived(move || value.get().is_empty() && preedit.get().is_empty());
+    let empty = memo(move || value.get().is_empty() && preedit.get().is_empty());
     let runtime = runtime.clone();
     container()
         .hittable(false)
@@ -242,7 +242,7 @@ fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilde
         .children_reactive(move || {
             let lines = if empty.get() {
                 let placeholder = placeholder.clone();
-                text(derived(move || placeholder.resolve())).class(Token::Placeholder.text())
+                text(memo(move || placeholder.resolve())).class(Token::Placeholder.text())
             } else {
                 typed_lines(&runtime).class(Token::OnSurface.text())
             };
@@ -260,7 +260,7 @@ fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilde
 
 fn typed_lines(runtime: &TextEditRuntime) -> TextBuilder {
     let (value, preedit, caret) = (runtime.value, runtime.ime.preedit, runtime.caret);
-    text(derived(move || {
+    text(memo(move || {
         let composing = preedit.get();
         let current = value.get();
         if composing.is_empty() {

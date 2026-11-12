@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, Modifiers, Shortcut};
 use crate::kernel::{Cx, NodeId, Role};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -155,7 +155,7 @@ impl ShortcutIndex {
         for (shortcut, id) in &self.entries {
             let yields = match focused {
                 Focused::Text => shortcut.is_plain_char(),
-                Focused::Terminal => !shortcut.modifiers.contains(ModifiersState::META),
+                Focused::Terminal => !shortcut.modifiers.contains(Modifiers::META),
                 Focused::Other => false,
             };
             if !visible(cx, *id) || yields {
@@ -187,10 +187,10 @@ impl Shortcut {
             && self
                 .modifiers
                 .intersection(
-                    ModifiersState::SHIFT
-                        .union(ModifiersState::CONTROL)
-                        .union(ModifiersState::ALT)
-                        .union(ModifiersState::META),
+                    Modifiers::SHIFT
+                        .union(Modifiers::CTRL)
+                        .union(Modifiers::ALT)
+                        .union(Modifiers::META),
                 )
                 .is_empty()
     }

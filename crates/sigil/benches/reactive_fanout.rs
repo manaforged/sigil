@@ -8,7 +8,7 @@ use std::hint::black_box;
 use std::rc::Rc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::reactive::{Owner, derived, effect, signal};
+use sigil::reactive::{Owner, effect, memo, signal};
 
 fn install_subscribers(sig: sigil::reactive::Signal<i32>, count: usize) -> Vec<Rc<Cell<i32>>> {
     let mut sinks = Vec::with_capacity(count);
@@ -70,7 +70,7 @@ fn build_derived_chain(
     let mut current = root;
     for _ in 0..depth {
         let prev = current;
-        current = derived(move || prev.get().wrapping_add(1));
+        current = memo(move || prev.get().wrapping_add(1));
     }
     current
 }

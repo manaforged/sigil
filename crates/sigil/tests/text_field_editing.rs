@@ -167,7 +167,7 @@ fn text_field_external_write_resyncs_edit_buffer() {
 fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
     Event::key(LogicalKey::character(ch), KeyPhase::Down)
         .physical(physical)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }
 
 #[test]

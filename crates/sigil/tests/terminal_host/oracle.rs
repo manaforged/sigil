@@ -5,7 +5,7 @@ use sigil::kernel::{IntoNode, container, text};
 use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
-use sigil::reactive::{Owner, derived, signal};
+use sigil::reactive::{Owner, memo, signal};
 use sigil::style::{Color, Token};
 use sigil::terminal::{ColorDepth, Grid, Screen};
 use sigil::widgets::Layout;
@@ -137,7 +137,7 @@ fn placed(spot: &Spot) -> impl IntoNode + use<> {
 }
 
 pub(super) fn tree(model: Signal<Model>) -> impl IntoNode {
-    let accent = derived(move || model.with(|model| model.accent));
+    let accent = memo(move || model.with(|model| model.accent));
     container()
         .layout(LayoutStyle::block().fill_width().fill_height())
         .paint_when(accent, |style| style.background(Token::Accent))

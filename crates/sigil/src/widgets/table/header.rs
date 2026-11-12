@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::events::{Key, LogicalKey, MouseButton, PointerEvent, Shortcut};
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StyleAtom, Token, space};
@@ -276,7 +276,7 @@ fn reorder_only<Row: 'static>(
 impl<Row: 'static> TableState<Row> {
     fn sort_direction(&self, column: &'static str) -> Signal<Option<SortDirection>> {
         let sort = self.sort_key();
-        derived(move || {
+        memo(move || {
             sort.get()
                 .filter(|key| key.column == column)
                 .map(|key| key.dir)

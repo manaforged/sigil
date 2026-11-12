@@ -67,7 +67,7 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
 }
 
 fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder {
-    let active = derived(move || page.get() == index);
+    let active = memo(move || page.get() == index);
     row()
         .role(Role::Button)
         .focusable(true)

@@ -14,7 +14,7 @@ fn map_enter_is_the_shell_enter_key() {
 
 #[test]
 fn map_backtab_is_shift_tab() {
-    use sigil::events::{Event, Key, LogicalKey, ModifiersState};
+    use sigil::events::{Event, Key, LogicalKey, Modifiers};
     use sigil::terminal::map_key;
 
     let event = crossterm::event::KeyEvent::new(
@@ -25,7 +25,7 @@ fn map_backtab_is_shift_tab() {
         panic!("backtab did not map");
     };
     assert_eq!(mapped.key, LogicalKey::Named(Key::Tab));
-    assert_eq!(mapped.modifiers, ModifiersState::SHIFT);
+    assert_eq!(mapped.modifiers, Modifiers::SHIFT);
 }
 #[test]
 fn a_focus_change_reaches_the_terminal() {

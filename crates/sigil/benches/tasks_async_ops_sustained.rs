@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use criterion::Criterion;
 use sigil::reactive::{Owner, signal};
-use sigil::tasks::{AsyncRuntime, signal_writer, spawn};
+use sigil::tasks::{AsyncRuntime, spawn};
 
 use super::spin_until;
 
@@ -61,7 +61,7 @@ fn run_one_sustained_iteration() -> Duration {
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
     scheduler.install_current();
     let handle = Owner::current().expect("inside a reactive scope");
-    let tick = signal_writer(signal(0_u64));
+    let tick = signal(0_u64).writer();
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_writer = Arc::clone(&stop);

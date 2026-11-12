@@ -5,7 +5,7 @@ mod press;
 
 use crate::kernel::{AccessibleName, NodeBuilder, TextContent};
 use crate::layout::LayoutStyle;
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{
@@ -114,7 +114,7 @@ pub(crate) fn or_disabled(
     b: Option<Signal<bool>>,
 ) -> Option<Signal<bool>> {
     match (a, b) {
-        (Some(left), Some(right)) => Some(derived(move || left.get() || right.get())),
+        (Some(left), Some(right)) => Some(memo(move || left.get() || right.get())),
         (left, None) => left,
         (None, right) => right,
     }

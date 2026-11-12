@@ -1,7 +1,7 @@
 use std::iter::once;
 
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, LogicalKey, Modifiers, Shortcut};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -17,11 +17,11 @@ pub(in crate::widgets) fn clipboard_keys(
 ) -> NodeBuilder {
     let pasted = runtime.clone();
     let node = node.paste(move |text| shell_paste(text, &pasted));
-    let commands: [(&str, ModifiersState, KeyCommand); 4] = [
-        ("c", ModifiersState::empty(), clipboard_copy),
-        ("x", ModifiersState::empty(), clipboard_cut),
-        ("v", ModifiersState::empty(), clipboard_paste),
-        ("a", ModifiersState::empty(), |event, edit| {
+    let commands: [(&str, Modifiers, KeyCommand); 4] = [
+        ("c", Modifiers::empty(), clipboard_copy),
+        ("x", Modifiers::empty(), clipboard_cut),
+        ("v", Modifiers::empty(), clipboard_paste),
+        ("a", Modifiers::empty(), |event, edit| {
             move_caret(event, edit, TextEdit::select_all);
         }),
     ];
@@ -29,11 +29,11 @@ pub(in crate::widgets) fn clipboard_keys(
 }
 
 pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let commands: [(&str, ModifiersState, KeyCommand); 2] = [
-        ("Z", ModifiersState::SHIFT, |event, edit| {
+    let commands: [(&str, Modifiers, KeyCommand); 2] = [
+        ("Z", Modifiers::SHIFT, |event, edit| {
             history(event, edit, TextEdit::redo);
         }),
-        ("z", ModifiersState::empty(), |event, edit| {
+        ("z", Modifiers::empty(), |event, edit| {
             history(event, edit, TextEdit::undo);
         }),
     ];
@@ -54,7 +54,7 @@ const TERMINAL_UNDO: [&str; 3] = ["_", "-", "7"];
 fn command_keys(
     mut node: NodeBuilder,
     runtime: &TextEditRuntime,
-    commands: &[(&str, ModifiersState, KeyCommand)],
+    commands: &[(&str, Modifiers, KeyCommand)],
 ) -> NodeBuilder {
     for modifiers in command_modifiers() {
         for &(key, extra, command) in commands {
@@ -66,15 +66,15 @@ fn command_keys(
     node
 }
 
-fn command_modifiers() -> impl Iterator<Item = ModifiersState> {
-    once(ModifiersState::CONTROL).chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
+fn command_modifiers() -> impl Iterator<Item = Modifiers> {
+    once(Modifiers::CTRL).chain(cfg!(target_os = "macos").then_some(Modifiers::META))
 }
 
 pub(in crate::widgets) fn word_keys(
     mut node: NodeBuilder,
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
-    let alt = |key: LogicalKey| Shortcut::new(key, ModifiersState::ALT);
+    let alt = |key: LogicalKey| Shortcut::new(key, Modifiers::ALT);
     let ch = |key: &str| LogicalKey::character(key);
     let motions: [(Shortcut, Edit); 4] = [
         (alt(Key::ArrowLeft.into()), TextEdit::move_word_left),

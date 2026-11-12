@@ -130,7 +130,7 @@ fn seen(ui: &mut Harness) -> Seen {
 }
 
 fn animated(keyframes: Keyframes, flag: Signal<bool>) -> NodeBuilder {
-    square().paint_when(flag, move |state| state.animate(keyframes))
+    square().paint_when(flag, move |state| state.animation(keyframes))
 }
 
 fn turned(from: f32, to: f32) -> f32 {
@@ -142,7 +142,7 @@ fn a_view_with_a_spinner_settles() {
     let _keyframes = crate::serial::keyframes();
     Owner::scope("review-spin-settles", || {
         let mut ui =
-            Harness::new(column().child(square().animate(Keyframes::spin()))).pixels(200, 200);
+            Harness::new(column().child(square().animation(Keyframes::spin()))).pixels(200, 200);
         ui.settle();
         assert!(running_clocks() > 0, "the spinner still runs after settle");
         let before = seen(&mut ui).rotation();
@@ -321,7 +321,7 @@ fn the_first_of_three_hundred_held_animations_still_plays() {
         let mut list = column();
         for (index, flag) in (0_u16..).zip(&flags) {
             let keyframes = slide(index);
-            list = list.child(square().paint_when(*flag, move |state| state.animate(keyframes)));
+            list = list.child(square().paint_when(*flag, move |state| state.animation(keyframes)));
         }
         let mut ui = Harness::new(list).pixels(200, 200);
         ui.settle();
@@ -369,9 +369,9 @@ fn an_unscoped_animation_that_was_evicted_warns() {
     tracing::subscriber::with_default(Warnings(Arc::clone(&warnings)), || {
         let owner = Owner::new("review-unscoped", None);
         let flag = owner.with(|| signal(false));
-        let node = square().paint_when(flag, |state| state.animate(slide(1_000)));
+        let node = square().paint_when(flag, |state| state.animation(slide(1_000)));
         for index in 1_001..1_400 {
-            drop(container().animate(slide(index)));
+            drop(container().animation(slide(index)));
         }
         owner.with(|| {
             let mut ui = Harness::new(column().child(node)).pixels(200, 200);

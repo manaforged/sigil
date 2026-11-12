@@ -6,7 +6,7 @@ use std::rc::Rc;
 use sigil::Host;
 use sigil::app::FrameHooks;
 use sigil::events::{Event, PhysicalKey, Shortcut};
-use sigil::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState};
+use sigil::events::{Key, KeyEvent, KeyPhase, LogicalKey, Modifiers};
 
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -213,7 +213,7 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
     });
 }
 
-fn key_with(key: &str, modifiers: ModifiersState) -> KeyEvent {
+fn key_with(key: &str, modifiers: Modifiers) -> KeyEvent {
     match Event::press(LogicalKey::character(key), modifiers) {
         [Event::Key(event), _] => event,
         _ => unreachable!("press starts with a key event"),
@@ -223,13 +223,12 @@ fn key_with(key: &str, modifiers: ModifiersState) -> KeyEvent {
 #[test]
 fn shift_letter_shortcuts_match_the_shifted_character() {
     let shortcut: Shortcut = "shift+p".parse().expect("shortcut");
-    let shifted = key_with("P", ModifiersState::SHIFT);
+    let shifted = key_with("P", Modifiers::SHIFT);
     assert!(shortcut.matches(&shifted));
-    assert!(!shortcut.matches(&key_with("P", ModifiersState::empty())));
+    assert!(!shortcut.matches(&key_with("P", Modifiers::empty())));
     assert!(!Shortcut::plain(LogicalKey::character("p")).matches(&shifted));
     assert!(
-        !Shortcut::plain(LogicalKey::character("p"))
-            .matches(&key_with("P", ModifiersState::empty()))
+        !Shortcut::plain(LogicalKey::character("p")).matches(&key_with("P", Modifiers::empty()))
     );
 }
 
@@ -237,9 +236,9 @@ fn shift_letter_shortcuts_match_the_shifted_character() {
 fn primary_shortcuts_use_the_platform_modifier() {
     let save = Shortcut::primary(LogicalKey::character("s"));
     if cfg!(target_os = "macos") {
-        assert_eq!(save.modifiers, ModifiersState::META);
+        assert_eq!(save.modifiers, Modifiers::META);
     } else {
-        assert_eq!(save.modifiers, ModifiersState::CONTROL);
+        assert_eq!(save.modifiers, Modifiers::CTRL);
     }
 }
 

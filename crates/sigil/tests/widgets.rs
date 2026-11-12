@@ -51,7 +51,7 @@ mod text_field;
 fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> Event {
     Event::key(LogicalKey::character(ch), KeyPhase::Down)
         .physical(physical)
-        .modifiers(ModifiersState::CONTROL | ModifiersState::SHIFT)
+        .modifiers(Modifiers::CTRL | Modifiers::SHIFT)
 }
 
 fn type_char_owned(ch: String, physical: PhysicalKey) -> Event {
@@ -142,11 +142,11 @@ fn named_key(key: Key, physical: PhysicalKey) -> Event {
 fn shift_arrow(key: Key, physical: PhysicalKey) -> Event {
     Event::key(key, KeyPhase::Down)
         .physical(physical)
-        .modifiers(ModifiersState::SHIFT)
+        .modifiers(Modifiers::SHIFT)
 }
 
 fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
     Event::key(LogicalKey::character(ch), KeyPhase::Down)
         .physical(physical)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }

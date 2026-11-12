@@ -1,4 +1,4 @@
-use crate::events::{Event, Key, KeyPhase, LogicalKey, ModifiersState};
+use crate::events::{Event, Key, KeyPhase, LogicalKey, Modifiers};
 use crossterm::event::{
     Event as TermEvent, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode,
 };
@@ -42,7 +42,7 @@ kittest_pub! {
         };
         let mut held = modifiers(event);
         if altgr {
-            held -= ModifiersState::CONTROL | ModifiersState::ALT;
+            held -= Modifiers::CTRL | Modifiers::ALT;
         }
         Some(
             Event::key(key, phase)
@@ -73,9 +73,8 @@ fn composed_text(event: &Event) -> Option<&str> {
         return None;
     };
     let text = key.text.as_deref()?;
-    let plain = key.phase == KeyPhase::Down
-        && !key.repeat
-        && (key.modifiers - ModifiersState::SHIFT).is_empty();
+    let plain =
+        key.phase == KeyPhase::Down && !key.repeat && (key.modifiers - Modifiers::SHIFT).is_empty();
     (plain && !text.is_empty() && !text.is_ascii() && !text.chars().any(char::is_control))
         .then_some(text)
 }
@@ -183,25 +182,22 @@ const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
     }
 }
 
-fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
+fn modifiers(event: &crossterm::event::KeyEvent) -> Modifiers {
     let mut state = held(event.modifiers);
     let shifted_char = matches!(event.code, KeyCode::Char(ch) if ch.is_uppercase());
     if event.code == KeyCode::BackTab || shifted_char {
-        state |= ModifiersState::SHIFT;
+        state |= Modifiers::SHIFT;
     }
     state
 }
 
-pub(crate) fn held(from: KeyModifiers) -> ModifiersState {
-    let mut state = ModifiersState::empty();
-    state.set(ModifiersState::SHIFT, from.contains(KeyModifiers::SHIFT));
-    state.set(
-        ModifiersState::CONTROL,
-        from.contains(KeyModifiers::CONTROL),
-    );
-    state.set(ModifiersState::ALT, from.contains(KeyModifiers::ALT));
+pub(crate) fn held(from: KeyModifiers) -> Modifiers {
+    let mut state = Modifiers::empty();
+    state.set(Modifiers::SHIFT, from.contains(KeyModifiers::SHIFT));
+    state.set(Modifiers::CTRL, from.contains(KeyModifiers::CONTROL));
+    state.set(Modifiers::ALT, from.contains(KeyModifiers::ALT));
     let meta = KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
-    state.set(ModifiersState::META, from.intersects(meta));
+    state.set(Modifiers::META, from.intersects(meta));
     state
 }
 

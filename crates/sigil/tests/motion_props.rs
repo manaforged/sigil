@@ -262,7 +262,7 @@ pub(crate) const fn hue(filter: &Filter) -> Option<f32> {
 
 fn played(node: NodeBuilder, keyframes: Keyframes) -> (Harness, Signal<bool>) {
     let flag = signal(false);
-    let mut ui = mount(node.paint_when(flag, move |state| state.animate(keyframes)));
+    let mut ui = mount(node.paint_when(flag, move |state| state.animation(keyframes)));
     start(&mut ui, flag);
     (ui, flag)
 }
@@ -369,7 +369,7 @@ fn a_translate_z_keyframe_moves_the_node_toward_the_viewer() {
             .ease(Easing::Linear)
             .keyframe(0.0, Property::TranslateZ(0.0))
             .keyframe(1.0, Property::TranslateZ(200.0));
-        let child = square().paint_when(flag, move |state| state.animate(keyframes));
+        let child = square().paint_when(flag, move |state| state.animation(keyframes));
         let mut ui = mount(under_perspective(child));
         start(&mut ui, flag);
         run(&mut ui, 0.5);

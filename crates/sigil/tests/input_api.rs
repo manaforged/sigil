@@ -4,9 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil::ErrorKind;
-use sigil::events::{
-    Event, Gesture, GestureEvent, LogicalKey, ModifiersState, ScrollPhase, Shortcut,
-};
+use sigil::events::{Event, Gesture, GestureEvent, LogicalKey, Modifiers, ScrollPhase, Shortcut};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 
@@ -14,13 +12,13 @@ use sigil::reactive::Owner;
 fn a_shortcut_parses_from_both_label_forms() {
     let expected = Shortcut::new(
         LogicalKey::character("k"),
-        ModifiersState::CONTROL | ModifiersState::SHIFT,
+        Modifiers::CTRL | Modifiers::SHIFT,
     );
     assert_eq!("ctrl+shift+k".parse::<Shortcut>(), Ok(expected.clone()));
     assert_eq!(expected.label_for(false).parse::<Shortcut>(), Ok(expected));
     let mac = Shortcut::new(
         LogicalKey::character("k"),
-        ModifiersState::META | ModifiersState::SHIFT,
+        Modifiers::META | Modifiers::SHIFT,
     );
     assert_eq!(mac.label_for(true).parse::<Shortcut>(), Ok(mac));
     assert!(matches!(

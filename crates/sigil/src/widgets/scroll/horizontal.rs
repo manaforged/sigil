@@ -1,7 +1,7 @@
 use crate::events::{Key, KeyEvent, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::widgets::{Layout, Widget};
 
 use super::{
@@ -23,13 +23,13 @@ impl Horizontal {
         let (viewport, probe) = explicit.map_or_else(
             || {
                 let probe = signal((0.0_f32, 0.0_f32));
-                (derived(move || probe.get().0), Some(probe))
+                (memo(move || probe.get().0), Some(probe))
             },
             |px| (signal(px), None),
         );
         Self {
             scroll_x: signal(0.0),
-            max: derived(move || (extent.get() - viewport.get()).max(0.0)),
+            max: memo(move || (extent.get() - viewport.get()).max(0.0)),
             extent,
             viewport,
             probe,
@@ -38,7 +38,7 @@ impl Horizontal {
 
     pub(crate) fn shifted(&self, node: NodeBuilder) -> NodeBuilder {
         let hs = *self;
-        let shift = derived(move || {
+        let shift = memo(move || {
             (
                 to_i16(hs.scroll_x.get().clamp(0.0, hs.max.get())),
                 to_i16(hs.extent.get()),
@@ -61,7 +61,7 @@ impl Horizontal {
 
     pub(crate) fn wrap(self, content: NodeBuilder) -> NodeBuilder {
         let hs = self;
-        let scrollable = derived(move || hs.max.get() > 0.0);
+        let scrollable = memo(move || hs.max.get() > 0.0);
         let mut root = container()
             .layout(
                 LayoutStyle::flex_column()
@@ -114,7 +114,7 @@ fn track(hs: Horizontal) -> NodeBuilder {
 }
 
 fn thumb(hs: Horizontal) -> NodeBuilder {
-    let geometry_signal = derived(move || {
+    let geometry_signal = memo(move || {
         let (width, travel) = geometry::thumb_metrics(hs.extent.get(), hs.viewport.get());
         let max = hs.max.get();
         let t = if max > 0.0 {

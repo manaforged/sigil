@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{Event, Key, KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use sigil::events::{Event, Key, KeyPhase, LogicalKey, Modifiers, Shortcut};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 
@@ -40,7 +40,7 @@ fn window(
     );
     column()
         .shortcut(
-            Shortcut::new(LogicalKey::character("c"), ModifiersState::CONTROL),
+            Shortcut::new(LogicalKey::character("c"), Modifiers::CTRL),
             move |event| {
                 copy.set(copy.get() + 1);
                 event.stop_propagation();
@@ -51,7 +51,7 @@ fn window(
             event.stop_propagation();
         })
         .key_capture(
-            Shortcut::new(LogicalKey::character("k"), ModifiersState::META),
+            Shortcut::new(LogicalKey::character("k"), Modifiers::META),
             move |event| {
                 command.set(command.get() + 1);
                 event.stop_propagation();
@@ -90,12 +90,11 @@ fn a_focused_terminal_gets_window_keys_except_command_shortcuts() {
         );
         press(
             &mut host,
-            Event::key(LogicalKey::character("c"), KeyPhase::Down)
-                .modifiers(ModifiersState::CONTROL),
+            Event::key(LogicalKey::character("c"), KeyPhase::Down).modifiers(Modifiers::CTRL),
         );
         press(
             &mut host,
-            Event::key(LogicalKey::character("k"), KeyPhase::Down).modifiers(ModifiersState::META),
+            Event::key(LogicalKey::character("k"), KeyPhase::Down).modifiers(Modifiers::META),
         );
 
         assert_eq!((window_enter.get(), window_copy.get()), (0, 0));

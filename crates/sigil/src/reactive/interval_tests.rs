@@ -166,7 +166,7 @@ fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
     });
 }
 
-struct CancelOnDrop(Rc<Cell<Option<IntervalId>>>);
+struct CancelOnDrop(Rc<Cell<Option<Timer>>>);
 
 impl Drop for CancelOnDrop {
     fn drop(&mut self) {

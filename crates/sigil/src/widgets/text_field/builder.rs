@@ -2,7 +2,7 @@ use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::Style;
 use crate::widgets::Widget;
 
@@ -119,7 +119,7 @@ impl TextFieldBuilder {
     pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
         let added = invalid.into_signal();
         self.invalid = Some(match self.invalid {
-            Some(before) => derived(move || before.get() || added.get()),
+            Some(before) => memo(move || before.get() || added.get()),
             None => added,
         });
         self
@@ -213,7 +213,7 @@ impl TextFieldBuilder {
         let clip_fail = runtime.input.clip_fail;
         let invalid = self.invalid;
         let inputs = FieldInputs {
-            invalid: Some(derived(move || {
+            invalid: Some(memo(move || {
                 invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
             })),
             overlay: self.style_accumulator.take_state_overlay(),

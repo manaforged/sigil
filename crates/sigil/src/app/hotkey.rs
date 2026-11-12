@@ -6,7 +6,7 @@ use crate::ErrorKind;
 use crate::app::Wake;
 use crate::app::bridge::Native;
 use crate::error::{AppResult, Error};
-use crate::hal::events::{KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use crate::hal::events::{KeyPhase, LogicalKey, Modifiers, Shortcut};
 use crate::reactive::EventChannel;
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
@@ -21,11 +21,11 @@ thread_local! {
     static REGISTERED: RefCell<HashMap<u32, Registered>> = RefCell::new(HashMap::new());
 }
 
-const MODIFIER_TOKENS: [(ModifiersState, &str); 4] = [
-    (ModifiersState::SHIFT, "shift"),
-    (ModifiersState::CONTROL, "control"),
-    (ModifiersState::ALT, "alt"),
-    (ModifiersState::META, "super"),
+const MODIFIER_TOKENS: [(Modifiers, &str); 4] = [
+    (Modifiers::SHIFT, "shift"),
+    (Modifiers::CTRL, "control"),
+    (Modifiers::ALT, "alt"),
+    (Modifiers::META, "super"),
 ];
 
 /// Registers a global shortcut and returns the channel of its key phases.
@@ -93,9 +93,12 @@ fn with_manager(
         native.installed(|slot| -> AppResult<()> {
             let manager = match &mut *slot {
                 Some(manager) => manager,
-                empty => empty.insert(GlobalHotKeyManager::new().map_err(Error::new)?),
+                empty => empty.insert(
+                    GlobalHotKeyManager::new()
+                        .map_err(|err| Error::new(crate::ErrorKind::Other, err))?,
+                ),
             };
-            op(manager).map_err(Error::new)
+            op(manager).map_err(|err| Error::new(crate::ErrorKind::Other, err))
         })
     })
 }
@@ -115,7 +118,7 @@ fn to_hotkey(shortcut: &Shortcut) -> AppResult<HotKey> {
         LogicalKey::Named(named) => text.push_str(&named.to_string()),
     }
     text.parse::<HotKey>()
-        .map_err(|err| Error::with_kind(ErrorKind::Config, err))
+        .map_err(|err| Error::new(ErrorKind::Config, err))
 }
 
 #[cfg(test)]

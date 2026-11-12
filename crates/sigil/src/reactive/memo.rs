@@ -10,14 +10,14 @@ use crate::reactive::signal::{Signal, signal_in};
 /// Creates a signal that recomputes from the signals it reads.
 #[must_use]
 #[track_caller]
-pub fn derived<T, F>(mut f: F) -> Signal<T>
+pub fn memo<T, F>(mut f: F) -> Signal<T>
 where
     T: Clone + PartialEq + 'static,
     F: FnMut() -> T + 'static,
 {
     let caller = Location::caller();
     let parent_owner =
-        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("derived()", caller));
+        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("memo()", caller));
     let holder: Rc<Cell<Option<Signal<T>>>> = Rc::new(Cell::new(None));
     let holder_inside = Rc::clone(&holder);
     effect(move || {

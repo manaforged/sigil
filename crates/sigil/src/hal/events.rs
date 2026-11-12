@@ -7,7 +7,7 @@ mod pointer;
 mod shortcut_parse;
 
 pub use gesture::{Gesture, GestureEvent};
-pub use keys::{Key, ModifiersState, PhysicalKey};
+pub use keys::{Key, Modifiers, PhysicalKey};
 #[cfg(feature = "desktop")]
 pub(crate) use keys::{for_each_named_key, for_each_physical_key};
 
@@ -97,15 +97,15 @@ impl From<String> for LogicalKey {
 }
 
 #[cfg(target_os = "macos")]
-const PRIMARY: ModifiersState = ModifiersState::META;
+const PRIMARY: Modifiers = Modifiers::META;
 #[cfg(not(target_os = "macos"))]
-const PRIMARY: ModifiersState = ModifiersState::CONTROL;
+const PRIMARY: Modifiers = Modifiers::CTRL;
 
-const MODIFIER_LABELS: [(ModifiersState, &str, &str); 4] = [
-    (ModifiersState::CONTROL, "⌃", "Ctrl"),
-    (ModifiersState::ALT, "⌥", "Alt"),
-    (ModifiersState::SHIFT, "⇧", "Shift"),
-    (ModifiersState::META, "⌘", "Super"),
+const MODIFIER_LABELS: [(Modifiers, &str, &str); 4] = [
+    (Modifiers::CTRL, "⌃", "Ctrl"),
+    (Modifiers::ALT, "⌥", "Alt"),
+    (Modifiers::SHIFT, "⇧", "Shift"),
+    (Modifiers::META, "⌘", "Super"),
 ];
 
 const KEY_LABELS: [(Key, &str, &str); 12] = [
@@ -129,13 +129,13 @@ pub struct Shortcut {
     /// The key.
     pub key: LogicalKey,
     /// The modifiers.
-    pub modifiers: ModifiersState,
+    pub modifiers: Modifiers,
 }
 
 impl Shortcut {
     /// Creates a shortcut.
     #[must_use]
-    pub fn new(key: impl Into<LogicalKey>, modifiers: ModifiersState) -> Self {
+    pub fn new(key: impl Into<LogicalKey>, modifiers: Modifiers) -> Self {
         Self {
             key: key.into(),
             modifiers,
@@ -145,13 +145,13 @@ impl Shortcut {
     /// Creates a shortcut with no modifiers.
     #[must_use]
     pub fn plain(key: impl Into<LogicalKey>) -> Self {
-        Self::new(key, ModifiersState::empty())
+        Self::new(key, Modifiers::empty())
     }
 
     /// Creates a shortcut that needs Ctrl.
     #[must_use]
     pub fn ctrl(key: impl Into<LogicalKey>) -> Self {
-        Self::new(key, ModifiersState::CONTROL)
+        Self::new(key, Modifiers::CTRL)
     }
 
     /// Creates a shortcut that needs Command on macOS and Ctrl elsewhere.
@@ -198,7 +198,7 @@ impl Shortcut {
     fn key_matches(&self, key: &LogicalKey) -> bool {
         match (&self.key, key) {
             (LogicalKey::Character(ours), LogicalKey::Character(theirs))
-                if self.modifiers.contains(ModifiersState::SHIFT) =>
+                if self.modifiers.contains(Modifiers::SHIFT) =>
             {
                 ours.chars()
                     .flat_map(char::to_lowercase)
@@ -240,7 +240,7 @@ pub struct KeyEvent {
     /// The physical.
     pub physical: PhysicalKey,
     /// The modifiers.
-    pub modifiers: ModifiersState,
+    pub modifiers: Modifiers,
     /// Whether repeat.
     pub repeat: bool,
     /// The phase.
@@ -255,7 +255,7 @@ impl KeyEvent {
         Self {
             key,
             physical: PhysicalKey::Unidentified,
-            modifiers: ModifiersState::empty(),
+            modifiers: Modifiers::empty(),
             repeat: false,
             phase,
             text: None,
@@ -265,7 +265,7 @@ impl KeyEvent {
 
     /// Returns the normalized modifiers.
     #[must_use]
-    pub const fn normalized_modifiers(&self) -> ModifiersState {
+    pub const fn normalized_modifiers(&self) -> Modifiers {
         normalize_modifiers(self.modifiers)
     }
 }
@@ -317,7 +317,7 @@ pub struct ScrollEvent {
     /// The delta.
     pub delta: ScrollDelta,
     /// The modifiers.
-    pub modifiers: ModifiersState,
+    pub modifiers: Modifiers,
     /// The phase.
     pub phase: ScrollPhase,
     propagation_stopped: bool,
@@ -328,7 +328,7 @@ impl ScrollEvent {
         Self {
             position,
             delta,
-            modifiers: ModifiersState::empty(),
+            modifiers: Modifiers::empty(),
             phase,
             propagation_stopped: false,
         }
@@ -372,11 +372,11 @@ pub enum WindowEvent {
     Occluded(bool),
 }
 
-const fn normalize_modifiers(modifiers: ModifiersState) -> ModifiersState {
+const fn normalize_modifiers(modifiers: Modifiers) -> Modifiers {
     modifiers.intersection(
-        ModifiersState::SHIFT
-            .union(ModifiersState::CONTROL)
-            .union(ModifiersState::ALT)
-            .union(ModifiersState::META),
+        Modifiers::SHIFT
+            .union(Modifiers::CTRL)
+            .union(Modifiers::ALT)
+            .union(Modifiers::META),
     )
 }

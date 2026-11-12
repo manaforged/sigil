@@ -245,5 +245,5 @@ fn modifier_chord_still_fires_while_text_input_focused() {
 fn ctrl_k() -> sigil::events::Event {
     sigil::events::Event::key(LogicalKey::character("k"), KeyPhase::Down)
         .physical(PhysicalKey::KeyK)
-        .modifiers(ModifiersState::CONTROL)
+        .modifiers(Modifiers::CTRL)
 }

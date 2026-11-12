@@ -1,5 +1,5 @@
 use sigil::events::Event;
-use sigil::events::{LogicalKey, ModifiersState};
+use sigil::events::{LogicalKey, Modifiers};
 use sigil::geometry::Point;
 
 use super::{Harness, Node};
@@ -98,15 +98,11 @@ impl Harness {
 
     #[track_caller]
     pub fn press(&mut self, key: impl Into<LogicalKey>) -> &mut Self {
-        self.press_with(key, ModifiersState::empty())
+        self.press_with(key, Modifiers::empty())
     }
 
     #[track_caller]
-    pub fn press_with(
-        &mut self,
-        key: impl Into<LogicalKey>,
-        modifiers: ModifiersState,
-    ) -> &mut Self {
+    pub fn press_with(&mut self, key: impl Into<LogicalKey>, modifiers: Modifiers) -> &mut Self {
         self.send(Event::press(key, modifiers))
     }
 

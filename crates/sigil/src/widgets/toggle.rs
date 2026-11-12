@@ -7,7 +7,7 @@ use crate::animation::runtime::presets;
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{
     ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, space,
 };
@@ -188,7 +188,7 @@ fn cell_track(on: Signal<bool>) -> NodeBuilder {
                 .shrink(0.0),
         )
         .style_reactive(move || if on.get() { CELL_ON } else { CELL_OFF })
-        .child(text(derived(move || {
+        .child(text(memo(move || {
             if on.get() {
                 CELL_TRACK_ON
             } else {

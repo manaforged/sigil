@@ -28,7 +28,7 @@ fn terminal_function_keys_reach_application_shortcuts() {
     for (number, expected) in [(1, Key::F1), (5, Key::F5), (35, Key::F35)] {
         let key = mapped(KeyCode::F(number), KeyModifiers::SHIFT).expect("function key dropped");
         assert_eq!(key.key, LogicalKey::Named(expected));
-        assert_eq!(key.modifiers, ModifiersState::SHIFT);
+        assert_eq!(key.modifiers, Modifiers::SHIFT);
         assert!(key.text.is_none());
     }
     for number in [0, 36, u8::MAX] {
@@ -44,10 +44,7 @@ fn shifted_letters_map_to_uppercase() {
     )
     .expect("shifted letter did not map");
     assert_eq!(key.key, LogicalKey::character("Z"));
-    assert!(
-        key.modifiers
-            .contains(ModifiersState::SHIFT | ModifiersState::CONTROL)
-    );
+    assert!(key.modifiers.contains(Modifiers::SHIFT | Modifiers::CTRL));
 }
 
 #[test]
@@ -106,10 +103,7 @@ fn altgr_characters_type_as_text() {
     for ch in ['@', '{', '€', 'ą'] {
         let key = mapped(KeyCode::Char(ch), altgr).expect("altgr character dropped");
         assert_eq!(key.text.as_deref(), Some(ch.to_string().as_str()));
-        assert!(
-            !key.modifiers
-                .intersects(ModifiersState::CONTROL | ModifiersState::ALT)
-        );
+        assert!(!key.modifiers.intersects(Modifiers::CTRL | Modifiers::ALT));
     }
     let shortcut = mapped(KeyCode::Char('k'), altgr).expect("ctrl+alt+k was dropped");
     assert!(shortcut.text.is_none());

@@ -10,7 +10,7 @@ use crate::reactive::runtime::Runtime;
 
 /// Stops the interval or timeout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct IntervalId(pub(crate) SourceId);
+pub struct Timer(pub(crate) SourceId);
 
 pub(crate) struct Deadline {
     seq: u64,
@@ -22,13 +22,13 @@ pub(crate) struct Deadline {
 
 /// Runs a closure on a repeating timer.
 #[track_caller]
-pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
+pub fn interval(period: Duration, callback: impl Fn() + 'static) -> Timer {
     register(period, Some(period), Box::new(callback))
 }
 
 /// Run `callback` once after `delay`.
 #[track_caller]
-pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId {
+pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> Timer {
     let once = RefCell::new(Some(callback));
     let fire = move || {
         let taken = once.borrow_mut().take();
@@ -40,7 +40,7 @@ pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId
 }
 
 #[track_caller]
-fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) -> IntervalId {
+fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) -> Timer {
     let owner = Owner::current().expect("interval or timeout called outside a reactive scope");
     let id = with_sources(|sources| {
         let deadline = Deadline {
@@ -50,13 +50,13 @@ fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) 
             next_fire: sources.now() + delay,
             callback,
         };
-        IntervalId(sources.map.insert(FrameSource::Deadline(deadline)))
+        Timer(sources.map.insert(FrameSource::Deadline(deadline)))
     });
     on_cleanup(move || id.cancel());
     id
 }
 
-impl IntervalId {
+impl Timer {
     /// Stops the interval or timeout.
     pub fn cancel(self) {
         let removed = try_with_sources(|sources| sources.map.remove(self.0));

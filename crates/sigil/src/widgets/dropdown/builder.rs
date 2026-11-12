@@ -6,7 +6,7 @@ use crate::animation::runtime::presets;
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, IntoPx, JustifyContent, LayoutStyle, Overflow, rows};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::{
     BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
@@ -208,7 +208,7 @@ fn build_trigger(
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {
-    let label_sig = derived(move || options.get(selected.get()).cloned().unwrap_or_default());
+    let label_sig = memo(move || options.get(selected.get()).cloned().unwrap_or_default());
     container()
         .layout(
             LayoutStyle::flex_row()

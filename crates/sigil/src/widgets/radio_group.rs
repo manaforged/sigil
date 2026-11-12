@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, memo};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, Tone};
 use crate::widgets::{Layout, Widget};
 
@@ -135,8 +135,8 @@ fn option_row(
     group_focus: Signal<bool>,
 ) -> NodeBuilder {
     let checked_key = key.clone();
-    let checked: Signal<bool> = derived(move || selected.get() == checked_key);
-    let ring_visible = derived(move || group_focus.get() && checked.get());
+    let checked: Signal<bool> = memo(move || selected.get() == checked_key);
+    let ring_visible = memo(move || group_focus.get() && checked.get());
     let row = container().layout(
         LayoutStyle::flex_row()
             .height(Metrics::current().control_height(ControlSize::Default))
@@ -209,7 +209,7 @@ fn cell_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
         .layout(LayoutStyle::block().width(cols(1.0)).height(rows(1.0)))
         .tone_scope(tone)
         .class(CELL_MARK)
-        .child(text(derived(move || {
+        .child(text(memo(move || {
             if checked.get() { "●" } else { "○" }.to_owned()
         })))
 }

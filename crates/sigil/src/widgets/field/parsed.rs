@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::reactive::{Reactive, Signal, derived, effect, signal};
+use crate::reactive::{Reactive, Signal, effect, memo, signal};
 use crate::style::Theme;
 use crate::style::theme::ambient::ActiveTheme;
 
@@ -104,7 +104,7 @@ impl<P: FieldParser> ParsedField<P> {
             theme,
             ..
         } = self;
-        inner.invalid_when(derived(move || {
+        inner.invalid_when(memo(move || {
             !theme.with(|current| parser.accepts(&buffer.get(), current))
         }))
     }

@@ -1,8 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase,
-};
+use crate::events::{Modifiers, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase};
 use crate::geometry::{Point, Scale};
 use winit::{
     event::{
@@ -11,12 +9,12 @@ use winit::{
     keyboard::ModifiersState as WinitModifiersState,
 };
 
-pub(crate) fn map_modifiers(modifiers: WinitModifiersState) -> ModifiersState {
-    let mut out = ModifiersState::empty();
-    out.set(ModifiersState::SHIFT, modifiers.shift_key());
-    out.set(ModifiersState::CONTROL, modifiers.control_key());
-    out.set(ModifiersState::ALT, modifiers.alt_key());
-    out.set(ModifiersState::META, modifiers.super_key());
+pub(crate) fn map_modifiers(modifiers: WinitModifiersState) -> Modifiers {
+    let mut out = Modifiers::empty();
+    out.set(Modifiers::SHIFT, modifiers.shift_key());
+    out.set(Modifiers::CTRL, modifiers.control_key());
+    out.set(Modifiers::ALT, modifiers.alt_key());
+    out.set(Modifiers::META, modifiers.super_key());
     out
 }
 

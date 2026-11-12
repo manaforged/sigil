@@ -19,7 +19,7 @@ fn tab_label(ws: Workspace, file: FileId) -> String {
 }
 
 fn tab_strip(ws: Workspace) -> impl IntoNode {
-    let labels = derived(move || {
+    let labels = memo(move || {
         ws.open
             .get()
             .into_iter()
@@ -147,7 +147,7 @@ fn no_editor() -> NodeBuilder {
 }
 
 pub(crate) fn editor(ws: Workspace) -> NodeBuilder {
-    let active = derived(move || ws.active());
+    let active = memo(move || ws.active());
     column()
         .fill()
         .min_width(0.0)

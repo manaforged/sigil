@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::{MouseButtons, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, memo, signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
 use crate::widgets::Widget;
 use crate::widgets::interaction::{is_cancel, is_primary};
@@ -217,7 +217,7 @@ where
     N: crate::kernel::IntoNode + 'static,
 {
     let pos_state = state.clone();
-    let pos = derived(move || {
+    let pos = memo(move || {
         let (x, y) = pos_state.position.get();
         (x + GHOST_OFFSET.0, y + GHOST_OFFSET.1)
     });

@@ -100,5 +100,8 @@ fn to_key(event: &Event) -> Option<MediaKey> {
 }
 
 fn backend_error(err: &playwire::Error) -> Error {
-    Error::new(std::io::Error::other(err.to_string()))
+    Error::new(
+        crate::ErrorKind::Other,
+        std::io::Error::other(err.to_string()),
+    )
 }

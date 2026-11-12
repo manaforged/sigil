@@ -1,4 +1,4 @@
-use crate::reactive::derived;
+use crate::reactive::memo;
 use crate::reactive::signal::{Signal, signal};
 
 /// A value or a closure that a widget reads inside an effect.
@@ -13,7 +13,7 @@ pub trait Reactive<T>: 'static {
         Self: Sized,
         T: Clone + PartialEq + 'static,
     {
-        derived(move || self.read())
+        memo(move || self.read())
     }
 }
 

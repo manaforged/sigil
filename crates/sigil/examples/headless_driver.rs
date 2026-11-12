@@ -41,7 +41,7 @@ fn click(host: &mut Host, name: &str) {
 fn main() {
     Owner::scope("headless-driver", || {
         let count = signal(0_i32);
-        let label_text = derived(move || format!("Count: {}", count.get()));
+        let label_text = memo(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
             column()
