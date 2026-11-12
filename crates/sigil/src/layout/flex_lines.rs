@@ -37,6 +37,7 @@ impl FlexItem {
         node: NodeRef<'_>,
         cb_main: f32,
         cb_cross: f32,
+        stretches: bool,
     ) -> Self {
         let measured = FlexCtx {
             cb: CbSize::across(ctx.axes, cb_main, cb_cross),
@@ -45,8 +46,15 @@ impl FlexItem {
         let style = node.style();
         let edges = NodeEdges::build(style, measured.cb.w);
         let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges, false);
-        let (cross_resolved, was_auto) =
-            item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges);
+        let cross_dim = ctx.axes.pick(style.size.height, style.size.width);
+        let stretched = stretches
+            && matches!(cross_dim, crate::layout::style_data::Length::Auto)
+            && matches!(style.align_self, None | Some(AlignItems::Stretch));
+        let (cross_resolved, was_auto) = if stretched {
+            (None, true)
+        } else {
+            item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges)
+        };
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
         let (min_cross, max_cross) = item_min_max_main(style, ctx.axes.cross(), cb_cross, &edges);
         let content_min = ctx.axes.row

@@ -14,7 +14,9 @@ use crate::layout::flex::{CbSize, FlexSolver, Position2};
 use crate::layout::flex_lines::{FlexItem, collect_lines};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp};
-use crate::layout::style_data::{Display, FlexDirection, FlexWrap, Length, Position, StyleData};
+use crate::layout::style_data::{
+    AlignItems, Display, FlexDirection, FlexWrap, Length, Position, StyleData,
+};
 
 mod absolute;
 mod flexible;
@@ -188,6 +190,12 @@ fn build_items(
 ) -> Result<Vec<FlexItem>, Error> {
     let forest = ctx.solver.scope().forest();
     let children = parent.children();
+    let own = parent.style();
+    let stretches = !ctx.axes.row
+        && !ctx.suppress_stretch
+        && matches!(own.flex_wrap, FlexWrap::NoWrap)
+        && matches!(own.align_items, None | Some(AlignItems::Stretch))
+        && ctx.definite_along(own, true);
     let mut items = Vec::with_capacity(children.len());
     for child_id in children {
         let child = forest
@@ -200,7 +208,13 @@ fn build_items(
         if matches!(style.position, Position::Absolute) {
             continue;
         }
-        items.push(FlexItem::build(ctx, child, container_main, container_cross));
+        items.push(FlexItem::build(
+            ctx,
+            child,
+            container_main,
+            container_cross,
+            stretches,
+        ));
     }
     if items.iter().any(|i| i.order != 0) {
         items.sort_by_key(|i| i.order);
