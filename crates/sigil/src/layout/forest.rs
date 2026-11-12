@@ -94,6 +94,7 @@ pub(crate) struct LayoutForest {
     intrinsic: Vec<IntrinsicMemo>,
     fills: Vec<std::cell::Cell<u8>>,
     last_text: Vec<std::cell::Cell<Option<TextSize>>>,
+    fonts: std::cell::Cell<Option<u64>>,
     solved: Vec<std::cell::Cell<Option<SolvedSubtree>>>,
 }
 
@@ -109,6 +110,7 @@ impl LayoutForest {
             intrinsic: Vec::new(),
             fills: Vec::new(),
             last_text: Vec::new(),
+            fonts: std::cell::Cell::new(None),
             solved: Vec::new(),
         }
     }
@@ -133,6 +135,10 @@ impl LayoutForest {
         self.fills.reserve(more);
         self.last_text.reserve(more);
         self.solved.reserve(more);
+    }
+
+    pub(crate) fn pin_fonts(&self, generation: Option<u64>) {
+        self.fonts.set(generation);
     }
 
     pub(crate) const fn current_frame(&self) -> u32 {

@@ -49,7 +49,7 @@ pub(crate) fn layout_item_subtree(
             (w, h),
             (assigned_w, assigned_h),
             scope.available(),
-            scope.text().font_generation(),
+            scope.font_generation(),
         );
         if forest.replay_subtree(id, key, (origin.x, origin.y)) {
             return Ok(());

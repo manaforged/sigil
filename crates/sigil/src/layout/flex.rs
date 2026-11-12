@@ -170,7 +170,7 @@ impl<'a> FlexSolver<'a> {
             (cb_main, cb_cross),
             along_main,
             self.scope.available(),
-            self.scope.text().font_generation(),
+            self.scope.font_generation(),
         )
     }
 

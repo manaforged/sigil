@@ -56,6 +56,13 @@ impl<'a> MeasureScope<'a> {
         self.text
     }
 
+    pub(crate) fn font_generation(&self) -> u64 {
+        self.forest
+            .fonts
+            .get()
+            .unwrap_or_else(|| self.text.font_generation())
+    }
+
     pub(crate) const fn available(&self) -> AvailableSpace {
         self.available
     }
@@ -95,7 +102,7 @@ impl<'a> MeasureScope<'a> {
         if text.ellipsis {
             return None;
         }
-        let memo_key = min_content_memo_key(node.id(), text, self.text.font_generation());
+        let memo_key = min_content_memo_key(node.id(), text, self.font_generation());
         if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
             return Some(hit.width);
         }
@@ -128,7 +135,7 @@ impl<'a> MeasureScope<'a> {
     ) -> Option<crate::layout::style_data::Axes<f32>> {
         let text = node.text()?;
         let mut memo_key =
-            text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
+            text_memo_key(node.id(), known, wrap_to, text, self.font_generation());
         if text.wrap && known.width.is_none() && wrap_to.is_none() {
             match self.available.w {
                 SpaceConstraint::Definite(value) => memo_key.wrap = value.to_bits(),
