@@ -135,6 +135,10 @@ impl LayoutEngine {
     }
 
     fn attach_results(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
+        crate::reactive::batch(|| self.attach_each(cx, ids))
+    }
+
+    fn attach_each(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
         let has_geometry_reactive = !self.geometry_reactive.is_empty();
         for id in ids {
             let Some(result) = self.fresh(id) else {
