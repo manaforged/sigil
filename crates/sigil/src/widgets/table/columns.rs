@@ -22,9 +22,9 @@ type CellFn<Row> = Rc<dyn Fn(&Row) -> Box<dyn IntoNode>>;
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum ColumnWidth {
-    /// The fixed col width.
+    /// A width in px.
     Fixed(f32),
-    /// The fraction col width.
+    /// A share of the free width, as a flex grow factor.
     Fraction(f32),
 }
 
@@ -32,10 +32,10 @@ pub enum ColumnWidth {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ColumnAlign {
-    /// The start col align.
+    /// Content at the start edge of the column.
     #[default]
     Start,
-    /// The end col align.
+    /// Content at the end edge of the column.
     End,
 }
 
@@ -85,7 +85,7 @@ impl<Row> Clone for TableColumn<Row> {
 }
 
 impl<Row> TableColumn<Row> {
-    /// Creates a table column.
+    /// Creates a column with the key `id` and the header text `title`.
     #[must_use]
     pub fn new(id: &'static str, title: impl Into<String>) -> Self {
         Self {
@@ -102,7 +102,7 @@ impl<Row> TableColumn<Row> {
         }
     }
 
-    /// Sets the text alignment.
+    /// Aligns cell content to the start or the end of the column.
     #[must_use]
     pub const fn align(mut self, align: ColumnAlign) -> Self {
         self.align = align;
@@ -117,14 +117,14 @@ impl<Row> TableColumn<Row> {
         self
     }
 
-    /// Sets whether the column can sort.
+    /// Lets the user sort by this column in the order that `compare` gives.
     #[must_use]
     pub fn sortable(mut self, compare: impl Fn(&Row, &Row) -> Ordering + 'static) -> Self {
         self.compare = Some(Rc::new(compare));
         self
     }
 
-    /// Sets the sort comparison.
+    /// Lets the user sort by this column in the order of the value that `key` returns.
     #[must_use]
     pub fn sort_by<K>(self, key: impl Fn(&Row) -> K + 'static) -> Self
     where
@@ -133,14 +133,14 @@ impl<Row> TableColumn<Row> {
         self.sortable(move |left, right| key(left).cmp(&key(right)))
     }
 
-    /// Sets whether the column can filter.
+    /// Keeps a row in the quick filter when `matches` returns true for the row and the query.
     #[must_use]
     pub fn filterable(mut self, matches: impl Fn(&Row, &str) -> bool + 'static) -> Self {
         self.filter = Some(Rc::new(matches));
         self
     }
 
-    /// Sets the renderer of each cell.
+    /// Renders each cell with the node that `render` returns for the row.
     #[must_use]
     pub fn cell<N>(mut self, render: impl Fn(&Row) -> N + 'static) -> Self
     where
@@ -190,27 +190,27 @@ impl<Row> TableColumn<Row> {
         self.edit.as_ref()
     }
 
-    /// Sets the width.
+    /// Sets the column width; the default is `ColumnWidth::Fraction(1.0)`.
     #[must_use]
     pub const fn width(mut self, width: ColumnWidth) -> Self {
         self.width = width;
         self
     }
 
-    /// Sets the min width.
+    /// Sets the smallest width in px of a fraction or resized column; the default is 48.
     #[must_use]
     pub const fn min_width(mut self, px: f32) -> Self {
         self.min_width = if px > 0.0 { px } else { 0.0 };
         self
     }
 
-    /// Returns the id.
+    /// The key that names the column in sort, width, and visibility calls.
     #[must_use]
     pub const fn id(&self) -> &'static str {
         self.id
     }
 
-    /// Returns the title.
+    /// The header text.
     #[must_use]
     pub fn title(&self) -> &str {
         &self.title
@@ -247,7 +247,7 @@ impl<Row> TableColumn<Row> {
         self.compare.is_some()
     }
 
-    /// Returns the alignment.
+    /// The edge of the column that cell content aligns to.
     #[must_use]
     pub const fn alignment(&self) -> ColumnAlign {
         self.align

@@ -68,7 +68,7 @@ pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
 }
 
 impl Host {
-    /// Creates a host for pixel or cell layout.
+    /// Creates a host that lays out in pixels or in terminal cells, as `mode` selects.
     #[must_use]
     pub fn new(mode: HostMode) -> Self {
         match mode {
@@ -143,7 +143,7 @@ impl Host {
         self.env.publish_viewport(viewport);
     }
 
-    /// Returns the host mode.
+    /// Whether this host lays out in pixels or in cells.
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.cx.host_mode()
@@ -217,12 +217,12 @@ impl Host {
         }
     }
 
-    /// Returns the node tree context.
+    /// The node tree of this host, for writing.
     pub const fn cx(&mut self) -> &mut Cx {
         &mut self.cx
     }
 
-    /// Returns the root.
+    /// The id of the mounted root node; `None` before a tree is mounted.
     #[must_use]
     pub const fn root(&self) -> Option<NodeId> {
         self.root
@@ -314,7 +314,7 @@ impl Host {
         self.on_tree(|cx, layout, router| router.focus_intent(cx, layout, intent));
     }
 
-    /// Returns the focus.
+    /// The id of the focused node; `None` when no node has focus.
     #[must_use]
     pub const fn focus(&self) -> Option<NodeId> {
         self.router.focus()
@@ -349,7 +349,7 @@ impl Host {
         self.layout(viewport).map(|_| ())
     }
 
-    /// Returns the surfaces.
+    /// The key and the laid-out rectangle of each surface node in the tree.
     #[must_use]
     pub fn surfaces(&self) -> Vec<(u64, Rect)> {
         let _env = self.enter();
@@ -359,7 +359,7 @@ impl Host {
         surface_holes(&self.cx, root)
     }
 
-    /// Returns the theme.
+    /// The theme attached to the root node, or the theme of the host when the root has none.
     #[must_use]
     pub fn theme(&self) -> &Theme {
         self.root

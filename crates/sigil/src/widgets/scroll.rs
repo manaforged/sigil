@@ -63,7 +63,7 @@ pub struct ScrollBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// A scroll event.
+/// A vertical scroll area around `content`, with a scrollbar.
 pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
@@ -77,7 +77,7 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
 }
 
 impl ScrollBuilder {
-    /// Sets the extent.
+    /// Sets the content height in px; without it, the scroll area measures `content`.
     pub fn extent(mut self, extent: impl Reactive<f32>) -> Self {
         self.extent = Some(extent.into_signal());
         self
@@ -89,13 +89,13 @@ impl ScrollBuilder {
         self
     }
 
-    /// Sets the scroll bind.
+    /// Binds the vertical scroll offset in px to `scroll_y`.
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
-    /// Sets the follow end.
+    /// Keeps the view at the end as the content grows, if it is at the end, when `on` is true.
     pub const fn follow_end(mut self, on: bool) -> Self {
         self.follow_end = on;
         self

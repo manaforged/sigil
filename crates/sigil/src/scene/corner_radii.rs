@@ -16,7 +16,7 @@ impl CornerRadii {
 
     kittest_pub! {
         if feature = "scene";
-        /// Creates a corner radii.
+        /// Creates radii in the order top left, top right, bottom right, bottom left.
         #[must_use]
         pub const fn new(
             top_left: f32,

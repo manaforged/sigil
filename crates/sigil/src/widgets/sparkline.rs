@@ -17,10 +17,10 @@ pub(crate) use glyphs::spark_glyph;
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum SparkMark {
-    /// The block spark mark.
+    /// Block glyphs, one value in each cell.
     #[default]
     Block,
-    /// The braille spark mark.
+    /// Braille dots, two values in each cell.
     Braille,
 }
 
@@ -28,10 +28,10 @@ pub enum SparkMark {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum SparkFill {
-    /// The solid spark fill.
+    /// The whole body in the solid color of the tone.
     #[default]
     Solid,
-    /// The shade spark fill.
+    /// The cells below the top edge in the shade color of the tone.
     Shade,
 }
 
@@ -85,25 +85,25 @@ pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
 }
 
 impl SparklineBuilder {
-    /// Sets the range.
+    /// Sets the values at the bottom and top of the graph; the default fits the data and 0.
     pub const fn range(mut self, low: f32, high: f32) -> Self {
         self.shape.range = Some((low, high));
         self
     }
 
-    /// Sets the tone.
+    /// Sets the color of the graph; the default is `Tone::Primary`.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.shape.tone = tone;
         self
     }
 
-    /// Sets the tones.
+    /// Sets a color for each value by index; `None` or a missing entry uses the base tone.
     pub fn tones(mut self, tones: impl IntoIterator<Item = Option<Tone>>) -> Self {
         self.shape.tones = tones.into_iter().collect();
         self
     }
 
-    /// Sets the mark.
+    /// Sets the glyphs that draw the graph; the default is `SparkMark::Block`.
     pub const fn mark(mut self, mark: SparkMark) -> Self {
         self.shape.mark = mark;
         self
@@ -115,7 +115,7 @@ impl SparklineBuilder {
         self
     }
 
-    /// Sets the rows.
+    /// Sets the height of the graph in text rows; the default and the minimum are 1.
     pub fn rows(mut self, rows: usize) -> Self {
         self.shape.rows = rows.max(1);
         self

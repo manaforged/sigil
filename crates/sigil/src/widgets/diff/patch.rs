@@ -3,13 +3,13 @@ use std::ops::Range;
 /// Whether a diff line was added, removed, or kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LineKind {
-    /// The context line kind.
+    /// A line that is the same in the old and the new text.
     Context,
-    /// The removed line kind.
+    /// A line that only the old text has, marked `-`.
     Removed,
-    /// The added line kind.
+    /// A line that only the new text has, marked `+`.
     Added,
-    /// The note line kind.
+    /// A line that starts with a backslash, such as a no-newline marker.
     Note,
 }
 
@@ -81,18 +81,18 @@ impl Patch {
         parser.patch
     }
 
-    /// Returns the line with this id.
+    /// The line with this id; `None` when the hunk or line index is out of range.
     #[must_use]
     pub fn line(&self, id: LineId) -> Option<&Line> {
         self.hunks.get(id.hunk)?.lines.get(id.line)
     }
 
-    /// Returns the changes.
+    /// The ids of all added and removed lines, in patch order.
     pub fn changes(&self) -> impl Iterator<Item = LineId> + '_ {
         (0..self.hunks.len()).flat_map(|hunk| self.hunk_changes(hunk))
     }
 
-    /// Returns the changed lines of a hunk.
+    /// The ids of the added and removed lines of hunk `hunk`; empty when there is no such hunk.
     pub fn hunk_changes(&self, hunk: usize) -> impl Iterator<Item = LineId> + '_ {
         self.hunks
             .get(hunk)

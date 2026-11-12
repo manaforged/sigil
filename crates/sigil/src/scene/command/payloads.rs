@@ -132,7 +132,7 @@ impl DrawRect {
     }
 
     kittest_pub! {
-    /// Sets the corner radii.
+    /// Sets the radius of each corner of the rectangle.
     #[must_use]
     #[doc(hidden)]
     pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
@@ -149,7 +149,7 @@ impl DrawRect {
     }
 
     kittest_pub! {
-        /// Sets the stroke.
+        /// Adds a stroke to the rectangle.
         #[must_use]
         #[doc(hidden)]
         pub const fn stroke(mut self, stroke: Stroke) -> Self {
@@ -208,7 +208,7 @@ impl DrawGradient {
     }
 
     kittest_pub! {
-        /// Sets the corner radii.
+        /// Sets the radius of each corner of the gradient fill.
         #[must_use]
         pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
             self.border_radius = border_radius;
@@ -226,7 +226,7 @@ impl DrawGradient {
     }
 
     kittest_pub! {
-        /// Sets the stroke.
+        /// Adds a stroke to the gradient fill.
         #[must_use]
         pub const fn stroke(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);
@@ -273,7 +273,7 @@ impl DrawPattern {
 
     kittest_pub! {
         if test;
-        /// Sets the corner radii.
+        /// Sets the radius of each corner of the pattern fill.
         #[must_use]
         pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
             self.border_radius = border_radius;
@@ -293,7 +293,7 @@ impl DrawPattern {
 
     kittest_pub! {
         if test;
-        /// Sets the stroke.
+        /// Adds a stroke to the pattern fill.
         #[must_use]
         pub const fn stroke(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);

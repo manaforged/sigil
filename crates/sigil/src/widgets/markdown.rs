@@ -106,7 +106,7 @@ pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
 }
 
 impl MarkdownEditBuilder {
-    /// Sets the disabled.
+    /// Disables the text editor pane while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self

@@ -23,10 +23,10 @@ pub enum Delivery {
 pub trait Clipboard {
     /// Writes text to the clipboard.
     fn set(&self, text: &str) -> Result<Delivery, Error>;
-    /// Returns the get.
+    /// The text on the clipboard; `None` when there is no text to read.
     fn get(&self) -> Option<String>;
 
-    /// Returns the image.
+    /// The image on the clipboard; the default implementation returns `Ok(None)`.
     #[cfg(feature = "clipboard-image")]
     fn image(&self) -> Result<Option<crate::kernel::ImageSource>, Error> {
         Ok(None)
@@ -70,7 +70,7 @@ pub fn install(clip: impl Clipboard + 'static) {
     CURRENT.with(|slot| *slot.borrow_mut() = Rc::new(clip));
 }
 
-/// Returns the installed clipboard.
+/// The installed clipboard; before `install` runs, it rejects writes and reads `None`.
 #[must_use]
 pub fn clipboard() -> Rc<dyn Clipboard> {
     CURRENT.with(|slot| Rc::clone(&*slot.borrow()))

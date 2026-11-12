@@ -59,7 +59,7 @@ pub fn button(label: impl Into<Glyph>) -> ButtonBuilder {
 }
 
 impl ButtonBuilder {
-    /// Creates a button builder.
+    /// Creates a button from a text label or an icon; an icon makes a square ghost button.
     pub fn new(label: impl Into<Glyph>) -> Self {
         match label.into() {
             Glyph::Text(text) => Self::labelled(text),
@@ -104,46 +104,46 @@ impl ButtonBuilder {
         self
     }
 
-    /// Sets the accessible.
+    /// Sets the name that screen readers announce in place of the label.
     pub fn accessible(mut self, name: impl Into<AccessibleName>) -> Self {
         self.accessible = Some(name.into());
         self
     }
 
-    /// Sets the pending.
+    /// Shows a spinner before the label and disables the button while `pending` is true.
     pub const fn pending(mut self, pending: Signal<bool>) -> Self {
         self.pending = Some(pending);
         self
     }
 
-    /// Applies the primary option.
+    /// Uses `Tone::Primary`, which fills the button solid unless a fill is set.
     pub const fn primary(self) -> Self {
         self.tone(Tone::Primary)
     }
 
-    /// Applies the neutral option.
+    /// Uses `Tone::Neutral`, which is the default tone.
     pub const fn neutral(self) -> Self {
         self.tone(Tone::Neutral)
     }
 
-    /// Applies the destructive option.
+    /// Uses `Tone::Error`, which fills the button solid unless a fill is set.
     pub const fn destructive(self) -> Self {
         self.tone(Tone::Error)
     }
 
-    /// Applies the outline option.
+    /// Draws the button as a border with no fill.
     pub const fn outline(self) -> Self {
         self.fill(ButtonFill::Outline)
     }
 
-    /// Sets the icon svg.
+    /// Shows the SVG source `svg` as an icon before the label.
     #[cfg(feature = "scene")]
     pub fn icon_svg(mut self, svg: impl Into<std::sync::Arc<str>>) -> Self {
         self.leading = Some(svg.into());
         self
     }
 
-    /// Sets the icon.
+    /// Shows the bundled `icon` before the label.
     #[cfg(feature = "scene")]
     pub fn icon(self, icon: crate::icons::Icon) -> Self {
         self.icon_svg(icon.svg())
@@ -162,23 +162,23 @@ impl ButtonBuilder {
         self
     }
 
-    /// Applies the ghost option.
+    /// Draws the button with no border and no fill until it has hover, focus, or a press.
     pub const fn ghost(self) -> Self {
         self.fill(ButtonFill::Ghost)
     }
 
-    /// Sets the tone.
+    /// Sets the color tone; `Primary` and `Error` fill solid and other tones fill soft by default.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = Some(tone);
         self
     }
 
-    /// Applies the solid option.
+    /// Fills the button with the solid look of its tone and adds a small shadow.
     pub const fn solid(self) -> Self {
         self.fill(ButtonFill::Solid)
     }
 
-    /// Applies the soft option.
+    /// Fills the button with a light tint of its tone and draws a border.
     pub const fn soft(self) -> Self {
         self.fill(ButtonFill::Soft)
     }
@@ -203,13 +203,13 @@ impl ButtonBuilder {
         }
     }
 
-    /// Sets the disabled.
+    /// Disables the button while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the size.
+    /// Sets the height and horizontal padding from `size`; the default is `ControlSize::Default`.
     pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
         self.width = ButtonWidth::Hug;
@@ -218,7 +218,7 @@ impl ButtonBuilder {
         self
     }
 
-    /// Sets the activate.
+    /// Runs `activate` when the user activates the button.
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self

@@ -97,7 +97,7 @@ impl Cell {
         } == *other
     }
 
-    /// Returns the blank cell.
+    /// A cell that holds one space with no colors and no attributes.
     #[must_use]
     pub const fn blank() -> Self {
         Self {

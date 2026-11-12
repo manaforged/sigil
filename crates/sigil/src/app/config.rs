@@ -2,10 +2,10 @@
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PanicPolicy {
-    /// The isolate panic policy.
+    /// Catches a panic in a frame and keeps the app running.
     #[default]
     Isolate,
-    /// The abort panic policy.
+    /// Does not catch the panic.
     Abort,
 }
 
@@ -104,7 +104,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    /// Creates an app config.
+    /// Creates a config with the default options and `title` as the app title.
     #[must_use]
     pub fn new(title: impl Into<String>) -> Self {
         #[cfg(not(app_host))]
@@ -118,7 +118,7 @@ impl AppConfig {
         config
     }
 
-    /// Sets the size.
+    /// Sets the window size in logical px (default 720x480); a terminal app caps its cells to it.
     #[must_use]
     pub const fn size(mut self, width: u32, height: u32) -> Self {
         self.size = (width, height);
@@ -139,14 +139,14 @@ impl AppConfig {
         self
     }
 
-    /// Sets the panic policy.
+    /// Sets what a panic during a frame does; the default is `PanicPolicy::Isolate`.
     #[must_use]
     pub const fn panic_policy(mut self, policy: PanicPolicy) -> Self {
         self.panic_policy = policy;
         self
     }
 
-    /// Sets the overlay.
+    /// Makes the window a frameless, transparent, always-on-top overlay that ignores the pointer.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn overlay(mut self, yes: bool) -> Self {
@@ -154,7 +154,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the frameless.
+    /// Removes the window frame and title bar.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn frameless(mut self, yes: bool) -> Self {
@@ -170,7 +170,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the anchor.
+    /// Places the window at a screen anchor, such as the bottom centre.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn anchor(mut self, anchor: crate::app::Anchor) -> Self {
@@ -178,14 +178,14 @@ impl AppConfig {
         self
     }
 
-    /// Sets the theme file.
+    /// Loads the theme from the file at `path` at start and watches the file for changes.
     #[must_use]
     pub fn theme_file(mut self, path: impl Into<std::path::PathBuf>) -> Self {
         self.theme_file = Some(path.into());
         self
     }
 
-    /// Applies the window option.
+    /// Runs the app in a window; this is the default when the `desktop` feature is on.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn window(mut self) -> Self {
@@ -193,7 +193,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the canvas.
+    /// Draws into the `<canvas>` element with this id in the browser; other targets ignore it.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub fn canvas(self, id: impl Into<String>) -> Self {
@@ -211,7 +211,7 @@ impl AppConfig {
         }
     }
 
-    /// Applies the terminal option.
+    /// Runs the app in the terminal instead of a window.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn terminal(mut self) -> Self {
@@ -243,7 +243,7 @@ impl AppConfig {
         self
     }
 
-    /// Terminal host.
+    /// Asks a terminal without the kitty keyboard protocol to report modified keys.
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn modify_other_keys(mut self, yes: bool) -> Self {
@@ -270,7 +270,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the user zoom.
+    /// Sets the zoom factor of the window content; the default is 1.0, and 0 or less counts as 1.0.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn user_zoom(mut self, zoom: f32) -> Self {
@@ -278,7 +278,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the min size.
+    /// Sets the smallest size that the user can give the window, in logical pixels.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn min_size(mut self, width: u32, height: u32) -> Self {
@@ -294,7 +294,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the callback that runs on close.
+    /// Runs `decide` when the user closes the window, to close, hide, or keep the window.
     #[cfg(feature = "desktop")]
     #[must_use]
     pub fn close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
@@ -310,7 +310,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the frame interval.
+    /// Sets the frame interval of the terminal host; the default is 16.667 ms.
     #[must_use]
     pub const fn frame_interval(mut self, interval: std::time::Duration) -> Self {
         self.frame_interval = interval;

@@ -119,7 +119,7 @@ kittest_pub! {
 impl GradientStopKey {
     kittest_pub! {
         #[doc(hidden)]
-        /// Creates a gradient stop key.
+        /// Creates a gradient stop with `color` at `offset`.
         #[must_use]
         pub const fn new(offset: u16, color: ColorAtom) -> Self {
             Self { offset, color }
@@ -142,7 +142,7 @@ kittest_pub! {
 impl BgGradient {
     kittest_pub! {
         #[doc(hidden)]
-        /// Creates a bg gradient.
+        /// Creates a background gradient along `axis` with `stops`.
         #[must_use]
         pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
             Self { axis, stops }

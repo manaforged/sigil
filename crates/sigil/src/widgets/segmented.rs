@@ -40,7 +40,7 @@ pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder
 }
 
 impl SegmentedBuilder {
-    /// Sets the label.
+    /// Sets the accessible name of the group.
     pub fn label(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self

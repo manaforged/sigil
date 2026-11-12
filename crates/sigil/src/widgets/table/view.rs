@@ -98,43 +98,43 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 }
 
 impl<Row: 'static> TableBuilder<Row> {
-    /// Sets the row height.
+    /// Sets the height of each body row in px.
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
-    /// Sets the header height.
+    /// Sets the height of the header row in px.
     pub const fn header_height(mut self, px: f32) -> Self {
         self.header_height = px;
         self
     }
 
-    /// Sets the viewport height.
+    /// Sets the largest height of the body in px when the table does not fill its parent.
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
-    /// Sets the viewport width.
+    /// Sets the width of the table in px.
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
-    /// Sets the row menu.
+    /// Shows the items that `build` returns in a context menu when the user right-clicks a row.
     pub fn row_menu(mut self, build: impl Fn(&Row) -> Vec<MenuItem> + 'static) -> Self {
         self.row_menu = Some(Rc::new(build));
         self
     }
 
-    /// Sets the row activate.
+    /// Runs `activate` with the row when the user clicks it or presses Enter on it.
     pub fn row_activate(mut self, activate: impl Fn(&Row) + 'static) -> Self {
         self.row_activate = Some(Rc::new(activate));
         self
     }
 
-    /// Sets the density.
+    /// Sets the row height, header height, cell padding, and text size from `density`.
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
         self.header_height = density.header();
@@ -142,19 +142,19 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    /// Applies the striped option.
+    /// Shades every second visible row.
     pub const fn striped(mut self) -> Self {
         self.striped = true;
         self
     }
 
-    /// Sets the framed.
+    /// Draws a border and rounded corners around the table when `framed` is true, the default.
     pub const fn framed(mut self, framed: bool) -> Self {
         self.frame = if framed { FRAMED } else { UNFRAMED };
         self
     }
 
-    /// Sets the scroll bind.
+    /// Binds the vertical scroll offset of the body in px to `scroll_y`.
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
@@ -166,19 +166,19 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    /// Sets the disabled.
+    /// Dims the table and blocks row selection and activation while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the empty.
+    /// Shows the node that `build` returns when no row is visible; the default text is "No rows".
     pub fn empty(mut self, build: impl Fn() -> NodeBuilder + 'static) -> Self {
         self.empty = Some(Rc::new(build));
         self
     }
 
-    /// Applies the selectable checkboxes option.
+    /// Adds a first column with a checkbox in the header and in each row.
     pub const fn selectable_checkboxes(mut self) -> Self {
         self.select = true;
         self

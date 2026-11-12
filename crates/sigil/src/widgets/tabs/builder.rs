@@ -64,7 +64,7 @@ impl core::fmt::Debug for TabsBuilder {
     }
 }
 
-/// Creates a tabs widget.
+/// A tab strip with optional content panels; add tabs with `.tab()` or `.labels()`.
 pub fn tabs() -> TabsBuilder {
     TabsBuilder {
         active: None,
@@ -85,7 +85,7 @@ pub fn tabs() -> TabsBuilder {
 }
 
 impl TabsBuilder {
-    /// Adds a tab.
+    /// Adds a tab with `label` and the panel that `content` builds.
     pub fn tab<F, N>(mut self, label: impl Into<String>, content: F) -> Self
     where
         F: FnOnce() -> N + 'static,
@@ -96,7 +96,7 @@ impl TabsBuilder {
         self
     }
 
-    /// Sets the labels.
+    /// Adds tabs with no panel from `labels`, after the tabs added with `.tab()`.
     pub fn labels<S>(mut self, labels: impl Reactive<Vec<S>>) -> Self
     where
         S: Into<String> + 'static,
@@ -107,67 +107,67 @@ impl TabsBuilder {
         self
     }
 
-    /// Sets the active.
+    /// Binds the index of the active tab to `active`; the default is a new signal at 0.
     pub const fn active(mut self, active: Signal<usize>) -> Self {
         self.active = Some(active);
         self
     }
 
-    /// Applies the line option.
+    /// Draws the tabs over a full-width bottom rule; the strip is centered by default.
     pub const fn line(mut self) -> Self {
         self.chrome = StripChrome::Line;
         self
     }
 
-    /// Applies the pill option.
+    /// Draws the tabs inside a rounded filled strip; the strip is centered by default.
     pub const fn pill(mut self) -> Self {
         self.chrome = StripChrome::Pill;
         self
     }
 
-    /// Sets the justify list.
+    /// Sets where the tab strip sits along the row.
     pub const fn justify_list(mut self, justify: JustifyContent) -> Self {
         self.list_justify = Some(justify);
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name of the tab list.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.aria_label = label.into();
         self
     }
 
-    /// Sets the disabled.
+    /// Disables the tabs at `indices`.
     pub fn disabled(mut self, indices: &[usize]) -> Self {
         self.disabled = indices.to_vec();
         self
     }
 
-    /// Sets the reorderable.
+    /// Lets the user drag tabs to reorder them when `enabled` is true; needs `.order()`.
     pub const fn reorderable(mut self, enabled: bool) -> Self {
         self.reorderable = enabled;
         self
     }
 
-    /// Sets the order.
+    /// Binds the display order of the tabs, as a list of tab indexes, to `signal`.
     pub const fn order(mut self, signal: Signal<Vec<usize>>) -> Self {
         self.order = Some(signal);
         self
     }
 
-    /// Sets the closeable.
+    /// Shows a close button on each tab when `enabled` is true.
     pub const fn closeable(mut self, enabled: bool) -> Self {
         self.closeable = enabled;
         self
     }
 
-    /// Sets the callback that closes a tab.
+    /// Runs `handler` with the tab index when the user activates a close button.
     pub fn close(mut self, handler: impl Fn(usize) + 'static) -> Self {
         self.close_handler = Some(Rc::new(handler));
         self
     }
 
-    /// Converts this tabs builder to container.
+    /// Wraps the tabs in a plain container node.
     #[must_use]
     pub fn into_container(self) -> NodeBuilder {
         container().child(self)

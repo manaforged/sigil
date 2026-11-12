@@ -32,7 +32,7 @@ pub struct WebFont {
 }
 
 impl WebFont {
-    /// Creates a web font.
+    /// Creates a web font for `script` from face `face_index` of the file at `url`.
     #[must_use]
     pub fn new(script: WebFontScript, url: impl Into<String>, face_index: u32) -> Self {
         Self {
@@ -93,7 +93,7 @@ pub fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>) {
         .unwrap_or_else(PoisonError::into_inner) = Some(fonts);
 }
 
-/// Returns the web fallback fonts.
+/// The installed web fallback fonts; the Noto defaults when none are installed.
 #[must_use]
 #[cfg(any(target_arch = "wasm32", feature = "kittest"))]
 pub fn web_fallbacks() -> Vec<WebFont> {

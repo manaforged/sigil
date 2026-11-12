@@ -29,7 +29,7 @@ impl Date {
         Self::new(year, month, day)
     }
 
-    /// Creates a date.
+    /// Creates a date; `None` when `month` or `day` is not in the calendar for `year`.
     #[must_use]
     pub fn new(year: i32, month: u8, day: u8) -> Option<Self> {
         if !(1..=12).contains(&month) {
@@ -40,7 +40,7 @@ impl Date {
             .then_some(Self { year, month, day })
     }
 
-    /// Returns the render.
+    /// The date as text in the format of the default `Locale`.
     #[must_use]
     pub fn render(self) -> String {
         self.render_in(&Locale::default())

@@ -142,7 +142,7 @@ impl PathNode {
         self
     }
 
-    /// Sets the stroke.
+    /// Strokes the path in `color` with a line of `width`.
     #[must_use]
     pub fn stroke(mut self, color: impl Into<ColorAtom>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));

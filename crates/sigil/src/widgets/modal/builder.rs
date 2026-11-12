@@ -78,7 +78,7 @@ pub fn modal(show: Signal<bool>) -> ModalBuilder {
 }
 
 impl ModalBuilder {
-    /// Creates a modal builder.
+    /// Creates a centred dialog that is shown while `show` is true.
     pub fn new(show: Signal<bool>) -> Self {
         Self {
             show,
@@ -95,43 +95,43 @@ impl ModalBuilder {
         }
     }
 
-    /// Sets the side.
+    /// Docks the dialog to `side` as a sheet: 360 px wide at left or right, 320 px high at bottom.
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
         self
     }
 
-    /// Sets the title.
+    /// Sets the title shown in the header, which is also the accessible name.
     pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
         self
     }
 
-    /// Sets the show.
+    /// Replaces the signal that shows the modal while it is true.
     pub const fn show(mut self, show: Signal<bool>) -> Self {
         self.show = show;
         self
     }
 
-    /// Sets the trap.
+    /// Keeps keyboard focus in the dialog when `enabled` is true; the default is true.
     pub const fn trap(mut self, enabled: bool) -> Self {
         self.trap = enabled;
         self
     }
 
-    /// Sets the escape closes.
+    /// Closes the modal on Escape when `enabled` is true; the default is true.
     pub const fn escape_closes(mut self, enabled: bool) -> Self {
         self.escape_closes = enabled;
         self
     }
 
-    /// Sets the dismiss on backdrop.
+    /// Closes the modal on a press of the backdrop when `enabled` is true; the default is false.
     pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
         self.dismiss_on_backdrop = enabled;
         self
     }
 
-    /// Sets the close button.
+    /// Shows a close button in the title row when `enabled` is true; the default is true.
     pub const fn close_button(mut self, enabled: bool) -> Self {
         self.close_button = if enabled {
             CloseControl::Shown
@@ -147,13 +147,13 @@ impl ModalBuilder {
         self
     }
 
-    /// Sets the footer.
+    /// Adds `action` to the footer row below the body.
     pub fn footer(mut self, action: impl IntoNode + 'static) -> Self {
         self.actions.push(Box::new(action));
         self
     }
 
-    /// Sets the actions.
+    /// Adds `cancel` and then `confirm` to the footer row.
     pub fn actions(
         self,
         cancel: impl IntoNode + 'static,

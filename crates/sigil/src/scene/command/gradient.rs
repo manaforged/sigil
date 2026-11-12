@@ -50,7 +50,7 @@ kittest_pub! {
 
 impl Gradient {
     kittest_pub! {
-        /// Creates a gradient that does not repeat.
+        /// Creates a gradient of `kind` with `stops` that does not repeat.
         #[must_use]
         pub fn new(kind: GradientKind, stops: impl Into<SmallVec<[GradientStop; 4]>>) -> Self {
             Self {
@@ -84,7 +84,7 @@ impl Gradient {
 
     kittest_pub! {
         if vector_paint;
-        /// Returns the offsets of the first and last stop when the gradient repeats.
+        /// The offsets of the first and last stop; `None` when the gradient does not repeat.
         #[must_use]
         pub fn repeat_span(&self) -> Option<[f32; 2]> {
             let (first, last) = (self.stops.first()?.offset, self.stops.last()?.offset);

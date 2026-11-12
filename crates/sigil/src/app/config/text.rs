@@ -90,7 +90,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the glyph dilation.
+    /// Sets the amount of glyph dilation.
     #[cfg(feature = "scene")]
     #[must_use]
     pub fn text_dilation(mut self, dilation: f32) -> Self {
@@ -98,7 +98,7 @@ impl AppConfig {
         self
     }
 
-    /// Sets the glyph sharpening.
+    /// Sets the amount of glyph sharpening.
     #[cfg(feature = "scene")]
     #[must_use]
     pub fn text_sharpen(mut self, sharpen: f32) -> Self {

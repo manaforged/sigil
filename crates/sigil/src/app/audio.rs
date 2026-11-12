@@ -30,7 +30,7 @@ impl core::fmt::Debug for Player {
 }
 
 impl Player {
-    /// Creates a player.
+    /// Creates a player that is not playing, at full volume, with no device open.
     #[must_use]
     pub fn new() -> Self {
         let player = Self {

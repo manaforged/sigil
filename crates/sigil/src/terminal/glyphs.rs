@@ -17,7 +17,7 @@ pub enum Glyphs {
 
 const BRAILLE: std::ops::RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 
-/// Returns the current character set.
+/// The character set detected from the environment variables.
 #[cfg(feature = "kittest")]
 #[must_use]
 pub fn glyphs() -> Glyphs {

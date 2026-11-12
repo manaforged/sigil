@@ -73,7 +73,7 @@ impl Node {
     }
 
     kittest_pub! {
-        /// Returns the version.
+        /// A counter that goes up by one, wrapping, each time the node is marked changed.
         #[must_use]
         #[inline]
         pub const fn version(&self) -> u32 {
@@ -97,7 +97,7 @@ impl Node {
             .attach(value)
     }
 
-    /// Returns the get extension.
+    /// The extension value of type `T` on this node; `None` when none is attached.
     #[must_use]
     pub fn extension<T: 'static>(&self) -> Option<&T> {
         if inline::<T>() {
@@ -135,13 +135,13 @@ impl Node {
         (&mut self.layout as &mut dyn Any).downcast_mut::<Option<T>>()
     }
 
-    /// Returns the parent.
+    /// The id of the parent node; `None` for a node with no parent.
     #[must_use]
     pub const fn parent(&self) -> Option<NodeId> {
         self.parent
     }
 
-    /// Returns the children.
+    /// The ids of the child nodes, in order.
     #[must_use]
     pub fn children(&self) -> &[NodeId] {
         &self.children
@@ -206,7 +206,7 @@ impl NodeExtensions {
         None
     }
 
-    /// Returns the get.
+    /// The stored value of type `T`; `None` when none is stored.
     #[must_use]
     pub fn get<T: 'static>(&self) -> Option<&T> {
         let tid = TypeId::of::<T>();

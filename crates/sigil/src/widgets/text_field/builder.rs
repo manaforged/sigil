@@ -68,7 +68,7 @@ pub fn text_field(value: Signal<String>) -> TextFieldBuilder {
 }
 
 impl TextFieldBuilder {
-    /// Creates a text field builder.
+    /// Creates a single-line input that edits `value`.
     pub fn new(value: Signal<String>) -> Self {
         Self {
             value,
@@ -93,23 +93,23 @@ impl TextFieldBuilder {
         }
     }
 
-    /// Returns the signal that says whether the caret shows.
+    /// A signal that controls whether the caret is drawn; it starts true.
     pub fn caret_visible(&mut self) -> Signal<bool> {
         *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
-    /// Returns the signal that holds the horizontal scroll offset.
+    /// A signal of the horizontal scroll offset of the text; it starts at 0.
     pub fn scroll_offset(&mut self) -> Signal<f32> {
         *self.scroll_offset.get_or_insert_with(|| signal(0.0_f32))
     }
 
-    /// Sets the placeholder.
+    /// Sets the text shown while the field is empty.
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
-    /// Sets the disabled.
+    /// Blocks edits while `flag` is true.
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
         self.disabled = Some(flag.into_signal());
         self
@@ -149,37 +149,37 @@ impl TextFieldBuilder {
         self
     }
 
-    /// Sets the clipboard.
+    /// Replaces the default clipboard that cut, copy, and paste use.
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self
     }
 
-    /// Applies the password option.
+    /// Shows each character as `*` unless the `reveal` signal is true.
     pub const fn password(mut self) -> Self {
         self.password = true;
         self
     }
 
-    /// Sets the reveal.
+    /// Shows the text of a password field while `show` is true.
     pub const fn reveal(mut self, show: Signal<bool>) -> Self {
         self.reveal = Some(show);
         self
     }
 
-    /// Sets the leading.
+    /// Shows `node` inside the field before the text.
     pub fn leading(mut self, node: impl IntoNode + 'static) -> Self {
         self.adorn.leading = Some(Box::new(node));
         self
     }
 
-    /// Sets the trailing.
+    /// Shows `node` inside the field after the text.
     pub fn trailing(mut self, node: impl IntoNode + 'static) -> Self {
         self.adorn.trailing = Some(Box::new(node));
         self
     }
 
-    /// Applies the clearable option.
+    /// Shows a button that clears the text and focuses the field, while the text is not empty.
     pub const fn clearable(mut self) -> Self {
         self.clearable = true;
         self

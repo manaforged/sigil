@@ -113,19 +113,19 @@ impl Capture {
         }
     }
 
-    /// Sets the device scale.
+    /// Sets the device scale of the capture; the default is 1.
     pub const fn scale(mut self, scale: f32) -> Self {
         self.scale = scale;
         self
     }
 
-    /// Sets the clear color.
+    /// Sets the clear color of the capture; the default is opaque black.
     pub const fn clear(mut self, clear: Rgba) -> Self {
         self.clear = clear;
         self
     }
 
-    /// Returns the size of the captured texture in pixels.
+    /// The size of the captured texture in pixels.
     #[must_use]
     pub const fn size_px(&self) -> [u32; 2] {
         self.size_px

@@ -64,13 +64,13 @@ where
 }
 
 impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
-    /// Sets the placeholder.
+    /// Sets the placeholder of the input, which also names the group for assistive technology.
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.state = self.state.placeholder(text);
         self
     }
 
-    /// Sets the disabled.
+    /// Blocks the input and tag removal while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.state = self.state.disabled(disabled);
         self

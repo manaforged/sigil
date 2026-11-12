@@ -272,7 +272,7 @@ impl Capabilities {
         draft(&env).caps
     }
 
-    /// Returns the probe caps.
+    /// Asks the terminal for its capabilities; uses the environment alone when raw mode fails.
     #[must_use]
     pub fn probe() -> Self {
         let env = |key: &str| std::env::var(key).ok();

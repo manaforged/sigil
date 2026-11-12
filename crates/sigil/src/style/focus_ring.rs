@@ -22,21 +22,21 @@ impl From<Signal<bool>> for FocusRing {
 }
 
 impl FocusRing {
-    /// Sets the ring color.
+    /// Sets the color of the focus ring.
     #[must_use]
     pub fn color(mut self, color: impl Into<ColorAtom>) -> Self {
         self.color = Some(color.into());
         self
     }
 
-    /// Sets the stroke width in pixels.
+    /// Sets the stroke width of the focus ring in pixels.
     #[must_use]
     pub const fn width(mut self, width: f32) -> Self {
         self.width = Some(width);
         self
     }
 
-    /// Sets the distance from the node in pixels.
+    /// Sets the distance between the node and the focus ring in pixels.
     #[must_use]
     pub const fn offset(mut self, offset: f32) -> Self {
         self.offset = Some(offset);

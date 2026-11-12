@@ -3,7 +3,7 @@ use crate::reactive::signal::{Signal, signal};
 
 /// A value or a closure that a widget reads inside an effect.
 pub trait Reactive<T>: 'static {
-    /// Returns the read.
+    /// The current value, read inside an effect so that a signal read subscribes.
     fn read(&self) -> T;
 
     /// Converts this reactive to signal.

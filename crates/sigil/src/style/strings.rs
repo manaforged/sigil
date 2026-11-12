@@ -95,7 +95,7 @@ string_keys! {
 }
 
 impl StringKey {
-    /// Returns the key with this table name.
+    /// The key with this table name; `None` for an unknown name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         NAMES
@@ -126,7 +126,7 @@ impl Strings {
         }
     }
 
-    /// Creates a table from name and text pairs.
+    /// Creates a table from key and text pairs on top of the English strings.
     #[must_use]
     pub fn from_table(table: &[(StringKey, &'static str)]) -> Self {
         table.iter().fold(Self::english(), |strings, (key, value)| {

@@ -40,7 +40,7 @@ impl<T: 'static, E: 'static> Clone for Task<T, E> {
 
 impl<T: 'static, E: 'static> Copy for Task<T, E> {}
 
-/// Creates a task that can run again and cancel its previous run.
+/// Creates a task that runs the future from `make`; only the newest run sets the status.
 #[must_use]
 #[track_caller]
 pub fn task<T, E, F, Fut>(make: F) -> Task<T, E>
@@ -103,7 +103,7 @@ impl<T: 'static, E: 'static> Task<T, E> {
         previous.id + 1
     }
 
-    /// Returns the status.
+    /// The current status of the task; a read inside an effect subscribes to it.
     #[must_use]
     pub fn status(self) -> Status<T, E>
     where

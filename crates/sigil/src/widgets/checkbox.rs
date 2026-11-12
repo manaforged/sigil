@@ -88,7 +88,7 @@ pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
 }
 
 impl CheckboxBuilder {
-    /// Creates a checkbox builder.
+    /// Creates a checkbox that reads and writes `checked`; the tone defaults to `Tone::Primary`.
     pub fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
@@ -102,31 +102,31 @@ impl CheckboxBuilder {
         }
     }
 
-    /// Sets the label.
+    /// Sets the text shown beside the box, which is also the accessible name.
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Sets the disabled.
+    /// Disables the checkbox while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the indeterminate.
+    /// Shows a dash in place of the check mark while `partial` is true.
     pub const fn indeterminate(mut self, partial: Signal<bool>) -> Self {
         self.partial = Some(partial);
         self
     }
 
-    /// Sets the tone.
+    /// Sets the fill of a checked box: `Tone::Neutral` is neutral and every other tone is primary.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Sets the change.
+    /// Runs `change` with the new value when the user toggles the checkbox.
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self

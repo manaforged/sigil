@@ -35,7 +35,7 @@ pub struct Shadow {
 }
 
 impl Shadow {
-    /// Creates a shadow.
+    /// Creates an outer shadow from its offset, blur, spread, and RGBA color.
     #[must_use]
     pub const fn new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4]) -> Self {
         Self {
@@ -47,7 +47,7 @@ impl Shadow {
         }
     }
 
-    /// Creates a shadow with no offset.
+    /// Creates a glow: a shadow of `color` with no offset.
     #[must_use]
     pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
         let [r, g, b] = srgb::decode_rgb(color);
@@ -56,7 +56,7 @@ impl Shadow {
     }
 
     kittest_pub! {
-        /// Sets the kind.
+        /// Sets whether the shadow is outer, inner, or a glow.
         #[must_use]
         #[doc(hidden)]
         pub const fn kind(mut self, kind: ShadowKind) -> Self {

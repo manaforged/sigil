@@ -34,7 +34,7 @@ impl MouseTracking {
     }
 }
 
-/// Returns the layout point of a cell.
+/// The layout point at the centre of the cell at `col`, `row`.
 #[cfg(feature = "kittest")]
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {

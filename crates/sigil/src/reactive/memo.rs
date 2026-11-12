@@ -7,7 +7,7 @@ use crate::reactive::effect::effect;
 use crate::reactive::runtime::{RuntimeState, with_rt};
 use crate::reactive::signal::{Signal, signal_in};
 
-/// Creates a signal that recomputes from the signals it reads.
+/// Creates a signal that holds the result of `f` and updates when a signal that `f` reads changes.
 #[must_use]
 #[track_caller]
 pub fn memo<T, F>(mut f: F) -> Signal<T>

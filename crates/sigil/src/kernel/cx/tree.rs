@@ -13,7 +13,7 @@ impl Cx {
         }
     }
 
-    /// Returns the parent of this node.
+    /// The id of the parent of node `id`; `None` for a node with no parent or an unknown id.
     #[must_use]
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
         self.nodes.get(id.key()).and_then(|node| node.parent)

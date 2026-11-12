@@ -24,7 +24,7 @@ static EMPTY: &[StyleAtom] = &[];
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
-    /// Whether indeterminate.
+    /// True when the bar shows a moving segment and not a filled fraction.
     pub indeterminate: bool,
     tone: Tone,
     name: Option<AccessibleName>,
@@ -39,7 +39,7 @@ pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
 }
 
 impl ProgressBuilder {
-    /// Creates a progress builder.
+    /// Creates a bar that shows `value` as a fraction of `max`.
     pub fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
             value,
@@ -53,19 +53,19 @@ impl ProgressBuilder {
         }
     }
 
-    /// Applies the indeterminate option.
+    /// Draws a fixed segment that moves along the track as `value` goes from 0.0 to 1.0.
     pub const fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
         self
     }
 
-    /// Sets the tone.
+    /// Sets the fill color of a determinate bar; the default is `Tone::Primary`.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name and shows it as a caption before the bar.
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         let name = name.into();
         self.caption = match &name {

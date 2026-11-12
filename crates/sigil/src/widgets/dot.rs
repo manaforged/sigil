@@ -24,7 +24,7 @@ pub fn dot(tone: Tone) -> DotBuilder {
 }
 
 impl DotBuilder {
-    /// Creates a dot builder.
+    /// Creates a status dot in `tone` at `ControlSize::Compact`.
     pub fn new(tone: Tone) -> Self {
         Self {
             tone,
@@ -34,7 +34,7 @@ impl DotBuilder {
         }
     }
 
-    /// Sets the size.
+    /// Sets the diameter: 8, 12, or 16 px for compact, default, or wide; one cell on a cell grid.
     pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self

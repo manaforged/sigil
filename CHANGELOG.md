@@ -284,6 +284,8 @@ First public release.
 - Two widget methods take one-word names. Migration: `presence_tween(shown, ms, easing)` becomes `presence(shown, ms, easing)` and `selectable_text(yes)` becomes `selectable(yes)`.
 - One window type and one way to command it. Migration: `WindowId` becomes `Window`; `events::window_command(command)` (0.1 `request_window_command`) is removed, use `Window::current()` and `Window::command(command)`; `open(url)` becomes `open_url(url)`.
 - `Size` is a width and a height. Migration: the layout constraint `Size` (`Size::fixed(w, h)`, `geometry::Size`) becomes `Constraint`, and `LogicalSize` becomes `Size`. The prelude exports both.
+- `DiffBuilder::change` is removed: the widget stored the callback and never called it. Switch layouts by passing a different `DiffView` to `.view(..)`.
+- Doc comments on about 700 public items now say what the item does, its unit and its default, in place of sentences generated from the name.
 - Key names follow the web: `Key` (the named keys) becomes `NamedKey`, and `LogicalKey` becomes `Key`, so `LogicalKey::Named(Key::Enter)` is now `Key::Named(NamedKey::Enter)`. `.invalid_when(flag)` becomes `.invalid(flag)` and `.visible_when(flag)` becomes `.visible(flag)`.
 - `Error::new` takes the kind: `Error::with_kind(kind, err)` becomes `Error::new(kind, err)`, and `Error::new(err)` becomes `Error::new(ErrorKind::Other, err)`. The unused `ErrorKind::Svg` is removed.
 - `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.

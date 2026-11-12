@@ -103,25 +103,25 @@ pub struct GeneratedScene {
 }
 
 impl GeneratedScene {
-    /// Returns the drawing commands.
+    /// The drawing commands of the scene.
     #[must_use]
     pub fn commands(&self) -> &[SceneCommand] {
         &self.commands
     }
 
-    /// Returns the logical viewport.
+    /// The logical viewport of the scene.
     #[must_use]
     pub const fn viewport(&self) -> (f32, f32) {
         self.viewport
     }
 
-    /// Returns the device scale.
+    /// The device scale of the scene.
     #[must_use]
     pub const fn scale(&self) -> f32 {
         self.scale
     }
 
-    /// Returns the clear color.
+    /// The clear color of the scene.
     #[must_use]
     pub const fn clear(&self) -> Rgba {
         self.clear

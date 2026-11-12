@@ -58,7 +58,7 @@ impl FieldControl for TextFieldBuilder {
 }
 
 impl<C: FieldControl> FieldBuilder<C> {
-    /// Sets the error.
+    /// Shows the error text below the control and marks the control invalid while it is `Some`.
     pub fn error(mut self, error: impl Reactive<Option<String>>) -> Self {
         let error = error.into_signal();
         self.control = self.control.invalid(memo(move || error.get().is_some()));
@@ -68,7 +68,7 @@ impl<C: FieldControl> FieldBuilder<C> {
 }
 
 impl<C> FieldBuilder<C> {
-    /// Sets the required.
+    /// Shows the required mark after the label and reports the control as required while true.
     pub fn required(mut self, required: impl Reactive<bool>) -> Self {
         self.required = Some(required.into_signal());
         self

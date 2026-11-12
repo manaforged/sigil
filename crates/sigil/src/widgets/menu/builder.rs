@@ -42,7 +42,7 @@ impl std::fmt::Debug for MenuItem {
 }
 
 impl MenuItem {
-    /// Creates a menu item.
+    /// Creates an enabled menu item with no hint and no action.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
@@ -61,21 +61,21 @@ impl MenuItem {
         self
     }
 
-    /// Sets the disabled.
+    /// Disables the item when `yes` is true, so the user cannot choose it.
     #[must_use]
     pub const fn disabled(mut self, yes: bool) -> Self {
         self.disabled = yes;
         self
     }
 
-    /// Sets the submenu.
+    /// Shows a chevron after the label when `yes` is true, to mark an item that opens a submenu.
     #[must_use]
     pub const fn submenu(mut self, yes: bool) -> Self {
         self.submenu_indicator = yes;
         self
     }
 
-    /// Sets the action the item runs.
+    /// Runs `on_activate` when the user chooses the item; the menu then closes.
     #[must_use]
     pub fn activate(mut self, on_activate: impl Fn() + 'static) -> Self {
         self.on_activate = Some(Rc::new(on_activate));
@@ -102,7 +102,7 @@ pub fn menu(open: Signal<bool>) -> MenuBuilder {
 }
 
 impl MenuBuilder {
-    /// Creates a menu builder.
+    /// Creates a popup menu that is shown while `open` is true.
     pub fn new(open: Signal<bool>) -> Self {
         Self {
             open,
@@ -115,19 +115,19 @@ impl MenuBuilder {
         }
     }
 
-    /// Sets the label.
+    /// Sets the accessible name; the default is the menu string of the theme.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Sets the host.
+    /// Runs item actions under `owner` while it is live; the default is the current owner.
     pub const fn host(mut self, owner: Owner) -> Self {
         self.host = Some(owner);
         self
     }
 
-    /// Sets the anchor.
+    /// Places the top-left corner of the panel at `(x, y)` px in a layer that fills the parent.
     pub const fn anchor(mut self, x: f32, y: f32) -> Self {
         self.anchor = Some((x, y));
         self
@@ -139,7 +139,7 @@ impl MenuBuilder {
         self
     }
 
-    /// Applies the separator option.
+    /// Adds a separator row.
     pub fn separator(mut self) -> Self {
         self.rows.push(Row::Separator);
         self

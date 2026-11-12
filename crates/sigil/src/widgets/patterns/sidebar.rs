@@ -53,7 +53,7 @@ pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {
 }
 
 impl SidebarBuilder {
-    /// Sets the resizable.
+    /// Adds a handle that resizes the width between `min` and `max` px by drag or arrow keys.
     pub const fn resizable(mut self, min: f32, max: f32) -> Self {
         self.resizable = Some((min, max));
         self

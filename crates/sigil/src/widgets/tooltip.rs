@@ -53,7 +53,7 @@ pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
 }
 
 impl TooltipBuilder {
-    /// Creates a tooltip builder.
+    /// Creates a tooltip that shows `label` above its child with no delay.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -66,25 +66,25 @@ impl TooltipBuilder {
         }
     }
 
-    /// Sets the delay.
+    /// Sets the time in ms that the pointer must hover before the tooltip shows; the default is 0.
     pub const fn delay(mut self, ms: u64) -> Self {
         self.delay_ms = ms;
         self
     }
 
-    /// Sets the hint.
+    /// Shows `hint`, such as a key shortcut, in muted text below the label; `None` shows nothing.
     pub fn hint(mut self, hint: Option<impl Into<String>>) -> Self {
         self.shortcut = hint.map(Into::into);
         self
     }
 
-    /// Adds a child.
+    /// Sets the node that the tooltip describes and that shows it on hover.
     pub fn child(mut self, target: impl IntoNode + 'static) -> Self {
         self.child = Some(Box::new(target));
         self
     }
 
-    /// Applies the clamp top option.
+    /// Shows the tooltip below its child and not above.
     pub const fn clamp_top(mut self) -> Self {
         self.clamp_top = true;
         self

@@ -14,7 +14,7 @@ macro_rules! tokens {
             /// Every token.
             pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
 
-            /// Returns the theme file name of this token.
+            /// The name of this token in a theme file.
             #[must_use]
             pub const fn name(self) -> &'static str {
                 match self {
@@ -145,7 +145,7 @@ impl Token {
     /// The number of tokens.
     pub const COUNT: usize = Self::ALL.len();
 
-    /// Returns the color scale of this token.
+    /// The token for step `step` (1 to 12) of `role`; `None` for a step out of range.
     #[must_use]
     pub fn scale(role: ScaleRole, step: u8) -> Option<Self> {
         let offset = usize::from(step.checked_sub(1)?);
@@ -162,7 +162,7 @@ impl Token {
         self as usize
     }
 
-    /// Returns the scale step of this token.
+    /// The scale role and step (1 to 12) of this token; `None` for a token outside the scales.
     #[must_use]
     pub fn scale_step(self) -> Option<(ScaleRole, u8)> {
         let offset = self.index().checked_sub(SEMANTIC)?;

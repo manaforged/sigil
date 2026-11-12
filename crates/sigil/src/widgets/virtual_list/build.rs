@@ -25,7 +25,7 @@ where
     T: 'static,
     R: RowRender<T>,
 {
-    /// Sets the scrollbar.
+    /// Shows a vertical scrollbar on the right edge when `on` is true; the default is false.
     pub const fn scrollbar(mut self, on: bool) -> Self {
         self.scrollbar = on;
         self

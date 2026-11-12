@@ -333,7 +333,7 @@ kittest_pub! {
 impl StyleAtom {
     kittest_pub! {
         #[doc(hidden)]
-        /// Returns the affects layout.
+        /// Whether this atom changes layout, such as padding, margin, gap, or size.
         #[must_use]
         pub const fn affects_layout(self) -> bool {
             matches!(

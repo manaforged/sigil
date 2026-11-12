@@ -58,13 +58,13 @@ impl<B> std::fmt::Debug for Render<B> {
 }
 
 impl<B> Render<B> {
-    /// Sets the interaction state.
+    /// Sets the interaction state to render; the default is `InteractionMode::Default`.
     pub const fn mode(mut self, mode: InteractionMode) -> Self {
         self.mode = mode;
         self
     }
 
-    /// Sets the logical size in pixels.
+    /// Sets the logical size of the render in pixels; the default is 200 by 60.
     pub const fn size(mut self, size: [u32; 2]) -> Self {
         self.size = size;
         self
@@ -76,7 +76,7 @@ impl<B> Render<B> {
         self
     }
 
-    /// Sets the pointer position of the interaction state.
+    /// Sets the pointer position that the interaction state uses; the default is (0, 0).
     pub const fn hit(mut self, hit: (f32, f32)) -> Self {
         self.hit = hit;
         self

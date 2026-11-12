@@ -97,7 +97,7 @@ pub struct GlyphRun {
 }
 
 impl GlyphRun {
-    /// Creates a glyph run.
+    /// Creates a one-line text run in `rect` with no node and no positioned glyphs.
     #[must_use]
     pub fn new(
         rect: Rect,
@@ -160,7 +160,7 @@ impl GlyphRun {
         self.shared.flow
     }
 
-    /// Returns the number of positioned glyphs in this run.
+    /// The number of positioned glyphs in this run.
     #[must_use]
     pub fn glyph_count(&self) -> usize {
         self.shared.glyph_count()

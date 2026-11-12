@@ -110,7 +110,7 @@ impl DrawDecoration {
     }
 
     kittest_pub! {
-        /// Sets the line width.
+        /// Sets the width of the line; the default is 1.
         #[must_use]
         pub const fn line_width(mut self, line_width: f32) -> Self {
             self.line_width = line_width;

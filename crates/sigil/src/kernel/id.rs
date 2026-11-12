@@ -11,7 +11,7 @@ impl NodeId {
         accesskit::NodeId(self.0.data().as_ffi())
     }
 
-    /// Creates a node id from accesskit.
+    /// Converts an accesskit node id to a `NodeId`.
     #[must_use]
     pub fn from_accesskit(id: accesskit::NodeId) -> Self {
         Self(DefaultKey::from(KeyData::from_ffi(id.0)))

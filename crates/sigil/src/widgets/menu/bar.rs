@@ -54,7 +54,7 @@ pub fn menu_bar() -> MenuBarBuilder {
 }
 
 impl MenuBarBuilder {
-    /// Sets the menu.
+    /// Adds a menu to the bar: a trigger named `label` that opens `items`.
     pub fn menu(
         mut self,
         label: impl Into<String>,

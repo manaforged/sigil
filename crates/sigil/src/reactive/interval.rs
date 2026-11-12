@@ -153,7 +153,7 @@ kittest_pub! {
     }
 }
 
-/// Sets the interval clock.
+/// Replaces system time with `clock` as the time that intervals read.
 #[cfg(feature = "test-clock")]
 pub fn __test_set_clock(clock: Instant) {
     with_sources(|sources| sources.test_clock = Some(clock));
@@ -165,7 +165,7 @@ pub fn __test_advance_clock(delta: Duration) {
     with_sources(|sources| sources.test_clock = Some(sources.now() + delta));
 }
 
-/// Returns the interval clock to system time.
+/// Makes intervals read system time again.
 #[cfg(feature = "test-clock")]
 pub fn __test_clear_clock() {
     with_sources(|sources| sources.test_clock = None);

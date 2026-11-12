@@ -55,49 +55,49 @@ pub trait Paint: PaintTarget {
         paint(self, PaintAtom::Border(BorderStyle::Dotted))
     }
 
-    /// Sets the text color.
+    /// Sets the color of the text.
     #[must_use]
     fn text_color(self, color: impl Into<ColorAtom>) -> Self {
         push(self, StyleAtom::TextColor(color.into()))
     }
 
-    /// Sets the border color.
+    /// Sets the color of the border.
     #[must_use]
     fn border_color(self, color: impl Into<ColorAtom>) -> Self {
         push(self, StyleAtom::BorderColor(color.into()))
     }
 
-    /// Sets the border width.
+    /// Sets the width of the border on all four sides in pixels.
     #[must_use]
     fn border_width(self, px: i16) -> Self {
         push(self, StyleAtom::BorderWidth(px))
     }
 
-    /// Sets the border top.
+    /// Sets the width of the top border in pixels.
     #[must_use]
     fn border_top(self, px: i16) -> Self {
         push(self, StyleAtom::BorderTop(px))
     }
 
-    /// Sets the border right.
+    /// Sets the width of the right border in pixels.
     #[must_use]
     fn border_right(self, px: i16) -> Self {
         push(self, StyleAtom::BorderRight(px))
     }
 
-    /// Sets the border bottom.
+    /// Sets the width of the bottom border in pixels.
     #[must_use]
     fn border_bottom(self, px: i16) -> Self {
         push(self, StyleAtom::BorderBottom(px))
     }
 
-    /// Sets the border left.
+    /// Sets the width of the left border in pixels.
     #[must_use]
     fn border_left(self, px: i16) -> Self {
         push(self, StyleAtom::BorderLeft(px))
     }
 
-    /// Sets the corner radius.
+    /// Sets the corner radius to a step of the radius scale.
     #[must_use]
     fn radius(self, radius: Radius) -> Self {
         push(self, StyleAtom::Radius(radius))
@@ -149,13 +149,13 @@ pub trait Paint: PaintTarget {
             .fold(self, |target, atom| push(target, *atom))
     }
 
-    /// Sets the shadow.
+    /// Sets the shadow to a step of the elevation scale.
     #[must_use]
     fn shadow(self, elevation: Elevation) -> Self {
         push(self, StyleAtom::Shadow(elevation))
     }
 
-    /// Sets the opacity.
+    /// Sets the opacity from 0.0 (clear) to 1.0 (opaque).
     #[must_use]
     #[track_caller]
     fn opacity(self, value: f32) -> Self {
@@ -172,7 +172,7 @@ pub trait Paint: PaintTarget {
 
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
-    /// Sets the transform.
+    /// Sets the 2D transform of the node.
     #[must_use]
     fn transform(self, transform: crate::style::Transform2D) -> Self {
         push(self, StyleAtom::Transform(transform))
@@ -194,19 +194,19 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::FontSize(encode_px(px).0))
     }
 
-    /// Sets the font weight.
+    /// Sets the weight of the font as a number.
     #[must_use]
     fn font_weight(self, weight: u16) -> Self {
         push(self, StyleAtom::FontWeight(weight))
     }
 
-    /// Sets the font italic.
+    /// Sets whether the text is italic.
     #[must_use]
     fn font_italic(self, italic: bool) -> Self {
         push(self, StyleAtom::FontItalic(italic))
     }
 
-    /// Sets the font family.
+    /// Sets the font family of the text.
     #[must_use]
     fn font_family(self, family: FontFamily) -> Self {
         push(self, StyleAtom::FontFamily(family.name()))
@@ -224,19 +224,19 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::LetterSpacing(letter_spacing_units(em)))
     }
 
-    /// Sets the tabular nums.
+    /// Sets whether the text uses tabular numerals.
     #[must_use]
     fn tabular_nums(self, on: bool) -> Self {
         push(self, StyleAtom::TabularNums(on))
     }
 
-    /// Applies the underline option.
+    /// Underlines the text.
     #[must_use]
     fn underline(self) -> Self {
         push(self, StyleAtom::TextDecoration(TextDecoration::Underline))
     }
 
-    /// Applies the line through option.
+    /// Draws a line through the text.
     #[must_use]
     fn line_through(self) -> Self {
         push(self, StyleAtom::TextDecoration(TextDecoration::LineThrough))

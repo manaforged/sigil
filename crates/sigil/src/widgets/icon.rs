@@ -92,7 +92,7 @@ pub fn icon(glyph: impl Into<Glyph>) -> IconBuilder {
 }
 
 impl IconBuilder {
-    /// Creates an icon builder.
+    /// Creates an icon in `Tone::Neutral` at `ControlSize::Default`.
     pub fn new(glyph: impl Into<Glyph>) -> Self {
         Self {
             glyph: Mark::from(glyph.into()),
@@ -108,25 +108,25 @@ impl IconBuilder {
         }
     }
 
-    /// Sets the tone.
+    /// Sets the color tone; the default is `Tone::Neutral`.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Sets the size.
+    /// Sets the box to 16, 20, or 24 px for compact, default, or wide.
     pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self
     }
 
-    /// Sets the px.
+    /// Sets the box to `px` px square, in place of the `size` step, and draws an SVG at that size.
     pub const fn px(mut self, px: f32) -> Self {
         self.px = Some(px);
         self
     }
 
-    /// Applies the strong option.
+    /// Draws an SVG icon in step 12 of its tone scale in place of step 11.
     pub const fn strong(mut self) -> Self {
         self.step = 12;
         self
@@ -138,7 +138,7 @@ impl IconBuilder {
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name and gives the icon the image role.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self

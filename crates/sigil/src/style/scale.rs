@@ -10,14 +10,14 @@ pub struct ColorScale {
 }
 
 impl ColorScale {
-    /// Creates a color scale from steps.
+    /// Creates a scale from 12 colors and picks a dark or white `on_solid` color from step 9.
     #[must_use]
     pub const fn from_steps(steps: [Color; 12]) -> Self {
         let on_solid = heuristic_on_solid(steps[8]);
         Self { steps, on_solid }
     }
 
-    /// Sets the on solid.
+    /// Sets the color for content on the solid step, in place of the color picked from step 9.
     #[must_use]
     pub const fn on_solid(mut self, on_solid: Color) -> Self {
         self.on_solid = on_solid;

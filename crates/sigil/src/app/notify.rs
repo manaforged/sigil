@@ -13,7 +13,7 @@ pub struct Notification {
 }
 
 impl Notification {
-    /// Creates a notification.
+    /// Creates a notification with a title and body text.
     #[must_use]
     pub fn new(title: impl Into<String>, body: impl Into<String>) -> Self {
         Self {
@@ -23,7 +23,7 @@ impl Notification {
         }
     }
 
-    /// Sets the app name.
+    /// Sets the app name that is sent with the notification.
     #[must_use]
     pub fn app_name(mut self, name: impl Into<String>) -> Self {
         self.app_name = Some(name.into());

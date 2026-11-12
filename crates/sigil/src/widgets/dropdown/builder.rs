@@ -74,7 +74,7 @@ pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilde
 }
 
 impl DropdownBuilder {
-    /// Creates a dropdown builder.
+    /// Creates a select box that reads and writes the index `selected` into `options`.
     pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
             selected,
@@ -87,19 +87,19 @@ impl DropdownBuilder {
         }
     }
 
-    /// Sets the label.
+    /// Sets the accessible name; the default is "Dropdown".
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
 
-    /// Sets the disabled.
+    /// Disables the select box while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the change.
+    /// Runs `cb` with the new index after the user chooses an option.
     pub fn change(mut self, cb: impl Fn(usize) + 'static) -> Self {
         self.on_change = Some(Rc::new(cb));
         self

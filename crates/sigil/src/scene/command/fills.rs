@@ -88,7 +88,7 @@ impl PatternKind {
 
     kittest_pub! {
         if feature = "scene";
-        /// Returns the tile extent.
+        /// The length after which the pattern repeats.
         #[must_use]
         pub const fn tile_extent(self) -> f32 {
             match self.normalized() {
@@ -142,7 +142,7 @@ kittest_pub! {
 
 impl LinearGradient {
     kittest_pub! {
-        /// Creates a linear gradient.
+        /// Creates a gradient from `start` to `end` with `stops`.
         #[must_use]
         pub fn new(
             start: Point,
@@ -228,7 +228,7 @@ kittest_pub! {
 
 impl GradientStop {
     kittest_pub! {
-        /// Creates a gradient stop.
+        /// Creates a stop with `color` at `offset`.
         #[must_use]
         pub const fn new(offset: f32, color: Color) -> Self {
             Self { offset, color }

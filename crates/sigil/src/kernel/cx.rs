@@ -41,7 +41,7 @@ pub struct Cx {
 }
 
 impl Cx {
-    /// Returns the new root cx.
+    /// Creates an empty tree with scale 1.0 and its own root owner.
     #[must_use]
     pub fn new_root() -> Self {
         let root_owner = Owner::new("sigil-kernel::root", Owner::current());
@@ -99,7 +99,7 @@ impl Cx {
     }
 
     kittest_pub! {
-        /// Creates an empty node and returns its id.
+        /// Creates a node with no children, marks it changed, and returns its id.
         #[doc(hidden)]
         pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
         let owner = Owner::settled().unwrap_or_else(|| {
@@ -278,13 +278,13 @@ impl Cx {
         }
     }
 
-    /// Returns the node with this id.
+    /// The node with this id; `None` when the id is not in the tree.
     #[must_use]
     pub fn get(&self, id: NodeId) -> Option<&Node> {
         self.nodes.get(id.key())
     }
 
-    /// Returns the node with this id for writing and marks it changed.
+    /// The node with this id for writing, marked changed; `None` when the id is not in the tree.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         if self.nodes.contains_key(id.key()) {
             self.mark_dirty(id);
@@ -298,7 +298,7 @@ impl Cx {
     }
 
     kittest_pub! {
-        /// Returns the dirty.
+        /// The ids of the nodes marked changed; every node when the whole tree is marked.
         pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
             self.dirty_all
                 .then(|| self.nodes.keys().map(NodeId))
@@ -338,7 +338,7 @@ impl Cx {
     }
 
     kittest_pub! {
-        /// Returns the scale.
+        /// The device scale factor of the tree; the default is 1.0.
         #[must_use]
         pub const fn scale(&self) -> f32 {
             self.scale
@@ -375,14 +375,14 @@ impl Cx {
     }
 
     kittest_pub! {
-        /// Returns the mutation generation.
+        /// A counter that goes up by one, wrapping, each time the tree records a mutation.
         #[must_use]
         pub const fn mutation_generation(&self) -> u64 {
             self.mutation_generation
         }
     }
 
-    /// Returns the len.
+    /// The number of nodes in the tree.
     #[must_use]
     pub fn len(&self) -> usize {
         self.nodes.len()
