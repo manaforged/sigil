@@ -36,7 +36,7 @@ impl Cx {
     }
 
     pub(crate) fn refill(&mut self, id: NodeId, fill: impl FnOnce(&mut Self)) {
-        if let Some(old) = self.owner_for_node.remove(&id)
+        if let Some(old) = self.take_component(id)
             && is_live(old)
         {
             old.dispose();
@@ -45,7 +45,7 @@ impl Cx {
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let before = self.indexed(id);
         owner.with(|| fill(self));
-        self.owner_for_node.insert(id, owner);
+        self.set_component(id, owner);
         if before || self.indexed(id) {
             self.mutation_generation = self.mutation_generation.wrapping_add(1);
         }

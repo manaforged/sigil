@@ -68,7 +68,7 @@ impl Cx {
                     .insert(Node::new(NodeType::Container, a11y, owner)),
             )
         });
-        self.owner_for_node.insert(id, owner);
+        self.set_component(id, owner);
         self.roots.push(id);
         self.dirty.insert(id);
         self.mutation_generation = self.mutation_generation.wrapping_add(1);

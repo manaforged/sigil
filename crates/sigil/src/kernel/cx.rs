@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::geometry::Scale;
 use crate::reactive::Owner;
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashSet;
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
@@ -25,7 +25,6 @@ pub enum HostMode {
 pub struct Cx {
     instance_id: u64,
     pub(crate) nodes: SlotMap<DefaultKey, Node>,
-    pub(crate) owner_for_node: AHashMap<NodeId, Owner>,
     pub(crate) dirty: AHashSet<NodeId>,
     dirty_all: bool,
     pub(crate) delta: FrameDelta,
@@ -48,7 +47,6 @@ impl Cx {
         Self {
             instance_id: next_instance_id(),
             nodes: SlotMap::with_key(),
-            owner_for_node: AHashMap::new(),
             dirty: AHashSet::new(),
             dirty_all: false,
             delta: FrameDelta::default(),
@@ -135,7 +133,7 @@ impl Cx {
         let parent_owner = Owner::current().unwrap_or(self.root_owner);
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let node_id = owner.with(|| build(self));
-        self.owner_for_node.insert(node_id, owner);
+        self.set_component(node_id, owner);
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
             return node_id;
@@ -185,7 +183,7 @@ impl Cx {
         }
 
         for node_id in subtree.iter().rev() {
-            if let Some(owner) = self.owner_for_node.remove(node_id) {
+            if let Some(owner) = self.take_component(*node_id) {
                 owner.dispose();
             }
         }
@@ -350,7 +348,7 @@ impl Cx {
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<Owner> {
-        self.owner_for_node.get(&id).copied()
+        self.component(id)
     }
 
     /// Returns the roots.
@@ -381,6 +379,20 @@ impl Cx {
 
     const fn bump_generation(&mut self) {
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
+    }
+
+    pub(crate) fn set_component(&mut self, id: NodeId, owner: Owner) {
+        if let Some(node) = self.nodes.get_mut(id.key()) {
+            node.component = Some(owner);
+        }
+    }
+
+    pub(crate) fn take_component(&mut self, id: NodeId) -> Option<Owner> {
+        self.nodes.get_mut(id.key())?.component.take()
+    }
+
+    pub(crate) fn component(&self, id: NodeId) -> Option<Owner> {
+        self.nodes.get(id.key())?.component
     }
 
     fn mark_dirty(&mut self, id: NodeId) {
