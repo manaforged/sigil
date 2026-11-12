@@ -271,7 +271,7 @@ fn emit(
     let Some(node) = cx.get(id) else {
         return;
     };
-    let rect = layout.placed(id, node).map(|result| result.rect());
+    let rect = layout.result(id).map(|result| result.rect());
     let index = cache.items.len();
     cache.items.push(HitItem {
         id,

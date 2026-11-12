@@ -103,19 +103,10 @@ impl LayoutEngine {
         let result = self
             .fresh(id)
             .or_else(|| self.published_result.get(id.key()).copied())?;
-        Some(self.offset(id, result))
-    }
-
-    pub(crate) fn placed(&self, id: NodeId, node: &crate::kernel::Node) -> Option<LayoutResult> {
-        let result = node.get_extension::<LayoutResult>().copied()?;
-        Some(self.offset(id, result))
-    }
-
-    fn offset(&self, id: NodeId, result: LayoutResult) -> LayoutResult {
-        match self.popup_offsets.get(id.key()) {
+        Some(match self.popup_offsets.get(id.key()) {
             Some(&(dx, dy)) => result.translated(dx, dy),
             None => result,
-        }
+        })
     }
 
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
