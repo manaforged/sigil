@@ -89,7 +89,7 @@ impl LayoutEngine {
     ) -> Result<(), Error> {
         let (intent, text) = Self::layout_inputs_for_node(node, inherited_text, direction);
         let Some(handle) = self.core_to_handle.get(id.key()).copied() else {
-            let handle = self.drive.insert_with_kernel(id, intent.data().clone());
+            let handle = self.drive.insert_with_kernel(id, intent.into_data());
             if text.is_some() {
                 self.drive.set_text(handle, text)?;
             }
@@ -106,7 +106,7 @@ impl LayoutEngine {
         if style_matches && text.is_none() && self.drive.text_for(handle).is_none() {
             return Ok(());
         }
-        self.drive.set_style(handle, intent.data().clone())?;
+        self.drive.set_style(handle, intent.into_data())?;
         self.drive.set_text(handle, text)
     }
 

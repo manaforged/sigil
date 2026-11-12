@@ -199,6 +199,10 @@ impl LayoutStyle {
         &mut self.0
     }
 
+    pub(crate) fn into_data(self) -> StyleData {
+        self.0
+    }
+
     pub(crate) fn merge(&mut self, other: &Self) {
         fields::merge(&mut self.0, &other.0, other.1);
         self.1 = self.1.with(other.1);
