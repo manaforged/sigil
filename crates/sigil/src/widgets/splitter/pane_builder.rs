@@ -31,7 +31,7 @@ impl PaneBuilder {
         self.commit().pane(node)
     }
 
-    /// Returns the commit.
+    /// Adds this pane to the splitter and returns the splitter.
     pub fn commit(mut self) -> SplitterBuilder {
         self.splitter.panes.push(self.entry);
         self.splitter

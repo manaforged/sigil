@@ -325,7 +325,7 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
     Ok(result)
 }
 
-/// Sets the terminal title.
+/// Sets the terminal title; it is written at once when the terminal host is live.
 pub fn title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
     if applied() {

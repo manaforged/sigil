@@ -25,7 +25,7 @@ impl<T: 'static> core::fmt::Debug for EventChannel<T> {
 
 impl<T: Clone + 'static> EventChannel<T> {
     kittest_pub! {
-        /// Creates an event channel.
+        /// Creates an event channel with no subscribers.
         #[must_use]
         #[doc(hidden)]
         pub fn new() -> Self {

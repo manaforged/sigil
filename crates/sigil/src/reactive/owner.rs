@@ -144,7 +144,7 @@ impl Drop for DeferredOwner {
 pub struct Owner(pub(crate) OwnerKey);
 
 impl Owner {
-    /// Creates an owner.
+    /// Creates a scope named `name` under `parent`; panics when `parent` is disposed.
     #[must_use]
     #[track_caller]
     pub fn new(name: &'static str, parent: Option<Self>) -> Self {

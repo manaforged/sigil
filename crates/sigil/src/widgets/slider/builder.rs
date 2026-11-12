@@ -93,7 +93,7 @@ pub fn range_slider(
 }
 
 impl SliderBuilder {
-    /// Creates a slider builder.
+    /// Creates a slider that edits `value` inside `range` with a step of 1.
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
         Self::with_thumb(Thumb::Only(value), range)
     }
@@ -139,31 +139,31 @@ impl<T> SliderBuilder<T> {
         }
     }
 
-    /// Sets the length.
+    /// Sets the length along the axis in px; without it, the slider fills its parent.
     pub const fn length(mut self, length: f32) -> Self {
         self.runtime.length = Some(length);
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name and shows it as a caption.
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Sets the marks.
+    /// Shows `marks` as labels spread along a horizontal slider.
     pub fn marks(mut self, marks: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.marks = marks.into_iter().map(Into::into).collect();
         self
     }
 
-    /// Sets the step.
+    /// Sets the increment that the value snaps to; the default is 1.
     pub const fn step(mut self, step: f32) -> Self {
         self.runtime.step = step;
         self
     }
 
-    /// Sets the disabled.
+    /// Blocks edits while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.runtime.disabled = Some(disabled.into_signal());
         self
@@ -174,13 +174,13 @@ impl<T> SliderBuilder<T> {
         self
     }
 
-    /// Applies the glass option.
+    /// Draws the track and the thumb with gradient fills.
     pub const fn glass(mut self) -> Self {
         self.runtime.glass = true;
         self
     }
 
-    /// Sets the orientation.
+    /// Sets the axis of the slider; the default is `Orientation::Horizontal`.
     pub const fn orientation(mut self, orientation: Orientation) -> Self {
         self.runtime.orientation = orientation;
         self

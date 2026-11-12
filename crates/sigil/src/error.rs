@@ -13,59 +13,59 @@ type ErrorSource = Arc<dyn StdError + Send + Sync + 'static>;
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
-    /// The window error kind.
+    /// The window host could not start or could not create a window.
     Window,
-    /// The gpu error kind.
+    /// A GPU device, surface, or frame could not be acquired.
     Gpu,
-    /// The font error kind.
+    /// Font data is not valid.
     Font,
-    /// The io error kind.
+    /// An input or output operation failed.
     Io,
-    /// The task error kind.
+    /// A task could not start, or it panicked.
     Task,
-    /// The config error kind.
+    /// A configuration is not valid, or this build does not support it.
     Config,
-    /// The other error kind.
+    /// A failure that fits no other kind.
     Other,
-    /// The closed error kind.
+    /// The event loop or the main-thread dispatcher is closed.
     Closed,
-    /// The empty shortcut error kind.
+    /// A shortcut string is empty.
     EmptyShortcut,
-    /// The unknown modifier error kind.
+    /// A shortcut string names an unknown modifier.
     UnknownModifier,
-    /// The unknown key error kind.
+    /// A shortcut string names an unknown key.
     UnknownKey,
-    /// The clipboard error kind.
+    /// No clipboard is installed, or the clipboard does not accept the data.
     Clipboard,
-    /// The event loop error kind.
+    /// The window event loop failed.
     EventLoop,
-    /// The poisoned error kind.
+    /// A mutex is poisoned.
     Poisoned,
-    /// The already run error kind.
+    /// The window host was started twice.
     AlreadyRun,
-    /// The fetch error kind.
+    /// A network request could not be made or did not complete.
     Fetch,
-    /// The http error kind.
+    /// A request failed with an HTTP status from the server.
     Http,
-    /// The no adapter error kind.
+    /// No compatible GPU adapter was found.
     NoAdapter,
-    /// The not initialized error kind.
+    /// The renderer has not picked a GPU device yet.
     NotInitialized,
-    /// The invalid viewport error kind.
+    /// A viewport width or height is not greater than zero.
     InvalidViewport,
-    /// The software error kind.
+    /// The software renderer failed.
     Software,
-    /// The empty layer error kind.
+    /// An offscreen layer has a zero extent.
     EmptyLayer,
-    /// The layer too large error kind.
+    /// An offscreen layer is larger than the device limit.
     LayerTooLarge,
-    /// The layout error kind.
+    /// Layout failed, for example because the tree holds a stale node id.
     Layout,
-    /// The node missing error kind.
+    /// A node is missing from the layout; `Error::node` returns its id.
     NodeMissing,
-    /// The not live error kind.
+    /// No terminal host is live on this thread, or the terminal is released.
     NotLive,
-    /// The not inline error kind.
+    /// The terminal host is not inline.
     NotInline,
 }
 
@@ -178,13 +178,13 @@ impl Error {
         Self::new(ErrorKind::Config, err)
     }
 
-    /// Returns the kind.
+    /// The class of this error; branch on it, not on the message.
     #[must_use]
     pub const fn kind(&self) -> ErrorKind {
         self.kind
     }
 
-    /// Returns the node.
+    /// The missing node of an `ErrorKind::NodeMissing` error; `None` for every other error.
     #[must_use]
     pub const fn node(&self) -> Option<NodeId> {
         match self.detail {

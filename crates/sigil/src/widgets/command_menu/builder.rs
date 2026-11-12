@@ -74,7 +74,7 @@ macro_rules! level_builder_methods {
             self
         }
 
-        /// Sets the submenu.
+        /// Adds an item that opens a nested level, which `build` fills.
         pub fn submenu(
             mut self,
             label: impl Into<String>,
@@ -85,7 +85,7 @@ macro_rules! level_builder_methods {
             self
         }
 
-        /// Sets the disabled.
+        /// Adds an item named `label` that is disabled and has no action.
         pub fn disabled(mut self, label: impl Into<String>) -> Self {
             self.level.disabled(label);
             self
@@ -129,19 +129,19 @@ pub fn command_menu() -> CommandMenuBuilder {
 impl CommandMenuBuilder {
     level_builder_methods!();
 
-    /// Sets the submit.
+    /// Runs `cb` with the label of an item after the user chooses it and its action runs.
     pub fn submit(mut self, cb: impl Fn(&str) + 'static) -> Self {
         self.on_submit = Some(Rc::new(cb));
         self
     }
 
-    /// Sets the placeholder.
+    /// Sets the placeholder text of the search field.
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
         self
     }
 
-    /// Sets the cancel.
+    /// Runs `cb` when the user closes the palette while the top level is shown.
     pub fn cancel(mut self, cb: impl Fn() + 'static) -> Self {
         self.on_cancel = Some(Rc::new(cb));
         self

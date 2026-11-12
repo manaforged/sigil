@@ -53,31 +53,31 @@ pub fn stat(label: impl Into<TextContent>, value: impl Into<TextContent>) -> Sta
 }
 
 impl StatBuilder {
-    /// Sets the delta.
+    /// Shows `change` below the value in the color of `tone`.
     pub fn delta(mut self, change: impl Into<TextContent>, tone: Tone) -> Self {
         self.delta = Some((change.into(), tone));
         self
     }
 
-    /// Sets the caption.
+    /// Shows `caption` in muted text below the value and the change line.
     pub fn caption(mut self, caption: impl Into<TextContent>) -> Self {
         self.caption = Some(caption.into());
         self
     }
 
-    /// Sets the trend.
+    /// Shows `values` as a sparkline at the bottom of the tile.
     pub fn trend(mut self, values: impl Reactive<Vec<f32>>) -> Self {
         self.trend = Some(Rc::new(values));
         self
     }
 
-    /// Sets the range.
+    /// Sets the values at the bottom and top of the trend sparkline.
     pub const fn range(mut self, low: f32, high: f32) -> Self {
         self.range = Some((low, high));
         self
     }
 
-    /// Sets the tone.
+    /// Sets the color of the value text and the trend sparkline.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = Some(tone);
         self

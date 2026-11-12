@@ -106,7 +106,7 @@ impl CommandScene {
         Self { commands }
     }
 
-    /// Returns the text runs of this scene in paint order.
+    /// The text runs of this scene, in command order.
     pub fn glyph_runs(&self) -> impl Iterator<Item = &GlyphRun> {
         self.commands.iter().filter_map(|command| match command {
             SceneCommand::GlyphRun(draw) => Some(draw),

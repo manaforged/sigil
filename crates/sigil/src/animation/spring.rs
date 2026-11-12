@@ -17,7 +17,7 @@ kittest_pub! {
 
 impl SpringPreset {
     kittest_pub! {
-        /// Returns the parameters.
+        /// The stiffness, damping, and mass of this preset, in that order.
         #[must_use]
         pub const fn parameters(self) -> (f32, f32, f32) {
             match self {

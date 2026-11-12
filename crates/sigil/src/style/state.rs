@@ -108,7 +108,7 @@ impl<T> PerState<T> {
 
 impl StyleState {
     kittest_pub! {
-        /// Returns the slot.
+        /// The slot that applies: disabled first, then pressed, hovered, focused, and rest.
         #[must_use]
         pub const fn slot(self) -> StateSlot {
             if self.disabled {
@@ -143,7 +143,7 @@ impl StateStyle {
     }
 
     kittest_pub! {
-        /// Creates a state style.
+        /// Creates a state style from the atoms of each state.
         #[must_use]
         pub const fn new(
             rest: &'static [StyleAtom],
@@ -159,7 +159,7 @@ impl StateStyle {
     }
 
     kittest_pub! {
-        /// Returns the atoms of one slot.
+        /// The atoms of `slot`.
         #[must_use]
         pub const fn get(self, slot: StateSlot) -> &'static [StyleAtom] {
             self.slots.at(slot)
@@ -177,7 +177,7 @@ impl StateStyle {
 
 #[cfg(feature = "kittest")]
 impl StateStyle {
-    /// Sets the atoms of one state slot.
+    /// Replaces the atoms of `slot`.
     #[must_use]
     pub const fn slot(mut self, slot: StateSlot, atoms: &'static [StyleAtom]) -> Self {
         *self.slots.get_mut(slot) = atoms;

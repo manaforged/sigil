@@ -41,7 +41,7 @@ impl Golden {
         }
     }
 
-    /// Sets the percent of pixels allowed to differ.
+    /// Sets the percent of pixels that may differ from the golden; the default is 0.5.
     pub const fn delta(mut self, max_delta_pct: f32) -> Self {
         self.max_delta_pct = max_delta_pct;
         self

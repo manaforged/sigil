@@ -68,7 +68,7 @@ pub(super) struct Projection {
 }
 
 impl Screen {
-    /// Creates a screen.
+    /// Creates a blank screen of `cols` by `rows` cells.
     #[must_use]
     pub fn new(cols: u16, rows: u16) -> Self {
         Self {
@@ -93,7 +93,7 @@ impl Screen {
     }
 
     kittest_pub! {
-        /// Sets the caps.
+        /// Sets the terminal capabilities and turns image support on or off to match.
         #[doc(hidden)]
         pub const fn set_caps(&mut self, caps: Capabilities) {
             self.caps = caps;
@@ -103,7 +103,7 @@ impl Screen {
         }
     }
 
-    /// Sets the access.
+    /// Sets the screen-reader options of the screen.
     pub const fn access(&mut self, access: Access) {
         self.announcer.access = access;
         self.projection.last = Projected::Never;
@@ -133,7 +133,7 @@ impl Screen {
         self.announcer.deadline()
     }
 
-    /// Returns the caps.
+    /// The terminal capabilities that the screen paints for.
     #[must_use]
     pub const fn caps(&self) -> &Capabilities {
         &self.caps
@@ -286,19 +286,19 @@ impl Screen {
         self.exited
     }
 
-    /// Returns the text.
+    /// The text of the latest frame, rows joined with newlines.
     #[must_use]
     pub fn text(&self) -> String {
         if self.dirty { &self.grid } else { &self.prev }.text()
     }
 
-    /// Returns the rows.
+    /// The number of rows in the grid.
     #[must_use]
     pub const fn rows(&self) -> usize {
         self.grid.rows()
     }
 
-    /// Sets the time step of the next frame.
+    /// Sets the time step of the next frame in seconds.
     pub const fn dt(&mut self, dt: f32) {
         self.dt = dt;
     }

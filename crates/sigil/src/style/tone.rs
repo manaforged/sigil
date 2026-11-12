@@ -27,25 +27,25 @@ impl Tone {
         Token::scale(self.scale_role(), step).unwrap_or(Token::OnSurface)
     }
 
-    /// Returns the shade.
+    /// The token for step 4 of the color scale of this tone.
     #[must_use]
     pub fn shade(self) -> Token {
         self.token(4)
     }
 
-    /// Returns the fill.
+    /// The token for step 9 of the color scale of this tone.
     #[must_use]
     pub fn fill(self) -> Token {
         self.token(9)
     }
 
-    /// Returns the solid.
+    /// The token for step 11 of the color scale of this tone.
     #[must_use]
     pub fn solid(self) -> Token {
         self.token(11)
     }
 
-    /// Returns the scale role.
+    /// The color scale of this tone; `Neutral` maps to gray and `Primary` to accent.
     #[must_use]
     pub const fn scale_role(self) -> ScaleRole {
         match self {
@@ -70,7 +70,7 @@ kittest_pub! {
 
 impl ToneContext {
     kittest_pub! {
-        /// Creates a tone context.
+        /// Creates a context that carries `tone`.
         #[must_use]
         pub const fn new(tone: Tone) -> Self {
             Self { tone }

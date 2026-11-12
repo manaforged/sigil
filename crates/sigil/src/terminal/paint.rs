@@ -51,7 +51,7 @@ pub struct Grid {
 }
 
 impl Grid {
-    /// Creates a grid.
+    /// Creates a grid of `cols` by `rows` blank cells.
     #[must_use]
     pub fn new(cols: u16, rows: u16) -> Self {
         let cols = cols as usize;
@@ -68,12 +68,12 @@ impl Grid {
         }
     }
 
-    /// Sets the graphics.
+    /// Sets whether the terminal supports images.
     pub const fn graphics(&mut self, graphics: bool) {
         self.graphics = graphics;
     }
 
-    /// Returns the cursor.
+    /// The cell of the terminal cursor; `None` when no cursor is placed.
     #[must_use]
     pub const fn cursor(&self) -> Option<(usize, usize)> {
         self.cursor
@@ -112,13 +112,13 @@ impl Grid {
         self.cells.get(row * self.cols + col)
     }
 
-    /// Returns the cols.
+    /// The number of columns.
     #[must_use]
     pub const fn cols(&self) -> usize {
         self.cols
     }
 
-    /// Returns the rows.
+    /// The number of rows.
     #[must_use]
     pub const fn rows(&self) -> usize {
         self.rows
@@ -178,7 +178,7 @@ impl Grid {
         self.edges.clear();
     }
 
-    /// Returns the cells of one row.
+    /// The cells of row `row`; empty when the row is out of range.
     #[must_use]
     pub fn row(&self, row: usize) -> &[Cell] {
         let start = row.saturating_mul(self.cols);
@@ -187,7 +187,7 @@ impl Grid {
             .unwrap_or_default()
     }
 
-    /// Returns the width of one row up to its last painted cell.
+    /// The number of cells in row `row` up to its last painted cell.
     #[must_use]
     pub fn painted_width(&self, row: usize) -> usize {
         self.row(row)
@@ -203,7 +203,7 @@ impl Grid {
         self.cells.get(i).copied()
     }
 
-    /// Returns the text.
+    /// The text of all rows, joined with newlines, without trailing spaces.
     #[must_use]
     pub fn text(&self) -> String {
         let mut out = String::new();

@@ -26,7 +26,7 @@ impl std::fmt::Debug for TextEditState {
 }
 
 impl TextEditState {
-    /// Creates a text edit state.
+    /// Creates a state over `value` with the caret at the byte offset in `caret`.
     #[must_use]
     pub fn new(value: Signal<String>, caret: Signal<usize>) -> Self {
         let edit = TextEdit::new_at(value.peek(), caret.peek());
@@ -74,7 +74,7 @@ impl TextEditState {
         });
     }
 
-    /// Returns the selection.
+    /// The selected byte range; `None` when nothing is selected.
     #[must_use]
     pub fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.selection.get()?;

@@ -118,11 +118,11 @@ enum ListSizing {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ScrollAnchor {
-    /// The top scroll anchor.
+    /// The first row.
     Top,
-    /// The bottom scroll anchor.
+    /// The end of the content.
     Bottom,
-    /// The index scroll anchor.
+    /// The row at this index, at the top of the viewport when the content allows.
     Index(usize),
 }
 
@@ -207,7 +207,7 @@ where
     T: 'static,
     R: RowRender<T>,
 {
-    /// Applies the identified option.
+    /// Keys each row by the id of its item.
     pub fn identified(self) -> Self
     where
         T: Identifiable,
@@ -215,68 +215,68 @@ where
         self.key_by(|_, item| crate::fnv::hash_of(&item.id()))
     }
 
-    /// Sets the key by.
+    /// Sets the function that gives each row a stable key; the default key is the row index.
     pub fn key_by(mut self, f: impl Fn(usize, &T) -> u64 + 'static) -> Self {
         self.row_key = Some(std::rc::Rc::new(f));
         self
     }
 
-    /// Sets the row height.
+    /// Sets the fixed height of each row in px.
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.row_height = length.into_px();
         self
     }
 
-    /// Applies the measured option.
+    /// Uses the measured height of each row, and the estimate for rows not yet measured.
     pub const fn measured(mut self) -> Self {
         self.measured = true;
         self
     }
 
-    /// Sets the estimate.
+    /// Sets the height in px assumed for a row not yet measured; the default is the row height.
     pub fn estimate(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.estimate = Some(length.into_px());
         self
     }
 
-    /// Sets the item height.
+    /// Sets the height in px of each row from its index and item, for a list built from a `Vec`.
     pub fn item_height(mut self, f: impl Fn(usize, &T) -> f32 + 'static) -> Self {
         self.item_height = Some(Box::new(f));
         self.row_tops.clear();
         self
     }
 
-    /// Sets the viewport height.
+    /// Sets the height of the list in px when it does not fill its parent; the default is 480.
     pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
         self.viewport_height = length.into_px();
         self
     }
 
-    /// Sets the overscan.
+    /// Sets how many viewport pages of rows to build beyond each edge; the default is 1.
     pub const fn overscan(mut self, pages: usize) -> Self {
         self.overscan = pages;
         self
     }
 
-    /// Sets the viewport width.
+    /// Sets the width of the list in px; without it, the list stretches.
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
-    /// Applies the shrink to content option.
+    /// Makes the list as high as its rows, up to the viewport height.
     pub const fn shrink_to_content(mut self) -> Self {
         self.sizing = ListSizing::ShrinkToContent;
         self
     }
 
-    /// Sets the scroll bind.
+    /// Binds the vertical scroll offset in px to `scroll_y`.
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
-    /// Sets the scroll x bind.
+    /// Binds horizontal wheel scroll to the offset `scroll_x`, its limit `max`, and view `width`.
     pub const fn scroll_x_bind(
         mut self,
         scroll_x: Signal<f32>,
@@ -291,7 +291,7 @@ where
         self
     }
 
-    /// Sets the cursor.
+    /// Binds the index of the focused row to `cursor` and keeps that row in view.
     pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
         self.focused_row = Some(cursor);
         if self.follow.is_none() {
@@ -300,25 +300,25 @@ where
         self
     }
 
-    /// Sets the selection.
+    /// Sets how many rows the user can select; the default is `SelectionMode::None`.
     pub const fn selection(mut self, mode: SelectionMode) -> Self {
         self.selection_mode = mode;
         self
     }
 
-    /// Returns the signal that holds the selection.
+    /// The signal that holds the selected rows; the first call creates it.
     #[must_use]
     pub fn selection_state(&mut self) -> Signal<SelectionState> {
         self.ensure_selection_state()
     }
 
-    /// Sets the keyboard.
+    /// Turns the key handling of the list on or off; the default is on.
     pub const fn keyboard(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
         self
     }
 
-    /// Sets the change.
+    /// Calls `f` with the lowest selected index when the selection changes.
     pub fn change(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
         effect(move || {
@@ -329,7 +329,7 @@ where
         self
     }
 
-    /// Sets the follow end.
+    /// Starts at the end and stays there as rows are added, while the view is at the end.
     pub const fn follow_end(mut self, on: bool) -> Self {
         if on {
             self.initial_scroll = Some(ScrollAnchor::Bottom);
@@ -338,13 +338,13 @@ where
         self
     }
 
-    /// Sets the scroll into view.
+    /// Starts with the row at `index` at the top of the viewport.
     pub const fn scroll_into_view(mut self, index: usize) -> Self {
         self.initial_scroll = Some(ScrollAnchor::Index(index));
         self
     }
 
-    /// Sets the initial scroll.
+    /// Sets where the list is scrolled when it is first built.
     pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
         self.initial_scroll = match anchor {
             ScrollAnchor::Top => None,
@@ -353,7 +353,7 @@ where
         self
     }
 
-    /// Sets the follow row.
+    /// Keeps the row at the index in `target` in view as `target` changes.
     pub const fn follow_row(mut self, target: Signal<usize>) -> Self {
         self.follow = Some(target);
         self

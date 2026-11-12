@@ -71,13 +71,13 @@ pub enum Key {
 }
 
 impl Key {
-    /// Creates a logical key from a named key.
+    /// Creates a key from a `NamedKey`.
     #[must_use]
     pub const fn named(key: NamedKey) -> Self {
         Self::Named(key)
     }
 
-    /// Creates a logical key from the text it types.
+    /// Creates a key from the text that it types.
     #[must_use]
     pub fn character(value: impl Into<String>) -> Self {
         Self::Character(value.into())
@@ -133,7 +133,7 @@ pub struct Shortcut {
 }
 
 impl Shortcut {
-    /// Creates a shortcut.
+    /// Creates a shortcut from a key and the modifiers that go with it.
     #[must_use]
     pub fn new(key: impl Into<Key>, modifiers: Modifiers) -> Self {
         Self {
@@ -142,7 +142,7 @@ impl Shortcut {
         }
     }
 
-    /// Creates a shortcut with no modifiers.
+    /// Creates a shortcut for `key` with no modifiers.
     #[must_use]
     pub fn plain(key: impl Into<Key>) -> Self {
         Self::new(key, Modifiers::empty())
@@ -160,7 +160,7 @@ impl Shortcut {
         Self::new(key, PRIMARY)
     }
 
-    /// Returns the label.
+    /// The display label, in macOS style on macOS and joined with `+` on other systems.
     #[must_use]
     pub fn label(&self) -> String {
         self.label_for(cfg!(target_os = "macos"))
@@ -263,7 +263,7 @@ impl KeyEvent {
         }
     }
 
-    /// Returns the normalized modifiers.
+    /// The modifiers of the event, limited to Shift, Ctrl, Alt, and Meta.
     #[must_use]
     pub const fn normalized_modifiers(&self) -> Modifiers {
         normalize_modifiers(self.modifiers)

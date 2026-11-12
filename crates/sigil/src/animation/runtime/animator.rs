@@ -93,7 +93,7 @@ impl Animator {
 
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
-    /// Returns the value.
+    /// The current animated value, read without subscribing; 0.0 when the signal is gone.
     #[must_use]
     pub fn value(&self) -> f32 {
         self.id

@@ -24,7 +24,7 @@ thread_local! {
     static NATIVE: Native<Track, Controls, MediaKey> = Native::new();
 }
 
-/// Returns the channel of media key presses.
+/// The channel that delivers media key presses.
 #[must_use]
 pub fn events() -> EventChannel<MediaKey> {
     NATIVE.with(Native::events)

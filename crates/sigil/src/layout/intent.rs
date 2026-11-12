@@ -27,7 +27,7 @@ impl PartialEq for LayoutStyle {
 }
 
 impl LayoutStyle {
-    /// Returns the block layout style.
+    /// Creates a block style with a column direction.
     #[must_use]
     pub fn block() -> Self {
         let style = StyleData {
@@ -38,13 +38,13 @@ impl LayoutStyle {
         Self(style, BOX.with(LayoutFields::DIRECTION))
     }
 
-    /// Returns the flex row layout style.
+    /// Creates a flex style with a row direction.
     #[must_use]
     pub fn flex_row() -> Self {
         Self::flex(FlexDirection::Row)
     }
 
-    /// Returns the flex column layout style.
+    /// Creates a flex style with a column direction.
     #[must_use]
     pub fn flex_column() -> Self {
         Self::flex(FlexDirection::Column)
@@ -59,7 +59,7 @@ impl LayoutStyle {
         Self(style, BOX.with(LayoutFields::DIRECTION))
     }
 
-    /// Creates a grid style with these column tracks.
+    /// Creates a grid style with `columns` as its column tracks.
     #[must_use]
     pub fn grid(columns: Vec<crate::layout::TrackSize>) -> Self {
         let style = StyleData {
@@ -70,35 +70,35 @@ impl LayoutStyle {
         Self(style, BOX.with(LayoutFields::GRID_COLUMNS))
     }
 
-    /// Sets the grid columns.
+    /// Sets the column tracks of a grid.
     #[must_use]
     pub fn grid_columns(mut self, columns: Vec<crate::layout::TrackSize>) -> Self {
         self.0.grid_template_columns = columns;
         self.mark(LayoutFields::GRID_COLUMNS)
     }
 
-    /// Sets the grid rows.
+    /// Sets the row tracks of a grid.
     #[must_use]
     pub fn grid_rows(mut self, rows: Vec<crate::layout::TrackSize>) -> Self {
         self.0.grid_template_rows = rows;
         self.mark(LayoutFields::GRID_ROWS)
     }
 
-    /// Sets the grid column span.
+    /// Sets the number of grid columns that the node spans; 0 counts as 1.
     #[must_use]
     pub const fn grid_column_span(mut self, span: u16) -> Self {
         self.0.grid_column_span = if span > 0 { span } else { 1 };
         self.mark(LayoutFields::COLUMN_SPAN)
     }
 
-    /// Sets the grid row span.
+    /// Sets the number of grid rows that the node spans; 0 counts as 1.
     #[must_use]
     pub const fn grid_row_span(mut self, span: u16) -> Self {
         self.0.grid_row_span = if span > 0 { span } else { 1 };
         self.mark(LayoutFields::ROW_SPAN)
     }
 
-    /// Sets the grid area.
+    /// Sets the grid cell of the node by column and row, counted from 1; 0 means no fixed cell.
     #[must_use]
     pub const fn grid_area(mut self, col: u16, row: u16) -> Self {
         self.0.grid_column_start = col;
@@ -106,14 +106,14 @@ impl LayoutStyle {
         self.mark(LayoutFields::COLUMN_START.with(LayoutFields::ROW_START))
     }
 
-    /// Applies the grid dense option.
+    /// Turns on dense auto flow for the grid.
     #[must_use]
     pub const fn grid_dense(mut self) -> Self {
         self.0.grid_auto_flow_dense = true;
         self.mark(LayoutFields::DENSE)
     }
 
-    /// Sets the display.
+    /// Sets the display mode: block, flex, grid, or none.
     #[must_use]
     pub const fn display(mut self, display: Display) -> Self {
         self.0.display = display;
@@ -121,7 +121,7 @@ impl LayoutStyle {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the flex direction.
+    /// Sets the main axis of a flex box.
     #[must_use]
     #[doc(hidden)]
     pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Self {
@@ -129,14 +129,14 @@ impl LayoutStyle {
         self.mark(LayoutFields::DIRECTION)
     }
 
-    /// Sets the flex wrap.
+    /// Sets the wrap mode of a flex box.
     #[must_use]
     pub const fn flex_wrap(mut self, flex_wrap: FlexWrap) -> Self {
         self.0.flex_wrap = flex_wrap;
         self.mark(LayoutFields::WRAP)
     }
 
-    /// Sets the align items.
+    /// Sets the `align-items` value for the children of the node.
     #[must_use]
     pub const fn align_items(mut self, align_items: AlignItems) -> Self {
         self.0.align_items = Some(align_items);
@@ -144,7 +144,7 @@ impl LayoutStyle {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the align content.
+    /// Sets the `align-content` value of the node.
     #[must_use]
     #[doc(hidden)]
     pub const fn align_content(mut self, align_content: AlignContent) -> Self {
@@ -152,14 +152,14 @@ impl LayoutStyle {
         self.mark(LayoutFields::ALIGN_CONTENT)
     }
 
-    /// Sets the justify content.
+    /// Sets the `justify-content` value of the node.
     #[must_use]
     pub const fn justify_content(mut self, justify_content: JustifyContent) -> Self {
         self.0.justify_content = Some(justify_content);
         self.mark(LayoutFields::JUSTIFY)
     }
 
-    /// Sets the align self.
+    /// Sets the `align-self` value of the node.
     #[must_use]
     pub const fn align_self(mut self, align_self: AlignItems) -> Self {
         self.0.align_self = Some(align_self);
@@ -167,7 +167,7 @@ impl LayoutStyle {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the box sizing.
+    /// Sets the box sizing mode of the node.
     #[must_use]
     #[doc(hidden)]
     pub const fn box_sizing(mut self, box_sizing: BoxSizing) -> Self {
@@ -175,7 +175,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::BOX_SIZING)
     }
 
-    /// Sets the position.
+    /// Sets the position mode: `Position::Relative` or `Position::Absolute`.
     #[must_use]
     pub const fn position(mut self, position: Position) -> Self {
         self.0.position = position;

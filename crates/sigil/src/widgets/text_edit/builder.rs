@@ -21,10 +21,10 @@ use crate::widgets::shared::caller_style;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SubmitKey {
-    /// The ctrl enter submit key.
+    /// Ctrl+Enter submits and Enter inserts a newline.
     #[default]
     CtrlEnter,
-    /// The enter submit key.
+    /// Enter submits; Shift+Enter, Alt+Enter, and Ctrl+J insert a newline.
     Enter,
 }
 
@@ -73,7 +73,7 @@ pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
 }
 
 impl TextEditBuilder {
-    /// Creates a text edit builder.
+    /// Creates an editor that edits `value`, with Ctrl+Enter as the submit key.
     pub fn new(value: Signal<String>) -> Self {
         Self {
             value,
@@ -94,36 +94,36 @@ impl TextEditBuilder {
         }
     }
 
-    /// Returns the signal that says whether the caret shows.
+    /// A signal that controls whether the caret is drawn; it starts true.
     pub fn caret_visible(&mut self) -> Signal<bool> {
         *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
-    /// Sets the caret position.
+    /// Binds the caret position, as a byte offset in the text, to `position`.
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
         self
     }
 
-    /// Sets the caret rect.
+    /// Writes the rectangle of the caret to `rect`.
     pub const fn caret_rect(mut self, rect: Signal<Option<Rect>>) -> Self {
         self.caret_rect = Some(rect);
         self
     }
 
-    /// Sets the content padding.
+    /// Sets the padding between the frame and the text in px.
     pub const fn content_padding(mut self, horizontal: f32, vertical: f32) -> Self {
         self.content_padding = (horizontal, vertical);
         self
     }
 
-    /// Sets the chrome.
+    /// Removes the background and the state styles when `enabled` is false; the default is true.
     pub const fn chrome(mut self, enabled: bool) -> Self {
         self.chrome = enabled;
         self
     }
 
-    /// Sets the state.
+    /// Uses the text, caret, selection, and edit history of `state`, so the app can edit the text.
     pub fn state(mut self, state: TextEditState) -> Self {
         self.value = state.value;
         self.caret_position = Some(state.caret);
@@ -131,37 +131,37 @@ impl TextEditBuilder {
         self
     }
 
-    /// Sets the placeholder.
+    /// Sets the text shown while the editor is empty.
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
-    /// Sets the disabled.
+    /// Blocks edits while `flag` is true.
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
         self.disabled = Some(flag.into_signal());
         self
     }
 
-    /// Sets the change.
+    /// Calls `f` with the text after each edit.
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
         self
     }
 
-    /// Sets the key that submits.
+    /// Sets the key that runs `submit`; the default is `SubmitKey::CtrlEnter`.
     pub const fn submit_on(mut self, key: SubmitKey) -> Self {
         self.submit_key = key;
         self
     }
 
-    /// Sets the submit.
+    /// Calls `f` with the text when the user presses the submit key.
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
         self
     }
 
-    /// Sets the clipboard.
+    /// Replaces the default clipboard that cut, copy, and paste use.
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self

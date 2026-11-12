@@ -31,7 +31,7 @@ pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
 }
 
 impl GaugeBuilder {
-    /// Creates a gauge builder.
+    /// Creates a gauge of `value` against a maximum of 1.0.
     pub fn new(value: Signal<f32>) -> Self {
         Self {
             value,
@@ -43,7 +43,7 @@ impl GaugeBuilder {
         }
     }
 
-    /// Sets the max.
+    /// Sets the value at which the bar is full, at least `f32::EPSILON`; the default is 1.0.
     pub const fn max(mut self, max: f32) -> Self {
         self.max = if max > f32::EPSILON {
             max
@@ -53,13 +53,13 @@ impl GaugeBuilder {
         self
     }
 
-    /// Sets the label.
+    /// Sets the text shown before the bar, which is also the accessible name.
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Sets the warn.
+    /// Draws the bar in the warning color while `value / max` is below `threshold`.
     pub const fn warn(mut self, threshold: f32) -> Self {
         self.warn_threshold = Some(threshold);
         self

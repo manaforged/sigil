@@ -15,7 +15,7 @@ pub enum FontFamily {
 }
 
 impl FontFamily {
-    /// Returns the name.
+    /// The lowercase name of this family, such as `sans` or `mono`.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {

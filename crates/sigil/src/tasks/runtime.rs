@@ -84,7 +84,7 @@ fn lock(registry: &TaskRegistry) -> std::sync::MutexGuard<'_, HashMap<Owner, Vec
 }
 
 impl AsyncRuntime {
-    /// Creates an async runtime.
+    /// Creates a task runtime with the automatic worker count; it always returns `Ok`.
     pub fn new() -> Result<Self, crate::Error> {
         Ok(Self::with_workers(TaskWorkers::Auto))
     }

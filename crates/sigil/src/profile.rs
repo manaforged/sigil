@@ -132,7 +132,7 @@ pub(crate) fn dump_if_enabled() {
 
 kittest_pub! {
     if any(test, inspector);
-    /// Returns the recorded frames.
+    /// The frames that the profiler has recorded.
     #[doc(hidden)]
     #[must_use]
     pub fn frames() -> Vec<Frame> {

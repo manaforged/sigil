@@ -14,9 +14,9 @@ use super::identity::{self, Identifiable};
 /// Table sort column and direction.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SortKey {
-    /// The column.
+    /// The id of the sorted column.
     pub column: &'static str,
-    /// The dir.
+    /// The sort direction.
     pub dir: SortDirection,
 }
 
@@ -86,7 +86,7 @@ impl<Row: 'static> Clone for TableState<Row> {
 }
 
 impl<Row: 'static> TableState<Row> {
-    /// Creates a table state.
+    /// Creates a state with `rows` and `columns`, no sort, no filter, and no selection.
     #[must_use]
     pub fn new(rows: Vec<Row>, columns: Vec<TableColumn<Row>>) -> Self {
         let rows = signal(Arc::new(rows));
@@ -128,7 +128,7 @@ impl<Row: 'static> TableState<Row> {
         }
     }
 
-    /// Sets how two rows compare.
+    /// Sets the test that says a row did not change, so the table can skip rebuilding its cells.
     #[must_use]
     pub fn row_eq(mut self, eq: impl Fn(&Row, &Row) -> bool + 'static) -> Self {
         self.row_eq = Some(Rc::new(eq));
@@ -139,7 +139,7 @@ impl<Row: 'static> TableState<Row> {
         self.row_eq.clone()
     }
 
-    /// Returns the rows.
+    /// A signal of all rows, before sort and filter.
     #[must_use]
     pub const fn rows(&self) -> Signal<Arc<Vec<Row>>> {
         self.rows
@@ -183,13 +183,13 @@ impl<Row: 'static> TableState<Row> {
         self.editing
     }
 
-    /// Returns the selected index.
+    /// The lowest selected row index in `rows`; `None` when no row is selected.
     #[must_use]
     pub fn selected_index(&self) -> Option<u32> {
         self.selection.get().iter().copied().min()
     }
 
-    /// Returns the selected row.
+    /// A clone of the selected row with the lowest index; `None` when no row is selected.
     #[must_use]
     pub fn selected_row(&self) -> Option<Row>
     where
@@ -199,25 +199,25 @@ impl<Row: 'static> TableState<Row> {
         self.rows.get().get(index).cloned()
     }
 
-    /// Returns the columns.
+    /// All columns in the order given to `new`, hidden columns included.
     #[must_use]
     pub fn columns(&self) -> &[TableColumn<Row>] {
         &self.columns
     }
 
-    /// Returns the visible.
+    /// A signal of the indexes of the rows that pass the filter, in sorted order.
     #[must_use]
     pub const fn visible(&self) -> Signal<Rc<Vec<u32>>> {
         self.visible
     }
 
-    /// Returns the sort key.
+    /// A signal of the sort column and direction; `None` when the rows are not sorted.
     #[must_use]
     pub const fn sort_key(&self) -> Signal<Option<SortKey>> {
         self.sort
     }
 
-    /// Sorts by `column`, or flips the direction if it already sorts.
+    /// Cycles `column` through ascending, descending, and no sort.
     pub fn toggle_sort(&self, column: &'static str) {
         if !self.is_sortable(column) {
             return;
@@ -232,13 +232,13 @@ impl<Row: 'static> TableState<Row> {
         self.sort.set(dir.map(|dir| SortKey { column, dir }));
     }
 
-    /// Returns the quick filter.
+    /// A signal of the quick filter query; set it to filter the rows.
     #[must_use]
     pub const fn quick_filter(&self) -> Signal<String> {
         self.quick_filter
     }
 
-    /// Returns the selection.
+    /// A signal of the selected row indexes in `rows`.
     #[must_use]
     pub const fn selection(&self) -> Signal<Rc<HashSet<u32>>> {
         self.selection
@@ -296,7 +296,7 @@ impl<Row: 'static> TableState<Row> {
         self.layout
     }
 
-    /// Returns the visible columns.
+    /// The columns that are not hidden, in display order, each with its index in `columns`.
     #[must_use]
     pub fn visible_columns(&self) -> Vec<(usize, &TableColumn<Row>)> {
         let layout = self.layout.peek();

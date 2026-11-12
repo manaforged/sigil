@@ -49,26 +49,26 @@ impl ChipBuilder {
         }
     }
 
-    /// Sets the tone.
+    /// Sets the color tone; a signal recolors the chip when its value changes.
     pub fn tone(mut self, tone: impl Reactive<Tone>) -> Self {
         self.tone = tone.read();
         self.tone_signal = Some(tone.into_signal());
         self
     }
 
-    /// Sets the leading.
+    /// Shows `node` before the label, after the dot if there is one.
     pub fn leading(mut self, node: impl IntoNode + 'static) -> Self {
         self.leading = Some(Box::new(node));
         self
     }
 
-    /// Applies the dot option.
+    /// Shows a status dot in the chip's tone before the label.
     pub const fn dot(mut self) -> Self {
         self.dot = true;
         self
     }
 
-    /// Sets the activate.
+    /// Runs `activate` when the user activates the chip, and gives the chip the button role.
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self

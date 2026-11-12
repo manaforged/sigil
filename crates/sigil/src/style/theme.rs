@@ -88,7 +88,7 @@ pub struct Theme {
 }
 
 impl Theme {
-    /// Returns the color scale of a role.
+    /// The 12-step color scale of `role`.
     #[must_use]
     pub const fn scale(&self, role: ScaleRole) -> &ColorScale {
         match role {
@@ -117,7 +117,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the accent scale.
+    /// Sets the accent scale, and the accent and accent hover colors from its steps 9 and 10.
     #[must_use]
     #[doc(hidden)]
     pub const fn accent_scale(mut self, scale: ColorScale) -> Self {
@@ -128,7 +128,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the success scale.
+    /// Sets the color scale of the success role.
     #[must_use]
     #[doc(hidden)]
     pub const fn success(mut self, scale: ColorScale) -> Self {
@@ -137,7 +137,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the warn scale.
+    /// Sets the color scale of the warning role.
     #[must_use]
     #[doc(hidden)]
     pub const fn warn(mut self, scale: ColorScale) -> Self {
@@ -146,7 +146,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the error scale.
+    /// Sets the color scale of the error role.
     #[must_use]
     #[doc(hidden)]
     pub const fn error(mut self, scale: ColorScale) -> Self {
@@ -155,7 +155,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the info scale.
+    /// Sets the color scale of the info role.
     #[must_use]
     #[doc(hidden)]
     pub const fn info(mut self, scale: ColorScale) -> Self {
@@ -163,7 +163,7 @@ impl Theme {
         self
     }
 
-    /// Sets the direction.
+    /// Sets the layout direction: left to right or right to left.
     #[must_use]
     pub const fn direction(mut self, direction: Direction) -> Self {
         self.direction = direction;
@@ -171,7 +171,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the locale.
+    /// Sets the number and date formats of the theme.
     #[must_use]
     #[doc(hidden)]
     pub const fn locale(mut self, locale: Locale) -> Self {
@@ -180,7 +180,7 @@ impl Theme {
     }
 
     #[cfg(feature = "kittest")]
-    /// Sets the strings.
+    /// Sets the string table of the theme.
     #[must_use]
     #[doc(hidden)]
     pub fn strings(mut self, strings: Strings) -> Self {
@@ -199,7 +199,7 @@ fn readable_hover(accent: ColorScale, on: Color) -> Color {
 }
 
 impl Theme {
-    /// Returns the light theme.
+    /// Creates the light theme from the built-in light color scales.
     #[must_use]
     pub fn light() -> Self {
         Self::from_scales(&[
@@ -212,7 +212,7 @@ impl Theme {
         ])
     }
 
-    /// Returns the dark theme.
+    /// Creates the dark theme from the built-in dark color scales.
     #[must_use]
     pub fn dark() -> Self {
         Self::from_scales(&[
@@ -287,31 +287,31 @@ impl Theme {
         }
     }
 
-    /// Returns the width of a control of this size.
+    /// The width of a control of `size`, as a pixel length.
     #[must_use]
     pub const fn control_width(&self, size: ControlSize) -> Length {
         Length::Px(self.metrics.control_width(size))
     }
 
-    /// Returns the height of a control of this size.
+    /// The height of a control of `size`, as a pixel length.
     #[must_use]
     pub fn control_height(&self, size: ControlSize) -> Length {
         Length::Px(self.metrics.control_height(size))
     }
 
-    /// Returns the padding of a control of this size.
+    /// The padding of a control of `size`, as a pixel length.
     #[must_use]
     pub fn control_padding(&self, size: ControlSize) -> Length {
         Length::Px(self.metrics.control_padding(size))
     }
 
-    /// Returns the gap of a control of this size.
+    /// The gap of a control of `size`, as a pixel length.
     #[must_use]
     pub fn control_gap(&self, size: ControlSize) -> Length {
         Length::Px(self.metrics.control_gap(size))
     }
 
-    /// Returns the corner radius of a control of this size.
+    /// The corner radius of a control of `size`, as a pixel length.
     #[must_use]
     pub const fn radius(&self, size: ControlSize) -> Length {
         Length::Px(self.metrics.radius(match size {
@@ -321,13 +321,13 @@ impl Theme {
         }))
     }
 
-    /// Returns the normal theme.
+    /// Creates a theme from the obsidian palette with the normal variant.
     #[must_use]
     pub fn normal() -> Self {
         Self::from_palette(Palette::obsidian(), Variant::Normal)
     }
 
-    /// Returns the terminal theme.
+    /// Creates a theme from the terminal palette with the terminal variant.
     #[must_use]
     pub fn terminal() -> Self {
         Self::from_palette(Palette::terminal(), Variant::Terminal)

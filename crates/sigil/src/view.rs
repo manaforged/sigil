@@ -104,7 +104,7 @@ impl View {
         self
     }
 
-    /// Returns the first problem in the text and its line and column.
+    /// Parses the text and returns the first problem as an `ErrorKind::Config` error.
     pub fn check(&self) -> Result<(), Error> {
         parse(&self.source, &self.binds)
             .map(|_| ())

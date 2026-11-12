@@ -50,7 +50,7 @@ impl MouseButtons {
     /// The forward button.
     pub const FORWARD: Self = Self(1 << 4);
 
-    /// Returns the empty mouse buttons.
+    /// A set with no mouse buttons.
     #[must_use]
     pub const fn empty() -> Self {
         Self::EMPTY

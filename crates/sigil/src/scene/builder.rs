@@ -26,7 +26,7 @@ pub struct SceneBuilder {
 
 impl SceneBuilder {
     kittest_pub! {
-    /// Creates a scene builder.
+    /// Creates a scene builder with no commands.
     #[doc(hidden)]
     #[must_use]
     pub const fn new() -> Self {
@@ -229,7 +229,7 @@ impl SceneBuilder {
     }
 
     kittest_pub! {
-    /// Returns the finish.
+    /// Consumes the builder and returns the scene of its commands.
     #[doc(hidden)]
     #[must_use]
     pub fn finish(self) -> CommandScene {

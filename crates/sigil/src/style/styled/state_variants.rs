@@ -4,7 +4,7 @@ use crate::widgets::{StatePaint, StateTarget, Widget};
 
 /// Paint per interaction state, on builders that track hover, focus, press, and disabled.
 pub trait States: Widget + StateTarget {
-    /// Sets the style for the rest state.
+    /// Sets the style while the node is not disabled, pressed, hovered, or focused.
     #[must_use]
     fn rest<F>(self, configure: F) -> Self
     where

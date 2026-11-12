@@ -1,7 +1,7 @@
 use super::*;
 
 impl Host {
-    /// Returns the accessibility tree.
+    /// The full accessibility tree of the mounted nodes.
     #[must_use]
     pub fn accessibility_tree(&self) -> AccessibilityTree {
         self.accessibility_tree_scoped(crate::a11y::mapping::TreeScope::Full)

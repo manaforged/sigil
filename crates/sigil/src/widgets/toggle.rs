@@ -94,7 +94,7 @@ pub fn toggle(on: Signal<bool>) -> ToggleBuilder {
 }
 
 impl ToggleBuilder {
-    /// Creates a toggle builder.
+    /// Creates a switch that reads and writes `on`.
     pub fn new(on: Signal<bool>) -> Self {
         Self {
             on,
@@ -107,25 +107,25 @@ impl ToggleBuilder {
         }
     }
 
-    /// Sets the accessible.
+    /// Sets the accessible name; it takes priority over the label.
     pub fn accessible(mut self, name: impl Into<String>) -> Self {
         self.accessible = Some(name.into());
         self
     }
 
-    /// Sets the label.
+    /// Shows `label` after the switch and uses it as the accessible name.
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Sets the disabled.
+    /// Blocks the switch while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the change.
+    /// Calls `change` with the new value when the user flips the switch.
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self

@@ -33,7 +33,7 @@ pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
 }
 
 impl RadioGroupBuilder {
-    /// Creates a radio group builder.
+    /// Creates a group with no options that writes the key of the chosen option to `selected`.
     pub fn new(selected: Signal<String>) -> Self {
         Self {
             selected,
@@ -47,31 +47,31 @@ impl RadioGroupBuilder {
         }
     }
 
-    /// Sets the option.
+    /// Adds an option that shows `label` and sets `selected` to `key` when chosen.
     pub fn option(mut self, key: impl Into<String>, label: impl Into<String>) -> Self {
         self.options.push((key.into(), label.into()));
         self
     }
 
-    /// Sets the tone.
+    /// Sets the color of the selected mark; the default is `Tone::Primary`.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Sets the disabled.
+    /// Disables every option while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name of the group.
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
         self
     }
 
-    /// Sets the labelled by.
+    /// Takes the accessible name of the group from the node `node`.
     pub const fn labelled_by(mut self, node: NodeId) -> Self {
         self.labelled_by = Some(node);
         self

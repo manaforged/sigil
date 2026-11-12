@@ -17,7 +17,7 @@ impl Direction {
         matches!(self, Self::Rtl)
     }
 
-    /// Creates a direction from name.
+    /// The direction named `ltr` or `rtl`; `None` for any other name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&DIRECTION_NAMES, name)
@@ -65,7 +65,7 @@ enum DatePart {
 }
 
 impl DateOrder {
-    /// Creates a date order from name.
+    /// The date order named `ymd`, `dmy`, or `mdy`; `None` for any other name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&DATE_ORDER_NAMES, name)
@@ -106,7 +106,7 @@ impl Default for Locale {
 }
 
 impl Locale {
-    /// Creates a locale.
+    /// Creates a locale with these decimal and group marks, Y-M-D dates, and a 24-hour clock.
     #[must_use]
     pub const fn new(decimal: char, group: Option<char>) -> Self {
         Self {
@@ -120,13 +120,13 @@ impl Locale {
         }
     }
 
-    /// Creates a locale from name.
+    /// The preset locale named `en`, `de`, or `ar`; `None` for any other name.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         lookup(&LOCALE_PRESETS, name)
     }
 
-    /// Returns the en locale.
+    /// The English preset: `.` decimal, `,` groups, M/D/Y dates, and a 12-hour clock.
     #[must_use]
     pub const fn en() -> Self {
         let mut locale = Self::new('.', Some(',')).date(DateOrder::Mdy, '/');
@@ -134,13 +134,13 @@ impl Locale {
         locale
     }
 
-    /// Returns the de locale.
+    /// The German preset: `,` decimal, `.` groups, D.M.Y dates, and a 24-hour clock.
     #[must_use]
     pub const fn de() -> Self {
         Self::new(',', Some('.')).date(DateOrder::Dmy, '.')
     }
 
-    /// Returns the ar locale.
+    /// The Arabic preset: Arabic-Indic marks and zero, D/M/Y dates, and a 12-hour clock.
     #[must_use]
     pub const fn ar() -> Self {
         let mut locale = Self::new('\u{066B}', Some('\u{066C}'))
@@ -150,7 +150,7 @@ impl Locale {
         locale
     }
 
-    /// Sets the date order.
+    /// Sets the order of the date parts and the character between them.
     #[must_use]
     pub const fn date(mut self, order: DateOrder, separator: char) -> Self {
         self.date_order = order;
@@ -158,14 +158,14 @@ impl Locale {
         self
     }
 
-    /// Sets the zero digit.
+    /// Sets the character for the digit zero.
     #[must_use]
     pub const fn zero(mut self, zero: char) -> Self {
         self.zero = zero;
         self
     }
 
-    /// Sets the group size.
+    /// Sets the number of digits in each group; the default is 3.
     #[must_use]
     pub const fn group(mut self, size: u8) -> Self {
         self.group_size = size;

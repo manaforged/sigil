@@ -18,7 +18,7 @@ pub trait TextMeasure {
     /// Runs before each layout pass.
     fn begin_frame(&self) {}
 
-    /// Returns the font generation.
+    /// A number that is part of the key of cached text sizes; the default is 0.
     fn font_generation(&self) -> u64 {
         0
     }
@@ -32,7 +32,7 @@ pub trait TextMeasure {
         }
     }
 
-    /// Returns the caret geometry at a byte offset.
+    /// The caret geometry at `position` in `text`; the default is an empty geometry.
     fn caret(
         &self,
         text: &str,
@@ -44,7 +44,7 @@ pub trait TextMeasure {
         CaretGeometry::default()
     }
 
-    /// Returns the rectangles that cover a byte range.
+    /// The rectangles that cover `selection` in `text`; the default is none.
     fn selection_rects(
         &self,
         text: &str,

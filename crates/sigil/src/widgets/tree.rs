@@ -23,24 +23,24 @@ const ROW_ESTIMATE: f32 = space(6);
 /// One node of a `tree`.
 #[derive(Clone, Debug)]
 pub struct TreeNode<K: Clone + Eq + Hash + 'static> {
-    /// The id.
+    /// The key that names the node in `expanded`, `selected`, and `activate`.
     pub id: K,
-    /// The label.
+    /// The text of the row.
     pub label: TextContent,
-    /// The leading, if any.
+    /// The glyph before the label, if any.
     pub leading: Option<Glyph>,
-    /// The status, if any.
+    /// The status text and its color, if any.
     pub status: Option<(TextContent, Tone)>,
-    /// The detail, if any.
+    /// The secondary text of the row, if any.
     pub detail: Option<TextContent>,
-    /// The tone.
+    /// The emphasis of the row.
     pub tone: RowTone,
-    /// The children.
+    /// The child nodes, shown while this node is expanded.
     pub children: Vec<Self>,
 }
 
 impl<K: Clone + Eq + Hash + 'static> TreeNode<K> {
-    /// Creates a tree node.
+    /// Creates a leaf node with the key `id` and the text `label`.
     #[must_use]
     pub fn new(id: K, label: impl Into<TextContent>) -> Self {
         Self {
@@ -54,35 +54,35 @@ impl<K: Clone + Eq + Hash + 'static> TreeNode<K> {
         }
     }
 
-    /// Sets the leading.
+    /// Sets the glyph shown before the label.
     #[must_use]
     pub fn leading(mut self, glyph: impl Into<Glyph>) -> Self {
         self.leading = Some(glyph.into());
         self
     }
 
-    /// Sets the status.
+    /// Sets the status text of the row and its color.
     #[must_use]
     pub fn status(mut self, status: impl Into<TextContent>, tone: Tone) -> Self {
         self.status = Some((status.into(), tone));
         self
     }
 
-    /// Sets the detail.
+    /// Sets the secondary text of the row.
     #[must_use]
     pub fn detail(mut self, detail: impl Into<TextContent>) -> Self {
         self.detail = Some(detail.into());
         self
     }
 
-    /// Sets the tone.
+    /// Sets the emphasis of the row; the default is `RowTone::Normal`.
     #[must_use]
     pub const fn tone(mut self, tone: RowTone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Sets the children.
+    /// Replaces the child nodes.
     #[must_use]
     pub fn children(mut self, children: impl IntoIterator<Item = Self>) -> Self {
         self.children = children.into_iter().collect();
@@ -140,31 +140,31 @@ pub fn tree<K: Clone + Eq + Hash + 'static>(
 }
 
 impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
-    /// Sets the expanded.
+    /// Binds the keys of the expanded nodes to `expanded`; the default is all collapsed.
     pub const fn expanded(mut self, expanded: Signal<Vec<K>>) -> Self {
         self.expanded = Some(expanded);
         self
     }
 
-    /// Sets the selected.
+    /// Binds the key of the selected node to `selected`; `None` means no selection.
     pub const fn selected(mut self, selected: Signal<Option<K>>) -> Self {
         self.selected = Some(selected);
         self
     }
 
-    /// Sets the activate.
+    /// Runs `activate` with the node key on a click on a leaf or the activate key on any row.
     pub fn activate(mut self, activate: impl Fn(&K) + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
-    /// Sets the indent.
+    /// Sets the indent of each depth level in columns.
     pub const fn indent(mut self, cols: f32) -> Self {
         self.indent = Some(cols);
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name of the tree.
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self

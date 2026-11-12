@@ -188,13 +188,13 @@ impl ChartBuilder {
         self.push(name.into(), Rc::new(flat_pairs(rows)), Hue::of(tone))
     }
 
-    /// Sets the x range.
+    /// Shows only the points that `range` holds, by index; a drag pans it and the wheel zooms it.
     pub const fn x_range(mut self, range: Signal<Range<f32>>) -> Self {
         self.x_range = Some(range);
         self
     }
 
-    /// Applies the crosshair option.
+    /// Draws a vertical and a horizontal rule through the pointer.
     pub const fn crosshair(mut self) -> Self {
         self.crosshair = true;
         self
@@ -206,13 +206,13 @@ impl ChartBuilder {
         self
     }
 
-    /// Applies the whole numbers option.
+    /// Keeps the step between axis ticks at 1 or more, for values that are counts.
     pub const fn whole_numbers(mut self) -> Self {
         self.whole = true;
         self
     }
 
-    /// Applies the bar option.
+    /// Draws each value as a bar, which is the default mark.
     pub const fn bar(self) -> Self {
         self.mark(ChartMark::Bar)
     }
@@ -229,7 +229,7 @@ impl ChartBuilder {
         self.mark(ChartMark::Bar)
     }
 
-    /// Applies the line option.
+    /// Draws each series as a line.
     pub const fn line(self) -> Self {
         self.mark(ChartMark::Line)
     }
@@ -249,7 +249,7 @@ impl ChartBuilder {
         self.mark(ChartMark::Donut)
     }
 
-    /// Sets the tone.
+    /// Sets the color tone of the first series.
     pub fn tone(mut self, tone: Tone) -> Self {
         if let Some(series) = self.series.first_mut() {
             series.hue = Hue::of(tone);
@@ -257,13 +257,13 @@ impl ChartBuilder {
         self
     }
 
-    /// Sets the labels.
+    /// Sets the category labels, one for each value in order.
     pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.labels = labels.into_iter().map(Into::into).collect();
         self
     }
 
-    /// Sets the series.
+    /// Adds a named series of values drawn in `tone`.
     pub fn series(
         self,
         name: impl Into<String>,

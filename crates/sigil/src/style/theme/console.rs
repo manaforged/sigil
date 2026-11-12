@@ -44,7 +44,7 @@ static TOKENS: phf::Map<&str, ThemeValue> = phf::phf_map! {
 };
 
 impl Theme {
-    /// Returns the console dark theme.
+    /// Creates the dark theme with the console token overrides.
     #[must_use]
     pub fn console_dark() -> Self {
         Self::dark().theme_tokens(&TOKENS)

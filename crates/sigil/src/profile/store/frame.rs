@@ -42,7 +42,7 @@ impl Frame {
     }
 
     kittest_pub! {
-        /// Returns the total ns.
+        /// The frame time in ns: the wall time when recorded, else the sum of the top-level phases.
         #[must_use]
         pub fn total_ns(&self) -> u64 {
             if self.wall_ns > 0 {

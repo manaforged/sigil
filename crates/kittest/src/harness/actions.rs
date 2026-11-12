@@ -13,7 +13,7 @@ mod sealed {
 
 /// A place a pointer step acts on: a point, a node, or the accessible name of a control.
 pub trait Target: sealed::Sealed {
-    /// Returns the point in logical pixels.
+    /// The point in logical pixels where a pointer step on this target acts.
     fn point(&self, ui: &mut Harness) -> Point;
 }
 

@@ -73,7 +73,7 @@ impl<T: 'static> Clone for DragState<T> {
 }
 
 impl<T: Clone + 'static> DragState<T> {
-    /// Creates a drag state.
+    /// Creates a drag state with no drag in progress.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -93,13 +93,13 @@ impl<T: Clone + 'static> DragState<T> {
         self.payload.try_peek().flatten().is_some()
     }
 
-    /// Returns the position.
+    /// The last pointer position of a drag, in window coordinates.
     #[must_use]
     pub fn position(&self) -> (f32, f32) {
         self.position.try_peek().unwrap_or_default()
     }
 
-    /// Returns the payload.
+    /// The value that the user drags; `None` when no drag is in progress.
     #[must_use]
     pub fn payload(&self) -> Option<T> {
         self.payload.try_peek().flatten()

@@ -43,11 +43,11 @@ type GutterMarks = Signal<Vec<Option<Change>>>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Change {
-    /// The added change kind.
+    /// A line that was added; its bar uses the success color.
     Added,
-    /// The modified change kind.
+    /// A line that was modified; its bar uses the info color.
     Modified,
-    /// The deleted change kind.
+    /// A line that was deleted; its bar uses the error color.
     Deleted,
 }
 
@@ -147,43 +147,43 @@ pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> C
 }
 
 impl CodeEditBuilder {
-    /// Sets the selection.
+    /// Binds the selection anchor as `(line, column)`; the selection runs from it to the caret.
     pub const fn selection(mut self, anchor: Signal<Option<(usize, usize)>>) -> Self {
         self.selection = Some(anchor);
         self
     }
 
-    /// Sets the key handler.
+    /// Runs `f` for each key event while the editor is enabled, and keeps Tab in the editor.
     pub fn key_handler(mut self, f: impl Fn(&mut KeyEvent) + 'static) -> Self {
         self.on_key = Some(Rc::new(f));
         self
     }
 
-    /// Sets the disabled.
+    /// Disables the editor while `disabled` is true.
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the highlights.
+    /// Sets the syntax marks: one list of `Highlight` spans for each line.
     pub const fn highlights(mut self, spans: Signal<Vec<Vec<Highlight>>>) -> Self {
         self.highlights = Some(spans);
         self
     }
 
-    /// Sets the row height.
+    /// Sets the height of each line row in px; the default is 18 px, or one cell on a cell grid.
     pub const fn row_height(mut self, h: f32) -> Self {
         self.row_h = Some(h);
         self
     }
 
-    /// Sets the gutter.
+    /// Shows a gutter with line numbers and an optional `Change` bar for each line.
     pub const fn gutter(mut self, marks: GutterMarks) -> Self {
         self.gutter = Some(marks);
         self
     }
 
-    /// Sets the diagnostics.
+    /// Sets the diagnostics; each one marks its range on its line by severity.
     pub const fn diagnostics(mut self, spans: Diagnostics) -> Self {
         self.diagnostics = Some(spans);
         self

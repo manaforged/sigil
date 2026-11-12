@@ -56,25 +56,25 @@ impl ImageSource {
         })
     }
 
-    /// Returns the id.
+    /// A content id computed from the size and the pixels.
     #[must_use]
     pub const fn id(&self) -> u64 {
         self.id
     }
 
-    /// Returns the width.
+    /// The width in pixels.
     #[must_use]
     pub const fn width(&self) -> u32 {
         self.width
     }
 
-    /// Returns the height.
+    /// The height in pixels.
     #[must_use]
     pub const fn height(&self) -> u32 {
         self.height
     }
 
-    /// Returns the rgba.
+    /// The pixel bytes, four per pixel in RGBA order.
     #[must_use]
     pub fn rgba(&self) -> &[u8] {
         &self.rgba
@@ -240,14 +240,14 @@ pub fn image(source: ImageSource) -> ImageBuilder {
 }
 
 impl ImageBuilder {
-    /// Sets the alt.
+    /// Sets the accessible name of the image.
     #[must_use]
     pub fn alt(mut self, text: impl Into<String>) -> Self {
         self.node.a11y.name = AccessibleName::Static(text.into());
         self
     }
 
-    /// Sets the fit.
+    /// Sets how the image fits its box: fill, contain, or cover.
     #[must_use]
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
         if let NodeType::Image { fit: slot, .. } = &mut self.node.kind {
@@ -256,7 +256,7 @@ impl ImageBuilder {
         self
     }
 
-    /// Sets the crop.
+    /// Shows only pixel rows `top..top + height` of the image, clamped to the image.
     #[must_use]
     pub fn crop(self, top: u32, height: u32) -> Self {
         self.mutate(move |node| {
@@ -264,7 +264,7 @@ impl ImageBuilder {
         })
     }
 
-    /// Sets the mutate.
+    /// Runs `apply` on the node when it is built.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
         self.node = self.node.mutate(apply);

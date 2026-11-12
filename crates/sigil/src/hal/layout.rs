@@ -20,7 +20,7 @@ pub struct Constraint {
 }
 
 impl Constraint {
-    /// Creates a size with both dimensions definite.
+    /// Creates a constraint with a fixed width and height.
     #[must_use]
     pub const fn fixed(width: f32, height: f32) -> Self {
         Self {
@@ -29,7 +29,7 @@ impl Constraint {
         }
     }
 
-    /// Returns the max content size.
+    /// A constraint that asks for the max-content size on both axes.
     #[must_use]
     pub const fn max_content() -> Self {
         Self {
@@ -38,7 +38,7 @@ impl Constraint {
         }
     }
 
-    /// Returns the min content size.
+    /// A constraint that asks for the min-content size on both axes.
     #[must_use]
     pub const fn min_content() -> Self {
         Self {
@@ -47,14 +47,14 @@ impl Constraint {
         }
     }
 
-    /// Sets the width.
+    /// Makes the width fixed at `width` and keeps the height constraint.
     #[must_use]
     pub const fn width(mut self, width: f32) -> Self {
         self.width = Dim::Fixed(width);
         self
     }
 
-    /// Returns the fixed width.
+    /// The width when it is fixed; `None` for a content-sized width.
     #[must_use]
     pub const fn fixed_width(self) -> Option<f32> {
         match self.width {
@@ -63,7 +63,7 @@ impl Constraint {
         }
     }
 
-    /// Returns the fixed height.
+    /// The height when it is fixed; `None` for a content-sized height.
     #[must_use]
     pub const fn fixed_height(self) -> Option<f32> {
         match self.height {

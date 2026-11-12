@@ -28,7 +28,7 @@ pub struct Combobox {
 }
 
 impl Combobox {
-    /// Creates a combobox.
+    /// Creates the state of a combobox with `options`, an empty query, and no selection.
     #[must_use]
     pub fn new(options: Vec<String>) -> Self {
         Self {
@@ -42,14 +42,14 @@ impl Combobox {
         }
     }
 
-    /// Sets the disabled.
+    /// Stops the list from opening and options from being chosen while `disabled` is true.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    /// Sets the placeholder.
+    /// Sets the placeholder text of the input field.
     #[must_use]
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = signal(text.into());
@@ -64,19 +64,19 @@ impl Combobox {
         self.disabled
     }
 
-    /// Returns the query.
+    /// The text in the input field; a read in a reactive closure subscribes to it.
     #[must_use]
     pub fn query(self) -> String {
         self.query.get()
     }
 
-    /// Returns the selected.
+    /// The index of the chosen option in the full list; `None` when nothing is chosen.
     #[must_use]
     pub fn selected(self) -> Option<usize> {
         self.selected.get()
     }
 
-    /// Returns the selected option.
+    /// The label of the chosen option; `None` when nothing is chosen.
     #[must_use]
     pub fn selected_option(self) -> Option<String> {
         self.selected
@@ -84,7 +84,7 @@ impl Combobox {
             .and_then(|index| self.options.peek().get(index).cloned())
     }
 
-    /// Returns the selected signal.
+    /// The signal that holds the index of the chosen option.
     #[must_use]
     pub const fn selected_signal(self) -> Signal<Option<usize>> {
         self.selected
@@ -111,7 +111,7 @@ impl Combobox {
         self.open.set(false);
     }
 
-    /// Returns the filtered.
+    /// The options that match the query, best match first, each with its index in the full list.
     pub fn filtered(self) -> Vec<(usize, String)> {
         let query = self.query.get();
         let options = self.options.get();
@@ -122,7 +122,7 @@ impl Combobox {
             .collect()
     }
 
-    /// Returns the cursor.
+    /// The row of the highlighted option in the filtered list.
     #[must_use]
     pub fn cursor(self) -> usize {
         self.cursor.get()

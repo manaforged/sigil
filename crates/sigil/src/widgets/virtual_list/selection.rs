@@ -8,13 +8,13 @@ use crate::widgets::listbox::{only, span, toggle};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SelectionMode {
-    /// The none selection mode.
+    /// Rows cannot be selected.
     None,
-    /// The single selection mode.
+    /// One row is selected at a time.
     Single,
-    /// The multi selection mode.
+    /// A click selects one row; Ctrl-click or Cmd-click adds or removes a row.
     Multi,
-    /// The extend selection mode.
+    /// The same as `Multi`, and Shift-click selects the range from the anchor row.
     Extend,
 }
 
@@ -32,7 +32,7 @@ pub(super) struct SelectionRuntime {
 }
 
 impl SelectionState {
-    /// Creates a selection state.
+    /// Creates an empty selection with `mode`.
     #[must_use]
     pub fn new(mode: SelectionMode) -> Self {
         Self {
@@ -42,7 +42,7 @@ impl SelectionState {
         }
     }
 
-    /// Returns the mode.
+    /// The selection mode.
     #[must_use]
     pub const fn mode(&self) -> SelectionMode {
         self.mode
@@ -54,7 +54,7 @@ impl SelectionState {
         self.selected.contains(&index)
     }
 
-    /// Returns the selected indices.
+    /// The selected indexes in ascending order.
     pub fn selected_indices(&self) -> impl Iterator<Item = usize> + '_ {
         self.selected.iter().copied()
     }

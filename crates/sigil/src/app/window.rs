@@ -14,12 +14,12 @@ pub struct Window(u64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum CloseAction {
-    /// The close close action.
+    /// Closes the window.
     #[default]
     Close,
-    /// The hide close action.
+    /// Hides the window and keeps it alive.
     Hide,
-    /// The keep close action.
+    /// Leaves the window open.
     Keep,
 }
 
@@ -79,13 +79,13 @@ impl Window {
         queue_command(Some(self), command);
     }
 
-    /// Returns the focused.
+    /// A signal that is true while the window has focus; `None` when the window is not open.
     #[must_use]
     pub fn focused(self) -> Option<Signal<bool>> {
         signals_for(self).map(|s| s.focused)
     }
 
-    /// Returns the occluded.
+    /// A signal that is true while the window is occluded; `None` when the window is not open.
     #[must_use]
     pub fn occluded(self) -> Option<Signal<bool>> {
         signals_for(self).map(|s| s.occluded)

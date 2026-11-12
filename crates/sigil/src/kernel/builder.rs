@@ -89,49 +89,49 @@ impl NodeBuilder {
         }
     }
 
-    /// Sets the role.
+    /// Sets the accessibility role of the node.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
         self.a11y.role = role;
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name of the node.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.a11y.name = name.into();
         self
     }
 
-    /// Sets the description.
+    /// Sets the accessible description of the node.
     #[must_use]
     pub fn description(mut self, description: impl Into<String>) -> Self {
         self.a11y.description = Some(AccessibleName::Static(description.into()));
         self
     }
 
-    /// Sets the labelled by.
+    /// Names `node` as the node that labels this node for assistive technology.
     #[must_use]
     pub fn labelled_by(mut self, node: NodeId) -> Self {
         self.a11y.labelled_by = Some(node);
         self
     }
 
-    /// Sets the owns.
+    /// Adds `node` to the nodes that this node owns in its accessibility properties.
     #[must_use]
     pub fn owns(mut self, node: NodeId) -> Self {
         self.a11y.owns.push(node);
         self
     }
 
-    /// Sets the action.
+    /// Adds `action` to the accessibility actions of the node.
     #[must_use]
     pub fn action(mut self, action: Action) -> Self {
         self.a11y.actions.push(action);
         self
     }
 
-    /// Sets the focusable.
+    /// Sets whether the node can take keyboard focus; a fragment cannot.
     #[must_use]
     pub fn focusable(mut self, yes: bool) -> Self {
         debug_assert!(
@@ -142,35 +142,35 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the traps tab.
+    /// Sets whether a Tab press goes to the focused node instead of moving focus to the next node.
     #[must_use]
     pub const fn traps_tab(mut self, yes: bool) -> Self {
         self.a11y.traps_tab = yes;
         self
     }
 
-    /// Sets the tab index.
+    /// Sets the tab order: lower indexes come first, and a negative index skips the node.
     #[must_use]
     pub fn tab_index(mut self, index: i32) -> Self {
         self.a11y.tab_index = Some(index);
         self
     }
 
-    /// Sets the keyboard shortcut.
+    /// Sets the shortcut that the node reports to assistive technology.
     #[must_use]
     pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
         self.a11y.keyboard_shortcut = Some(shortcut.into());
         self
     }
 
-    /// Sets the hittable.
+    /// Sets whether pointer hit tests and focus moves can land on the node.
     #[must_use]
     pub const fn hittable(mut self, yes: bool) -> Self {
         self.a11y.hittable = yes;
         self
     }
 
-    /// Sets the checked.
+    /// Sets the signal that reports whether the node is checked.
     #[must_use]
     pub fn checked(mut self, signal: Signal<bool>) -> Self {
         self.a11y.checked = Some(signal);
@@ -184,56 +184,56 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the selected.
+    /// Sets the signal that reports whether the node is selected.
     #[must_use]
     pub fn selected(mut self, signal: Signal<bool>) -> Self {
         self.a11y.selected = Some(signal);
         self
     }
 
-    /// Sets the expanded.
+    /// Sets the signal that reports whether the node is expanded.
     #[must_use]
     pub fn expanded(mut self, signal: Signal<bool>) -> Self {
         self.a11y.expanded = Some(signal);
         self
     }
 
-    /// Sets the sort direction.
+    /// Sets the signal that reports the sort direction; `None` in the signal means not sorted.
     #[must_use]
     pub fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
         self.a11y.sort_direction = Some(signal);
         self
     }
 
-    /// Sets the row count.
+    /// Sets the signal that reports the number of rows.
     #[must_use]
     pub fn row_count(mut self, signal: Signal<usize>) -> Self {
         self.a11y.row_count = Some(signal);
         self
     }
 
-    /// Sets the column count.
+    /// Sets the number of columns that the node reports.
     #[must_use]
     pub fn column_count(mut self, count: usize) -> Self {
         self.a11y.column_count = Some(count);
         self
     }
 
-    /// Sets the row index.
+    /// Sets the row index that the node reports.
     #[must_use]
     pub fn row_index(mut self, index: usize) -> Self {
         self.a11y.row_index = Some(index);
         self
     }
 
-    /// Sets the column index.
+    /// Sets the column index that the node reports.
     #[must_use]
     pub fn column_index(mut self, index: usize) -> Self {
         self.a11y.column_index = Some(index);
         self
     }
 
-    /// Sets the value.
+    /// Sets the numeric value signal and its range; a reversed `min` and `max` swap.
     #[must_use]
     pub fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
         let (low, high) = (min.min(max), min.max(max));
@@ -244,28 +244,28 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the value step.
+    /// Sets the step of the numeric value that the node reports to assistive technology.
     #[must_use]
     pub fn value_step(mut self, step: f32) -> Self {
         self.a11y.step = Some(step);
         self
     }
 
-    /// Sets the text value.
+    /// Sets the signal that holds the text value of the node.
     #[must_use]
     pub fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
         self
     }
 
-    /// Sets the text cursor.
+    /// Sets the signals for the caret position and the selection anchor of the text.
     #[must_use]
     pub fn text_cursor(mut self, caret: Signal<usize>, anchor: Signal<Option<usize>>) -> Self {
         self.a11y.text_cursor = Some(TextCursor { caret, anchor });
         self
     }
 
-    /// Sets the placeholder.
+    /// Sets the placeholder text that the node reports to assistive technology.
     #[must_use]
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.a11y.placeholder = Some(placeholder.into());
@@ -279,14 +279,14 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the callback that runs on added.
+    /// Runs `hook` with the tree and the node id after the node and its children are in the tree.
     #[must_use]
     pub fn added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
         self.added.push(Box::new(hook));
         self
     }
 
-    /// Sets the children reactive.
+    /// Builds the children from `f` and rebuilds them when a signal that `f` reads changes.
     #[must_use]
     #[track_caller]
     pub fn children_reactive<F, I, N>(mut self, f: F) -> Self
@@ -302,7 +302,7 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the children keyed.
+    /// Builds the children from the `(key, child)` pairs of `f`; a key names a child across runs.
     #[must_use]
     #[track_caller]
     pub fn children_keyed<F, I, K, N>(self, f: F) -> Self
@@ -315,7 +315,7 @@ impl NodeBuilder {
         self.keyed_children(f)
     }
 
-    /// Sets the with.
+    /// Attaches `value` to the node as an extension that `Node::extension` reads.
     #[must_use]
     pub fn with<T: 'static>(mut self, value: T) -> Self {
         self.pre_extensions.push(Box::new(move |node: &mut Node| {
@@ -324,7 +324,7 @@ impl NodeBuilder {
         self
     }
 
-    /// Sets the mutate.
+    /// Runs `apply` on the node when it is built, before its children are added.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut Node) + 'static) -> Self {
         self.pre_extensions.push(Box::new(apply));

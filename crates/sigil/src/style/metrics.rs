@@ -49,7 +49,7 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    /// Returns the current metrics.
+    /// The metrics of the active cell grid, or the window metrics when no cell size is set.
     #[must_use]
     pub fn current() -> Self {
         Self {
@@ -57,7 +57,7 @@ impl Metrics {
         }
     }
 
-    /// Returns the window metrics.
+    /// The metrics of a window, with no cell grid.
     #[must_use]
     pub const fn window() -> Self {
         Self { cell: None }
@@ -69,7 +69,7 @@ impl Metrics {
         self.cell.is_some()
     }
 
-    /// Returns the height of a control of this size.
+    /// The height of a control of `size` in pixels; one cell on a cell grid.
     #[must_use]
     pub fn control_height(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
@@ -79,7 +79,7 @@ impl Metrics {
         })
     }
 
-    /// Returns the width of a control of this size.
+    /// The width of a control of `size` in pixels.
     #[must_use]
     pub const fn control_width(self, size: ControlSize) -> f32 {
         match size {
@@ -89,7 +89,7 @@ impl Metrics {
         }
     }
 
-    /// Returns the padding of a control of this size.
+    /// The padding of a control of `size` in pixels; one cell on a cell grid.
     #[must_use]
     pub fn control_padding(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
@@ -99,7 +99,7 @@ impl Metrics {
         })
     }
 
-    /// Returns the gap of a control of this size.
+    /// The gap of a control of `size` in pixels; one cell on a cell grid.
     #[must_use]
     pub fn control_gap(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
@@ -115,13 +115,13 @@ impl Metrics {
         radius_px(radius) as f32
     }
 
-    /// Returns the ring width.
+    /// The stroke width of the focus ring: 2 px.
     #[must_use]
     pub const fn ring_width(self) -> f32 {
         2.0
     }
 
-    /// Returns the ring offset.
+    /// The distance between a node and its focus ring: 2 px.
     #[must_use]
     pub const fn ring_offset(self) -> f32 {
         2.0
@@ -133,7 +133,7 @@ impl Metrics {
         self.cell.unwrap_or_else(|| f32::from(ICON_SIZE))
     }
 
-    /// Returns the overlay padding.
+    /// The padding of an overlay in pixels; one cell on a cell grid.
     #[must_use]
     pub fn overlay_padding(self) -> f32 {
         self.cell.unwrap_or(space(1))

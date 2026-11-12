@@ -22,9 +22,9 @@ use nav::LISTBOX;
 
 /// The rows behind a list that keys move through.
 pub(crate) trait ListModel: 'static {
-    /// Returns the cursor.
+    /// The signal that holds the index of the highlighted item.
     fn cursor(&self) -> Signal<usize>;
-    /// Returns the len.
+    /// The number of items.
     fn len(&self) -> usize;
     /// Returns whether the item at `index` can be chosen.
     fn enabled(&self, _index: usize) -> bool {

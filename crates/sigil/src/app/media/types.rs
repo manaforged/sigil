@@ -51,7 +51,7 @@ pub struct Track {
 }
 
 impl Track {
-    /// Creates a track.
+    /// Creates a track with `title` and no other metadata.
     #[must_use]
     pub fn new(title: impl Into<String>) -> Self {
         Self {
@@ -60,56 +60,56 @@ impl Track {
         }
     }
 
-    /// Sets the artist.
+    /// Sets the name of the artist.
     #[must_use]
     pub fn artist(mut self, artist: impl Into<String>) -> Self {
         self.artist = Some(artist.into());
         self
     }
 
-    /// Sets the album.
+    /// Sets the name of the album.
     #[must_use]
     pub fn album(mut self, album: impl Into<String>) -> Self {
         self.album = Some(album.into());
         self
     }
 
-    /// Sets the cover url.
+    /// Sets the URL of the cover image.
     #[must_use]
     pub fn cover_url(mut self, url: impl Into<String>) -> Self {
         self.cover_url = Some(url.into());
         self
     }
 
-    /// Sets the duration.
+    /// Sets the length of the track.
     #[must_use]
     pub const fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
 
-    /// Sets the position.
+    /// Sets the playback position in the track.
     #[must_use]
     pub const fn position(mut self, position: Duration) -> Self {
         self.position = Some(position);
         self
     }
 
-    /// Sets the state.
+    /// Sets the playback state of the track.
     #[must_use]
     pub const fn state(mut self, state: PlaybackState) -> Self {
         self.state = state;
         self
     }
 
-    /// Sets the shuffle.
+    /// Sets whether shuffle is on.
     #[must_use]
     pub const fn shuffle(mut self, shuffle: bool) -> Self {
         self.shuffle = shuffle;
         self
     }
 
-    /// Sets the repeat.
+    /// Sets the repeat mode: off, one, or all.
     #[must_use]
     pub const fn repeat(mut self, repeat: Repeat) -> Self {
         self.repeat = repeat;

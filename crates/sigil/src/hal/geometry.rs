@@ -8,7 +8,7 @@ pub struct PhysicalSize {
 }
 
 impl PhysicalSize {
-    /// Creates a physical size.
+    /// Creates a size in physical pixels.
     #[must_use]
     pub const fn new(width: u32, height: u32) -> Self {
         Self { width, height }
@@ -25,7 +25,7 @@ pub struct Point {
 }
 
 impl Point {
-    /// Creates a point.
+    /// Creates a point at `x`, `y`.
     #[must_use]
     pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }
@@ -44,7 +44,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    /// Creates a rect.
+    /// Creates a rectangle from its origin point, `width`, and `height`.
     #[must_use]
     pub const fn new(origin: Point, width: f32, height: f32) -> Self {
         Self {
@@ -79,7 +79,7 @@ impl Rect {
         }
     }
 
-    /// Returns the smallest rectangle that holds both rectangles.
+    /// The smallest rectangle that holds both rectangles.
     #[must_use]
     pub fn union(self, other: Self) -> Self {
         let x = self.origin.x.min(other.origin.x);
@@ -144,7 +144,7 @@ impl Rgba {
         a: 1.0,
     };
 
-    /// Creates a color from its four channels.
+    /// Creates a color from its red, green, blue, and alpha channels.
     #[must_use]
     #[cfg(raster)]
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {

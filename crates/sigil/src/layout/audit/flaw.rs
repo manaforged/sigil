@@ -111,7 +111,7 @@ pub enum Issue {
 }
 
 impl Issue {
-    /// Returns the rule that this issue breaks.
+    /// The rule that this issue breaks.
     #[must_use]
     pub const fn kind(&self) -> Flaw {
         match self {
@@ -126,7 +126,7 @@ impl Issue {
         }
     }
 
-    /// Returns the node to fix.
+    /// The node to fix: the parent for column and control issues, the first node of an overlap.
     #[must_use]
     pub const fn node(&self) -> &NodeLabel {
         match self {

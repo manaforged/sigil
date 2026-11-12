@@ -8,7 +8,7 @@ impl Scale {
     /// The scale of one physical pixel per logical unit.
     pub const ONE: Self = Self(1.0);
 
-    /// Creates a scale.
+    /// Creates a scale factor; a non-finite or non-positive value becomes `Scale::ONE`.
     #[must_use]
     pub fn new(scale: f32) -> Self {
         if scale.is_finite() && scale > 0.0 {
@@ -18,7 +18,7 @@ impl Scale {
         }
     }
 
-    /// Returns the factor.
+    /// The scale factor as an `f32`.
     #[must_use]
     pub const fn factor(self) -> f32 {
         self.0
@@ -63,7 +63,7 @@ pub struct Size {
 }
 
 impl Size {
-    /// Creates a logical size.
+    /// Creates a size in logical pixels.
     #[must_use]
     pub const fn new(width: f32, height: f32) -> Self {
         Self { width, height }

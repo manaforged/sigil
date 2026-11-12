@@ -23,7 +23,7 @@ pub enum TextContent {
 }
 
 impl TextContent {
-    /// Returns the as static str.
+    /// The text when it is static; `None` for signal and computed text.
     #[must_use]
     pub fn as_static_str(&self) -> Option<&str> {
         match self {
@@ -32,7 +32,7 @@ impl TextContent {
         }
     }
 
-    /// Returns the current text without subscribing.
+    /// The current text, read without subscribing; a disposed signal reads as empty.
     #[must_use]
     pub fn resolve(&self) -> String {
         self.with_str(str::to_owned)
@@ -141,7 +141,7 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
 }
 
 impl TextBuilder {
-    /// Applies the wrap option.
+    /// Turns wrapping on and the ellipsis off.
     #[must_use]
     pub const fn wrap(mut self) -> Self {
         if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
@@ -151,7 +151,7 @@ impl TextBuilder {
         self
     }
 
-    /// Applies the nowrap option.
+    /// Turns wrapping off.
     #[must_use]
     pub const fn nowrap(mut self) -> Self {
         if let NodeType::Text { wrap, .. } = &mut self.node.kind {
@@ -160,7 +160,7 @@ impl TextBuilder {
         self
     }
 
-    /// Applies the ellipsize option.
+    /// Turns the ellipsis on and wrapping off.
     #[must_use]
     pub const fn ellipsize(mut self) -> Self {
         if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
@@ -170,49 +170,49 @@ impl TextBuilder {
         self
     }
 
-    /// Sets the role.
+    /// Sets the accessibility role of the text node.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
         self.node.a11y.role = role;
         self
     }
 
-    /// Sets the label.
+    /// Sets the accessible name of the text node.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.node = self.node.label(name);
         self
     }
 
-    /// Sets the description.
+    /// Sets the accessible description of the text node.
     #[must_use]
     pub fn description(mut self, description: impl Into<String>) -> Self {
         self.node = self.node.description(description);
         self
     }
 
-    /// Sets the focusable.
+    /// Sets whether the text node can take keyboard focus.
     #[must_use]
     pub const fn focusable(mut self, yes: bool) -> Self {
         self.node.a11y.focusable = yes;
         self
     }
 
-    /// Sets the tab index.
+    /// Sets the tab order: lower indexes come first, and a negative index skips the node.
     #[must_use]
     pub fn tab_index(mut self, index: i32) -> Self {
         self.node.a11y.tab_index = Some(index);
         self
     }
 
-    /// Sets the keyboard shortcut.
+    /// Sets the shortcut that the text node reports to assistive technology.
     #[must_use]
     pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
         self.node = self.node.keyboard_shortcut(shortcut);
         self
     }
 
-    /// Sets the hittable.
+    /// Sets whether pointer hit tests and focus moves can land on the text node.
     #[must_use]
     pub const fn hittable(mut self, yes: bool) -> Self {
         self.node.a11y.hittable = yes;
@@ -240,7 +240,7 @@ impl TextBuilder {
         })
     }
 
-    /// Sets the mutate.
+    /// Runs `apply` on the node when it is built.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
         self.node = self.node.mutate(apply);

@@ -86,7 +86,7 @@ impl Error {
         text
     }
 
-    /// Returns the kind.
+    /// The class of this error, to branch on.
     #[must_use]
     pub const fn kind(&self) -> ErrorKind {
         self.kind

@@ -73,13 +73,13 @@ impl CardBuilder {
         self
     }
 
-    /// Sets the selected.
+    /// Draws the card with the selected fill and an accent border while `selected` is true.
     pub fn selected(mut self, selected: impl Reactive<bool>) -> Self {
         self.selected = Some(selected.into_signal());
         self
     }
 
-    /// Sets the activate.
+    /// Makes the card a button that runs `activate` when the user activates it.
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self

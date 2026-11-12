@@ -38,13 +38,13 @@ pub struct FileDialog {
 }
 
 impl FileDialog {
-    /// Creates a file dialog.
+    /// Creates a file dialog with no filters, start directory, or file name.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Sets the filter.
+    /// Adds a filter named `name` for files with these extensions.
     #[must_use]
     pub fn filter(mut self, name: &str, extensions: &[&str]) -> Self {
         self.filters.push(FileFilter {
@@ -54,27 +54,27 @@ impl FileDialog {
         self
     }
 
-    /// Sets the directory.
+    /// Sets the directory that the dialog opens in.
     #[must_use]
     pub fn directory(mut self, dir: impl AsRef<Path>) -> Self {
         self.directory = Some(dir.as_ref().to_path_buf());
         self
     }
 
-    /// Sets the file name.
+    /// Sets the file name that the dialog starts with.
     #[must_use]
     pub fn file_name(mut self, name: &str) -> Self {
         self.file_name = Some(name.to_owned());
         self
     }
 
-    /// Returns the open file.
+    /// Starts a dialog that picks one file to open.
     #[must_use]
     pub fn open_file(self) -> Picked<PathBuf> {
         self.pick_one(PickKind::File)
     }
 
-    /// Returns the open files.
+    /// Starts a dialog that picks several files to open.
     #[must_use]
     pub fn open_files(self) -> Picked<Vec<PathBuf>> {
         #[cfg(feature = "kittest")]
@@ -92,13 +92,13 @@ impl FileDialog {
         out
     }
 
-    /// Returns the pick folder.
+    /// Starts a dialog that picks a folder.
     #[must_use]
     pub fn pick_folder(self) -> Picked<PathBuf> {
         self.pick_one(PickKind::Folder)
     }
 
-    /// Returns the save file.
+    /// Starts a dialog that picks a path to save to.
     #[must_use]
     pub fn save_file(self) -> Picked<PathBuf> {
         self.pick_one(PickKind::Save)

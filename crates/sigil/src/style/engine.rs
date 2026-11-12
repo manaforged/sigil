@@ -15,7 +15,7 @@ kittest_pub! {
 
 impl<'theme> StyleEngine<'theme> {
     kittest_pub! {
-        /// Creates a style engine.
+        /// Creates a style engine for `theme` with the neutral tone.
         #[must_use]
         pub const fn new(theme: &'theme Theme) -> Self {
             Self::with_tone(theme, Tone::Neutral)

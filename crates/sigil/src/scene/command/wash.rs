@@ -76,14 +76,14 @@ impl Wash {
         self
     }
 
-    /// Sets the seed that picks the shapes.
+    /// Sets the seed that picks the shapes; the default is 7.
     #[must_use]
     pub const fn seed(mut self, seed: u32) -> Self {
         self.seed = seed & SEED_MASK;
         self
     }
 
-    /// Sets the size of the largest shapes in pixels.
+    /// Sets the size of the largest shapes in pixels; the default is 260.
     #[must_use]
     pub const fn scale(mut self, pixels: f32) -> Self {
         self.scale = pixels;
