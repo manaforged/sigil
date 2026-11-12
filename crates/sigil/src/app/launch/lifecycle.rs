@@ -1,5 +1,5 @@
 use crate::app::WindowCommand;
-use crate::app::window::{WindowId, take_open_requests};
+use crate::app::window::{Window, take_open_requests};
 use crate::error::AppResult;
 use crate::hal::Shell as _;
 use crate::shell::{WinitShell, WinitWindowHandle};
@@ -76,7 +76,7 @@ pub(super) fn apply_commands(
 
 fn resolve_target(
     windows: &Windows,
-    target: Option<WindowId>,
+    target: Option<Window>,
     default: Option<WinitWindowHandle>,
 ) -> Option<WinitWindowHandle> {
     target.map_or_else(

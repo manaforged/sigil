@@ -1,7 +1,7 @@
 use crate::app::config::AppConfig;
 use crate::app::embed::Host;
 use crate::app::window::{
-    CloseAction, Mount, WindowId, WindowSignals, register_window, set_current_window,
+    CloseAction, Mount, Window, WindowSignals, register_window, set_current_window,
     unregister_window,
 };
 use crate::error::{AppResult, Error};
@@ -13,7 +13,7 @@ use super::backend::RenderSurface;
 use super::scene_cache::SceneCache;
 
 pub(crate) struct WindowView {
-    pub(crate) id: WindowId,
+    pub(crate) id: Window,
     pub(crate) handle: WinitWindowHandle,
     pub(crate) config: AppConfig,
     pub(crate) surface: Option<RenderSurface>,
@@ -48,7 +48,7 @@ pub(crate) enum CloseOutcome {
 
 impl WindowRecord {
     pub(crate) fn new(
-        id: WindowId,
+        id: Window,
         handle: WinitWindowHandle,
         mut config: AppConfig,
         mount: Mount,
@@ -129,7 +129,7 @@ impl Windows {
     }
 
     #[must_use]
-    pub(crate) fn handle_of(&self, id: WindowId) -> Option<WinitWindowHandle> {
+    pub(crate) fn handle_of(&self, id: Window) -> Option<WinitWindowHandle> {
         self.records
             .iter()
             .find_map(|r| (r.view.id == id).then_some(r.view.handle))

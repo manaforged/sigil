@@ -193,7 +193,7 @@ pub mod fuzzing {
 /// The items most apps use.
 pub mod prelude {
     #[cfg(app_host)]
-    pub use crate::app::open;
+    pub use crate::app::open_url;
     #[cfg(app_host)]
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::{

@@ -4,11 +4,11 @@ use std::process::Command;
 use crate::{AppResult, Error};
 
 /// Opens an http, https, or mailto URL with the OS handler (feature `desktop` or `terminal`).
-pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
+pub fn open_url(target: impl AsRef<OsStr>) -> AppResult<()> {
     if !allowed(target.as_ref()) {
         return Err(Error::io(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
-            "open accepts only http, https, and mailto URLs",
+            "open_url accepts only http, https, and mailto URLs",
         )));
     }
     let mut child = command(target.as_ref()).spawn().map_err(Error::io)?;

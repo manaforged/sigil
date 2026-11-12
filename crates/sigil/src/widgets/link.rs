@@ -91,7 +91,7 @@ impl LinkBuilder {
 #[cfg(app_host)]
 fn open_href(href: String) -> Activate {
     Rc::new(move || {
-        if let Err(error) = crate::app::open(&href) {
+        if let Err(error) = crate::app::open_url(&href) {
             tracing::warn!(target: "sigil::link", %href, %error, "link did not open");
         }
     })

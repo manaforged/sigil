@@ -65,7 +65,7 @@ pub enum WindowLevel {
     AlwaysOnTop,
 }
 
-/// Commands for the window whose frame runs, or for a `WindowId` through `WindowId::command`.
+/// Commands for the window whose frame runs, or for a `Window` through `Window::command`.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum WindowCommand {
