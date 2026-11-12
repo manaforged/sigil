@@ -9,7 +9,7 @@ use sigil::layout::LayoutEngine;
 use sigil::layout::TextMeasure;
 use sigil::prelude::*;
 
-const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
+const VIEWPORT: Constraint = Constraint::fixed(1440.0, 900.0);
 
 struct StubMeasure;
 
@@ -17,11 +17,11 @@ impl TextMeasure for StubMeasure {
     fn measure(
         &self,
         content: &TextContent,
-        _space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
+        _space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1) as f32;
-        sigil::geometry::LogicalSize::new(120.0, lines * 16.8)
+        sigil::geometry::Size::new(120.0, lines * 16.8)
     }
 }
 

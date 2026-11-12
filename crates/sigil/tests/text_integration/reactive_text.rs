@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::TextContent;
 use sigil::layout::{TextEngineMeasure, TextMeasure};
 use sigil::reactive::{Owner, signal};
@@ -24,7 +24,7 @@ fn reactive_text_measures_current_value() {
         let source = TextContent::Reactive(sig);
         let measurer = make_measurer();
 
-        let size = measurer.measure(&source, Size::max_content());
+        let size = measurer.measure(&source, Constraint::max_content());
 
         assert!(size.width > 0.0, "reactive text should have width");
         assert!(size.height > 0.0, "reactive text should have height");
@@ -38,12 +38,12 @@ fn reactive_text_reflects_signal_update() {
         let source = TextContent::Reactive(sig);
         let measurer = make_measurer();
 
-        let short = measurer.measure(&source, Size::max_content());
+        let short = measurer.measure(&source, Constraint::max_content());
 
         sig.set(String::from("Hello world this is longer"));
         measurer.begin_frame();
 
-        let long = measurer.measure(&source, Size::max_content());
+        let long = measurer.measure(&source, Constraint::max_content());
 
         assert!(
             long.width > short.width,

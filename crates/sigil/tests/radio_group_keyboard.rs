@@ -13,7 +13,7 @@ use sigil::reactive::Owner;
 use sigil::style::FocusRing;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(320.0, 240.0);
+const VIEWPORT: Constraint = Constraint::fixed(320.0, 240.0);
 
 fn press(
     router: &mut EventRouter,

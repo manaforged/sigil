@@ -16,7 +16,7 @@ use sigil::layout::text_geometry;
 use sigil::prelude::*;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(320.0, 120.0);
+const VIEWPORT: Constraint = Constraint::fixed(320.0, 120.0);
 
 #[test]
 fn text_field_undo_reverts_typing() {

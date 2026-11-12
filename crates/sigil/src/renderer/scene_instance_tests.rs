@@ -1,4 +1,4 @@
-use crate::geometry::{Point, Rect, Size};
+use crate::geometry::{Constraint, Point, Rect};
 use crate::kernel::*;
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::style::Color;
@@ -24,7 +24,7 @@ fn accent(width: f32, height: f32) -> NodeBuilder {
 
 fn lay_out(cx: &mut Cx, root: NodeId) {
     LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
-        .compute(cx, root, Size::fixed(320.0, 240.0))
+        .compute(cx, root, Constraint::fixed(320.0, 240.0))
         .expect("compute succeeds");
 }
 

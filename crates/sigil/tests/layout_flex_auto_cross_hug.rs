@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::layout::{AlignItems, LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
@@ -19,7 +19,7 @@ fn row_height(align: AlignItems) -> f32 {
     );
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(300.0, 400.0))
+        .compute(&mut cx, root, Constraint::fixed(300.0, 400.0))
         .unwrap();
     let r = *cx.get(root).unwrap().children().first().unwrap();
     layout.result(r).unwrap().rect().height

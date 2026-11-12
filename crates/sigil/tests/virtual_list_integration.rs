@@ -72,7 +72,7 @@ fn keyboard_navigation_end_to_end() {
                 .scroll_bind(scroll_y)
                 .cursor(focused_row),
         );
-        let layout = compute_layout(&mut cx, root, Size::fixed(320.0, 96.0));
+        let layout = compute_layout(&mut cx, root, Constraint::fixed(320.0, 96.0));
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
 
@@ -100,7 +100,7 @@ fn selection_propagates_to_a11y() {
 
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
-        let layout = compute_layout(&mut cx, root, Size::fixed(320.0, 480.0));
+        let layout = compute_layout(&mut cx, root, Constraint::fixed(320.0, 480.0));
         let mut router = EventRouter::new();
         router.route(
             &mut cx,
@@ -132,7 +132,11 @@ fn fastest_scroll_step(count: usize) -> Duration {
             );
             let mut engine = LayoutEngine::new(stub_text_measure());
             engine
-                .compute(&mut cx, root, Size::fixed(VIEWPORT_WIDTH, VIEWPORT_WIDTH))
+                .compute(
+                    &mut cx,
+                    root,
+                    Constraint::fixed(VIEWPORT_WIDTH, VIEWPORT_WIDTH),
+                )
                 .expect("layout computes");
             if n >= 5 {
                 samples.push(start.elapsed());
@@ -204,7 +208,7 @@ fn selected_a11y_count(cx: &Cx, root: NodeId) -> usize {
     count
 }
 
-fn compute_layout(cx: &mut Cx, root: NodeId, size: Size) -> LayoutEngine {
+fn compute_layout(cx: &mut Cx, root: NodeId, size: Constraint) -> LayoutEngine {
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout.compute(cx, root, size).expect("layout computes");
     layout
@@ -234,7 +238,7 @@ fn a_static_list_renders_new_rows_when_the_wheel_scrolls() {
             .viewport_height(480.0)
             .viewport_width(320.0),
         );
-        let size = Size::fixed(320.0, 480.0);
+        let size = Constraint::fixed(320.0, 480.0);
         let mut layout = compute_layout(&mut cx, root, size);
         let mut router = EventRouter::new();
         for _ in 0..40 {

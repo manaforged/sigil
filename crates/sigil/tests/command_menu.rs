@@ -34,7 +34,7 @@ fn setup(build: impl FnOnce() -> CommandMenuBuilder) -> (Cx, LayoutEngine, Event
     let root = cx.add(build());
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout
-        .compute(&mut cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
+        .compute(&mut cx, root, Constraint::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
     let mut router = EventRouter::new();
     router.set_focus(&mut cx, Some(root));
@@ -50,7 +50,7 @@ fn press(
 ) {
     router.route(cx, layout, Event::key_down(key.0).physical(key.1));
     layout
-        .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
+        .compute(cx, root, Constraint::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout after key");
 }
 
@@ -213,7 +213,7 @@ const DELTA_PCT: f32 = 0.5;
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(NamedKey, PhysicalKey)]) {
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout
-        .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
+        .compute(cx, root, Constraint::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
     let mut router = EventRouter::new();
     router.set_focus(cx, Some(query_field(cx, root)));

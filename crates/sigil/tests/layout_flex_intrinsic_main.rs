@@ -4,11 +4,11 @@ use crate::layout_stub as stub;
 use sigil::widgets::Layout;
 use stub::stub_engine;
 
-use sigil::geometry::{Rect, Size};
+use sigil::geometry::{Constraint, Rect};
 use sigil::kernel::*;
 use sigil::layout::*;
 
-const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
+const AVAILABLE: Constraint = Constraint::fixed(800.0, 1000.0);
 
 const TEXT_H: f32 = 16.0;
 

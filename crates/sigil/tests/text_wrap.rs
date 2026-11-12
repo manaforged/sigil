@@ -11,8 +11,8 @@ impl TextMeasure for CharText {
     fn measure(
         &self,
         content: &TextContent,
-        space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
+        space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
         let text = match content {
             TextContent::Static(s) => s.clone(),
             TextContent::Reactive(sig) => sig.peek(),
@@ -28,9 +28,9 @@ impl TextMeasure for CharText {
             let per_line = (w / char_w).floor().max(1.0);
             #[allow(clippy::cast_precision_loss)]
             let lines = (text.chars().count() as f32 / per_line).ceil();
-            return sigil::geometry::LogicalSize::new(w, lines * 16.0);
+            return sigil::geometry::Size::new(w, lines * 16.0);
         }
-        sigil::geometry::LogicalSize::new(natural, 16.0)
+        sigil::geometry::Size::new(natural, 16.0)
     }
 }
 
@@ -49,7 +49,7 @@ fn text_height(node: TextBuilder) -> f32 {
         );
         let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
-            .compute(&mut cx, root, Size::fixed(1100.0, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(1100.0, 400.0))
             .expect("layout");
         let column_id = *cx.get(root).unwrap().children().first().unwrap();
         let text_id = *cx.get(column_id).unwrap().children().first().unwrap();
@@ -101,7 +101,7 @@ fn wrapped_text_stays_within_its_container_width() {
         );
         let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
-            .compute(&mut cx, root, Size::fixed(1100.0, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(1100.0, 400.0))
             .expect("layout");
         let column_id = *cx.get(root).unwrap().children().first().unwrap();
         let text_id = *cx.get(column_id).unwrap().children().first().unwrap();
@@ -134,7 +134,7 @@ fn row_cell_rect(style: LayoutStyle) -> sigil::geometry::Rect {
         );
         let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 28.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 28.0))
             .expect("layout");
         let text_id = *cx.get(root).unwrap().children().first().unwrap();
         rect = layout.result(text_id).unwrap().rect();
@@ -195,7 +195,7 @@ fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
         );
         let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
-            .compute(&mut cx, root, Size::fixed(200.0, 28.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 28.0))
             .expect("layout");
         let row = cx.get(root).unwrap().children().to_vec();
         let fixed_id = row.first().copied().expect("fixed sibling present");

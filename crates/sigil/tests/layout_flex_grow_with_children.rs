@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::Space;
 use sigil::layout::{LayoutEngine, LayoutStyle};
@@ -25,7 +25,7 @@ fn two_cells(with_child: bool) -> Vec<f32> {
     );
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+        .compute(&mut cx, root, Constraint::fixed(400.0, 300.0))
         .unwrap();
     let kids: Vec<NodeId> = cx.get(root).unwrap().children().to_vec();
     kids.iter()

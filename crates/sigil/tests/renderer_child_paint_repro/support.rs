@@ -2,7 +2,7 @@
 #![allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::scene::emit_scene;
@@ -52,7 +52,7 @@ pub(super) fn capture(build: impl sigil::kernel::IntoNode, size_px: [u32; 2]) ->
     let [w, h] = size_px;
     let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
     layout
-        .compute(&mut cx, root, Size::fixed(w as f32, h as f32))
+        .compute(&mut cx, root, Constraint::fixed(w as f32, h as f32))
         .expect("layout compute");
 
     let scene = emit_scene(&cx, root, None);

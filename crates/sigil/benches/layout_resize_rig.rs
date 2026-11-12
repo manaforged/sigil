@@ -1,6 +1,6 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::IntoNode;
 use sigil::kernel::{Cx, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
@@ -27,14 +27,14 @@ fn bench_resize(c: &mut Criterion) {
         let root = cx.add(build);
         let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
-            .compute(&mut cx, root, Size::fixed(12800.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(12800.0, 100.0))
             .expect("bench harness invariant");
         cx.clear_dirty();
         let mut w = 12800.0_f32;
         b.iter(|| {
             w = if w >= 12810.0 { 12800.0 } else { w + 1.0 };
             engine
-                .compute(&mut cx, root, Size::fixed(w, 100.0))
+                .compute(&mut cx, root, Constraint::fixed(w, 100.0))
                 .expect("bench harness invariant");
             black_box(engine.result(root));
         });

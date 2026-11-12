@@ -17,7 +17,7 @@ use widget_support::{compute, rect_colors};
 
 const WIDTH: f32 = 640.0;
 const HEIGHT: f32 = 480.0;
-const VIEWPORT: Size = Size::fixed(WIDTH, HEIGHT);
+const VIEWPORT: Constraint = Constraint::fixed(WIDTH, HEIGHT);
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
     emit_scene(cx, root, None)

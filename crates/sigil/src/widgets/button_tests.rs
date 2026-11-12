@@ -3,7 +3,7 @@
 use super::*;
 use crate::events::NamedKey;
 use crate::events::{Event, EventRouter, Key, KeyPhase, MouseButton, MouseButtons, PointerPhase};
-use crate::geometry::{Point, Size};
+use crate::geometry::{Constraint, Point};
 use crate::kernel::{AccessibleName, Cx, IntoNode, Role};
 use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, signal};
@@ -23,7 +23,7 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
         );
         let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(80.0, 20.0)));
         layout
-            .compute(&mut cx, id, Size::fixed(160.0, 40.0))
+            .compute(&mut cx, id, Constraint::fixed(160.0, 40.0))
             .expect("layout");
         let mut router = EventRouter::new();
         for (invalid, busy, enabled, expected) in [

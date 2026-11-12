@@ -9,7 +9,7 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(320.0, 120.0);
+const VIEWPORT: Constraint = Constraint::fixed(320.0, 120.0);
 
 fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> Event {
     Event::key(Key::character(ch), phase)

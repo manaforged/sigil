@@ -1,6 +1,6 @@
 #![allow(clippy::shadow_unrelated)]
 
-use crate::geometry::{LogicalSize, Size};
+use crate::geometry::{Constraint, Size};
 use crate::kernel::{Cx, NodeId, TextContent, container};
 use crate::reactive::{Owner, effect, signal};
 use crate::style::StyleAtom;
@@ -13,7 +13,7 @@ use super::LayoutEngine;
 struct WordWrap;
 
 impl TextMeasure for WordWrap {
-    fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
+    fn measure(&self, content: &TextContent, space: Constraint) -> Size {
         let text = content.resolve();
         let limit = match space.width {
             crate::geometry::Dim::Fixed(width) => width,
@@ -35,7 +35,7 @@ impl TextMeasure for WordWrap {
                 line = next;
             }
         }
-        LogicalSize::new(widest.max(line), f32::from(lines) * 16.0)
+        Size::new(widest.max(line), f32::from(lines) * 16.0)
     }
 }
 
@@ -78,7 +78,7 @@ fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
         );
         let child = first_child(&cx, root);
         let mut engine = engine();
-        let viewport = Size::fixed(80.0, 40.0);
+        let viewport = Constraint::fixed(80.0, 40.0);
         engine.compute(&mut cx, root, viewport).expect("measure");
         assert!(shifted.peek(), "the measurement requests a new position");
         engine.compute(&mut cx, root, viewport).expect("next frame");
@@ -110,7 +110,7 @@ fn repaint_reuses_layout_storage_and_preserves_geometry() {
                 }),
         );
         let mut engine = engine();
-        let viewport = Size::fixed(80.0, 40.0);
+        let viewport = Constraint::fixed(80.0, 40.0);
         let rects = |cx: &Cx, engine: &LayoutEngine| -> Vec<_> {
             let children = cx.get(root).expect("root").children();
             children
@@ -148,7 +148,7 @@ fn reactive_layout_style_change_invalidates_cache() {
             }
         }));
         let mut engine = engine();
-        let available = Size::fixed(120.0, 40.0);
+        let available = Constraint::fixed(120.0, 40.0);
         let width = |laid: &LayoutEngine| laid.result(root).expect("root layout").rect().width;
         engine.compute(&mut cx, root, available).expect("initial");
         let generation = engine.generation();
@@ -178,7 +178,7 @@ fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
         let mut engine = engine();
         for _ in 0..2 {
             engine
-                .compute(&mut cx, root, Size::fixed(400.0, 800.0))
+                .compute(&mut cx, root, Constraint::fixed(400.0, 800.0))
                 .expect("settled frame");
         }
         pos.set((0.0, 40.0));
@@ -208,7 +208,7 @@ fn a_reactive_label_keeps_its_size_on_its_first_change() {
         let child = first_child(&cx, root);
         let mut engine = engine();
         engine
-            .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
             .expect("first frame");
         label.set("12:00:01".to_owned());
         let kept = engine
@@ -243,7 +243,7 @@ fn a_resized_label_is_named_in_the_profile() {
         let mut engine = engine();
         for _ in 0..2 {
             engine
-                .compute(&mut cx, root, Size::fixed(400.0, 800.0))
+                .compute(&mut cx, root, Constraint::fixed(400.0, 800.0))
                 .expect("settled frame");
         }
         crate::profile::enable();
@@ -251,7 +251,7 @@ fn a_resized_label_is_named_in_the_profile() {
         crate::profile::begin_frame(crate::profile::BackendStatus::TERMINAL);
         label.set("a much longer label".to_owned());
         engine
-            .compute(&mut cx, root, Size::fixed(400.0, 800.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 800.0))
             .expect("resized frame");
         crate::profile::tick_frame();
         let hot = crate::profile::frames()
@@ -284,10 +284,10 @@ fn a_reflowed_label_is_not_kept_on_a_size_measured_at_its_old_width() {
         let child = first_child(&cx, root);
         let mut engine = engine();
         engine
-            .compute(&mut cx, root, Size::fixed(200.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 100.0))
             .expect("wide frame");
         engine
-            .compute(&mut cx, root, Size::fixed(24.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(24.0, 100.0))
             .expect("narrow frame");
         label.set("abcde".to_owned());
         let roots = engine

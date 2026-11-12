@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, container, text};
 use sigil::layout::LayoutEngine;
 use sigil::reactive::{Owner, signal};
@@ -24,7 +24,7 @@ fn items_bind_tick_updates_reactive_text() {
             .viewport_width(200.0),
         );
         let mut layout = LayoutEngine::new(stub_text_measure());
-        let avail = Size::fixed(200.0, 80.0);
+        let avail = Constraint::fixed(200.0, 80.0);
         layout.compute(&mut cx, root, avail).expect("layout");
         assert!(emit_scene(&cx, root, None).find_text("alpha").is_some());
         items.update(|rows| *rows.first_mut().expect("one row") = "omega".to_string());

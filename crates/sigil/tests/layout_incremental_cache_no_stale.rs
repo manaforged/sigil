@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -18,7 +18,7 @@ fn dirty_frame_reflects_mutation_then_clean_frame_hits() {
     let leaf_id = *cx.get(root).unwrap().children().first().unwrap();
 
     let mut engine = LayoutEngine::new(Box::new(FakeMeasure::default()));
-    let avail = Size::fixed(200.0, 200.0);
+    let avail = Constraint::fixed(200.0, 200.0);
     engine.compute(&mut cx, root, avail).unwrap();
     cx.clear_dirty();
     assert!((engine.result(leaf_id).unwrap().rect().width - 40.0).abs() < 0.5);

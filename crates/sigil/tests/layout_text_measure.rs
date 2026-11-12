@@ -5,7 +5,7 @@ use crate::layout_stub as stub;
 use sigil_kittest::FakeMeasure;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -33,7 +33,7 @@ fn computed_text_width(mut engine: LayoutEngine) -> f32 {
         .expect("child exists");
 
     engine
-        .compute(&mut cx, root, Size::max_content())
+        .compute(&mut cx, root, Constraint::max_content())
         .expect("compute succeeds");
 
     cx.get(child)

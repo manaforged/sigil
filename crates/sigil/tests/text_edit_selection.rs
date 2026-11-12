@@ -42,12 +42,12 @@ fn shift_select_across_lines_highlights_each_covered_line() {
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("relayout");
 
         assert!(selection_ys(&cx, root).is_empty(), "no selection at rest");
@@ -55,7 +55,7 @@ fn shift_select_across_lines_highlights_each_covered_line() {
         router.route(&mut cx, &layout, shift_up());
         router.route(&mut cx, &layout, shift_up());
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("relayout after select");
 
         let ys = selection_ys(&cx, root);
@@ -88,12 +88,12 @@ fn dragging_across_lines_highlights_each_covered_line() {
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("relayout");
 
         router.route(
@@ -107,7 +107,7 @@ fn dragging_across_lines_highlights_each_covered_line() {
             pt(60.0, 52.0, PointerPhase::Move, MouseButtons::LEFT),
         );
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("relayout drag");
 
         let ys = selection_ys(&cx, root);

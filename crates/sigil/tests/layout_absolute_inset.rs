@@ -2,7 +2,7 @@
 
 use crate::layout_stub as stub;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::*;
@@ -34,7 +34,7 @@ fn block_absolute_top_left_px_inset_offsets_from_padding_origin() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -63,7 +63,7 @@ fn block_absolute_bottom_inset_anchors_against_trailing_edge() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -90,7 +90,7 @@ fn block_absolute_right_inset_with_auto_left_anchors_against_right_edge() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -117,7 +117,7 @@ fn flex_absolute_inset_top_left_offsets_from_padding_origin() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -144,7 +144,7 @@ fn flex_absolute_bottom_right_inset_anchors_against_trailing_edges() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -169,7 +169,7 @@ fn block_absolute_all_auto_inset_keeps_padding_origin_fallback() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -198,7 +198,7 @@ fn flex_absolute_shrink_wrapped_child_anchors_bottom_right() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -226,7 +226,7 @@ fn flex_absolute_shrink_wrapped_text_leaf_anchors_bottom_right() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -268,7 +268,7 @@ fn flex_absolute_toast_queue_shape_anchors_fully_inside() {
     let queue = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, queue);
@@ -299,7 +299,7 @@ fn flex_absolute_mixed_leading_trailing_leading_wins() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -326,7 +326,7 @@ fn flex_absolute_trailing_inset_empty_child_does_not_invert() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -356,7 +356,7 @@ fn flex_absolute_leading_inset_auto_size_keeps_containing_block_fill() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(PARENT_W, PARENT_H))
+        .compute(&mut cx, root, Constraint::fixed(PARENT_W, PARENT_H))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);

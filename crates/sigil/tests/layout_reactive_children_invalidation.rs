@@ -4,12 +4,12 @@ use crate::layout_stub as stub;
 use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
 
-const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
+const AVAILABLE: Constraint = Constraint::fixed(800.0, 1000.0);
 
 #[test]
 fn reactive_children_in_sized_container_only_relayouts_subtree() {

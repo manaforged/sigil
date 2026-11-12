@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::events::*;
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
 use sigil::prelude::Widget;

@@ -5,7 +5,7 @@
 use crate::layout_stub as stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -29,7 +29,7 @@ fn fill_width_in_flex_column_resolves_against_parent_width() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(220.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(220.0, 40.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);
@@ -60,7 +60,7 @@ fn fill_height_in_flex_row_resolves_against_parent_height() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(40.0, 220.0))
+        .compute(&mut cx, root, Constraint::fixed(40.0, 220.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);

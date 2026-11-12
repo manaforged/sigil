@@ -111,7 +111,7 @@ impl<'a> MeasureScope<'a> {
         } else {
             crate::geometry::Dim::MaxContent
         };
-        let space = crate::geometry::Size {
+        let space = crate::geometry::Constraint {
             width,
             height: crate::geometry::Dim::MaxContent,
         };
@@ -177,7 +177,7 @@ impl<'a> MeasureScope<'a> {
         } else {
             crate::geometry::Dim::MaxContent
         };
-        let space = crate::geometry::Size {
+        let space = crate::geometry::Constraint {
             width,
             height: crate::geometry::Dim::MaxContent,
         };

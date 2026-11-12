@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -23,7 +23,7 @@ fn a_fitted_path_keeps_its_aspect_ratio() {
     );
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::fixed(10.0, 16.0)));
     layout
-        .compute(&mut cx, root, Size::fixed(960.0, 220.0))
+        .compute(&mut cx, root, Constraint::fixed(960.0, 220.0))
         .unwrap();
     let child = cx
         .get(root)

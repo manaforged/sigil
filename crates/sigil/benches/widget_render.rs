@@ -145,14 +145,14 @@ fn render_one(
 
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(size_px.0, size_px.1))
+            .compute(&mut cx, root, Constraint::fixed(size_px.0, size_px.1))
             .expect("layout");
 
         let mut router = EventRouter::new();
         drive(&mut router, &mut cx, &layout, mode, hit);
 
         layout
-            .compute(&mut cx, root, Size::fixed(size_px.0, size_px.1))
+            .compute(&mut cx, root, Constraint::fixed(size_px.0, size_px.1))
             .expect("layout-after-state");
 
         let scene: CommandScene = emit_scene(&cx, root, None);

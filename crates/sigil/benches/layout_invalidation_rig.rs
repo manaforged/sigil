@@ -8,7 +8,7 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -20,7 +20,7 @@ const ROWS: usize = 100;
 const LEAVES_PER_ROW: usize = 100;
 const ROW_HEIGHT: f32 = 7.2;
 const LEAF_WIDTH: f32 = 12.8;
-const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
+const AVAILABLE: Constraint = Constraint::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 

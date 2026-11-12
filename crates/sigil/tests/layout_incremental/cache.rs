@@ -127,13 +127,13 @@ fn available_size_change_invalidates_cache() {
     let mut engine = stub_engine();
 
     engine
-        .compute(&mut cx, root, Size::fixed(120.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(120.0, 40.0))
         .expect("initial compute succeeds");
     let generation = engine.generation();
     assert_eq!(layout_rect(&cx, root).width.to_bits(), 120.0_f32.to_bits());
 
     engine
-        .compute(&mut cx, root, Size::fixed(240.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(240.0, 40.0))
         .expect("resized compute succeeds");
 
     assert_ne!(engine.generation(), generation);

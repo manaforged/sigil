@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::{Point, Rect, Size};
+use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene};
@@ -13,7 +13,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 20.0);
 fn layout(cx: &mut Cx, root: NodeId) {
     let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
     engine
-        .compute(cx, root, Size::fixed(200.0, 80.0))
+        .compute(cx, root, Constraint::fixed(200.0, 80.0))
         .expect("layout");
 }
 

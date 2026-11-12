@@ -7,7 +7,7 @@ use tiny_skia::Pixmap;
 
 use crate::app::{FrameHooks, FrameInfo};
 use crate::events::{Event, WindowEvent};
-use crate::geometry::{LogicalSize, PhysicalSize, Point, Rect, Scale};
+use crate::geometry::{PhysicalSize, Point, Rect, Scale, Size};
 use crate::kernel::{HostMode, IntoNode};
 use crate::profile::{self, Phase};
 use crate::renderer::damage::{GPU_BUDGET, culled};
@@ -313,7 +313,7 @@ impl Frame {
                 Event::Scroll(scroll)
             }
             Event::Window(WindowEvent::Resized(_)) => Event::Window(WindowEvent::Resized(
-                Scale::ONE.to_physical(LogicalSize::new(self.viewport.0, self.viewport.1)),
+                Scale::ONE.to_physical(Size::new(self.viewport.0, self.viewport.1)),
             )),
             other => other,
         }

@@ -36,7 +36,7 @@ fn page_down_moves_one_viewport_of_rows() {
         );
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, PANE_H))
+            .compute(&mut cx, root, Constraint::fixed(400.0, PANE_H))
             .unwrap();
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, click(5.0, 5.0));

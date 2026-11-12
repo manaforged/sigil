@@ -7,7 +7,7 @@ use sigil::layout::Space;
 use sigil::widgets::{Layout, Widget};
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
@@ -30,7 +30,7 @@ fn position_reactive_tracks_signal_with_stable_identity() {
 
         let mut engine = stub_engine();
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("initial compute");
         let r1 = layout_rect(&cx, node);
         assert_eq!(
@@ -42,7 +42,7 @@ fn position_reactive_tracks_signal_with_stable_identity() {
 
         pos.set((120.0, 200.0));
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("reposition compute");
         let r2 = layout_rect(&cx, node);
         assert_eq!(
@@ -81,7 +81,7 @@ fn bounds_reactive_publishes_the_absolute_rect() {
 
         let mut engine = stub_engine();
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("initial compute");
         assert_eq!(
             bounds.peek(),
@@ -110,7 +110,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         let leaf = *cx.get(strip).unwrap().children().first().unwrap();
         let mut engine = stub_engine();
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("initial compute");
         let _profile = crate::serial::profile();
         sigil::profile::enable();
@@ -121,7 +121,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         });
         pos.set((0.0, -35.0));
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("translate compute");
         sigil::profile::tick_frame();
         let counts = sigil::profile::frames()
@@ -162,7 +162,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         let strip = *cx.get(root).unwrap().children().first().unwrap();
         let mut engine = stub_engine();
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("initial compute");
         let _profile = crate::serial::profile();
         sigil::profile::enable();
@@ -174,7 +174,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         label.set(String::from("bb"));
         pos.set((0.0, -35.0));
         engine
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("second compute");
         sigil::profile::tick_frame();
         let counts = sigil::profile::frames()
@@ -213,12 +213,12 @@ fn incremental_root_with_margin_keeps_its_place() {
         let boxed = *cx.get(root).unwrap().children().get(1).unwrap();
         let mut engine = stub_engine();
         engine
-            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 300.0))
             .expect("initial compute");
         let before = layout_rect(&cx, boxed);
         label.set(String::from("bb"));
         engine
-            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 300.0))
             .expect("incremental compute");
         let after = layout_rect(&cx, boxed);
         assert_eq!(

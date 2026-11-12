@@ -4,7 +4,7 @@ use std::time::Duration;
 use crossterm::event::{self, Event as TermEvent};
 
 use crate::events::{Event, WindowEvent};
-use crate::geometry::{LogicalSize, Scale};
+use crate::geometry::{Scale, Size};
 use crate::terminal::keys::{map_key, push_key_text, strip_replies};
 use crate::terminal::mouse::map_mouse;
 use crate::terminal::run::{CELL, Hooks};
@@ -240,7 +240,7 @@ fn focus(yes: bool) -> Input {
 fn resized(cols: u16, rows: u16) -> Event {
     let (width, height) = crate::terminal::run::view(cols, rows);
     Event::Window(WindowEvent::Resized(
-        Scale::ONE.to_physical(LogicalSize::new(width, height)),
+        Scale::ONE.to_physical(Size::new(width, height)),
     ))
 }
 

@@ -9,7 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil::events::*;
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -148,7 +148,7 @@ fn pointer_hits_last_frame_boxes() {
     assert!(!old_hit.get(), "this frame's intent is not hittable yet");
 
     layout
-        .compute(&mut cx, root, Size::fixed(300.0, 300.0))
+        .compute(&mut cx, root, Constraint::fixed(300.0, 300.0))
         .expect("recompute");
     press(&mut router, &mut cx, &layout, 210.0);
     assert!(old_hit.get(), "after compute, new box is hittable");

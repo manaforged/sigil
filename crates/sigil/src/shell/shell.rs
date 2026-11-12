@@ -8,7 +8,7 @@ use web_time::Instant;
 
 use crate::app::WindowOpts;
 use crate::events::{Event, Modifiers, MouseButtons};
-use crate::geometry::{LogicalSize, PhysicalSize, Point, Scale};
+use crate::geometry::{PhysicalSize, Point, Scale, Size};
 use winit::{
     event_loop::{EventLoop, EventLoopProxy},
     window::Window,
@@ -36,7 +36,7 @@ pub(crate) struct PendingWindow {
 
 pub(crate) enum PendingWindowSize {
     Physical(PhysicalSize),
-    Logical(LogicalSize),
+    Logical(Size),
 }
 
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;

@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation::runtime::animating;
-use crate::geometry::{LogicalSize, PhysicalSize, Scale};
+use crate::geometry::{PhysicalSize, Scale, Size};
 use crate::hal::Shell;
 use crate::reactive::{Owner, Runtime, next_interval_deadline};
 use crate::shell::{WinitShell, WinitWindowHandle};
@@ -151,7 +151,7 @@ fn install_async_runtime(shell: &WinitShell, workers: crate::tasks::TaskWorkers)
 fn create_initial_window<S>(
     shell: &mut S,
     config: &AppConfig,
-    logical_size: LogicalSize,
+    logical_size: Size,
 ) -> AppResult<S::Window>
 where
     S: Shell,
@@ -234,8 +234,8 @@ fn resize_surface(
     clippy::cast_precision_loss,
     reason = "window sizes are far below the f32 mantissa limit"
 )]
-const fn logical_size_from_config(size: (u32, u32)) -> LogicalSize {
-    LogicalSize::new(size.0 as f32, size.1 as f32)
+const fn logical_size_from_config(size: (u32, u32)) -> Size {
+    Size::new(size.0 as f32, size.1 as f32)
 }
 
 fn clamp_physical_size(size: PhysicalSize) -> PhysicalSize {

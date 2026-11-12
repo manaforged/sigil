@@ -4,7 +4,7 @@
 use crate::layout_stub as stub;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 
 #[test]
@@ -18,7 +18,7 @@ fn gc_removes_mirrored_nodes_for_disposed_core_subtrees() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(100.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 40.0))
         .expect("compute succeeds");
     assert_eq!(engine.mirrored_node_count(), 3);
 

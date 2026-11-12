@@ -15,7 +15,7 @@ use sigil::prelude::*;
 use sigil::reactive::Owner;
 use widget_support::{compute, rect_colors};
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 const A: Color = color(200, 20, 20, 255);
 const B: Color = color(20, 200, 20, 255);
 const C: Color = color(20, 20, 200, 255);

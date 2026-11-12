@@ -38,13 +38,13 @@ fn items_bind_shrink_still_paints_rows() {
 
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 6, "initial bind paints all rows");
 
         items.set(vec!["match-1".to_string(), "match-2".to_string()]);
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 2, "shrunk bind still paints rows");
         let scene = emit_scene(&cx, root, None);
@@ -64,7 +64,7 @@ fn items_bind_shrink_still_paints_rows() {
             "d".to_string(),
         ]);
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 4, "regrown bind still paints rows");
     });
@@ -98,7 +98,7 @@ fn items_bind_via_effect_chain_still_paints_rows() {
 
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(
             glyph_runs(&cx, root),
@@ -109,7 +109,7 @@ fn items_bind_via_effect_chain_still_paints_rows() {
         for (typed, expect) in [("t", 11_usize), ("to", 11), ("tok", 11), ("token1", 11)] {
             search.set(typed.to_string());
             layout
-                .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+                .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
                 .unwrap();
             assert_eq!(
                 glyph_runs(&cx, root),
@@ -154,7 +154,7 @@ fn items_bind_shrink_paints_under_frame_phases() {
             }
             Runtime::begin_layout();
             layout
-                .compute(frame_cx, root, Size::fixed(640.0, 480.0))
+                .compute(frame_cx, root, Constraint::fixed(640.0, 480.0))
                 .unwrap();
             Runtime::begin_paint();
             let runs = glyph_runs(frame_cx, root);
@@ -233,7 +233,7 @@ fn items_bind_app_shape_batched_keystrokes() {
             }
             Runtime::begin_layout();
             layout
-                .compute(frame_cx, root, Size::fixed(1280.0, 800.0))
+                .compute(frame_cx, root, Constraint::fixed(1280.0, 800.0))
                 .unwrap();
             Runtime::begin_paint();
             let runs = glyph_runs(frame_cx, root);
@@ -305,7 +305,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             }
             Runtime::begin_layout();
             layout
-                .compute(frame_cx, root, Size::fixed(1280.0, 800.0))
+                .compute(frame_cx, root, Constraint::fixed(1280.0, 800.0))
                 .unwrap();
             Runtime::begin_paint();
             let runs = glyph_runs(frame_cx, root);

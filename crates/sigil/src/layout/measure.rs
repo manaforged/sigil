@@ -1,4 +1,4 @@
-use crate::geometry::{LogicalSize, Point, Rect, Size};
+use crate::geometry::{Constraint, Point, Rect, Size};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
 use crate::layout::CaretGeometry;
@@ -7,10 +7,10 @@ use crate::style::TextStyle;
 /// Map between points and text positions for hit testing, carets, and selection.
 pub trait TextMeasure {
     /// Returns the size of `content` in `space`.
-    fn measure(&self, content: &TextContent, space: Size) -> LogicalSize;
+    fn measure(&self, content: &TextContent, space: Constraint) -> Size;
 
     /// Returns the size of `content` with `style` in `space`.
-    fn measure_styled(&self, content: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
+    fn measure_styled(&self, content: &TextContent, style: &TextStyle, space: Constraint) -> Size {
         let _ = style;
         self.measure(content, space)
     }
@@ -58,11 +58,11 @@ pub trait TextMeasure {
 }
 
 impl<T: TextMeasure + ?Sized> TextMeasure for std::rc::Rc<T> {
-    fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
+    fn measure(&self, content: &TextContent, space: Constraint) -> Size {
         (**self).measure(content, space)
     }
 
-    fn measure_styled(&self, content: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
+    fn measure_styled(&self, content: &TextContent, style: &TextStyle, space: Constraint) -> Size {
         (**self).measure_styled(content, style, space)
     }
 
@@ -138,14 +138,14 @@ impl TextMeasure for FakeMeasure {
         clippy::cast_precision_loss,
         reason = "test text lengths are far below f32 precision limits"
     )]
-    fn measure(&self, content: &TextContent, _space: Size) -> LogicalSize {
+    fn measure(&self, content: &TextContent, _space: Constraint) -> Size {
         if !self.per_char {
-            return LogicalSize::new(self.width, self.height);
+            return Size::new(self.width, self.height);
         }
         let text = content.resolve();
         let columns = text.lines().map(|line| line.chars().count()).max();
         let rows = text.lines().count().max(1);
-        LogicalSize::new(
+        Size::new(
             columns.unwrap_or(0) as f32 * self.width,
             rows as f32 * self.height,
         )

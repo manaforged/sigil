@@ -2,7 +2,7 @@
 
 use crate::layout_stub as stub;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
@@ -11,7 +11,7 @@ use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 use stub::{layout_rect, stub_engine};
 
-const AVAILABLE: Size = Size::fixed(120.0, 40.0);
+const AVAILABLE: Constraint = Constraint::fixed(120.0, 40.0);
 
 fn build_tree() -> (Cx, NodeId, NodeId) {
     let mut cx = Cx::new_root();

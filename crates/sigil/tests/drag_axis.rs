@@ -12,7 +12,7 @@ use sigil::reactive::Owner;
 use widget_support::compute;
 
 const ROW_H: f32 = 20.0;
-const VIEWPORT: Size = Size::fixed(200.0, 100.0);
+const VIEWPORT: Constraint = Constraint::fixed(200.0, 100.0);
 
 const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> Event {
     Event::pointer(phase, Point::new(x, y)).button(button)

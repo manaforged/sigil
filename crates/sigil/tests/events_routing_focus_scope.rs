@@ -4,7 +4,7 @@
 use crate::events_support::routing_helpers;
 
 use sigil::events::*;
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
 use sigil::widgets::Layout;
@@ -103,7 +103,7 @@ fn focus_repair_handles_replacement_and_new_modal_scope() {
     assert!(cx.remove(old));
     let replacement = cx.append(root, focusable_in(10.0));
     layout
-        .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 200.0))
         .unwrap();
     router.focus_if_needed(&mut cx, &layout);
     assert_eq!(router.focus(), Some(replacement));
@@ -117,7 +117,7 @@ fn focus_repair_handles_replacement_and_new_modal_scope() {
     );
     let inside = cx.nth_child(modal, 0).unwrap();
     layout
-        .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 200.0))
         .unwrap();
     router.focus_if_needed(&mut cx, &layout);
     assert_eq!(router.focus(), Some(inside));

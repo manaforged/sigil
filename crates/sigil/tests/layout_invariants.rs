@@ -13,9 +13,9 @@ impl sigil::layout::TextMeasure for NativeLineGeometry {
     fn measure(
         &self,
         _content: &TextContent,
-        _space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
-        sigil::geometry::LogicalSize::default()
+        _space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
+        sigil::geometry::Size::default()
     }
 
     fn hit(
@@ -129,7 +129,7 @@ fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
         let root = cx.add(build());
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(width, 2000.0))
+            .compute(&mut cx, root, Constraint::fixed(width, 2000.0))
             .expect("layout computes");
         let found = violations(&cx, &layout, root);
         assert!(
@@ -210,7 +210,7 @@ fn compact_text_field_contains_native_line_height() {
         let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(560.0, 34.0))
+            .compute(&mut cx, root, Constraint::fixed(560.0, 34.0))
             .expect("layout computes");
 
         let found = violations(&cx, &layout, root);
@@ -279,7 +279,7 @@ fn layout_re_resolves_when_the_container_resizes() {
         let mut widths = Vec::new();
         for w in [400.0_f32, 900.0, 250.0] {
             layout
-                .compute(&mut cx, root, Size::fixed(w, 600.0))
+                .compute(&mut cx, root, Constraint::fixed(w, 600.0))
                 .expect("layout computes");
             let found = violations(&cx, &layout, root);
             assert!(

@@ -46,7 +46,7 @@ fn button_is_focusable_and_activates_on_enter() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -72,7 +72,7 @@ fn disabled_button_does_not_focus_or_activate() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -96,7 +96,7 @@ fn button_pointer_activation_requires_press_inside() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -127,7 +127,7 @@ fn resting_look(build: impl FnOnce() -> ButtonBuilder) -> Vec<Color> {
     let root = cx.add(build().primary());
     let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
     layout
-        .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+        .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
         .expect("layout computes");
     rect_colors(&cx, root)
 }
@@ -149,7 +149,7 @@ fn pending_button_keeps_its_enabled_look_and_blocks_clicks() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, pointer_down(5.0, 5.0));

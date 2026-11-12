@@ -15,7 +15,7 @@ fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> 
         let root = cx.add(build());
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(width, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(width, 400.0))
             .expect("layout computes");
         found = emit_scene(&cx, root, None)
             .commands

@@ -14,7 +14,7 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::reactive::signal;
@@ -32,7 +32,7 @@ const ACTION_CELL_W: f32 = 80.0;
 const SPACER_CELL_W: f32 = 800.0;
 const ROW_WIDTH: f32 = ID_CELL_W + LABEL_CELL_W + ACTION_CELL_W + SPACER_CELL_W;
 
-const AVAILABLE: Size = Size::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+const AVAILABLE: Constraint = Constraint::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 

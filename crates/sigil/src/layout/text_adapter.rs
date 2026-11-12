@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
+use crate::geometry::{Constraint, Dim, Point, Rect, Size};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
 use crate::style::TextStyle;
@@ -27,11 +27,11 @@ impl Default for TextEngineMeasure {
 }
 
 impl TextMeasure for TextEngineMeasure {
-    fn measure(&self, source: &TextContent, space: Size) -> LogicalSize {
+    fn measure(&self, source: &TextContent, space: Constraint) -> Size {
         self.measure_styled(source, &TextStyle::default(), space)
     }
 
-    fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
+    fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Constraint) -> Size {
         crate::profile::count(crate::profile::Counter::TextMeasure);
         let max_width = match space.width {
             Dim::Fixed(w) => Some(w),
@@ -43,14 +43,14 @@ impl TextMeasure for TextEngineMeasure {
             Ok(para) => para,
             Err(err) => {
                 tracing::warn!(target: "sigil::text", error = %err, "text measure failed; reporting zero size");
-                return LogicalSize::default();
+                return Size::default();
             }
         };
         let width = match space.width {
             Dim::Fixed(_) | Dim::MaxContent => para.width(),
             Dim::MinContent => para.min_content_width(),
         };
-        LogicalSize::new(width, para.height())
+        Size::new(width, para.height())
     }
 
     fn begin_frame(&self) {}

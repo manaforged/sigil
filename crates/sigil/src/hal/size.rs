@@ -26,7 +26,7 @@ impl Scale {
 
     /// Converts a logical size to physical pixels.
     #[must_use]
-    pub fn to_physical(self, logical: LogicalSize) -> PhysicalSize {
+    pub fn to_physical(self, logical: Size) -> PhysicalSize {
         PhysicalSize::new(
             logical_axis_to_physical(logical.width, self.0),
             logical_axis_to_physical(logical.height, self.0),
@@ -39,8 +39,8 @@ impl Scale {
         clippy::cast_precision_loss,
         reason = "pixel magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
-    pub fn to_logical(self, physical: PhysicalSize) -> LogicalSize {
-        LogicalSize::new(
+    pub fn to_logical(self, physical: PhysicalSize) -> Size {
+        Size::new(
             physical.width as f32 / self.0,
             physical.height as f32 / self.0,
         )
@@ -55,14 +55,14 @@ impl Scale {
 
 /// A size in logical px or cells.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct LogicalSize {
+pub struct Size {
     /// The width.
     pub width: f32,
     /// The height.
     pub height: f32,
 }
 
-impl LogicalSize {
+impl Size {
     /// Creates a logical size.
     #[must_use]
     pub const fn new(width: f32, height: f32) -> Self {

@@ -22,7 +22,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
         );
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
             .expect("layout");
         let text_id = *cx.get(root).unwrap().children().first().unwrap();
         let rect = layout.result(text_id).unwrap().rect();

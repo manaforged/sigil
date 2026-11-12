@@ -200,7 +200,7 @@ pub mod prelude {
         Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PointerEvent,
         PointerPhase, PointerType, Shortcut,
     };
-    pub use crate::geometry::{Point, Size};
+    pub use crate::geometry::{Constraint, Point, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
     #[doc(hidden)]

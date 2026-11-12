@@ -23,7 +23,7 @@ fn card_with_title_renders_text() {
         let root = cx.add(card(text("Body")).title("Inventory"));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         assert!(
@@ -40,7 +40,7 @@ fn card_without_title_emits_no_title_text() {
         let root = cx.add(card(text("Body")));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         assert!(
@@ -57,7 +57,7 @@ fn card_with_child_label_renders_child_text() {
         let root = cx.add(card(text("Gold: 42").nowrap()).title("Stats"));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         assert!(scene_has_text(&cx, root, "Stats"), "title in scene");

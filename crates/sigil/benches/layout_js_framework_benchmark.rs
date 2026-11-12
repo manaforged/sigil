@@ -12,7 +12,7 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -21,7 +21,7 @@ use taffy::prelude::*;
 
 const VIEWPORT_WIDTH: f32 = 1_280.0;
 const VIEWPORT_HEIGHT: f32 = 720.0;
-const AVAILABLE: Size = Size::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+const AVAILABLE: Constraint = Constraint::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 const ROW_HEIGHT: f32 = 32.0;
 const ID_CELL_W: f32 = 80.0;
 const LABEL_CELL_W: f32 = 320.0;

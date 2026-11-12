@@ -2,7 +2,7 @@
 
 use crate::layout_stub as stub;
 
-use sigil::geometry::{LogicalSize, Size};
+use sigil::geometry::{Constraint, Size};
 use sigil::kernel::{TextContent, *};
 use sigil::layout::Space;
 use sigil::layout::*;
@@ -32,7 +32,7 @@ fn p_4_applies_sixteen_px_padding() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(100.0, 50.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 50.0))
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, child);
@@ -55,7 +55,7 @@ fn padded_child_origin(root: NodeBuilder) -> f32 {
     );
     let child = first_child(&cx, root);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(100.0, 50.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 50.0))
         .expect("compute succeeds");
     layout_rect(&cx, child).origin.x
 }
@@ -105,7 +105,7 @@ fn w_full_is_percent_100() {
     let child = first_child(&cx, root);
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("compute succeeds");
 
     assert_eq!(layout_rect(&cx, child).width, 200.0);
@@ -129,7 +129,7 @@ fn flex_row_items_center() {
     let children = cx.get(root).unwrap().children().to_vec();
 
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(100.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 40.0))
         .expect("compute succeeds");
 
     let first = layout_rect(&cx, *children.first().unwrap());
@@ -152,7 +152,7 @@ fn typography_atoms_drive_text_measurement() {
     );
 
     LayoutEngine::new(Box::new(StyleAwareMeasure))
-        .compute(&mut cx, root, Size::max_content())
+        .compute(&mut cx, root, Constraint::max_content())
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, root);
@@ -163,17 +163,17 @@ fn typography_atoms_drive_text_measurement() {
 struct StyleAwareMeasure;
 
 impl TextMeasure for StyleAwareMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: Constraint) -> Size {
+        Size::default()
     }
 
     fn measure_styled(
         &self,
         _content: &TextContent,
         style: &TextStyle,
-        _space: Size,
-    ) -> LogicalSize {
-        LogicalSize::new(
+        _space: Constraint,
+    ) -> Size {
+        Size::new(
             style.font_size + f32::from(style.font_weight) / 100.0,
             text_line_height(style),
         )

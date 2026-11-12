@@ -1,13 +1,13 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::geometry::LogicalSize;
+use crate::geometry::Size;
 use crate::layout::TextMeasure;
 use crate::reactive::{Owner, Signal, owner_by_id, signal};
 
 thread_local! {
-    static VIEWPORT: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
-    static DETACHED: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
+    static VIEWPORT: Cell<Option<Signal<Size>>> = const { Cell::new(None) };
+    static DETACHED: Cell<Option<Signal<Size>>> = const { Cell::new(None) };
     static CAPS: Cell<HostCaps> = const { Cell::new(HostCaps::window()) };
     static ENTERED: Cell<bool> = const { Cell::new(false) };
 }
@@ -38,14 +38,10 @@ impl Default for HostCaps {
 /// The viewport size in logical px.
 #[must_use]
 #[track_caller]
-pub fn viewport_size() -> Signal<LogicalSize> {
-    VIEWPORT.with(Cell::get).unwrap_or_else(|| {
-        detached(
-            &DETACHED,
-            "sigil::detached_viewport",
-            LogicalSize::default(),
-        )
-    })
+pub fn viewport_size() -> Signal<Size> {
+    VIEWPORT
+        .with(Cell::get)
+        .unwrap_or_else(|| detached(&DETACHED, "sigil::detached_viewport", Size::default()))
 }
 
 fn detached<T: 'static>(
@@ -126,7 +122,7 @@ struct Scoped {
     geometry: Option<Rc<dyn TextMeasure>>,
     exit: Option<Rc<Cell<bool>>>,
     focus_source: Option<Rc<Cell<bool>>>,
-    viewport: Option<Signal<LogicalSize>>,
+    viewport: Option<Signal<Size>>,
     theme: Option<Signal<crate::style::Theme>>,
     layers: crate::widgets::PopupStacks,
     focus_requests: Vec<crate::kernel::NodeId>,
@@ -163,7 +159,7 @@ impl Scoped {
 }
 
 pub(super) struct HostEnv {
-    viewport: Signal<LogicalSize>,
+    viewport: Signal<Size>,
     pub(super) caps: HostCaps,
     pub(super) theme: Signal<crate::style::Theme>,
     scoped: Rc<RefCell<Option<Box<Scoped>>>>,
@@ -196,7 +192,7 @@ impl HostEnv {
         let mut signals = None;
         owner_by_id(owner, || {
             signals = Some((
-                signal(LogicalSize::default()),
+                signal(Size::default()),
                 signal(crate::style::Theme::default()),
             ));
         });
@@ -240,6 +236,6 @@ impl HostEnv {
     }
 
     pub(super) fn publish_viewport(&self, viewport: (f32, f32)) {
-        self.viewport.set(LogicalSize::new(viewport.0, viewport.1));
+        self.viewport.set(Size::new(viewport.0, viewport.1));
     }
 }

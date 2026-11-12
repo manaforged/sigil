@@ -4,7 +4,7 @@ use crate::layout_stub as stub;
 use sigil::layout::Space;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
@@ -25,7 +25,7 @@ fn compute_records_layout_miss() {
         .attach(LayoutStyle::flex_row().fixed_size(200.0, 40.0));
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("compute");
     tick_frame();
     let recorded = frames();
@@ -50,15 +50,15 @@ fn second_compute_is_a_cache_hit() {
     );
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("first");
     cx.clear_dirty();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("second");
     let generation = engine.generation();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("third");
     assert_eq!(
         engine.generation(),
@@ -77,7 +77,7 @@ fn mark_mutated_without_edit_is_a_cache_hit() {
             .layout(LayoutStyle::flex_row().fixed_size(200.0, 40.0)),
     );
     let mut engine = stub_engine();
-    let avail = Size::fixed(200.0, 40.0);
+    let avail = Constraint::fixed(200.0, 40.0);
     engine.compute(&mut cx, root, avail).expect("first");
     let generation = engine.generation();
     cx.mark_mutated();
@@ -98,9 +98,9 @@ fn hidden_subtree_is_not_measured() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Constraint) -> sigil::geometry::Size {
             self.hits.set(self.hits.get() + 1);
-            sigil::geometry::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::Size::new(40.0, 16.0)
         }
     }
 
@@ -116,7 +116,7 @@ fn hidden_subtree_is_not_measured() {
         let mut engine = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
-        let avail = Size::fixed(200.0, 80.0);
+        let avail = Constraint::fixed(200.0, 80.0);
         engine.compute(&mut cx, root, avail).expect("show");
         let shown = hits.get();
         assert!(shown >= 1, "visible text is measured");
@@ -147,9 +147,9 @@ fn second_engine_does_not_inherit_text_memo() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Constraint) -> sigil::geometry::Size {
             self.hits.set(self.hits.get() + 1);
-            sigil::geometry::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::Size::new(40.0, 16.0)
         }
     }
 
@@ -161,7 +161,7 @@ fn second_engine_does_not_inherit_text_memo() {
                 .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
                 .child(text("hello")),
         );
-        let avail = Size::fixed(80.0, 24.0);
+        let avail = Constraint::fixed(80.0, 24.0);
         let mut first = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
@@ -188,9 +188,9 @@ fn dirty_parent_reuses_text_memo() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Constraint) -> sigil::geometry::Size {
             self.hits.set(self.hits.get() + 1);
-            sigil::geometry::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::Size::new(40.0, 16.0)
         }
     }
 
@@ -202,7 +202,7 @@ fn dirty_parent_reuses_text_memo() {
                 .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
                 .child(text("hello")),
         );
-        let avail = Size::fixed(80.0, 24.0);
+        let avail = Constraint::fixed(80.0, 24.0);
         let mut engine = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
@@ -229,7 +229,7 @@ fn nowrap_fixed_reactive_text_is_layout_hit() {
                         .layout(LayoutStyle::block().fixed_size(80.0, 24.0)),
                 ),
         );
-        let avail = Size::fixed(80.0, 24.0);
+        let avail = Constraint::fixed(80.0, 24.0);
         let mut engine = stub_engine();
         engine.compute(&mut cx, root, avail).expect("first");
         let before = engine.generation();
@@ -265,7 +265,7 @@ fn derived_text_increment_records_layout_path() {
         }
         let root = cx.add(col);
         let mut engine = stub_engine();
-        let avail = Size::fixed(480.0, 800.0);
+        let avail = Constraint::fixed(480.0, 800.0);
         engine.compute(&mut cx, root, avail).expect("first");
         tick_frame();
         reset();
@@ -306,7 +306,7 @@ fn paint_only_tick_on_wide_tree_is_hit() {
                 .layout(LayoutStyle::block().fixed_size(80.0, 24.0)),
         );
         let root = cx.add(tree);
-        let avail = Size::fixed(200.0, 4000.0);
+        let avail = Constraint::fixed(200.0, 4000.0);
         let mut engine = stub_engine();
         engine.compute(&mut cx, root, avail).expect("first");
         let before = engine.generation();
@@ -324,16 +324,16 @@ fn paint_only_tick_on_wide_tree_is_hit() {
 fn letter_spacing_change_remeasures_text() {
     struct SpacingMeasure;
     impl TextMeasure for SpacingMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
-            sigil::geometry::LogicalSize::new(40.0, 16.0)
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Constraint) -> sigil::geometry::Size {
+            sigil::geometry::Size::new(40.0, 16.0)
         }
         fn measure_styled(
             &self,
             _: &sigil::kernel::TextContent,
             style: &sigil::style::TextStyle,
-            _: Size,
-        ) -> sigil::geometry::LogicalSize {
-            sigil::geometry::LogicalSize::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
+            _: Constraint,
+        ) -> sigil::geometry::Size {
+            sigil::geometry::Size::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
         }
     }
 
@@ -347,7 +347,7 @@ fn letter_spacing_change_remeasures_text() {
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 24.0)),
         );
         let label = cx.append(root, text("hello"));
-        let avail = Size::fixed(400.0, 24.0);
+        let avail = Constraint::fixed(400.0, 24.0);
         let mut engine = LayoutEngine::new(Box::new(SpacingMeasure));
         engine.compute(&mut cx, root, avail).expect("tight");
         let tight_w = label_width(&cx, label);

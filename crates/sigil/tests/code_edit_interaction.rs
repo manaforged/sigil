@@ -15,7 +15,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(1600.0, 16.0);
 
 fn layout_in(cx: &mut Cx, root: NodeId, w: f32, h: f32) -> LayoutEngine {
     let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
-    engine.compute(cx, root, Size::fixed(w, h)).unwrap();
+    engine.compute(cx, root, Constraint::fixed(w, h)).unwrap();
     engine
 }
 

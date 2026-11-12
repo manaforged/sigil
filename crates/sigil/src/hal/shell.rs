@@ -5,7 +5,7 @@ use alloc::vec::IntoIter;
 use crate::hal::events::Event;
 use crate::hal::{
     geometry::{PhysicalSize, Point, Rect},
-    size::{LogicalSize, Scale},
+    size::{Scale, Size},
 };
 
 /// Screen anchor of an overlay window.
@@ -26,7 +26,7 @@ pub struct WindowOpts {
     pub inset_title_bar: Option<f32>,
     pub anchor: Option<Anchor>,
     pub user_zoom: Option<f32>,
-    pub min_size: Option<LogicalSize>,
+    pub min_size: Option<Size>,
     pub fixed_size: bool,
 }
 
@@ -115,7 +115,7 @@ pub trait Shell: Sized {
     fn create_window_logical(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
     ) -> Result<Self::Window, Self::Error> {
         self.create_window(title, Scale::ONE.to_physical(initial))
     }
@@ -123,7 +123,7 @@ pub trait Shell: Sized {
     fn create_window_with(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
         opts: WindowOpts,
     ) -> Result<Self::Window, Self::Error> {
         let _ = opts;

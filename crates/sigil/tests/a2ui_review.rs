@@ -155,7 +155,7 @@ fn array_writes_use_json_pointer_index_rules() {
 
 #[test]
 fn a_single_choice_picker_leaves_the_model_alone_at_mount() {
-    let picker = r#"{"id":"pick","component":"ChoicePicker","label":"Size","value":{"path":"/size"},"options":[{"label":"Small","value":"s"},{"label":"Large","value":"l"}]}"#;
+    let picker = r#"{"id":"pick","component":"ChoicePicker","label":"Constraint","value":{"path":"/size"},"options":[{"label":"Small","value":"s"},{"label":"Large","value":"l"}]}"#;
     let echo = r#"{"id":"echo","component":"Text","text":{"path":"/size"}}"#;
     let root = r#"{"id":"root","component":"Column","children":["pick","echo"]}"#;
     let shown = ui(&surface(

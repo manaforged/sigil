@@ -5,7 +5,7 @@ use sigil::widgets::Layout;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::geometry::{LogicalSize, Size};
+use sigil::geometry::{Constraint, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::Owner;
@@ -13,9 +13,9 @@ use sigil::reactive::Owner;
 struct Wrapping;
 
 impl TextMeasure for Wrapping {
-    fn measure(&self, _: &TextContent, space: sigil::geometry::Size) -> LogicalSize {
+    fn measure(&self, _: &TextContent, space: sigil::geometry::Constraint) -> Size {
         let w = space.fixed_width().unwrap_or(300.0).min(300.0);
-        LogicalSize::new(w, (300.0 / w).ceil() * 10.0)
+        Size::new(w, (300.0 / w).ceil() * 10.0)
     }
 }
 
@@ -25,8 +25,8 @@ struct Swappable {
 }
 
 impl TextMeasure for Swappable {
-    fn measure(&self, _: &TextContent, _: sigil::geometry::Size) -> LogicalSize {
-        LogicalSize::new(self.width.get(), 16.0)
+    fn measure(&self, _: &TextContent, _: sigil::geometry::Constraint) -> Size {
+        Size::new(self.width.get(), 16.0)
     }
 
     fn font_generation(&self) -> u64 {
@@ -45,7 +45,7 @@ fn leaf_rect(
         let label = cx.append(root, text("some words to wrap").layout(leaf));
         let mut engine = LayoutEngine::new(measure);
         engine
-            .compute(&mut cx, root, Size::fixed(400.0, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 400.0))
             .unwrap();
         cx.get(label)
             .and_then(|node| node.extension::<LayoutResult>())
@@ -107,7 +107,7 @@ fn a_font_change_remeasures_text() {
             width: Rc::clone(&width),
             fonts: Rc::clone(&fonts),
         }));
-        let avail = Size::fixed(400.0, 40.0);
+        let avail = Constraint::fixed(400.0, 40.0);
         engine.compute(&mut cx, root, avail).unwrap();
         width.set(90.0);
         fonts.set(1);

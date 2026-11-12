@@ -84,7 +84,7 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
 
 #[test]
 fn scrolled_rows_land_at_their_document_position() {
-    use crate::geometry::Size;
+    use crate::geometry::Constraint;
 
     Owner::scope("sigil-virtual-list-scrolled-position", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
@@ -107,7 +107,7 @@ fn scrolled_rows_land_at_their_document_position() {
             .viewport_width(800.0),
         );
         let mut layout = engine();
-        let size = Size::fixed(800.0, 1_000.0);
+        let size = Constraint::fixed(800.0, 1_000.0);
         layout.compute(&mut cx, root, size).expect("layout");
         for frame in 1..=30_u32 {
             tick.set(frame);
@@ -129,7 +129,7 @@ fn scrolled_rows_land_at_their_document_position() {
 
 #[test]
 fn measured_rows_release_collapsed_height_and_reexpand() {
-    use crate::geometry::Size;
+    use crate::geometry::Constraint;
     use crate::layout::LayoutStyle;
 
     Owner::scope("measured-collapse", || {
@@ -159,7 +159,7 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
             items.set(heights);
             for _ in 0..4 {
                 layout
-                    .compute(&mut cx, root, Size::fixed(800.0, 200.0))
+                    .compute(&mut cx, root, Constraint::fixed(800.0, 200.0))
                     .expect("layout measured rows");
             }
             assert_eq!(
@@ -173,7 +173,7 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
 
 #[test]
 fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
-    use crate::geometry::Size;
+    use crate::geometry::Constraint;
 
     use std::cell::Cell;
 
@@ -197,7 +197,7 @@ fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
             .viewport_width(800.0),
         );
         let mut layout = engine();
-        let size = Size::fixed(800.0, 480.0);
+        let size = Constraint::fixed(800.0, 480.0);
         layout.compute(&mut cx, root, size).expect("layout");
         let mut rebuilds = 0;
         for tick in 1..=60_u32 {

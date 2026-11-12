@@ -11,7 +11,7 @@ use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 fn fresh_engine() -> LayoutEngine {
     LayoutEngine::new(stub_text_measure())

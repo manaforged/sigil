@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::events::*;
-use sigil::geometry::{Point, Size};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
@@ -77,7 +77,7 @@ fn pointer_move_drives_style_reactive_without_allocating() {
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(cx, root, Size::fixed(100.0, 100.0))
+        .compute(cx, root, Constraint::fixed(100.0, 100.0))
         .expect("layout computes");
     layout
 }

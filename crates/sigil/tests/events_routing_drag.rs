@@ -6,7 +6,7 @@ use crate::events_support::routing_helpers;
 
 use sigil::events::Event;
 use sigil::events::*;
-use sigil::geometry::{Point, Size};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
@@ -59,7 +59,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
 
         let mut layout = LayoutEngine::new(Box::new(sigil_kittest::FakeMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .unwrap();
         let start = node_rect(&cx, card);
         assert_eq!(
@@ -95,7 +95,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
         );
 
         layout
-            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .unwrap();
         let moved = node_rect(&cx, card);
         assert_eq!(

@@ -16,7 +16,7 @@ use crate::style::Transform2D;
 fn layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
     layout
-        .compute(cx, root, Size::fixed(400.0, 300.0))
+        .compute(cx, root, Constraint::fixed(400.0, 300.0))
         .expect("layout computes");
     layout
 }
@@ -122,7 +122,7 @@ fn exiting_presence_blocks_input_and_accessibility_before_releasing_layout_space
         let initial_clicks = clicks.peek();
         shown.set(false);
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 300.0))
             .expect("exit layout");
         let during = layout
             .result(sibling)
@@ -136,7 +136,7 @@ fn exiting_presence_blocks_input_and_accessibility_before_releasing_layout_space
         let hidden = crate::a11y::node(&cx, target, &|_| None).is_hidden();
         tick(0.25);
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 300.0))
             .expect("settled layout");
         let after = layout
             .result(sibling)

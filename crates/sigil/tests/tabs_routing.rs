@@ -23,7 +23,7 @@ use sigil::geometry::Point;
 use sigil::prelude::*;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 const fn pointer_event(
     x: f32,

@@ -45,7 +45,7 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
         );
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));

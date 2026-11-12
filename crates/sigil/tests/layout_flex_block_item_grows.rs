@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -25,7 +25,7 @@ fn grower_width(block: bool) -> f32 {
     );
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(400.0, 50.0))
+        .compute(&mut cx, root, Constraint::fixed(400.0, 50.0))
         .unwrap();
     let first: NodeId = *cx.get(root).unwrap().children().first().unwrap();
     layout.result(first).unwrap().rect().width

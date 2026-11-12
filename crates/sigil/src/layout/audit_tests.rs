@@ -1,4 +1,4 @@
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::{Cx, NodeBuilder, NodeId, container};
 use crate::layout::Space;
 use crate::layout::{LayoutEngine, LayoutStyle};
@@ -45,7 +45,7 @@ fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<
         let root: NodeId = cx.add(tree);
         let mut engine = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         engine
-            .compute(&mut cx, root, Size::fixed(200.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 100.0))
             .expect("layout");
         flaws(&cx, &engine, (root, &Theme::default()), tolerance)
     })

@@ -12,14 +12,14 @@ impl Dim {
     }
 }
 
-/// A size constraint.
+/// The space a layout may use on each axis: a fixed length, a limit, or the content size.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Size {
+pub struct Constraint {
     pub(crate) width: Dim,
     pub(crate) height: Dim,
 }
 
-impl Size {
+impl Constraint {
     /// Creates a size with both dimensions definite.
     #[must_use]
     pub const fn fixed(width: f32, height: f32) -> Self {

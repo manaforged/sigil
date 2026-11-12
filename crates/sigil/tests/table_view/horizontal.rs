@@ -240,7 +240,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             sigil::app::__drive_test_frame(
                 || {
                     layout
-                        .compute(&mut cx, root, Size::fixed(800.0, 400.0))
+                        .compute(&mut cx, root, Constraint::fixed(800.0, 400.0))
                         .expect("layout");
                 },
                 || {},
@@ -283,7 +283,7 @@ fn unset_viewport_width_measures_the_table() {
             sigil::app::__drive_test_frame(
                 || {
                     layout
-                        .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+                        .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
                         .expect("layout");
                 },
                 || {},

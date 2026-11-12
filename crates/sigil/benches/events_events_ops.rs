@@ -12,7 +12,7 @@ use sigil::events::{
     Event, EventRouter, Key, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PhysicalKey,
     PointerEvent, PointerPhase, Shortcut,
 };
-use sigil::geometry::{Point, Size};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil::layout::{LayoutEngine, LayoutStyle, Length, Position, TextMeasure};
 use sigil::prelude::Widget;
@@ -199,7 +199,7 @@ fn wide_tree_with_shortcut(
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::new(Box::new(ZeroTextMeasure));
     layout
-        .compute(cx, root, Size::fixed(240.0, 240.0))
+        .compute(cx, root, Constraint::fixed(240.0, 240.0))
         .expect("bench fixture layout computes");
     layout
 }
@@ -267,17 +267,17 @@ impl TextMeasure for ZeroTextMeasure {
     fn measure(
         &self,
         _content: &TextContent,
-        _space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
-        sigil::geometry::LogicalSize::default()
+        _space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
+        sigil::geometry::Size::default()
     }
 
     fn measure_styled(
         &self,
         _content: &TextContent,
         _style: &TextStyle,
-        _space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
-        sigil::geometry::LogicalSize::default()
+        _space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
+        sigil::geometry::Size::default()
     }
 }

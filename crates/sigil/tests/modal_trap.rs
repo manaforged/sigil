@@ -10,7 +10,7 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 fn modal_dialog(cx: &Cx, root: NodeId) -> NodeId {
     cx.nth_child(root, 1).expect("modal dialog child")
@@ -158,7 +158,7 @@ fn dismissed_modal_releases_focus_trap() {
 
         show.set(false);
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("recompute after dismiss");
         router.route(
             &mut cx,
