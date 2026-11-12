@@ -4,7 +4,7 @@ set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
-jobs=(lint features wasm test perf msrv fuzz)
+jobs=(lint features wasm test perf msrv fuzz publish)
 usage="usage: scripts/gate.sh [--gpu] [--list] [JOB...] (jobs: ${jobs[*]})"
 
 gpu=0
@@ -20,6 +20,7 @@ for arg in "$@"; do
 done
 [ ${#picked[@]} -gt 0 ] || picked=("${jobs[@]}")
 
+outside=(benches/rivals/Cargo.toml fuzz/Cargo.toml)
 msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml)
 started=$SECONDS
 
@@ -55,9 +56,14 @@ job_lint() {
   need cargo-deny "cargo install --locked cargo-deny@0.20.2"
   step source node scripts/check-source.mjs
   step fmt cargo fmt --all --check
+  local manifest
+  for manifest in "${outside[@]}"; do
+    step "fmt $manifest" cargo fmt --manifest-path "$manifest" --check
+  done
+  step "clippy benches/rivals" cargo clippy --manifest-path benches/rivals/Cargo.toml --locked -- -D warnings
   step deny cargo deny check
   step clippy cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-  step rustdoc cargo doc --workspace --all-features --no-deps --locked --config 'build.rustdocflags=["-D","warnings"]'
+  step rustdoc env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
   step book mdbook build docs --dest-dir "$root/target/book"
 }
 
@@ -69,12 +75,13 @@ job_features() {
 job_wasm() {
   need wasm-bindgen-test-runner "cargo install --locked wasm-bindgen-cli@0.2.127"
   step wasm-clippy cargo clippy -p sigil-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
-  step wasm-test cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --test tasks_wasm \
+  step wasm-test cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --features kittest --test tasks_wasm \
     --config 'target.wasm32-unknown-unknown.runner="wasm-bindgen-test-runner"'
 }
 
 job_test() {
   step test cargo test --workspace --all-features --locked --no-fail-fast
+  step dialog cargo test -p sigil-ui --locked --features dialog,kittest --test integration two_hosts::a_dialog
   if [ "$gpu" = 1 ]; then
     local skips=() name
     while read -r name; do skips+=(--skip "$name"); done < <(node scripts/check-source.mjs --manual-tests)
@@ -100,6 +107,10 @@ job_fuzz() {
     *-apple-darwin) export CFLAGS="${CFLAGS:-} -mllvm -asan-guard-against-version-mismatch=0" ;;
   esac
   step fuzz cargo +nightly fuzz build --dev --target "$fuzz_target"
+}
+
+job_publish() {
+  step publish cargo publish --workspace --locked --dry-run
 }
 
 need node "https://nodejs.org"

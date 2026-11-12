@@ -115,7 +115,11 @@ fn pointed<R: Rig>(make: &dyn Fn() -> R) -> R {
 fn scroll<R: Rig>(side: &str, make: &dyn Fn() -> R) {
     let mut rig = pointed(make);
     measure("scroll", side, WARM, UNITS, |unit| {
-        let lines = if unit % (2 * WHEEL_RUN) < WHEEL_RUN { -1.0 } else { 1.0 };
+        let lines = if unit % (2 * WHEEL_RUN) < WHEEL_RUN {
+            -1.0
+        } else {
+            1.0
+        };
         rig.frame(Change::Wheel(lines));
     });
 }
@@ -123,7 +127,11 @@ fn scroll<R: Rig>(side: &str, make: &dyn Fn() -> R) {
 fn resize<R: Rig>(side: &str, make: &dyn Fn() -> R) {
     let mut rig = make();
     measure("resize", side, WARM, UNITS, |unit| {
-        rig.frame(if unit % 2 == 0 { Change::Narrow } else { Change::Wide });
+        rig.frame(if unit % 2 == 0 {
+            Change::Narrow
+        } else {
+            Change::Wide
+        });
     });
 }
 
@@ -133,7 +141,10 @@ fn show<R: Rig>(side: &str, make: &dyn Fn() -> R) {
     for _ in 0..SHOWN_WHEELS {
         rig.frame(Change::Wheel(-1.0));
     }
-    println!("SHOW {side} after {SHOWN_WHEELS} wheel lines\n{}", rig.show());
+    println!(
+        "SHOW {side} after {SHOWN_WHEELS} wheel lines\n{}",
+        rig.show()
+    );
 }
 
 /// Runs the cells of one library, or the one cell that `only` names.

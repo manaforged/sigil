@@ -5,7 +5,7 @@
     "gpu": "needs a wgpu adapter",
     "manual": "manual: "
   },
-  "refusedEnv": ["SIGIL_ALLOW_NO_GPU", "SIGIL_REGEN_GOLDENS", "SIGIL_REGEN_ALLOW_CONTENT_LOSS"],
+  "refusedEnv": ["SIGIL_ALLOW_NO_GPU", "SIGIL_REGEN_GOLDENS", "SIGIL_REGEN_ALLOW_CONTENT_LOSS", "SIGIL_SWEEP_COUNT", "SIGIL_DIFF_COUNT"],
   "ratchet": {
     "dead_code": { "lint": "dead_code", "max": 7 },
     "unreachable_pub": { "lint": "unreachable_pub", "max": 7 },
@@ -13,6 +13,9 @@
     "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 12 },
     "panic": { "lint": "clippy::panic", "max": 4 },
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },
+    "unsafe_code": { "lint": "unsafe_code", "max": 3 },
+    "warnings": { "lint": "warnings", "max": 0 },
+    "clippy_all": { "lint": "clippy::all", "max": 0 },
     "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 3 },
     "expect_call": { "pattern": "\\.expect\\(", "max": 55 }
   }

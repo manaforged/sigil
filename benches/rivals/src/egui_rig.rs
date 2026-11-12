@@ -46,21 +46,22 @@ fn every(ui: &mut Ui, titles: &[String], stream: &str) -> f32 {
 fn windowed(ui: &mut Ui, titles: &[String], stream: &str) -> f32 {
     let height = ui.text_style_height(&TextStyle::Body);
     let total = MESSAGES * ROWS_PER_MESSAGE + 1;
-    let area = ScrollArea::vertical()
-        .auto_shrink(false)
-        .show_rows(ui, height, total, |ui, range| {
-            for row in range {
-                match titles.get(row / ROWS_PER_MESSAGE) {
-                    Some(title) if row % ROWS_PER_MESSAGE == 0 => heading(ui, title),
-                    Some(_) => {
-                        ui.label(BODY);
-                    }
-                    None => {
-                        ui.label(stream);
+    let area =
+        ScrollArea::vertical()
+            .auto_shrink(false)
+            .show_rows(ui, height, total, |ui, range| {
+                for row in range {
+                    match titles.get(row / ROWS_PER_MESSAGE) {
+                        Some(title) if row % ROWS_PER_MESSAGE == 0 => heading(ui, title),
+                        Some(_) => {
+                            ui.label(BODY);
+                        }
+                        None => {
+                            ui.label(stream);
+                        }
                     }
                 }
-            }
-        });
+            });
     area.state.clamped_offset().y
 }
 
