@@ -61,6 +61,18 @@ impl core::fmt::Debug for FrameHooks<'_> {
     }
 }
 
+#[cfg(host)]
+impl Host {
+    /// Returns whether a frame has work to do without new input: a signal write, an animation, a clock, or a timer that is due.
+    #[must_use]
+    pub fn frame_due() -> bool {
+        Runtime::frame_dirty()
+            || crate::animation::runtime::animating()
+            || crate::reactive::next_interval_deadline()
+                .is_some_and(|due| due <= web_time::Instant::now())
+    }
+}
+
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
     pub fn frame(

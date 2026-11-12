@@ -37,6 +37,7 @@ pub struct SigilRig {
     screen: Option<Screen>,
     out: Vec<u8>,
     painted: bool,
+    drawn: bool,
 }
 
 fn message(index: usize) -> NodeBuilder {
@@ -86,6 +87,7 @@ impl SigilRig {
             screen: matches!(surface, Surface::Screen).then(|| Screen::new(COLS, LINES)),
             out: Vec::new(),
             painted: false,
+            drawn: false,
         }
     }
 
@@ -155,6 +157,10 @@ impl Rig for SigilRig {
         if matches!(change, Change::Grow) {
             self.stream.update(extend);
         }
+        if matches!(change, Change::None) && self.drawn && !Host::frame_due() {
+            return;
+        }
+        self.drawn = true;
         let event = self.event(change);
         match self.surface {
             Surface::Scene => {

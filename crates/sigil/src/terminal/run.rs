@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 
 use crate::events::Event;
 use crate::kernel::IntoNode;
-use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
 
 use crate::profile;
@@ -309,18 +308,11 @@ pub(super) fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> us
 }
 
 fn idle(settle: bool, woke: usize, term: &Term, pending: bool) -> bool {
-    !settle && woke == 0 && !frame_due() && !term.pending() && !pending
+    !settle && woke == 0 && !Host::frame_due() && !term.pending() && !pending
 }
 
 fn due(deadline: Option<Instant>) -> bool {
     deadline.is_some_and(|due| due <= Instant::now())
-}
-
-fn frame_due() -> bool {
-    Runtime::frame_dirty()
-        || crate::animation::runtime::active_count() > 0
-        || crate::animation::runtime::running_clocks() > 0
-        || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
 pub(super) fn turn_wait(
@@ -329,7 +321,7 @@ pub(super) fn turn_wait(
     last: Instant,
     status: Option<Instant>,
 ) -> (Option<Duration>, bool) {
-    if woke > 0 || frame_due() {
+    if woke > 0 || Host::frame_due() {
         return (Some(tick.saturating_sub(last.elapsed())), false);
     }
     let next = match (crate::reactive::next_interval_deadline(), status) {
