@@ -1,4 +1,5 @@
 use crate::geometry::{Point, Rect};
+use crate::style::srgb;
 
 kittest_pub! {
     /// Whether a shadow falls outside or inside a shape.
@@ -49,12 +50,8 @@ impl Shadow {
     /// Creates a shadow with no offset.
     #[must_use]
     pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
-        let c = [
-            srgb_channel_to_linear(color.r),
-            srgb_channel_to_linear(color.g),
-            srgb_channel_to_linear(color.b),
-            f32::from(color.a) / 255.0,
-        ];
+        let [r, g, b] = srgb::decode_rgb(color);
+        let c = [r, g, b, srgb::unit(color.a)];
         Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)
     }
 
@@ -83,8 +80,4 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
         surface.width + outset * 2.0,
         surface.height + outset * 2.0,
     )
-}
-
-pub(crate) fn srgb_channel_to_linear(channel: u8) -> f32 {
-    crate::style::srgb::decode(channel)
 }

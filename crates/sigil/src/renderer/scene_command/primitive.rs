@@ -1,6 +1,7 @@
 use crate::geometry::{Point, Rect};
-use crate::renderer::decoration_paint::{DecorationPipeline, decoration_instance};
+use crate::renderer::decoration_paint::{decoration_instance, decoration_pipeline};
 use crate::renderer::fill_paint::FillPipeline;
+use crate::renderer::fill_paint::setup::UniformQuad;
 use crate::renderer::frame_upload::FrameUploads;
 use crate::renderer::scene_command::walk::transform_rect;
 use crate::renderer::scene_command::walk::{SceneWalk, pipeline_for, rect_from_fields};
@@ -11,9 +12,9 @@ use crate::renderer::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
     draw_shadow_instance, gradient_stop_records, wash_stops,
 };
-use crate::renderer::scene_paint::{PaintCtx, ScenePipeline};
+use crate::renderer::scene_paint::{PaintCtx, scene_pipeline};
 use crate::renderer::shadow_paint::Shadow;
-use crate::renderer::shadow_paint::ShadowPipeline;
+use crate::renderer::shadow_paint::shadow_pipeline;
 use crate::scene::CornerRadii;
 use crate::scene::command::trim::{Trimmed, tile_phase, trim_to_view};
 
@@ -58,7 +59,7 @@ impl SceneWalk<'_> {
             ctx.scene_pipelines,
             ctx.device,
             ctx.format,
-            (ScenePipeline::format, ScenePipeline::new),
+            (UniformQuad::format, scene_pipeline),
         );
         pipeline.paint_uploaded(
             PaintCtx {
@@ -236,7 +237,7 @@ impl SceneWalk<'_> {
             ctx.shadow_pipelines,
             ctx.device,
             ctx.format,
-            (ShadowPipeline::format, ShadowPipeline::new),
+            (UniformQuad::format, shadow_pipeline),
         );
         pipeline.paint_uploaded(
             PaintCtx {
@@ -291,7 +292,7 @@ impl SceneWalk<'_> {
             ctx.decoration_pipelines,
             ctx.device,
             ctx.format,
-            (DecorationPipeline::format, DecorationPipeline::new),
+            (UniformQuad::format, decoration_pipeline),
         );
         pipeline.paint_uploaded(
             PaintCtx {

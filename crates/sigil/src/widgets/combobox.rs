@@ -23,7 +23,7 @@ pub struct Combobox {
     selected: Signal<Option<usize>>,
     open: Signal<bool>,
     cursor: Signal<usize>,
-    placeholder: &'static str,
+    placeholder: Signal<String>,
     disabled: Option<Signal<bool>>,
 }
 
@@ -37,7 +37,7 @@ impl Combobox {
             selected: signal(None),
             open: signal(false),
             cursor: signal(0),
-            placeholder: "",
+            placeholder: signal(String::new()),
             disabled: None,
         }
     }
@@ -51,12 +51,12 @@ impl Combobox {
 
     /// Sets the placeholder.
     #[must_use]
-    pub const fn placeholder(mut self, text: &'static str) -> Self {
-        self.placeholder = text;
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
+        self.placeholder = signal(text.into());
         self
     }
 
-    pub(crate) const fn placeholder_text(self) -> &'static str {
+    pub(crate) const fn placeholder_text(self) -> Signal<String> {
         self.placeholder
     }
 
@@ -240,10 +240,11 @@ impl ListModel for Combobox {
 /// A text input with a filtered list.
 #[must_use]
 pub fn combobox(state: Combobox) -> NodeBuilder {
-    let label = if state.placeholder.is_empty() {
-        "Combobox"
+    let placeholder = state.placeholder.peek();
+    let label = if placeholder.is_empty() {
+        String::from("Combobox")
     } else {
-        state.placeholder
+        placeholder
     };
     listbox(
         container()

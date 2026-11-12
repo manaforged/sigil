@@ -2,7 +2,7 @@ use crate::grapheme::{byte_at_col, col_at_byte, col_count};
 use crate::kernel::NodeBuilder;
 use crate::widgets::text_edit::TextEditRuntime;
 
-pub(super) const fn expose(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+pub(super) fn expose(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
     node.text_value(runtime.value)
         .text_cursor(runtime.caret, runtime.selection)
 }

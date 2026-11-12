@@ -7,7 +7,7 @@
 use std::fmt::Write as _;
 
 use sigil::prelude::*;
-use sigil::widgets::icon_svg;
+use sigil::widgets::Glyph;
 use sigil_kittest::Harness;
 
 const SIDE: u32 = 32;
@@ -39,7 +39,7 @@ fn draws(svg: String) -> bool {
             let app = move || {
                 column()
                     .background(BLACK)
-                    .child(icon_svg(svg.clone()).px(SIDE as f32))
+                    .child(icon(Glyph::svg(svg.clone())).px(SIDE as f32))
             };
             let mut ui = Harness::new(app).pixels(SIDE, SIDE);
             ui.image().expect("harness image").expect("gpu frame")

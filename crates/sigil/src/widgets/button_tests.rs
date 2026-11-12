@@ -79,10 +79,10 @@ fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key)
 fn icon_button_names_itself_after_the_glyph_unless_told() {
     Owner::scope("icon-button-role", || {
         let mut cx = Cx::new_root();
-        let named = icon_button("\u{25B6}", || {}).accessible("Play");
+        let named = button("\u{25B6}").ghost().square().activate(|| {}).accessible("Play");
         for (button, expected) in [
             (named, "Play"),
-            (icon_button("\u{25B6}", || {}), "\u{25B6}"),
+            (button("\u{25B6}").ghost().square().activate(|| {}), "\u{25B6}"),
         ] {
             let id = button.build(&mut cx);
             let node = cx.get(id).expect("button");

@@ -1,10 +1,10 @@
 # Controls
 
-Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
+Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
 
 ## button
 
-`button(label) -> ButtonBuilder`. `label` is `impl Into<TextContent>`: a `&str`, `String`, `Signal<T: Display>`, or a closure `Fn() -> String`.
+`button(label) -> ButtonBuilder`. `label` is `impl Into<Glyph>`: a `&str`, `String`, `Signal<T: Display>`, a closure `Fn() -> String`, an `Icon`, or `Glyph::svg(source)`.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -24,13 +24,13 @@ Key options:
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
 - `.enabled(bool)`: static disable; the node is not focusable.
-- `.disabled(Signal<bool>)`: reactive disable.
+- `.disabled(impl Reactive<bool>)`: reactive disable.
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
-Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
+Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
 
-`icon_button(glyph, activate)` is `button(glyph).ghost().activate(f)` with a square hit area: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
+`button(Icon::Close)` is a ghost button with a square hit area, named for the icon; `button("×").ghost().square()` does the same for a text glyph: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
 
 ## checkbox
 
@@ -46,13 +46,13 @@ checkbox(agreed).label("Accept terms").change(|on| {
 # };
 ```
 
-Key options: `.label(impl Into<TextContent>)` puts a label beside the box and makes the row fill its width; `.tone(Tone)`: `Tone::Neutral` checks in gray scale step 9, every other tone checks in `accent`; `.change(Fn(bool))` is a side effect, and the widget writes the signal first, then calls the closure; `.disabled(Signal<bool>)` blocks input and paints the whole row, box and label, at the disabled opacity. A disabled checked box keeps its tone fill.
+Key options: `.label(impl Into<TextContent>)` puts a label beside the box and makes the row fill its width; `.tone(Tone)`: `Tone::Neutral` checks in gray scale step 9, every other tone checks in `accent`; `.change(Fn(bool))` is a side effect, and the widget writes the signal first, then calls the closure; `.disabled(impl Reactive<bool>)` blocks input and paints the whole row, box and label, at the disabled opacity. A disabled checked box keeps its tone fill.
 
 Pointer release, Enter, and Space flip the value. In the terminal host the indicator degrades to `[x]` / `[ ]` text.
 
 ## toggle
 
-`toggle(Signal<bool>)`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(Signal<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
+`toggle(Signal<bool>)`. A sliding switch: `Role::Switch`, a 36×20 px track with a thumb. Same surface as checkbox: `.label()`, `.disabled(impl Reactive<bool>)`, `.change(Fn(bool))`, and the same disabled look: the row dims and the thumb keeps its side, and the same pointer/Enter/Space activation. The accessible name is the label text or "Toggle".
 
 ## radio_group
 
@@ -69,7 +69,7 @@ radio_group(mode)
 # };
 ```
 
-`.option(key, label)` appends a row (`Role::RadioButton`, publishes `checked`). Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(Signal<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
+`.option(key, label)` appends a row (`Role::RadioButton`, publishes `checked`). Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(impl Reactive<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
 
 ## slider
 
@@ -91,13 +91,13 @@ Key options:
 - `.change(Fn(f32))`: fires on drag release and on each key step, not continuously during the drag.
 - `.orientation(Orientation::Vertical)`: default Horizontal.
 - `.length(px)`: fixes the track extent; the default fills the parent.
-- `.disabled(Signal<bool>)`: dims the slider; the thumb stays opaque with a gray border so it reads in light and dark themes.
+- `.disabled(impl Reactive<bool>)`: dims the slider; the thumb stays opaque with a gray border so it reads in light and dark themes.
 
 Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown move ten steps, Home/End jump to the range ends. Drag captures the pointer, so a slide that leaves the track still updates.
 
 ## range_slider
 
-`range_slider(Signal<RangeInclusive<f32>>, RangeInclusive<f32>) -> SliderBuilder`. Two thumbs on one track. Each thumb is a focusable `Role::Slider` named "minimum" and "maximum" after the slider label, and takes the same keys as `slider`. The start never passes the end. A press or drag moves the nearest thumb; when both thumbs sit on one value, the drag direction picks the thumb. `.change(Fn(f32))` reports the moved thumb's value; read the whole range from the signal.
+`range_slider(Signal<RangeInclusive<f32>>, RangeInclusive<f32>) -> SliderBuilder<RangeInclusive<f32>>`. Two thumbs on one track. Each thumb is a focusable `Role::Slider` named "minimum" and "maximum" after the slider label, and takes the same keys as `slider`. The start never passes the end. A press or drag moves the nearest thumb; when both thumbs sit on one value, the drag direction picks the thumb. `.change(Fn(RangeInclusive<f32>))` reports the whole range after either thumb moves.
 
 ## link
 
@@ -105,12 +105,12 @@ Keys: Arrow Right/Up add one step, Arrow Left/Down subtract, PageUp/PageDown mov
 
 ## States, keys, and accessibility
 
-The visual catalog captures each control in the states in the table. Hover, pressed, and focused come from the pointer and the keyboard. Disabled comes from `.disabled(Signal<bool>)`.
+The visual catalog captures each control in the states in the table. Hover, pressed, and focused come from the pointer and the keyboard. Disabled comes from `.disabled(impl Reactive<bool>)`.
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `button` | default, hover, pressed, focused, disabled, pending | Enter, Space | `Button` | The label, or `.accessible(name)` |
-| `icon_button` | default, hover, pressed, focused, disabled | Enter, Space | `Button` | `.accessible(name)`; without it, the glyph |
+| `button(Icon)` | default, hover, pressed, focused, disabled | Enter, Space | `Button` | `.accessible(name)`; without it, the glyph |
 | `checkbox` | default, hover, pressed, focused, disabled | Enter, Space | `CheckBox` | A static `.label()`, else "Checkbox" |
 | `toggle` | default, hover, pressed, focused, disabled | Enter, Space | `Switch` | A static `.label()`, else "Toggle" |
 | `radio_group` | default, hover, pressed, focused, disabled | Arrow keys, Home, End | `RadioGroup`, rows `RadioButton` | `.label()` or `.labelled_by(node)` for the group; each row uses its option label |

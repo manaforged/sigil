@@ -1,7 +1,7 @@
 use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
-#[cfg(any(feature = "terminal", debug_assertions))]
+#[cfg(any(host, debug_assertions))]
 use crate::kernel::FrameDelta;
 use crate::reactive::{Runtime, tick_frame};
 
@@ -17,7 +17,7 @@ pub struct FrameInfo {
     pub animating: bool,
     /// Whether layout ok.
     pub layout_ok: bool,
-    #[cfg(any(feature = "terminal", debug_assertions))]
+    #[cfg(any(host, debug_assertions))]
     pub(crate) delta: FrameDelta,
 }
 
@@ -61,6 +61,18 @@ impl core::fmt::Debug for FrameHooks<'_> {
     }
 }
 
+#[cfg(host)]
+impl Host {
+    /// Returns whether a frame has work to do without new input: a signal write, an animation, a clock, or a timer that is due.
+    #[must_use]
+    pub fn frame_due() -> bool {
+        Runtime::frame_dirty()
+            || crate::animation::runtime::animating()
+            || crate::reactive::next_interval_deadline()
+                .is_some_and(|due| due <= web_time::Instant::now())
+    }
+}
+
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
     pub fn frame(
@@ -71,6 +83,8 @@ impl Host {
     ) -> FrameOutput {
         #[cfg(hot_patch)]
         self.remount_patched();
+        #[cfg(feature = "terminal")]
+        self.drop_cell_screen();
         let _env = self.enter();
         Runtime::begin_effect();
         if let Some(next) = hooks.input.and_then(|input| input(self)) {
@@ -89,13 +103,13 @@ impl Host {
         Runtime::begin_paint();
         let dirty = Runtime::frame_dirty();
         let delta = self.cx().take_delta();
-        #[cfg(not(any(feature = "terminal", debug_assertions)))]
-        drop(delta);
+        #[cfg(not(any(host, debug_assertions)))]
+        self.cx().reuse_delta(delta);
         let info = FrameInfo {
             dirty,
             animating,
             layout_ok,
-            #[cfg(any(feature = "terminal", debug_assertions))]
+            #[cfg(any(host, debug_assertions))]
             delta,
         };
         if let Some(paint) = hooks.paint {
@@ -105,6 +119,8 @@ impl Host {
         if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
             self.report_flaws();
         }
+        #[cfg(any(host, debug_assertions))]
+        self.cx().reuse_delta(info.delta);
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
         FrameOutput {

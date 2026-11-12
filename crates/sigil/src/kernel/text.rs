@@ -51,7 +51,10 @@ impl TextContent {
 
     pub(crate) fn hash_into(&self, hasher: &mut impl std::hash::Hasher) {
         use std::hash::Hash as _;
-        self.with_str(|value| value.hash(hasher));
+        match self {
+            Self::Reactive(signal) => signal.stamp().hash(hasher),
+            Self::Static(_) | Self::Compute(_) => self.with_str(|value| value.hash(hasher)),
+        }
     }
 
     /// Writes the current text to `out` and returns whether it changed.
@@ -197,7 +200,7 @@ impl TextBuilder {
 
     /// Sets the tab index.
     #[must_use]
-    pub const fn tab_index(mut self, index: i32) -> Self {
+    pub fn tab_index(mut self, index: i32) -> Self {
         self.node.a11y.tab_index = Some(index);
         self
     }

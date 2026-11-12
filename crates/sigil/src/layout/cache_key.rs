@@ -94,11 +94,13 @@ pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &BTreeSet<DefaultKey>) -> 
     hasher.finish()
 }
 
-fn interaction_hash(binding: &StyleBinding) -> u64 {
+fn interaction_hash(node: &Node, binding: &StyleBinding) -> u64 {
     let mut hasher = AHasher::default();
+    node.version().hash(&mut hasher);
+    binding.revision().hash(&mut hasher);
     std::mem::discriminant(&binding.interaction_slot()).hash(&mut hasher);
-    for atom in binding.cascade() {
-        atom.hash(&mut hasher);
+    for slice in binding.reactive_channels() {
+        slice.hash(&mut hasher);
     }
     hasher.finish()
 }
@@ -130,7 +132,7 @@ impl Node {
     pub(crate) fn animation_signature(&self) -> Option<u64> {
         let binding = self.get_extension::<StyleBinding>()?;
         (binding.animator_overlay().is_some() || binding.has_transition())
-            .then(|| interaction_hash(binding))
+            .then(|| interaction_hash(self, binding))
     }
 
     pub(crate) fn reactive_seed_signature(&self) -> u64 {
@@ -148,7 +150,7 @@ impl Node {
             }
             if binding.animator_overlay().is_some() || binding.state_overlay().is_some() {
                 interaction
-                    .unwrap_or_else(|| interaction_hash(binding))
+                    .unwrap_or_else(|| interaction_hash(self, binding))
                     .hash(&mut hasher);
             }
         }

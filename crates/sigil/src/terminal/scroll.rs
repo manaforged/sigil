@@ -6,6 +6,7 @@ use crossterm::{cursor, queue};
 use crate::terminal::paint::{Cell, Grid, Ink};
 
 const MIN_GAIN: usize = 3;
+const INK_TURN: u32 = 21;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Shift {
@@ -71,6 +72,16 @@ impl Shift {
         })
     }
 
+    pub(crate) fn carries(&self, row: usize) -> bool {
+        let inside = (self.top..=self.bottom).contains(&row);
+        inside
+            && if self.up {
+                row + self.by <= self.bottom
+            } else {
+                row >= self.top + self.by
+            }
+    }
+
     pub(crate) fn source<'g>(&self, prev: &'g Grid, row: usize) -> Option<&'g [Cell]> {
         if row < self.top || row > self.bottom {
             return Some(prev.row(row));
@@ -102,21 +113,23 @@ impl Shift {
 fn sign(cells: &[Cell]) -> u64 {
     use crate::fnv::{OFFSET, mix};
     cells.iter().fold(OFFSET, |hash, cell| {
-        let hash = crate::fnv::bytes(hash, cell.text.as_bytes());
-        mix(mix(hash, ink(cell.fg)), ink(cell.bg))
+        let inks = ink(cell.fg).rotate_left(INK_TURN) ^ ink(cell.bg).rotate_left(2 * INK_TURN);
+        mix(hash, head(cell.text.as_bytes()) ^ inks)
     })
 }
 
-const fn ink(ink: Ink) -> u64 {
+fn head(text: &[u8]) -> u64 {
+    let mut word = [0_u8; 8];
+    for (slot, byte) in word.iter_mut().zip(text) {
+        *slot = *byte;
+    }
+    u64::from_le_bytes(word) ^ text.len() as u64
+}
+
+fn ink(ink: Ink) -> u64 {
     match ink {
         Ink::Bare => 0,
         Ink::Of(tone) => 1 + tone as u64,
-        Ink::Exact(colour) => {
-            1 << 32
-                | (colour.r as u64) << 24
-                | (colour.g as u64) << 16
-                | (colour.b as u64) << 8
-                | colour.a as u64
-        }
+        Ink::Exact(colour) => 1 << 32 | crate::fnv::rgba(colour),
     }
 }

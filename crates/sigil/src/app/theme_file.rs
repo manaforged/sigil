@@ -1,4 +1,4 @@
-use crate::style::{DateOrder, Direction, Locale, StringKey, Theme, ThemeValue};
+use crate::style::{Color, DateOrder, Direction, Locale, StringKey, Theme};
 
 pub(super) fn load(path: &std::path::Path) -> Option<Theme> {
     let input = std::fs::read_to_string(path).ok()?;
@@ -16,8 +16,8 @@ pub(crate) fn parse(input: &str) -> Option<Theme> {
     let tokens = doc.get("tokens")?.as_table()?;
     for (name, value) in tokens {
         let hex = value.as_str()?;
-        let color = hex.parse().ok()?;
-        theme.register_token(name, ThemeValue::Color(color));
+        let color: Color = hex.parse().ok()?;
+        theme = theme.token(name, color);
     }
     if let Some(value) = doc.get("direction") {
         theme.direction = Direction::from_name(value.as_str()?)?;

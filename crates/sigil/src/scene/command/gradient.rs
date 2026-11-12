@@ -119,9 +119,10 @@ impl Gradient {
             crate::fnv::mix_f32,
         );
         self.stops.iter().fold(hash, |hash, stop| {
-            let color =
-                u32::from_le_bytes([stop.color.r, stop.color.g, stop.color.b, stop.color.a]);
-            crate::fnv::mix(crate::fnv::mix_f32(hash, stop.offset), u64::from(color))
+            crate::fnv::mix(
+                crate::fnv::mix_f32(hash, stop.offset),
+                crate::fnv::rgba(stop.color),
+            )
         })
     }
 

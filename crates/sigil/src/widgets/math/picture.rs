@@ -19,7 +19,8 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
 
 fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
     let Color { r, g, b, .. } = theme.color(Token::OnSurface);
-    let color = MathColor::rgb(unit(r), unit(g), unit(b));
+    let [r, g, b] = [r, g, b].map(crate::style::srgb::unit);
+    let color = MathColor::rgb(r, g, b);
     let options = LayoutOptions::default()
         .with_style(MathStyle::Display)
         .with_color(color);
@@ -33,8 +34,4 @@ fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
         font_dir: String::new(),
     };
     Some(render_to_svg(&to_display_list(&tree), &svg))
-}
-
-fn unit(channel: u8) -> f32 {
-    f32::from(channel) / 255.0
 }

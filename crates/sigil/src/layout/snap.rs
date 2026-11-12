@@ -90,6 +90,10 @@ pub(crate) fn rule(value: f32) -> f32 {
     if value <= 0.0 { value } else { track(value) }
 }
 
+pub(crate) fn offset(value: f32) -> f32 {
+    cell().map_or(value, |cell| (value / cell).round() * cell)
+}
+
 pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> (f32, f32, f32, f32) {
     let Some(cell) = cell() else {
         return (x, y, w, h);
@@ -108,10 +112,5 @@ pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> (f32, f32, f32, f32) {
 }
 
 pub(crate) fn gap_auto_edges(edges: AutoEdges) -> AutoEdges {
-    AutoEdges {
-        left: edges.left.map(gap),
-        right: edges.right.map(gap),
-        top: edges.top.map(gap),
-        bottom: edges.bottom.map(gap),
-    }
+    edges.map(|edge| edge.map(gap))
 }

@@ -10,7 +10,7 @@ fn a_link_with_a_control_character_never_reaches_the_terminal() {
     let mut grid = Grid::new(4, 1);
     let cell = |url: &str| Cell {
         text: "x".into(),
-        link: Some(url.into()),
+        link: crate::terminal::paint::Link::new(url),
         ..Cell::blank()
     };
     grid.set_row(

@@ -2,9 +2,9 @@ use crate::geometry::Rect;
 use crate::scene::CellBorder;
 use crate::style::{Color, Theme};
 use crate::terminal::caps::Borders;
-use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink, cell_edge};
+use crate::terminal::paint::Glyph;
 
 pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
     if let Ink::Exact(over) = ink {
@@ -18,7 +18,7 @@ pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
         }
     }
     *cell = Cell {
-        text: SmolStr::new_inline(" "),
+        text: Glyph::inline(" "),
         fg: Ink::Bare,
         bg: ink,
         ..Cell::blank()
@@ -96,13 +96,8 @@ fn clip_cells(
     cell: f32,
 ) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
     let range = |start: f32, extent: f32, limit: usize| {
-        let first = cell_edge(start / cell);
-        let end = cell_edge((start + extent) / cell);
-        let end = if extent > 0.0 {
-            end.max(first + 1)
-        } else {
-            end
-        };
+        let (first, len) = super::snapped_span(start / cell, extent / cell);
+        let end = first + if extent > 0.0 { len.max(1) } else { len };
         first..end.min(limit)
     };
     grid.bound(
@@ -190,8 +185,7 @@ fn tee(set: BorderGlyphs) -> (&'static str, &'static str) {
 impl Grid {
     pub(super) fn edged(&self, col: usize, row: usize) -> bool {
         self.index(col, row)
-            .and_then(|index| self.edges.get(index))
-            .is_some_and(Option::is_some)
+            .is_some_and(|index| self.edges.get(index).is_some())
     }
 }
 

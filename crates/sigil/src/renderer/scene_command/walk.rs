@@ -1,6 +1,7 @@
 use crate::geometry::{Point, Rect};
 
 use crate::Error;
+use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::decoration_paint::DecorationInstance;
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::fill_paint::FillPipeline;
@@ -83,7 +84,8 @@ impl WalkPending {
 pub(crate) fn walk_command_scene(ctx: WalkCtx<'_>, scene: &CommandScene) -> Result<(), Error> {
     ctx.encoder.reserve_draws(&scene.commands);
     ctx.vector.begin_frame();
-    ctx.kept.begin_frame();
+    ctx.kept
+        .begin_frame(CacheLimits::DEFAULT.kept_layer_stale_frames);
     *ctx.stats = FrameStats {
         scene_commands: scene.commands.len(),
         ..FrameStats::default()
@@ -234,12 +236,12 @@ pub(super) const fn rect_from_fields(fields: [f32; 4]) -> Rect {
     Rect::new(Point::new(x, y), width, height)
 }
 
-pub(super) type PipelineFns<P> = (
+pub(crate) type PipelineFns<P> = (
     fn(&P) -> wgpu::TextureFormat,
     fn(&wgpu::Device, wgpu::TextureFormat) -> P,
 );
 
-pub(super) fn pipeline_for<'a, P>(
+pub(crate) fn pipeline_for<'a, P>(
     pipelines: &'a mut Vec<P>,
     device: &wgpu::Device,
     format: wgpu::TextureFormat,

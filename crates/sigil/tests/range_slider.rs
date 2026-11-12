@@ -84,3 +84,24 @@ fn overlapped_thumbs_follow_the_drag_direction() {
     assert_eq!(value.peek(), 0.0..=100.0);
     assert_eq!(focused(&mut ui), "Price minimum");
 }
+
+#[test]
+fn change_reports_the_whole_range_for_either_thumb() {
+    let seen = Rc::new(std::cell::RefCell::new(Vec::new()));
+    let record = Rc::clone(&seen);
+    let mut ui = Harness::new(move || {
+        let record = Rc::clone(&record);
+        column().child(
+            range_slider(signal(20.0_f32..=80.0), 0.0..=100.0)
+                .step(10.0)
+                .label("Price")
+                .change(move |range| record.borrow_mut().push(range)),
+        )
+    })
+    .size(40, 4);
+    ui.settle();
+    ui.press(Key::ArrowRight).settle();
+    ui.focus_next();
+    ui.press(Key::ArrowRight).settle();
+    assert_eq!(*seen.borrow(), vec![30.0..=80.0, 30.0..=90.0]);
+}

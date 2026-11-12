@@ -23,7 +23,7 @@ pub(crate) struct Wiring {
 }
 
 impl Wiring {
-    const fn is_inert(&self) -> bool {
+    pub(crate) const fn is_inert(&self) -> bool {
         self.disabled.is_none()
             && self.activate.is_none()
             && self.state.is_none()
@@ -52,22 +52,22 @@ impl NodeBuilder {
         self
     }
 
-    pub(crate) const fn disabled_by(mut self, disabled: Option<Signal<bool>>) -> Self {
+    pub(crate) fn disabled_by(mut self, disabled: Option<Signal<bool>>) -> Self {
         self.wiring_mut().disabled = disabled;
         self
     }
 
-    pub(crate) const fn active(mut self) -> Self {
+    pub(crate) fn active(mut self) -> Self {
         self.wiring_mut().active = true;
         self
     }
 
-    pub(crate) const fn busy_by(mut self, busy: Option<Signal<bool>>) -> Self {
+    pub(crate) fn busy_by(mut self, busy: Option<Signal<bool>>) -> Self {
         self.wiring_mut().busy = busy;
         self
     }
 
-    pub(crate) const fn variant(mut self, variant: StyleVariant) -> Self {
+    pub(crate) fn variant(mut self, variant: StyleVariant) -> Self {
         self.wiring_mut().variant = Some(variant);
         self
     }
@@ -82,7 +82,7 @@ impl NodeBuilder {
 }
 
 pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder {
-    let wiring = std::mem::take(node.wiring_mut());
+    let wiring = node.take_wiring();
     if overlay.is_empty() && wiring.is_inert() {
         return node;
     }

@@ -14,6 +14,7 @@ pub(super) struct TextMemoKey {
     pub(super) known_w: u32,
     pub(super) known_h: u32,
     pub(super) wrap: u32,
+    pub(super) min_content: bool,
     pub(super) content: u64,
     pub(super) fonts: u64,
 }
@@ -25,18 +26,44 @@ pub(super) fn text_memo_key(
     text: &LayoutText,
     fonts: u64,
 ) -> TextMemoKey {
+    let wrap = if text.wrap || text.ellipsis {
+        wrap_to
+    } else {
+        None
+    };
     TextMemoKey {
         index: id.slot(),
         tag: id.era(),
         known_w: known.width.map_or(u32::MAX, f32::to_bits),
         known_h: known.height.map_or(u32::MAX, f32::to_bits),
-        wrap: wrap_to.map_or(u32::MAX, f32::to_bits),
+        wrap: wrap.map_or(u32::MAX, f32::to_bits),
+        min_content: false,
+        content: text_memo_content(text),
+        fonts,
+    }
+}
+
+pub(super) fn min_content_memo_key(id: LocalId, text: &LayoutText, fonts: u64) -> TextMemoKey {
+    TextMemoKey {
+        index: id.slot(),
+        tag: id.era(),
+        known_w: u32::MAX,
+        known_h: u32::MAX,
+        wrap: u32::MAX,
+        min_content: text.wrap,
         content: text_memo_content(text),
         fonts,
     }
 }
 
 fn text_memo_content(text: &LayoutText) -> u64 {
+    if matches!(text.content, TextContent::Static(_)) {
+        return *text.sig.get_or_init(|| content_signature(text));
+    }
+    content_signature(text)
+}
+
+fn content_signature(text: &LayoutText) -> u64 {
     let mut hasher = AHasher::default();
     match &text.content {
         TextContent::Static(value) => value.hash(&mut hasher),
@@ -49,6 +76,8 @@ fn text_memo_content(text: &LayoutText) -> u64 {
     }
     hasher.finish()
 }
+
+pub(super) type TextSize = (TextMemoKey, crate::layout::style_data::Axes<f32>);
 
 pub(super) const TEXT_MEMO_LIVE: usize = 8_192;
 

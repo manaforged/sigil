@@ -1,6 +1,6 @@
 use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
-use crate::layout::forest::{ComputedBox, NodeRef};
+use crate::layout::forest::{ComputedBox, NodeRef, SolvedKey};
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
 use crate::layout::style_data::{Axes, Display, Length, Position};
 
@@ -30,7 +30,8 @@ pub(crate) fn layout_item_subtree(
     w: f32,
     h: f32,
 ) -> Result<(), Error> {
-    let forest = ctx.solver.scope().forest();
+    let scope = ctx.solver.scope();
+    let forest = scope.forest();
     let node = forest
         .refer(id)
         .ok_or_else(|| Error::layout(format!("stale flex item id {id:?}")))?;
@@ -39,37 +40,65 @@ pub(crate) fn layout_item_subtree(
     }
     let style = node.style();
     let (assigned_w, assigned_h) = assigned_size(ctx, node, w, h);
+    let solved_key = if ctx.suppress_stretch || ctx.measures_height {
+        forest.forget_solved_subtree(id);
+        forest.invalidate_solved_ancestors(id);
+        None
+    } else {
+        let key = SolvedKey::new(
+            (w, h),
+            (assigned_w, assigned_h),
+            scope.available(),
+            scope.font_generation(),
+        );
+        if forest.replay_subtree(id, key, (origin.x, origin.y)) {
+            return Ok(());
+        }
+        Some(key)
+    };
     match style.display {
         Display::Flex => {
-            let axes = Axis2::for_direction(style.flex_direction);
-            let nested = FlexCtx {
-                solver: ctx.solver,
-                axes,
-                cb: CbSize { w, h },
-                suppress_stretch: ctx.suppress_stretch,
-                measures_height: ctx.measures_height,
-                assigned_w,
-                assigned_h,
-            };
-            let edges = NodeEdges::build(style, w);
-            let m = edges.margin.or_zero();
-            let pre = Position2::new(origin.x - m.left, origin.y - m.top);
-            layout_root(&nested, node, pre)
+            dispatch_flex_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))?;
         }
         Display::Grid => {
-            let scope = ctx.solver.scope();
-            let nested = crate::layout::forest::MeasureScope::new(
-                scope.forest(),
-                scope.text(),
-                scope.available(),
-            );
+            let nested =
+                crate::layout::forest::MeasureScope::new(forest, scope.text(), scope.available());
             let pre = block_origin(style, origin, w);
-            crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)
+            crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)?;
         }
         Display::Block | Display::None => {
-            dispatch_block_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))
+            dispatch_block_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))?;
         }
     }
+    if let Some(key) = solved_key {
+        forest.store_solved(id, key, (origin.x, origin.y));
+    }
+    Ok(())
+}
+
+fn dispatch_flex_subtree(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    origin: Position2,
+    (w, h): (f32, f32),
+    (assigned_w, assigned_h): (Option<f32>, Option<f32>),
+) -> Result<(), Error> {
+    let style = node.style();
+    let nested = FlexCtx {
+        solver: ctx.solver,
+        axes: Axis2::for_direction(style.flex_direction),
+        cb: CbSize { w, h },
+        suppress_stretch: ctx.suppress_stretch,
+        measures_height: ctx.measures_height,
+        assigned_w,
+        assigned_h,
+    };
+    let m = NodeEdges::build(style, w).margin.or_zero();
+    layout_root(
+        &nested,
+        node,
+        Position2::new(origin.x - m.left, origin.y - m.top),
+    )
 }
 
 fn dispatch_block_subtree(

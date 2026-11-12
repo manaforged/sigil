@@ -4,20 +4,20 @@ The catalog ships in `sigil`. Every widget constructs from a lowercase function 
 
 The family pages carry signatures, options, and behavior notes:
 
-- [Controls](widgets/controls.md): button, icon_button, checkbox, toggle, radio_group, slider, range_slider, link.
+- [Controls](widgets/controls.md): button, checkbox, toggle, radio_group, slider, range_slider, link.
 - [Indicators](widgets/indicators.md): chip, dot, spinner, gauge, progress.
 - [Fields](widgets/fields.md): text_field, text_edit, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
 - [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
 - [Content](widgets/content.md): text, label, icon, image, load_image, path, chart.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
 - [Chrome](widgets/chrome.md): app_shell, panel, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers, including badge, skeleton, pagination, breadcrumbs, and stepper.
-- [Overlays](widgets/overlays.md): modal, sheet, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
+- [Overlays](widgets/overlays.md): modal, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
 - [Plumbing](widgets/plumbing.md): interactive, axis_drag, drag/drop, clipboard, terminal.
 
 ## Inputs
 
-- **button(label)**: `label` is `TextContent` (`&str` or `Signal<String>`). Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`. Use `.accessible("Play")` when the visible label is a glyph.
-- **icon_button(glyph, activate)**: a ghost `button` whose label is a Unicode glyph. Chain `.accessible("Play")` for an assistive name.
+- **button(label)**: `label` is a `Glyph`: text (`&str` or `Signal<String>`) or an `Icon`. Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`. Use `.accessible("Play")` when the visible label is a glyph.
+- **button(Icon::Play)**: a square ghost `button` that shows an icon and is named for it. For a text glyph, write `button("▶").ghost().square().accessible("Play")`.
 - **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the signal is true.
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
 - **toggle(Signal\<bool\>)**: chain `.label()` and `.change(Fn(bool))`.
@@ -29,7 +29,7 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, Vec\<String\>)**: chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
-- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` or `sheet` (recipe below).
+- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
 
@@ -65,7 +65,7 @@ The family pages carry signatures, options, and behavior notes:
       _ => String::from("Choosing"),
   }))
   ```
-- **sheet(open)**: the same builder, docked. The default is `.side(Side::Right)`. Use `.side(Side::Left)` or `.side(Side::Bottom)`. A backdrop click dismisses.
+- **modal(open).side(Side::Right)**: the same builder, docked to an edge. Use `Side::Left` or `Side::Bottom` for the other edges, and `.dismiss_on_backdrop(true)` to close on a backdrop click.
 - **toast(message)**: a `Signal<Option<String>>`. `Some` shows a status line; `None` hides it.
 - **tabs()**: chain `.tab(label, component)` per tab, and `.close(Fn(usize))`.
 - **scroll(inner)**: measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
@@ -105,7 +105,7 @@ modal(open).title("Command").child(
 
 | Surface | State closures paint? |
 |---|---|
-| button, icon_button | yes (all four slots) |
+| button | yes (all four slots) |
 | checkbox, dropdown, slider, tabs, text_field, text_edit | yes |
 | Plain containers, avatar | yes |
 | card, sidebar | on `.into_node_builder()` |

@@ -12,7 +12,7 @@ use super::marks::Placed;
 use super::scales::{Orient, Scales};
 use super::scatter::Spans;
 use super::span::ValueSpan;
-use super::ticks::{self, Tick};
+use super::ticks::{self, MIN_TICKS, Tick};
 use super::tips::Tips;
 use super::{ChartMark, ChartView, Stack, clock, pie, readout};
 
@@ -30,7 +30,6 @@ const MIN_LABEL_PX: f32 = 32.0;
 const FLUID_MAX_LABELS: usize = 12;
 const FLUID_COLUMNS: usize = 1024;
 const FLUID_PLOT: f32 = 300.0;
-const MIN_TICKS: usize = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct PlotFrame {

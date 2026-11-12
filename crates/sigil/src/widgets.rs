@@ -47,6 +47,30 @@ pub(crate) fn oversize_block() -> markdown::parse::Block {
     markdown::parse::Block::Paragraph(vec![markdown::parse::Inline::Text(oversize_message())])
 }
 
+pub(crate) fn scrolled_diagram(
+    diagram: crate::kernel::NodeBuilder,
+    width: f32,
+) -> crate::kernel::NodeBuilder {
+    let centred = crate::kernel::container()
+        .layout(
+            crate::layout::LayoutStyle::flex_row()
+                .fill_width()
+                .min_size(width, 0.0)
+                .justify_content(crate::layout::JustifyContent::Center),
+        )
+        .child(diagram);
+    scroll::Horizontal::new(crate::reactive::signal(width), None).wrap(centred)
+}
+
+pub(crate) fn lines_extent(lines: &[String]) -> f32 {
+    let width = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0);
+    f32::from(u16::try_from(width).unwrap_or(u16::MAX)) * crate::style::space(2)
+}
+
 macro_rules! builder_impls {
     ($gen:tt $ty:ty: $($part:ident $(($($arg:tt)*))?),+ $(,)?) => {
         $($crate::widgets::builder_impls!(@$part $gen $ty $(, $($arg)*)?);)+
@@ -263,7 +287,7 @@ mod vega;
 mod virtual_list;
 mod widget;
 
-pub use button::{ButtonBuilder, button, icon_button};
+pub use button::{ButtonBuilder, button};
 pub use canvas::{CanvasBuilder, canvas};
 pub use chart::{ChartBuilder, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
@@ -295,8 +319,6 @@ pub use gauge::{GaugeBuilder, gauge};
 pub use graphviz::graphviz;
 pub use highlight::{Highlight, highlight};
 pub use html::html;
-#[cfg(feature = "scene")]
-pub use icon::icon_svg;
 pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use link::{LinkBuilder, link};
@@ -308,7 +330,7 @@ pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_b
 #[cfg(fuzzing)]
 pub(crate) use mermaid::figure as mermaid_figure;
 pub use mermaid::mermaid;
-pub use modal::{ModalBuilder, Side, modal, sheet};
+pub use modal::{ModalBuilder, Side, modal};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};

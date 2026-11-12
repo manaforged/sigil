@@ -11,15 +11,18 @@ mod box_cell;
 mod intrinsic;
 mod links;
 mod measure;
+mod solved;
 mod text_memo;
 
 pub(crate) use box_cell::BoxCell;
 pub(crate) use intrinsic::IntrinsicKey;
 use intrinsic::IntrinsicMemo;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
-use text_memo::TextMemo;
+pub(crate) use solved::SolvedKey;
+use solved::SolvedSubtree;
 #[cfg(test)]
 use text_memo::{TEXT_MEMO_LIVE, TextMemoKey};
+use text_memo::{TextMemo, TextSize};
 
 static DEFAULT_STYLE: StyleData = StyleData::DEFAULT;
 
@@ -67,9 +70,10 @@ impl LayoutNode {
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutText {
     pub(crate) content: TextContent,
-    pub(crate) style: Option<TextStyle>,
+    pub(crate) style: Option<std::rc::Rc<TextStyle>>,
     pub(crate) wrap: bool,
     pub(crate) ellipsis: bool,
+    pub(crate) sig: std::cell::OnceCell<u64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -88,6 +92,10 @@ pub(crate) struct LayoutForest {
     frame: u32,
     text_memo: std::cell::RefCell<TextMemo>,
     intrinsic: Vec<IntrinsicMemo>,
+    fills: Vec<std::cell::Cell<u8>>,
+    last_text: Vec<std::cell::Cell<Option<TextSize>>>,
+    fonts: std::cell::Cell<Option<u64>>,
+    solved: Vec<std::cell::Cell<Option<SolvedSubtree>>>,
 }
 
 impl LayoutForest {
@@ -100,12 +108,37 @@ impl LayoutForest {
             frame: 1,
             text_memo: std::cell::RefCell::new(TextMemo::default()),
             intrinsic: Vec::new(),
+            fills: Vec::new(),
+            last_text: Vec::new(),
+            fonts: std::cell::Cell::new(None),
+            solved: Vec::new(),
         }
     }
 
-    pub(crate) const fn next_frame(&mut self) -> u32 {
+    pub(crate) fn next_frame(&mut self) -> u32 {
         self.frame = self.frame.wrapping_add(1);
+        if self.frame == 0 {
+            self.frame = 1;
+            for cell in &self.boxes {
+                cell.stamp(0);
+            }
+            self.clear_solved();
+        }
         self.frame
+    }
+
+    pub(crate) fn reserve(&mut self, total: usize) {
+        let more = total.saturating_sub(self.nodes.len());
+        self.nodes.reserve(more);
+        self.boxes.reserve(more);
+        self.intrinsic.reserve(more);
+        self.fills.reserve(more);
+        self.last_text.reserve(more);
+        self.solved.reserve(more);
+    }
+
+    pub(crate) fn pin_fonts(&self, generation: Option<u64>) {
+        self.fonts.set(generation);
     }
 
     pub(crate) const fn current_frame(&self) -> u32 {
@@ -143,6 +176,9 @@ impl LayoutForest {
             self.nodes.push(node);
             self.boxes.push(BoxCell::new(ComputedBox::default()));
             self.intrinsic.push(IntrinsicMemo::default());
+            self.fills.push(std::cell::Cell::new(0));
+            self.last_text.push(std::cell::Cell::new(None));
+            self.solved.push(std::cell::Cell::new(None));
         }
         id
     }
@@ -198,8 +234,16 @@ impl LayoutForest {
     }
 
     pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), Error> {
+        self.write_at_frame(id, value, self.frame)
+    }
+
+    pub(crate) fn write_at_frame(
+        &mut self,
+        id: LocalId,
+        value: ComputedBox,
+        frame: u32,
+    ) -> Result<(), Error> {
         self.node(id).ok_or_else(|| stale(id))?;
-        let frame = self.frame;
         self.boxes
             .get_mut(id.index as usize)
             .ok_or_else(|| stale(id))?
@@ -255,6 +299,23 @@ impl NodeRef<'_> {
 
     pub(crate) fn text(&self) -> Option<&LayoutText> {
         self.forest.node(self.id).and_then(LayoutNode::text)
+    }
+
+    pub(crate) fn edges(&self, cb_inline: f32) -> crate::layout::resolve::NodeEdges {
+        use crate::layout::resolve::NodeEdges;
+        match self.forest.edgeless_get(self.id) {
+            Some(true) => NodeEdges::BARE,
+            Some(false) => NodeEdges::build(self.style(), cb_inline),
+            None => {
+                let bare = NodeEdges::bare(self.style());
+                self.forest.edgeless_put(self.id, bare);
+                if bare {
+                    NodeEdges::BARE
+                } else {
+                    NodeEdges::build(self.style(), cb_inline)
+                }
+            }
+        }
     }
 }
 

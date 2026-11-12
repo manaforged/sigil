@@ -28,9 +28,9 @@ pub struct NodeBuilder {
     pub(super) pre_extensions: Vec<NodeMutator>,
     pub(super) reactive_children: Option<ReactiveChildrenInstall>,
     pub(super) on_added: Vec<AddedHook>,
-    style: Style,
+    style: Option<Box<Style>>,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
-    wiring: Wiring,
+    wiring: Option<Box<Wiring>>,
 }
 
 impl core::fmt::Debug for NodeBuilder {
@@ -76,9 +76,9 @@ impl NodeBuilder {
             pre_extensions: Vec::new(),
             reactive_children: None,
             on_added: Vec::new(),
-            style: Style::new(),
+            style: None,
             wraps: None,
-            wiring: Wiring::default(),
+            wiring: None,
         }
     }
 
@@ -112,7 +112,7 @@ impl NodeBuilder {
 
     /// Sets the labelled by.
     #[must_use]
-    pub const fn labelled_by(mut self, node: NodeId) -> Self {
+    pub fn labelled_by(mut self, node: NodeId) -> Self {
         self.a11y.labelled_by = Some(node);
         self
     }
@@ -151,7 +151,7 @@ impl NodeBuilder {
 
     /// Sets the tab index.
     #[must_use]
-    pub const fn tab_index(mut self, index: i32) -> Self {
+    pub fn tab_index(mut self, index: i32) -> Self {
         self.a11y.tab_index = Some(index);
         self
     }
@@ -172,63 +172,63 @@ impl NodeBuilder {
 
     /// Sets the checked.
     #[must_use]
-    pub const fn checked(mut self, signal: Signal<bool>) -> Self {
+    pub fn checked(mut self, signal: Signal<bool>) -> Self {
         self.a11y.checked = Some(signal);
         self
     }
 
     /// Sets the signal that announces the node as mixed, neither checked nor unchecked.
     #[must_use]
-    pub const fn mixed(mut self, signal: Signal<bool>) -> Self {
+    pub fn mixed(mut self, signal: Signal<bool>) -> Self {
         self.a11y.mixed = Some(signal);
         self
     }
 
     /// Sets the selected.
     #[must_use]
-    pub const fn selected(mut self, signal: Signal<bool>) -> Self {
+    pub fn selected(mut self, signal: Signal<bool>) -> Self {
         self.a11y.selected = Some(signal);
         self
     }
 
     /// Sets the expanded.
     #[must_use]
-    pub const fn expanded(mut self, signal: Signal<bool>) -> Self {
+    pub fn expanded(mut self, signal: Signal<bool>) -> Self {
         self.a11y.expanded = Some(signal);
         self
     }
 
     /// Sets the sort direction.
     #[must_use]
-    pub const fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
+    pub fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
         self.a11y.sort_direction = Some(signal);
         self
     }
 
     /// Sets the row count.
     #[must_use]
-    pub const fn row_count(mut self, signal: Signal<usize>) -> Self {
+    pub fn row_count(mut self, signal: Signal<usize>) -> Self {
         self.a11y.row_count = Some(signal);
         self
     }
 
     /// Sets the column count.
     #[must_use]
-    pub const fn column_count(mut self, count: usize) -> Self {
+    pub fn column_count(mut self, count: usize) -> Self {
         self.a11y.column_count = Some(count);
         self
     }
 
     /// Sets the row index.
     #[must_use]
-    pub const fn row_index(mut self, index: usize) -> Self {
+    pub fn row_index(mut self, index: usize) -> Self {
         self.a11y.row_index = Some(index);
         self
     }
 
     /// Sets the column index.
     #[must_use]
-    pub const fn column_index(mut self, index: usize) -> Self {
+    pub fn column_index(mut self, index: usize) -> Self {
         self.a11y.column_index = Some(index);
         self
     }
@@ -246,25 +246,21 @@ impl NodeBuilder {
 
     /// Sets the value step.
     #[must_use]
-    pub const fn value_step(mut self, step: f32) -> Self {
+    pub fn value_step(mut self, step: f32) -> Self {
         self.a11y.step = Some(step);
         self
     }
 
     /// Sets the text value.
     #[must_use]
-    pub const fn text_value(mut self, signal: Signal<String>) -> Self {
+    pub fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
         self
     }
 
     /// Sets the text cursor.
     #[must_use]
-    pub const fn text_cursor(
-        mut self,
-        caret: Signal<usize>,
-        anchor: Signal<Option<usize>>,
-    ) -> Self {
+    pub fn text_cursor(mut self, caret: Signal<usize>, anchor: Signal<Option<usize>>) -> Self {
         self.a11y.text_cursor = Some(TextCursor { caret, anchor });
         self
     }
@@ -344,12 +340,25 @@ impl NodeBuilder {
         cx.add(self)
     }
 
-    pub(crate) const fn pending_style(&mut self) -> &mut Style {
-        &mut self.style
+    pub(crate) fn pending_style(&mut self) -> &mut Style {
+        self.style.get_or_insert_with(|| Box::new(Style::new()))
     }
 
-    pub(crate) const fn wiring_mut(&mut self) -> &mut Wiring {
-        &mut self.wiring
+    fn styled(mut self) -> Self {
+        let style = self.style.take().filter(|style| !style.is_empty());
+        match style {
+            Some(style) => crate::style::attach_style(self, *style),
+            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert()) => self,
+            None => crate::style::attach_style(self, Style::new()),
+        }
+    }
+
+    pub(crate) fn wiring_mut(&mut self) -> &mut Wiring {
+        self.wiring.get_or_insert_default()
+    }
+
+    pub(crate) fn take_wiring(&mut self) -> Wiring {
+        self.wiring.take().map(|wiring| *wiring).unwrap_or_default()
     }
 
     pub(crate) const fn is_focusable(&self) -> bool {
@@ -366,14 +375,13 @@ impl NodeBuilder {
 
 impl PaintTarget for NodeBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
+        StyleSlot(self.pending_style())
     }
 }
 
 impl IntoNode for NodeBuilder {
-    fn build(mut self, cx: &mut Cx) -> NodeId {
-        let style = std::mem::take(&mut self.style);
-        let mut this = crate::style::attach_style(self, style);
+    fn build(self, cx: &mut Cx) -> NodeId {
+        let mut this = self.styled();
         if let Some(widget) = this.wraps.take() {
             return this.build_onto(widget, cx);
         }

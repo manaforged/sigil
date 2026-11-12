@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::geometry::Scale;
 use crate::reactive::Owner;
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashSet;
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
@@ -25,11 +25,11 @@ pub enum HostMode {
 pub struct Cx {
     instance_id: u64,
     pub(crate) nodes: SlotMap<DefaultKey, Node>,
-    pub(crate) owner_for_node: AHashMap<NodeId, Owner>,
     pub(crate) dirty: AHashSet<NodeId>,
     dirty_all: bool,
     pub(crate) delta: FrameDelta,
     pub(crate) delta_generation: u64,
+    pub(crate) spare_delta: Option<FrameDelta>,
     root_owner: Owner,
     pub(crate) roots: SmallVec<[NodeId; 4]>,
     pub(crate) mutation_generation: u64,
@@ -48,11 +48,11 @@ impl Cx {
         Self {
             instance_id: next_instance_id(),
             nodes: SlotMap::with_key(),
-            owner_for_node: AHashMap::new(),
             dirty: AHashSet::new(),
-            dirty_all: false,
+            dirty_all: true,
             delta: FrameDelta::default(),
             delta_generation: 0,
+            spare_delta: None,
             root_owner,
             roots: SmallVec::new(),
             mutation_generation: 0,
@@ -60,7 +60,7 @@ impl Cx {
             host_mode: HostMode::default(),
             top_layer_memo: std::cell::RefCell::new(None),
             live_region: None,
-            marked: std::cell::RefCell::default(),
+            marked: std::cell::RefCell::new(marked::Marked::fresh()),
         }
     }
 
@@ -102,7 +102,7 @@ impl Cx {
         /// Creates an empty node and returns its id.
         #[doc(hidden)]
         pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
-        let owner = Owner::current().unwrap_or_else(|| {
+        let owner = Owner::settled().unwrap_or_else(|| {
             tracing::warn!(
                 target: "sigil::kernel",
                 "Cx::new_node called outside an IntoNode::build scope; using the root owner"
@@ -127,19 +127,36 @@ impl Cx {
         self.add_with_parent(Some(parent), |cx| child.build_box(cx))
     }
 
+    pub(crate) fn add_owned_child(
+        &mut self,
+        parent: NodeId,
+        child: Box<dyn ErasedComponent>,
+    ) -> NodeId {
+        self.add_with_parent(Some(parent), |cx| {
+            let _owner = Owner::current();
+            child.build_box(cx)
+        })
+    }
+
     fn add_with_parent(
         &mut self,
         parent_node: Option<NodeId>,
         build: impl FnOnce(&mut Self) -> NodeId,
     ) -> NodeId {
-        let parent_owner = Owner::current().unwrap_or(self.root_owner);
-        let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
-        let node_id = owner.with(|| build(self));
-        self.owner_for_node.insert(node_id, owner);
-        self.mark_dirty(node_id);
+        let deferred = Owner::defer("sigil-kernel::component", self.root_owner);
+        let node_id = build(self);
+        if self.needs_owner(node_id) {
+            let _owner = Owner::current();
+        }
+        if let Some(owner) = deferred.finish() {
+            self.set_component(node_id, owner);
+        }
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
-        } else if !self.roots.contains(&node_id) {
+            return node_id;
+        }
+        self.mark_dirty(node_id);
+        if !self.roots.contains(&node_id) {
             self.roots.push(node_id);
             self.bump_generation();
         }
@@ -183,7 +200,7 @@ impl Cx {
         }
 
         for node_id in subtree.iter().rev() {
-            if let Some(owner) = self.owner_for_node.remove(node_id) {
+            if let Some(owner) = self.take_component(*node_id) {
                 owner.dispose();
             }
         }
@@ -348,7 +365,7 @@ impl Cx {
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<Owner> {
-        self.owner_for_node.get(&id).copied()
+        self.component(id)
     }
 
     /// Returns the roots.
@@ -381,8 +398,34 @@ impl Cx {
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
     }
 
+    pub(crate) fn set_component(&mut self, id: NodeId, owner: Owner) {
+        if let Some(node) = self.nodes.get_mut(id.key()) {
+            node.component = Some(owner);
+            node.owner = owner;
+        }
+    }
+
+    fn needs_owner(&self, id: NodeId) -> bool {
+        self.nodes.get(id.key()).is_some_and(|node| {
+            node.get_extension::<crate::events::EventHandlers>().is_some()
+                || node
+                    .get_extension::<crate::style::StyleBinding>()
+                    .is_some()
+        })
+    }
+
+    pub(crate) fn take_component(&mut self, id: NodeId) -> Option<Owner> {
+        self.nodes.get_mut(id.key())?.component.take()
+    }
+
+    pub(crate) fn component(&self, id: NodeId) -> Option<Owner> {
+        self.nodes.get(id.key())?.component
+    }
+
     fn mark_dirty(&mut self, id: NodeId) {
-        self.dirty.insert(id);
+        if !self.dirty_all {
+            self.dirty.insert(id);
+        }
         self.marked.get_mut().touch(id);
         self.delta.record(id, DeltaKind::Layout);
     }

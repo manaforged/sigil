@@ -1,7 +1,7 @@
 use crate::Error;
 use crate::layout::flex::CbSize;
 use crate::layout::flex_lines::{FlexItem, FlexLine, FlexLines};
-use crate::layout::resolve::{NodeEdges, clamp, resolve_lp};
+use crate::layout::resolve::{clamp, resolve_lp};
 use crate::layout::style_data::{
     AlignContent, AlignItems, FlexWrap, JustifyContent, Length, StyleData,
 };
@@ -119,7 +119,7 @@ fn resolve_cross_sizes(
             },
             ..*ctx
         };
-        let edges = NodeEdges::build(node.style(), item.main_size);
+        let edges = node.edges(item.main_size);
         let (cross, _) = item_cross_basis(
             &sized,
             node,

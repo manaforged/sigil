@@ -8,9 +8,11 @@ use crate::kernel::TextContent;
 use crate::layout::forest::{AvailableSpace, SpaceConstraint};
 
 const ENTRIES_PER_NODE: usize = 8;
+const TAG_MIX: u64 = 0x9E37_79B9_7F4A_7C15;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct IntrinsicKey {
+    tag: u64,
     main: u32,
     cross: u32,
     along_main: bool,
@@ -25,17 +27,25 @@ impl IntrinsicKey {
         available: AvailableSpace,
         fonts: u64,
     ) -> Self {
+        let (main, cross) = (cb.0.to_bits(), cb.1.to_bits());
+        let available = (constraint_bits(available.w), constraint_bits(available.h));
+        let boxed = (main as u64) << 32 | cross as u64;
+        let tag = (boxed.wrapping_mul(TAG_MIX) ^ available.0).wrapping_mul(TAG_MIX)
+            ^ available.1.rotate_left(17)
+            ^ fonts.rotate_left(41)
+            ^ along_main as u64;
         Self {
-            main: cb.0.to_bits(),
-            cross: cb.1.to_bits(),
+            tag,
+            main,
+            cross,
             along_main,
-            available: (constraint_bits(available.w), constraint_bits(available.h)),
+            available,
             fonts,
         }
     }
 }
 
-const fn constraint_bits(constraint: SpaceConstraint) -> u64 {
+pub(super) const fn constraint_bits(constraint: SpaceConstraint) -> u64 {
     match constraint {
         SpaceConstraint::Definite(px) => px.to_bits() as u64,
         SpaceConstraint::MinContent => 1 << 32,
@@ -86,11 +96,18 @@ impl LayoutForest {
         for memo in &self.intrinsic {
             memo.0.borrow_mut().clear();
         }
+        self.clear_solved();
     }
 
     pub(super) fn forget(&self, index: usize) {
         if let Some(memo) = self.intrinsic.get(index) {
             memo.0.borrow_mut().clear();
+        }
+        if let Some(fills) = self.fills.get(index) {
+            fills.set(0);
+        }
+        if let Some(solved) = self.solved.get(index) {
+            solved.set(None);
         }
     }
 

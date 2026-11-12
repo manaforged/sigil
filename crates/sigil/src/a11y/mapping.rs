@@ -55,7 +55,12 @@ pub(crate) fn tree_scoped(
     };
     let mut window = AkNode::new(accesskit::Role::Window);
     let mut top = Vec::new();
-    let mut nodes = Vec::with_capacity(cx.len() + 1);
+    let cap = if scope == TreeScope::Full {
+        cx.len() + 1
+    } else {
+        16
+    };
+    let mut nodes = Vec::with_capacity(cap);
     for root in cx.roots().iter().copied() {
         flatten(cx, root, &mut top);
         walk_subtree(cx, root, &walk, true, &mut nodes);
@@ -222,7 +227,7 @@ fn apply_text_content(ak: &mut AkNode, node: &Node) {
         return;
     }
     if let NodeType::Text { content, .. } = &node.kind {
-        ak.set_value(content.resolve());
+        content.with_str(|text| ak.set_value(text));
     }
 }
 

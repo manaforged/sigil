@@ -68,7 +68,7 @@ fn every_palette_composes_with_every_variant() {
 
 #[test]
 fn on_accent_contrasts_with_dark_and_bright_accents() {
-    for accent in [rgb(0x20, 0x22, 0x2E), rgb(0xF6, 0xE9, 0xC4)] {
+    for accent in [Color::rgb(0x20, 0x22, 0x2E), Color::rgb(0xF6, 0xE9, 0xC4)] {
         let theme = Theme::from_palette(Palette::spellforge(accent), Variant::Normal);
         let accent_brightness = perceived_brightness_u32(theme.accent);
         let on_accent_brightness = perceived_brightness_u32(theme.on_accent);
@@ -85,13 +85,13 @@ fn on_accent_contrasts_with_dark_and_bright_accents() {
 fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
     let t = Theme::console_dark();
     for (name, expected) in [
-        ("background", rgb(10, 10, 10)),
-        ("card", rgb(23, 23, 23)),
-        ("primary", rgb(229, 229, 229)),
-        ("muted-foreground", rgb(161, 161, 161)),
-        ("destructive", rgb(255, 100, 103)),
-        ("sidebar-primary", rgb(20, 71, 230)),
-        ("accent", rgb(38, 38, 38)),
+        ("background", Color::rgb(10, 10, 10)),
+        ("card", Color::rgb(23, 23, 23)),
+        ("primary", Color::rgb(229, 229, 229)),
+        ("muted-foreground", Color::rgb(161, 161, 161)),
+        ("destructive", Color::rgb(255, 100, 103)),
+        ("sidebar-primary", Color::rgb(20, 71, 230)),
+        ("accent", Color::rgb(38, 38, 38)),
         (
             "border",
             Color {
@@ -102,30 +102,25 @@ fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
             },
         ),
     ] {
-        assert_eq!(t.resolve_color(ColorAtom::parse(name)), expected, "{name}");
+        assert_eq!(t.color(ColorAtom::parse(name)), expected, "{name}");
     }
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
-    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), t.accent);
-    assert_ne!(t.resolve_color(ColorAtom::parse("accent")), rgb(38, 38, 38));
+    assert_eq!(t.color(ColorAtom::parse("accent")), t.accent);
+    assert_ne!(t.color(ColorAtom::parse("accent")), Color::rgb(38, 38, 38));
 }
 
 #[test]
 fn runtime_token_rebinding_accent_wins_over_builtin() {
-    let gold = rgb(0xE8, 0xC0, 0x60);
-    let navy = rgb(0x0D, 0x12, 0x20);
-    let t = Theme::dark()
-        .with_token("accent", ThemeValue::Color(gold))
-        .with_token("on-accent", ThemeValue::Color(navy));
-    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), gold);
+    let gold = Color::rgb(0xE8, 0xC0, 0x60);
+    let navy = Color::rgb(0x0D, 0x12, 0x20);
+    let t = Theme::dark().token("accent", gold).token("on-accent", navy);
+    assert_eq!(t.color(ColorAtom::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
-    assert_ne!(
-        t.resolve_color(ColorAtom::parse("accent")),
-        Theme::dark().accent
-    );
+    assert_ne!(t.color(ColorAtom::parse("accent")), Theme::dark().accent);
 }

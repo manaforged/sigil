@@ -10,7 +10,7 @@ use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Layout, Widget};
 
-use super::button::icon_button;
+use super::button::button;
 use super::chip::chip;
 use super::combobox::{Combobox, combobox};
 use super::icon::DISMISS_GLYPH;
@@ -65,7 +65,7 @@ where
 
 impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
     /// Sets the placeholder.
-    pub const fn placeholder(mut self, text: &'static str) -> Self {
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.state = self.state.placeholder(text);
         self
     }
@@ -105,7 +105,7 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
             }
         });
         let group = container().role(Role::Group);
-        let group = if placeholder.is_empty() {
+        let group = if placeholder.peek().is_empty() {
             group
         } else {
             group.label(placeholder)
@@ -146,7 +146,7 @@ where
                 .into_iter()
                 .map(|tag| {
                     let label = tag.to_string();
-                    let remove = icon_button(DISMISS_GLYPH, move || toggle(selected, &tag))
+                    let remove = button(DISMISS_GLYPH).ghost().square().activate(move || toggle(selected, &tag))
                         .accessible(theme.fill(StringKey::RemoveItem, &[&label]));
                     let remove = match disabled {
                         Some(flag) => remove.disabled(flag),

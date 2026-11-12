@@ -22,6 +22,7 @@ pub struct Screen {
     grid: Grid,
     prev: Grid,
     fresh: bool,
+    blank: bool,
     dirty: bool,
     exited: bool,
     dt: f32,
@@ -69,7 +70,8 @@ impl Screen {
         Self {
             scene: CommandScene::default(),
             grid: Grid::new(cols, rows),
-            prev: Grid::new(cols, rows),
+            blank: true,
+            prev: Grid::new(0, 0),
             fresh: true,
             dirty: true,
             exited: false,
@@ -146,6 +148,38 @@ impl Screen {
 
     /// Runs and paints one frame.
     pub fn frame(
+        &mut self,
+        host: &mut Host,
+        events: impl IntoIterator<Item = Event>,
+        size: (u16, u16),
+    ) -> Result<&Grid, Error> {
+        host.drop_cell_screen();
+        self.frame_inner(host, events, size)
+    }
+
+    pub(crate) fn grid_frame(
+        &mut self,
+        host: &mut Host,
+        events: impl IntoIterator<Item = Event>,
+        size: (u16, u16),
+    ) -> Result<Grid, Error> {
+        let out = self.frame_inner(host, events, size)?.clone();
+        if self.dirty {
+            if self.fresh
+                || self.prev.cols() != self.grid.cols()
+                || self.prev.rows() != self.grid.rows()
+            {
+                self.fresh = false;
+                self.stale = None;
+                self.prev.fit(&self.grid);
+            }
+            self.dirty = false;
+            core::mem::swap(&mut self.prev, &mut self.grid);
+        }
+        Ok(out)
+    }
+
+    fn frame_inner(
         &mut self,
         host: &mut Host,
         events: impl IntoIterator<Item = Event>,

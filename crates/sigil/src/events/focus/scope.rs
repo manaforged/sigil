@@ -3,7 +3,7 @@ use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::events::focus::targets::is_self_or_ancestor;
-use crate::events::hit_test::{visible, walk_order};
+use crate::events::hit_test::{visible, walk_visible};
 
 use super::{Autofocus, FocusManager, FocusScopeEntry};
 
@@ -14,6 +14,10 @@ impl FocusManager {
         reason = "intentional, reviewed trade-off"
     )]
     pub(crate) fn sync_scopes(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>) {
+        let layout_generation = layout.map_or(u64::MAX, LayoutEngine::generation);
+        if self.scopes_synced == (cx.paint_epoch(), layout_generation) {
+            return;
+        }
         let mut current = cx.marked_preorder(cx.roots());
         current.retain(|id| {
             cx.get(*id)
@@ -59,6 +63,7 @@ impl FocusManager {
             }
             self.ring_generation = u64::MAX;
         }
+        self.scopes_synced = (cx.paint_epoch(), layout_generation);
     }
 }
 
@@ -84,7 +89,7 @@ fn first_in_subtree(cx: &Cx, id: NodeId, accept: &impl Fn(NodeId) -> bool) -> Op
 }
 
 fn first_visible(cx: &Cx, roots: &[NodeId], accept: &impl Fn(NodeId) -> bool) -> Option<NodeId> {
-    walk_order(cx, roots, |id, _| visible(cx, id))
+    walk_visible(cx, roots)
         .map(|(id, _)| id)
         .find(|id| accept(*id))
 }

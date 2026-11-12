@@ -2,44 +2,16 @@
 
 use crate::layout::snap;
 use crate::layout::style_data::{
-    Axes, BoxSizing, Edges, Length, LengthPercentage, LengthPercentageAuto, StyleData,
+    Axes, BoxSizing, Display, Edges, Length, LengthPercentage, LengthPercentageAuto, Position,
+    StyleData,
 };
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct ResolvedEdges {
-    pub(crate) left: f32,
-    pub(crate) right: f32,
-    pub(crate) top: f32,
-    pub(crate) bottom: f32,
-}
-
-impl ResolvedEdges {
-    pub(crate) fn map(self, f: impl Fn(f32) -> f32) -> Self {
-        Self {
-            left: f(self.left),
-            right: f(self.right),
-            top: f(self.top),
-            bottom: f(self.bottom),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct AutoEdges {
-    pub(crate) left: Option<f32>,
-    pub(crate) right: Option<f32>,
-    pub(crate) top: Option<f32>,
-    pub(crate) bottom: Option<f32>,
-}
+pub(crate) type ResolvedEdges = Edges<f32>;
+pub(crate) type AutoEdges = Edges<Option<f32>>;
 
 impl AutoEdges {
     pub(crate) fn or_zero(self) -> ResolvedEdges {
-        ResolvedEdges {
-            left: self.left.unwrap_or(0.0),
-            right: self.right.unwrap_or(0.0),
-            top: self.top.unwrap_or(0.0),
-            bottom: self.bottom.unwrap_or(0.0),
-        }
+        self.map(|edge| edge.unwrap_or(0.0))
     }
 }
 
@@ -50,15 +22,58 @@ pub(crate) struct NodeEdges {
     pub(crate) margin: AutoEdges,
 }
 
+fn zero(edges: Edges<Length>) -> bool {
+    let zero = |side: Length| matches!(side, Length::Px(px) if px == 0.0);
+    zero(edges.left) && zero(edges.right) && zero(edges.top) && zero(edges.bottom)
+}
+
+const ZERO_RESOLVED: ResolvedEdges = ResolvedEdges {
+    left: 0.0,
+    right: 0.0,
+    top: 0.0,
+    bottom: 0.0,
+};
+const ZERO_AUTO: AutoEdges = AutoEdges {
+    left: Some(0.0),
+    right: Some(0.0),
+    top: Some(0.0),
+    bottom: Some(0.0),
+};
+
 impl NodeEdges {
+    pub(crate) const BARE: Self = Self {
+        padding: ZERO_RESOLVED,
+        border: ZERO_RESOLVED,
+        margin: ZERO_AUTO,
+    };
+
+    pub(crate) fn bare(style: &StyleData) -> bool {
+        zero(style.padding) && zero(style.border) && zero(style.margin)
+    }
+
     pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
-        Self {
-            padding: edges_lp(style.padding, cb_inline).map(snap::gap),
-            border: snap::rule_edges(
+        let padding = if zero(style.padding) {
+            ZERO_RESOLVED
+        } else {
+            edges_lp(style.padding, cb_inline).map(snap::gap)
+        };
+        let border = if zero(style.border) {
+            ZERO_RESOLVED
+        } else {
+            snap::rule_edges(
                 edges_lp(style.border, cb_inline),
                 fixed_px(style.size.height),
-            ),
-            margin: snap::gap_auto_edges(edges_lp_auto(style.margin, cb_inline)),
+            )
+        };
+        let margin = if zero(style.margin) {
+            ZERO_AUTO
+        } else {
+            snap::gap_auto_edges(edges_lp_auto(style.margin, cb_inline))
+        };
+        Self {
+            padding,
+            border,
+            margin,
         }
     }
 
@@ -70,6 +85,13 @@ impl NodeEdges {
         self.padding.top + self.padding.bottom + self.border.top + self.border.bottom
     }
 
+    pub(crate) fn padding_box(&self, (w, h): (f32, f32)) -> Axes<f32> {
+        Axes {
+            width: (w - self.border.left - self.border.right).max(0.0),
+            height: (h - self.border.top - self.border.bottom).max(0.0),
+        }
+    }
+
     pub(crate) fn margin_top(&self) -> f32 {
         self.margin.top.unwrap_or(0.0)
     }
@@ -77,6 +99,10 @@ impl NodeEdges {
     pub(crate) fn margin_bottom(&self) -> f32 {
         self.margin.bottom.unwrap_or(0.0)
     }
+}
+
+pub(crate) const fn is_positioned_absolute(style: &StyleData) -> bool {
+    matches!(style.position, Position::Absolute) && !matches!(style.display, Display::None)
 }
 
 fn fixed_px(dim: Length) -> Option<f32> {
@@ -115,21 +141,11 @@ fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
 }
 
 fn edges_lp(rect: Edges<Length>, cb_inline: f32) -> ResolvedEdges {
-    ResolvedEdges {
-        left: resolve_lp(rect.left, cb_inline),
-        right: resolve_lp(rect.right, cb_inline),
-        top: resolve_lp(rect.top, cb_inline),
-        bottom: resolve_lp(rect.bottom, cb_inline),
-    }
+    rect.map(|edge| resolve_lp(edge, cb_inline))
 }
 
 fn edges_lp_auto(rect: Edges<Length>, cb_inline: f32) -> AutoEdges {
-    AutoEdges {
-        left: resolve_lp_auto(rect.left.into(), cb_inline),
-        right: resolve_lp_auto(rect.right.into(), cb_inline),
-        top: resolve_lp_auto(rect.top.into(), cb_inline),
-        bottom: resolve_lp_auto(rect.bottom.into(), cb_inline),
-    }
+    rect.map(|edge| resolve_lp_auto(edge.into(), cb_inline))
 }
 
 pub(crate) fn clamp(value: f32, min: Option<f32>, max: Option<f32>) -> f32 {

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::reactive::diagnostic::no_scope;
 use crate::reactive::effect::effect;
-use crate::reactive::runtime::with_rt;
+use crate::reactive::runtime::{RuntimeState, with_rt};
 use crate::reactive::signal::{Signal, signal_in};
 
 /// Creates a signal that recomputes from the signals it reads.
@@ -17,7 +17,7 @@ where
 {
     let caller = Location::caller();
     let parent_owner =
-        with_rt(|rt| rt.current_owner).unwrap_or_else(|| no_scope("derived()", caller));
+        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("derived()", caller));
     let holder: Rc<Cell<Option<Signal<T>>>> = Rc::new(Cell::new(None));
     let holder_inside = Rc::clone(&holder);
     effect(move || {

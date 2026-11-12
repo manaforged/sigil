@@ -320,6 +320,9 @@ impl TextEditRuntime {
             let byte = runtime.caret.get().min(buffer.len());
             let pos = runtime.caret_geometry(&buffer, byte).unwrap_or_default();
             let window = viewport_size.get().1;
+            if window <= 0.0 {
+                return;
+            }
             let visible = padding_y.mul_add(-2.0, window);
             let max_scroll =
                 (padding_y.mul_add(2.0, runtime.content_size.get().1) - window).max(0.0);

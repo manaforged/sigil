@@ -1,4 +1,4 @@
-#[cfg(feature = "menu")]
+#[cfg(any(feature = "menu", global_hotkey))]
 use std::cell::Cell;
 use std::cell::RefCell;
 #[cfg(not(native_commands))]
@@ -20,7 +20,7 @@ pub(crate) struct Native<Cmd, Handle, Ev: 'static> {
     events: EventChannel<Ev>,
     tx: Sender<Ev>,
     rx: Receiver<Ev>,
-    #[cfg(feature = "menu")]
+    #[cfg(any(feature = "menu", global_hotkey))]
     connected: Cell<bool>,
 }
 
@@ -37,7 +37,7 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
             events: EventChannel::new(),
             tx,
             rx,
-            #[cfg(feature = "menu")]
+            #[cfg(any(feature = "menu", global_hotkey))]
             connected: Cell::new(false),
         }
     }
@@ -88,12 +88,12 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
         }
     }
 
-    #[cfg(feature = "menu")]
+    #[cfg(any(feature = "menu", global_hotkey))]
     pub(crate) fn sink_once(
         &self,
-        wake: Wake,
+        wake: &dyn Fn() -> Wake,
     ) -> Option<impl Fn(Ev) + Send + Sync + use<Cmd, Handle, Ev>> {
-        (!self.connected.replace(true)).then(|| self.sink(wake))
+        (!self.connected.replace(true)).then(|| self.sink(wake()))
     }
 
     #[cfg(native_commands)]

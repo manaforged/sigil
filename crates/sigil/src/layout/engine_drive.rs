@@ -54,6 +54,10 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(Some(kernel), style))
     }
 
+    pub(crate) fn reserve(&mut self, total: usize) {
+        self.forest.reserve(total);
+    }
+
     pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<NodeId> {
         self.forest.refer(handle.0)?.kernel()
     }
@@ -145,7 +149,7 @@ impl LayoutDrive {
         self.measure_keep_frame(root, avail)
     }
 
-    pub(crate) const fn begin_measure_frame(&mut self) {
+    pub(crate) fn begin_measure_frame(&mut self) {
         let _ = self.forest.next_frame();
     }
 
@@ -157,9 +161,9 @@ impl LayoutDrive {
         height: f32,
     ) -> Result<(), Error> {
         let handle = self.measure_root(root)?;
-        let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
+        let scope = self.pinned_scope(avail);
         let origin = crate::layout::block::Position2 { x: 0.0, y: 0.0 };
-        match handle.style().display {
+        let solved = match handle.style().display {
             Display::Flex => FlexSolver::new(scope).solve_at_area(
                 handle,
                 crate::layout::flex::CbSize {
@@ -180,7 +184,9 @@ impl LayoutDrive {
                     height: None,
                 },
             ),
-        }
+        };
+        self.forest.pin_fonts(None);
+        solved
     }
 
     pub(crate) fn measure_keep_frame(
@@ -189,8 +195,8 @@ impl LayoutDrive {
         avail: AvailableSpace,
     ) -> Result<(), Error> {
         let handle = self.measure_root(root)?;
-        let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
-        match handle.style().display {
+        let scope = self.pinned_scope(avail);
+        let solved = match handle.style().display {
             Display::None => {
                 scope.write(root.0, ComputedBox::default());
                 Ok(())
@@ -198,7 +204,14 @@ impl LayoutDrive {
             Display::Flex => FlexSolver::new(scope).solve(handle),
             Display::Grid => crate::layout::grid::GridSolver::new(scope).solve(handle),
             Display::Block => BlockSolver::new(scope).solve(handle),
-        }
+        };
+        self.forest.pin_fonts(None);
+        solved
+    }
+
+    fn pinned_scope(&self, avail: AvailableSpace) -> MeasureScope<'_> {
+        self.forest.pin_fonts(Some(self.text.font_generation()));
+        MeasureScope::new(&self.forest, self.text.as_ref(), avail)
     }
 
     fn measure_root(&self, root: NodeHandle) -> Result<NodeRef<'_>, Error> {
@@ -212,8 +225,18 @@ impl LayoutDrive {
         self.forest.boxed(node.0).map(resolved)
     }
 
-    pub(crate) fn write_box(&mut self, node: NodeHandle, cb: ResolvedBox) -> Result<(), Error> {
-        self.forest.write(node.0, computed(cb))
+    #[must_use]
+    pub(crate) fn frame_for(&self, node: NodeHandle) -> Option<u32> {
+        self.forest.frame_for(node.0)
+    }
+
+    pub(crate) fn restore_box(
+        &mut self,
+        node: NodeHandle,
+        cb: ResolvedBox,
+        frame: u32,
+    ) -> Result<(), Error> {
+        self.forest.write_at_frame(node.0, computed(cb), frame)
     }
 
     #[must_use]
@@ -242,7 +265,10 @@ impl LayoutDrive {
         }
         let handles = self.subtree_handles(root)?;
         let root_frame = self.forest.frame_for(root.0).unwrap_or(0);
+        self.forest.invalidate_solved_ancestors(root.0);
         for handle in handles {
+            self.forest
+                .shift_solved_from(handle.0, root_frame, (dx, dy));
             if self.forest.frame_for(handle.0).unwrap_or(0) < root_frame {
                 continue;
             }

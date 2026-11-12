@@ -48,7 +48,7 @@ fn build() -> impl IntoNode {
                 ),
         )
         .child(
-            sheet(drawer)
+            modal(drawer).side(Side::Right).dismiss_on_backdrop(true)
                 .title("Details")
                 .child(text("A right-edge sheet.").nowrap()),
         )
@@ -136,7 +136,7 @@ fn controls_page() -> NodeBuilder {
             button("Increment")
                 .primary()
                 .activate(move || clicks.set(clicks.peek() + 1)),
-            icon_button("⟲", move || clicks.set(0)).accessible("Reset clicks"),
+            button("⟲").ghost().square().activate(move || clicks.set(0)).accessible("Reset clicks"),
             button("Disabled").disabled(true),
         ))
         .child(section_label("Toggles"))

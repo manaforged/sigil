@@ -43,3 +43,8 @@ kittest_pub! {
     #[doc(hidden)]
     pub use state::{active_count, tick};
 }
+
+#[cfg(host)]
+pub(crate) fn animating() -> bool {
+    state::active_count() > 0 || clock::running_clocks() > 0
+}

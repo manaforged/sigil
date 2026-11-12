@@ -53,29 +53,34 @@ impl core::fmt::Debug for ButtonBuilder {
     }
 }
 
-/// A push button.
-pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
+/// A push button. A text label makes a text button; an `Icon` makes a square ghost button named for the icon.
+pub fn button(label: impl Into<Glyph>) -> ButtonBuilder {
     ButtonBuilder::new(label)
-}
-
-/// A button that shows one glyph: text or an `Icon`.
-pub fn icon_button(glyph: impl Into<Glyph>, activate: impl Fn() + 'static) -> ButtonBuilder {
-    let builder = match glyph.into() {
-        Glyph::Text(text) => button(text),
-        #[cfg(feature = "scene")]
-        Glyph::Icon(icon) => button(icon.name()).icon(icon).accessible(icon.name()),
-    };
-    let mut builder = builder.ghost().activate(activate);
-    builder.square = true;
-    builder
 }
 
 impl ButtonBuilder {
     /// Creates a button builder.
-    pub fn new(label: impl Into<TextContent>) -> Self {
+    pub fn new(label: impl Into<Glyph>) -> Self {
+        match label.into() {
+            Glyph::Text(text) => Self::labelled(text),
+            #[cfg(feature = "scene")]
+            Glyph::Icon(icon) => Self::labelled(icon.name().into())
+                .icon(icon)
+                .accessible(icon.name())
+                .ghost()
+                .square(),
+            #[cfg(feature = "scene")]
+            Glyph::Svg(source) => Self::labelled("".into())
+                .icon_svg(source)
+                .ghost()
+                .square(),
+        }
+    }
+
+    fn labelled(label: TextContent) -> Self {
         let metrics = Metrics::current();
         Self {
-            label: label.into(),
+            label,
             tone: None,
             fill: None,
             width: ButtonWidth::Hug,
@@ -94,6 +99,12 @@ impl ButtonBuilder {
             trailing: None,
             shortcut: None,
         }
+    }
+
+    /// Makes the button as wide as it is high, for a one-glyph label.
+    pub const fn square(mut self) -> Self {
+        self.square = true;
+        self
     }
 
     /// Sets the accessible.

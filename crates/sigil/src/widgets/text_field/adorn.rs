@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, NodeId, container};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::widgets::button::icon_button;
+use crate::widgets::button::button;
 use crate::widgets::icon::DISMISS_GLYPH;
 use crate::widgets::{Layout, Widget};
 
@@ -24,7 +24,7 @@ pub(super) type FocusSlot = Rc<Cell<Option<NodeId>>>;
 pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> NodeBuilder {
     let value = runtime.input.value;
     let input = runtime.input.clone();
-    let button = icon_button(DISMISS_GLYPH, move || {
+    let button = button(DISMISS_GLYPH).ghost().square().activate(move || {
         if input.disabled() {
             return;
         }

@@ -110,7 +110,8 @@ impl<T: 'static> core::fmt::Debug for Signal<T> {
 #[track_caller]
 pub fn signal<T: 'static>(initial: T) -> Signal<T> {
     let location = Location::caller();
-    let owner = with_rt(|rt| rt.current_owner).unwrap_or_else(|| no_scope("signal()", location));
+    let owner =
+        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("signal()", location));
     signal_in(initial, owner, location)
 }
 
@@ -125,10 +126,12 @@ pub(crate) fn signal_in<T: 'static>(
             "signal created under a disposed owner (id={owner:?}, at {location})",
         );
         let level = rt.creator_level();
+        let stamp = rt.next_stamp();
         let key = rt.signals.insert(SignalSlot {
             value: Box::new(initial),
             subscribers: SmallVec::new(),
             level,
+            stamp,
         });
         rt.owners
             .get_mut(owner)
@@ -182,6 +185,10 @@ impl<T: Clone + 'static> Signal<T> {
     }
 
     #[must_use]
+    pub(crate) fn stamp(self) -> Option<u64> {
+        with_rt(|rt| rt.signals.get(self.key).map(|slot| slot.stamp))
+    }
+
     pub(crate) fn try_peek_with<R>(self, f: impl FnOnce(&T) -> R) -> Option<R> {
         with_rt(|rt| {
             let value = &rt.signals.get(self.key)?.value;

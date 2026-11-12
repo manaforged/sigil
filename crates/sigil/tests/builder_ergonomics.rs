@@ -37,7 +37,7 @@ fn signals_compare_by_identity() {
 
 #[test]
 fn an_icon_button_is_named_by_its_icon() {
-    let mut ui = Harness::new(|| icon_button(Icon::SkipForward, || {})).size(40, 6);
+    let mut ui = Harness::new(|| button(Icon::SkipForward).activate(|| {})).size(40, 6);
     ui.settle();
     assert!(
         ui.query(&Query::role(Role::Button).name("skip-forward"))

@@ -4,7 +4,7 @@ use crate::geometry::{Point, Rect};
 use crate::profile;
 use crate::scene::CommandScene;
 use crate::scene::damage::{Changed, Damage as SceneDamage, FullReason, cell_damage};
-use crate::terminal::paint::{CellPaint, Marks, raster_regions, raster_with};
+use crate::terminal::paint::{CellPaint, Marks, raster_onto, raster_regions};
 use crate::terminal::run::view;
 use crate::terminal::write::RowDamage;
 
@@ -113,6 +113,7 @@ fn raster(
     } else {
         SceneDamage::Full(FullReason::NoBackbuffer)
     };
+    let blank = std::mem::take(&mut screen.blank);
     match damage {
         SceneDamage::Regions(regions) => {
             screen.grid.sync_rows(&screen.prev, screen.stale.as_deref());
@@ -122,8 +123,11 @@ fn raster(
             screen.damage = Some(RowDamage::new(touched, false));
         }
         SceneDamage::Unchanged | SceneDamage::Full(_) => {
-            screen.grid.resize(cols, rows);
-            raster_with(&mut screen.grid, next, paint);
+            let sized = (screen.grid.cols(), screen.grid.rows()) == (cols.into(), rows.into());
+            if !(blank && sized) {
+                screen.grid.clear_to(cols, rows);
+            }
+            raster_onto(&mut screen.grid, next, paint);
         }
     }
 }

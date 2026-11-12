@@ -112,7 +112,7 @@ container()
 
 `class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 
-Spacing and size numbers are pixels. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
+Padding, margin, and gap take a `Space` step such as `Space::Md`; width and height take a number of pixels or a `Length`. The layout setters set padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap.
 
 ### Typed theme tokens
 
@@ -169,7 +169,7 @@ The node owns the hit testing and the state, so a hover background needs no sign
 
 ## Where to go next
 
-- Widgets: `button`, `icon_button`, `text_field`, `text_edit`, `modal` / `sheet`, `virtual_list`, `table`, `card`, `avatar`, `sidebar`. Alerts are `sigil::app::dialog::message` / `confirm`; they return a signal and do not block.
+- Widgets: `button`, `text_field`, `text_edit`, `modal`, `virtual_list`, `table`, `card`, `avatar`, `sidebar`. Alerts are `sigil::app::dialog::message` / `confirm`; they return a signal and do not block.
 - Architecture: [Overview](arch/overview.md), [State](arch/state.md), [Painting](arch/painting.md), [Platform](arch/platform.md), [Modules](arch/modules.md).
 - The runnable widget demos: `crates/sigil/examples`.
 - The terminal host: [Terminal host](terminal.md).

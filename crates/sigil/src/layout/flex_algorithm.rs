@@ -14,7 +14,9 @@ use crate::layout::flex::{CbSize, FlexSolver, Position2};
 use crate::layout::flex_lines::{FlexItem, collect_lines};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp};
-use crate::layout::style_data::{Display, FlexDirection, FlexWrap, Length, Position, StyleData};
+use crate::layout::style_data::{
+    AlignItems, Display, FlexDirection, FlexWrap, Length, Position, StyleData,
+};
 
 mod absolute;
 mod flexible;
@@ -110,12 +112,12 @@ pub(crate) fn layout_root(
     node: NodeRef<'_>,
     origin: Position2,
 ) -> Result<(), Error> {
+    let style = node.style();
+    let edges = node.edges(ctx.cb.w);
     let ctx = &FlexCtx {
-        assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node)),
+        assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node, &edges)),
         ..*ctx
     };
-    let style = node.style();
-    let edges = NodeEdges::build(style, ctx.cb.w);
     let m = edges.margin.or_zero();
     let (container_main, container_cross) = container_inner_size(ctx, style, &edges);
     let border_origin = Position2::new(origin.x + m.left, origin.y + m.top);
@@ -147,13 +149,13 @@ pub(crate) fn layout_root(
     place_absolutes(ctx, node, &edges, border_origin)
 }
 
-fn filled_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> Option<f32> {
+fn filled_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, edges: &NodeEdges) -> Option<f32> {
     let definite = matches!(
         ctx.solver.scope().available().w,
         crate::layout::forest::SpaceConstraint::Definite(_)
     );
     (!ctx.suppress_stretch && definite && ctx.solver.fills_width(node)).then(|| {
-        let m = NodeEdges::build(node.style(), ctx.cb.w).margin.or_zero();
+        let m = edges.margin.or_zero();
         (ctx.cb.w - m.left - m.right).max(0.0)
     })
 }
@@ -188,6 +190,15 @@ fn build_items(
 ) -> Result<Vec<FlexItem>, Error> {
     let forest = ctx.solver.scope().forest();
     let children = parent.children();
+    let own = parent.style();
+    let stretches = !ctx.axes.row
+        && !ctx.suppress_stretch
+        && matches!(own.flex_wrap, FlexWrap::NoWrap)
+        && matches!(own.align_items, None | Some(AlignItems::Stretch))
+        && ctx.definite_along(own, true);
+    let open = !ctx.axes.row
+        && matches!(own.flex_wrap, FlexWrap::NoWrap)
+        && !ctx.definite_along(own, false);
     let mut items = Vec::with_capacity(children.len());
     for child_id in children {
         let child = forest
@@ -200,7 +211,18 @@ fn build_items(
         if matches!(style.position, Position::Absolute) {
             continue;
         }
-        items.push(FlexItem::build(ctx, child, container_main, container_cross));
+        let main = if open && ctx.solver.height_free(child) {
+            0.0
+        } else {
+            container_main
+        };
+        items.push(FlexItem::build(
+            ctx,
+            child,
+            main,
+            container_cross,
+            stretches,
+        ));
     }
     if items.iter().any(|i| i.order != 0) {
         items.sort_by_key(|i| i.order);

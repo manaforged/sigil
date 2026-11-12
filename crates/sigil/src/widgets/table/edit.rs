@@ -110,6 +110,13 @@ impl CellEditor {
         }
     }
 
+    fn leave<Row: 'static>(self, state: &TableState<Row>, cell: CellRef) {
+        if state.editing().peek() == Some(cell) {
+            self.commit(state);
+            state.editing().set(None);
+        }
+    }
+
     fn finish<Row: 'static>(self, state: &TableState<Row>, row: u32) {
         state.editing().set(None);
         let (_, generation) = self.refocus.peek();
@@ -211,13 +218,15 @@ fn editor_field<Row: 'static>(
     cell: CellRef,
     title: &str,
 ) -> NodeBuilder {
-    let state = state.clone();
+    let keys = state.clone();
+    let blurred = state.clone();
     container()
         .layout(LayoutStyle::flex_row().fill_width())
-        .key_capture_any(move |event| edit_key(&state, editor, cell, event))
+        .key_capture_any(move |event| edit_key(&keys, editor, cell, event))
         .child(
             text_field(editor.buffer)
                 .placeholder(title.to_owned())
+                .blur(move || editor.leave(&blurred, cell))
                 .autofocus(),
         )
 }

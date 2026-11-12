@@ -1,9 +1,14 @@
 use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
-use crate::style::scale::rgb;
 use crate::style::srgb;
 use crate::style::{Color, ColorAtom, Token};
+
+impl From<Color> for ThemeValue {
+    fn from(color: Color) -> Self {
+        Self::Color(color)
+    }
+}
 
 const SCRIM: Color = Color {
     r: 0,
@@ -13,15 +18,10 @@ const SCRIM: Color = Color {
 };
 
 impl Theme {
-    /// `resolve_color` for a built-in token.
+    /// Returns the color a token, custom token name, or literal color resolves to in this theme.
     #[must_use]
-    pub fn color(&self, token: Token) -> Color {
-        self.resolve_color(ColorAtom::Token(token))
-    }
-
-    /// Resolve a color.
-    #[must_use]
-    pub fn resolve_color(&self, color: ColorAtom) -> Color {
+    pub fn color(&self, color: impl Into<ColorAtom>) -> Color {
+        let color = color.into();
         let name = match color {
             ColorAtom::Color(rgba) => return rgba,
             ColorAtom::Token(token) => token.name(),
@@ -35,27 +35,23 @@ impl Theme {
             .unwrap_or_else(|| self.missing_color(name))
     }
 
-    /// Stores a custom token and returns its old value.
-    pub fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
+    /// Sets the token `name`, built-in or custom, to `value`.
+    #[must_use]
+    pub fn token(mut self, name: &str, value: impl Into<ThemeValue>) -> Self {
+        let value = value.into();
         if let (Some(token), ThemeValue::Color(color)) = (Token::from_name(name), value) {
             self.sync_runtime_color(token, color);
         }
-        self.tokens.overrides.insert(name, value)
+        self.tokens.overrides.insert(name, value);
+        self
     }
 
     /// Fill the theme table layer from static data.
     #[must_use]
-    pub(crate) fn with_theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
+    pub(crate) fn theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
         for (name, value) in tokens {
             self.tokens.theme.insert(name, *value);
         }
-        self
-    }
-
-    /// Sets one custom token.
-    #[must_use]
-    pub fn with_token(mut self, name: &str, value: ThemeValue) -> Self {
-        self.register_token(name, value);
         self
     }
 
@@ -106,11 +102,11 @@ impl Theme {
             Token::SurfacePressedStrong => self.surface_pressed_strong,
             Token::OnSurface => self.on_surface,
             Token::Border | Token::OverlayBorder => self.border,
-            Token::BorderStrong => self.border_strong(),
-            Token::SurfaceSubtle => self.surface_subtle(),
+            Token::BorderStrong => self.gray.step(8),
+            Token::SurfaceSubtle => self.gray.step(3),
             Token::SurfaceInset | Token::TableHeader => self.gray.step(1),
             Token::BorderSubtle => alpha_mix(self.surface, self.border, 0.5),
-            Token::OnSurfaceMuted | Token::Placeholder => self.text_muted(),
+            Token::OnSurfaceMuted | Token::Placeholder => self.gray.step(11),
             Token::OnSolid => self.on_solid,
             Token::Scrim => SCRIM,
             _ => {
@@ -170,8 +166,8 @@ impl Theme {
     }
 }
 
-const WHITE: Color = rgb(255, 255, 255);
-const BLACK: Color = rgb(0, 0, 0);
+const WHITE: Color = Color::rgb(255, 255, 255);
+const BLACK: Color = Color::rgb(0, 0, 0);
 
 #[cfg(debug_assertions)]
 fn nearest_tokens(token: &str, registered: &[String]) -> [String; 3] {

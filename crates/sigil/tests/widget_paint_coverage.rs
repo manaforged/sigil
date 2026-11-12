@@ -6,7 +6,7 @@ use sigil::prelude::*;
 use sigil::style::Color;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
-    combobox, date_field, divider, dot, dropdown, gauge, icon_button, markdown, number_field,
+    combobox, date_field, divider, dot, dropdown, gauge, markdown, number_field,
     progress, radio_group, scroll, slider, table, tabs, text_edit, text_field, toggle,
     virtual_list,
 };
@@ -31,7 +31,7 @@ fn controls() -> Vec<Case> {
         ("button", Box::new(|| button("Save").primary())),
         (
             "icon_button",
-            Box::new(|| icon_button("R", || {}).accessible("Reset")),
+            Box::new(|| button("R").ghost().square().activate(|| {}).accessible("Reset")),
         ),
         ("chip", Box::new(|| chip("Stable", Tone::Success))),
         ("chip_count", Box::new(|| chip("3", Tone::Info))),

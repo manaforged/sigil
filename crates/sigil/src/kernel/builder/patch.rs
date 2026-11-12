@@ -36,7 +36,7 @@ impl Cx {
     }
 
     pub(crate) fn refill(&mut self, id: NodeId, fill: impl FnOnce(&mut Self)) {
-        if let Some(old) = self.owner_for_node.remove(&id)
+        if let Some(old) = self.take_component(id)
             && is_live(old)
         {
             old.dispose();
@@ -45,7 +45,7 @@ impl Cx {
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let before = self.indexed(id);
         owner.with(|| fill(self));
-        self.owner_for_node.insert(id, owner);
+        self.set_component(id, owner);
         if before || self.indexed(id) {
             self.mutation_generation = self.mutation_generation.wrapping_add(1);
         }
@@ -123,12 +123,12 @@ impl Cx {
 
     fn mount_child(&mut self, parent: NodeId, builder: Box<dyn ErasedComponent>) -> Fate {
         crate::profile::count_add(Counter::KernelMounted, 1);
-        Fate::Mounted(self.add_boxed_child(parent, builder))
+        Fate::Mounted(self.add_owned_child(parent, builder))
     }
 }
 
 impl NodeBuilder {
-    pub(super) fn patch_onto(mut self, cx: &mut Cx, id: NodeId) -> NodePatch<Self> {
+    pub(super) fn patch_onto(self, cx: &mut Cx, id: NodeId) -> NodePatch<Self> {
         if self.wraps.is_some() {
             return NodePatch::Unsupported(self);
         }
@@ -136,8 +136,7 @@ impl NodeBuilder {
             return NodePatch::Mismatch(self);
         }
         cx.refill(id, |cx| {
-            let style = std::mem::take(&mut self.style);
-            let mut this = crate::style::attach_style(self, style);
+            let mut this = self.styled();
             let kind = std::mem::replace(&mut this.kind, NodeType::Container).into_live();
             cx.reset_node(id, kind, std::mem::take(&mut this.a11y));
             crate::kernel::text::track_delta(cx, id);

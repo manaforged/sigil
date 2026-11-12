@@ -2,6 +2,7 @@ use super::Wash;
 use super::noise::{fbm, gauss, noise, rand, ridged};
 use crate::geometry::smoothstep;
 use crate::style::Color;
+use crate::style::srgb::unit;
 
 impl Wash {
     /// The colors the renderer reads: the paper, then each pigment.
@@ -15,8 +16,7 @@ impl Wash {
     }
 
     pub(crate) fn dark(&self) -> bool {
-        let rgb = [self.paper.r, self.paper.g, self.paper.b].map(f32::from);
-        crate::style::srgb::luma(rgb) / 255.0 < 0.5
+        crate::style::srgb::luma(rgb(self.paper)) < 0.5
     }
 
     /// The colour at `(x, y)` pixels from the top-left of an area centred on `centre`, in 0..1 sRGB.
@@ -97,7 +97,7 @@ impl Wash {
 }
 
 fn rgb(color: Color) -> [f32; 3] {
-    [color.r, color.g, color.b].map(|channel| f32::from(channel) / 255.0)
+    [color.r, color.g, color.b].map(unit)
 }
 
 fn zip_with(left: [f32; 3], right: [f32; 3], blend: impl Fn(f32, f32) -> f32) -> [f32; 3] {

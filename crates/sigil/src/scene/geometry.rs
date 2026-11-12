@@ -5,6 +5,8 @@ use crate::scene::command::Transform;
 pub(crate) const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 pub(crate) const KAPPA: f32 = 0.552_284_8;
 pub(crate) const MIN_EXTENT: f32 = 1.0 / 4096.0;
+#[cfg(vector_paint)]
+pub(crate) const QUARTER_TURN_DEG: f32 = 90.0;
 
 #[cfg(scene_emit)]
 pub(crate) fn compose(parent: Transform, child: Transform) -> Transform {

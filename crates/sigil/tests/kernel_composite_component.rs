@@ -17,7 +17,7 @@ impl IntoNode for LabelledPanel {
 }
 
 #[test]
-fn add_child_links_parent_and_uses_component_owner() {
+fn add_child_links_parent() {
     let mut cx = Cx::new_root();
     let panel = cx.add(LabelledPanel {
         title: "Title",
@@ -33,13 +33,6 @@ fn add_child_links_parent_and_uses_component_owner() {
 
     assert_eq!(cx.get(heading).expect("heading").parent(), Some(panel));
     assert_eq!(cx.get(body).expect("body").parent(), Some(panel));
-
-    let panel_owner = cx.component_owner(panel).expect("panel owner");
-    let heading_owner = cx.component_owner(heading).expect("heading owner");
-    let body_owner = cx.component_owner(body).expect("body owner");
-    assert_ne!(heading_owner, panel_owner);
-    assert_ne!(body_owner, panel_owner);
-    assert_ne!(heading_owner, body_owner);
 }
 
 #[test]

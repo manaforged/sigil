@@ -6,6 +6,7 @@ use std::rc::Rc;
 use crate::style::TextStyle;
 use crate::style::text_identity::{DiscreteTextStyle, hasher};
 use ahash::AHashMap;
+use smallvec::SmallVec;
 
 use crate::cache::Bounded;
 
@@ -14,6 +15,37 @@ use crate::text::Paragraph;
 const MAX_ENTRIES: usize = 16_384;
 const EVICT_DIVISOR: usize = 8;
 const MAX_STYLES: usize = 1_024;
+const MAX_WIDTHS_PER_TEXT: usize = 8;
+pub(crate) const WRAP_SLACK: f32 = 1e-3;
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct WrapBounds {
+    pub(crate) min_nowrap: f32,
+    pub(crate) min_wrap: f32,
+}
+
+impl Default for WrapBounds {
+    fn default() -> Self {
+        Self::OPEN
+    }
+}
+
+impl WrapBounds {
+    pub(crate) const OPEN: Self = Self {
+        min_nowrap: 0.0,
+        min_wrap: f32::INFINITY,
+    };
+
+    pub(crate) fn contains(self, limit: f32) -> bool {
+        self.min_nowrap - limit <= WRAP_SLACK
+            && (!self.min_wrap.is_finite() || self.min_wrap - limit > WRAP_SLACK)
+    }
+}
+
+pub(crate) struct CachedParagraph {
+    pub(crate) paragraph: Paragraph,
+    pub(crate) bounds: WrapBounds,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct CacheKey {
@@ -26,12 +58,15 @@ struct CacheEntry {
     text: Box<str>,
     style: Rc<TextStyle>,
     paragraph: Paragraph,
-    fit: f32,
+    bounds: WrapBounds,
     used: Cell<u64>,
 }
 
+type WidthBuckets = AHashMap<(u64, DiscreteTextStyle), SmallVec<[Option<u32>; 4]>>;
+
 pub(crate) struct ParagraphCache {
     map: AHashMap<CacheKey, CacheEntry>,
+    by_text: WidthBuckets,
     styles: Bounded<DiscreteTextStyle, Rc<TextStyle>, MAX_STYLES>,
     clock: Cell<u64>,
 }
@@ -40,23 +75,42 @@ impl ParagraphCache {
     pub(crate) fn new() -> Self {
         Self {
             map: AHashMap::new(),
+            by_text: AHashMap::new(),
             styles: Bounded::default(),
             clock: Cell::new(0),
         }
     }
 
-    pub(crate) fn get(
+    pub(crate) fn lookup(
         &self,
         text: &str,
         max_width: Option<f32>,
         style: &TextStyle,
-    ) -> Option<(&Paragraph, f32)> {
-        let entry = self.map.get(&Self::key(text, max_width, style))?;
-        if &*entry.text != text || *entry.style != *style {
-            return None;
+    ) -> Option<&Paragraph> {
+        let key = Self::key(text, max_width, style);
+        if let Some(entry) = self.map.get(&key)
+            && &*entry.text == text
+            && *entry.style == *style
+        {
+            entry.used.set(self.tick());
+            return Some(&entry.paragraph);
         }
-        entry.used.set(self.tick());
-        Some((&entry.paragraph, entry.fit))
+        let limit = max_width?;
+        let widths = self.by_text.get(&(key.text_hash, key.style))?;
+        for &width_bits in widths {
+            if width_bits == key.width_bits {
+                continue;
+            }
+            let candidate = CacheKey { width_bits, ..key };
+            let Some(entry) = self.map.get(&candidate) else {
+                continue;
+            };
+            if &*entry.text == text && *entry.style == *style && entry.bounds.contains(limit) {
+                entry.used.set(self.tick());
+                return Some(&entry.paragraph);
+            }
+        }
+        None
     }
 
     pub(crate) fn insert(
@@ -64,7 +118,7 @@ impl ParagraphCache {
         text: &str,
         max_width: Option<f32>,
         style: &TextStyle,
-        (para, fit): (Paragraph, f32),
+        value: CachedParagraph,
     ) {
         let key = Self::key(text, max_width, style);
         if self.map.len() >= MAX_ENTRIES && !self.map.contains_key(&key) {
@@ -72,13 +126,14 @@ impl ParagraphCache {
         }
         let used = Cell::new(self.tick());
         let style = self.intern(key.style, style);
+        self.record_width(key);
         self.map.insert(
             key,
             CacheEntry {
                 text: text.into(),
                 style,
-                paragraph: para,
-                fit,
+                paragraph: value.paragraph,
+                bounds: value.bounds,
                 used,
             },
         );
@@ -86,7 +141,19 @@ impl ParagraphCache {
 
     pub(crate) fn clear(&mut self) {
         self.map.clear();
+        self.by_text.clear();
         self.styles.clear();
+    }
+
+    fn record_width(&mut self, key: CacheKey) {
+        let widths = self.by_text.entry((key.text_hash, key.style)).or_default();
+        if widths.contains(&key.width_bits) {
+            return;
+        }
+        if widths.len() >= MAX_WIDTHS_PER_TEXT {
+            widths.remove(0);
+        }
+        widths.push(key.width_bits);
     }
 
     fn intern(&mut self, identity: DiscreteTextStyle, style: &TextStyle) -> Rc<TextStyle> {
@@ -114,6 +181,17 @@ impl ParagraphCache {
         let (_, cutoff, _) = ages.select_nth_unstable(batch - 1);
         let cutoff = *cutoff;
         self.map.retain(|_, entry| entry.used.get() > cutoff);
+        let map = &self.map;
+        self.by_text.retain(|&(text_hash, style), widths| {
+            widths.retain(|width_bits| {
+                map.contains_key(&CacheKey {
+                    text_hash,
+                    width_bits: *width_bits,
+                    style,
+                })
+            });
+            !widths.is_empty()
+        });
     }
 
     fn key(text: &str, max_width: Option<f32>, style: &TextStyle) -> CacheKey {

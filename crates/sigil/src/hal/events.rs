@@ -8,6 +8,8 @@ mod shortcut_parse;
 
 pub use gesture::{Gesture, GestureEvent};
 pub use keys::{Key, ModifiersState, PhysicalKey};
+#[cfg(feature = "desktop")]
+pub(crate) use keys::{for_each_named_key, for_each_physical_key};
 
 pub(crate) use pointer::ClickConfig;
 pub use pointer::{

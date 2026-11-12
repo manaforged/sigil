@@ -4,6 +4,7 @@ use smallvec::SmallVec;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint};
 use crate::style::Color;
+use crate::style::srgb::{byte, unit};
 
 use super::fallback::Fallback;
 use super::paint::{Fill, alpha};
@@ -104,9 +105,7 @@ fn stops(base: &BaseGradient, opacity: f32) -> Stops {
         .iter()
         .map(|stop| {
             let color = stop.color();
-            let rgb =
-                [color.red, color.green, color.blue].map(|channel| f32::from(channel) / 255.0);
-            let [r, g, b] = rgb;
+            let [r, g, b] = [color.red, color.green, color.blue].map(unit);
             (
                 stop.offset().get(),
                 [r, g, b, stop.opacity().get() * opacity],
@@ -185,17 +184,11 @@ fn unpremultiplied(stops: &[Stop]) -> Vec<Stop> {
     out
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "each channel is clamped to 0..=1 before the cast"
-)]
 fn bytes([r, g, b, a]: [f32; 4]) -> Color {
-    let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
     Color {
-        r: byte(r),
-        g: byte(g),
-        b: byte(b),
+        r: byte(r * 255.0),
+        g: byte(g * 255.0),
+        b: byte(b * 255.0),
         a: alpha(a),
     }
 }

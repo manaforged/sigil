@@ -5,6 +5,8 @@ use crate::reactive::runtime::{EffectKey, OwnerKey, RuntimeState, with_rt};
 struct RunGuard {
     key: EffectKey,
     prev_owner: Option<OwnerKey>,
+    prev_lazy: Option<EffectKey>,
+    prev_deferred: Option<usize>,
     prev_effect: Option<EffectKey>,
     f: Option<Box<dyn FnMut()>>,
     location: &'static core::panic::Location<'static>,
@@ -35,6 +37,8 @@ impl Drop for RunGuard {
                 }
             }
             rt.current_owner = self.prev_owner;
+            rt.lazy_effect_owner = self.prev_lazy;
+            rt.deferred_at = self.prev_deferred;
             rt.current_effect = self.prev_effect;
             rt.running.remove(&self.key);
             if deferred && run_owner.is_none() {
@@ -78,18 +82,14 @@ fn restore_interrupted(
 }
 
 fn reconcile_deps(rt: &mut RuntimeState, key: EffectKey) {
-    let Some((old_deps, new_deps)) = rt
-        .effects
-        .get_mut(key)
-        .map(|slot| (core::mem::take(&mut slot.prev_deps), slot.deps.clone()))
-    else {
+    let Some(slot) = rt.effects.get_mut(key) else {
         return;
     };
-
-    if old_deps == new_deps {
+    if slot.prev_deps == slot.deps {
+        slot.prev_deps.clear();
         return;
     }
-
+    let (old_deps, new_deps) = (core::mem::take(&mut slot.prev_deps), slot.deps.clone());
     for dep in old_deps {
         if new_deps.contains(&dep) {
             continue;
@@ -135,29 +135,26 @@ fn run_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<
 }
 
 fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<OwnerKey>)> {
+    let parent = rt.effects.get(key)?.owner;
+    if !rt.owners.contains(parent) {
+        return None;
+    }
     let effect = rt.effects.get_mut(key)?;
     debug_assert!(effect.prev_deps.is_empty());
     effect.prev_deps = core::mem::take(&mut effect.deps);
     effect.prev_dep_cursor = 0;
     effect.level = 0;
     let prev_run_owner = effect.run_owner.take();
-    let (parent, location) = (effect.owner, effect.location);
-    if !rt.owners.contains(parent) {
-        return None;
-    }
-    let run_owner = rt.insert_owner("<effect-run>", Some(parent), location);
-    let slot = rt
-        .effects
-        .get_mut(key)
-        .expect("invariant: effect slot present during setup");
-    slot.run_owner = Some(run_owner);
-    let f = slot
+    let location = effect.location;
+    let f = effect
         .f
         .take()
         .expect("invariant: effect closure present outside a run");
     let guard = RunGuard {
         key,
-        prev_owner: rt.current_owner.replace(run_owner),
+        prev_owner: rt.current_owner.take(),
+        prev_lazy: rt.lazy_effect_owner.replace(key),
+        prev_deferred: rt.deferred_at.take(),
         prev_effect: rt.current_effect.replace(key),
         f: Some(f),
         location,

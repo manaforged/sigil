@@ -30,7 +30,7 @@ pub(crate) fn effect_at<F: FnMut() + 'static>(
 ) {
     let key = with_rt(|rt| {
         let owner = rt
-            .current_owner
+            .active_owner()
             .unwrap_or_else(|| no_scope("effect()", location));
         assert!(
             rt.owners.contains(owner),

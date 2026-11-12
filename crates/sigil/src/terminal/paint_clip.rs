@@ -9,6 +9,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use smol_str::SmolStr;
 
 use super::{Cell, Face, Grid, Ink, Underline, cell_text, decoration, floor_cell};
+use crate::terminal::paint::{Glyph, Link};
 
 struct ClipRun<'a> {
     node: &'a Text<'a>,
@@ -178,6 +179,27 @@ impl Grid {
         let Some(line) = self.cells.get_mut(start..start.saturating_add(last)) else {
             return;
         };
+        let fixed = run.node.runs.is_none().then(|| styled(run, 0));
+        let style_at = |offset: usize| fixed.unwrap_or_else(|| styled(run, offset));
+        let mut put = |at: usize, text: Glyph, styled: &StyledCell| {
+            if mask.is_some_and(|mask| !mask.holds(at, run.row)) {
+                return;
+            }
+            if let Some(cell) = line.get_mut(at) {
+                cell.text = text;
+                paint_cell(cell, run.node.theme, styled);
+            }
+        };
+        if run.text.bytes().all(|byte| (b' '..=b'~').contains(&byte)) {
+            for (offset, byte) in run.text.bytes().enumerate() {
+                let at = run.col.saturating_add(offset);
+                if at >= last {
+                    return;
+                }
+                put(at, Glyph::ascii(byte), &style_at(offset));
+            }
+            return;
+        }
         let mut x = run.col;
         for (offset, text) in run.text.grapheme_indices(true) {
             let step = cell_width(text);
@@ -187,27 +209,21 @@ impl Grid {
             if step == 0 {
                 continue;
             }
-            let styled = styled(run, offset);
+            let styled = style_at(offset);
             for pad in 0..step {
-                let at = x.saturating_add(pad);
-                if mask.is_some_and(|mask| !mask.holds(at, run.row)) {
-                    continue;
-                }
-                if let Some(cell) = line.get_mut(at) {
-                    cell.text = cell_text(text, pad);
-                    paint_cell(cell, run.node.theme, &styled);
-                }
+                put(x.saturating_add(pad), cell_text(text, pad), &styled);
             }
             x = x.saturating_add(step);
         }
     }
 }
 
+#[derive(Clone, Copy)]
 struct StyledCell {
     face: Face,
     fg: Ink,
     bg: Option<Ink>,
-    link: Option<SmolStr>,
+    link: Option<Link>,
 }
 
 fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
@@ -216,7 +232,7 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
         face: node.face,
         fg: node.ink,
         bg: None,
-        link: node.link.cloned(),
+        link: node.link.and_then(|url| Link::new(url)),
     };
     let Some((runs, inks)) = node.runs else {
         return out;
@@ -241,7 +257,7 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
     out.fg = ink.color.map_or(out.fg, Ink::Exact);
     out.bg = ink.background.map(Ink::Exact);
     if let Some(link) = &face.link {
-        out.link = Some(SmolStr::from(&**link));
+        out.link = Link::new(link);
     }
     out
 }
@@ -250,7 +266,7 @@ fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &StyledCell) {
     cell.bold = styled.face.bold;
     cell.italic = styled.face.italic;
     cell.dim = styled.face.dim;
-    cell.link.clone_from(&styled.link);
+    cell.link = styled.link;
     cell.lines.strike |= styled.face.strike;
     if styled.face.underline != Underline::None {
         cell.lines.underline = styled.face.underline;

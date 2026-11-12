@@ -143,6 +143,53 @@ fn a_flag_shows_and_hides_a_widget() {
     ui.click("Toggle").expect_text("Details");
 }
 
+#[test]
+fn a_field_names_its_control_by_its_label() {
+    Owner::scope("view-field-name", || {
+        let name = signal(String::new());
+        let email = signal(String::new());
+        let mut ui = Harness::new(move || {
+            View::new(
+                "column {\n  field \"Name\" {\n    text_field value=$name\n  }\n  field \"Email\" {\n    text_field value=$email\n  }\n}\n",
+            )
+            .signal("name", name)
+            .signal("email", email)
+        });
+        ui.type_into("Email", "ada@example.com");
+        assert_eq!(email.peek(), "ada@example.com");
+        assert_eq!(name.peek(), "");
+    });
+}
+
+#[test]
+fn a_view_names_toggles_editors_dividers_and_their_actions() {
+    Owner::scope("view-more-widgets", || {
+        let on = signal(false);
+        let notes = signal(String::new());
+        let query = signal(String::new());
+        let changes = signal(0_u32);
+        let sent = signal(0_u32);
+        let mut ui = Harness::new(move || {
+            View::new(
+                "column {\n  toggle \"Sync\" checked=$on change=@changed\n  divider\n  text_field value=$query placeholder=\"Search\" submit=@send\n  text_edit value=$notes placeholder=\"Notes\"\n  button \"Delete\" destructive outline\n}\n",
+            )
+            .flag("on", on)
+            .signal("notes", notes)
+            .signal("query", query)
+            .action("changed", move || changes.update(|n| *n += 1))
+            .action("send", move || sent.update(|n| *n += 1))
+        });
+        ui.click("Sync");
+        assert!(on.peek());
+        assert_eq!(changes.peek(), 1);
+        ui.type_into("Search", "ada").press(Key::Enter);
+        assert_eq!(sent.peek(), 1);
+        ui.type_into("Notes", "hello");
+        assert_eq!(notes.peek(), "hello");
+        ui.expect_text("Delete");
+    });
+}
+
 fn problem(source: &str) -> String {
     Owner::scope("view", || {
         View::new(source)

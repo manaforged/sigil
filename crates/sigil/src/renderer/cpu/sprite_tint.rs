@@ -10,7 +10,7 @@ use tiny_skia::Pixmap;
 
 use crate::renderer::scene_command::{DrawSprite, SpriteKind};
 
-use super::shapes::{decode, rgba_table, stored};
+use super::shapes::{decode_rgb, rgba_table, stored, unit};
 
 const SUBPIXEL_TAPS: [f32; 3] = [-1.0 / 3.0, 0.0, 1.0 / 3.0];
 
@@ -84,8 +84,8 @@ fn subpixel(draw: &DrawSprite, texels: &Texels<'_>, row: usize, col: usize) -> [
     let center = col as f32 + 0.5 + draw.source.phase;
     let [r, g, b] = SUBPIXEL_TAPS.map(|tap| texels.alpha_at(row, center + tap));
     let c = draw.color;
-    let alpha = (f32::from(c.a) / 255.0 * r.max(g).max(b)).clamp(0.0, 1.0);
-    let [lr, lg, lb] = [c.r, c.g, c.b].map(decode);
+    let alpha = (unit(c.a) * r.max(g).max(b)).clamp(0.0, 1.0);
+    let [lr, lg, lb] = decode_rgb(c);
     [
         stored(lr * r, alpha),
         stored(lg * g, alpha),

@@ -156,8 +156,8 @@ impl<T: Copy> Edges<T> {
         }
     }
 
-    pub(crate) fn map(self, f: impl Fn(T) -> T) -> Self {
-        Self {
+    pub(crate) fn map<U: Copy>(self, f: impl Fn(T) -> U) -> Edges<U> {
+        Edges {
             left: f(self.left),
             right: f(self.right),
             top: f(self.top),

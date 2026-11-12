@@ -87,7 +87,7 @@ impl<'theme> StyleEngine<'theme> {
     /// Resolves a color atom against the theme.
     #[must_use]
     pub(crate) fn resolve_color(&self, color: ColorAtom) -> Color {
-        self.theme.resolve_color(color)
+        self.theme.color(color)
     }
 
     #[allow(

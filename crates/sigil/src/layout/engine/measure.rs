@@ -135,10 +135,22 @@ impl LayoutEngine {
     }
 
     fn attach_results(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
+        crate::reactive::batch(|| self.attach_each(cx, ids))
+    }
+
+    fn attach_each(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
+        let has_geometry_reactive = !self.geometry_reactive.is_empty();
+        self.rescope(cx);
         for id in ids {
+            let _ = self.scope(cx, id);
             let Some(result) = self.fresh(id) else {
                 continue;
             };
+            let unchanged = self.published_result.get(id.key()).copied() == Some(result);
+            if unchanged && (!has_geometry_reactive || !self.geometry_reactive.contains(&id.key()))
+            {
+                continue;
+            }
             let rect = result.rect();
             let node = cx
                 .get_mut_untracked(id)
@@ -147,10 +159,9 @@ impl LayoutEngine {
                 self.republished |= size.publish((rect.width, rect.height));
             }
             if let Some(bounds) = node.get_extension::<crate::layout::BoundsReactive>() {
-                self.republished |=
-                    bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+                self.republished |= bounds.publish(rect);
             }
-            if self.published_result.get(id.key()).copied() == Some(result) {
+            if unchanged {
                 continue;
             }
             let _ = node.attach_untracked(result);
@@ -158,6 +169,24 @@ impl LayoutEngine {
             self.published_result.insert(id.key(), result);
         }
         Ok(())
+    }
+
+    pub(super) fn republish_bounds(&mut self, cx: &Cx) {
+        crate::reactive::batch(|| {
+            for key in &self.geometry_reactive {
+                let Some(node) = cx.get(NodeId::from_key(*key)) else {
+                    continue;
+                };
+                let (Some(bounds), Some(result)) = (
+                    node.get_extension::<crate::layout::BoundsReactive>(),
+                    node.get_extension::<LayoutResult>(),
+                ) else {
+                    continue;
+                };
+                let rect = result.rect();
+                self.republished |= bounds.publish(rect);
+            }
+        });
     }
 
     fn remove_stale_extensions(&mut self, cx: &mut Cx, previous_ids: SmallVec<[NodeId; 32]>) {

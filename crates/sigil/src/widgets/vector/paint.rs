@@ -24,7 +24,7 @@ pub(super) fn resolve(
             .collect()
     };
     let fill = fill.map(|fill| match fill {
-        PathFill::Solid(color) => PathPaint::Solid(theme.resolve_color(*color)),
+        PathFill::Solid(color) => PathPaint::Solid(theme.color(*color)),
         PathFill::Linear {
             start,
             end,
@@ -48,7 +48,7 @@ pub(super) fn resolve(
             PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
     });
-    let stroke = stroke.map(|(color, width)| (theme.resolve_color(color), width));
+    let stroke = stroke.map(|(color, width)| (theme.color(color), width));
     (fill, stroke)
 }
 
@@ -57,15 +57,8 @@ pub(super) fn path_key(
     fill: Option<&PathPaint>,
     stroke: Option<(Color, f32)>,
 ) -> u64 {
-    let mut hash = OFFSET;
-    for byte in node
-        .width
-        .to_le_bytes()
-        .into_iter()
-        .chain(node.height.to_le_bytes())
-    {
-        mix(&mut hash, byte);
-    }
+    let mut hash = crate::fnv::bytes(OFFSET, &node.width.to_le_bytes());
+    hash = crate::fnv::bytes(hash, &node.height.to_le_bytes());
     mix(&mut hash, u8::from(node.non_scaling));
     mix(&mut hash, node.rule as u8);
     mix(&mut hash, node.cap.map_or(0, |cap| cap as u8 + 1));

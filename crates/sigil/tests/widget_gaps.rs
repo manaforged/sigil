@@ -260,7 +260,7 @@ fn divider_vertical_takes_a_fixed_height() {
 fn square_icon_button_draws_its_icon_not_an_empty_label() {
     Owner::scope("widget-gaps-icon-button", || {
         let mut cx = sigil::kernel::Cx::new_root();
-        let root = cx.add(icon_button("", || {}).icon(Icon::Search));
+        let root = cx.add(button("").ghost().square().activate(|| {}).icon(Icon::Search));
         let mut texts = 0;
         cx.visit_preorder(root, |_, node| {
             if matches!(node.kind, sigil::kernel::NodeType::Text { .. }) {

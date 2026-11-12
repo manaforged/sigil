@@ -64,7 +64,7 @@ pub(super) fn color(color: crate::style::Rgba) -> TsColor {
     .unwrap_or(TsColor::TRANSPARENT)
 }
 
-pub(super) use crate::style::srgb::{decode, encode, encode_byte};
+pub(super) use crate::style::srgb::{decode, decode_rgb, encode, encode_byte, unit};
 
 pub(super) fn stored(linear: f32, alpha: f32) -> u8 {
     encode_byte(linear * alpha)
@@ -79,22 +79,10 @@ pub(super) fn coverage_table(linear: [f32; 3], alpha: f32) -> [[u8; 4]; 256] {
 }
 
 pub(super) fn rgba_table(color: Color, opacity: f32) -> [[u8; 4]; 256] {
-    coverage_table(
-        [color.r, color.g, color.b].map(decode),
-        f32::from(color.a) / 255.0 * opacity,
-    )
+    coverage_table(decode_rgb(color), unit(color.a) * opacity)
 }
 
-pub(super) fn ts_color(color: Color, opacity: f32) -> TsColor {
-    let alpha = (f32::from(color.a) / 255.0 * opacity).clamp(0.0, 1.0);
-    TsColor::from_rgba(
-        f32::from(color.r) / 255.0,
-        f32::from(color.g) / 255.0,
-        f32::from(color.b) / 255.0,
-        alpha,
-    )
-    .unwrap_or(TsColor::TRANSPARENT)
-}
+pub(super) use crate::scene::path_raster::gradient::ts_color;
 
 pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::Gamma2;
 

@@ -20,6 +20,9 @@ pub(crate) struct RuntimeState {
     pub(crate) signals: Arena<SignalSlot>,
     pub(crate) effects: Arena<EffectSlot>,
     pub(crate) current_owner: Option<OwnerKey>,
+    pub(crate) lazy_effect_owner: Option<EffectKey>,
+    pub(crate) deferred: Vec<super::owner::Deferred>,
+    pub(crate) deferred_at: Option<usize>,
     pub(crate) current_effect: Option<EffectKey>,
     pub(crate) batch_depth: u32,
     pending: Vec<VecDeque<(u64, EffectKey)>>,
@@ -33,6 +36,7 @@ pub(crate) struct RuntimeState {
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
     pub(crate) frame_dirty: bool,
+    pub(crate) write_clock: u64,
     pub(crate) paints: u64,
     pub(crate) runtime_id: u64,
 }
@@ -44,6 +48,9 @@ impl RuntimeState {
             signals: Arena::new(),
             effects: Arena::new(),
             current_owner: None,
+            lazy_effect_owner: None,
+            deferred: Vec::new(),
+            deferred_at: None,
             current_effect: None,
             batch_depth: 0,
             pending: Vec::new(),
@@ -57,6 +64,7 @@ impl RuntimeState {
             panic_origin: None,
             phase: DrawPhase::Idle,
             frame_dirty: true,
+            write_clock: 0,
             paints: 0,
             runtime_id: 0,
         }
@@ -107,10 +115,48 @@ impl RuntimeState {
             .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
     }
 
+    pub(crate) const fn next_stamp(&mut self) -> u64 {
+        self.write_clock = self.write_clock.wrapping_add(1);
+        self.write_clock
+    }
+
     pub(crate) fn creator_level(&self) -> u32 {
         self.current_effect
             .and_then(|effect| self.effects.get(effect))
             .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
+    }
+
+    #[cfg(event_channel)]
+    pub(crate) const fn has_active_owner(&self) -> bool {
+        self.current_owner.is_some()
+            || self.lazy_effect_owner.is_some()
+            || self.deferred_at.is_some()
+    }
+
+    pub(crate) fn active_owner(&mut self) -> Option<OwnerKey> {
+        if let Some(owner) = self.current_owner {
+            return Some(owner);
+        }
+        if let Some(at) = self.deferred_at {
+            return Some(self.materialize(at));
+        }
+        let effect = self.lazy_effect_owner.take()?;
+        let run_owner = self.effect_run_owner(effect)?;
+        self.current_owner = Some(run_owner);
+        Some(run_owner)
+    }
+
+    pub(crate) fn effect_run_owner(&mut self, eff_key: EffectKey) -> Option<OwnerKey> {
+        let (parent, location) = self
+            .effects
+            .get(eff_key)
+            .map(|slot| (slot.owner, slot.location))?;
+        let parent_opt = self.owners.contains(parent).then_some(parent);
+        let run_owner = self.insert_owner("<effect-run>", parent_opt, location);
+        if let Some(slot) = self.effects.get_mut(eff_key) {
+            slot.run_owner = Some(run_owner);
+        }
+        Some(run_owner)
     }
 }
 

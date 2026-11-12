@@ -1,9 +1,9 @@
 use crate::geometry::Rect;
 use crate::style::Theme;
 use crate::widgets::spark_glyph;
-use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink, cell_edge, floor_cell};
+use crate::terminal::paint::Glyph;
 
 const EIGHTHS: usize = 8;
 
@@ -19,8 +19,8 @@ pub(super) struct FillSurface<'a> {
 
 pub(super) fn surface(grid: &mut Grid, surface: &FillSurface<'_>, cell: f32) {
     let area = (surface.origin, surface.size, surface.rect);
-    if let Some(glyph) = hairline(surface.rect, cell) {
-        grid.rule(area, glyph, surface.ink);
+    if let Some((glyph, span)) = hairline(surface, cell) {
+        grid.rule(span, glyph, surface.ink);
         return;
     }
     let opaque = match surface.ink {
@@ -116,16 +116,16 @@ fn upper(cell: &mut Cell, level: usize, ink: Ink) {
         _ => "█",
     };
     *cell = Cell {
-        text: SmolStr::new_inline(text),
+        text: Glyph::inline(text),
         fg: ink,
         ..Cell::blank()
     };
 }
 
 #[allow(clippy::cast_precision_loss, reason = "block levels stay below eight")]
-fn block(level: usize) -> SmolStr {
+fn block(level: usize) -> Glyph {
     let fraction = (level as f32 - 0.5) / (EIGHTHS - 1) as f32;
-    SmolStr::new(spark_glyph(fraction).encode_utf8(&mut [0; 4]))
+    Glyph::new(spark_glyph(fraction).encode_utf8(&mut [0; 4]))
 }
 
 struct FillRows {
@@ -207,12 +207,21 @@ fn split(start: f32, end: f32) -> Split {
     }
 }
 
-fn hairline(rect: Rect, cell: f32) -> Option<&'static str> {
+fn hairline(surface: &FillSurface<'_>, cell: f32) -> Option<(&'static str, super::CellArea)> {
+    let (rect, vis) = (surface.rect, surface.visible);
     if rect.height > 0.0 && rect.height < cell * 0.25 {
-        return Some("─");
+        let (col, width) = super::snapped_span(vis.origin.x / cell, vis.width / cell);
+        return Some((
+            "─",
+            ((col, surface.origin.1), (width, surface.size.1), rect),
+        ));
     }
     if rect.width > 0.0 && rect.width < cell * 0.5 {
-        return Some("│");
+        let (row, height) = super::snapped_span(vis.origin.y / cell, vis.height / cell);
+        return Some((
+            "│",
+            ((surface.origin.0, row), (surface.size.0, height), rect),
+        ));
     }
     None
 }

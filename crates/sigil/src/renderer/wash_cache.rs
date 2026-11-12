@@ -1,9 +1,10 @@
+use crate::renderer::SRGB_FORMAT;
 use crate::scene::Wash;
 
 const ENTRIES: usize = 2;
 
 /// The texture format baked washes are stored in.
-pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub(crate) const FORMAT: wgpu::TextureFormat = SRGB_FORMAT;
 
 #[derive(Clone, Copy, PartialEq)]
 struct Key {

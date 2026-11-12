@@ -14,7 +14,7 @@ mod wrap;
 
 #[cfg(feature = "terminal")]
 pub(crate) use wrap::cell_text_lines;
-use wrap::{hard_break_at, ranges};
+use wrap::{hard_break_at, measure_lines, ranges};
 
 kittest_pub! {
     /// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
@@ -136,8 +136,8 @@ impl CellGeometry {
         Self { px }
     }
 
-    fn ranges(&self, text: &str, width: Option<f32>) -> Vec<(usize, usize)> {
-        let max_cells = width.filter(|_| self.px > 0.0).map(|value| {
+    fn max_cells(&self, width: Option<f32>) -> Option<usize> {
+        width.filter(|_| self.px > 0.0).map(|value| {
             #[allow(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
@@ -145,8 +145,11 @@ impl CellGeometry {
             )]
             let cells = (value / self.px).floor() as usize;
             cells.max(1)
-        });
-        ranges(text, max_cells)
+        })
+    }
+
+    fn ranges(&self, text: &str, width: Option<f32>) -> Vec<(usize, usize)> {
+        ranges(text, self.max_cells(width))
     }
 
     fn line_for_byte(ranges: &[(usize, usize)], byte: usize, affinity: TextAffinity) -> usize {
@@ -227,26 +230,22 @@ impl CellGeometry {
 
 impl TextMeasure for CellGeometry {
     fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
-        let text = content.resolve();
-        if matches!(space.width, Dim::MinContent) {
-            let longest = text.split_whitespace().map(cell_width).max().unwrap_or(0);
-            return LogicalSize::new(cells_to_px(longest, self.px), self.px);
-        }
-        let width = match space.width {
-            Dim::Fixed(width) => Some(width),
-            Dim::MinContent | Dim::MaxContent => None,
-        };
-        let ranges = self.ranges(&text, width);
-        let cells = ranges
-            .iter()
-            .map(|(start, end)| text.get(*start..*end).map_or(0, cell_width))
-            .max()
-            .unwrap_or(0);
-        let wide = cells_to_px(cells, self.px);
-        LogicalSize::new(
-            width.map_or(wide, |width| wide.min(width.max(self.px))),
-            cells_to_px(ranges.len().max(1), self.px),
-        )
+        content.with_str(|text| {
+            if matches!(space.width, Dim::MinContent) {
+                let longest = text.split_whitespace().map(cell_width).max().unwrap_or(0);
+                return LogicalSize::new(cells_to_px(longest, self.px), self.px);
+            }
+            let width = match space.width {
+                Dim::Fixed(width) => Some(width),
+                Dim::MinContent | Dim::MaxContent => None,
+            };
+            let (cells, lines) = measure_lines(text, self.max_cells(width));
+            let wide = cells_to_px(cells, self.px);
+            LogicalSize::new(
+                width.map_or(wide, |width| wide.min(width.max(self.px))),
+                cells_to_px(lines.max(1), self.px),
+            )
+        })
     }
 
     fn hit(&self, text: &str, _style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition {

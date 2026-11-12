@@ -20,7 +20,7 @@ fn sheet_docks_a_dialog_on_the_right() {
     Owner::scope("sheet-right", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
-        let root = cx.add(sheet(show).title("Filters"));
+        let root = cx.add(modal(show).side(Side::Right).dismiss_on_backdrop(true).title("Filters"));
         let frame = dialog_of(&cx, root);
         let style = cx
             .get(frame)

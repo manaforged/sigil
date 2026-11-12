@@ -193,3 +193,27 @@ fn an_edit_follows_its_row_when_the_app_replaces_rows() {
         assert_eq!(names, ["Bob", "Grace"]);
     });
 }
+
+#[test]
+fn clicking_outside_the_table_commits_the_open_edit() {
+    Owner::scope("table-edit-blur", || {
+        let state = people();
+        let shown = state.clone();
+        let mut ui = Harness::new(move || {
+            column()
+                .child(table(shown.clone()).viewport_height(240.0))
+                .child(button("Elsewhere"))
+        });
+        ui.settle();
+        double_click(&mut ui, "Ada");
+        editor(&mut ui);
+        erase(&mut ui, 3);
+        ui.type_text("Grace");
+        let elsewhere = ui.get_by_role(Role::Button, "Elsewhere");
+        ui.click(&elsewhere).settle();
+        assert_eq!(
+            (editing(&mut ui), name_at(&state, 0).as_deref()),
+            (false, Some("Grace"))
+        );
+    });
+}

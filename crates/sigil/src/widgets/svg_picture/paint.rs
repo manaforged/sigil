@@ -36,13 +36,8 @@ pub(super) fn solid(color: usvg::Color, opacity: f32) -> Color {
     }
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "opacity is clamped to 0..=1 before the cast"
-)]
 pub(super) fn alpha(opacity: f32) -> u8 {
-    (opacity.clamp(0.0, 1.0) * 255.0).round() as u8
+    crate::style::srgb::byte(opacity * 255.0)
 }
 
 pub(super) const OPAQUE: Color = Color {

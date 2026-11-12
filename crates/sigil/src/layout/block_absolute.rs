@@ -3,8 +3,8 @@ use crate::Error;
 use crate::layout::block_size::SizeIntent;
 use crate::layout::flex::{CbSize, FlexSolver};
 use crate::layout::forest::{ComputedBox, MeasureScope, NodeRef};
-use crate::layout::resolve::{NodeEdges, resolve_absolute_xy, stretched};
-use crate::layout::style_data::{Axes, Display, Position};
+use crate::layout::resolve::{NodeEdges, is_positioned_absolute, resolve_absolute_xy, stretched};
+use crate::layout::style_data::{Axes, Display};
 
 impl BlockSolver<'_> {
     pub(super) fn place_absolutes(
@@ -14,10 +14,7 @@ impl BlockSolver<'_> {
         border_origin: Position2,
         edges: &NodeEdges,
     ) -> Result<(), Error> {
-        let padding_box = Axes {
-            width: (w - edges.border.left - edges.border.right).max(0.0),
-            height: (h - edges.border.top - edges.border.bottom).max(0.0),
-        };
+        let padding_box = edges.padding_box((w, h));
         let inner_cb = Axes {
             width: (w - edges.inline_chrome()).max(0.0),
             height: (h - edges.block_chrome()).max(0.0),
@@ -31,10 +28,7 @@ impl BlockSolver<'_> {
             let Some(child) = forest.refer(*child_id) else {
                 continue;
             };
-            let style = child.style();
-            if matches!(style.position, Position::Absolute)
-                && !matches!(style.display, Display::None)
-            {
+            if is_positioned_absolute(child.style()) {
                 self.place_absolute(child, inner_cb, padding_box, origin)?;
             }
         }
@@ -49,7 +43,7 @@ impl BlockSolver<'_> {
         padding_origin: Position2,
     ) -> Result<(), Error> {
         let style = child.style();
-        let edges = NodeEdges::build(style, inner_cb.width);
+        let edges = child.edges(inner_cb.width);
         let intent = SizeIntent::build(style, inner_cb, &edges);
         let provisional = Position2::new(
             padding_origin.x + edges.margin.left.unwrap_or(0.0),
@@ -66,6 +60,7 @@ impl BlockSolver<'_> {
         let dx = x - provisional.x;
         let dy = y - provisional.y;
         if dx != 0.0 || dy != 0.0 {
+            self.scope.forest().forget_solved_subtree(child.id());
             self.shift_subtree(child, dx, dy);
         }
         let (w, h) = (box_w, box_h);

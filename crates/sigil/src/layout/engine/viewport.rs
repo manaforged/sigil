@@ -81,9 +81,7 @@ impl LayoutEngine {
             .map(|result| result.rect());
         let (x, y) = target(rect, anchor, popup, viewport);
         let (dx, dy) = (x - rect.origin.x, y - rect.origin.y);
-        if dx == 0.0 && dy == 0.0 {
-            return;
-        }
+        let moved = dx != 0.0 || dy != 0.0;
         let mut ids = SmallVec::<[NodeId; 32]>::new();
         cx.visit_preorder(id, |node, _| ids.push(node));
         for node in ids {
@@ -95,7 +93,9 @@ impl LayoutEngine {
                 .get(node.key())
                 .copied()
                 .unwrap_or((0.0, 0.0));
-            self.popup_offsets.insert(node.key(), (ox + dx, oy + dy));
+            if moved {
+                self.popup_offsets.insert(node.key(), (ox + dx, oy + dy));
+            }
             let placed = result.translated(dx, dy);
             let Some(target) = cx.get_mut_untracked(node) else {
                 continue;

@@ -14,6 +14,7 @@ use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, buffer_group, clipped_pass, linear_sampler, texture_group,
     texture_layout,
 };
+use crate::renderer::scene_command::walk::pipeline_for;
 use crate::renderer::scene_instance::SceneUniforms;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::{BlendMode, MaskMode};
@@ -74,21 +75,12 @@ impl LayerCompositePipeline {
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
     ) -> &'a mut Self {
-        let idx = pipelines
-            .iter()
-            .position(|p| p.format() == format)
-            .unwrap_or_else(|| {
-                let _span = span(crate::profile::Phase::RenderCompositePipeline);
-                count(crate::profile::Counter::GpuCompositePipelines);
-                pipelines.push(Self::new(device, format));
-                pipelines.len() - 1
-            });
-        pipelines
-            .get_mut(idx)
-            .expect("layer pipeline index was just constructed from the vec")
+        pipeline_for(pipelines, device, format, (Self::format, Self::new))
     }
 
-    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+    fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let _span = span(crate::profile::Phase::RenderCompositePipeline);
+        count(crate::profile::Counter::GpuCompositePipelines);
         let uniform_layout = uniform_layout(device, "sigil-renderer layer uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer layer texture layout");
         let quad = QuadPipeline::new(

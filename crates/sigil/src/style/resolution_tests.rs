@@ -242,10 +242,7 @@ fn a_later_background_replaces_the_earlier_one() {
         let render = applied(&theme, atoms);
         assert_eq!(render.paint.gradient, None, "{atoms:?}");
         assert_eq!(render.paint.shape(), None, "{atoms:?}");
-        assert_eq!(
-            render.background_color,
-            Some(theme.resolve_color(Token::Surface.into())),
-        );
+        assert_eq!(render.background_color, Some(theme.color(Token::Surface)),);
     }
 }
 
@@ -262,7 +259,7 @@ fn a_later_gradient_keeps_nothing_of_the_earlier_background() {
 
     for atoms in [chained.as_slice(), merged.as_slice()] {
         let render = applied(&theme, atoms);
-        let accent = theme.resolve_color(Token::Accent.into());
+        let accent = theme.color(Token::Accent);
         assert_eq!(render.background_color, None, "{atoms:?}");
         assert_eq!(render.paint.gradient, Some(GradientShape::Radial(radial)));
         assert_eq!(render.paint.stops, [Some(accent), None, None]);

@@ -1,5 +1,5 @@
 use super::*;
-use crate::style::Color;
+use crate::style::{Color, ThemeValue};
 
 fn color(theme: &Theme, token: &str) -> Option<ThemeValue> {
     theme.tokens.overrides.value(token)

@@ -79,6 +79,7 @@ pub(crate) struct FocusManager {
     ring: Vec<NodeId>,
     ring_generation: u64,
     ring_layout_generation: u64,
+    scopes_synced: (u64, u64),
     scope_stack: Vec<FocusScopeEntry>,
     pub(crate) ime_session: ImeSession,
 }
@@ -90,6 +91,7 @@ impl Default for FocusManager {
             ring: Vec::new(),
             ring_generation: u64::MAX,
             ring_layout_generation: u64::MAX,
+            scopes_synced: (u64::MAX, u64::MAX),
             scope_stack: Vec::new(),
             ime_session: ImeSession::Idle,
         }
@@ -295,7 +297,7 @@ fn collect_focusable(
     explicit: &mut Vec<(i32, NodeId)>,
     implicit: &mut Vec<NodeId>,
 ) {
-    let walk = crate::events::hit_test::walk_order(cx, &[id], |id, _| visible(cx, id));
+    let walk = crate::events::hit_test::walk_visible(cx, &[id]);
     for (found, node) in walk.filter(|(_, node)| node.a11y.focusable) {
         match node.a11y.tab_index {
             Some(index) if index >= 0 => explicit.push((index, found)),

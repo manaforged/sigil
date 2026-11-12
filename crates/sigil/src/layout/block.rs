@@ -38,7 +38,7 @@ impl<'a> BlockSolver<'a> {
         origin: Position2,
         assigned: Axes<Option<f32>>,
     ) -> Result<(), Error> {
-        let edges = NodeEdges::build(subtree.style(), cb.width);
+        let edges = subtree.edges(cb.width);
         let border_origin = Position2::new(
             origin.x + edges.margin.left.unwrap_or(0.0),
             origin.y + edges.margin_top(),
@@ -120,7 +120,7 @@ impl BlockSolver<'_> {
         assigned: Axes<Option<f32>>,
     ) -> Result<BlockBox, Error> {
         let style = node.style();
-        let edges = NodeEdges::build(style, cb.width);
+        let edges = node.edges(cb.width);
         let (x, y) = (border_origin.x, border_origin.y);
         if matches!(style.display, Display::None) {
             let empty = ComputedBox {
@@ -185,7 +185,7 @@ impl BlockSolver<'_> {
             if matches!(style.position, Position::Absolute) {
                 continue;
             }
-            let child_edges = NodeEdges::build(style, inner_cb.width);
+            let child_edges = child.edges(inner_cb.width);
             cursor_y += open.absorb_top(child_edges.margin_top());
             let x = child_border_x(parent.style(), style, inner_cb, origin.x, &child_edges);
             let child_origin = Position2::new(x, origin.y + cursor_y);

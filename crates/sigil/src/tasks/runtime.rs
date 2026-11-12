@@ -12,7 +12,7 @@ use crate::tasks::backend::{Backend, TaskWorkers};
 use crate::tasks::task::TaskHandle;
 
 pub(crate) struct DispatchMessage {
-    pub(crate) owner: Owner,
+    pub(crate) owner: Option<Owner>,
     pub(crate) callback: Box<dyn FnOnce() + Send + 'static>,
 }
 
@@ -123,21 +123,27 @@ impl AsyncRuntime {
             let Ok(msg) = self.rx.try_recv() else {
                 break;
             };
-            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
-                ran += 1;
-            }
+            let live = match msg.owner {
+                Some(owner) => owner.is_alive() && crate::reactive::owner_by_id(owner, msg.callback),
+                None => {
+                    (msg.callback)();
+                    true
+                }
+            };
+            ran += usize::from(live);
         }
         crate::reactive::run_dispatch_deferred();
         ran
     }
 
+    #[cfg(test)]
     pub(crate) fn spawn_parts(&self) -> SpawnParts {
         self.parts.clone()
     }
 
     /// Makes this runtime the current one on this thread.
     pub fn install_current(&self) {
-        crate::tasks::current::install(self.spawn_parts());
+        crate::tasks::current::install(&self.parts);
     }
 
     #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -188,7 +194,10 @@ impl AsyncRuntime {
     ) -> Result<(), Error> {
         self.parts
             .dispatcher
-            .send(DispatchMessage { owner, callback: f })
+            .send(DispatchMessage {
+                owner: Some(owner),
+                callback: f,
+            })
     }
 
     /// Spawns a future that is cancelled when its owner is disposed.

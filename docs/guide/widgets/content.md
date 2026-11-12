@@ -24,9 +24,9 @@ text(move || format!("Count: {}", count.get())).nowrap();
 - `.size(Size)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
 - `.label(name)`: assistive name; always set it when the icon stands alone.
 
-`icon_svg(svg) -> IconBuilder` draws an SVG path instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
+`icon(Glyph::svg(source))` draws an SVG image instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
 
-`icon_button(glyph, activate)` (see [Controls](controls.md)) is the interactive counterpart.
+`button(Icon::Close)` (see [Controls](controls.md)) is the interactive counterpart.
 
 ## image
 

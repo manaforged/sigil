@@ -1,6 +1,7 @@
 use crate::kernel::{Cx, NodeId, NodeType};
 use crate::style::{StyleBinding, TextStyle};
 use smallvec::{SmallVec, smallvec};
+use std::rc::Rc;
 
 use crate::Error;
 use crate::layout::LayoutStyle;
@@ -87,9 +88,10 @@ impl LayoutEngine {
         inherited_text: &TextStyle,
         direction: Direction,
     ) -> Result<(), Error> {
-        let (intent, text) = Self::layout_inputs_for_node(node, inherited_text, direction);
+        let (intent, text) =
+            Self::layout_inputs_for_node(node, inherited_text, direction, &mut self.shared_text);
         let Some(handle) = self.core_to_handle.get(id.key()).copied() else {
-            let handle = self.drive.insert_with_kernel(id, intent.data().clone());
+            let handle = self.drive.insert_with_kernel(id, intent.into_data());
             if text.is_some() {
                 self.drive.set_text(handle, text)?;
             }
@@ -106,7 +108,7 @@ impl LayoutEngine {
         if style_matches && text.is_none() && self.drive.text_for(handle).is_none() {
             return Ok(());
         }
-        self.drive.set_style(handle, intent.data().clone())?;
+        self.drive.set_style(handle, intent.into_data())?;
         self.drive.set_text(handle, text)
     }
 
@@ -196,34 +198,58 @@ impl LayoutEngine {
         node: &crate::kernel::Node,
         inherited_text: &TextStyle,
         direction: Direction,
+        shared: &mut Option<Rc<TextStyle>>,
     ) -> (LayoutStyle, Option<LayoutText>) {
         let mut intent = node
             .get_extension::<LayoutStyle>()
             .cloned()
             .unwrap_or_default();
-        let mut text = match &node.kind {
+        if let NodeType::Image { source, .. } = &node.kind {
+            intent = apply_intrinsic_image_size(intent, source.width(), source.height());
+        }
+        let is_text = matches!(node.kind, NodeType::Text { .. });
+        let runs = node.get_extension::<crate::style::TextRuns>();
+        let plain = node.get_extension::<StyleBinding>().is_none()
+            && runs.is_none()
+            && inherited_text.runs.is_none();
+        let style = if !is_text {
+            apply_style_overlay(node, &mut intent, None);
+            None
+        } else if plain {
+            Some(shared_style(shared, inherited_text))
+        } else {
+            let mut own = inherited_text.clone();
+            apply_style_overlay(node, &mut intent, Some(&mut own));
+            own.runs = runs.cloned();
+            Some(Rc::new(own))
+        };
+        let text = match &node.kind {
             NodeType::Text {
                 content,
                 wrap,
                 ellipsis,
             } => Some(LayoutText {
                 content: content.clone(),
-                style: Some(inherited_text.clone()),
+                style,
                 wrap: *wrap,
                 ellipsis: *ellipsis,
+                sig: std::cell::OnceCell::new(),
             }),
             NodeType::Container | NodeType::Fragment | NodeType::Image { .. } => None,
         };
-        if let NodeType::Image { source, .. } = &node.kind {
-            intent = apply_intrinsic_image_size(intent, source.width(), source.height());
-        }
-        let mut text_style = text.as_mut().and_then(|text| text.style.as_mut());
-        apply_style_overlay(node, &mut intent, text_style.as_deref_mut());
-        if let Some(style) = text_style {
-            style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
-        }
         apply_direction(intent.data_mut(), direction);
         (apply_reactive_position(node, intent), text)
+    }
+}
+
+fn shared_style(shared: &mut Option<Rc<TextStyle>>, style: &TextStyle) -> Rc<TextStyle> {
+    match shared {
+        Some(held) if **held == *style => Rc::clone(held),
+        _ => {
+            let held = Rc::new(style.clone());
+            *shared = Some(Rc::clone(&held));
+            held
+        }
     }
 }
 

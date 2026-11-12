@@ -8,6 +8,7 @@
 use tiny_skia::{Pixmap, Rect as TsRect, Transform as TsTransform};
 
 use super::bound::{corners, extent};
+use super::shapes::unit;
 
 pub(super) fn to_srgb(pixels: &mut [u8]) {
     scale(pixels, f32::sqrt);
@@ -22,7 +23,7 @@ fn scale(pixels: &mut [u8], gain: fn(f32) -> f32) {
         if *alpha == 0 || *alpha == u8::MAX {
             continue;
         }
-        let factor = gain(f32::from(*alpha) / 255.0);
+        let factor = gain(unit(*alpha));
         for channel in [red, green, blue] {
             *channel = (f32::from(*channel) * factor).round().min(255.0) as u8;
         }

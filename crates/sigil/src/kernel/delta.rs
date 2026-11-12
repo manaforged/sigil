@@ -1,8 +1,11 @@
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{AHashMap, AHashSet};
 
 use crate::kernel::{Cx, NodeId};
+
+static DELTA_EPOCH: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -40,13 +43,14 @@ thread_local! {
 }
 
 impl FrameDelta {
-    #[cfg(terminal_host)]
+    #[cfg(host)]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         !self.structure && self.paint.is_empty() && self.layout.is_empty()
     }
 
     pub(crate) fn record(&mut self, id: NodeId, kind: DeltaKind) {
+        DELTA_EPOCH.fetch_add(1, Ordering::Relaxed);
         match kind {
             DeltaKind::Paint => self.paint.insert(id),
             DeltaKind::Layout => self.layout.insert(id),
@@ -85,8 +89,17 @@ pub(crate) fn discard_pending(cx: u64) {
 }
 
 impl Cx {
+    #[must_use]
+    pub(crate) fn paint_epoch(&self) -> u64 {
+        DELTA_EPOCH
+            .load(Ordering::Relaxed)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ self.mutation_generation()
+    }
+
     pub(crate) fn take_delta(&mut self) -> FrameDelta {
-        let mut delta = std::mem::take(&mut self.delta);
+        let spare = self.spare_delta.take().unwrap_or_default();
+        let mut delta = std::mem::replace(&mut self.delta, spare);
         if let Some(pending) = PENDING.with(|cell| cell.borrow_mut().remove(&self.instance_id())) {
             delta.absorb(pending);
         }
@@ -96,6 +109,13 @@ impl Cx {
         delta.structure |= self.delta_generation != generation;
         self.delta_generation = generation;
         delta
+    }
+
+    pub(crate) fn reuse_delta(&mut self, mut spent: FrameDelta) {
+        spent.paint.clear();
+        spent.layout.clear();
+        spent.structure = false;
+        self.spare_delta = Some(spent);
     }
 }
 

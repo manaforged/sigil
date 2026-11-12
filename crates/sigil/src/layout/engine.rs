@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 use crate::Error;
 use crate::layout::cache_key::{LayoutCacheKey, reactive_layout_signature};
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
+use crate::layout::shift::Shift;
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutResult, TextMeasure};
 use crate::style::locale::Direction;
@@ -22,15 +23,19 @@ pub struct LayoutEngine {
     core_to_handle: SecondaryMap<slotmap::DefaultKey, NodeHandle>,
     synced_version: SecondaryMap<slotmap::DefaultKey, u32>,
     synced_text_sig: SecondaryMap<slotmap::DefaultKey, u64>,
+    shared_text: Option<std::rc::Rc<crate::style::TextStyle>>,
     published_result: SecondaryMap<slotmap::DefaultKey, LayoutResult>,
     popup_offsets: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
     reactive_layout: BTreeSet<slotmap::DefaultKey>,
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
+    scopes: SecondaryMap<slotmap::DefaultKey, Shift>,
+    scopes_generation: u64,
     text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
     prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
+    geometry_reactive: AHashSet<slotmap::DefaultKey>,
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     hidden: AHashSet<NodeId>,
@@ -57,15 +62,19 @@ impl LayoutEngine {
             core_to_handle: SecondaryMap::new(),
             synced_version: SecondaryMap::new(),
             synced_text_sig: SecondaryMap::new(),
+            shared_text: None,
             published_result: SecondaryMap::new(),
             popup_offsets: SecondaryMap::new(),
             generation: 0,
             cached_key: None,
             reactive_layout: BTreeSet::new(),
             positions: SecondaryMap::new(),
+            scopes: SecondaryMap::new(),
+            scopes_generation: 0,
             text_sizes: SecondaryMap::new(),
             prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
+            geometry_reactive: AHashSet::new(),
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
             hidden: AHashSet::new(),
@@ -103,14 +112,25 @@ impl LayoutEngine {
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
         let handle = self.handle(id).ok()?;
         let layout = self.drive.computed_box(handle)?;
-        Some(LayoutResult::from_resolved_box(
-            &layout,
-            self.drive.clips_content(handle),
-        ))
+        let shift = self.scopes.get(id.key()).copied().or_else(|| {
+            self.published_result
+                .get(id.key())
+                .map(LayoutResult::shift)
+        });
+        Some(
+            LayoutResult::from_resolved_box(&layout, self.drive.clips_content(handle))
+                .shifted(shift.unwrap_or_default()),
+        )
     }
 
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), Error> {
         self.gc(cx)?;
+        let total = cx.len();
+        self.drive.reserve(total);
+        self.core_to_handle.set_capacity(total);
+        self.synced_version.set_capacity(total);
+        self.synced_text_sig.set_capacity(total);
+        self.published_result.set_capacity(total);
         let root_text = TextStyle::default();
         self.sync_subtree(cx, root, InheritedText::new(&root_text, Direction::Ltr))
             .map(|_handles| ())
@@ -252,6 +272,7 @@ impl LayoutEngine {
                 let _ = self.published_result.remove(core_id.key());
                 self.hidden.remove(&core_id);
                 self.reactive_layout.remove(&core_id.key());
+                self.geometry_reactive.remove(&core_id.key());
             }
         }
         self.drive.remove(handle)
@@ -265,7 +286,9 @@ impl LayoutEngine {
         self.core_to_handle.clear();
         self.hidden.clear();
         self.reactive_layout.clear();
+        self.geometry_reactive.clear();
         self.positions.clear();
+        self.scopes.clear();
         self.text_sizes.clear();
         self.prepared.clear();
         self.reactive_sigs.clear();
@@ -281,8 +304,47 @@ impl LayoutEngine {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
         }
+        if node
+            .get_extension::<crate::layout::SizeReactive>()
+            .is_some()
+            || node
+                .get_extension::<crate::layout::BoundsReactive>()
+                .is_some()
+        {
+            self.geometry_reactive.insert(id.key());
+        } else {
+            self.geometry_reactive.remove(&id.key());
+        }
         if let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() {
             self.positions.insert(id.key(), pos.get());
+            pos.place();
+        }
+    }
+
+    fn scope(&mut self, cx: &Cx, id: NodeId) -> Shift {
+        if let Some(shift) = self.scopes.get(id.key()) {
+            return *shift;
+        }
+        let under = cx
+            .parent(id)
+            .map_or_else(Shift::default, |parent| self.scope(cx, parent));
+        let own = self
+            .positions
+            .contains_key(id.key())
+            .then(|| cx.get(id))
+            .flatten()
+            .and_then(|node| node.get_extension::<crate::layout::ReactivePosition>())
+            .map(|pos| pos.nest(under));
+        let shift = own.unwrap_or(under);
+        self.scopes.insert(id.key(), shift);
+        shift
+    }
+
+    fn rescope(&mut self, cx: &Cx) {
+        let generation = cx.mutation_generation();
+        if self.scopes_generation != generation {
+            self.scopes.clear();
+            self.scopes_generation = generation;
         }
     }
 

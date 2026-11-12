@@ -17,7 +17,7 @@ use shapes::{dots, shapes};
 pub(super) const CELL_W: f32 = 7.0;
 pub(super) const CELL_H: f32 = space(4);
 const CORNER: f32 = 8.0;
-const HEAD: f32 = 7.0;
+pub(super) const HEAD: f32 = 7.0;
 const DASH: f32 = 4.0;
 const DASH_GAP: f32 = 3.0;
 const DOT: f32 = 6.0;

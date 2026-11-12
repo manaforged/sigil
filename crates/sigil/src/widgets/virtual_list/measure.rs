@@ -1,12 +1,14 @@
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::rc::Rc;
 
+use ahash::{AHashMap, AHashSet};
+
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutStyle;
+use crate::layout::reactive_position::size_sink;
 use crate::reactive::{Signal, derived, effect, signal};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Layout;
 
 use super::render::WidthSpec;
 use super::{RowKey, bound_slice};
@@ -14,7 +16,7 @@ use super::{RowKey, bound_slice};
 pub(super) type Tops = Signal<Rc<Vec<f32>>>;
 pub(super) type Keys = Signal<Rc<Vec<u64>>>;
 
-type HeightCache = Rc<RefCell<HashMap<u64, f32>>>;
+type HeightCache = Rc<RefCell<AHashMap<u64, f32>>>;
 
 #[derive(Clone)]
 pub(super) struct Measure {
@@ -37,7 +39,7 @@ where
 {
     effect(move || {
         let items = items.get();
-        let live: HashSet<u64> = bound_slice(&items)
+        let live: AHashSet<u64> = bound_slice(&items)
             .iter()
             .enumerate()
             .map(|(index, item)| row_key_of(row_key.as_ref(), index, item))
@@ -93,9 +95,9 @@ impl Measure {
         }
     }
 
-    fn record(&self, key: u64, (width, height): (f32, f32)) {
+    fn record(&self, key: u64, (width, height): (f32, f32)) -> bool {
         if !width.is_finite() || width <= 0.0 || !height.is_finite() || height < 0.0 {
-            return;
+            return false;
         }
         let mut cache = self.cache.borrow_mut();
         if (self.width.replace(width) - width).abs() > f32::EPSILON {
@@ -103,9 +105,11 @@ impl Measure {
         }
         let previous = cache.insert(key, height);
         drop(cache);
-        if previous.is_none_or(|old| (old - height).abs() > f32::EPSILON) {
+        let changed = previous.is_none_or(|old| (old - height).abs() > f32::EPSILON);
+        if changed {
             self.version.update(|version| *version += 1);
         }
+        changed
     }
 
     pub(super) fn slot(
@@ -114,12 +118,8 @@ impl Measure {
         width: WidthSpec,
         row: impl IntoNode + 'static,
     ) -> NodeBuilder {
-        let size = signal((0.0_f32, 0.0_f32));
         let measure = self.clone();
-        effect(move || measure.record(key, size.get()));
-        container()
-            .layout(width.apply(LayoutStyle::block()))
-            .size_reactive(size)
-            .child(row)
+        let slot = container().layout(width.apply(LayoutStyle::block()));
+        size_sink(slot, move |size| measure.record(key, size)).child(row)
     }
 }

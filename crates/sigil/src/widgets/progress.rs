@@ -10,7 +10,7 @@ use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Layout;
 
 const INDETERMINATE_RATIO: f32 = 0.30;
 const CELL_RULE_THICKNESS: f32 = 1.0;
@@ -141,8 +141,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
         .child(
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
-                .style_reactive(move || fill_style(filled.get(), tone))
-                .tone_scope(tone),
+                .style_reactive(move || fill_style(filled.get(), tone)),
         )
         .child(empty_segment(empty, track_h))
 }

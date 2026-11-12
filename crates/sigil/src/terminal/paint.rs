@@ -3,14 +3,15 @@ use crate::geometry::Rect;
 use crate::style::Theme;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
-use smol_str::SmolStr;
 use std::borrow::Cow;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 mod cell;
 mod decoration;
+mod edges;
 mod fill;
+mod glyph;
 mod image;
 mod junction;
 mod marks;
@@ -22,13 +23,16 @@ mod scene;
 
 pub(super) use cell::Face;
 pub use cell::{Cell, Ink, Lines, Underline};
+pub(crate) use glyph::{Glyph, Link};
 pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;
 #[cfg(test)]
 pub(crate) use scene::raster;
 #[cfg(feature = "kittest")]
 pub(crate) use scene::raster_into;
-pub(crate) use scene::{CellPaint, raster_with};
+#[cfg(test)]
+pub(crate) use scene::raster_with;
+pub(crate) use scene::{CellPaint, raster_onto};
 
 /// The text of a cell that continues a wide character.
 pub(crate) const CONTINUES: &str = "";
@@ -39,7 +43,7 @@ pub struct Grid {
     cols: usize,
     rows: usize,
     cells: Vec<Cell>,
-    edges: Vec<Option<CellEdge>>,
+    edges: edges::Edges,
     images: Vec<Placement>,
     graphics: bool,
     cursor: Option<(usize, usize)>,
@@ -56,7 +60,7 @@ impl Grid {
             cols,
             rows,
             cells: vec![Cell::blank(); cols.saturating_mul(rows)],
-            edges: vec![None; cols.saturating_mul(rows)],
+            edges: edges::Edges::default(),
             images: Vec::new(),
             graphics: false,
             cursor: None,
@@ -123,7 +127,7 @@ impl Grid {
     /// Clears every cell.
     pub fn reset(&mut self) {
         self.cells.fill(Cell::blank());
-        self.edges.fill(None);
+        self.edges.clear();
         self.images.clear();
         self.cursor = None;
     }
@@ -145,9 +149,21 @@ impl Grid {
         self.cursor = None;
     }
 
+    pub(crate) fn clear_to(&mut self, cols: u16, rows: u16) {
+        self.reshape(cols as usize, rows as usize, Cell::blank());
+        self.images.clear();
+        self.cursor = None;
+    }
+
     /// Copies the cells of `other`.
     pub fn mirror(&mut self, other: &Self) {
         self.reshape(other.cols, other.rows, Cell::blank());
+    }
+
+    pub(crate) fn fit(&mut self, other: &Self) {
+        if (self.cols, self.rows) != (other.cols, other.rows) {
+            self.reshape(other.cols, other.rows, Cell::blank());
+        }
     }
 
     fn reshape(&mut self, cols: usize, rows: usize, fill: Cell) {
@@ -160,7 +176,6 @@ impl Grid {
         self.cells.clear();
         self.cells.resize(cols.saturating_mul(rows), fill);
         self.edges.clear();
-        self.edges.resize(cols.saturating_mul(rows), None);
     }
 
     /// Returns the cells of one row.
@@ -261,13 +276,19 @@ impl Grid {
             col..col.saturating_add(width).min(self.cols),
             row..row.saturating_add(height).min(self.rows),
         );
+        if self.mask.is_none() {
+            for y in ys {
+                let start = y.saturating_mul(self.cols);
+                for x in xs.clone() {
+                    self.fill_cell(start + x, inner, &mut paint);
+                }
+            }
+            return;
+        }
         let mut spans = Vec::new();
         for y in ys {
             if let Some(mask) = &self.mask {
                 mask.spans(y, &mut spans);
-            } else {
-                spans.clear();
-                spans.push(xs.clone());
             }
             for span in &spans {
                 for x in span.start.max(xs.start)..span.end.min(xs.end) {
@@ -278,24 +299,22 @@ impl Grid {
     }
 
     fn fill_cell(&mut self, index: usize, inner: CellEdge, paint: &mut impl FnMut(&mut Cell)) {
-        let edge = self.edges.get(index).copied().flatten();
-        if edge.is_some_and(|edge| encloses(edge, inner)) {
+        if self
+            .edges
+            .get(index)
+            .is_some_and(|edge| encloses(edge, inner))
+        {
             return;
         }
-        if let Some(slot) = self.edges.get_mut(index) {
-            *slot = None;
-        }
+        self.edges.set(self.cells.len(), index, None);
         if let Some(cell) = self.cells.get_mut(index) {
             paint(cell);
         }
     }
 
     fn edge(&mut self, col: usize, row: usize, owner: Rect) {
-        if let Some(slot) = self
-            .index(col, row)
-            .and_then(|index| self.edges.get_mut(index))
-        {
-            *slot = Some(frame(owner));
+        if let Some(index) = self.index(col, row) {
+            self.edges.set(self.cells.len(), index, Some(frame(owner)));
         }
     }
 
@@ -332,17 +351,17 @@ fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
     }
 }
 
-pub(crate) fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
+pub(crate) fn cell_text(grapheme: &str, pad: usize) -> Glyph {
     if pad == 0 {
         crate::app::cell_glyph(grapheme).into()
     } else {
-        SmolStr::new_inline(CONTINUES)
+        Glyph::inline(CONTINUES)
     }
 }
 
 type CellArea = ((usize, usize), (usize, usize), Rect);
 
-type CellEdge = [i32; 4];
+use edges::CellEdge;
 
 #[allow(
     clippy::cast_possible_truncation,
@@ -366,6 +385,12 @@ fn encloses(outer: CellEdge, inner: CellEdge) -> bool {
 
 fn cell_edge(value: f32) -> usize {
     floor_cell(value + 0.5)
+}
+
+fn snapped_span(start: f32, extent: f32) -> (usize, usize) {
+    let first = cell_edge(start);
+    let end = cell_edge(start + extent);
+    (first, end.saturating_sub(first))
 }
 
 #[allow(

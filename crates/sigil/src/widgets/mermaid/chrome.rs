@@ -8,7 +8,7 @@ use crate::reactive::{Signal, derived, signal, timeout};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
 use crate::style::{ControlSize, Paint, Radius, Token, space};
-use crate::widgets::{ButtonBuilder, icon_button};
+use crate::widgets::{ButtonBuilder, button};
 use crate::widgets::{Layout, Widget};
 
 use super::{Drawn, diagram_name, fit, lightbox, scrolled};
@@ -145,7 +145,7 @@ impl Chrome {
 }
 
 fn tool(icon: Icon, activate: impl Fn() + 'static) -> ButtonBuilder {
-    icon_button(icon, activate).size(ControlSize::Compact)
+    button(icon).activate(activate).size(ControlSize::Compact)
 }
 
 fn code_view(source: &str) -> NodeBuilder {

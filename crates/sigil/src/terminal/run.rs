@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 
 use crate::events::Event;
 use crate::kernel::IntoNode;
-use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
 
 use crate::profile;
@@ -129,9 +128,13 @@ impl Host {
         cols: u16,
         rows: u16,
     ) -> Result<Grid, Error> {
-        Screen::new(cols, rows)
-            .frame(self, events, (cols, rows))
-            .cloned()
+        let mut screen = self.take_cell_screen().unwrap_or_else(|| {
+            self.reset_emit();
+            Box::new(Screen::new(cols, rows))
+        });
+        let out = screen.grid_frame(self, events, (cols, rows));
+        self.put_cell_screen(screen);
+        out
     }
 
     /// Writes the ANSI bytes that turn the `prev` grid into the `next` grid.
@@ -305,18 +308,11 @@ pub(super) fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> us
 }
 
 fn idle(settle: bool, woke: usize, term: &Term, pending: bool) -> bool {
-    !settle && woke == 0 && !frame_due() && !term.pending() && !pending
+    !settle && woke == 0 && !Host::frame_due() && !term.pending() && !pending
 }
 
 fn due(deadline: Option<Instant>) -> bool {
     deadline.is_some_and(|due| due <= Instant::now())
-}
-
-fn frame_due() -> bool {
-    Runtime::frame_dirty()
-        || crate::animation::runtime::active_count() > 0
-        || crate::animation::runtime::running_clocks() > 0
-        || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
 pub(super) fn turn_wait(
@@ -325,7 +321,7 @@ pub(super) fn turn_wait(
     last: Instant,
     status: Option<Instant>,
 ) -> (Option<Duration>, bool) {
-    if woke > 0 || frame_due() {
+    if woke > 0 || Host::frame_due() {
         return (Some(tick.saturating_sub(last.elapsed())), false);
     }
     let next = match (crate::reactive::next_interval_deadline(), status) {

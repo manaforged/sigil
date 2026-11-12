@@ -108,11 +108,7 @@ impl Grid {
             ) {
                 cells.clone_from_slice(next);
             }
-            if let (Some(edges), Some(next)) =
-                (self.edges.get_mut(range.clone()), from.edges.get(range))
-            {
-                edges.copy_from_slice(next);
-            }
+            self.edges.copy_range(self.cells.len(), &from.edges, range);
         }
         self.images.clone_from(&from.images);
         self.graphics = from.graphics;
@@ -136,9 +132,7 @@ fn prepare(fresh: &mut Grid, grid: &Grid, mask: Mask, spans: &mut Vec<Range<usiz
             if let Some(cells) = fresh.cells.get_mut(range.clone()) {
                 cells.fill(Cell::blank());
             }
-            if let Some(edges) = fresh.edges.get_mut(range) {
-                edges.fill(None);
-            }
+            fresh.edges.clear_range(range);
         }
     }
     fresh.mask = Some(mask);
@@ -170,9 +164,8 @@ fn copy_cell(grid: &mut Grid, fresh: &Grid, (x, y): (usize, usize), glyphs: Glyp
         } else {
             false
         };
-    if let (Some(edge), Some(next)) = (grid.edges.get_mut(index), fresh.edges.get(index)) {
-        *edge = *next;
-    }
+    grid.edges
+        .set(grid.cells.len(), index, fresh.edges.get(index));
     copied
 }
 

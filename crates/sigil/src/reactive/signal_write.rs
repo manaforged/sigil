@@ -51,6 +51,13 @@ fn is_stale_running_subscription(
             .is_some_and(|slot| slot.prev_deps.contains(&signal) && !slot.deps.contains(&signal))
 }
 
+fn restamp(rt: &mut RuntimeState, signal: SignalKey) {
+    let stamp = rt.next_stamp();
+    if let Some(slot) = rt.signals.get_mut(signal) {
+        slot.stamp = stamp;
+    }
+}
+
 fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
     let written = rt.writer_level(signal);
     let Some(slot) = rt.signals.get_mut(signal) else {
@@ -86,11 +93,7 @@ impl<T: PartialEq + 'static> Signal<T> {
 
     #[track_caller]
     pub(crate) fn try_set(self, value: T) -> bool {
-        let writable = self.is_writable();
-        if writable {
-            self.set(value);
-        }
-        writable
+        self.when_writable(|| self.set(value))
     }
 }
 
@@ -115,6 +118,7 @@ impl<T: 'static> Signal<T> {
                 return (None, false);
             }
             let old = core::mem::replace(current, value);
+            restamp(rt, self.key);
             (Some(old), notify(rt, self.key))
         });
         drop(old);
@@ -131,9 +135,18 @@ impl<T: 'static> Signal<T> {
 
     #[track_caller]
     pub(crate) fn try_set_always(self, value: T) -> bool {
+        self.when_writable(|| self.set_always(value))
+    }
+
+    pub(crate) fn try_update(self, f: impl FnOnce(&mut T)) -> bool {
+        self.when_writable(|| self.update(f))
+    }
+
+    #[track_caller]
+    fn when_writable(self, write: impl FnOnce()) -> bool {
         let writable = self.is_writable();
         if writable {
-            self.set_always(value);
+            write();
         }
         writable
     }
@@ -152,7 +165,9 @@ impl<T: 'static> Signal<T> {
         let caller = Location::caller();
         let taken = with_rt(|rt| {
             assert_paint_safe(rt, "update");
-            take_value(rt, self.key, "update", caller)
+            let taken = take_value(rt, self.key, "update", caller);
+            restamp(rt, self.key);
+            taken
         });
         let mut guard = UpdateGuard::new(self.key, taken);
         f(guard

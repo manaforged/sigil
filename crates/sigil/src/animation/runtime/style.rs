@@ -1,5 +1,7 @@
 use std::cell::RefCell;
+use std::hash::{Hash as _, Hasher as _};
 
+use ahash::AHasher;
 use smallvec::SmallVec;
 
 use crate::animation::runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
@@ -156,6 +158,11 @@ fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
 impl AnimatorOverlay for StyleAnimator {
     fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
         let state = self.state.borrow();
+        if state.player.is_some() {
+            drop(state);
+            crate::style::animator_overlay::default_visit_layout_values(self, visit);
+            return;
+        }
         if !state.enabled {
             return;
         }
@@ -163,15 +170,13 @@ impl AnimatorOverlay for StyleAnimator {
             return;
         };
         for entry in &state.numeric {
-            if !entry.kind.affects_layout()
-                || previous
+            if entry.kind.affects_layout()
+                && previous
                     .numeric
                     .get(entry.kind as usize)
-                    .is_none_or(Option::is_none)
+                    .is_some_and(Option::is_some)
+                && let Some(value) = entry.signal.try_peek()
             {
-                continue;
-            }
-            if let Some(value) = entry.signal.try_peek() {
                 visit(entry.kind, value);
             }
         }
@@ -199,6 +204,18 @@ impl AnimatorOverlay for StyleAnimator {
         player
             .color(kind, state.underlying_color(kind))
             .or(transitioned)
+    }
+
+    fn cache_key(&self) -> u64 {
+        let state = self.state.borrow();
+        if state.player.is_some() {
+            drop(state);
+            return crate::style::animator_overlay::default_cache_key(self);
+        }
+        if !state.enabled || (state.numeric.is_empty() && state.colors.is_empty()) {
+            return 0;
+        }
+        transition_cache_key(&state)
     }
 
     fn update(&self, atoms: &[StyleAtom], theme: &Theme, tone: Tone, inherited_text: Color) {
@@ -347,6 +364,38 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     owner_by_id(node.owner, || {
         binding.update_animations(theme, tone, inherited_text, node.tag());
     });
+}
+
+fn transition_cache_key(state: &State) -> u64 {
+    let Some(previous) = state.previous.as_ref() else {
+        return 0;
+    };
+    let mut hasher = AHasher::default();
+    let mut active = false;
+    for entry in &state.numeric {
+        if previous
+            .numeric
+            .get(entry.kind as usize)
+            .is_some_and(Option::is_some)
+            && let Some(value) = entry.signal.try_peek()
+        {
+            entry.kind.hash(&mut hasher);
+            value.to_bits().hash(&mut hasher);
+            active = true;
+        }
+    }
+    for entry in &state.colors {
+        let targeted = previous
+            .colors
+            .get(entry.kind as usize)
+            .is_some_and(Option::is_some);
+        if targeted || entry.animators.iter().any(|animator| !animator.settled()) {
+            entry.kind.hash(&mut hasher);
+            read_color(entry).hash(&mut hasher);
+            active = true;
+        }
+    }
+    if active { hasher.finish() } else { 0 }
 }
 
 fn inherited_text(cx: &Cx, target: NodeId, theme: &Theme) -> Color {

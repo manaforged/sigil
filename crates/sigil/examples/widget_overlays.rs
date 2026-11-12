@@ -30,7 +30,7 @@ pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
         .gap(Space::None)
         .child(text("Page behind the sheet").nowrap())
         .child(
-            sheet(open)
+            modal(open).side(Side::Right).dismiss_on_backdrop(true)
                 .title("Details")
                 .child(text("A right-edge sheet.").nowrap()),
         )

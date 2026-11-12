@@ -52,9 +52,9 @@ fn is_installed() -> bool {
     NATIVE.with(|native| native.installed(|slot| slot.is_some()))
 }
 
-pub(crate) fn install(title: &str, hwnd: Option<isize>, wake: Wake) {
+pub(crate) fn install(title: &str, hwnd: Option<isize>, wake: impl FnOnce() -> Wake) {
     if !is_installed()
-        && let Err(error) = install_controls(title, hwnd, wake)
+        && let Err(error) = install_controls(title, hwnd, wake())
     {
         tracing::warn!("sigil-app: cannot install media controls: {error}");
     }

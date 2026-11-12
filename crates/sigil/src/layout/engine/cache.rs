@@ -24,9 +24,9 @@ impl LayoutEngine {
         }
     }
 
-    fn reactive_unchanged(&self, cx: &Cx) -> bool {
+    fn reactive_signature(&self, cx: &Cx) -> u64 {
         let _sig = crate::profile::span(crate::profile::Phase::LayoutSig);
-        reactive_layout_signature(cx, &self.reactive_layout) == self.last_reactive_sig
+        reactive_layout_signature(cx, &self.reactive_layout)
     }
 
     pub(super) fn resolve_cache_key(
@@ -55,8 +55,14 @@ impl LayoutEngine {
             if cx.has_specific_dirty() {
                 return CacheDecision::Miss(key(prev.input_signature));
             }
-            if prev.cx_generation == cx_generation && self.reactive_unchanged(cx) {
-                return CacheDecision::Hit;
+            if prev.cx_generation == cx_generation {
+                let reactive = self.reactive_signature(cx);
+                if reactive == self.last_reactive_sig {
+                    return CacheDecision::Hit;
+                }
+                if !cx.dirty_all() {
+                    return CacheDecision::Miss(key(prev.input_signature.wrapping_add(reactive | 1)));
+                }
             }
         }
         let signature = {

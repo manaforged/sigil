@@ -6,6 +6,7 @@
 )]
 
 use crate::geometry::Rect;
+use crate::renderer::SRGB_FORMAT;
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::scene::command::{DrawPath, Transform};
@@ -15,7 +16,6 @@ mod linear;
 use linear::Linearize;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-const SRGB_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 struct Gpu {
     device: wgpu::Device,

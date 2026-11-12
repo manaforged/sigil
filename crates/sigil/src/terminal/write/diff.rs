@@ -68,6 +68,9 @@ pub(crate) fn dirty(
         None => Box::new(0..next.rows()),
     };
     for row in rows {
+        if shift.is_some_and(|shift| shift.carries(row)) {
+            continue;
+        }
         let old = shift.map_or_else(|| Some(prev.row(row)), |shift| shift.source(prev, row));
         match old {
             Some(old) if same_row(old, next.row(row), caps) => {}

@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -44,9 +45,10 @@ pub(super) struct SliderRuntime {
     pub(super) glass: bool,
 }
 
-/// Builder of a slider.
+/// Builder of a slider; `T` is the value it edits, `f32` or a range.
 #[must_use]
-pub struct SliderBuilder {
+pub struct SliderBuilder<T = f32> {
+    value: PhantomData<fn() -> T>,
     runtime: SliderRuntime,
     on_change: Option<ValueChange>,
     label: Option<String>,
@@ -55,7 +57,7 @@ pub struct SliderBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-impl core::fmt::Debug for SliderBuilder {
+impl<T> core::fmt::Debug for SliderBuilder<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SliderBuilder")
             .field("runtime", &self.runtime)
@@ -86,7 +88,7 @@ pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
 pub fn range_slider(
     value: Signal<RangeInclusive<f32>>,
     range: RangeInclusive<f32>,
-) -> SliderBuilder {
+) -> SliderBuilder<RangeInclusive<f32>> {
     SliderBuilder::with_thumb(Thumb::Start(value), range)
 }
 
@@ -96,9 +98,27 @@ impl SliderBuilder {
         Self::with_thumb(Thumb::Only(value), range)
     }
 
+    /// Calls `change` with the value after each edit.
+    pub fn change(self, change: impl Fn(f32) + 'static) -> Self {
+        self.on_change(Rc::new(change))
+    }
+}
+
+impl SliderBuilder<RangeInclusive<f32>> {
+    /// Calls `change` with the whole range after either thumb moves.
+    pub fn change(self, change: impl Fn(RangeInclusive<f32>) + 'static) -> Self {
+        let (Thumb::Start(range) | Thumb::End(range)) = self.runtime.value else {
+            return self;
+        };
+        self.on_change(Rc::new(move |_| change(range.peek())))
+    }
+}
+
+impl<T> SliderBuilder<T> {
     fn with_thumb(value: Thumb, range: RangeInclusive<f32>) -> Self {
         let (start, end) = range.into_inner();
         Self {
+            value: PhantomData,
             runtime: SliderRuntime {
                 value,
                 range: SliderRange {
@@ -149,9 +169,8 @@ impl SliderBuilder {
         self
     }
 
-    /// Sets the change.
-    pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
-        self.on_change = Some(Rc::new(change));
+    fn on_change(mut self, change: ValueChange) -> Self {
+        self.on_change = Some(change);
         self
     }
 
@@ -196,7 +215,7 @@ impl SliderBuilder {
     }
 }
 
-builder_impls!([] SliderBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
+builder_impls!([T: 'static] SliderBuilder<T>: paint(style_accumulator), widget, states(style_accumulator), node);
 
 impl SliderRange {
     pub(super) fn span(self) -> f32 {
@@ -255,7 +274,7 @@ impl SliderRuntime {
     }
 }
 
-fn slider_node(builder: &SliderBuilder) -> NodeBuilder {
+fn slider_node<T>(builder: &SliderBuilder<T>) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
     let label = builder.label.clone().map(TextContent::Static);

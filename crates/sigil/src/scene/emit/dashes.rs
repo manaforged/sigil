@@ -140,8 +140,7 @@ fn pattern(style: BorderStyle, width: f32, length: f32) -> (SmallVec<[f32; 4]>, 
 }
 
 fn seed(width: f32, line: &Line) -> u64 {
-    let [r, g, b, a] = [line.color.r, line.color.g, line.color.b, line.color.a];
-    let color = u64::from(u32::from_le_bytes([r, g, b, a]));
+    let color = crate::fnv::rgba(line.color);
     let style = match line.style {
         BorderStyle::Solid => 0,
         BorderStyle::Dashed => 1,

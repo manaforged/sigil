@@ -1,8 +1,10 @@
 use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::{NodeEdges, dim_to_border_box, resolve_absolute_xy, stretched};
-use crate::layout::style_data::{Axes, Display, Length, Position};
+use crate::layout::resolve::{
+    NodeEdges, dim_to_border_box, is_positioned_absolute, resolve_absolute_xy, stretched,
+};
+use crate::layout::style_data::{Axes, Length};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
 use super::{FlexCtx, layout_item_subtree};
@@ -17,10 +19,7 @@ pub(super) fn place_absolutes(
     let Some(frame) = forest.boxed(node.id()) else {
         return Ok(());
     };
-    let padding_box = Axes {
-        width: (frame.w - edges.border.left - edges.border.right).max(0.0),
-        height: (frame.h - edges.border.top - edges.border.bottom).max(0.0),
-    };
+    let padding_box = edges.padding_box((frame.w, frame.h));
     let content = CbSize {
         w: (padding_box.width - edges.padding.left - edges.padding.right).max(0.0),
         h: (padding_box.height - edges.padding.top - edges.padding.bottom).max(0.0),
@@ -34,8 +33,7 @@ pub(super) fn place_absolutes(
         let Some(child) = forest.refer(*child_id) else {
             continue;
         };
-        let style = child.style();
-        if matches!(style.position, Position::Absolute) && !matches!(style.display, Display::None) {
+        if is_positioned_absolute(child.style()) {
             place_absolute(ctx, child, (cb_main, cb_cross), padding_box, border_origin)?;
         }
     }
@@ -51,7 +49,7 @@ fn place_absolute(
 ) -> Result<(), Error> {
     let style = child.style();
     let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
-    let edges = NodeEdges::build(style, cb_w);
+    let edges = child.edges(cb_w);
     let (w, h) = absolute_size(ctx, child, &edges, (cb_w, cb_h), padding_box);
     let (x, y) = resolve_absolute_xy(
         style,

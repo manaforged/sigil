@@ -1,5 +1,6 @@
 use wgpu::util::DeviceExt as _;
 
+use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::split_encoder::SplitEncoder;
 
@@ -99,6 +100,71 @@ impl QuadPipeline {
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
         pass.set_vertex_buffer(1, instances);
         pass.draw(0..VERTEX_COUNT, 0..count);
+    }
+}
+
+pub(crate) struct UniformLabels {
+    pub(crate) layout: &'static str,
+    pub(crate) group: &'static str,
+    pub(crate) pass: &'static str,
+}
+
+pub(crate) struct UniformQuad {
+    quad: QuadPipeline,
+    layout: wgpu::BindGroupLayout,
+    labels: UniformLabels,
+}
+
+impl UniformQuad {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        labels: UniformLabels,
+        desc: QuadDesc<'_>,
+    ) -> Self {
+        let layout = buffer_layout(
+            device,
+            labels.layout,
+            wgpu::ShaderStages::VERTEX,
+            wgpu::BufferBindingType::Uniform,
+        );
+        let groups = [Some(&layout)];
+        let quad = QuadPipeline::new(
+            device,
+            format,
+            QuadDesc {
+                groups: &groups,
+                ..desc
+            },
+        );
+        Self {
+            quad,
+            layout,
+            labels,
+        }
+    }
+
+    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
+        self.quad.format
+    }
+
+    pub(crate) fn paint_uploaded(
+        &self,
+        mut ctx: PaintCtx<'_>,
+        instances: UploadedRange,
+        uniform: wgpu::BufferBinding<'_>,
+    ) {
+        let bind_group = buffer_group(ctx.device, self.labels.group, &self.layout, uniform);
+        let Some(pass) = clipped_pass(&mut ctx, self.labels.pass) else {
+            return;
+        };
+        self.quad.draw(
+            pass,
+            &[&bind_group],
+            &[],
+            instances.buffer.slice(instances.bytes),
+            instances.count,
+        );
     }
 }
 

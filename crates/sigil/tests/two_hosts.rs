@@ -164,3 +164,38 @@ fn a_host_made_inside_another_does_not_take_its_announcement() {
         assert!(one.accessibility_text().contains("from one"));
     });
 }
+
+fn loads(label: &'static str) -> impl IntoNode {
+    let status = sigil::tasks::spawn(async move { Ok::<_, ()>(label) });
+    text(move || match status.get() {
+        sigil::tasks::Status::Ok(label) => format!("{label} loaded"),
+        _ => String::from("waiting"),
+    })
+}
+
+#[test]
+fn two_harnesses_each_get_their_own_task_results() {
+    let mut first = sigil_kittest::Harness::new(|| loads("first"));
+    let mut second = sigil_kittest::Harness::new(|| loads("second"));
+    first.expect_text("first loaded");
+    second.expect_text("second loaded");
+}
+
+#[test]
+fn a_task_run_while_another_harness_is_current_reports_to_its_own() {
+    let slot = Rc::new(Cell::new(None));
+    let export = Rc::clone(&slot);
+    let mut first = sigil_kittest::Harness::new(move || {
+        let job = sigil::tasks::task(|| async { Ok::<_, ()>("first") });
+        export.set(Some(job));
+        text(move || match job.status() {
+            sigil::tasks::Status::Ok(label) => format!("{label} reloaded"),
+            _ => String::from("idle"),
+        })
+    });
+    first.expect_text("idle");
+    let mut second = sigil_kittest::Harness::new(|| loads("second"));
+    slot.get().expect("task").run();
+    first.expect_text("first reloaded");
+    second.expect_text("second loaded");
+}

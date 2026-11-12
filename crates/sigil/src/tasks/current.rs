@@ -10,17 +10,24 @@ thread_local! {
     static HOST: RefCell<Option<SpawnParts>> = const { RefCell::new(None) };
 }
 
-pub(crate) fn install(parts: SpawnParts) {
-    HOST.with(|slot| *slot.borrow_mut() = Some(parts));
+pub(crate) fn install(parts: &SpawnParts) {
+    HOST.with(|slot| {
+        let mut host = slot.borrow_mut();
+        if !current(&host, &parts.dispatcher) {
+            *host = Some(parts.clone());
+        }
+    });
+}
+
+fn current(host: &Option<SpawnParts>, dispatcher: &Dispatcher) -> bool {
+    host.as_ref()
+        .is_some_and(|parts| parts.dispatcher.tx.same_channel(&dispatcher.tx))
 }
 
 pub(crate) fn uninstall(dispatcher: &Dispatcher) {
     HOST.with(|slot| {
         let mut host = slot.borrow_mut();
-        if host
-            .as_ref()
-            .is_some_and(|parts| parts.dispatcher.tx.same_channel(&dispatcher.tx))
-        {
+        if current(&host, dispatcher) {
             drop(host.take());
         }
     });
@@ -52,9 +59,8 @@ pub fn signal_writer<T>(signal: Signal<T>) -> SignalWriter<T>
 where
     T: Send + 'static,
 {
-    let owner = Owner::current().expect("signal_writer() called outside a reactive scope");
     let dispatcher = dispatcher().expect("signal_writer() requires AsyncRuntime::install_current");
-    SignalWriter::new(dispatcher, owner, signal)
+    SignalWriter::new(dispatcher, signal)
 }
 
 pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {

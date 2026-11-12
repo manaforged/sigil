@@ -14,7 +14,7 @@ use crate::renderer::damage::{GPU_BUDGET, culled};
 use crate::renderer::{CpuRenderer, SURFACE_CLEAR};
 use crate::scene::CommandScene;
 use crate::scene::damage::{Damage, scene_damage};
-use crate::style::srgb::decode;
+use crate::style::srgb::decode_rgb;
 use crate::style::{Color, Rgba};
 use crate::terminal::graphics::Mux;
 use crate::terminal::pixels::tiles::{Grid, Tiles};
@@ -210,7 +210,8 @@ fn render_regions(
 
 /// The opaque linear color of an sRGB byte color.
 fn opaque(color: Color) -> Rgba {
-    Rgba::new(decode(color.r), decode(color.g), decode(color.b), 1.0)
+    let [r, g, b] = decode_rgb(color);
+    Rgba::new(r, g, b, 1.0)
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -83,7 +83,7 @@ impl Screen {
         if full {
             self.fresh = false;
             self.stale = None;
-            self.prev.mirror(&self.grid);
+            self.prev.fit(&self.grid);
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
             crate::terminal::write::dirty(

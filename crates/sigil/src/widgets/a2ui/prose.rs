@@ -27,14 +27,17 @@ fn wrap(out: &mut String, marker: &str, body: &[Inline]) {
     out.push_str(marker);
 }
 
+pub(super) fn longest_tick_run(text: &str) -> usize {
+    text.bytes()
+        .fold((0, 0), |(longest, run), byte| {
+            let run = if byte == b'`' { run + 1 } else { 0 };
+            (longest.max(run), run)
+        })
+        .0
+}
+
 fn code(out: &mut String, body: &str) {
-    let mut longest = 0;
-    let mut run = 0;
-    for byte in body.bytes() {
-        run = if byte == b'`' { run + 1 } else { 0 };
-        longest = longest.max(run);
-    }
-    let fence = "`".repeat(longest + 1);
+    let fence = "`".repeat(longest_tick_run(body) + 1);
     let _ = write!(out, "{fence} {body} {fence}");
 }
 

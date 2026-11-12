@@ -125,21 +125,27 @@ impl TextFieldBuilder {
         self
     }
 
-    /// Sets the change.
+    /// Calls `f` with the text after each edit; each call adds a callback.
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.change = Some(Rc::new(f));
+        self.change = Some(chain(self.change.take(), f));
         self
     }
 
-    /// Sets the submit.
+    /// Calls `f` with the text when Enter is pressed; each call adds a callback.
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.submit = Some(Rc::new(f));
+        self.submit = Some(chain(self.submit.take(), f));
         self
     }
 
-    /// Sets the blur.
+    /// Calls `f` when the field loses focus; each call adds a callback.
     pub fn blur(mut self, f: impl Fn() + 'static) -> Self {
-        self.blur = Some(Rc::new(f));
+        self.blur = Some(match self.blur.take() {
+            Some(before) => Rc::new(move || {
+                before();
+                f();
+            }),
+            None => Rc::new(f),
+        });
         self
     }
 
@@ -231,6 +237,16 @@ impl TextFieldBuilder {
         let node = caller_style(node, self.style_accumulator);
         let overrides = std::mem::take(&mut self.layout_overrides);
         (overrides.finish(node.with(field_layout(width))), runtime)
+    }
+}
+
+fn chain(before: Option<TextChange>, f: impl Fn(&str) + 'static) -> TextChange {
+    match before {
+        Some(before) => Rc::new(move |text| {
+            before(text);
+            f(text);
+        }),
+        None => Rc::new(f),
     }
 }
 

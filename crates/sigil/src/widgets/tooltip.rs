@@ -255,6 +255,7 @@ fn build_bubble(
         gap: POPUP_GAP,
     });
     let mut bubble = surface(Role::Tooltip)
+        .hittable(false)
         .label(description.to_owned())
         .layout(
             LayoutStyle::flex_column()
@@ -271,12 +272,14 @@ fn build_bubble(
         .class(BUBBLE_BASE)
         .child(
             text(label.to_owned())
+                .hittable(false)
                 .class("text-sm")
                 .class(Token::OnSurface.text()),
         );
     if let Some(keys) = shortcut.filter(|s| !s.is_empty()) {
         bubble = bubble.child(
             text(keys.to_owned())
+                .hittable(false)
                 .class("text-xs")
                 .class(Token::OnSurfaceMuted.text()),
         );

@@ -10,8 +10,6 @@ const WAVE_AMPLITUDE: f32 = 0.75;
 const WAVE_MIN_PERIOD: f32 = 1.0;
 #[cfg(terminal_host)]
 const WAVE_PERIOD_PER_REACH: f32 = 4.0;
-#[cfg(terminal_host)]
-const TAU: f32 = std::f32::consts::TAU;
 
 /// The position and size of a text decoration.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -34,7 +32,7 @@ impl DecorationGeometry {
     #[must_use]
     pub(crate) fn wave_y(&self, x: f32) -> f32 {
         self.amplitude
-            .mul_add((x / self.period * TAU).sin(), self.center)
+            .mul_add((x / self.period * std::f32::consts::TAU).sin(), self.center)
     }
 
     /// Returns the line.

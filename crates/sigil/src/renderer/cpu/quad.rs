@@ -28,7 +28,7 @@ use crate::renderer::sprite_atlas::{
 
 use super::bound::CpuBound;
 use super::pattern::{PatternPlacement, shader};
-use super::shapes::{Brush, decode, encode_byte, stored};
+use super::shapes::{Brush, decode, encode_byte, stored, unit};
 #[cfg(feature = "kittest")]
 use super::sprite_tint::tint;
 
@@ -60,7 +60,7 @@ pub(super) fn from_rgba8(width: u32, height: u32, rgba: &[u8]) -> Option<Pixmap>
     let (dst_px, _) = pixmap.data_mut().as_chunks_mut::<4>();
     let (src_px, _) = rgba.as_chunks::<4>();
     for (dst, src) in dst_px.iter_mut().zip(src_px) {
-        let alpha = f32::from(src[3]) / 255.0;
+        let alpha = unit(src[3]);
         for (d, s) in dst.iter_mut().zip(src).take(3) {
             *d = stored(decode(*s), alpha);
         }
@@ -325,7 +325,7 @@ fn blit(
 }
 
 fn over(dst: &mut [u8; 4], src: [u8; 4]) {
-    let keep = 1.0 - f32::from(src[3]) / 255.0;
+    let keep = 1.0 - unit(src[3]);
     for (d, s) in dst.iter_mut().zip(src).take(3) {
         *d = encode_byte(decode(*d).mul_add(keep, decode(s)));
     }

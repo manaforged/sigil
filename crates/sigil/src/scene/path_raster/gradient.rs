@@ -6,11 +6,11 @@ use tiny_skia::{
 use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop};
-use crate::scene::geometry::MIN_EXTENT;
+use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
 use crate::style::Color;
+use crate::style::srgb::unit;
 
 const TURN: f32 = 360.0;
-const QUARTER: f32 = 90.0;
 const SUBSTEPS: u8 = 8;
 
 /// The tiny-skia shader for `gradient` and the color space to blend it in.
@@ -23,7 +23,7 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
         ColorSpace::Gamma2
     };
     if let [only] = gradient.stops.as_slice() {
-        return Some((Shader::SolidColor(color(only.color, opacity)), space));
+        return Some((Shader::SolidColor(ts_color(only.color, opacity)), space));
     }
     let ([first, last], stops) = gradient.spread();
     let mode = if gradient.repeat_span().is_some() {
@@ -38,7 +38,7 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
     };
     let stops = stops
         .iter()
-        .map(|stop| TsStop::new(stop.offset, color(stop.color, opacity)))
+        .map(|stop| TsStop::new(stop.offset, ts_color(stop.color, opacity)))
         .collect();
     let shader = match gradient.kind {
         GradientKind::Linear { start, end } => {
@@ -60,7 +60,7 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
             last * TURN,
             stops,
             mode,
-            around(center).pre_rotate(angle - QUARTER),
+            around(center).pre_rotate(angle - QUARTER_TURN_DEG),
         ),
     }?;
     Some((shader, space))
@@ -83,10 +83,10 @@ fn dense(stops: &[GradientStop]) -> Vec<GradientStop> {
     out
 }
 
-fn color(color: Color, opacity: f32) -> TsColor {
-    let alpha = (f32::from(color.a) / 255.0 * opacity).clamp(0.0, 1.0);
-    let channel = |value: u8| f32::from(value) / 255.0;
-    TsColor::from_rgba(channel(color.r), channel(color.g), channel(color.b), alpha)
+/// Converts a color under `opacity` to a tiny-skia color with straight alpha.
+pub(crate) fn ts_color(color: Color, opacity: f32) -> TsColor {
+    let alpha = (unit(color.a) * opacity).clamp(0.0, 1.0);
+    TsColor::from_rgba(unit(color.r), unit(color.g), unit(color.b), alpha)
         .unwrap_or(TsColor::TRANSPARENT)
 }
 

@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use tiny_skia::Pixmap;
 
 use crate::profile::{self, Phase};
-use crate::terminal::graphics::{CHUNK, Mux, base64, write_mux};
+use crate::terminal::graphics::{Mux, write_kitty_chunks, write_mux};
 
 const IMAGE: u32 = 0x5167_0001;
 /// The side of a tile in pixels; a tile covers whole cells.
@@ -128,22 +128,11 @@ impl Tile {
 
     fn write(&self, out: &mut Vec<u8>, id: u32, png: &[u8], mux: Option<Mux>) -> io::Result<()> {
         write!(out, "\x1b[{};{}H", self.top + 1, self.left + 1)?;
-        let data = base64(png);
-        let chunks: Vec<&[u8]> = data.as_bytes().chunks(CHUNK).collect();
-        for (index, chunk) in chunks.iter().enumerate() {
-            let more = u8::from(index + 1 < chunks.len());
-            let head = if index == 0 {
-                format!(
-                    "a=T,f=100,i={id},p=1,q=2,C=1,z=1,c={},r={},m={more}",
-                    self.cols, self.rows
-                )
-            } else {
-                format!("m={more}")
-            };
-            let body = std::str::from_utf8(chunk).unwrap_or_default();
-            write_mux(out, &format!("\x1b_G{head};{body}\x1b\\"), mux)?;
-        }
-        Ok(())
+        let head = format!(
+            "a=T,f=100,i={id},p=1,q=2,C=1,z=1,c={},r={}",
+            self.cols, self.rows
+        );
+        write_kitty_chunks(out, &head, png, mux)
     }
 }
 

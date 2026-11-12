@@ -20,41 +20,30 @@ pub(crate) trait KeySet<K>: Extend<K> {
     fn is_blank(&self) -> bool;
 }
 
-impl<K: Eq + Hash> KeySet<K> for HashSet<K> {
-    fn holds(&self, key: &K) -> bool {
-        self.contains(key)
-    }
-    fn put(&mut self, key: K) {
-        self.insert(key);
-    }
-    fn take(&mut self, key: &K) -> bool {
-        self.remove(key)
-    }
-    fn wipe(&mut self) {
-        self.clear();
-    }
-    fn is_blank(&self) -> bool {
-        self.is_empty()
-    }
+macro_rules! impl_key_set {
+    ($ty:ident: $($bound:tt)+) => {
+        impl<K: $($bound)+> KeySet<K> for $ty<K> {
+            fn holds(&self, key: &K) -> bool {
+                self.contains(key)
+            }
+            fn put(&mut self, key: K) {
+                self.insert(key);
+            }
+            fn take(&mut self, key: &K) -> bool {
+                self.remove(key)
+            }
+            fn wipe(&mut self) {
+                self.clear();
+            }
+            fn is_blank(&self) -> bool {
+                self.is_empty()
+            }
+        }
+    };
 }
 
-impl<K: Ord> KeySet<K> for BTreeSet<K> {
-    fn holds(&self, key: &K) -> bool {
-        self.contains(key)
-    }
-    fn put(&mut self, key: K) {
-        self.insert(key);
-    }
-    fn take(&mut self, key: &K) -> bool {
-        self.remove(key)
-    }
-    fn wipe(&mut self) {
-        self.clear();
-    }
-    fn is_blank(&self) -> bool {
-        self.is_empty()
-    }
-}
+impl_key_set!(HashSet: Eq + Hash);
+impl_key_set!(BTreeSet: Ord);
 
 pub(crate) fn only<K: Copy>(set: &mut impl KeySet<K>, anchor: &mut Option<K>, key: K) {
     set.wipe();

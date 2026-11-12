@@ -298,10 +298,8 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
         dispose_if_live(generation);
         return;
     }
-    let mut owners: SmallVec<[Owner; 4]> = fresh
-        .iter()
-        .filter_map(|id| cx.owner_for_node.get(id).copied())
-        .collect();
+    let mut owners: SmallVec<[Owner; 4]> =
+        fresh.iter().filter_map(|id| cx.component(*id)).collect();
     owners.sort_unstable();
     owners.dedup();
     if owners.is_empty() {

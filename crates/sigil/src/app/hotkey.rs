@@ -58,9 +58,10 @@ pub fn unregister(shortcut: &Shortcut) -> AppResult<bool> {
     Ok(true)
 }
 
-pub(crate) fn install(wake: Wake) {
-    let sink = NATIVE.with(|native| native.sink(wake));
-    GlobalHotKeyEvent::set_event_handler(Some(sink));
+pub(crate) fn install(wake: impl Fn() -> Wake) {
+    if let Some(sink) = NATIVE.with(|native| native.sink_once(&wake)) {
+        GlobalHotKeyEvent::set_event_handler(Some(sink));
+    }
 }
 
 pub(crate) fn pump() {

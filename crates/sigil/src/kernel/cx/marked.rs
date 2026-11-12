@@ -1,19 +1,40 @@
-use ahash::AHashSet;
 use smallvec::SmallVec;
 
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::{Popup, ViewportOverlay};
 use crate::style::StyleBinding;
 
+const COMPACT_FROM: usize = 1024;
+
 #[derive(Default)]
 pub(crate) struct Marked {
-    ids: AHashSet<NodeId>,
+    ids: Vec<NodeId>,
+    limit: usize,
     rescan: bool,
 }
 
 impl Marked {
+    pub(super) fn fresh() -> Self {
+        Self {
+            rescan: true,
+            ..Self::default()
+        }
+    }
+
     pub(super) fn touch(&mut self, id: NodeId) {
-        self.ids.insert(id);
+        if self.rescan || self.ids.last() == Some(&id) {
+            return;
+        }
+        self.ids.push(id);
+        if self.ids.len() > self.limit.max(COMPACT_FROM) {
+            self.compact();
+            self.limit = self.ids.len().saturating_mul(2);
+        }
+    }
+
+    fn compact(&mut self) {
+        self.ids.sort_unstable();
+        self.ids.dedup();
     }
 
     #[cfg(feature = "kittest")]
@@ -39,11 +60,12 @@ impl Cx {
         if core::mem::take(&mut marked.rescan) {
             for root in self.roots().iter().copied() {
                 self.visit_preorder(root, |id, _| {
-                    marked.ids.insert(id);
+                    marked.ids.push(id);
                 });
             }
         }
         marked.ids.retain(|id| self.get(*id).is_some_and(is_marked));
+        marked.compact();
         let mut hits: Vec<(SmallVec<[usize; 16]>, NodeId)> = marked
             .ids
             .iter()

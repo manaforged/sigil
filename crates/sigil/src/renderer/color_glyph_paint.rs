@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::sync::Arc;
+
+use ahash::AHashMap;
 
 use crate::cache::Bounded;
 use crate::geometry::{Point, Rect};
@@ -32,25 +33,25 @@ pub(crate) fn emit_color_glyphs(
         return;
     }
     let target = GlyphTarget { id, rect, opacity };
-    for glyph in para.rendered_glyphs() {
-        emit_one(scene, &target, &glyph, &color_fonts);
+    for glyph in para.rendered_glyphs_slice() {
+        emit_one(scene, &target, glyph, &color_fonts);
     }
 }
 
 type ColorFontEntry = (Arc<Vec<u8>>, u32);
 type ColorFont = Option<ColorFontEntry>;
-type ColorFonts = HashMap<u64, ColorFontEntry>;
+type ColorFonts = AHashMap<u64, ColorFontEntry>;
 const RASTER_CAP: usize = 1_024;
 
 type RasterCacheMap = Bounded<(u64, u32, u32, [u32; 4]), Option<ImageSource>, RASTER_CAP>;
 
 thread_local! {
-    static FONTS: RefCell<HashMap<u64, ColorFont>> = RefCell::new(HashMap::new());
+    static FONTS: RefCell<AHashMap<u64, ColorFont>> = RefCell::new(AHashMap::new());
     static RASTERS: RefCell<RasterCacheMap> = RefCell::new(Bounded::default());
 }
 
 fn collect_color_fonts(para: &Paragraph) -> ColorFonts {
-    let mut color_fonts = HashMap::new();
+    let mut color_fonts = AHashMap::new();
     FONTS.with(|cell| {
         let mut fonts = cell.borrow_mut();
         para.for_each_font_arc(|font_id, bytes, index| {

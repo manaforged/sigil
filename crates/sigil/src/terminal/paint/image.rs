@@ -1,9 +1,9 @@
 use crate::kernel::ImageSource;
 use crate::style::Color;
 use crate::terminal::graphics::{Placement, sextant, sextants_window};
-use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink};
+use crate::terminal::paint::Glyph;
 
 const SOLID: u32 = 51;
 const PEAK: u32 = 128;
@@ -70,7 +70,7 @@ impl Grid {
                     else {
                         continue;
                     };
-                    cell.text = SmolStr::new(&text);
+                    cell.text = Glyph::new(&text);
                     cell.fg = fg;
                 }
             }
@@ -91,7 +91,7 @@ impl Grid {
             for (dx, (glyph, fg, bg)) in line.into_iter().enumerate() {
                 if let Some(cell) = self.cell_mut(col + dx, row + dy) {
                     *cell = Cell {
-                        text: SmolStr::from(glyph.to_string()),
+                        text: Glyph::new(&glyph.to_string()),
                         fg: Ink::Exact(fg),
                         bg: Ink::Exact(bg),
                         ..Cell::blank()
@@ -130,7 +130,7 @@ impl Grid {
 
     fn ink(&mut self, col: usize, row: usize, glyph: char, fg: Color) {
         if let Some(cell) = self.cell_mut(col, row) {
-            cell.text = SmolStr::from(glyph.to_string());
+            cell.text = Glyph::new(&glyph.to_string());
             cell.fg = Ink::Exact(fg);
         }
     }

@@ -20,14 +20,16 @@ pub(super) fn apply_reactive_position(
     node: &crate::kernel::Node,
     intent: LayoutStyle,
 ) -> LayoutStyle {
-    let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() else {
+    if node
+        .get_extension::<crate::layout::ReactivePosition>()
+        .is_none()
+    {
         return intent;
-    };
-    let (x, y) = pos.get();
+    }
     intent
         .position(crate::layout::style_data::Position::Absolute)
-        .inset_left(x)
-        .inset_top(y)
+        .inset_left(0.0)
+        .inset_top(0.0)
 }
 
 pub(super) fn apply_style_overlay(

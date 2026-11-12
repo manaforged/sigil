@@ -88,6 +88,9 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         let glyphs = paragraph.rendered_glyphs_in(text_run.start, text_run.end);
         scene.draw_glyph_run_for_node(id, run.clone().with_glyphs(color, glyphs));
     }
+    if at == 0 {
+        return run;
+    }
     base.extend(paragraph.rendered_glyphs_in(at, usize::MAX));
     let color = run.color();
     run.with_glyphs(color, base)

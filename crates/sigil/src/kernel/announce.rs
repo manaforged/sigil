@@ -56,11 +56,11 @@ impl Cx {
         if let Some(id) = self.live_region {
             return id;
         }
-        let a11y = A11yProps {
-            live: Some(politeness),
+        let mut a11y = A11yProps {
             hittable: false,
             ..A11yProps::default()
         };
+        a11y.live = Some(politeness);
         let owner = Owner::new("sigil-kernel::live-region", Some(self.root_owner()));
         let id = owner.with(|| {
             NodeId(
@@ -68,7 +68,7 @@ impl Cx {
                     .insert(Node::new(NodeType::Container, a11y, owner)),
             )
         });
-        self.owner_for_node.insert(id, owner);
+        self.set_component(id, owner);
         self.roots.push(id);
         self.dirty.insert(id);
         self.mutation_generation = self.mutation_generation.wrapping_add(1);

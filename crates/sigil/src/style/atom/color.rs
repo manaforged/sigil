@@ -14,6 +14,23 @@ pub struct Color {
 }
 
 impl Color {
+    /// Creates an opaque color from 8-bit channels.
+    #[must_use]
+    pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Self {
+            r,
+            g,
+            b,
+            a: u8::MAX,
+        }
+    }
+
+    /// Creates a color from 8-bit channels and alpha.
+    #[must_use]
+    pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
+
     /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.
     #[must_use]
     pub(crate) fn over(self, under: Self) -> Self {

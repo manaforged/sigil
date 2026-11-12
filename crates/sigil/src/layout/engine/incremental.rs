@@ -90,7 +90,7 @@ impl LayoutEngine {
             .map(|id| {
                 self.published_result
                     .get(id.key())
-                    .map_or((0.0, 0.0), |res| (res.rect().origin.x, res.rect().origin.y))
+                    .map_or((0.0, 0.0), |res| (res.solved_origin().x, res.solved_origin().y))
             })
             .collect();
         self.remeasure_roots(roots, root, available)?;
@@ -132,6 +132,7 @@ impl LayoutEngine {
         }
         let handle = self.handle(id).ok()?;
         let saved = self.drive.stored_box(handle);
+        let saved_frame = self.drive.frame_for(handle).unwrap_or(0);
         let probe = saved
             .filter(|_| wrap && self.drive.style_for(handle).is_some_and(width_is_own))
             .map(|cb| cb.w);
@@ -144,7 +145,7 @@ impl LayoutEngine {
             .ok()?;
         let measured = self.drive.computed_box(handle);
         if let Some(saved) = saved {
-            drop(self.drive.write_box(handle, saved));
+            drop(self.drive.restore_box(handle, saved, saved_frame));
         }
         measured.map(|cb| (probe.map(f32::to_bits), cb.w.to_bits(), cb.h.to_bits()))
     }
@@ -217,21 +218,16 @@ impl LayoutEngine {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         let Some(next) = node
             .get_extension::<crate::layout::ReactivePosition>()
-            .copied()
             .map(crate::layout::ReactivePosition::get)
         else {
             return Ok(());
         };
-        let prior = self.positions.get(id.key()).copied().unwrap_or(next);
-        if prior == next {
+        if self.positions.get(id.key()).copied() == Some(next) {
             return Ok(());
         }
         self.sync_one_node(cx, id)?;
-        let handle = self.handle(id)?;
-        self.drive
-            .translate_subtree(handle, next.0 - prior.0, next.1 - prior.1)?;
-        self.positions.insert(id.key(), next);
-        self.attach_subtree_results(cx, id)
+        self.republish_bounds(cx);
+        Ok(())
     }
 
     fn containment_roots(

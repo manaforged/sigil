@@ -12,7 +12,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 
 `markdown_inline(&str) -> TextBuilder` renders one paragraph of inline spans as a single wrapped text node. Code spans keep their background, and the caller's `Paint` methods style the rest of the paragraph.
 
-`markdown_edit(Signal<String>)` is the editor split: `text_edit(source)` beside `markdown(source)` inside a horizontal `splitter`, each pane starting at 360 px. The preview follows the signal live. `.disabled(Signal<bool>)` disables the editor pane.
+`markdown_edit(Signal<String>)` is the editor split: `text_edit(source)` beside `markdown(source)` inside a horizontal `splitter`, each pane starting at 360 px. The preview follows the signal live. `.disabled(impl Reactive<bool>)` disables the editor pane.
 
 ## html
 
@@ -28,7 +28,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 - `.diagnostics(Signal<Vec<Diagnostic>>)`: `Diagnostic { line, start, end, severity }` tints a line range by `Severity` (Hint/Info → info, Warning → warn, Error → error).
 - `.key_handler(Fn(&mut KeyEvent))`: a key handler that runs before the built-in editing keys. Call `event.stop_propagation()` to replace a built-in binding. Installing one traps Tab for the handler instead of moving focus.
 - `.row_height(px)`: defaults to 18 px, or one cell on a terminal.
-- `.disabled(Signal<bool>)`: ignores keys, removes the editor from the focus order, and paints it at the disabled opacity.
+- `.disabled(impl Reactive<bool>)`: ignores keys, removes the editor from the focus order, and paints it at the disabled opacity.
 
 The widget edits the `lines`, `caret`, and `.selection()` signals through the `text_edit` controller: typing, Enter, Backspace, Delete, arrow keys, Home, End, Page Up, Page Down, Shift selection, word motion, clipboard, undo and redo, and IME commit.
 

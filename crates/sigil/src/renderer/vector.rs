@@ -9,7 +9,7 @@ use crate::scene::command::{
     DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCmd, PathPaint, PathStroke,
     StrokeCap, StrokeJoin, Transform,
 };
-use crate::scene::geometry::MIN_EXTENT;
+use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
 use crate::style::Color;
 
 pub(crate) trait PathSink {
@@ -20,53 +20,37 @@ pub(crate) trait PathSink {
     fn stroke(&mut self, path: &BezPath, stroke: Stroke);
 }
 
-impl PathSink for vello_cpu::RenderContext {
-    fn transform(&mut self, transform: Affine) {
-        self.set_transform(transform);
-    }
+macro_rules! impl_path_sink {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl PathSink for $ty {
+                fn transform(&mut self, transform: Affine) {
+                    self.set_transform(transform);
+                }
 
-    fn paint(&mut self, paint: PaintType) {
-        self.set_paint(paint);
-    }
+                fn paint(&mut self, paint: PaintType) {
+                    self.set_paint(paint);
+                }
 
-    fn paint_transform(&mut self, transform: Affine) {
-        self.set_paint_transform(transform);
-    }
+                fn paint_transform(&mut self, transform: Affine) {
+                    self.set_paint_transform(transform);
+                }
 
-    fn fill(&mut self, path: &BezPath, rule: Fill) {
-        self.set_fill_rule(rule);
-        self.fill_path(path);
-    }
+                fn fill(&mut self, path: &BezPath, rule: Fill) {
+                    self.set_fill_rule(rule);
+                    self.fill_path(path);
+                }
 
-    fn stroke(&mut self, path: &BezPath, stroke: Stroke) {
-        self.set_stroke(stroke);
-        self.stroke_path(path);
-    }
+                fn stroke(&mut self, path: &BezPath, stroke: Stroke) {
+                    self.set_stroke(stroke);
+                    self.stroke_path(path);
+                }
+            }
+        )+
+    };
 }
 
-impl PathSink for vello_gpu::Scene {
-    fn transform(&mut self, transform: Affine) {
-        self.set_transform(transform);
-    }
-
-    fn paint(&mut self, paint: PaintType) {
-        self.set_paint(paint);
-    }
-
-    fn paint_transform(&mut self, transform: Affine) {
-        self.set_paint_transform(transform);
-    }
-
-    fn fill(&mut self, path: &BezPath, rule: Fill) {
-        self.set_fill_rule(rule);
-        self.fill_path(path);
-    }
-
-    fn stroke(&mut self, path: &BezPath, stroke: Stroke) {
-        self.set_stroke(stroke);
-        self.stroke_path(path);
-    }
-}
+impl_path_sink!(vello_cpu::RenderContext, vello_gpu::Scene);
 
 pub(crate) fn record(sink: &mut impl PathSink, draw: &DrawPath, device: Transform, opacity: f32) {
     let path = outline(&draw.outline);
@@ -197,12 +181,10 @@ fn shape(kind: GradientKind, first: f32, last: f32) -> (Shape, Affine) {
             )
         }
         GradientKind::Conic { center, angle } => {
-            let turn = f64::from((angle - QUARTER).to_radians());
+            let turn = f64::from((angle - QUARTER_TURN_DEG).to_radians());
             let place = Affine::translate(point(center)) * Affine::rotate(turn);
-            (Shape::new_sweep((0.0, 0.0), first * TAU, last * TAU), place)
+            let tau = std::f32::consts::TAU;
+            (Shape::new_sweep((0.0, 0.0), first * tau, last * tau), place)
         }
     }
 }
-
-const QUARTER: f32 = 90.0;
-const TAU: f32 = std::f32::consts::TAU;

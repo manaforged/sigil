@@ -19,7 +19,7 @@ pub(crate) use encode::blocks_window;
 pub use encode::{blocks, png, sextants};
 pub(crate) use encode::{png_window, sextant, sextants_window};
 
-pub(super) const CHUNK: usize = 4096;
+const CHUNK: usize = 4096;
 const CACHE: usize = 16;
 
 /// An image placed on the cell grid.
@@ -294,21 +294,32 @@ fn kitty_transmit(
     source: &ImageSource,
     mux: Option<Mux>,
 ) -> io::Result<()> {
-    let data = base64(source.rgba());
-    let chunks: Vec<&[u8]> = data.as_bytes().chunks(CHUNK).collect();
-    for (index, chunk) in chunks.iter().enumerate() {
-        let more = u8::from(index + 1 < chunks.len());
-        let head = if index == 0 {
-            format!(
-                "a=t,f=32,s={},v={},i={id},q=2,m={more}",
-                source.width(),
-                source.height()
-            )
-        } else {
-            format!("m={more}")
-        };
+    let head = format!(
+        "a=t,f=32,s={},v={},i={id},q=2",
+        source.width(),
+        source.height()
+    );
+    write_kitty_chunks(out, &head, source.rgba(), mux)
+}
+
+pub(crate) fn write_kitty_chunks(
+    out: &mut impl Write,
+    first_head: &str,
+    payload: &[u8],
+    mux: Option<Mux>,
+) -> io::Result<()> {
+    let data = base64(payload);
+    let bytes = data.as_bytes();
+    let total = bytes.len().div_ceil(CHUNK);
+    for (index, chunk) in bytes.chunks(CHUNK).enumerate() {
+        let more = u8::from(index + 1 < total);
         let body = std::str::from_utf8(chunk).unwrap_or_default();
-        write_mux(out, &format!("\x1b_G{head};{body}\x1b\\"), mux)?;
+        let seq = if index == 0 {
+            format!("\x1b_G{first_head},m={more};{body}\x1b\\")
+        } else {
+            format!("\x1b_Gm={more};{body}\x1b\\")
+        };
+        write_mux(out, &seq, mux)?;
     }
     Ok(())
 }

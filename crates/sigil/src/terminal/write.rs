@@ -9,8 +9,8 @@ use crossterm::{cursor, queue};
 
 use crate::terminal::caps::{Capabilities, ColorDepth, Cursor, Erase};
 use crate::terminal::colour::paint;
+use crate::terminal::paint::Link;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
-use smol_str::SmolStr;
 
 mod diff;
 mod inline;
@@ -112,7 +112,7 @@ struct AnsiStyle {
     strike: bool,
     underline: Underline,
     underline_color: Option<Color>,
-    link: Option<SmolStr>,
+    link: Option<Link>,
 }
 
 impl AnsiStyle {
@@ -141,8 +141,7 @@ impl AnsiStyle {
                 .filter(|color| *color != Color::Reset),
             link: cell
                 .link
-                .clone()
-                .filter(|url| caps.hyperlinks && !url.chars().any(char::is_control)),
+                .filter(|url| caps.hyperlinks && !url.as_str().chars().any(char::is_control)),
         }
     }
 
@@ -221,9 +220,13 @@ fn cells(
         None
     };
     let stop = fill.as_ref().map_or(end, |(from, _)| *from);
+    let mut prior: Option<&Cell> = None;
     for cell in row_cells.iter().take(stop).skip(start) {
-        pen.pick(out, AnsiStyle::of(cell, caps))?;
+        if !prior.is_some_and(|prior| prior.styled_like(cell)) {
+            pen.pick(out, AnsiStyle::of(cell, caps))?;
+        }
         pen.line.push_str(&cell.text);
+        prior = Some(cell);
     }
     pen.flush(out)?;
     if let Some((_, paint)) = fill {
@@ -253,7 +256,10 @@ fn filled(
     if !reaches || paint.underline != Underline::None || paint.strike || paint.link.is_some() {
         return None;
     }
-    let blank = |cell: &Cell| cell.text == " " && AnsiStyle::of(cell, caps) == paint;
+    let last = span.last()?;
+    let blank = |cell: &Cell| {
+        cell.text == " " && (cell.styled_like(last) || AnsiStyle::of(cell, caps) == paint)
+    };
     let from = span
         .iter()
         .rposition(|cell| !blank(cell))
@@ -322,7 +328,7 @@ fn lines(out: &mut impl Write, prev: &AnsiStyle, next: &AnsiStyle) -> io::Result
     }
     if prev.link != next.link {
         match &next.link {
-            Some(url) => queue!(out, Print(format!("\x1b]8;;{url}\x1b\\")))?,
+            Some(url) => queue!(out, Print(format!("\x1b]8;;{}\x1b\\", url.as_str())))?,
             None => queue!(out, Print(CLOSE_LINK))?,
         }
     }

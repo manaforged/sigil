@@ -1,9 +1,8 @@
 use std::future::Future;
 use std::rc::Rc;
 
-use crate::reactive::Owner;
 use crate::reactive::{Signal, signal, untrack};
-use crate::tasks::current::host_parts;
+use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::spawn_into;
 use crate::tasks::status::Status;
 use crate::tasks::task::TaskHandle;
@@ -51,15 +50,11 @@ where
     F: Fn() -> Fut + 'static,
     Fut: Future<Output = Result<T, E>> + Send + 'static,
 {
-    let owner = Owner::current();
+    let scope = scope_parts("task");
     let start: Start<T, E> = Rc::new(move |status, current, id| {
-        let Some(owner) = owner else {
-            tracing::warn!(target: "sigil::tasks", caller = "task", "created outside a reactive scope; dropped the work");
-            return None;
-        };
-        let parts = host_parts("task")?;
+        let (owner, parts) = scope.as_ref()?;
         let (status, current) = (status.into_sendable(), current.into_sendable());
-        spawn_into(&parts, owner, make(), move |done| {
+        spawn_into(parts, *owner, make(), move |done| {
             if current
                 .into_signal()
                 .try_peek()

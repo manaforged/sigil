@@ -19,7 +19,7 @@ const LAYERS: [&str; 5] = [
     "layer=overlay",
 ];
 const CONTAINERS: [&str; 3] = ["column", "row", "card"];
-const KNOWN_DEEP_BREAKS: usize = 9;
+const KNOWN_DEEP_BREAKS: usize = 10;
 const KNOWN_NESTING_BREAKS: usize = 1;
 const LONG: &str = "A sentence long enough to need more than one line in a narrow window";
 

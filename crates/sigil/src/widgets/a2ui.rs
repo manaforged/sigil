@@ -58,13 +58,7 @@ fn fence(source: &str) -> String {
     } else {
         source.to_string()
     };
-    let mut longest = 0;
-    let mut run = 0;
-    for byte in shown.bytes() {
-        run = if byte == b'`' { run + 1 } else { 0 };
-        longest = longest.max(run);
-    }
-    let ticks = "`".repeat(longest.max(2) + 1);
+    let ticks = "`".repeat(prose::longest_tick_run(&shown).max(2) + 1);
     format!("{ticks}json\n{}\n{ticks}", shown.trim_end())
 }
 

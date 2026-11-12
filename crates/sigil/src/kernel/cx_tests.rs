@@ -59,7 +59,7 @@ fn replace_children_reparents_adopted_nodes_without_stale_handles() {
         "the surrendered child must leave a's child list"
     );
     assert!(
-        cx.dirty.contains(&a),
+        cx.dirty().any(|id| id == a),
         "the parent that lost a child must be marked dirty"
     );
     assert!(cx.remove(x));

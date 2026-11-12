@@ -53,5 +53,5 @@ kittest_pub! {
 #[cfg(feature = "kittest")]
 pub use reactive_children::schedule_keyed_rebuild;
 pub(crate) use reactive_children::schedule_keyed_rebuild_at;
-pub use semantics::{A11yProps, AccessibleName, FocusScopeKind, TextCursor};
+pub use semantics::{A11yDetail, A11yProps, AccessibleName, FocusScopeKind, TextCursor};
 pub use text::{TextBuilder, TextContent, text};
