@@ -220,9 +220,13 @@ fn cells(
         None
     };
     let stop = fill.as_ref().map_or(end, |(from, _)| *from);
+    let mut prior: Option<&Cell> = None;
     for cell in row_cells.iter().take(stop).skip(start) {
-        pen.pick(out, AnsiStyle::of(cell, caps))?;
+        if !prior.is_some_and(|prior| prior.styled_like(cell)) {
+            pen.pick(out, AnsiStyle::of(cell, caps))?;
+        }
         pen.line.push_str(&cell.text);
+        prior = Some(cell);
     }
     pen.flush(out)?;
     if let Some((_, paint)) = fill {
@@ -252,7 +256,10 @@ fn filled(
     if !reaches || paint.underline != Underline::None || paint.strike || paint.link.is_some() {
         return None;
     }
-    let blank = |cell: &Cell| cell.text == " " && AnsiStyle::of(cell, caps) == paint;
+    let last = span.last()?;
+    let blank = |cell: &Cell| {
+        cell.text == " " && (cell.styled_like(last) || AnsiStyle::of(cell, caps) == paint)
+    };
     let from = span
         .iter()
         .rposition(|cell| !blank(cell))

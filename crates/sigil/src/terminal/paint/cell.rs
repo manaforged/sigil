@@ -90,6 +90,13 @@ impl Cell {
         self.link.map(Link::as_str)
     }
 
+    pub(crate) fn styled_like(&self, other: &Self) -> bool {
+        Self {
+            text: other.text,
+            ..*self
+        } == *other
+    }
+
     /// Returns the blank cell.
     #[must_use]
     pub const fn blank() -> Self {
