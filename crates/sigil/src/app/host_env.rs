@@ -131,7 +131,7 @@ struct Scoped {
     layers: crate::widgets::PopupStacks,
     focus_requests: Vec<crate::kernel::NodeId>,
     announcements: std::collections::VecDeque<(String, crate::kernel::Live)>,
-    pending_theme: Option<crate::style::Theme>,
+    pending_theme: Option<Box<crate::style::Theme>>,
     #[cfg(feature = "dialog")]
     dialogs: Vec<super::dialog::layer::Request>,
 }
@@ -166,7 +166,7 @@ pub(super) struct HostEnv {
     viewport: Signal<LogicalSize>,
     pub(super) caps: HostCaps,
     pub(super) theme: Signal<crate::style::Theme>,
-    scoped: Rc<RefCell<Option<Scoped>>>,
+    scoped: Rc<RefCell<Option<Box<Scoped>>>>,
 }
 
 pub(crate) struct EnvGuard {
@@ -174,8 +174,8 @@ pub(crate) struct EnvGuard {
 }
 
 struct Home {
-    slot: Rc<RefCell<Option<Scoped>>>,
-    scoped: Scoped,
+    slot: Rc<RefCell<Option<Box<Scoped>>>>,
+    scoped: Box<Scoped>,
     caps: HostCaps,
     nested: bool,
 }
@@ -214,7 +214,7 @@ impl HostEnv {
             viewport,
             caps: HostCaps::window(),
             theme,
-            scoped: Rc::new(RefCell::new(Some(scoped))),
+            scoped: Rc::new(RefCell::new(Some(Box::new(scoped)))),
         }
     }
 
