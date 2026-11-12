@@ -48,7 +48,7 @@ impl Cx {
             instance_id: next_instance_id(),
             nodes: SlotMap::with_key(),
             dirty: AHashSet::new(),
-            dirty_all: false,
+            dirty_all: true,
             delta: FrameDelta::default(),
             delta_generation: 0,
             root_owner,
@@ -396,7 +396,9 @@ impl Cx {
     }
 
     fn mark_dirty(&mut self, id: NodeId) {
-        self.dirty.insert(id);
+        if !self.dirty_all {
+            self.dirty.insert(id);
+        }
         self.marked.get_mut().touch(id);
         self.delta.record(id, DeltaKind::Layout);
     }
