@@ -49,7 +49,7 @@ impl BlockSolver<'_> {
         padding_origin: Position2,
     ) -> Result<(), Error> {
         let style = child.style();
-        let edges = NodeEdges::build(style, inner_cb.width);
+        let edges = child.edges(inner_cb.width);
         let intent = SizeIntent::build(style, inner_cb, &edges);
         let provisional = Position2::new(
             padding_origin.x + edges.margin.left.unwrap_or(0.0),

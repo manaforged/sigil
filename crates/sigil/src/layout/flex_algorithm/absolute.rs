@@ -51,7 +51,7 @@ fn place_absolute(
 ) -> Result<(), Error> {
     let style = child.style();
     let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
-    let edges = NodeEdges::build(style, cb_w);
+    let edges = child.edges(cb_w);
     let (w, h) = absolute_size(ctx, child, &edges, (cb_w, cb_h), padding_box);
     let (x, y) = resolve_absolute_xy(
         style,

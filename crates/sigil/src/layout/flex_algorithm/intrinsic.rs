@@ -148,7 +148,7 @@ fn leaf_column_width(
         let (min, max) = item_min_max_main(child_style, own.cross(), inner_cross, &child_edges);
         widest = widest.max(clamp(cross.unwrap_or(0.0), min, max).max(0.0));
     }
-    Some(widest + NodeEdges::build(style, ctx.cb.w).inline_chrome())
+    Some(widest + node.edges(ctx.cb.w).inline_chrome())
 }
 
 pub(super) fn container_intrinsic_main(
@@ -191,7 +191,7 @@ fn content_main_from_children(
     cb_main: f32,
     cb_cross: f32,
 ) -> Option<f32> {
-    let edges = NodeEdges::build(style, ctx.cb.w);
+    let edges = node.edges(ctx.cb.w);
     let (chrome_main, _) = axes.chrome(&edges);
     let measured = inner_context(ctx, style, axes, cb_main, cb_cross);
     let (inner_main, _) = measured.cb.along(axes);
