@@ -92,7 +92,7 @@ impl Host {
         let dirty = Runtime::frame_dirty();
         let delta = self.cx().take_delta();
         #[cfg(not(any(host, debug_assertions)))]
-        drop(delta);
+        self.cx().reuse_delta(delta);
         let info = FrameInfo {
             dirty,
             animating,
@@ -107,6 +107,8 @@ impl Host {
         if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
             self.report_flaws();
         }
+        #[cfg(any(host, debug_assertions))]
+        self.cx().reuse_delta(info.delta);
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
         FrameOutput {

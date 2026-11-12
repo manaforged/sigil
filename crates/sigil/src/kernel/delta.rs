@@ -110,6 +110,15 @@ impl Cx {
         self.delta_generation = generation;
         delta
     }
+
+    pub(crate) fn reuse_delta(&mut self, mut spent: FrameDelta) {
+        spent.paint.clear();
+        spent.layout.clear();
+        let pending = std::mem::take(&mut self.delta);
+        spent.structure = pending.structure;
+        spent.absorb(pending);
+        self.delta = spent;
+    }
 }
 
 #[cfg(test)]
