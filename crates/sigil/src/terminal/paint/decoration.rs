@@ -185,8 +185,7 @@ fn tee(set: BorderGlyphs) -> (&'static str, &'static str) {
 impl Grid {
     pub(super) fn edged(&self, col: usize, row: usize) -> bool {
         self.index(col, row)
-            .and_then(|index| self.edges.get(index))
-            .is_some_and(Option::is_some)
+            .is_some_and(|index| self.edges.get(index).is_some())
     }
 }
 

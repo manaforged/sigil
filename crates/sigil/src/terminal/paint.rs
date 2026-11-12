@@ -9,6 +9,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 mod cell;
 mod decoration;
+mod edges;
 mod fill;
 mod glyph;
 mod image;
@@ -42,7 +43,7 @@ pub struct Grid {
     cols: usize,
     rows: usize,
     cells: Vec<Cell>,
-    edges: Vec<Option<CellEdge>>,
+    edges: edges::Edges,
     images: Vec<Placement>,
     graphics: bool,
     cursor: Option<(usize, usize)>,
@@ -59,7 +60,7 @@ impl Grid {
             cols,
             rows,
             cells: vec![Cell::blank(); cols.saturating_mul(rows)],
-            edges: vec![None; cols.saturating_mul(rows)],
+            edges: edges::Edges::default(),
             images: Vec::new(),
             graphics: false,
             cursor: None,
@@ -126,7 +127,7 @@ impl Grid {
     /// Clears every cell.
     pub fn reset(&mut self) {
         self.cells.fill(Cell::blank());
-        self.edges.fill(None);
+        self.edges.clear();
         self.images.clear();
         self.cursor = None;
     }
@@ -175,7 +176,6 @@ impl Grid {
         self.cells.clear();
         self.cells.resize(cols.saturating_mul(rows), fill);
         self.edges.clear();
-        self.edges.resize(cols.saturating_mul(rows), None);
     }
 
     /// Returns the cells of one row.
@@ -299,24 +299,22 @@ impl Grid {
     }
 
     fn fill_cell(&mut self, index: usize, inner: CellEdge, paint: &mut impl FnMut(&mut Cell)) {
-        let edge = self.edges.get(index).copied().flatten();
-        if edge.is_some_and(|edge| encloses(edge, inner)) {
+        if self
+            .edges
+            .get(index)
+            .is_some_and(|edge| encloses(edge, inner))
+        {
             return;
         }
-        if let Some(slot) = self.edges.get_mut(index) {
-            *slot = None;
-        }
+        self.edges.set(self.cells.len(), index, None);
         if let Some(cell) = self.cells.get_mut(index) {
             paint(cell);
         }
     }
 
     fn edge(&mut self, col: usize, row: usize, owner: Rect) {
-        if let Some(slot) = self
-            .index(col, row)
-            .and_then(|index| self.edges.get_mut(index))
-        {
-            *slot = Some(frame(owner));
+        if let Some(index) = self.index(col, row) {
+            self.edges.set(self.cells.len(), index, Some(frame(owner)));
         }
     }
 
@@ -363,7 +361,7 @@ pub(crate) fn cell_text(grapheme: &str, pad: usize) -> Glyph {
 
 type CellArea = ((usize, usize), (usize, usize), Rect);
 
-type CellEdge = [i32; 4];
+use edges::CellEdge;
 
 #[allow(
     clippy::cast_possible_truncation,
