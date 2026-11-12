@@ -6,7 +6,7 @@ members = [
     "crates/sign",
     "crates/kittest",
 ]
-exclude = ["fuzz"]
+exclude = ["benches/rivals", "fuzz"]
 default-members = ["crates/sigil", "crates/sigil-fonts", "crates/sign"]
 
 [workspace.package]

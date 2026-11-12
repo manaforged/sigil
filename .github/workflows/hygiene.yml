@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -58,16 +58,21 @@ jobs:
           }
           banned_paths='(^|/)\.DS_Store$|\.bak([.-].*)?$|\.(orig|rej|swp|swo)$|~$|(^|/)\.env(\..+)?$'
           allowed_env='(^|/)\.env\.(example|sample|template)$'
-          while IFS=$'\t' read -r -d '' meta path; do
-            if printf '%s\n' "$path" | grep -qiE "$banned_paths" && ! printf '%s\n' "$path" | grep -qiE "$allowed_env"; then
+          git ls-tree -r --name-only "$target" > "$RUNNER_TEMP/hygiene-paths"
+          if grep -iE "$banned_paths" "$RUNNER_TEMP/hygiene-paths" | grep -ivE "$allowed_env" > "$RUNNER_TEMP/hygiene-bad-paths"; then
+            while IFS= read -r path; do
               echo "::error::Tracked path $path is an ignored editor, backup, or environment file"
-              failed=1
-            fi
-            read -r _ type object <<<"$meta"
-            [ "$type" = blob ] || continue
-            git cat-file blob "$object" | strings > "$RUNNER_TEMP/hygiene-content"
-            scan "$RUNNER_TEMP/hygiene-content" "Repository content"
-          done < <(git ls-tree -r -z "$target")
+            done < "$RUNNER_TEMP/hygiene-bad-paths"
+            failed=1
+          fi
+          blob_status=0
+          git grep -q -a -iEf "$patterns" "$target" -- || blob_status=$?
+          if [ "$blob_status" -eq 0 ]; then
+            echo "::error::Repository content contains denied text"
+            failed=1
+          elif [ "$blob_status" -ne 1 ]; then
+            exit "$blob_status"
+          fi
           if [ -n "$BASE" ] && [[ ! "$BASE" =~ ^0+$ ]] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             range="$BASE..$target"
           elif previous=$(git describe --tags --abbrev=0 --match 'v*' "$target^" 2>/dev/null); then

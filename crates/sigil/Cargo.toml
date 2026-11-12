@@ -210,9 +210,11 @@ name = "exit_requests"
 [[test]]
 name = "shell_display_gate"
 harness = false
+required-features = ["kittest"]
 
 [[test]]
 name = "tasks_wasm"
+required-features = ["kittest"]
 
 [[bench]]
 name = "frame_cells"

@@ -5,7 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -13,27 +13,39 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: 0
+  CARGO_INCREMENTAL: "0"
 
 jobs:
-  publish:
+  package:
     if: github.repository == 'manaforged/sigil' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: tagged commit is on main
-        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-      - name: tag matches the workspace version and a dated changelog section
+      - name: Rust toolchain
+        run: rustup show active-toolchain
+      - name: qualify tag and package crates
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"$/\1/p' Cargo.toml)
-          if [ "${TAG#v}" != "$version" ]; then
-            echo "tag $TAG does not match workspace version $version" >&2
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            echo "tag $TAG is not v<semver>" >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          workspace_version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"$/\1/p' Cargo.toml)
+          if [ "$version" != "$workspace_version" ]; then
+            echo "tag $TAG does not match workspace version $workspace_version" >&2
+            exit 1
+          fi
+          git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null || \
+            git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "tag $TAG is on a commit that is not on main" >&2
             exit 1
           fi
           heading=$(grep -m 1 -E "^## \[?${version//./\\.}\]?( |$)" CHANGELOG.md || true)
@@ -47,24 +59,124 @@ jobs:
               exit 1
               ;;
           esac
-      - name: linux system libs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
+          rm -rf target/release-pkg dist
+          mkdir -p dist/crates
+          awk -v v="$version" '
+            /^## / { if (found) exit; split($2, h, /[ \t]/); if (h[1] == v || h[1] == "[" v "]") { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > dist/notes.md
+          if ! grep -q '[^[:space:]]' dist/notes.md; then
+            echo "CHANGELOG.md section for $version has no release notes" >&2
+            exit 1
+          fi
+          cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json, sys; [print(p["name"], p["version"]) for p in json.load(sys.stdin)["packages"] if p.get("publish") != []]' \
+            > dist/manifest.txt
+          cargo package --workspace --locked --no-verify --target-dir target/release-pkg
+          cp target/release-pkg/package/*.crate dist/crates/
+          count=0
+          while read -r name pkg_version; do
+            archive="dist/crates/${name}-${pkg_version}.crate"
+            if [ ! -f "$archive" ]; then
+              echo "missing packaged archive $archive" >&2
+              exit 1
+            fi
+            size=$(wc -c < "$archive")
+            if [ "$size" -gt 10485760 ]; then
+              echo "$(basename "$archive") exceeds the 10 MiB crates.io limit ($size bytes)" >&2
+              exit 1
+            fi
+            count=$((count + 1))
+          done < dist/manifest.txt
+          if [ "$count" -eq 0 ]; then
+            echo "no publishable workspace crates found" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-packages
+          path: |
+            dist/manifest.txt
+            dist/notes.md
+            dist/crates/*.crate
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    if: github.repository == 'manaforged/sigil' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: release
+      url: https://crates.io/crates/sigil-ui
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Rust toolchain
         run: rustup show active-toolchain
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-packages
+          path: dist
       - name: publish crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --workspace --locked
+        run: |
+          set -euo pipefail
+          published_on_crates_io() {
+            local name=$1 version=$2 path
+            case ${#name} in
+              1) path="1/$name" ;;
+              2) path="2/$name" ;;
+              3) path="3/${name:0:1}/$name" ;;
+              *) path="${name:0:2}/${name:2:2}/$name" ;;
+            esac
+            curl -fsS "https://index.crates.io/$path" 2>/dev/null | grep -q "\"vers\":\"$version\""
+          }
+          pending=()
+          excluded=()
+          while read -r name version; do
+            if published_on_crates_io "$name" "$version"; then
+              excluded+=(--exclude "$name")
+            else
+              pending+=("$name")
+            fi
+          done < dist/manifest.txt
+          if [ ${#pending[@]} -eq 0 ]; then
+            echo "every workspace crate is already published on crates.io"
+          else
+            echo "publishing: ${pending[*]}"
+            rm -rf target/release-pkg
+            cargo package --workspace --locked --no-verify --target-dir target/release-pkg "${excluded[@]}"
+            for archive in target/release-pkg/package/*.crate; do
+              cmp -s "$archive" "dist/crates/$(basename "$archive")" || {
+                echo "$(basename "$archive") differs from the qualified package archive" >&2
+                exit 1
+              }
+            done
+            cargo publish --workspace --locked --no-verify --target-dir target/release-pkg "${excluded[@]}"
+          fi
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v2.4.0
+        with:
+          subject-path: dist/crates/*.crate
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          version="${TAG#v}"
-          awk -v v="$version" '
-            /^## / { if (found) exit; split($2, h, /[ \t]/); if (h[1] == v || h[1] == "[" v "]") { found = 1; next } }
-            found { print }
-          ' CHANGELOG.md > notes.md
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes-file notes.md --verify-tag
+          set -euo pipefail
+          case $TAG in
+            *-*) flags=(--prerelease) ;;
+            *) flags=(--latest) ;;
+          esac
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/crates/*.crate
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --notes-file dist/notes.md "${flags[@]}" dist/crates/*.crate
+          fi
