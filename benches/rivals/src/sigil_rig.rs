@@ -32,7 +32,7 @@ pub struct SigilRig {
     surface: Surface,
     stream: Signal<String>,
     narrow: bool,
-    screen: Screen,
+    screen: Option<Screen>,
     out: Vec<u8>,
 }
 
@@ -80,7 +80,7 @@ impl SigilRig {
             surface,
             stream,
             narrow: false,
-            screen: Screen::new(COLS, LINES),
+            screen: matches!(surface, Surface::Screen).then(|| Screen::new(COLS, LINES)),
             out: Vec::new(),
         }
     }
@@ -111,12 +111,11 @@ impl SigilRig {
 
     fn present(&mut self, event: Option<Event>) {
         let cells = self.cells();
-        self.screen.set_dt(FRAME_SECONDS);
-        self.screen
-            .frame(&mut self.host, event, cells)
-            .expect("layout");
+        let screen = self.screen.as_mut().expect("the screen side owns a screen");
+        screen.set_dt(FRAME_SECONDS);
+        screen.frame(&mut self.host, event, cells).expect("layout");
         self.out.clear();
-        self.screen.flush(&mut self.out).expect("flush");
+        screen.flush(&mut self.out).expect("flush");
     }
 }
 
@@ -124,7 +123,9 @@ impl Rig for SigilRig {
     fn frame(&mut self, change: Change) {
         if let Some(narrow) = change.narrow() {
             self.narrow = narrow;
-            self.screen.invalidate();
+            if let Some(screen) = &mut self.screen {
+                screen.invalidate();
+            }
         }
         if matches!(change, Change::Grow) {
             self.stream.update(extend);
@@ -161,7 +162,8 @@ impl Rig for SigilRig {
             }
             Surface::Screen => {
                 self.present(None);
-                format!("{}\nflushed bytes {}", self.screen.text(), self.out.len())
+                let text = self.screen.as_ref().map(Screen::text).unwrap_or_default();
+                format!("{text}\nflushed bytes {}", self.out.len())
             }
         }
     }
