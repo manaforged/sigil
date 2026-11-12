@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::kernel::{DeltaKind, NodeBuilder};
 use crate::reactive::Signal;
 
@@ -13,14 +15,18 @@ impl ReactivePosition {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct SizeReactive {
-    size: Signal<(f32, f32)>,
+#[derive(Clone)]
+pub(crate) enum SizeReactive {
+    Signal(Signal<(f32, f32)>),
+    Sink(Rc<dyn Fn((f32, f32)) -> bool>),
 }
 
 impl SizeReactive {
-    pub(crate) fn publish(self, size: (f32, f32)) -> bool {
-        publish_changed(self.size, size)
+    pub(crate) fn publish(&self, size: (f32, f32)) -> bool {
+        match self {
+            Self::Signal(signal) => publish_changed(*signal, size),
+            Self::Sink(sink) => sink(size),
+        }
     }
 }
 
@@ -58,7 +64,16 @@ pub(crate) fn position(node: NodeBuilder, pos: Signal<(f32, f32)>) -> NodeBuilde
 
 pub(crate) fn size(node: NodeBuilder, size: Signal<(f32, f32)>) -> NodeBuilder {
     node.mutate(move |node| {
-        let _ = node.attach(SizeReactive { size });
+        let _ = node.attach(SizeReactive::Signal(size));
+    })
+}
+
+pub(crate) fn size_sink(
+    node: NodeBuilder,
+    sink: impl Fn((f32, f32)) -> bool + 'static,
+) -> NodeBuilder {
+    node.mutate(move |node| {
+        let _ = node.attach(SizeReactive::Sink(Rc::new(sink)));
     })
 }
 
