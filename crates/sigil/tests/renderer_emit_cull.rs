@@ -11,7 +11,7 @@ use sigil_kittest::FakeMeasure;
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 20.0);
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
     engine
         .compute(cx, root, Size::fixed(200.0, 80.0))
         .expect("layout");

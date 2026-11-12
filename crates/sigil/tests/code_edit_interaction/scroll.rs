@@ -262,7 +262,7 @@ fn long_line_stays_one_row_under_a_wrapping_measure() {
                 .layout(LayoutStyle::block().fixed_size(pane_w, 400.0))
                 .child(code_edit(lines, caret).row_height(20.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(WrapToWidth));
+        let mut layout = LayoutEngine::new(Box::new(WrapToWidth));
         layout
             .compute(&mut cx, root, Size::fixed(pane_w, 400.0))
             .unwrap();

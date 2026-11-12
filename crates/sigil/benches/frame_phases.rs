@@ -39,7 +39,7 @@ fn layout_then_emit(c: &mut Criterion) {
             Owner::scope("frame_phases", || {
                 let mut cx = Cx::new_root();
                 let root = cx.add(build);
-                let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
                 {
                     let _layout = profile::span(sigil::profile::Phase::Layout);
                     layout

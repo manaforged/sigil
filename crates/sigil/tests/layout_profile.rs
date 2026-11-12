@@ -113,7 +113,7 @@ fn hidden_subtree_is_not_measured() {
                 .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
                 .child(container().visible(show).child(text("secret"))),
         );
-        let mut engine = LayoutEngine::with_text_measure(Box::new(CountMeasure {
+        let mut engine = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
         let avail = Size::fixed(200.0, 80.0);
@@ -162,13 +162,13 @@ fn second_engine_does_not_inherit_text_memo() {
                 .child(text("hello")),
         );
         let avail = Size::fixed(80.0, 24.0);
-        let mut first = LayoutEngine::with_text_measure(Box::new(CountMeasure {
+        let mut first = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
         first.compute(&mut cx, root, avail).expect("first");
         assert!(hits.get() >= 1, "first engine measures");
         hits.set(0);
-        let mut second = LayoutEngine::with_text_measure(Box::new(CountMeasure {
+        let mut second = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
         second.compute(&mut cx, root, avail).expect("second");
@@ -203,7 +203,7 @@ fn dirty_parent_reuses_text_memo() {
                 .child(text("hello")),
         );
         let avail = Size::fixed(80.0, 24.0);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(CountMeasure {
+        let mut engine = LayoutEngine::new(Box::new(CountMeasure {
             hits: Rc::clone(&hits),
         }));
         engine.compute(&mut cx, root, avail).expect("first");
@@ -346,9 +346,9 @@ fn letter_spacing_change_remeasures_text() {
                 .paint_when(loose, |s| s.letter_spacing(0.2))
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 24.0)),
         );
-        let label = cx.add_child(root, text("hello"));
+        let label = cx.append(root, text("hello"));
         let avail = Size::fixed(400.0, 24.0);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(SpacingMeasure));
+        let mut engine = LayoutEngine::new(Box::new(SpacingMeasure));
         engine.compute(&mut cx, root, avail).expect("tight");
         let tight_w = label_width(&cx, label);
         loose.set(true);

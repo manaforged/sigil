@@ -27,7 +27,7 @@ pub(crate) fn route_event(
 }
 
 pub(crate) fn compute_layout(cx: &mut Cx, root: NodeId, width: f32, height: f32) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(width, height))
         .unwrap();

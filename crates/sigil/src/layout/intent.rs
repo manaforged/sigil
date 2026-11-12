@@ -185,7 +185,7 @@ impl LayoutStyle {
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     #[must_use]
-    pub fn with_layout(mut self, mutate: impl FnOnce(&mut StyleData)) -> Self {
+    pub fn edit(mut self, mutate: impl FnOnce(&mut StyleData)) -> Self {
         mutate(&mut self.0);
         self.mark(LayoutFields::ALL)
     }

@@ -16,7 +16,7 @@ use std::rc::Rc;
 
 use sigil::events::Event;
 use sigil::geometry::Point;
-use sigil::layout::set_text_geometry;
+use sigil::layout::text_geometry;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 

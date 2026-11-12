@@ -68,7 +68,7 @@ fn deep_reactive_scroll_switch_stays_positioned() {
 
         let mut cx = Cx::new_root();
         let root = cx.add(tree);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::new(Box::new(StubMeasure));
         layout
             .compute(&mut cx, root, VIEWPORT)
             .expect("initial layout");

@@ -62,7 +62,7 @@ pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowLevel}
 pub use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
 #[cfg(scene_harness)]
 #[doc(hidden)]
-pub use crate::text::fonts::{DefaultFonts, set_default_fonts};
+pub use crate::text::fonts::{DefaultFonts, default_fonts};
 #[cfg(all(feature = "scene", target_arch = "wasm32"))]
 pub use crate::text::load_font_url;
 #[cfg(scene_harness)]
@@ -82,7 +82,7 @@ pub(crate) use cell_text::{clip_cells, ellipsize_cells};
 #[cfg(terminal_host)]
 kittest_pub! {
     #[doc(hidden)]
-    pub use cell_text::{set_ambiguous, set_cell_width};
+    pub use cell_text::{ambiguous, set_cell_width};
 }
 #[cfg(terminal_host)]
 pub use cell_text::Ambiguous;

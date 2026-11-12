@@ -32,7 +32,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
             .children()
             .first()
             .expect("root has one child");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         recompute(&mut cx, &mut layout, root);
         let before = projected_bounds(&cx, &layout, moved);
         assert_eq!(before, (10.0, 20.0), "starts at the signal's initial pos");

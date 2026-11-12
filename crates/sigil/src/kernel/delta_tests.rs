@@ -40,7 +40,7 @@ fn adding_a_child_records_structure() {
         let mut cx = Cx::new_root();
         let parent = cx.add(container());
         drop(cx.take_delta());
-        let child = cx.add_child(parent, container());
+        let child = cx.append(parent, container());
         let delta = cx.take_delta();
         assert!(delta.structure, "{delta:?}");
         assert!(delta.layout.contains(&child), "{delta:?}");

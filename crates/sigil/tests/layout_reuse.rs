@@ -11,7 +11,7 @@ const VIEW: (f32, f32) = (400.0, 300.0);
 const ROWS: usize = 60;
 
 fn engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(8.0, 16.0)))
+    LayoutEngine::new(Box::new(FakeMeasure::fixed(8.0, 16.0)))
 }
 
 fn compute(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {

@@ -27,9 +27,8 @@ impl core::fmt::Debug for FontCollection {
     }
 }
 
-impl FontCollection {
-    #[must_use]
-    pub fn with_default() -> Self {
+impl Default for FontCollection {
+    fn default() -> Self {
         let source = crate::text::fonts::default_font_source();
         #[cfg(feature = "desktop")]
         if matches!(source, DefaultFontSource::System) {
@@ -64,7 +63,9 @@ impl FontCollection {
             symbols: load_symbols_font(),
         }
     }
+}
 
+impl FontCollection {
     #[cfg(feature = "desktop")]
     fn from_system() -> Self {
         let system = crate::text::system_fonts::load();

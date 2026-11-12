@@ -141,7 +141,7 @@ fn shape_validated_stays_bounded_for_ignorable_controls() {
 
 #[test]
 fn registered_fallback_face_joins_the_chain() {
-    let mut collection = super::FontCollection::with_default();
+    let mut collection = super::FontCollection::default();
     let hebrew = font(NOTO_HEBREW);
     collection.fallbacks = vec![hebrew.clone()];
     let primary = collection.primary().clone();
@@ -160,7 +160,7 @@ fn registered_fallback_face_joins_the_chain() {
 
 #[test]
 fn bundled_default_family_resolves_weight_500_to_medium() {
-    let collection = FontCollection::with_default();
+    let collection = FontCollection::default();
     let regular = collection.select_weight("sans", 400);
     let medium = collection.select_weight("sans", 500);
     assert_ne!(

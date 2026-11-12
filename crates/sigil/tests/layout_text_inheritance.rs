@@ -49,7 +49,7 @@ type MeasureLog = Rc<RefCell<Vec<(String, TextStyle)>>>;
 fn engine_with_recorder() -> (LayoutEngine, MeasureLog) {
     let recorder = RecordingMeasure::default();
     let calls = Rc::clone(&recorder.calls);
-    (LayoutEngine::with_text_measure(Box::new(recorder)), calls)
+    (LayoutEngine::new(Box::new(recorder)), calls)
 }
 
 fn styles_for<'a>(calls: &'a [(String, TextStyle)], needle: &str) -> Vec<&'a TextStyle> {

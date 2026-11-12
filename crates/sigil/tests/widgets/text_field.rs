@@ -10,7 +10,7 @@ fn text_field_typing_updates_signal() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -34,7 +34,7 @@ fn text_field_typing_emits_the_updated_glyph_run() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -60,7 +60,7 @@ fn text_field_backspace_removes_last_character() {
         let value = signal(String::from("ab"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -80,7 +80,7 @@ fn text_field_disabled_ignores_typing() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).disabled(disabled));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -107,7 +107,7 @@ fn text_field_enter_fires_submit_with_current_value() {
                 submitted.replace(text.to_owned());
             }
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -127,7 +127,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Add note"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -155,7 +155,7 @@ fn text_field_placeholder_remains_visible_when_focused() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Add note"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -176,7 +176,7 @@ fn text_field_focus_ring_visible_when_focused() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).placeholder("Notes"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

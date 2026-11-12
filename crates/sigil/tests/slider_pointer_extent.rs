@@ -18,7 +18,7 @@ fn click_at(x: f32, width: f32) -> f32 {
                 .layout(LayoutStyle::flex_row().fixed_size(width, 40.0))
                 .child(slider(value, 0.0..=100.0).length(width)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(width, 40.0))
             .expect("layout");
@@ -56,7 +56,7 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 40.0))
                 .child(slider(value, 0.0..=100.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 40.0))
             .expect("layout");

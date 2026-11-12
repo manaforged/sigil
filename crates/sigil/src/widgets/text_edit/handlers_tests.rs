@@ -172,9 +172,8 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
                 )
                 .child(text_edit(value).clipboard(Unreadable)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(
-            crate::layout::FakeMeasure::fixed(200.0, 40.0),
-        ));
+        let mut layout =
+            LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(200.0, 40.0)));
         let laid = layout.compute(&mut cx, root, Size::fixed(400.0, 200.0));
         assert!(laid.is_ok(), "editor layout");
         let editor = cx.first_child(root);
@@ -193,8 +192,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
 fn press(editor: TextEditBuilder, key: &str, modifiers: Modifiers) {
     let mut cx = Cx::new_root();
     let root = cx.add(editor);
-    let mut layout =
-        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(200.0, 40.0)));
+    let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(200.0, 40.0)));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 200.0))
         .expect("editor layout");

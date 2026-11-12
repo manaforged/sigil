@@ -94,7 +94,7 @@ impl Cx {
 
     /// Builds `child` under `parent` and returns its id.
     #[must_use]
-    pub fn add_child<C: IntoNode>(&mut self, parent: NodeId, child: C) -> NodeId {
+    pub fn append<C: IntoNode>(&mut self, parent: NodeId, child: C) -> NodeId {
         self.add_with_parent(Some(parent), |cx| child.build(cx))
     }
 

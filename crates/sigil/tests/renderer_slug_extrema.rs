@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use image::RgbaImage;
-use sigil::app::{DefaultFonts, TextTuning, set_default_fonts, set_text_tuning};
+use sigil::app::{DefaultFonts, TextTuning, default_fonts, set_text_tuning};
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
@@ -32,7 +32,7 @@ struct BundledFonts;
 
 impl Drop for BundledFonts {
     fn drop(&mut self) {
-        set_default_fonts(DefaultFonts::default());
+        default_fonts(DefaultFonts::default());
     }
 }
 
@@ -135,7 +135,7 @@ fn outline_glyph_counters_stay_open_at_curve_joins() {
     };
     let _text = sigil::renderer::lock_global_text_state();
     let _fonts = BundledFonts;
-    set_default_fonts(DefaultFonts {
+    default_fonts(DefaultFonts {
         sans: Some((Arc::new(FONT.to_vec()), 0)),
         ..DefaultFonts::default()
     });

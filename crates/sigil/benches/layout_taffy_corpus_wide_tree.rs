@@ -76,7 +76,7 @@ fn bench_owned_wide_tree(c: &mut Criterion) {
     c.bench_function("wide_tree/owned", |b| {
         let mut cx = Cx::new_root();
         let root = cx.add(build_owned_wide_tree);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

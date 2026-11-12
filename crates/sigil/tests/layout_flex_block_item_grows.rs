@@ -23,7 +23,7 @@ fn grower_width(block: bool) -> f32 {
             )
             .child(container().layout(LayoutStyle::block().width(8.0).height(50.0))),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 50.0))
         .unwrap();

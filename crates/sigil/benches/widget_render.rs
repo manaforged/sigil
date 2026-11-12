@@ -143,7 +143,7 @@ fn render_one(
         let mut cx = Cx::new_root();
         let root = cx.add(build);
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(size_px.0, size_px.1))
             .expect("layout");

@@ -257,7 +257,7 @@ fn mount_cell<N: IntoNode>(
 ) -> AppResult<Host> {
     let mut host = Host::new(crate::kernel::HostMode::Cell);
     crate::terminal::clipboard::install_clipboard(term.caps());
-    host.set_hyperlinks(term.caps().hyperlinks);
+    host.hyperlinks(term.caps().hyperlinks);
     let shared = tree.clone();
     host.mount_app(move || shared());
     prime(&mut host, cols, rows)?;
@@ -296,7 +296,8 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
 }
 
 fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Capabilities) -> Screen {
-    let mut screen = Screen::with_caps(cols, rows, caps);
+    let mut screen = Screen::new(cols, rows);
+    screen.set_caps(caps);
     screen.access(config.terminal.access);
     screen.speak_above(config.inline);
     screen
@@ -341,7 +342,7 @@ fn enter(config: &AppConfig) -> AppResult<Term> {
         crate::terminal::mouse_tracking(tracking).map_err(Error::io)?;
     }
     let term = Term::enter(config).map_err(Error::io)?;
-    crate::app::set_ambiguous(term.caps().ambiguous);
+    crate::app::ambiguous(term.caps().ambiguous);
     if term.caps().backdrop == Some(crate::terminal::Backdrop::Dark) {
         default_theme(config, crate::terminal::Backdrop::Dark);
     }

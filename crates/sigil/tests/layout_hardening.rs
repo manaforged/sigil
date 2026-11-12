@@ -42,8 +42,8 @@ fn leaf_rect(
     Owner::scope("layout-hardening", || {
         let mut cx = Cx::new_root();
         let root = cx.add(container().layout(parent));
-        let label = cx.add_child(root, text("some words to wrap").layout(leaf));
-        let mut engine = LayoutEngine::with_text_measure(measure);
+        let label = cx.append(root, text("some words to wrap").layout(leaf));
+        let mut engine = LayoutEngine::new(measure);
         engine
             .compute(&mut cx, root, Size::fixed(400.0, 400.0))
             .unwrap();
@@ -102,8 +102,8 @@ fn a_font_change_remeasures_text() {
         let fonts = Rc::new(Cell::new(0));
         let mut cx = Cx::new_root();
         let root = cx.add(container().layout(LayoutStyle::block().fixed_size(400.0, 40.0)));
-        let label = cx.add_child(root, text("hello"));
-        let mut engine = LayoutEngine::with_text_measure(Box::new(Swappable {
+        let label = cx.append(root, text("hello"));
+        let mut engine = LayoutEngine::new(Box::new(Swappable {
             width: Rc::clone(&width),
             fonts: Rc::clone(&fonts),
         }));

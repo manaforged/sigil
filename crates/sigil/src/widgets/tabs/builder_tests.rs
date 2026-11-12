@@ -41,9 +41,8 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
                             .layout(LayoutStyle::block().height(100.0)),
                     ),
             );
-            let mut layout = LayoutEngine::with_text_measure(Box::new(
-                crate::layout::FakeMeasure::fixed(40.0, 16.0),
-            ));
+            let mut layout =
+                LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(40.0, 16.0)));
             layout
                 .compute(&mut cx, root, Size::fixed(800.0, 600.0))
                 .unwrap();

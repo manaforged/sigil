@@ -36,7 +36,7 @@ fn items_bind_shrink_still_paints_rows() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
@@ -96,7 +96,7 @@ fn items_bind_via_effect_chain_still_paints_rows() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
@@ -146,7 +146,7 @@ fn items_bind_shrink_paints_under_frame_phases() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {
@@ -225,7 +225,7 @@ fn items_bind_app_shape_batched_keystrokes() {
             .change(move |i| selected.set(Some(i))),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, writes: &[&str]| {
             Runtime::begin_effect();
             for s in writes {
@@ -297,7 +297,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
                 .child(list),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {

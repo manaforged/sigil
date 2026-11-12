@@ -33,7 +33,7 @@ enum BenchCommand {
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 
 fn stub_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
+    LayoutEngine::new(Box::new(TEXT_MEASURE))
 }
 
 fn tree_with_text_children(count: usize) -> NodeBuilder {

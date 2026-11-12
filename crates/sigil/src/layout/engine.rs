@@ -56,7 +56,7 @@ impl core::fmt::Debug for LayoutEngine {
 
 impl LayoutEngine {
     #[must_use]
-    pub fn with_text_measure(measurer: Box<dyn TextMeasure>) -> Self {
+    pub fn new(measurer: Box<dyn TextMeasure>) -> Self {
         Self {
             drive: LayoutDrive::new(measurer),
             core_to_handle: SecondaryMap::new(),

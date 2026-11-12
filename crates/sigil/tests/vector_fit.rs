@@ -21,7 +21,7 @@ fn a_fitted_path_keeps_its_aspect_ratio() {
                     .fit(),
             ),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(10.0, 16.0)));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::fixed(10.0, 16.0)));
     layout
         .compute(&mut cx, root, Size::fixed(960.0, 220.0))
         .unwrap();

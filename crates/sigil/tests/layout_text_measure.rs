@@ -14,7 +14,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(100.0, 20.0);
 #[test]
 fn custom_text_measure_overrides_placeholder_measurement() {
     let default_width = computed_text_width(stub_engine());
-    let custom_width = computed_text_width(LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE)));
+    let custom_width = computed_text_width(LayoutEngine::new(Box::new(TEXT_MEASURE)));
 
     assert_eq!(default_width, 16.0);
     assert_eq!(custom_width, 100.0);

@@ -63,7 +63,7 @@ impl OwnedTextEngine {
         #[cfg(not(feature = "kittest"))]
         drop(style);
         Self {
-            fonts: RefCell::new(FontCollection::with_default()),
+            fonts: RefCell::new(FontCollection::default()),
             font_gen: Cell::new(crate::text::fonts::default_fonts_generation()),
             font_epoch: Cell::new(0),
             #[cfg(feature = "kittest")]
@@ -89,7 +89,7 @@ impl OwnedTextEngine {
     fn refresh_fonts(&self) {
         let generation = crate::text::fonts::default_fonts_generation();
         if generation != self.font_gen.get() {
-            *self.fonts.borrow_mut() = FontCollection::with_default();
+            *self.fonts.borrow_mut() = FontCollection::default();
             self.font_gen.set(generation);
             self.fonts_changed();
         }

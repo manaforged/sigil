@@ -12,7 +12,7 @@ use sigil::events::EventRouter;
 use sigil::events::ImeEvent;
 use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
-use sigil::layout::set_text_geometry;
+use sigil::layout::text_geometry;
 use sigil::prelude::*;
 use widget_support::{compute, find_text_node};
 
@@ -21,7 +21,7 @@ const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 #[test]
 fn text_field_preedit_displays_inline() {
     sigil::reactive::Owner::scope("text-field-ime-preedit", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -47,7 +47,7 @@ fn text_field_preedit_displays_inline() {
 #[test]
 fn text_field_commit_writes_value_and_clears_preedit() {
     sigil::reactive::Owner::scope("text-field-ime-commit", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -74,7 +74,7 @@ fn text_field_commit_writes_value_and_clears_preedit() {
 #[test]
 fn text_field_preedit_cancelled_on_focus_loss() {
     sigil::reactive::Owner::scope("text-field-ime-focus-loss", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let other = cx.add(
@@ -109,7 +109,7 @@ fn text_field_preedit_cancelled_on_focus_loss() {
 #[test]
 fn text_field_disabling_mid_composition_clears_preedit_immediately() {
     sigil::reactive::Owner::scope("text-field-ime-disable-immediate", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
@@ -138,7 +138,7 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
 #[test]
 fn text_field_disabled_mid_composition_ignores_commit() {
     sigil::reactive::Owner::scope("text-field-ime-disable-commit", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
@@ -164,7 +164,7 @@ fn text_field_disabled_mid_composition_ignores_commit() {
 #[test]
 fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
     sigil::reactive::Owner::scope("text-field-ime-scroll-anchor", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal("a".repeat(20));
         let mut cx = Cx::new_root();
         let mut builder = text_field(value);
@@ -258,7 +258,7 @@ fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
 #[test]
 fn text_field_publishes_the_ime_anchor_before_composition_starts() {
     sigil::reactive::Owner::scope("text-field-ime-anchor-idle", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("abcd"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));

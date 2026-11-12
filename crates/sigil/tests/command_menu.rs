@@ -32,7 +32,7 @@ fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuB
 fn setup(build: impl FnOnce() -> CommandMenuBuilder) -> (Cx, LayoutEngine, EventRouter, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(build());
-    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+    let mut layout = LayoutEngine::new(stub_text_measure());
     layout
         .compute(&mut cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
@@ -211,7 +211,7 @@ fn leaf_select_fires_observer_and_closes() {
 const DELTA_PCT: f32 = 0.5;
 
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(NamedKey, PhysicalKey)]) {
-    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+    let mut layout = LayoutEngine::new(stub_text_measure());
     layout
         .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");

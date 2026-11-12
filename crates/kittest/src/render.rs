@@ -215,7 +215,7 @@ fn capture(
         let mut cx = Cx::new_root();
         let root = cx.add(build);
         let viewport = Size::fixed(viewport_w, viewport_h);
-        let mut layout = LayoutEngine::with_text_measure(text_measure);
+        let mut layout = LayoutEngine::new(text_measure);
         let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {
             engine
                 .compute(tree, root, viewport)

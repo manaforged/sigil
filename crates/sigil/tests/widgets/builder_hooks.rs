@@ -4,7 +4,7 @@ use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 
 fn laid_out(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
     layout
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("layout computes");

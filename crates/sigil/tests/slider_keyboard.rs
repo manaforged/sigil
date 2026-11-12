@@ -18,7 +18,7 @@ fn setup(
 ) -> (Cx, LayoutEngine, EventRouter, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(slider(value, range).step(step));
-    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+    let mut layout = LayoutEngine::new(stub_text_measure());
     layout
         .compute(&mut cx, root, Size::fixed(320.0, 120.0))
         .expect("layout");
@@ -140,7 +140,7 @@ fn slider_focus_ring_visible_when_focused() {
         assert!(node_before.a11y.focusable, "slider must be focusable");
 
         router.set_focus(&mut cx, Some(root));
-        let mut layout2 = LayoutEngine::with_text_measure(stub_text_measure());
+        let mut layout2 = LayoutEngine::new(stub_text_measure());
         layout2
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout after focus");

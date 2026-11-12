@@ -57,8 +57,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
         );
         let card = *cx.get(root).unwrap().children().first().unwrap();
 
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_kittest::FakeMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil_kittest::FakeMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .unwrap();

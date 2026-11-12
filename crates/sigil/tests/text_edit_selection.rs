@@ -37,13 +37,10 @@ fn shift_up() -> Event {
 #[test]
 fn shift_select_across_lines_highlights_each_covered_line() {
     sigil::reactive::Owner::scope("sel-kbd", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(
-            sigil::layout::TextEngineMeasure::default(),
-        ));
+        sigil::layout::text_geometry(std::rc::Rc::new(sigil::layout::TextEngineMeasure::default()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");
@@ -86,13 +83,10 @@ fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> Event {
 #[test]
 fn dragging_across_lines_highlights_each_covered_line() {
     sigil::reactive::Owner::scope("sel-drag", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(
-            sigil::layout::TextEngineMeasure::default(),
-        ));
+        sigil::layout::text_geometry(std::rc::Rc::new(sigil::layout::TextEngineMeasure::default()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");

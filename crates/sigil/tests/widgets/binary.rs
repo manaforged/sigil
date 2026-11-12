@@ -17,7 +17,7 @@ fn checkbox_click_flips_signal() {
                 changes.set(changes.get() + 1);
             }
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -40,7 +40,7 @@ fn checkbox_keyboard_activation() {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Monitor"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -71,7 +71,7 @@ fn checkbox_disabled_ignores_click() {
                     move |_| changes.set(changes.get() + 1)
                 }),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -93,7 +93,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Visual").tone(Tone::Primary));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -203,7 +203,7 @@ fn toggle_click_flips_signal() {
                 changes.set(changes.get() + 1);
             }
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -226,7 +226,7 @@ fn toggle_keyboard_activation() {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Monitor"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -247,7 +247,7 @@ fn toggle_scene_emits_on_and_off_variants() {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Visual"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

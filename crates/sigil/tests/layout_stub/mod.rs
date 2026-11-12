@@ -8,7 +8,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 
 #[allow(clippy::redundant_pub_crate)]
 pub(crate) fn stub_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
+    LayoutEngine::new(Box::new(TEXT_MEASURE))
 }
 
 pub(crate) fn layout_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {

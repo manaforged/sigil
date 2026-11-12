@@ -23,7 +23,7 @@ fn two_cells(with_child: bool) -> Vec<f32> {
             .child(cell())
             .child(cell()),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 300.0))
         .unwrap();

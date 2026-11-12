@@ -32,7 +32,7 @@ fn build_many_leaf_row(count: usize) -> (Cx, NodeId, Vec<NodeId>) {
     let root = cx.add(container().layout(LayoutStyle::flex_row().fixed_size(200.0, 40.0)));
     let children = (0..count)
         .map(|_| {
-            cx.add_child(
+            cx.append(
                 root,
                 container().layout(LayoutStyle::block().fixed_size(12.0, 10.0)),
             )
@@ -44,7 +44,7 @@ fn build_many_leaf_row(count: usize) -> (Cx, NodeId, Vec<NodeId>) {
 fn ordered_fixed(width: f32, height: f32, order: i32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
-        .with_layout(|style| style.order = order)
+        .edit(|style| style.order = order)
 }
 
 fn layout_result_exists(cx: &Cx, id: NodeId) -> bool {

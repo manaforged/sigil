@@ -133,7 +133,7 @@ pub use offscreen::OffscreenTarget;
 pub use quad_paint::BUILTIN_SPRITE_ATLAS_ID;
 #[cfg(host)]
 #[cfg(feature = "kittest")]
-pub use quad_paint::set_test_atlas_size_override;
+pub use quad_paint::atlas_size;
 #[cfg(host)]
 #[cfg(feature = "kittest")]
 pub use renderer::ScreenSubmission;

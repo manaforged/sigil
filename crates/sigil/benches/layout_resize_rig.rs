@@ -25,7 +25,7 @@ fn bench_resize(c: &mut Criterion) {
     c.bench_function("resize/owned", |b| {
         let mut cx = Cx::new_root();
         let root = cx.add(build);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, Size::fixed(12800.0, 100.0))
             .expect("bench harness invariant");

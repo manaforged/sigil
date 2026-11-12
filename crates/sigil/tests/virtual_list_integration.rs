@@ -130,7 +130,7 @@ fn fastest_scroll_step(count: usize) -> Duration {
                     .viewport_width(VIEWPORT_WIDTH)
                     .scroll_bind(scroll_y),
             );
-            let mut engine = LayoutEngine::with_text_measure(stub_text_measure());
+            let mut engine = LayoutEngine::new(stub_text_measure());
             engine
                 .compute(&mut cx, root, Size::fixed(VIEWPORT_WIDTH, VIEWPORT_WIDTH))
                 .expect("layout computes");
@@ -205,7 +205,7 @@ fn selected_a11y_count(cx: &Cx, root: NodeId) -> usize {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId, size: Size) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+    let mut layout = LayoutEngine::new(stub_text_measure());
     layout.compute(cx, root, size).expect("layout computes");
     layout
 }

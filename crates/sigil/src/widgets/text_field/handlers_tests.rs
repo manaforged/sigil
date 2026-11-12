@@ -37,9 +37,8 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
             let copied = Rc::new(RefCell::new(String::new()));
             let mut cx = Cx::new_root();
             let root = cx.add(text_field(value).clipboard(Memory(copied.clone())));
-            let mut layout = LayoutEngine::with_text_measure(Box::new(
-                crate::layout::FakeMeasure::fixed(80.0, 20.0),
-            ));
+            let mut layout =
+                LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(80.0, 20.0)));
             layout
                 .compute(&mut cx, root, Size::fixed(400.0, 40.0))
                 .expect("field layout");

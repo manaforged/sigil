@@ -42,7 +42,7 @@ thread_local! {
 }
 
 #[cfg(feature = "kittest")]
-pub fn set_text_geometry(geometry: Rc<dyn TextMeasure>) {
+pub fn text_geometry(geometry: Rc<dyn TextMeasure>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }
 

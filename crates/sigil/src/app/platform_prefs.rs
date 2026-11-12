@@ -13,7 +13,7 @@ struct PlatformPrefs {
 #[cfg(feature = "scene")]
 fn apply_text(config: &AppConfig) {
     if let Some(fonts) = &config.text.fonts {
-        crate::text::fonts::set_default_fonts(fonts.clone());
+        crate::text::fonts::default_fonts(fonts.clone());
     }
     crate::text::fonts::set_fallback_fonts(&config.text.font_fallbacks);
     if let Some(tuning) = config.text.text_tuning {

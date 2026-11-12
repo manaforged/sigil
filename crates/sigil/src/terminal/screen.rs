@@ -93,17 +93,6 @@ impl Screen {
     }
 
     kittest_pub! {
-        /// Creates a screen with these capabilities.
-        #[doc(hidden)]
-        #[must_use]
-        pub fn with_caps(cols: u16, rows: u16, caps: Capabilities) -> Self {
-            let mut screen = Self::new(cols, rows);
-            screen.set_caps(caps);
-            screen
-        }
-    }
-
-    kittest_pub! {
         /// Sets the caps.
         #[doc(hidden)]
         pub const fn set_caps(&mut self, caps: Capabilities) {

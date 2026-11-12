@@ -47,8 +47,7 @@ fn few_options_use_a_plain_popup() {
     sigil::reactive::Owner::scope("dd-few", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(3)).width(200.0));
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 640.0))
             .expect("layout");
@@ -65,8 +64,7 @@ fn many_options_scroll_within_the_popup() {
     sigil::reactive::Owner::scope("dd-many", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(20)).width(200.0));
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 640.0))
             .expect("layout");

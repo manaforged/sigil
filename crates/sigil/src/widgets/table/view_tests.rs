@@ -34,9 +34,7 @@ fn fractional_columns_align_across_headers_rows_and_content_changes() {
                 .viewport_height(180.0)
                 .selectable_checkboxes(),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(
-            crate::layout::FakeMeasure::fixed(60.0, 20.0),
-        ));
+        let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(60.0, 20.0)));
         for rows in [
             vec![[10.0, 300.0], [250.0, 25.0]],
             vec![[350.0, 10.0], [10.0, 350.0]],
@@ -96,9 +94,7 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
                         .added(move |_, id| capture.set(Some(id)))
                 }),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(
-            crate::layout::FakeMeasure::fixed(60.0, 20.0),
-        ));
+        let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(60.0, 20.0)));
         relayout(&mut cx, &mut layout, root);
         let id = empty.get().expect("empty content");
         let bounds = layout.result(id).expect("empty bounds").rect();

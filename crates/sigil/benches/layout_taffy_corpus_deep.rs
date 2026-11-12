@@ -71,7 +71,7 @@ fn bench_owned_deep_random(c: &mut Criterion) {
     c.bench_function("deep_random/owned", |b| {
         let mut cx = Cx::new_root();
         let root = cx.add(build_owned_deep_random);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");
@@ -154,7 +154,7 @@ fn bench_owned_deep_auto(c: &mut Criterion) {
     c.bench_function("deep_auto/owned", |b| {
         let mut cx = Cx::new_root();
         let root = cx.add(build_owned_deep_auto);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

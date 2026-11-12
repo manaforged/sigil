@@ -170,7 +170,7 @@ fn clicking_second_file_swaps_editor_without_breaking() {
 }
 
 fn fresh_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
+    LayoutEngine::new(Box::new(TEXT_MEASURE))
 }
 
 const fn pointer_move(x: f32, y: f32) -> Event {

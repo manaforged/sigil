@@ -14,8 +14,7 @@ use crate::prelude::*;
 use crate::style::Transform2D;
 
 fn layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout =
-        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
+    let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
     layout
         .compute(cx, root, Size::fixed(400.0, 300.0))
         .expect("layout computes");

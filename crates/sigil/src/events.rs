@@ -30,9 +30,9 @@ pub(crate) use router::EventRouter;
 pub use router::EventRouter;
 
 #[cfg(feature = "desktop")]
-pub use window_command::request_window_command;
-#[cfg(feature = "desktop")]
 pub(crate) use window_command::take_window_commands;
+#[cfg(feature = "desktop")]
+pub use window_command::window_command;
 
 #[cfg(feature = "kittest")]
 #[doc(hidden)]

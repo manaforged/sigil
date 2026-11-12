@@ -50,7 +50,7 @@ pub(super) fn capture(build: impl sigil::kernel::IntoNode, size_px: [u32; 2]) ->
     let root = cx.add(build);
 
     let [w, h] = size_px;
-    let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
     layout
         .compute(&mut cx, root, Size::fixed(w as f32, h as f32))
         .expect("layout compute");

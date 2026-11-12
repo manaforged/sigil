@@ -80,7 +80,7 @@ fn bench_structural_change(c: &mut Criterion) {
                 let row = rows.get(idx % rows.len()).copied().expect("row exists");
                 idx = idx.wrapping_add(1);
                 let start = Instant::now();
-                let added = cx.add_child(row, leaf());
+                let added = cx.append(row, leaf());
                 engine
                     .compute(&mut cx, root, AVAILABLE)
                     .expect("structural layout compute succeeds");
@@ -102,7 +102,7 @@ fn build_10k_tree() -> (Cx, NodeId, LayoutEngine) {
         root_builder = root_builder.child(row());
     }
     let root = cx.add(root_builder);
-    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
     (cx, root, engine)
 }
 

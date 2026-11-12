@@ -70,7 +70,7 @@ fn compute_after_add_child_invalidates_cache() {
         .expect("initial compute succeeds");
     let generation = engine.generation();
 
-    let added = cx.add_child(
+    let added = cx.append(
         root,
         container().layout(LayoutStyle::block().fixed_size(16.0, 10.0)),
     );

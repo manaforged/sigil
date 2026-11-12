@@ -76,7 +76,7 @@ fn bench_owned_incremental(c: &mut Criterion) {
     c.bench_function("incremental_one_leaf/owned", |b| {
         let mut cx = Cx::new_root();
         let (root, leaf) = build_owned(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

@@ -2,14 +2,14 @@ use crate::kernel::Cx;
 use crate::reactive::Owner;
 use crate::reactive::Runtime;
 
-pub fn with_cx<F: FnOnce(&mut Cx)>(name: &'static str, f: F) {
+pub fn cx<F: FnOnce(&mut Cx)>(name: &'static str, f: F) {
     Owner::scope(name, || {
         let mut cx = Cx::new_root();
         f(&mut cx);
     });
 }
 
-pub fn with_runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
+pub fn runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
     Owner::scope(name, || f(&Runtime));
 }
 
@@ -20,7 +20,7 @@ pub fn tick_intervals() -> usize {
 
 pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usize {
     let mut size = 0;
-    with_cx(name, |cx| {
+    cx(name, |cx| {
         let root = cx.add(root);
         cx.visit_preorder(root, |_, _| size += 1);
     });

@@ -66,7 +66,7 @@ pub use style_data::{
 pub use text_adapter::TextEngineMeasure;
 pub use text_geometry::CaretGeometry;
 #[cfg(feature = "kittest")]
-pub use text_geometry::set_text_geometry;
+pub use text_geometry::text_geometry;
 pub(crate) use text_geometry::{TextStyleCapture, with_text_geometry};
 #[cfg(feature = "pty")]
 pub(crate) use units::mono_cell;

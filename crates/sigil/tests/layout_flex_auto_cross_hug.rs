@@ -17,7 +17,7 @@ fn row_height(align: AlignItems) -> f32 {
             .layout(LayoutStyle::flex_column().width(300.0))
             .child(row),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(300.0, 400.0))
         .unwrap();

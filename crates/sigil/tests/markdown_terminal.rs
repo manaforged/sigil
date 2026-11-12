@@ -145,7 +145,7 @@ fn grid(source: &str, cols: u16, hyperlinks: bool) -> Grid {
     let source = source.to_string();
     Owner::scope("markdown-grid", move || {
         let mut host = Host::new(HostMode::Cell);
-        host.set_hyperlinks(hyperlinks);
+        host.hyperlinks(hyperlinks);
         host.mount(move || markdown(signal(source.clone())));
         host.grid(Vec::<Event>::new(), cols, 24).expect("layout");
         host.grid(Vec::<Event>::new(), cols, 24).expect("layout")

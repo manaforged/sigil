@@ -302,7 +302,7 @@ fn route_ime_scope_change_cancels_owner_without_focus_move() {
         Event::Ime(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
 
-    let _modal = cx.add_child(
+    let _modal = cx.append(
         root,
         container()
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Modal))
