@@ -152,7 +152,7 @@ pub fn inner_shadow() -> (CommandScene, (f32, f32), Rgba) {
         let field = rect(70.0 + offset * 220.0, 160.0, 200.0, 80.0);
         let press = Shadow::new([0.0, 2.0], 6.0, offset, [0.0, 0.0, 0.0, 0.45]);
         scene.draw_rect(DrawRect::new(field, Color::rgba(245, 247, 250, 255)).border_radius(radii));
-        scene.draw_shadow(field, radii, press.with_kind(ShadowKind::Inner));
+        scene.draw_shadow(field, radii, press.kind(ShadowKind::Inner));
     }
     let clear = Rgba::new(0.88, 0.91, 0.94, 1.0);
     (scene.finish(), (1200.0, 400.0), clear)

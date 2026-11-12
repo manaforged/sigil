@@ -64,7 +64,7 @@ fn layered() -> CommandScene {
             opacity: 0.99,
             blend: BlendMode::default(),
         };
-        scene.with_composite_layer(scope, |scene| card(scene, rect));
+        scene.composite(scope, |scene| card(scene, rect));
     }
     scene.finish()
 }

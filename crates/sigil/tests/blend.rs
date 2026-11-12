@@ -53,7 +53,7 @@ fn blended(scene: &mut SceneBuilder, rect: Rect, mode: BlendMode, color: Color) 
         opacity: 1.0,
         blend: mode,
     };
-    scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(rect, color)));
+    scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, color)));
 }
 
 fn cell(mode: BlendMode, alpha: u8) -> impl IntoNode {

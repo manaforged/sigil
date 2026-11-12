@@ -38,7 +38,7 @@ fn tree() -> impl IntoNode {
         .autofocus()
         .key(Key::character("j"), move |_| count.update(|n| *n += 1))
         .key(Key::character("k"), move |_| count.update(|n| *n -= 1))
-        .key(NamedKey::Escape, |_| sigil::request_exit())
+        .key(NamedKey::Escape, |_| sigil::exit())
         .child(text(memo(move || format!("row {}", count.get()))))
 }
 
@@ -49,7 +49,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`request_focus` gives the node keyboard focus. Without focus, a node receives no key events through the focus path.
+`NodeId::focus` gives the node keyboard focus. Without focus, a node receives no key events through the focus path.
 
 ### Bind a key that fires from anywhere
 
@@ -63,7 +63,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let name = signal(String::new());
     container()
-        .shortcut(Key::character("q"), |_| sigil::request_exit())
+        .shortcut(Key::character("q"), |_| sigil::exit())
         .shortcut(Shortcut::ctrl(Key::character("n")), move |_| name.set(String::new()))
         .child(text_field(name))
 }
@@ -170,12 +170,12 @@ fn main() -> AppResult<()> {
 To reload a theme file while the app runs, call `watch_theme`. The watch stops when the `ThemeWatcher` is dropped, so keep it for the life of the tree. `AppConfig::theme_file(path)` loads and watches a file without code in the tree.
 
 ```rust,no_run
-use sigil::reactive::on_cleanup;
+use sigil::reactive::cleanup;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     match watch_theme("theme.toml") {
-        Ok(watcher) => on_cleanup(move || drop(watcher)),
+        Ok(watcher) => cleanup(move || drop(watcher)),
         Err(err) => eprintln!("theme watch failed: {err}"),
     }
     text("Edit theme.toml")
@@ -381,10 +381,10 @@ For work the user starts, such as a Load button, `task` builds a new future on e
 
 A chat transcript has rows whose height depends on the width: wrapped markdown, tool cards, images. `.measured()` sizes each row from its layout. `.follow_end(true)` keeps the last row in view while a reply streams in.
 
-App state that is not `Send` stays on the UI thread. A worker sends messages on a tokio channel. `on_message` runs the handler on the UI thread for each message. A send wakes the event loop, so the app does not poll.
+App state that is not `Send` stays on the UI thread. A worker sends messages on a tokio channel. `listen` runs the handler on the UI thread for each message. A send wakes the event loop, so the app does not poll.
 
 ```rust,no_run
-use sigil::tasks::on_message;
+use sigil::tasks::listen;
 use sigil::prelude::*;
 use std::rc::Rc;
 
@@ -396,7 +396,7 @@ enum Event {
 fn tree() -> impl IntoNode {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    on_message(rx, move |event| {
+    listen(rx, move |event| {
         messages.update(|list| match event {
             Event::Start => Rc::make_mut(list).push(String::new()),
             Event::Chunk(text) => {
@@ -449,7 +449,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`on_message(rx, f, on_close)` runs `on_close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
+`listen(rx, f, close)` runs `close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
@@ -512,10 +512,10 @@ These functions work in the terminal host. Outside the terminal host, `suspend` 
 | Function | Effect |
 | --- | --- |
 | `sigil::terminal::suspend(f)` | Restore the terminal, run `f`, then take the screen back. |
-| `sigil::terminal::set_title(title)` | Set the terminal window title. |
+| `sigil::terminal::title(title)` | Set the terminal window title. |
 | `sigil::terminal::bell(note)` | Ring the bell, and send a desktop notification if `note` is `Some`. |
 | `sigil::terminal::focused()` | `true` if the terminal window has focus. |
-| `sigil::request_exit()` | Exit after this frame, on any host. |
+| `sigil::exit()` | Exit after this frame, on any host. |
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -526,7 +526,7 @@ fn edit() {
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".into());
     let status = sigil::terminal::suspend(|| std::process::Command::new(editor).status());
     let note = if matches!(status, Ok(Ok(code)) if code.success()) { "saved" } else { "editor failed" };
-    drop(sigil::terminal::set_title(note));
+    drop(sigil::terminal::title(note));
     if !sigil::terminal::focused() {
         drop(sigil::terminal::bell(Some(note)));
     }
@@ -535,17 +535,17 @@ fn edit() {
 fn tree() -> impl IntoNode {
     container()
         .child(button("Edit").activate(edit))
-        .child(button("Quit").activate(sigil::request_exit))
+        .child(button("Quit").activate(sigil::exit))
 }
 
 fn main() -> AppResult<()> {
-    sigil::run(AppConfig::new("hooks").terminal().quit_on_ctrl_c(false), tree)
+    sigil::run(AppConfig::new("hooks").terminal().exit_on_ctrl_c(false), tree)
 }
 # }
 # fn main() {}
 ```
 
-Ctrl+C always reaches the tree first. With `quit_on_ctrl_c(false)` an unconsumed Ctrl+C no longer exits, and the app exits through `request_exit`.
+Ctrl+C always reaches the tree first. With `exit_on_ctrl_c(false)` an unconsumed Ctrl+C no longer exits, and the app exits through `exit`.
 
 ## Screen readers
 
@@ -587,7 +587,7 @@ Give each control a name that a screen reader can say. Widgets take the name fro
 
 ## Tasks in an embed
 
-`sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `Signal::writer` work as they do under `sigil::run`. `set_waker` wakes the host's event loop when a result arrives.
+`sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `Signal::writer` work as they do under `sigil::run`. `waker` wakes the host's event loop when a result arrives.
 
 ```rust,no_run
 use sigil::app::FrameHooks;

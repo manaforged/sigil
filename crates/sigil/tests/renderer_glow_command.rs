@@ -86,7 +86,7 @@ const fn outer_shadow() -> Shadow {
 }
 
 const fn inner_shadow() -> Shadow {
-    Shadow::new([0.0, 1.0], 7.0, 2.0, [0.0, 0.0, 0.0, 0.24]).with_kind(ShadowKind::Inner)
+    Shadow::new([0.0, 1.0], 7.0, 2.0, [0.0, 0.0, 0.0, 0.24]).kind(ShadowKind::Inner)
 }
 
 const fn surface_rect() -> Rect {

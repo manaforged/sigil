@@ -27,7 +27,7 @@ fn escape_closes_an_open_modal_before_it_exits() {
         let show = signal(true);
         let mut host = crate::Host::new(HostMode::Cell);
         host.mount(move || container().child(modal(show).child(button("Close"))));
-        host.set_quit(AppConfig::new("quit").esc_exits(true).quit);
+        host.set_quit(AppConfig::new("quit").exit_on_esc(true).quit);
         assert!(!exits(&mut host, []), "the first frame exited");
 
         let closed = !exits(&mut host, [Event::key_down(NamedKey::Escape)]);

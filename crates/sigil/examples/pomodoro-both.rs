@@ -122,7 +122,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .shortcut(space, move |_| timer.toggle())
         .shortcut(r, move |_| timer.reset())
         .shortcut(Key::character("s"), move |_| settings_open.set(true))
-        .shortcut(Key::character("q"), |_| sigil::request_exit())
+        .shortcut(Key::character("q"), |_| sigil::exit())
         .child(text(phase))
         .child(text(clock).text_role(TextRole::Title))
         .child(text(count))

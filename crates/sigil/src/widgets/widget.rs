@@ -142,7 +142,7 @@ pub trait Widget: Sealed {
     fn allow_flaw(self, kind: Flaw, _reason: &'static str) -> Self {
         self.map_node(move |node| {
             node.mutate(move |node| {
-                if let Some(allowed) = node.get_extension_mut::<AllowedFlaws>() {
+                if let Some(allowed) = node.extension_mut::<AllowedFlaws>() {
                     allowed.0.push(kind);
                 } else {
                     let _ = node.attach(AllowedFlaws(smallvec::smallvec![kind]));

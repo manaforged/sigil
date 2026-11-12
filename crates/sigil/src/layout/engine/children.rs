@@ -26,7 +26,7 @@ impl LayoutEngine {
             return Ok(());
         };
         if parent_node
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .is_some_and(StyleBinding::hides)
         {
             self.drive.set_children(self.handle(parent)?, &[])?;

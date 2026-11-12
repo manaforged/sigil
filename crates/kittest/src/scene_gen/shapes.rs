@@ -154,6 +154,6 @@ impl Gen<'_, '_, '_> {
         let blur = e.pick(&[0.0, 0.2, 2.0, 12.0, 80.0, 1.0e5]);
         let spread = e.pick(&[0.0, -8.0, 4.0, -1.0e5, 1.0e5]);
         let kind = e.pick(&[ShadowKind::Outer, ShadowKind::Inner, ShadowKind::Glow]);
-        Shadow::new(offset, blur, spread, color).with_kind(kind)
+        Shadow::new(offset, blur, spread, color).kind(kind)
     }
 }

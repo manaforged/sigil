@@ -63,4 +63,4 @@ pub(crate) use run::run;
 pub(crate) use run::step;
 pub use run::{Hooks, calibrate};
 pub use screen::Screen;
-pub use term::{caps, focused, print_above, set_mouse_tracking, set_title, suspend};
+pub use term::{caps, focused, mouse_tracking, print_above, suspend, title};

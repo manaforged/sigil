@@ -79,13 +79,13 @@ pub(crate) fn escape() -> bool {
 fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
     let pos = path.iter().rposition(|id| {
         cx.get(*id)
-            .is_some_and(|node| node.get_extension::<SelectableText>().is_some())
+            .is_some_and(|node| node.extension::<SelectableText>().is_some())
     })?;
     let interactive = path.get(pos + 1..).unwrap_or_default().iter().any(|id| {
         cx.get(*id).is_some_and(|node| {
             node.a11y.role == crate::kernel::Role::Button
                 || node
-                    .get_extension::<EventHandlers>()
+                    .extension::<EventHandlers>()
                     .is_some_and(EventHandlers::owns_pointer_drag)
         })
     });

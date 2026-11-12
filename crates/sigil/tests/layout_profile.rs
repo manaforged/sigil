@@ -362,7 +362,7 @@ fn letter_spacing_change_remeasures_text() {
 
 fn label_width(cx: &Cx, id: NodeId) -> f32 {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("layout result exists")
         .rect()
         .width

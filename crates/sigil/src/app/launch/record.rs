@@ -159,7 +159,7 @@ impl Windows {
         let Some(record) = self.get_mut(handle) else {
             return CloseOutcome::Kept;
         };
-        match record.view.config.on_close.decide() {
+        match record.view.config.close.decide() {
             CloseAction::Close => self.remove(handle),
             CloseAction::Hide => {
                 record.view.hidden = true;

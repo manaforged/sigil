@@ -98,7 +98,7 @@ impl Walk {
         .map(|(x, y)| resvg::usvg::tiny_skia_path::Point::from_xy(x, y));
         tile.map_points(&mut corners);
         let outline = corners.map(|point| Point::new(point.x, point.y));
-        scene.with_clip(Clip::polygon(&outline), |scene| {
+        scene.clip(Clip::polygon(&outline), |scene| {
             self.children(scene, pattern.root(), tile);
         });
     }

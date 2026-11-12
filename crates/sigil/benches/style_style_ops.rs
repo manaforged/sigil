@@ -224,7 +224,7 @@ criterion_main!(benches);
 
 fn binding_len(cx: &Cx, id: NodeId) -> usize {
     cx.get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
+        .and_then(|node| node.extension::<StyleBinding>())
         .map_or(0, |binding| {
             binding.static_slice().len() + binding.dynamic_slice().len()
         })
@@ -232,6 +232,6 @@ fn binding_len(cx: &Cx, id: NodeId) -> usize {
 
 fn reactive_len(cx: &Cx, id: NodeId) -> usize {
     cx.get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
+        .and_then(|node| node.extension::<StyleBinding>())
         .map_or(0, |binding| binding.reactive_channels().flatten().count())
 }

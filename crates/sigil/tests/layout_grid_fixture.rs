@@ -13,7 +13,7 @@ use stub::stub_engine;
 fn rect_of(cx: &Cx, id: NodeId) -> (f32, f32, f32, f32) {
     let r = cx
         .get(id)
-        .and_then(|n| n.get_extension::<LayoutResult>())
+        .and_then(|n| n.extension::<LayoutResult>())
         .expect("computed layout")
         .rect();
     (r.origin.x, r.origin.y, r.width, r.height)

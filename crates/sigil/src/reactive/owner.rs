@@ -251,12 +251,12 @@ pub(crate) fn owner_by_id(id: Owner, f: impl FnOnce()) -> bool {
 
 /// Run `f` when the current owner is disposed.
 #[track_caller]
-pub fn on_cleanup(f: impl FnOnce() + 'static) {
+pub fn cleanup(f: impl FnOnce() + 'static) {
     let f: Box<dyn FnOnce()> = Box::new(f);
     with_rt(|rt| {
         let owner = rt
             .active_owner()
-            .expect("on_cleanup called outside a reactive scope");
+            .expect("cleanup called outside a reactive scope");
         rt.owners
             .get_mut(owner)
             .expect("current owner slot missing")

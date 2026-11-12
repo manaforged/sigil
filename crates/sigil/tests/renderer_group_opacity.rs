@@ -15,7 +15,7 @@ const RED: Color = Color {
 
 fn overlapping_group() -> CommandScene {
     let mut scene = SceneBuilder::new();
-    scene.with_layer(0.5, |group| {
+    scene.layer(0.5, |group| {
         group.draw_rect(DrawRect::new(
             Rect::new(Point::new(0.0, 0.0), 60.0, 40.0),
             RED,
@@ -68,7 +68,7 @@ fn gpu_group_opacity_blends_overlap_once() {
 
 fn small_group() -> CommandScene {
     let mut scene = SceneBuilder::new();
-    scene.with_layer(0.5, |group| {
+    scene.layer(0.5, |group| {
         group.draw_rect(DrawRect::new(
             Rect::new(Point::new(10.0, 10.0), 20.0, 20.0),
             RED,

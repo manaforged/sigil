@@ -136,7 +136,7 @@ pub(super) fn push_image(
     if width < 1.0 || height < 1.0 || columns.saturating_mul(rows) > MAX_TILES {
         return;
     }
-    scene.with_clip(rect, |scene| {
+    scene.clip(rect, |scene| {
         for row in 0..rows {
             for column in 0..columns {
                 let origin = Point::new(

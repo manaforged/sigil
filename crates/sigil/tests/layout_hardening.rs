@@ -48,7 +48,7 @@ fn leaf_rect(
             .compute(&mut cx, root, Size::fixed(400.0, 400.0))
             .unwrap();
         cx.get(label)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .expect("layout result")
             .rect()
     })
@@ -115,7 +115,7 @@ fn a_font_change_remeasures_text() {
         engine.compute(&mut cx, root, avail).unwrap();
         let rect = cx
             .get(label)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .expect("layout result")
             .rect();
         assert!((rect.width - 90.0).abs() < 0.5, "{rect:?}");

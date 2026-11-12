@@ -24,7 +24,7 @@ fn dispatch_gated<T>(
     if gated && node.a11y.is_disabled() {
         return None;
     }
-    let handlers = node.get_extension::<EventHandlers>()?;
+    let handlers = node.extension::<EventHandlers>()?;
     let mut result = None;
     owner_by_id(node.owner, || result = Some(invoke(handlers)));
     result

@@ -79,7 +79,7 @@ fn end_session(hwnd: HWND, ending: bool, data: usize) {
         if catch_unwind(AssertUnwindSafe(super::exit_hook::run)).is_err() {
             tracing::error!(target: "sigil::shell", "exit hook panicked during session end");
         }
-        crate::app::exit::request_exit();
+        crate::app::exit::exit();
         // SAFETY: `data` is the wake closure `watch` boxed for this subclass; WM_NCDESTROY has not freed it while the window still receives messages.
         let wake = unsafe { &*(data as *const SessionWake) };
         wake();

@@ -50,7 +50,7 @@ fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
             let woke = Arc::new(AtomicBool::new(false));
             {
                 let woke = Arc::clone(&woke);
-                scheduler.set_waker(move || {
+                scheduler.waker(move || {
                     woke.store(true, Ordering::Release);
                 });
             }

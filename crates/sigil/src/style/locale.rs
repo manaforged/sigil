@@ -129,7 +129,7 @@ impl Locale {
     /// Returns the en locale.
     #[must_use]
     pub const fn en() -> Self {
-        let mut locale = Self::new('.', Some(',')).with_date(DateOrder::Mdy, '/');
+        let mut locale = Self::new('.', Some(',')).date(DateOrder::Mdy, '/');
         locale.hour12 = true;
         locale
     }
@@ -137,22 +137,22 @@ impl Locale {
     /// Returns the de locale.
     #[must_use]
     pub const fn de() -> Self {
-        Self::new(',', Some('.')).with_date(DateOrder::Dmy, '.')
+        Self::new(',', Some('.')).date(DateOrder::Dmy, '.')
     }
 
     /// Returns the ar locale.
     #[must_use]
     pub const fn ar() -> Self {
         let mut locale = Self::new('\u{066B}', Some('\u{066C}'))
-            .with_date(DateOrder::Dmy, '/')
-            .with_zero('\u{0660}');
+            .date(DateOrder::Dmy, '/')
+            .zero('\u{0660}');
         locale.hour12 = true;
         locale
     }
 
     /// Sets the date order.
     #[must_use]
-    pub const fn with_date(mut self, order: DateOrder, separator: char) -> Self {
+    pub const fn date(mut self, order: DateOrder, separator: char) -> Self {
         self.date_order = order;
         self.date_separator = separator;
         self
@@ -160,14 +160,14 @@ impl Locale {
 
     /// Sets the zero digit.
     #[must_use]
-    pub const fn with_zero(mut self, zero: char) -> Self {
+    pub const fn zero(mut self, zero: char) -> Self {
         self.zero = zero;
         self
     }
 
     /// Sets the group size.
     #[must_use]
-    pub const fn with_group_size(mut self, size: u8) -> Self {
+    pub const fn group(mut self, size: u8) -> Self {
         self.group_size = size;
         self
     }

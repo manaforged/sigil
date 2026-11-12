@@ -20,7 +20,7 @@ fn multiple_reactive_sources_compose_in_install_order() {
         );
         let binding = cx
             .get(root)
-            .and_then(|node| node.get_extension::<StyleBinding>())
+            .and_then(|node| node.extension::<StyleBinding>())
             .unwrap();
         assert!(binding.has_reactive());
         let channels: Vec<&'static [StyleAtom]> = binding.reactive_channels().collect();
@@ -42,7 +42,7 @@ fn composition_is_append_only_across_many_installs() {
         );
         let binding = cx
             .get(root)
-            .and_then(|node| node.get_extension::<StyleBinding>())
+            .and_then(|node| node.extension::<StyleBinding>())
             .unwrap();
         let channels: Vec<&'static [StyleAtom]> = binding.reactive_channels().collect();
         assert_eq!(channels.len(), 3);

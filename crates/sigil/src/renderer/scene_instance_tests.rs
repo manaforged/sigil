@@ -164,8 +164,7 @@ fn shadow_instance_expands_by_three_blurs_plus_abs_spread_then_offsets() {
 
 #[test]
 fn inner_shadow_expansion_stays_on_surface_rect() {
-    let shadow =
-        Shadow::new([6.0, -2.0], 8.0, 3.0, [0.0, 0.0, 0.0, 0.35]).with_kind(ShadowKind::Inner);
+    let shadow = Shadow::new([6.0, -2.0], 8.0, 3.0, [0.0, 0.0, 0.0, 0.35]).kind(ShadowKind::Inner);
     let expanded = expanded_shadow_rect(rect(), shadow);
 
     assert_eq!(expanded, rect());
@@ -186,8 +185,7 @@ fn draw_shadow_instance_carries_surface_and_expanded_rects() {
 
 #[test]
 fn draw_inner_shadow_instance_encodes_kind_and_surface_quad() {
-    let shadow =
-        Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4]).with_kind(ShadowKind::Inner);
+    let shadow = Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4]).kind(ShadowKind::Inner);
     let inst = draw_shadow_instance(rect(), CornerRadii::top(5.0), shadow, 0.5);
 
     assert_array_close(inst.rect, [0.0, 0.0, 48.0, 48.0]);

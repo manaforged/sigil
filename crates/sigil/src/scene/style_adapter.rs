@@ -16,11 +16,11 @@ pub(crate) struct ResolvedFocusRing {
 }
 
 pub(crate) fn focus_ring_for(node: &Node, inherited: &Theme) -> Option<ResolvedFocusRing> {
-    let ring = node.get_extension::<FocusRing>()?;
+    let ring = node.extension::<FocusRing>()?;
     if !ring.visible() {
         return None;
     }
-    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
+    let theme = node.extension::<Theme>().unwrap_or(inherited);
     let engine = StyleEngine::new(theme);
     Some(ResolvedFocusRing {
         color: engine.resolve_color(ring.color_atom()),

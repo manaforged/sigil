@@ -78,7 +78,7 @@ fn wake_proxy_is_called_on_enqueue() {
         let wakes = Arc::new(AtomicUsize::new(0));
         {
             let wakes = Arc::clone(&wakes);
-            scheduler.set_waker(move || {
+            scheduler.waker(move || {
                 wakes.fetch_add(1, Ordering::SeqCst);
             });
         }

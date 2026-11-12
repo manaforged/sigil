@@ -14,7 +14,7 @@ const TEXT_H: f32 = 16.0;
 
 fn rect_of(cx: &Cx, id: NodeId) -> Rect {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("layout result must exist")
         .rect()
 }

@@ -128,7 +128,7 @@ fn grouped(clip_width: f32, opacity: f32) -> CommandScene {
         20,
         30,
     ));
-    b.with_clip(Rect::new(Point::new(8.0, 8.0), clip_width, 32.0), |b| {
+    b.clip(Rect::new(Point::new(8.0, 8.0), clip_width, 32.0), |b| {
         b.draw_rect(style(
             Rect::new(Point::new(8.0, 8.0), 48.0, 32.0),
             200,
@@ -136,7 +136,7 @@ fn grouped(clip_width: f32, opacity: f32) -> CommandScene {
             40,
         ));
     });
-    b.with_layer(opacity, |b| {
+    b.layer(opacity, |b| {
         b.draw_rect(style(
             Rect::new(Point::new(8.0, 48.0), 32.0, 32.0),
             40,
@@ -203,7 +203,7 @@ fn list(highlight: Option<usize>) -> CommandScene {
             180,
         ));
     }
-    b.with_clip(Rect::new(Point::new(0.0, 80.0), W as f32, 48.0), |b| {
+    b.clip(Rect::new(Point::new(0.0, 80.0), W as f32, 48.0), |b| {
         b.draw_rect(style(
             Rect::new(Point::new(8.0, 88.0), 64.0, 24.0),
             40,

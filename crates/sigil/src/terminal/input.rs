@@ -149,7 +149,7 @@ fn wake_pair(async_rt: &mut crate::tasks::AsyncRuntime) -> Option<std::os::unix:
     rx.set_nonblocking(true).ok()?;
     tx.set_nonblocking(true).ok()?;
     crate::terminal::signals::set_wake(tx.try_clone().ok());
-    async_rt.set_waker(move || drop((&tx).write(&[1])));
+    async_rt.waker(move || drop((&tx).write(&[1])));
     Some(rx)
 }
 

@@ -218,14 +218,14 @@ impl<'t> EmitWalk<'_, 't> {
         if skips_paint(node) {
             return;
         }
-        let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
+        let theme = node.extension::<Theme>().unwrap_or(inherited.theme);
         let style = render_style_for(node, theme, inherited.text_color);
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
             || style.opacity < 10_000
             || style.blend != BlendMode::Normal)
-            && node.get_extension::<LayoutResult>().is_some();
-        let cut = style.clip_path.is_some() && node.get_extension::<LayoutResult>().is_some();
+            && node.extension::<LayoutResult>().is_some();
+        let cut = style.clip_path.is_some() && node.extension::<LayoutResult>().is_some();
         if style.opacity > 0 && layered {
             self.push_effect(id, inherited, clip, style);
         } else if style.opacity > 0 && (cut || !outside_clip(node, clip)) {
@@ -247,15 +247,13 @@ impl<'t> EmitWalk<'_, 't> {
         };
         let child_context = child_inherited(node, inherited, style);
         let theme = child_context.theme;
-        if let Some(result) = node.get_extension::<LayoutResult>() {
+        if let Some(result) = node.extension::<LayoutResult>() {
             let rect = result.rect();
             let paint = NodePaint {
                 style,
                 theme,
                 text_base: &inherited.text_style,
-                tone: node
-                    .get_extension::<ToneContext>()
-                    .map(|context| context.tone),
+                tone: node.extension::<ToneContext>().map(|context| context.tone),
                 leaf: !has_laid_child(self.cx, node),
                 selected: self.selection.get(&id).copied(),
                 text_fill: inherited.text_fill.as_deref().map(|fill| &fill.gradient),
@@ -289,7 +287,7 @@ impl<'t> EmitWalk<'_, 't> {
         }
         push_focus_ring(self.scene, id, node, rect, paint);
         push_node(self.scene, id, node, rect, paint);
-        if let Some(canvas) = node.get_extension::<CanvasPaint>() {
+        if let Some(canvas) = node.extension::<CanvasPaint>() {
             canvas.record(self.scene, rect, paint.theme);
         }
     }
@@ -332,9 +330,9 @@ impl<'t> EmitWalk<'_, 't> {
                 opacity: 1.0,
                 blend: crate::scene::BlendMode::Normal,
             };
-            self.scene.with_composite_layer(scope, body);
+            self.scene.composite(scope, body);
         } else {
-            self.scene.with_clip(rect, body);
+            self.scene.clip(rect, body);
         }
     }
 
@@ -357,39 +355,39 @@ fn paint_key(node: &Node, inherited: &Inherited<'_>, paint: &NodePaint<'_>) -> u
     ) ^ emit_cache::content_key(node)
         ^ u64::from(paint.leaf)
         ^ node
-            .get_extension::<CanvasPaint>()
+            .extension::<CanvasPaint>()
             .map_or(0, CanvasPaint::version)
         ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
         ^ emit_cache::shadow_key(paint.text_shadows)
 }
 
 fn outside_clip(node: &Node, clip: Option<Rect>) -> bool {
-    clip.zip(node.get_extension::<LayoutResult>())
+    clip.zip(node.extension::<LayoutResult>())
         .is_some_and(|(clip, result)| !result.rect().intersects(clip))
 }
 
 fn has_laid_child(cx: &Cx, node: &Node) -> bool {
     node.children().iter().any(|child| {
         cx.get(*child).is_some_and(|child| {
-            if child.get_extension::<Surface>().is_some() || is_top_layer(child) {
+            if child.extension::<Surface>().is_some() || is_top_layer(child) {
                 return false;
             }
-            child.get_extension::<LayoutResult>().is_some() || has_laid_child(cx, child)
+            child.extension::<LayoutResult>().is_some() || has_laid_child(cx, child)
         })
     })
 }
 
 fn is_display_none(node: &Node) -> bool {
-    node.get_extension::<StyleBinding>()
+    node.extension::<StyleBinding>()
         .is_some_and(StyleBinding::hides)
 }
 
 fn is_top_layer(node: &Node) -> bool {
-    node.get_extension::<TopLayer>().is_some()
+    node.extension::<TopLayer>().is_some()
 }
 
 fn skips_paint(node: &Node) -> bool {
-    is_display_none(node) || node.get_extension::<Surface>().is_some()
+    is_display_none(node) || node.extension::<Surface>().is_some()
 }
 
 fn child_inherited<'t>(
@@ -398,7 +396,7 @@ fn child_inherited<'t>(
     style: &RenderStyle,
 ) -> Inherited<'t> {
     let (text_style, text_style_stamp) = node
-        .get_extension::<StyleBinding>()
+        .extension::<StyleBinding>()
         .filter(|binding| TextStyle::binding_layers_text(binding))
         .map_or_else(
             || (Rc::clone(&inherited.text_style), inherited.text_style_stamp),
@@ -409,7 +407,7 @@ fn child_inherited<'t>(
             },
         );
     let (theme, theme_stamp) =
-        node.get_extension::<Theme>()
+        node.extension::<Theme>()
             .map_or((inherited.theme, inherited.theme_stamp), |theme| {
                 (
                     theme,

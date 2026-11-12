@@ -35,7 +35,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
         .copied()
         .map(|id| {
             cx.get(id)
-                .and_then(|node| node.get_extension::<LayoutResult>())
+                .and_then(|node| node.extension::<LayoutResult>())
                 .expect("child result")
                 .rect()
                 .width
@@ -49,7 +49,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
         .copied()
         .map(|id| {
             cx.get(id)
-                .and_then(|node| node.get_extension::<LayoutResult>())
+                .and_then(|node| node.extension::<LayoutResult>())
                 .expect("child result")
                 .rect()
                 .origin
@@ -76,7 +76,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
 
     assert!(
         cx.get(child)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .is_some(),
         "child receives initial layout result",
     );
@@ -95,7 +95,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
     );
     assert!(
         cx.get(child)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .is_none(),
         "detached child projection is cleared from node extensions",
     );

@@ -43,7 +43,7 @@ fn built(shape: fn(Rect) -> Clip) -> CommandScene {
     let mut scene = SceneBuilder::new();
     for index in 0..COLS * ROWS {
         let rect = slot(index);
-        scene.with_clip(shape(rect), |scene| {
+        scene.clip(shape(rect), |scene| {
             scene.draw_image(DrawImage {
                 node: None,
                 source: source(index % 8),

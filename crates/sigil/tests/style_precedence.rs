@@ -23,7 +23,7 @@ fn laid_out(build: impl IntoNode) -> (Cx, NodeId, LayoutEngine) {
 fn width(build: impl IntoNode) -> f32 {
     let (cx, root, _) = laid_out(build);
     cx.get(root)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .map_or(0.0, |result| result.rect().width)
 }
 

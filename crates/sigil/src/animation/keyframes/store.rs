@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use super::Keyframes;
-use crate::reactive::{Owner, on_cleanup};
+use crate::reactive::{Owner, cleanup};
 
 const CAPACITY: usize = 256;
 const KEEP_RECENT: u64 = 128;
@@ -42,7 +42,7 @@ fn pin(id: KeyframesId, keyframes: Arc<Keyframes>) {
     if !PINS.with_borrow_mut(|pins| pins.insert((owner, id))) {
         return;
     }
-    on_cleanup(move || {
+    cleanup(move || {
         drop(keyframes);
         PINS.with_borrow_mut(|pins| pins.remove(&(owner, id)));
     });

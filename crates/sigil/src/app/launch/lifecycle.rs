@@ -46,7 +46,7 @@ fn apply_close(shell: &mut WinitShell, windows: &mut Windows, handle: WinitWindo
         CloseOutcome::Removed { last } => {
             shell.remove_window(handle);
             if last {
-                shell.request_exit();
+                shell.exit();
             }
         }
         CloseOutcome::Hidden => {

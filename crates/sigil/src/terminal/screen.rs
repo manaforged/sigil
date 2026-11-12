@@ -108,14 +108,14 @@ impl Screen {
         #[doc(hidden)]
         pub const fn set_caps(&mut self, caps: Capabilities) {
             self.caps = caps;
-            self.grid.set_graphics(caps.graphics.is_some());
-            self.prev.set_graphics(caps.graphics.is_some());
+            self.grid.graphics(caps.graphics.is_some());
+            self.prev.graphics(caps.graphics.is_some());
             self.fresh = true;
         }
     }
 
     /// Sets the access.
-    pub const fn set_access(&mut self, access: Access) {
+    pub const fn access(&mut self, access: Access) {
         self.announcer.access = access;
         self.projection.last = Projected::Never;
     }
@@ -310,7 +310,7 @@ impl Screen {
     }
 
     /// Sets the time step of the next frame.
-    pub const fn set_dt(&mut self, dt: f32) {
+    pub const fn dt(&mut self, dt: f32) {
         self.dt = dt;
     }
 

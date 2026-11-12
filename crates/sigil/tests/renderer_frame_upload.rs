@@ -64,7 +64,7 @@ fn ordered_batches_share_one_rect_upload_buffer() {
 fn two_batch_scene() -> sigil::scene::CommandScene {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(rect(4.0, 4.0), color(220, 60, 80)));
-    scene.with_clip(Rect::new(Point::new(48.0, 0.0), 48.0, 48.0), |scene| {
+    scene.clip(Rect::new(Point::new(48.0, 0.0), 48.0, 48.0), |scene| {
         scene.draw_rect(DrawRect::new(rect(52.0, 4.0), color(70, 160, 240)));
     });
     scene.finish()

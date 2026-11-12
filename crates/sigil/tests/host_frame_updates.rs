@@ -83,7 +83,7 @@ fn input_hook_viewport_sizes_the_same_frame() {
         let rect = host
             .cx()
             .get(root)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .expect("laid out")
             .rect();
 
@@ -102,7 +102,7 @@ fn automatic_window_focus_shows_no_focus_ring() {
         let ring = host
             .cx()
             .get(focused)
-            .and_then(|node| node.get_extension::<FocusRing>())
+            .and_then(|node| node.extension::<FocusRing>())
             .map(FocusRing::visible);
 
         assert_eq!(ring, Some(false));

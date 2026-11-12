@@ -9,7 +9,7 @@ thread_local! {
 }
 
 /// Ask the running host to exit after this frame.
-pub fn request_exit() {
+pub fn exit() {
     let hosted = TARGET.with(|slot| {
         slot.borrow().as_ref().is_some_and(|cell| {
             cell.set(true);

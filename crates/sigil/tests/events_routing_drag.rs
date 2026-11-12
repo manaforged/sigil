@@ -22,7 +22,7 @@ const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> Event {
 
 fn node_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("node has a layout result")
         .rect()
 }

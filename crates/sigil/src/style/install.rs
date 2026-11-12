@@ -17,7 +17,7 @@ pub(super) fn install_animation(
         property(0.0).refuse("Widget::drive");
         return;
     };
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+    if let Some(binding) = node.extension_mut::<StyleBinding>() {
         binding.bind_animation(property, value);
     } else {
         let mut binding = StyleBinding::default();
@@ -61,7 +61,7 @@ pub(super) fn install_state_overlay(
 pub(super) fn install_class(node: &mut Node, source: ClassSource) {
     debug_assert_not_fragment(node, "class");
     let incoming = binding_from_source(source);
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+    if let Some(binding) = node.extension_mut::<StyleBinding>() {
         let existing = binding.all_atoms();
         let incoming_atoms = incoming.all_atoms();
         binding.note_user(SlotSet::of(&incoming_atoms));
@@ -87,7 +87,7 @@ pub(super) fn install_theme(node: &mut Node, theme: Theme) {
 
 pub(super) fn install_focus_ring(node: &mut Node, change: impl FnOnce(&mut FocusRing)) {
     debug_assert_not_fragment(node, "focus_ring");
-    if let Some(ring) = node.get_extension_mut::<FocusRing>() {
+    if let Some(ring) = node.extension_mut::<FocusRing>() {
         change(ring);
     } else {
         let mut ring = FocusRing::default();
@@ -103,7 +103,7 @@ where
     debug_assert_not_fragment(node, "style_reactive");
     let reactive = StyleReactiveEffect::new();
     let atoms = reactive.atoms();
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+    if let Some(binding) = node.extension_mut::<StyleBinding>() {
         binding.add_reactive(atoms);
     } else {
         let _previous = node.attach(StyleBinding::reactive_atoms(atoms));

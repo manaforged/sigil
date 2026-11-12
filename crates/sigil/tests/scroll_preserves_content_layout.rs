@@ -40,7 +40,7 @@ fn scroll_preserves_content_layout_style() {
         let content_node = cx.get(content_id).expect("content node exists");
 
         let style = content_node
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("content node must have a LayoutStyle");
 
         let expected = LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl);
@@ -66,7 +66,7 @@ fn scroll_sizing_container_has_fixed_size_layout() {
         let body_node = cx.get(body_id).expect("body exists");
 
         let body_style = body_node
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("sizing container must have a LayoutStyle");
 
         let user_style = LayoutStyle::flex_column().padding(Space::Lg).gap(Space::Xl);

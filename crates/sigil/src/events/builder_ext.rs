@@ -171,13 +171,13 @@ pub(crate) fn selectable_text(node: NodeBuilder, yes: bool) -> NodeBuilder {
 
 pub(crate) fn autofocus(node: NodeBuilder) -> NodeBuilder {
     node.with(crate::events::focus::Autofocus)
-        .added(|_, id| crate::events::focus::request_focus(id))
+        .added(|_, id| id.focus())
 }
 
 pub(crate) fn focus_when(node: NodeBuilder, trigger: Signal<u64>) -> NodeBuilder {
     node.added(move |_, id| {
         crate::events::focus::focus_on_trigger(trigger, move || {
-            crate::events::focus::request_focus(id);
+            id.focus();
         });
     })
 }
@@ -190,10 +190,10 @@ fn with_ext<T: Default + 'static>(
 }
 
 fn ext_mut<T: Default + 'static>(node: &mut Node, mutate: impl FnOnce(&mut T)) {
-    if node.get_extension::<T>().is_none() {
+    if node.extension::<T>().is_none() {
         let _ = node.attach(T::default());
     }
-    if let Some(ext) = node.get_extension_mut::<T>() {
+    if let Some(ext) = node.extension_mut::<T>() {
         mutate(ext);
     }
 }

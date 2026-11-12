@@ -18,7 +18,7 @@ fn collect(cx: &Cx, layout: &LayoutEngine, id: NodeId, viewport: Rect, out: &mut
     let Some(node) = cx.get(id) else {
         return;
     };
-    if node.get_extension::<TopLayer>().is_some() {
+    if node.extension::<TopLayer>().is_some() {
         visible(cx, layout, id, viewport, out);
         return;
     }

@@ -13,7 +13,7 @@ fn autofocus_reaches_the_field() {
         assert!(
             cx.get(root)
                 .expect("field")
-                .get_extension::<Autofocus>()
+                .extension::<Autofocus>()
                 .is_some()
         );
     });

@@ -304,18 +304,14 @@ impl LayoutEngine {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
         }
-        if node
-            .get_extension::<crate::layout::SizeReactive>()
-            .is_some()
-            || node
-                .get_extension::<crate::layout::BoundsReactive>()
-                .is_some()
+        if node.extension::<crate::layout::SizeReactive>().is_some()
+            || node.extension::<crate::layout::BoundsReactive>().is_some()
         {
             self.geometry_reactive.insert(id.key());
         } else {
             self.geometry_reactive.remove(&id.key());
         }
-        if let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() {
+        if let Some(pos) = node.extension::<crate::layout::ReactivePosition>() {
             self.positions.insert(id.key(), pos.get());
             pos.place();
         }
@@ -333,7 +329,7 @@ impl LayoutEngine {
             .contains_key(id.key())
             .then(|| cx.get(id))
             .flatten()
-            .and_then(|node| node.get_extension::<crate::layout::ReactivePosition>())
+            .and_then(|node| node.extension::<crate::layout::ReactivePosition>())
             .map(|pos| pos.nest(under));
         let shift = own.unwrap_or(under);
         self.scopes.insert(id.key(), shift);

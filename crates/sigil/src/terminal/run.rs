@@ -88,7 +88,7 @@ pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'stati
     let result = Owner::scope("sigil-terminal", || {
         live(config, tree, hooks, inspect_pending)
     });
-    if let Some(hook) = &config.on_exit.0 {
+    if let Some(hook) = &config.exit.0 {
         hook();
     }
     profile::dump_if_enabled();
@@ -297,7 +297,7 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
 
 fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Capabilities) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
-    screen.set_access(config.terminal.access);
+    screen.access(config.terminal.access);
     screen.speak_above(config.inline);
     screen
 }
@@ -338,7 +338,7 @@ mod tests;
 
 fn enter(config: &AppConfig) -> AppResult<Term> {
     if let Some(tracking) = config.terminal.mouse_tracking {
-        crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
+        crate::terminal::mouse_tracking(tracking).map_err(Error::io)?;
     }
     let term = Term::enter(config).map_err(Error::io)?;
     crate::app::set_ambiguous(term.caps().ambiguous);

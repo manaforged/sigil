@@ -167,7 +167,7 @@ impl LayoutEngine {
             let published = self.published_result.remove(node.key()).is_some();
             let attached = cx
                 .get_mut_untracked(node)
-                .filter(|kernel| kernel.get_extension::<LayoutResult>().is_some())
+                .filter(|kernel| kernel.extension::<LayoutResult>().is_some())
                 .and_then(crate::kernel::Node::remove_extension::<LayoutResult>)
                 .is_some();
             if published || attached {
@@ -178,7 +178,7 @@ impl LayoutEngine {
 
     fn position_changed(&self, cx: &Cx, id: NodeId) -> bool {
         cx.get(id)
-            .and_then(|node| node.get_extension::<crate::layout::ReactivePosition>())
+            .and_then(|node| node.extension::<crate::layout::ReactivePosition>())
             .is_some_and(|pos| self.positions.get(id.key()).copied() != Some(pos.get()))
     }
 
@@ -186,7 +186,7 @@ impl LayoutEngine {
         cx.get(id).is_some_and(|node| {
             self.synced_version.get(id.key()).copied() == Some(node.version())
                 && node
-                    .get_extension::<crate::layout::ReactivePosition>()
+                    .extension::<crate::layout::ReactivePosition>()
                     .is_some_and(|pos| {
                         self.positions
                             .get(id.key())
@@ -219,7 +219,7 @@ impl LayoutEngine {
     fn translate(&mut self, cx: &Cx, id: NodeId) -> Result<(), Error> {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         let Some(next) = node
-            .get_extension::<crate::layout::ReactivePosition>()
+            .extension::<crate::layout::ReactivePosition>()
             .map(crate::layout::ReactivePosition::get)
         else {
             return Ok(());
@@ -296,7 +296,7 @@ impl LayoutEngine {
             )
         };
         cx.get(id)
-            .and_then(|node| node.get_extension::<LayoutStyle>())
+            .and_then(|node| node.extension::<LayoutStyle>())
             .is_some_and(|style| {
                 definite(style.data().size.width) && definite(style.data().size.height)
             })

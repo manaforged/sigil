@@ -52,7 +52,7 @@ fn scene(color: Color) -> CommandScene {
         blend: BlendMode::default(),
     };
     let mut scene = SceneBuilder::new();
-    scene.with_composite_layer(scope, |scene| {
+    scene.composite(scope, |scene| {
         for at in 0..FILLER {
             let corner = Rect::new(Point::new(at as f32, 0.0), 1.0, 1.0);
             scene.draw_rect(DrawRect::new(corner, GRAY));

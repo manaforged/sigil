@@ -135,7 +135,7 @@ fn pointer_hits_last_frame_boxes() {
 
     if let Some(style) = cx
         .get_mut(child)
-        .and_then(|node| node.get_extension_mut::<LayoutStyle>())
+        .and_then(|node| node.extension_mut::<LayoutStyle>())
     {
         *style = abs_rect(200.0, 200.0, 80.0, 80.0);
     }

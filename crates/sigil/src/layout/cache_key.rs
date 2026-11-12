@@ -108,13 +108,13 @@ fn interaction_hash(node: &Node, binding: &StyleBinding) -> u64 {
 impl Node {
     pub(crate) fn has_unversioned_layout(&self) -> bool {
         if self
-            .get_extension::<crate::layout::ReactivePosition>()
+            .extension::<crate::layout::ReactivePosition>()
             .is_some()
         {
             return true;
         }
         if self
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .is_some_and(StyleBinding::has_reactive)
         {
             return true;
@@ -130,7 +130,7 @@ impl Node {
     }
 
     pub(crate) fn animation_signature(&self) -> Option<u64> {
-        let binding = self.get_extension::<StyleBinding>()?;
+        let binding = self.extension::<StyleBinding>()?;
         (binding.animator_overlay().is_some() || binding.has_transition())
             .then(|| interaction_hash(self, binding))
     }
@@ -142,7 +142,7 @@ impl Node {
     pub(crate) fn seed_signature(&self, interaction: Option<u64>) -> u64 {
         let mut hasher = AHasher::default();
         self.hash_unversioned_layout(&mut hasher);
-        if let Some(binding) = self.get_extension::<StyleBinding>() {
+        if let Some(binding) = self.extension::<StyleBinding>() {
             for reactive in binding.reactive_channels() {
                 for atom in reactive {
                     atom.hash(&mut hasher);
@@ -158,7 +158,7 @@ impl Node {
     }
 
     pub(crate) fn hash_unversioned_layout(&self, hasher: &mut AHasher) -> bool {
-        let hidden = self.get_extension::<StyleBinding>().is_some_and(|binding| {
+        let hidden = self.extension::<StyleBinding>().is_some_and(|binding| {
             for reactive in binding.reactive_channels() {
                 for atom in reactive {
                     if atom.affects_layout() {
@@ -179,7 +179,7 @@ impl Node {
             }
             binding.hides()
         });
-        if let Some(pos) = self.get_extension::<crate::layout::ReactivePosition>() {
+        if let Some(pos) = self.extension::<crate::layout::ReactivePosition>() {
             let (x, y) = pos.get();
             x.to_bits().hash(hasher);
             y.to_bits().hash(hasher);
@@ -194,7 +194,7 @@ impl Node {
     }
 
     fn definite_width(&self) -> bool {
-        self.get_extension::<LayoutStyle>().is_some_and(|style| {
+        self.extension::<LayoutStyle>().is_some_and(|style| {
             matches!(
                 style.data().size.width,
                 Length::Px(_)

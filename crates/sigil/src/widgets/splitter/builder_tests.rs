@@ -42,7 +42,7 @@ fn a_width_on_the_splitter_reaches_its_root() {
         let style = cx
             .get(root)
             .expect("root")
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("layout");
         assert_eq!(style.data().size.width, Length::Px(180.0));
     });
@@ -61,7 +61,7 @@ fn map_node_keeps_the_splitter_row() {
         let style = cx
             .get(root)
             .expect("root")
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("layout");
         assert_eq!(style.data().flex_direction, FlexDirection::Row);
     });

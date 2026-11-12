@@ -30,7 +30,7 @@ fn sheet_docks_a_dialog_on_the_right() {
         let style = cx
             .get(frame)
             .expect("frame")
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("layout")
             .clone();
         assert_eq!(style.data().size.width, crate::layout::Length::Px(360.0));

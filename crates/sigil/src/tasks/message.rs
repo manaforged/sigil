@@ -9,7 +9,7 @@ use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::tasks::runtime::attach_task;
 
-/// A channel receiver that `tasks::on_message` reads.
+/// A channel receiver that `tasks::listen` reads.
 pub trait MessageReceiver<T>: Send + 'static {
     /// Waits for the next message; returns `None` when the channel closes.
     fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_;
@@ -50,23 +50,23 @@ struct Handlers<T> {
     close: Cell<Option<Close>>,
 }
 
-/// Runs `f` on the UI thread per message, then `on_close` when all senders drop.
+/// Runs `f` on the UI thread per message, then `close` when all senders drop.
 ///
 /// Messages already waiting are handled together in one reactive batch, so effects run once per burst.
 #[track_caller]
-pub fn on_message<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, on_close: C)
+pub fn listen<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, close: C)
 where
     T: Send + 'static,
     F: Fn(T) + 'static,
     C: FnOnce() + 'static,
 {
     let location = core::panic::Location::caller();
-    let Some((owner, parts)) = scope_parts("on_message") else {
+    let Some((owner, parts)) = scope_parts("listen") else {
         return;
     };
     let handlers: Signal<Rc<Handlers<T>>> = signal(Rc::new(Handlers {
         message: Box::new(f),
-        close: Cell::new(Some(Box::new(on_close))),
+        close: Cell::new(Some(Box::new(close))),
     }));
     let slot = handlers.into_sendable();
     let dispatcher = parts.dispatcher.clone();
@@ -90,8 +90,8 @@ where
             });
         }
         dispatch_to_owner(&dispatcher, owner, move || {
-            if let Some(close) = slot.into_signal().try_peek().and_then(|h| h.close.take()) {
-                close();
+            if let Some(hook) = slot.into_signal().try_peek().and_then(|h| h.close.take()) {
+                hook();
             }
         });
     };

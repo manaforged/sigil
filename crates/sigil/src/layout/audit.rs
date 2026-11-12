@@ -59,7 +59,7 @@ pub fn flaws(
 ) -> Vec<Issue> {
     let mut out = Vec::new();
     cx.visit_preorder(root, |id, node| {
-        if node.get_extension::<Asymmetric>().is_none() {
+        if node.extension::<Asymmetric>().is_none() {
             align::columns(cx, layout, (id, node), tolerance, &mut out);
             align::insets(cx, layout, (id, node), tolerance, &mut out);
         }
@@ -81,7 +81,7 @@ fn allowed(cx: &Cx, flaw: &Issue) -> bool {
             return false;
         };
         if node
-            .get_extension::<AllowedFlaws>()
+            .extension::<AllowedFlaws>()
             .is_some_and(|kinds| kinds.0.contains(&flaw.kind()))
         {
             return true;
@@ -109,7 +109,7 @@ fn label(id: NodeId, node: &Node) -> NodeLabel {
 }
 
 fn style(node: &Node) -> (Display, FlexDirection, FlexWrap) {
-    node.get_extension::<LayoutStyle>().map_or(
+    node.extension::<LayoutStyle>().map_or(
         (Display::Block, FlexDirection::Column, FlexWrap::NoWrap),
         |style| {
             let data = style.data();

@@ -40,7 +40,7 @@ fn paint_when_toggles_on_signal_change() {
 fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
     let binding = cx
         .get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
+        .and_then(|node| node.extension::<StyleBinding>())
         .unwrap();
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())

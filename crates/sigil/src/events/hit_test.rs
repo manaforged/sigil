@@ -162,7 +162,7 @@ impl HitTestCache {
                 && let Some(rect) = item.rect
                 && let Some(binding) = cx
                     .get(item.id)
-                    .and_then(|node| node.get_extension::<StyleBinding>())
+                    .and_then(|node| node.extension::<StyleBinding>())
             {
                 local = local.and_then(|point| to_local(cx, item.id, binding, rect, point));
             }
@@ -223,10 +223,10 @@ pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
 
 /// Whether this node hides itself and its subtree from input and assistive tech.
 pub(crate) fn conceals(node: &Node) -> bool {
-    node.get_extension::<crate::style::presence::Presence>()
+    node.extension::<crate::style::presence::Presence>()
         .is_some_and(|presence| !presence.interactive())
         || node
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .is_some_and(StyleBinding::hides)
 }
 
@@ -236,7 +236,7 @@ fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
         if !projection::inside_clip_path(cx, current, node, position) {
             return false;
         }
-        if node.get_extension::<TopLayer>().is_some() {
+        if node.extension::<TopLayer>().is_some() {
             break;
         }
         let Some(parent) = cx.parent(current) else {
@@ -244,7 +244,7 @@ fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
         };
         if let Some(bounds) = cx
             .get(parent)
-            .and_then(|ancestor| ancestor.get_extension::<LayoutResult>())
+            .and_then(|ancestor| ancestor.extension::<LayoutResult>())
             && bounds.clips()
             && !local_position(cx, parent, position)
                 .is_some_and(|point| contains(bounds.rect(), point))
@@ -282,7 +282,7 @@ fn emit(
         parent,
         transformed: rect.is_some()
             && node
-                .get_extension::<StyleBinding>()
+                .extension::<StyleBinding>()
                 .is_some_and(StyleBinding::may_transform),
         query: 0,
         position: None,
@@ -290,7 +290,7 @@ fn emit(
     for child in node.children().iter().copied() {
         if cx
             .get(child)
-            .is_some_and(|child_node| child_node.get_extension::<TopLayer>().is_some())
+            .is_some_and(|child_node| child_node.extension::<TopLayer>().is_some())
         {
             deferred.push(child);
         } else {
@@ -313,7 +313,7 @@ fn transform_chain(cx: &Cx, target: NodeId) -> NodePath {
         chain.push(id);
         if cx
             .get(id)
-            .is_some_and(|node| node.get_extension::<TopLayer>().is_some())
+            .is_some_and(|node| node.extension::<TopLayer>().is_some())
         {
             break;
         }
@@ -335,9 +335,9 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
         let Some(node) = cx.get(id) else {
             continue;
         };
-        if let Some(binding) = node.get_extension::<StyleBinding>()
+        if let Some(binding) = node.extension::<StyleBinding>()
             && binding.may_transform()
-            && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
+            && let Some(result) = node.extension::<crate::layout::LayoutResult>()
             && let Some(transform) = node_transform(cx, id, binding, result.rect())
         {
             corners = transform.polygon(&corners);
@@ -360,9 +360,9 @@ pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Optio
     let chain = transform_chain(cx, target);
     for id in chain.into_iter().rev() {
         let node = cx.get(id)?;
-        if let Some(binding) = node.get_extension::<StyleBinding>()
+        if let Some(binding) = node.extension::<StyleBinding>()
             && binding.may_transform()
-            && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
+            && let Some(result) = node.extension::<crate::layout::LayoutResult>()
         {
             point = to_local(cx, id, binding, result.rect(), point)?;
         }

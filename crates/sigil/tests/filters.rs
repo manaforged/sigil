@@ -63,7 +63,7 @@ pub(crate) fn filtered(scene: &mut SceneBuilder, rect: Rect, filters: &[Filter],
         opacity: 1.0,
         blend: BlendMode::default(),
     };
-    scene.with_composite_layer(scope, |scene| content(scene, rect));
+    scene.composite(scope, |scene| content(scene, rect));
 }
 
 fn node(card: Card) -> impl IntoNode {

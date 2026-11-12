@@ -57,7 +57,7 @@ fn painted(build: impl IntoNode, drive: Drive) -> Vec<Color> {
 fn width(build: impl IntoNode) -> f32 {
     let (cx, root) = laid_out(build, Drive::Rest);
     cx.get(root)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .map_or(0.0, |result| result.rect().width)
 }
 

@@ -102,7 +102,7 @@ impl Host {
         if let Some(id) =
             focus.and_then(|path| self.root.and_then(|root| find(&self.cx, root, &path)))
         {
-            crate::events::focus::request_focus(id);
+            id.focus();
         }
     }
 }

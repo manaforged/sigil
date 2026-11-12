@@ -79,7 +79,7 @@ impl LayoutEdit {
 
     pub(crate) fn install(&self, node: &mut Node) {
         let min = node
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .map_or_else(|| Axes::splat(Length::Auto), |style| style.0.min_size);
         install_layout(node, &self.delta(min));
     }

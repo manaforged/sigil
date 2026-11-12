@@ -52,7 +52,7 @@ mod widget_plumbing;
 use std::cell::RefCell;
 
 use sigil::prelude::*;
-use sigil::tasks::on_message;
+use sigil::tasks::listen;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 use spec::State;
@@ -116,7 +116,7 @@ fn sandbox(first: Pick) -> impl IntoNode {
     PICKS.with(|picks| *picks.borrow_mut() = Some(sender));
     first.theme().apply();
     let picks = signal(vec![first]);
-    on_message(
+    listen(
         receiver,
         move |next: Pick| {
             next.theme().apply();

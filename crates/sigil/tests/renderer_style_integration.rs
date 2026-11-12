@@ -180,7 +180,7 @@ fn layout(cx: &mut Cx, root: NodeId) {
         .expect("layout compute succeeds");
     assert!(
         cx.get(root)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .is_some()
     );
 }

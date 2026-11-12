@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, batch, effect, memo, on_cleanup, signal};
+use sigil::reactive::{Owner, batch, cleanup, effect, memo, signal};
 
 #[path = "reactive_edge_cases/batch_update.rs"]
 mod batch_update;

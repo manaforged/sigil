@@ -20,7 +20,7 @@ impl EventRouter {
         let quits = self.quit.is_some_and(|keys| pressed(keys, &event));
         let handled = self.route_key(cx, layout, event);
         if quits && !handled {
-            crate::app::exit::request_exit();
+            crate::app::exit::exit();
         }
         handled
     }

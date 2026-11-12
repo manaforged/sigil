@@ -69,7 +69,7 @@ impl Grid {
     }
 
     /// Sets the graphics.
-    pub const fn set_graphics(&mut self, graphics: bool) {
+    pub const fn graphics(&mut self, graphics: bool) {
         self.graphics = graphics;
     }
 

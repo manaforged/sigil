@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-use crate::events::request_focus;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, effect, memo, untrack};
@@ -46,7 +45,7 @@ impl Roving {
             self.active.set(*original);
         }
         if let Some(Some(id)) = self.ids.borrow().get(target) {
-            request_focus(*id);
+            id.focus();
         }
     }
 

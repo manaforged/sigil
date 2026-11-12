@@ -50,7 +50,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use interval::next_interval_deadline;
 }
-pub use owner::{Owner, on_cleanup};
+pub use owner::{Owner, cleanup};
 pub(crate) use owner::{is_live, owner_by_id};
 kittest_pub! {
     #[doc(hidden)]

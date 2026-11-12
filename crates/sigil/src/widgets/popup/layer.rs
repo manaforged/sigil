@@ -6,7 +6,7 @@ use crate::events::NamedKey;
 use crate::kernel::{FocusScopeKind, Live, NodeBuilder, TopLayer, announce};
 use crate::layout::Display;
 use crate::layout::{Popup, ViewportOverlay};
-use crate::reactive::{Signal, effect_named, on_cleanup};
+use crate::reactive::{Signal, cleanup, effect_named};
 use crate::style::StyleAtom;
 use crate::widgets::Widget;
 
@@ -73,7 +73,7 @@ impl PopupLayer {
         let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
         let show = self.show;
         LIGHT_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
-        on_cleanup(move || {
+        cleanup(move || {
             LIGHT_LAYERS.with(|stack| stack.borrow_mut().retain(|layer| layer.id != id));
         });
     }
@@ -165,7 +165,7 @@ static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);
 fn register_escape(show: Signal<bool>) {
     let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
     ESCAPE_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
-    on_cleanup(move || {
+    cleanup(move || {
         ESCAPE_LAYERS.with(|stack| {
             stack.borrow_mut().retain(|layer| layer.id != id);
         });

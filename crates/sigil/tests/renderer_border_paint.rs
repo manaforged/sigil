@@ -135,7 +135,7 @@ fn border_width_insets_child_content_box_model() {
     let child_id = cx.get(root).unwrap().children().first().copied().unwrap();
     let rect = cx
         .get(child_id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("child layout result")
         .rect();
     assert!(

@@ -14,14 +14,14 @@ fn rect(layout: &LayoutEngine, id: NodeId) -> Option<Rect> {
 }
 
 fn in_flow(node: &Node) -> bool {
-    node.get_extension::<ReactivePosition>().is_none()
+    node.extension::<ReactivePosition>().is_none()
         && node
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .is_none_or(|style| style.data().position != Position::Absolute)
 }
 
 fn overflow(node: &Node) -> (Overflow, Overflow) {
-    node.get_extension::<LayoutStyle>()
+    node.extension::<LayoutStyle>()
         .map_or((Overflow::Visible, Overflow::Visible), |style| {
             let axes = style.data().overflow;
             (axes.width, axes.height)

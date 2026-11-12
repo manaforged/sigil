@@ -21,7 +21,7 @@ fn applied(theme: &Theme, atoms: &[StyleAtom]) -> RenderStyle {
 
 fn binding(cx: &Cx, id: crate::kernel::NodeId) -> &StyleBinding {
     cx.get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
+        .and_then(|node| node.extension::<StyleBinding>())
         .unwrap()
 }
 
@@ -339,6 +339,6 @@ fn theme_swap_invalidates_binding() {
     let mut cx = Cx::new_root();
     let id = cx.add(container().class("p-16").theme(Theme::default()));
     let node = cx.get(id).unwrap();
-    assert!(node.get_extension::<Theme>().is_some());
-    assert!(node.get_extension::<StyleBinding>().is_some());
+    assert!(node.extension::<Theme>().is_some());
+    assert!(node.extension::<StyleBinding>().is_some());
 }

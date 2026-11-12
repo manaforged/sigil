@@ -55,7 +55,7 @@ fn widget_layout_ext_overrides_reach_root_node() {
         let style = cx
             .get(root)
             .expect("root node exists")
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
         assert_eq!(

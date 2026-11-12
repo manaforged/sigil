@@ -407,9 +407,8 @@ impl Cx {
 
     fn needs_owner(&self, id: NodeId) -> bool {
         self.nodes.get(id.key()).is_some_and(|node| {
-            node.get_extension::<crate::events::EventHandlers>()
-                .is_some()
-                || node.get_extension::<crate::style::StyleBinding>().is_some()
+            node.extension::<crate::events::EventHandlers>().is_some()
+                || node.extension::<crate::style::StyleBinding>().is_some()
         })
     }
 

@@ -160,7 +160,7 @@ fn a_status_spoken_on_a_quiet_frame_is_written() {
         let mut host = Host::new(HostMode::Cell);
         host.mount(|| container().child(text("steady")));
         let mut screen = Screen::new(COLS, ROWS);
-        screen.set_access(sigil::terminal::Access {
+        screen.access(sigil::terminal::Access {
             status: std::time::Duration::from_secs(60),
             ..sigil::terminal::Access::default()
         });

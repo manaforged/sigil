@@ -21,7 +21,7 @@ pub(super) fn apply_reactive_position(
     intent: LayoutStyle,
 ) -> LayoutStyle {
     if node
-        .get_extension::<crate::layout::ReactivePosition>()
+        .extension::<crate::layout::ReactivePosition>()
         .is_none()
     {
         return intent;
@@ -37,7 +37,7 @@ pub(super) fn apply_style_overlay(
     intent: &mut LayoutStyle,
     text_style: Option<&mut TextStyle>,
 ) {
-    let Some(binding) = node.get_extension::<StyleBinding>() else {
+    let Some(binding) = node.extension::<StyleBinding>() else {
         return;
     };
     for atom in binding.cascade() {

@@ -49,13 +49,13 @@ fn ordered_fixed(width: f32, height: f32, order: i32) -> LayoutStyle {
 
 fn layout_result_exists(cx: &Cx, id: NodeId) -> bool {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .is_some()
 }
 
 fn layout_result(cx: &Cx, id: NodeId) -> LayoutResult {
     *cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("layout result exists")
 }
 

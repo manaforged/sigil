@@ -19,7 +19,7 @@ fn from_string_works_too() {
 fn builder_chain_overrides_individual_fields() {
     let cfg = AppConfig::new("Chain")
         .size(640, 360)
-        .esc_exits(false)
+        .exit_on_esc(false)
         .panic_policy(PanicPolicy::Abort);
     assert_eq!(cfg.title, "Chain");
     assert_eq!(cfg.size, (640, 360));

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::events::NamedKey;
-use crate::events::request_focus;
 use crate::kernel::{Cx, IntoNode, NodeId, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::rows;
@@ -164,7 +163,7 @@ fn entry_list(picker: FilePicker) -> impl IntoNode {
 
 fn focus_first_child(cx: &Cx, id: NodeId) {
     if let Some(child) = cx.get(id).and_then(|node| node.children.first().copied()) {
-        request_focus(child);
+        child.focus();
     }
 }
 

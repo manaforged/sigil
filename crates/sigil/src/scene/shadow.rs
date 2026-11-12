@@ -52,14 +52,14 @@ impl Shadow {
     pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
         let [r, g, b] = srgb::decode_rgb(color);
         let c = [r, g, b, srgb::unit(color.a)];
-        Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)
+        Self::new([0.0, 0.0], blur, spread, c).kind(ShadowKind::Glow)
     }
 
     kittest_pub! {
         /// Sets the kind.
         #[must_use]
         #[doc(hidden)]
-        pub const fn with_kind(mut self, kind: ShadowKind) -> Self {
+        pub const fn kind(mut self, kind: ShadowKind) -> Self {
             self.kind = kind;
             self
         }

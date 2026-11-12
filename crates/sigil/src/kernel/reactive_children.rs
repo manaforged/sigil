@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use crate::kernel::builder::Fate;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
-use crate::reactive::{Owner, is_live, on_cleanup};
+use crate::reactive::{Owner, cleanup, is_live};
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
@@ -309,7 +309,7 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
     for owner in owners {
         let remaining = Rc::clone(&remaining);
         owner.with(|| {
-            on_cleanup(move || {
+            cleanup(move || {
                 if remaining.get() > 1 {
                     remaining.set(remaining.get() - 1);
                 } else {

@@ -17,7 +17,6 @@ mod targets;
 mod request;
 mod reveal;
 
-pub use request::request_focus;
 pub(crate) use request::{Autofocus, focus_on_trigger, swap_focus_requests, take_focus_requests};
 pub(crate) use reveal::{ScrollReveal, reveal_focus};
 

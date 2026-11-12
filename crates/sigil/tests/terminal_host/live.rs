@@ -139,7 +139,7 @@ impl Side {
 
     pub(super) fn mounted(host: Host, size: (u16, u16), status: Duration) -> Self {
         let mut screen = Screen::new(size.0, size.1);
-        screen.set_access(Access {
+        screen.access(Access {
             status,
             ..Access::default()
         });

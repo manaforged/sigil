@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::reactive::owner::on_cleanup;
+use crate::reactive::owner::cleanup;
 use crate::reactive::runtime::with_rt;
 
 type SubEntry<T> = (u64, Rc<dyn Fn(T)>);
@@ -67,7 +67,7 @@ impl<T: Clone + 'static> EventChannel<T> {
         };
         if with_rt(|rt| rt.has_active_owner()) {
             let inner = Rc::clone(&self.inner);
-            on_cleanup(move || remove_sub(&inner, id));
+            cleanup(move || remove_sub(&inner, id));
         }
         let inner = Rc::clone(&self.inner);
         Subscription {

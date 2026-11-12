@@ -61,7 +61,7 @@ fn assert_sized(cx: &Cx, id: NodeId) {
     let style = cx
         .get(id)
         .expect("node exists")
-        .get_extension::<LayoutStyle>()
+        .extension::<LayoutStyle>()
         .expect("node has LayoutStyle");
     assert_eq!(style.data().size.width, Length::Px(100.0));
     assert_eq!(style.data().size.height, Length::Px(50.0));

@@ -168,7 +168,7 @@ fn compose_window_scene(
     if backdrop {
         let theme = cx
             .get(root)
-            .and_then(Node::get_extension::<Theme>)
+            .and_then(Node::extension::<Theme>)
             .unwrap_or_else(crate::style::theme::fallback_theme);
         paint_backdrop(out, theme, viewport);
     }

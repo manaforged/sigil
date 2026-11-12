@@ -2,7 +2,7 @@
 #![allow(clippy::indexing_slicing)]
 
 use sigil::reactive::debug::{dump_owner_tree, dump_subtree};
-use sigil::reactive::{Owner, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, cleanup, effect, signal};
 
 #[test]
 fn dump_owner_tree_renders_single_root() {
@@ -63,7 +63,7 @@ fn dump_owner_tree_includes_signal_and_effect_counts() {
         leaf.with(|| {
             let _a = signal(0_i32);
             let _b = signal(0_i32);
-            on_cleanup(|| {});
+            cleanup(|| {});
         });
         dump_owner_tree()
     });

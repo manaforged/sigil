@@ -155,10 +155,10 @@ impl LayoutEngine {
             let node = cx
                 .get_mut_untracked(id)
                 .ok_or_else(|| Error::node_missing(id))?;
-            if let Some(size) = node.get_extension::<crate::layout::SizeReactive>() {
+            if let Some(size) = node.extension::<crate::layout::SizeReactive>() {
                 self.republished |= size.publish((rect.width, rect.height));
             }
-            if let Some(bounds) = node.get_extension::<crate::layout::BoundsReactive>() {
+            if let Some(bounds) = node.extension::<crate::layout::BoundsReactive>() {
                 self.republished |= bounds.publish(rect);
             }
             if unchanged {
@@ -178,8 +178,8 @@ impl LayoutEngine {
                     continue;
                 };
                 let (Some(bounds), Some(result)) = (
-                    node.get_extension::<crate::layout::BoundsReactive>(),
-                    node.get_extension::<LayoutResult>(),
+                    node.extension::<crate::layout::BoundsReactive>(),
+                    node.extension::<LayoutResult>(),
                 ) else {
                     continue;
                 };
@@ -202,7 +202,7 @@ impl LayoutEngine {
             let published = self.published_result.remove(id.key()).is_some();
             let attached = cx
                 .get_mut_untracked(id)
-                .filter(|node| node.get_extension::<LayoutResult>().is_some())
+                .filter(|node| node.extension::<LayoutResult>().is_some())
                 .and_then(crate::kernel::Node::remove_extension::<LayoutResult>)
                 .is_some();
             if published || attached {

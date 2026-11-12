@@ -26,7 +26,7 @@ struct RowShape {
 fn shape(cx: &Cx, row: &Node) -> RowShape {
     RowShape {
         style: row
-            .get_extension::<LayoutStyle>()
+            .extension::<LayoutStyle>()
             .map(|style| style.data().clone()),
         cells: row
             .children()

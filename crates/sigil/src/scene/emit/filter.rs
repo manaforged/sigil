@@ -22,7 +22,7 @@ impl<'t> EmitWalk<'_, 't> {
         let rect = self
             .cx
             .get(id)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .map(LayoutResult::rect);
         let Some(rect) = rect.filter(|_| !filters.is_empty()) else {
             self.push_contents(id, inherited, clip, style);
