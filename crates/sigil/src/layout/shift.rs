@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-const HOPS: usize = 8;
+const INDEX: u32 = (1 << 24) - 1;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Shift(u32);
@@ -9,6 +9,7 @@ pub(crate) struct Shift(u32);
 struct Entry {
     by: (f32, f32),
     under: Shift,
+    era: u8,
 }
 
 #[derive(Default)]
@@ -33,7 +34,7 @@ impl Shift {
         }
         SLOTS.with_borrow(|slots| {
             let (mut x, mut y, mut at) = (0.0, 0.0, self);
-            for _ in 0..HOPS {
+            for _ in 0..=slots.entries.len() {
                 let Some(entry) = slots.entry(at) else {
                     break;
                 };
@@ -47,13 +48,20 @@ impl Shift {
 }
 
 impl Slots {
+    fn at(shift: Shift) -> Option<usize> {
+        usize::try_from((shift.0 & INDEX).checked_sub(1)?).ok()
+    }
+
     fn entry(&self, shift: Shift) -> Option<&Entry> {
-        self.entries.get(usize::try_from(shift.0.checked_sub(1)?).ok()?)
+        self.entries
+            .get(Self::at(shift)?)
+            .filter(|entry| u32::from(entry.era) == shift.0 >> 24)
     }
 
     fn entry_mut(&mut self, shift: Shift) -> Option<&mut Entry> {
         self.entries
-            .get_mut(usize::try_from(shift.0.checked_sub(1)?).ok()?)
+            .get_mut(Self::at(shift)?)
+            .filter(|entry| u32::from(entry.era) == shift.0 >> 24)
     }
 }
 
@@ -64,10 +72,16 @@ impl ShiftSlot {
     pub(crate) fn new() -> Self {
         SLOTS.with_borrow_mut(|slots| {
             if let Some(index) = slots.free.pop() {
-                return Self(Shift(index));
+                let era = slots.entries.get(index as usize - 1).map_or(0, |entry| entry.era);
+                return Self(Shift(u32::from(era) << 24 | index));
             }
             slots.entries.push(Entry::default());
-            Self(Shift(u32::try_from(slots.entries.len()).unwrap_or(0)))
+            Self(Shift(
+                u32::try_from(slots.entries.len())
+                    .ok()
+                    .filter(|index| *index <= INDEX)
+                    .unwrap_or(0),
+            ))
         })
     }
 
@@ -97,10 +111,11 @@ impl Drop for ShiftSlot {
         let _ = SLOTS.try_with(|slots| {
             if let Ok(mut slots) = slots.try_borrow_mut() {
                 if let Some(entry) = slots.entry_mut(shift) {
-                    *entry = Entry::default();
-                }
-                if shift.0 != 0 {
-                    slots.free.push(shift.0);
+                    *entry = Entry {
+                        era: entry.era.wrapping_add(1),
+                        ..Entry::default()
+                    };
+                    slots.free.push(shift.0 & INDEX);
                 }
             }
         });
