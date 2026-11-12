@@ -81,6 +81,7 @@ job_wasm() {
 
 job_test() {
   step test cargo test --workspace --all-features --locked --no-fail-fast
+  step terminal-only cargo test --workspace --locked --features sigil-ui/terminal
   step dialog cargo test -p sigil-ui --locked --features dialog,kittest --test integration two_hosts::a_dialog
   if [ "$gpu" = 1 ]; then
     local skips=() name
