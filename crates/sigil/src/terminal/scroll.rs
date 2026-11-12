@@ -71,6 +71,16 @@ impl Shift {
         })
     }
 
+    pub(crate) fn carries(&self, row: usize) -> bool {
+        let inside = (self.top..=self.bottom).contains(&row);
+        inside
+            && if self.up {
+                row + self.by <= self.bottom
+            } else {
+                row >= self.top + self.by
+            }
+    }
+
     pub(crate) fn source<'g>(&self, prev: &'g Grid, row: usize) -> Option<&'g [Cell]> {
         if row < self.top || row > self.bottom {
             return Some(prev.row(row));
