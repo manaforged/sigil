@@ -70,7 +70,7 @@ impl LayoutNode {
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutText {
     pub(crate) content: TextContent,
-    pub(crate) style: Option<TextStyle>,
+    pub(crate) style: Option<std::rc::Rc<TextStyle>>,
     pub(crate) wrap: bool,
     pub(crate) ellipsis: bool,
     pub(crate) sig: std::cell::OnceCell<u64>,
