@@ -55,7 +55,7 @@ pub enum Glyph {
 
 #[cfg(feature = "scene")]
 impl Glyph {
-    /// Makes a glyph from the source of an SVG image.
+    /// Makes a glyph from the source of an SVG image. A button made from it has no name: chain `.accessible(name)`.
     pub fn svg(source: impl Into<std::sync::Arc<str>>) -> Self {
         Self::Svg(source.into())
     }

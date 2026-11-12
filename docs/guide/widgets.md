@@ -16,7 +16,7 @@ The family pages carry signatures, options, and behavior notes:
 
 ## Inputs
 
-- **button(label)**: `label` is `TextContent` (`&str` or `Signal<String>`). Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`. Use `.accessible("Play")` when the visible label is a glyph.
+- **button(label)**: `label` is a `Glyph`: text (`&str` or `Signal<String>`) or an `Icon`. Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`. Use `.accessible("Play")` when the visible label is a glyph.
 - **button(Icon::Play)**: a square ghost `button` that shows an icon and is named for it. For a text glyph, write `button("▶").ghost().square().accessible("Play")`.
 - **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the signal is true.
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
@@ -29,7 +29,7 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, Vec\<String\>)**: chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
-- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` or `sheet` (recipe below).
+- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
 

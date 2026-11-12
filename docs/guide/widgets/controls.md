@@ -4,7 +4,7 @@ Action and value controls. Each constructs from a lowercase function and chains 
 
 ## button
 
-`button(label) -> ButtonBuilder`. `label` is `impl Into<TextContent>`: a `&str`, `String`, `Signal<T: Display>`, or a closure `Fn() -> String`.
+`button(label) -> ButtonBuilder`. `label` is `impl Into<Glyph>`: a `&str`, `String`, `Signal<T: Display>`, a closure `Fn() -> String`, an `Icon`, or `Glyph::svg(source)`.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -28,7 +28,7 @@ Key options:
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
-Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
+Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
 
 `button(Icon::Close)` is a ghost button with a square hit area, named for the icon; `button("×").ghost().square()` does the same for a text glyph: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
 
