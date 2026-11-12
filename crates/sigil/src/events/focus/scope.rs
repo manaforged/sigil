@@ -14,6 +14,10 @@ impl FocusManager {
         reason = "intentional, reviewed trade-off"
     )]
     pub(crate) fn sync_scopes(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>) {
+        let layout_generation = layout.map_or(u64::MAX, LayoutEngine::generation);
+        if self.scopes_synced == (cx.paint_epoch(), layout_generation) {
+            return;
+        }
         let mut current = cx.marked_preorder(cx.roots());
         current.retain(|id| {
             cx.get(*id)
@@ -59,6 +63,7 @@ impl FocusManager {
             }
             self.ring_generation = u64::MAX;
         }
+        self.scopes_synced = (cx.paint_epoch(), layout_generation);
     }
 }
 

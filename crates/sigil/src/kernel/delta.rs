@@ -89,7 +89,6 @@ pub(crate) fn discard_pending(cx: u64) {
 }
 
 impl Cx {
-    #[cfg(host)]
     #[must_use]
     pub(crate) fn paint_epoch(&self) -> u64 {
         DELTA_EPOCH
