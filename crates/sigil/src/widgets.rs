@@ -248,7 +248,6 @@ mod modal;
 mod notice;
 mod number_field;
 pub(crate) mod overlay;
-mod panel;
 pub(crate) mod patterns;
 mod popup;
 pub(crate) use popup::close_light as popup_close_light;
@@ -333,7 +332,6 @@ pub use mermaid::mermaid;
 pub use modal::{ModalBuilder, Side, modal};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
-pub use panel::{PanelBuilder, panel};
 pub use patterns::{
     CardBuilder, Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
     app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
@@ -401,7 +399,6 @@ crate::kernel::into_node_builder!(
     MenuBarBuilder,
     MenuBuilder,
     ModalBuilder,
-    PanelBuilder,
     PathNode,
     ProgressBuilder,
     RadioGroupBuilder,

@@ -337,15 +337,6 @@ captures = [
 ]
 
 [[components]]
-id = "panel"
-title = "Panel"
-group = "chrome"
-builder = "panel"
-captures = [
-  { build = "panel", size = [320, 120], hit = [8.0, 8.0], states = ["default"] },
-]
-
-[[components]]
 id = "card"
 title = "Card"
 group = "chrome"

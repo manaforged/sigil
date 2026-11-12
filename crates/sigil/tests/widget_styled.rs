@@ -155,20 +155,6 @@ fn dropdown_styled_pressed_populates_state_slot() {
 }
 
 #[test]
-fn panel_accepts_styled_surface() {
-    Owner::scope("widget-styled-panel-surface", || {
-        let build = |padding: f32| {
-            panel()
-                .title("Settings")
-                .background(A)
-                .layout(LayoutStyle::default().padding_x(Space::raw(padding, "test fixture")))
-        };
-        assert_paints(&painted(build(20.0), Drive::Rest), A, "panel bg");
-        assert!(width(build(20.0)) >= width(build(0.0)));
-    });
-}
-
-#[test]
 fn text_field_styled_composes_with_state_variant() {
     Owner::scope("widget-styled-text-field-state-compose", || {
         let build = || {
@@ -295,7 +281,7 @@ fn layout_override_sizes_every_widget_root() {
         let wide = || LayoutStyle::default().width(210.0);
         let value = signal(0.5_f32);
         let widths = [
-            ("panel", width(panel().layout(wide()))),
+            ("card", width(card(text("x")).layout(wide()))),
             ("progress", width(progress(value, 1.0).layout(wide()))),
             ("gauge", width(gauge(value).layout(wide()))),
             ("slider", width(slider(value, 0.0..=1.0).layout(wide()))),

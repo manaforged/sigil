@@ -18,11 +18,9 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 `menu_bar()` draws the same chrome: a 32 px `surface-subtle` bar with a 1 px bottom border. Each trigger is a centered 22 px item with a small radius. It shows `surface-hover` on hover, `surface-pressed` while pressed, and keeps `surface-pressed` while its menu is open.
 
-## panel and card
+## card
 
-`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`, with `.padding_x(..)` and `.padding_y(..)` applied in call order), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
-
-`card(child) -> NodeBuilder`: the lighter variant: a `rounded-md` `surface` column with the same 1 px `border`, 12 px padding, and 8 px gaps. A panel at tier 1 and a card share one fill and one border.
+`card(child) -> CardBuilder`: a titled surface: `.title(str)` adds a medium-weight title above the body, and `.layer(Layer)` picks the depth. It is a `rounded-md` `surface` column with a 1 px `border`, 12 px padding, and 8 px gaps.
 
 ## sidebar
 
@@ -107,7 +105,7 @@ None of these hold their own state. Drive them with signals from your app and re
 
 ## States, keys, and accessibility
 
-The visual catalog captures these states. The frame widgets (`panel`, `card`, `surface`, `sidebar`, `status_bar`, `app_shell`) are static.
+The visual catalog captures these states. The frame widgets (`card`, `surface`, `sidebar`, `status_bar`, `app_shell`) are static.
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |

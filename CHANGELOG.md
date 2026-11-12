@@ -275,6 +275,7 @@ First public release.
 
 ### Changed
 
+- `panel` and `PanelBuilder` are removed; `card` takes a title. Migration: `panel().title("T").child(body)` becomes `card(body).title("T")`, and `.elevation(0)` becomes `.layer(Layer::Page)`. A card has 12 px padding where a panel had 16 px; chain `.layout(LayoutStyle::default().padding(Space::Lg))` to keep it.
 - `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
 - `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.
 - The `icon_svg` function is removed. Migration: `icon_svg(source)` becomes `icon(Glyph::svg(source))`. `Glyph` has a new `Svg` variant and is in the prelude.

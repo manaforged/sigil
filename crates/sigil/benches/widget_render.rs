@@ -216,7 +216,7 @@ fn build_progress() -> impl IntoNode {
 }
 
 fn build_panel() -> impl IntoNode {
-    panel().title("Settings")
+    card(text("Body")).title("Settings")
 }
 
 const WIDGETS: &[Widget] = &[
@@ -251,7 +251,7 @@ const WIDGETS: &[Widget] = &[
         build: || sigil::kernel::node(build_progress()),
     },
     Widget {
-        name: "panel",
+        name: "titled_card",
         size_px: (340, 92),
         hit: (1.0, 1.0),
         build: || sigil::kernel::node(build_panel()),
