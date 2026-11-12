@@ -6,6 +6,7 @@ use crossterm::{cursor, queue};
 use crate::terminal::paint::{Cell, Grid, Ink};
 
 const MIN_GAIN: usize = 3;
+const INK_TURN: u32 = 21;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Shift {
@@ -112,9 +113,17 @@ impl Shift {
 fn sign(cells: &[Cell]) -> u64 {
     use crate::fnv::{OFFSET, mix};
     cells.iter().fold(OFFSET, |hash, cell| {
-        let hash = crate::fnv::bytes(hash, cell.text.as_bytes());
-        mix(mix(hash, ink(cell.fg)), ink(cell.bg))
+        let inks = ink(cell.fg).rotate_left(INK_TURN) ^ ink(cell.bg).rotate_left(2 * INK_TURN);
+        mix(hash, head(cell.text.as_bytes()) ^ inks)
     })
+}
+
+fn head(text: &[u8]) -> u64 {
+    let mut word = [0_u8; 8];
+    for (slot, byte) in word.iter_mut().zip(text) {
+        *slot = *byte;
+    }
+    u64::from_le_bytes(word) ^ text.len() as u64
 }
 
 fn ink(ink: Ink) -> u64 {
