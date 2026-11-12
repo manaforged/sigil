@@ -295,7 +295,7 @@ fn collect_focusable(
     explicit: &mut Vec<(i32, NodeId)>,
     implicit: &mut Vec<NodeId>,
 ) {
-    let walk = crate::events::hit_test::walk_order(cx, &[id], |id, _| visible(cx, id));
+    let walk = crate::events::hit_test::walk_visible(cx, &[id]);
     for (found, node) in walk.filter(|(_, node)| node.a11y.focusable) {
         match node.a11y.tab_index {
             Some(index) if index >= 0 => explicit.push((index, found)),

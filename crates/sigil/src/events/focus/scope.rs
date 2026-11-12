@@ -3,7 +3,7 @@ use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::events::focus::targets::is_self_or_ancestor;
-use crate::events::hit_test::{visible, walk_order};
+use crate::events::hit_test::{visible, walk_visible};
 
 use super::{Autofocus, FocusManager, FocusScopeEntry};
 
@@ -84,7 +84,7 @@ fn first_in_subtree(cx: &Cx, id: NodeId, accept: &impl Fn(NodeId) -> bool) -> Op
 }
 
 fn first_visible(cx: &Cx, roots: &[NodeId], accept: &impl Fn(NodeId) -> bool) -> Option<NodeId> {
-    walk_order(cx, roots, |id, _| visible(cx, id))
+    walk_visible(cx, roots)
         .map(|(id, _)| id)
         .find(|id| accept(*id))
 }

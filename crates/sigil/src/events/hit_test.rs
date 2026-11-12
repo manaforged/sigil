@@ -195,6 +195,18 @@ where
     })
 }
 
+pub(crate) fn walk_visible<'a>(
+    cx: &'a Cx,
+    roots: &[NodeId],
+) -> impl Iterator<Item = (NodeId, &'a crate::kernel::Node)> + use<'a> {
+    let shown: SmallVec<[NodeId; 4]> = roots
+        .iter()
+        .copied()
+        .filter(|root| cx.parent(*root).is_none_or(|parent| visible(cx, parent)))
+        .collect();
+    walk_order(cx, &shown, |_, node| !conceals(node))
+}
+
 pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
     let mut current = Some(target);
     while let Some(id) = current {
