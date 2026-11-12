@@ -58,7 +58,7 @@ impl Cx {
             host_mode: HostMode::default(),
             top_layer_memo: std::cell::RefCell::new(None),
             live_region: None,
-            marked: std::cell::RefCell::default(),
+            marked: std::cell::RefCell::new(marked::Marked::fresh()),
         }
     }
 

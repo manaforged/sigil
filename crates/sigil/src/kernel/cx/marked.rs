@@ -14,8 +14,15 @@ pub(crate) struct Marked {
 }
 
 impl Marked {
+    pub(super) fn fresh() -> Self {
+        Self {
+            rescan: true,
+            ..Self::default()
+        }
+    }
+
     pub(super) fn touch(&mut self, id: NodeId) {
-        if self.ids.last() == Some(&id) {
+        if self.rescan || self.ids.last() == Some(&id) {
             return;
         }
         self.ids.push(id);
