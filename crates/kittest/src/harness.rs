@@ -172,6 +172,7 @@ impl Harness {
     #[track_caller]
     fn live(&mut self) -> &mut Self {
         if let Some(tree) = self.pending.take() {
+            self.tasks.install_current();
             let (owner, host) = (self.owner, &mut self.host);
             owner.with(|| tree(host));
             self.frames(Vec::new())
@@ -185,6 +186,7 @@ impl Harness {
     }
 
     fn frame_at(&mut self, events: Vec<Event>, dt: f32) -> Result<(), Error> {
+        self.tasks.install_current();
         let _ = self.tasks.pump();
         let owner = self.owner;
         profile::begin_frame(self.surface.backend());

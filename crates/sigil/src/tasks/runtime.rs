@@ -136,13 +136,14 @@ impl AsyncRuntime {
         ran
     }
 
+    #[cfg(test)]
     pub(crate) fn spawn_parts(&self) -> SpawnParts {
         self.parts.clone()
     }
 
     /// Makes this runtime the current one on this thread.
     pub fn install_current(&self) {
-        crate::tasks::current::install(self.spawn_parts());
+        crate::tasks::current::install(&self.parts);
     }
 
     #[cfg(all(test, not(target_arch = "wasm32")))]
