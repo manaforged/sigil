@@ -37,6 +37,7 @@ mod cache_limits;
 #[cfg(any(terminal_host, feature = "inspect"))]
 pub mod capture;
 pub(crate) mod color_glyph_paint;
+pub(crate) const SRGB_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 #[cfg(app_host)]
 /// The opaque color a window clears to before it paints.
 pub(crate) const SURFACE_CLEAR: crate::style::Rgba = crate::style::Rgba::new(0.03, 0.04, 0.05, 1.0);

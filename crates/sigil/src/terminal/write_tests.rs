@@ -10,11 +10,7 @@ use crate::style::{Color, TextStyle, Theme, Tone};
 use crate::terminal::caps::{Capabilities, ColorDepth};
 use crate::terminal::paint::raster;
 
-const UNSET: Color = rgba(0, 0, 0, 0);
-
-const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-    Color { r, g, b, a }
-}
+const UNSET: Color = Color::rgba(0, 0, 0, 0);
 
 fn area() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 8.0 * 8.0, 8.0)
@@ -77,12 +73,12 @@ fn terminal_output_keeps_graphemes_in_their_display_columns() {
 #[test]
 fn a_colour_without_truecolor_lands_in_the_cube() {
     use crate::terminal::colour::cube;
-    assert_eq!(cube(rgba(255, 0, 0, 255)), 196);
-    assert_eq!(cube(rgba(0, 0, 255, 255)), 21);
-    assert_eq!(cube(rgba(0, 0, 0, 255)), 16);
-    assert_eq!(cube(rgba(255, 255, 255, 255)), 231);
+    assert_eq!(cube(Color::rgba(255, 0, 0, 255)), 196);
+    assert_eq!(cube(Color::rgba(0, 0, 255, 255)), 21);
+    assert_eq!(cube(Color::rgba(0, 0, 0, 255)), 16);
+    assert_eq!(cube(Color::rgba(255, 255, 255, 255)), 231);
     assert_eq!(
-        cube(rgba(24, 15, 46, 255)),
+        cube(Color::rgba(24, 15, 46, 255)),
         234,
         "a dark violet is closer to xterm gray 28 than saturated blue"
     );
@@ -105,14 +101,14 @@ fn apple_terminal_honors_an_explicit_truecolor_capability() {
     assert_ne!(depth("Apple_Terminal", None), ColorDepth::Truecolor);
     assert_eq!(depth("WezTerm", Some("truecolor")), ColorDepth::Truecolor);
     assert_eq!(
-        paint(Ink::Exact(rgba(255, 0, 0, 255)), ColorDepth::Ansi256,),
+        paint(Ink::Exact(Color::rgba(255, 0, 0, 255)), ColorDepth::Ansi256,),
         crossterm::style::Color::AnsiValue(196)
     );
 }
 
 #[test]
 fn a_resolved_colour_goes_out_as_truecolor() {
-    let exact = rgba(210, 40, 90, 255);
+    let exact = Color::rgba(210, 40, 90, 255);
     assert_eq!(
         paint(Ink::Exact(exact), ColorDepth::Truecolor),
         crossterm::style::Color::Rgb {
@@ -196,10 +192,10 @@ fn explicit_tab_colours_survive_ansi16_tones() {
     use crate::terminal::paint::{CellPaint, Marks, raster_with};
 
     let scene = CommandScene::new(vec![
-        fill(rgba(0, 255, 255, 255), false),
+        fill(Color::rgba(0, 255, 255, 255), false),
         label(
             "Tasks 2/3",
-            rgba(10, 12, 18, 255),
+            Color::rgba(10, 12, 18, 255),
             TextStyle::default(),
             Some(Tone::Info),
         ),
@@ -316,8 +312,8 @@ fn the_cursor_shows_only_at_a_text_caret() -> std::io::Result<()> {
 
 #[test]
 fn a_painted_last_cell_keeps_its_background() {
-    let scrim = rgba(10, 8, 20, 255);
-    let star = rgba(176, 200, 240, 255);
+    let scrim = Color::rgba(10, 8, 20, 255);
+    let star = Color::rgba(176, 200, 240, 255);
     let cells: Vec<Cell> = (0..8)
         .map(|column| {
             let (text, color) = if column == 5 {

@@ -5,7 +5,6 @@ use ratex_types::color::Color as MathColor;
 use ratex_types::math_style::MathStyle;
 
 use crate::kernel::NodeBuilder;
-use crate::style::srgb::unit;
 use crate::style::{Color, Theme, Token};
 use crate::widgets::svg_picture::picture;
 
@@ -20,7 +19,8 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
 
 fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
     let Color { r, g, b, .. } = theme.color(Token::OnSurface);
-    let color = MathColor::rgb(unit(r), unit(g), unit(b));
+    let [r, g, b] = [r, g, b].map(crate::style::srgb::unit);
+    let color = MathColor::rgb(r, g, b);
     let options = LayoutOptions::default()
         .with_style(MathStyle::Display)
         .with_color(color);

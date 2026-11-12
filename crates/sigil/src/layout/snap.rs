@@ -112,10 +112,5 @@ pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> (f32, f32, f32, f32) {
 }
 
 pub(crate) fn gap_auto_edges(edges: AutoEdges) -> AutoEdges {
-    AutoEdges {
-        left: edges.left.map(gap),
-        right: edges.right.map(gap),
-        top: edges.top.map(gap),
-        bottom: edges.bottom.map(gap),
-    }
+    edges.map(|edge| edge.map(gap))
 }

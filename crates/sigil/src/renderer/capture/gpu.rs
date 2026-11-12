@@ -8,7 +8,7 @@ use crate::renderer::renderer::WgpuRenderer;
 use crate::renderer::scene_command::CommandScene;
 use crate::{Error, ErrorKind};
 
-pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub const FORMAT: wgpu::TextureFormat = crate::renderer::SRGB_FORMAT;
 
 pub const BYTES_PER_PIXEL: u32 = 4;
 

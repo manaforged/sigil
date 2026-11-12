@@ -8,6 +8,7 @@ use crate::style::{Radius, Token};
 use crate::widgets::Layout;
 
 use super::super::vector::{PathNode, path};
+use super::PERCENT;
 use super::axis::format_tick;
 use super::interact::Interact;
 use super::marks::layer_layout;
@@ -22,7 +23,6 @@ const HOLE: f32 = 0.6;
 const STEPS_PER_TURN: f32 = 96.0;
 const EDGE: f32 = 1.5;
 const SWATCH: f32 = 8.0;
-const PERCENT: f32 = 100.0;
 
 pub(super) struct Slices<'a> {
     pub(super) values: &'a [f32],

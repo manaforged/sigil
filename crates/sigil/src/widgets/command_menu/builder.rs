@@ -60,31 +60,41 @@ impl core::fmt::Debug for SubmenuBuilder {
     }
 }
 
+macro_rules! level_builder_methods {
+    () => {
+        /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
+        pub fn detail(mut self, text: impl Into<String>) -> Self {
+            self.level.detail(text);
+            self
+        }
+
+        /// Adds an item.
+        pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
+            self.level.item(label, action);
+            self
+        }
+
+        /// Sets the submenu.
+        pub fn submenu(
+            mut self,
+            label: impl Into<String>,
+            build: impl FnOnce(SubmenuBuilder) -> SubmenuBuilder,
+        ) -> Self {
+            let nested = build(SubmenuBuilder::default()).level;
+            self.level.submenu(label, nested);
+            self
+        }
+
+        /// Sets the disabled.
+        pub fn disabled(mut self, label: impl Into<String>) -> Self {
+            self.level.disabled(label);
+            self
+        }
+    };
+}
+
 impl SubmenuBuilder {
-    /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
-    pub fn detail(mut self, text: impl Into<String>) -> Self {
-        self.level.detail(text);
-        self
-    }
-
-    /// Adds an item.
-    pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
-        self.level.item(label, action);
-        self
-    }
-
-    /// Sets the submenu.
-    pub fn submenu(mut self, label: impl Into<String>, build: impl FnOnce(Self) -> Self) -> Self {
-        let nested = build(Self::default()).level;
-        self.level.submenu(label, nested);
-        self
-    }
-
-    /// Sets the disabled.
-    pub fn disabled(mut self, label: impl Into<String>) -> Self {
-        self.level.disabled(label);
-        self
-    }
+    level_builder_methods!();
 }
 
 /// A command palette; `layout`, `width`, and `height` size each level panel, and `map_node` changes the root.
@@ -117,34 +127,7 @@ pub fn command_menu() -> CommandMenuBuilder {
 }
 
 impl CommandMenuBuilder {
-    /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
-    pub fn detail(mut self, text: impl Into<String>) -> Self {
-        self.level.detail(text);
-        self
-    }
-
-    /// Adds an item.
-    pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
-        self.level.item(label, action);
-        self
-    }
-
-    /// Sets the submenu.
-    pub fn submenu(
-        mut self,
-        label: impl Into<String>,
-        build: impl FnOnce(SubmenuBuilder) -> SubmenuBuilder,
-    ) -> Self {
-        let nested = build(SubmenuBuilder::default()).level;
-        self.level.submenu(label, nested);
-        self
-    }
-
-    /// Sets the disabled.
-    pub fn disabled(mut self, label: impl Into<String>) -> Self {
-        self.level.disabled(label);
-        self
-    }
+    level_builder_methods!();
 
     /// Sets the submit.
     pub fn submit(mut self, cb: impl Fn(&str) + 'static) -> Self {

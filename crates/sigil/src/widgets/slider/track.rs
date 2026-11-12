@@ -24,10 +24,6 @@ const CELL_THUMB: &str = "●";
 
 type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
-const fn rgba(r: u8, g: u8, b: u8, a: u8) -> ColorAtom {
-    ColorAtom::Color(Color { r, g, b, a })
-}
-
 const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
     StyleAtom::BackgroundGradient(BgGradient::new(GradientAxis::TopToBottom, stops))
 }
@@ -56,42 +52,42 @@ static THUMB_DISABLED: &[StyleAtom] = &[
 ];
 
 static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, rgba(148, 163, 184, 66)),
-    GradientStopKey::new(500, rgba(148, 163, 184, 30)),
-    GradientStopKey::new(1000, rgba(148, 163, 184, 46)),
+    GradientStopKey::new(0, ColorAtom::Color(Color::rgba(148, 163, 184, 66))),
+    GradientStopKey::new(500, ColorAtom::Color(Color::rgba(148, 163, 184, 30))),
+    GradientStopKey::new(1000, ColorAtom::Color(Color::rgba(148, 163, 184, 46))),
 ];
 static GLASS_FILL_STOPS: &[GradientStopKey] = &[
     GradientStopKey::new(0, Token::AccentHover.color()),
     GradientStopKey::new(1000, Token::Accent.color()),
 ];
 static GLASS_THUMB_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, rgba(255, 255, 255, 250)),
-    GradientStopKey::new(500, rgba(240, 243, 248, 235)),
-    GradientStopKey::new(1000, rgba(214, 219, 230, 240)),
+    GradientStopKey::new(0, ColorAtom::Color(Color::rgba(255, 255, 255, 250))),
+    GradientStopKey::new(500, ColorAtom::Color(Color::rgba(240, 243, 248, 235))),
+    GradientStopKey::new(1000, ColorAtom::Color(Color::rgba(214, 219, 230, 240))),
 ];
 static GLASS_TRACK_REST: &[StyleAtom] = &[
     vertical_gradient(GLASS_TRACK_STOPS),
     THUMB_BORDER,
-    StyleAtom::BorderColor(rgba(148, 163, 184, 90)),
+    StyleAtom::BorderColor(ColorAtom::Color(Color::rgba(148, 163, 184, 90))),
 ];
 static GLASS_TRACK_FILL: &[StyleAtom] = &[vertical_gradient(GLASS_FILL_STOPS)];
 const GLASS_THUMB_BG: StyleAtom = vertical_gradient(GLASS_THUMB_STOPS);
 static GLASS_THUMB_REST: &[StyleAtom] = &[
     GLASS_THUMB_BG,
     THUMB_BORDER,
-    StyleAtom::BorderColor(rgba(255, 255, 255, 140)),
+    StyleAtom::BorderColor(ColorAtom::Color(Color::rgba(255, 255, 255, 140))),
     StyleAtom::Shadow(Elevation::Md),
 ];
 static GLASS_THUMB_HOVER: &[StyleAtom] = &[
     GLASS_THUMB_BG,
     THUMB_BORDER,
-    StyleAtom::BorderColor(rgba(255, 255, 255, 190)),
+    StyleAtom::BorderColor(ColorAtom::Color(Color::rgba(255, 255, 255, 190))),
     StyleAtom::Shadow(Elevation::Md),
 ];
 static GLASS_THUMB_DISABLED: &[StyleAtom] = &[
     GLASS_THUMB_BG,
     THUMB_BORDER,
-    StyleAtom::BorderColor(rgba(255, 255, 255, 60)),
+    StyleAtom::BorderColor(ColorAtom::Color(Color::rgba(255, 255, 255, 60))),
 ];
 
 pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {

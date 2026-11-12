@@ -1,7 +1,6 @@
 use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
-use crate::style::scale::rgb;
 use crate::style::srgb;
 use crate::style::{Color, ColorAtom, Token};
 
@@ -167,8 +166,8 @@ impl Theme {
     }
 }
 
-const WHITE: Color = rgb(255, 255, 255);
-const BLACK: Color = rgb(0, 0, 0);
+const WHITE: Color = Color::rgb(255, 255, 255);
+const BLACK: Color = Color::rgb(0, 0, 0);
 
 #[cfg(debug_assertions)]
 fn nearest_tokens(token: &str, registered: &[String]) -> [String; 3] {

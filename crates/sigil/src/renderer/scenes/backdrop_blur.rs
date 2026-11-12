@@ -1,7 +1,8 @@
 use crate::geometry::Rect;
+use crate::style::Color;
 use crate::style::Rgba;
 
-use super::helpers::{DARK, rect, rgba};
+use super::helpers::{DARK, rect};
 use crate::scene::{CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder};
 
 #[must_use]
@@ -27,7 +28,7 @@ pub fn backdrop_blur() -> (CommandScene, (f32, f32), Rgba) {
 }
 
 fn draw_bar_pattern(scene: &mut SceneBuilder, clip: Rect) {
-    scene.draw_rect(DrawRect::new(clip, rgba(255, 255, 255, 255)));
+    scene.draw_rect(DrawRect::new(clip, Color::rgba(255, 255, 255, 255)));
     let right_edge = clip.origin.x + clip.width;
     for k in 0..64_u32 {
         let x = 4.0 + (k * 16) as f32;
@@ -37,7 +38,7 @@ fn draw_bar_pattern(scene: &mut SceneBuilder, clip: Rect) {
         let bar_right = (x + 8.0).min(right_edge);
         scene.draw_rect(DrawRect::new(
             rect(x, clip.origin.y, bar_right - x, clip.height),
-            rgba(0, 0, 0, 255),
+            Color::rgba(0, 0, 0, 255),
         ));
     }
 }

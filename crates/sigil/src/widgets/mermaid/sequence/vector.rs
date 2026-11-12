@@ -5,13 +5,12 @@ use crate::widgets::Layout;
 use crate::widgets::vector::PathNode;
 
 use super::super::flow_vector::{
-    Area, CELL_H, CELL_W, Point, barb, canvas, cells, dashed_line, edge_label, edge_width, layer,
-    node_label, polyline, rounded,
+    Area, CELL_H, CELL_W, HEAD, Point, barb, canvas, cells, dashed_line, edge_label, edge_width,
+    layer, node_label, polyline, rounded,
 };
 use super::super::label::width;
 use super::{Diagram, SequenceEvent, centres, depth, height};
 
-const HEAD: f32 = 7.0;
 const LOOP: f32 = 28.0;
 const BOX_INSET: f32 = 4.0;
 const RADIUS: f32 = 4.0;

@@ -19,7 +19,7 @@ pub use translucent::translucent;
 
 use helpers::{
     DARK, ambient_shadow, draw_fill, draw_gradient_strokes, draw_solid_strokes, key_shadow,
-    linear_gradient, rect, rgba, slash_kind, solid_stroke, stroke_with,
+    linear_gradient, rect, slash_kind, solid_stroke, stroke_with,
 };
 
 use crate::renderer::BUILTIN_SPRITE_ATLAS_ID;
@@ -36,31 +36,34 @@ pub fn gradient() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 760.0, 320.0),
-        rgba(7, 10, 15, 255),
+        Color::rgba(7, 10, 15, 255),
     ));
-    let white = |a: u8| rgba(255, 255, 255, a);
+    let white = |a: u8| Color::rgba(255, 255, 255, a);
     let fills = [
         linear_gradient(
             (120.0, 72.0),
             (120.0, 200.0),
-            &[(0.0, rgba(34, 86, 160, 255)), (1.0, rgba(19, 28, 48, 255))],
+            &[
+                (0.0, Color::rgba(34, 86, 160, 255)),
+                (1.0, Color::rgba(19, 28, 48, 255)),
+            ],
         ),
         linear_gradient(
             (216.0, 136.0),
             (360.0, 136.0),
             &[
-                (0.0, rgba(99, 102, 241, 255)),
-                (1.0, rgba(14, 165, 233, 255)),
+                (0.0, Color::rgba(99, 102, 241, 255)),
+                (1.0, Color::rgba(14, 165, 233, 255)),
             ],
         ),
         linear_gradient(
             (384.0, 136.0),
             (528.0, 136.0),
             &[
-                (0.0, rgba(239, 68, 68, 255)),
-                (0.34, rgba(245, 158, 11, 255)),
-                (0.67, rgba(34, 197, 94, 255)),
-                (1.0, rgba(59, 130, 246, 255)),
+                (0.0, Color::rgba(239, 68, 68, 255)),
+                (0.34, Color::rgba(245, 158, 11, 255)),
+                (0.67, Color::rgba(34, 197, 94, 255)),
+                (1.0, Color::rgba(59, 130, 246, 255)),
             ],
         ),
         linear_gradient(
@@ -88,14 +91,14 @@ pub fn stroke() -> (CommandScene, (f32, f32), Rgba) {
 pub fn corner_radius() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     for (index, (radii, color)) in [
-        (CornerRadii::uniform(24.0), rgba(38, 92, 180, 255)),
-        (CornerRadii::top(24.0), rgba(68, 156, 112, 255)),
-        (CornerRadii::bottom(24.0), rgba(210, 98, 82, 255)),
-        (CornerRadii::left(24.0), rgba(144, 86, 184, 255)),
-        (CornerRadii::right(24.0), rgba(205, 136, 46, 255)),
+        (CornerRadii::uniform(24.0), Color::rgba(38, 92, 180, 255)),
+        (CornerRadii::top(24.0), Color::rgba(68, 156, 112, 255)),
+        (CornerRadii::bottom(24.0), Color::rgba(210, 98, 82, 255)),
+        (CornerRadii::left(24.0), Color::rgba(144, 86, 184, 255)),
+        (CornerRadii::right(24.0), Color::rgba(205, 136, 46, 255)),
         (
             CornerRadii::new(40.0, 8.0, 40.0, 8.0),
-            rgba(52, 132, 152, 255),
+            Color::rgba(52, 132, 152, 255),
         ),
     ]
     .into_iter()
@@ -119,12 +122,12 @@ pub fn shadow() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let radii = CornerRadii::uniform(18.0);
     for (index, (elevation, color)) in [
-        (0.0, rgba(246, 248, 250, 255)),
-        (1.0, rgba(238, 245, 255, 255)),
-        (3.0, rgba(240, 250, 244, 255)),
-        (6.0, rgba(255, 244, 238, 255)),
-        (8.0, rgba(246, 242, 255, 255)),
-        (12.0, rgba(240, 248, 250, 255)),
+        (0.0, Color::rgba(246, 248, 250, 255)),
+        (1.0, Color::rgba(238, 245, 255, 255)),
+        (3.0, Color::rgba(240, 250, 244, 255)),
+        (6.0, Color::rgba(255, 244, 238, 255)),
+        (8.0, Color::rgba(246, 242, 255, 255)),
+        (12.0, Color::rgba(240, 248, 250, 255)),
     ]
     .into_iter()
     .enumerate()
@@ -148,7 +151,7 @@ pub fn inner_shadow() -> (CommandScene, (f32, f32), Rgba) {
         let offset = f32::from(index);
         let field = rect(70.0 + offset * 220.0, 160.0, 200.0, 80.0);
         let press = Shadow::new([0.0, 2.0], 6.0, offset, [0.0, 0.0, 0.0, 0.45]);
-        scene.draw_rect(DrawRect::new(field, rgba(245, 247, 250, 255)).border_radius(radii));
+        scene.draw_rect(DrawRect::new(field, Color::rgba(245, 247, 250, 255)).border_radius(radii));
         scene.draw_shadow(field, radii, press.with_kind(ShadowKind::Inner));
     }
     let clear = Rgba::new(0.88, 0.91, 0.94, 1.0);
@@ -160,13 +163,14 @@ pub fn pattern() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let slash_rect = rect(60.0, 50.0, 540.0, 280.0);
     scene.draw_rect(
-        DrawRect::new(slash_rect, rgba(25, 34, 49, 255)).border_radius(CornerRadii::uniform(16.0)),
+        DrawRect::new(slash_rect, Color::rgba(25, 34, 49, 255))
+            .border_radius(CornerRadii::uniform(16.0)),
     );
-    let slash = slash_kind(rgba(255, 255, 255, 255), 40.0, 16.0);
+    let slash = slash_kind(Color::rgba(255, 255, 255, 255), 40.0, 16.0);
     draw_fill(&mut scene, slash_rect, PaintFill::Pattern(slash));
     let checker = PatternKind::Checker {
-        color_a: rgba(220, 60, 60, 255),
-        color_b: rgba(245, 245, 250, 255),
+        color_a: Color::rgba(220, 60, 60, 255),
+        color_b: Color::rgba(245, 245, 250, 255),
         cell: 40.0,
     };
     draw_fill(
@@ -177,7 +181,7 @@ pub fn pattern() -> (CommandScene, (f32, f32), Rgba) {
     scene.draw_pattern(
         DrawPattern::new(
             rect(420.0, 245.0, 360.0, 90.0),
-            slash_kind(rgba(255, 255, 255, 220), 32.0, 10.0),
+            slash_kind(Color::rgba(255, 255, 255, 220), 32.0, 10.0),
         )
         .border_radius(CornerRadii::top(24.0))
         .opacity(8_500)
@@ -191,18 +195,30 @@ pub fn sprite() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 900.0, 360.0),
-        rgba(3, 4, 6, 255),
+        Color::rgba(3, 4, 6, 255),
     ));
     for (source_x, phase, x, kind, tint) in [
-        (0.0, 0.0, 80.0, SpriteKind::Mono, rgba(220, 60, 60, 255)),
+        (
+            0.0,
+            0.0,
+            80.0,
+            SpriteKind::Mono,
+            Color::rgba(220, 60, 60, 255),
+        ),
         (
             200.0,
             0.35,
             360.0,
             SpriteKind::Subpixel,
-            rgba(28, 32, 44, 255),
+            Color::rgba(28, 32, 44, 255),
         ),
-        (400.0, 0.0, 640.0, SpriteKind::Poly, rgba(80, 160, 240, 255)),
+        (
+            400.0,
+            0.0,
+            640.0,
+            SpriteKind::Poly,
+            Color::rgba(80, 160, 240, 255),
+        ),
     ] {
         scene.draw_sprite(DrawSprite::new(
             SpriteSource {
@@ -236,27 +252,27 @@ const ICON_DRAWS: [(MaskShape, Rect, Color); 5] = [
     (
         MaskShape::Disc,
         rect(40.0, 80.0, 128.0, 128.0),
-        rgba(220, 80, 80, 255),
+        Color::rgba(220, 80, 80, 255),
     ),
     (
         MaskShape::Ring,
         rect(208.0, 80.0, 128.0, 128.0),
-        rgba(200, 200, 220, 255),
+        Color::rgba(200, 200, 220, 255),
     ),
     (
         MaskShape::Square,
         rect(376.0, 80.0, 128.0, 128.0),
-        rgba(100, 220, 140, 255),
+        Color::rgba(100, 220, 140, 255),
     ),
     (
         MaskShape::Diamond,
         rect(544.0, 80.0, 128.0, 128.0),
-        rgba(230, 200, 100, 255),
+        Color::rgba(230, 200, 100, 255),
     ),
     (
         MaskShape::Cross,
         rect(712.0, 80.0, 128.0, 128.0),
-        rgba(220, 100, 220, 255),
+        Color::rgba(220, 100, 220, 255),
     ),
 ];
 
@@ -276,21 +292,21 @@ pub fn decoration() -> (CommandScene, (f32, f32), Rgba) {
         (
             DecorationKind::Underline,
             rect(80.0, 40.0, 720.0, 6.0),
-            rgba(100, 200, 255, 255),
+            Color::rgba(100, 200, 255, 255),
             2.0,
             0.0,
         ),
         (
             DecorationKind::Strikethrough,
             rect(80.0, 100.0, 720.0, 4.0),
-            rgba(220, 60, 60, 255),
+            Color::rgba(220, 60, 60, 255),
             2.0,
             0.0,
         ),
         (
             DecorationKind::WavyUnderline,
             rect(80.0, 160.0, 720.0, 16.0),
-            rgba(220, 140, 60, 255),
+            Color::rgba(220, 140, 60, 255),
             2.5,
             32.0,
         ),

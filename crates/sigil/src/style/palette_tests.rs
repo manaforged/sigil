@@ -26,17 +26,17 @@ fn every_palette_distinguishes_text_and_background() {
 #[test]
 fn terminal_palette_matches_baseline_spec() {
     let palette = Palette::terminal();
-    assert_eq!(palette.background, rgb(0x0A, 0x0A, 0x0A));
-    assert_eq!(palette.text, rgb(0x33, 0xFF, 0x33));
-    assert_eq!(palette.primary, rgb(0x33, 0xFF, 0x33));
-    assert_eq!(palette.success, rgb(0x33, 0xFF, 0x33));
-    assert_eq!(palette.warning, rgb(0xFF, 0xAA, 0x00));
-    assert_eq!(palette.danger, rgb(0xFF, 0x33, 0x33));
+    assert_eq!(palette.background, Color::rgb(0x0A, 0x0A, 0x0A));
+    assert_eq!(palette.text, Color::rgb(0x33, 0xFF, 0x33));
+    assert_eq!(palette.primary, Color::rgb(0x33, 0xFF, 0x33));
+    assert_eq!(palette.success, Color::rgb(0x33, 0xFF, 0x33));
+    assert_eq!(palette.warning, Color::rgb(0xFF, 0xAA, 0x00));
+    assert_eq!(palette.danger, Color::rgb(0xFF, 0x33, 0x33));
 }
 
 #[test]
 fn spellforge_picks_light_surface_for_dark_accent() {
-    let dark_accent = rgb(0x20, 0x10, 0x40);
+    let dark_accent = Color::rgb(0x20, 0x10, 0x40);
     let palette = Palette::spellforge(dark_accent);
     let bg_lum = perceived_brightness(palette.background);
     let text_lum = perceived_brightness(palette.text);
@@ -50,7 +50,7 @@ fn spellforge_picks_light_surface_for_dark_accent() {
 
 #[test]
 fn spellforge_picks_dark_surface_for_bright_accent() {
-    let bright_accent = rgb(0xFF, 0xC8, 0x60);
+    let bright_accent = Color::rgb(0xFF, 0xC8, 0x60);
     let palette = Palette::spellforge(bright_accent);
     let bg_lum = perceived_brightness(palette.background);
     let text_lum = perceived_brightness(palette.text);
@@ -64,7 +64,7 @@ fn spellforge_picks_dark_surface_for_bright_accent() {
 
 #[test]
 fn spellforge_role_colours_inherit_accent_saturation() {
-    let saturated = rgb(0x33, 0x70, 0xFF);
+    let saturated = Color::rgb(0x33, 0x70, 0xFF);
     let palette = Palette::spellforge(saturated);
     let (_, s_success, _) = rgb_to_hsv(palette.success);
     let (_, s_warning, _) = rgb_to_hsv(palette.warning);
@@ -73,7 +73,7 @@ fn spellforge_role_colours_inherit_accent_saturation() {
     assert!(s_warning > 0.5, "warning too desaturated: {s_warning}");
     assert!(s_danger > 0.5, "danger too desaturated: {s_danger}");
 
-    let grey = rgb(0x80, 0x80, 0x80);
+    let grey = Color::rgb(0x80, 0x80, 0x80);
     let grey_palette = Palette::spellforge(grey);
     let (_, s_grey_success, _) = rgb_to_hsv(grey_palette.success);
     assert!(
@@ -85,14 +85,14 @@ fn spellforge_role_colours_inherit_accent_saturation() {
 #[test]
 fn spellforge_role_colours_hit_canonical_hues() {
     let accents = [
-        rgb(0xFF, 0x33, 0x33),
-        rgb(0xFF, 0xC0, 0x33),
-        rgb(0x33, 0xFF, 0x70),
-        rgb(0x33, 0xC0, 0xFF),
-        rgb(0x33, 0x70, 0xFF),
-        rgb(0xC0, 0x33, 0xFF),
-        rgb(0x80, 0x40, 0xC0),
-        rgb(0xE6, 0xD8, 0xB0),
+        Color::rgb(0xFF, 0x33, 0x33),
+        Color::rgb(0xFF, 0xC0, 0x33),
+        Color::rgb(0x33, 0xFF, 0x70),
+        Color::rgb(0x33, 0xC0, 0xFF),
+        Color::rgb(0x33, 0x70, 0xFF),
+        Color::rgb(0xC0, 0x33, 0xFF),
+        Color::rgb(0x80, 0x40, 0xC0),
+        Color::rgb(0xE6, 0xD8, 0xB0),
     ];
 
     for accent in accents {

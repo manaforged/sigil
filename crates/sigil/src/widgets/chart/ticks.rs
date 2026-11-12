@@ -2,7 +2,7 @@ use super::span::ValueSpan;
 
 const NICE_COUNT: f64 = 10.0;
 const PX_PER_TICK: f32 = 40.0;
-const MIN_TICKS: usize = 2;
+pub(super) const MIN_TICKS: usize = 2;
 const E10: f64 = 7.071_067_811_865_476;
 const E5: f64 = 3.162_277_660_168_379_5;
 const E2: f64 = std::f64::consts::SQRT_2;

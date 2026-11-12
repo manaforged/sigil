@@ -48,7 +48,7 @@ pub(super) fn linear_gradient(
 }
 
 pub(super) fn draw_solid_strokes(scene: &mut SceneBuilder) {
-    let fill = rgba(28, 36, 52, 255);
+    let fill = Color::rgba(28, 36, 52, 255);
     for (index, align, style, width) in [
         (0.0, StrokeAlign::Centered, StrokeStyle::Solid, 2.0),
         (72.0, StrokeAlign::Inside, StrokeStyle::Solid, 4.0),
@@ -68,8 +68,8 @@ pub(super) fn draw_gradient_strokes(scene: &mut SceneBuilder) {
         Point::new(24.0, 104.0),
         Point::new(88.0, 168.0),
         smallvec![
-            GradientStop::new(0.0, rgba(24, 92, 180, 255)),
-            GradientStop::new(1.0, rgba(224, 88, 144, 255)),
+            GradientStop::new(0.0, Color::rgba(24, 92, 180, 255)),
+            GradientStop::new(1.0, Color::rgba(224, 88, 144, 255)),
         ],
     );
     for (index, align) in [
@@ -99,7 +99,7 @@ pub(super) fn draw_gradient_strokes(scene: &mut SceneBuilder) {
 
 pub(super) const fn stroke_with(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: rgba(242, 242, 250, 255),
+        color: Color::rgba(242, 242, 250, 255),
         width,
         style,
         align,
@@ -130,8 +130,4 @@ pub(super) fn key_shadow(elevation: f32) -> Shadow {
 
 pub(super) const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
     Rect::new(Point::new(x, y), width, height)
-}
-
-pub(super) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-    Color { r, g, b, a }
 }

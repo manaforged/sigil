@@ -1,5 +1,4 @@
 use crate::style::Color;
-use crate::style::scale::rgb;
 use crate::style::srgb;
 
 pub(super) fn shift(c: Color, delta: i16) -> Color {
@@ -26,9 +25,9 @@ pub(super) fn ramp_accent(surface: Color, solid: Color) -> crate::style::scale::
         *step = alpha_mix(surface, solid, f32::from(t) / 9.0);
     }
     steps[8] = solid;
-    steps[9] = alpha_mix(solid, rgb(255, 255, 255), 0.18);
-    steps[10] = alpha_mix(solid, rgb(255, 255, 255), 0.36);
-    steps[11] = alpha_mix(solid, rgb(255, 255, 255), 0.55);
+    steps[9] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.18);
+    steps[10] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.36);
+    steps[11] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.55);
     crate::style::scale::ColorScale::from_steps(steps).with_on_solid(surface)
 }
 

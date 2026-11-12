@@ -10,10 +10,9 @@ use super::marks::{VIEW_H, VIEW_H_F, VIEW_W, VIEW_W_F, layer_layout};
 use super::palette::Hue;
 use super::scales::Orient;
 use super::span::ValueSpan;
-use super::{ChartView, Stack};
+use super::{ChartView, PERCENT, Stack};
 
 const BAND: f32 = 0.9;
-const PERCENT: f32 = 100.0;
 const MIN_GROW: f32 = 0.0001;
 const MIN_BAR: f32 = 1.0;
 const RULE: f32 = 1.0;

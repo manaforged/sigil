@@ -6,12 +6,11 @@ use tiny_skia::{
 use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop};
-use crate::scene::geometry::MIN_EXTENT;
+use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
 use crate::style::Color;
 use crate::style::srgb::unit;
 
 const TURN: f32 = 360.0;
-const QUARTER: f32 = 90.0;
 const SUBSTEPS: u8 = 8;
 
 /// The tiny-skia shader for `gradient` and the color space to blend it in.
@@ -61,7 +60,7 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
             last * TURN,
             stops,
             mode,
-            around(center).pre_rotate(angle - QUARTER),
+            around(center).pre_rotate(angle - QUARTER_TURN_DEG),
         ),
     }?;
     Some((shader, space))

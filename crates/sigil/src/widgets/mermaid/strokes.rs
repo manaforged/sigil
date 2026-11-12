@@ -1,14 +1,14 @@
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::scene::geometry::KAPPA;
 use crate::style::{BORDER_WIDTH, Token, space};
 use crate::widgets::Layout;
 use crate::widgets::vector::{PathNode, path};
 
 use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};
+use super::flow_vector::{CELL_H, cells as at, layer};
 
 const CELL_W: f32 = space(2);
-const CELL_H: f32 = space(4);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum StrokeMark {
@@ -39,10 +39,6 @@ const fn mark(ch: char) -> Option<StrokeMark> {
     }
 }
 
-fn at(index: usize, cell: f32) -> f32 {
-    f32::from(u16::try_from(index).unwrap_or(u16::MAX)) * cell
-}
-
 fn stroke_width() -> f32 {
     f32::from(BORDER_WIDTH)
 }
@@ -63,16 +59,6 @@ pub(super) fn window(root: NodeBuilder, lines: &[String]) -> NodeBuilder {
         body = body.child(text_row(row));
     }
     root.child(body)
-}
-
-fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
-    node.layout(
-        LayoutStyle::block()
-            .position(Position::Absolute)
-            .inset_top(0.0)
-            .inset_left(0.0)
-            .fixed_size(size.0, size.1),
-    )
 }
 
 const fn canvas(size: (f32, f32)) -> PathNode {
