@@ -287,6 +287,7 @@ mod renderer_stroke_command;
 mod renderer_style_integration;
 mod renderer_svg_bugs;
 mod renderer_tall_scene;
+mod replay;
 mod rtl_layout;
 mod scroll_command;
 mod scroll_position;

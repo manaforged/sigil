@@ -42,6 +42,7 @@ pub(crate) fn layout_item_subtree(
     let (assigned_w, assigned_h) = assigned_size(ctx, node, w, h);
     let solved_key = if ctx.suppress_stretch || ctx.measures_height {
         forest.forget_solved_subtree(id);
+        forest.invalidate_solved_ancestors(id);
         None
     } else {
         let key = SolvedKey::new(
