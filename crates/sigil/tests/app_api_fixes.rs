@@ -19,8 +19,8 @@ fn settle(host: &mut Host) {
     }
 }
 
-fn press(key: Key, modifiers: Modifiers) -> Event {
-    Event::key(LogicalKey::Named(key), KeyPhase::Down)
+fn press(key: NamedKey, modifiers: Modifiers) -> Event {
+    Event::key(Key::Named(key), KeyPhase::Down)
         .physical(PhysicalKey::Enter)
         .modifiers(modifiers)
 }
@@ -84,13 +84,13 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
         );
         settle(&mut host);
 
-        send(&mut host, vec![press(Key::Enter, Modifiers::SHIFT)]);
+        send(&mut host, vec![press(NamedKey::Enter, Modifiers::SHIFT)]);
         assert!(sent.borrow().is_empty());
         assert!(draft.get().contains('\n'), "{:?}", draft.get());
 
         for key in [
-            press(Key::Enter, Modifiers::ALT),
-            Event::key(LogicalKey::character("j"), KeyPhase::Down)
+            press(NamedKey::Enter, Modifiers::ALT),
+            Event::key(Key::character("j"), KeyPhase::Down)
                 .physical(PhysicalKey::KeyJ)
                 .modifiers(Modifiers::CTRL),
         ] {
@@ -105,7 +105,7 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
             );
         }
 
-        send(&mut host, vec![press(Key::Enter, Modifiers::empty())]);
+        send(&mut host, vec![press(NamedKey::Enter, Modifiers::empty())]);
         assert_eq!(sent.borrow().len(), 1);
     });
 }

@@ -3,22 +3,22 @@ use std::rc::Rc;
 
 use crate::events::request_focus;
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{Key, KeyEvent, PointerEvent};
+use crate::events::{KeyEvent, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, NodeId};
 
 use crate::widgets::interaction::{DragEnd, InteractionState, ValueStep, pointer_drag, step_keys};
 
 use super::builder::{SliderRuntime, ValueChange};
 
-const SLIDER_KEYS: [(Key, ValueStep); 8] = [
-    (Key::ArrowRight, ValueStep::Unit(1.0)),
-    (Key::ArrowUp, ValueStep::Unit(1.0)),
-    (Key::ArrowLeft, ValueStep::Unit(-1.0)),
-    (Key::ArrowDown, ValueStep::Unit(-1.0)),
-    (Key::PageUp, ValueStep::Page(1.0)),
-    (Key::PageDown, ValueStep::Page(-1.0)),
-    (Key::Home, ValueStep::Start),
-    (Key::End, ValueStep::End),
+const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
+    (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
+    (NamedKey::ArrowUp, ValueStep::Unit(1.0)),
+    (NamedKey::ArrowLeft, ValueStep::Unit(-1.0)),
+    (NamedKey::ArrowDown, ValueStep::Unit(-1.0)),
+    (NamedKey::PageUp, ValueStep::Page(1.0)),
+    (NamedKey::PageDown, ValueStep::Page(-1.0)),
+    (NamedKey::Home, ValueStep::Start),
+    (NamedKey::End, ValueStep::End),
 ];
 
 const PAGE_STEPS: f32 = 10.0;

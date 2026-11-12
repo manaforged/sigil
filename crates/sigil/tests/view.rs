@@ -182,7 +182,7 @@ fn a_view_names_toggles_editors_dividers_and_their_actions() {
         ui.click("Sync");
         assert!(on.peek());
         assert_eq!(changes.peek(), 1);
-        ui.type_into("Search", "ada").press(Key::Enter);
+        ui.type_into("Search", "ada").press(NamedKey::Enter);
         assert_eq!(sent.peek(), 1);
         ui.type_into("Notes", "hello");
         assert_eq!(notes.peek(), "hello");

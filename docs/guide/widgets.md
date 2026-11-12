@@ -22,7 +22,7 @@ The family pages carry signatures, options, and behavior notes:
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
 - **toggle(Signal\<bool\>)**: chain `.label()` and `.change(Fn(bool))`.
 - **slider(Signal\<f32\>, Range)**: chain `.step(f32)`, `.change(Fn(f32))`, and an orientation. The slider publishes its step for AT Increment/Decrement.
-- **text_field(Signal\<String\>)**: chain `.placeholder()`, `.change(Fn(&str))`, `.submit()`, `.clipboard()`, `.disabled(Signal)`, `.invalid_when(Signal\<bool\>)`, `.password()`, and `.reveal(Signal<bool>)`. `.change` is a side effect; the signal is already two-way. `.password` masks glyphs with `*`; the value stays plaintext. `.reveal` shows the plaintext while true. IME preedit is inline, and the caret anchor is published. Pass a `Signal<String>` for the field value.
+- **text_field(Signal\<String\>)**: chain `.placeholder()`, `.change(Fn(&str))`, `.submit()`, `.clipboard()`, `.disabled(Signal)`, `.invalid(Signal\<bool\>)`, `.password()`, and `.reveal(Signal<bool>)`. `.change` is a side effect; the signal is already two-way. `.password` masks glyphs with `*`; the value stays plaintext. `.reveal` shows the plaintext while true. IME preedit is inline, and the caret anchor is published. Pass a `Signal<String>` for the field value.
 - **text_edit(Signal\<String\>)**: multi-line: the same surface plus newline entry, a vertical caret (Up/Down), and shift-selection.
 - **number_field(Signal\<T\>, Range)**: a numeric text field.
 - **date_field(Signal\<Date\>)**: ISO `YYYY-MM-DD`.

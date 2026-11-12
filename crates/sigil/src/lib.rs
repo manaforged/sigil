@@ -198,7 +198,7 @@ pub mod prelude {
     pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::request_focus;
     pub use crate::events::{
-        Key, KeyEvent, KeyPhase, LogicalKey, Modifiers, MouseButton, MouseButtons, PointerEvent,
+        Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PointerEvent,
         PointerPhase, PointerType, Shortcut,
     };
     pub use crate::geometry::{Point, Size};

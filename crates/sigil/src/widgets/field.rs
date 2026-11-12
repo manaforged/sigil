@@ -48,12 +48,12 @@ pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -
 pub trait FieldControl: IntoNode + Sized + 'static {
     /// Marks the control invalid while the value is true.
     #[must_use]
-    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self;
+    fn invalid(self, invalid: impl Reactive<bool>) -> Self;
 }
 
 impl FieldControl for TextFieldBuilder {
-    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
-        Self::invalid_when(self, invalid)
+    fn invalid(self, invalid: impl Reactive<bool>) -> Self {
+        Self::invalid(self, invalid)
     }
 }
 
@@ -61,9 +61,7 @@ impl<C: FieldControl> FieldBuilder<C> {
     /// Sets the error.
     pub fn error(mut self, error: impl Reactive<Option<String>>) -> Self {
         let error = error.into_signal();
-        self.control = self
-            .control
-            .invalid_when(memo(move || error.get().is_some()));
+        self.control = self.control.invalid(memo(move || error.get().is_some()));
         self.error = Some(error);
         self
     }

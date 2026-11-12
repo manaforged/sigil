@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, LogicalKey};
+use crate::events::{Key, KeyEvent, NamedKey};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::widgets::Widget;
@@ -64,7 +64,7 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     let escape = Rc::clone(&model);
     let blur = Rc::clone(&model);
     let other = model;
-    node.key(Key::ArrowDown, move |event| {
+    node.key(NamedKey::ArrowDown, move |event| {
         event.stop_propagation();
         if down.is_open() {
             apply(down.as_ref(), Move::Next);
@@ -72,17 +72,17 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
             down.open();
         }
     })
-    .key(Key::ArrowUp, move |event| {
+    .key(NamedKey::ArrowUp, move |event| {
         event.stop_propagation();
         if up.is_open() {
             apply(up.as_ref(), Move::Prev);
         }
     })
-    .key(Key::Enter, move |event| {
+    .key(NamedKey::Enter, move |event| {
         event.stop_propagation();
         commit_or_open(enter.as_ref());
     })
-    .key(Key::Escape, move |event| {
+    .key(NamedKey::Escape, move |event| {
         if escape.is_open() {
             event.stop_propagation();
             escape.close();
@@ -108,7 +108,7 @@ fn other_key(model: &dyn ListModel, event: &mut KeyEvent) {
         return;
     }
     let moved = match event.key {
-        LogicalKey::Named(key @ (Key::Home | Key::End)) => {
+        Key::Named(key @ (NamedKey::Home | NamedKey::End)) => {
             LISTBOX.step_for(key).is_some_and(|step| apply(model, step))
         }
         _ => typed_char(event).is_some_and(|ch| type_ahead(model, ch)),

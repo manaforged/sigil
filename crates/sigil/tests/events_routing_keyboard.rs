@@ -10,7 +10,7 @@ use sigil::widgets::{Layout, Widget};
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut, *};
+use sigil::events::{Key, KeyPhase, NamedKey, PhysicalKey, Shortcut, *};
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -19,7 +19,7 @@ use routing_helpers::{compute_layout, route_event};
 #[test]
 fn shortcut_dispatch_invokes_action() {
     let saves = Rc::new(Cell::new(0_u32));
-    let shortcut = Shortcut::ctrl(LogicalKey::character("s"));
+    let shortcut = Shortcut::ctrl(Key::character("s"));
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -46,7 +46,7 @@ fn focused_key_up_does_not_invoke_action() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .key(Key::Enter, {
+            .key(NamedKey::Enter, {
                 let hits = Rc::clone(&hits);
                 move |_| hits.set(hits.get() + 1)
             }),
@@ -59,13 +59,13 @@ fn focused_key_up_does_not_invoke_action() {
         &mut router,
         &mut cx,
         &layout,
-        Event::key(Key::Enter, KeyPhase::Up).physical(PhysicalKey::Enter),
+        Event::key(NamedKey::Enter, KeyPhase::Up).physical(PhysicalKey::Enter),
     );
     route_event(
         &mut router,
         &mut cx,
         &layout,
-        Event::key(Key::Enter, KeyPhase::Down).physical(PhysicalKey::Enter),
+        Event::key(NamedKey::Enter, KeyPhase::Down).physical(PhysicalKey::Enter),
     );
 
     assert_eq!(hits.get(), 1);
@@ -103,7 +103,7 @@ fn focused_key_any_receives_unregistered_text_input() {
 }
 
 fn text_key_event(text: &str, physical: PhysicalKey) -> sigil::events::Event {
-    sigil::events::Event::key(LogicalKey::character(text), KeyPhase::Down)
+    sigil::events::Event::key(Key::character(text), KeyPhase::Down)
         .physical(physical)
         .text(Some(text.into()))
 }
@@ -120,7 +120,7 @@ struct SlashFixture {
 fn slash_fixture() -> SlashFixture {
     let fires = Rc::new(Cell::new(0_u32));
     let typed = Rc::new(Cell::new(0_u32));
-    let slash = Shortcut::plain(LogicalKey::character("/"));
+    let slash = Shortcut::plain(Key::character("/"));
     let mut cx = Cx::new_root();
     let page = cx.add(
         container()
@@ -203,7 +203,7 @@ fn plain_char_shortcut_fires_when_non_text_node_focused() {
 fn modifier_chord_still_fires_while_text_input_focused() {
     let fires = Rc::new(Cell::new(0_u32));
     let typed = Rc::new(Cell::new(0_u32));
-    let chord = Shortcut::ctrl(LogicalKey::character("k"));
+    let chord = Shortcut::ctrl(Key::character("k"));
     let mut cx = Cx::new_root();
     let page = cx.add(
         container()
@@ -243,7 +243,7 @@ fn modifier_chord_still_fires_while_text_input_focused() {
 }
 
 fn ctrl_k() -> sigil::events::Event {
-    sigil::events::Event::key(LogicalKey::character("k"), KeyPhase::Down)
+    sigil::events::Event::key(Key::character("k"), KeyPhase::Down)
         .physical(PhysicalKey::KeyK)
         .modifiers(Modifiers::CTRL)
 }

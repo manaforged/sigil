@@ -214,7 +214,7 @@ fn press_down(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine) {
     router.route(
         cx,
         layout,
-        Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
+        Event::key(NamedKey::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
     );
 }
 

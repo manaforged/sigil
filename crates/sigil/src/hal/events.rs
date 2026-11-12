@@ -7,7 +7,7 @@ mod pointer;
 mod shortcut_parse;
 
 pub use gesture::{Gesture, GestureEvent};
-pub use keys::{Key, Modifiers, PhysicalKey};
+pub use keys::{Modifiers, NamedKey, PhysicalKey};
 #[cfg(feature = "desktop")]
 pub(crate) use keys::{for_each_named_key, for_each_physical_key};
 
@@ -63,17 +63,17 @@ pub struct FileDropEvent {
 /// A named key or a character.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
-pub enum LogicalKey {
+pub enum Key {
     /// The named logical key.
-    Named(Key),
+    Named(NamedKey),
     /// The character logical key.
     Character(String),
 }
 
-impl LogicalKey {
+impl Key {
     /// Creates a logical key from a named key.
     #[must_use]
-    pub const fn named(key: Key) -> Self {
+    pub const fn named(key: NamedKey) -> Self {
         Self::Named(key)
     }
 
@@ -84,13 +84,13 @@ impl LogicalKey {
     }
 }
 
-impl From<Key> for LogicalKey {
-    fn from(value: Key) -> Self {
+impl From<NamedKey> for Key {
+    fn from(value: NamedKey) -> Self {
         Self::Named(value)
     }
 }
 
-impl From<String> for LogicalKey {
+impl From<String> for Key {
     fn from(value: String) -> Self {
         Self::Character(value)
     }
@@ -108,26 +108,26 @@ const MODIFIER_LABELS: [(Modifiers, &str, &str); 4] = [
     (Modifiers::META, "⌘", "Super"),
 ];
 
-const KEY_LABELS: [(Key, &str, &str); 12] = [
-    (Key::Enter, "↵", "Enter"),
-    (Key::Escape, "Esc", "Esc"),
-    (Key::Tab, "⇥", "Tab"),
-    (Key::Backspace, "⌫", "Backspace"),
-    (Key::Delete, "⌦", "Del"),
-    (Key::ArrowUp, "↑", "↑"),
-    (Key::ArrowDown, "↓", "↓"),
-    (Key::ArrowLeft, "←", "←"),
-    (Key::ArrowRight, "→", "→"),
-    (Key::PageUp, "PgUp", "PgUp"),
-    (Key::PageDown, "PgDn", "PgDn"),
-    (Key::Home, "Home", "Home"),
+const KEY_LABELS: [(NamedKey, &str, &str); 12] = [
+    (NamedKey::Enter, "↵", "Enter"),
+    (NamedKey::Escape, "Esc", "Esc"),
+    (NamedKey::Tab, "⇥", "Tab"),
+    (NamedKey::Backspace, "⌫", "Backspace"),
+    (NamedKey::Delete, "⌦", "Del"),
+    (NamedKey::ArrowUp, "↑", "↑"),
+    (NamedKey::ArrowDown, "↓", "↓"),
+    (NamedKey::ArrowLeft, "←", "←"),
+    (NamedKey::ArrowRight, "→", "→"),
+    (NamedKey::PageUp, "PgUp", "PgUp"),
+    (NamedKey::PageDown, "PgDn", "PgDn"),
+    (NamedKey::Home, "Home", "Home"),
 ];
 
 /// A key plus modifiers.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Shortcut {
     /// The key.
-    pub key: LogicalKey,
+    pub key: Key,
     /// The modifiers.
     pub modifiers: Modifiers,
 }
@@ -135,7 +135,7 @@ pub struct Shortcut {
 impl Shortcut {
     /// Creates a shortcut.
     #[must_use]
-    pub fn new(key: impl Into<LogicalKey>, modifiers: Modifiers) -> Self {
+    pub fn new(key: impl Into<Key>, modifiers: Modifiers) -> Self {
         Self {
             key: key.into(),
             modifiers,
@@ -144,19 +144,19 @@ impl Shortcut {
 
     /// Creates a shortcut with no modifiers.
     #[must_use]
-    pub fn plain(key: impl Into<LogicalKey>) -> Self {
+    pub fn plain(key: impl Into<Key>) -> Self {
         Self::new(key, Modifiers::empty())
     }
 
     /// Creates a shortcut that needs Ctrl.
     #[must_use]
-    pub fn ctrl(key: impl Into<LogicalKey>) -> Self {
+    pub fn ctrl(key: impl Into<Key>) -> Self {
         Self::new(key, Modifiers::CTRL)
     }
 
     /// Creates a shortcut that needs Command on macOS and Ctrl elsewhere.
     #[must_use]
-    pub fn primary(key: impl Into<LogicalKey>) -> Self {
+    pub fn primary(key: impl Into<Key>) -> Self {
         Self::new(key, PRIMARY)
     }
 
@@ -175,8 +175,8 @@ impl Shortcut {
             .map(|(_, apple, other)| if mac { *apple } else { *other })
             .collect();
         let key = match &self.key {
-            LogicalKey::Character(text) => text.to_uppercase(),
-            LogicalKey::Named(named) => KEY_LABELS
+            Key::Character(text) => text.to_uppercase(),
+            Key::Named(named) => KEY_LABELS
                 .iter()
                 .find(|(candidate, _, _)| candidate == named)
                 .map_or_else(
@@ -195,9 +195,9 @@ impl Shortcut {
             && normalize_modifiers(self.modifiers) == event.normalized_modifiers()
     }
 
-    fn key_matches(&self, key: &LogicalKey) -> bool {
+    fn key_matches(&self, key: &Key) -> bool {
         match (&self.key, key) {
-            (LogicalKey::Character(ours), LogicalKey::Character(theirs))
+            (Key::Character(ours), Key::Character(theirs))
                 if self.modifiers.contains(Modifiers::SHIFT) =>
             {
                 ours.chars()
@@ -209,14 +209,14 @@ impl Shortcut {
     }
 }
 
-impl From<Key> for Shortcut {
-    fn from(value: Key) -> Self {
+impl From<NamedKey> for Shortcut {
+    fn from(value: NamedKey) -> Self {
         Self::plain(value)
     }
 }
 
-impl From<LogicalKey> for Shortcut {
-    fn from(value: LogicalKey) -> Self {
+impl From<Key> for Shortcut {
+    fn from(value: Key) -> Self {
         Self::plain(value)
     }
 }
@@ -236,7 +236,7 @@ pub enum KeyPhase {
 #[non_exhaustive]
 pub struct KeyEvent {
     /// The key.
-    pub key: LogicalKey,
+    pub key: Key,
     /// The physical.
     pub physical: PhysicalKey,
     /// The modifiers.
@@ -251,7 +251,7 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
-    pub(crate) const fn new(key: LogicalKey, phase: KeyPhase) -> Self {
+    pub(crate) const fn new(key: Key, phase: KeyPhase) -> Self {
         Self {
             key,
             physical: PhysicalKey::Unidentified,

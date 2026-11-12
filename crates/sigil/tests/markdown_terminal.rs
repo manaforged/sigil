@@ -246,7 +246,7 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
 
 #[test]
 fn a_wrapped_cell_keeps_every_column_border_full_height() {
-    let source = "| Seat | Key env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
+    let source = "| Seat | NamedKey env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
     let grid =
         sigil_kittest::Harness::present(move || markdown(signal(source.to_string())), 22, 14, &[])
             .expect("layout");

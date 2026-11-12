@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::kernel::{FocusScopeKind, Live, NodeBuilder, TopLayer, announce};
 use crate::layout::Display;
 use crate::layout::{Popup, ViewportOverlay};
@@ -92,7 +92,7 @@ impl PopupLayer {
 }
 
 pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
-    node.key(Key::Escape, |event| {
+    node.key(NamedKey::Escape, |event| {
         if close_top_escape() {
             event.stop_propagation();
         }

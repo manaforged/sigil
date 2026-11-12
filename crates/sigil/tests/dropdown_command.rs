@@ -91,7 +91,7 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
         router.route(
             &mut cx,
             &layout,
-            Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
+            Event::key(NamedKey::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
         );
         assert_eq!(selected.get(), 0);
     });

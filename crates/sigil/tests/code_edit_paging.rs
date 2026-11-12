@@ -18,7 +18,7 @@ const fn click(x: f32, y: f32) -> Event {
 }
 
 fn page_down() -> Event {
-    Event::key(LogicalKey::Named(Key::PageDown), KeyPhase::Down).physical(PhysicalKey::PageDown)
+    Event::key(Key::Named(NamedKey::PageDown), KeyPhase::Down).physical(PhysicalKey::PageDown)
 }
 
 #[test]

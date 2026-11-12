@@ -35,7 +35,7 @@ fn slider_page_up_moves_by_ten_steps() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+            Event::key_down(NamedKey::PageUp).physical(PhysicalKey::PageUp),
         );
         assert_approx(value.get(), 60.0);
     });
@@ -50,7 +50,7 @@ fn slider_page_down_moves_by_ten_steps() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::PageDown).physical(PhysicalKey::PageDown),
+            Event::key_down(NamedKey::PageDown).physical(PhysicalKey::PageDown),
         );
         assert_approx(value.get(), 40.0);
     });
@@ -65,7 +65,7 @@ fn slider_page_step_respects_custom_step() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+            Event::key_down(NamedKey::PageUp).physical(PhysicalKey::PageUp),
         );
         assert_approx(value.get(), 70.0);
     });
@@ -80,7 +80,7 @@ fn slider_home_jumps_to_min() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Home).physical(PhysicalKey::Home),
+            Event::key_down(NamedKey::Home).physical(PhysicalKey::Home),
         );
         assert_approx(value.get(), 0.0);
     });
@@ -95,7 +95,7 @@ fn slider_end_jumps_to_max() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::End).physical(PhysicalKey::End),
+            Event::key_down(NamedKey::End).physical(PhysicalKey::End),
         );
         assert_approx(value.get(), 100.0);
     });
@@ -110,7 +110,7 @@ fn slider_page_up_clamps_at_max() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+            Event::key_down(NamedKey::PageUp).physical(PhysicalKey::PageUp),
         );
         assert_approx(value.get(), 100.0);
     });
@@ -125,7 +125,7 @@ fn slider_page_down_clamps_at_min() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::PageDown).physical(PhysicalKey::PageDown),
+            Event::key_down(NamedKey::PageDown).physical(PhysicalKey::PageDown),
         );
         assert_approx(value.get(), 0.0);
     });

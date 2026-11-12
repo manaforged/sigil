@@ -2,7 +2,7 @@ use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{Key, LogicalKey, MouseButton, PointerEvent, Shortcut};
+use crate::events::{Key, MouseButton, NamedKey, PointerEvent, Shortcut};
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
 use crate::reactive::{Signal, memo};
@@ -234,11 +234,11 @@ fn sortable_cell<Row: 'static>(
                 up_state.toggle_sort(column);
             }
         })
-        .key(Key::Enter, move |event| {
+        .key(NamedKey::Enter, move |event| {
             event.stop_propagation();
             enter_state.toggle_sort(column);
         })
-        .key(Shortcut::plain(LogicalKey::character(" ")), move |event| {
+        .key(Shortcut::plain(Key::character(" ")), move |event| {
             event.stop_propagation();
             space_state.toggle_sort(column);
         })

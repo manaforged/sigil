@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, PointerEvent};
+use crate::events::{KeyEvent, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, memo, signal};
@@ -75,19 +75,23 @@ impl Horizontal {
         if let Some(measure) = hs.probe {
             root = root.child(probe(measure));
         }
-        root.key(Key::ArrowLeft, move |event| step(hs, event, -SCROLL_LINE))
-            .key(Key::ArrowRight, move |event| step(hs, event, SCROLL_LINE))
-            .scroll(move |event| {
-                wheel(
-                    event,
-                    None,
-                    Some(WheelAxis {
-                        offset: hs.scroll_x,
-                        viewport: hs.viewport.peek(),
-                        max: hs.max.peek(),
-                    }),
-                );
-            })
+        root.key(NamedKey::ArrowLeft, move |event| {
+            step(hs, event, -SCROLL_LINE)
+        })
+        .key(NamedKey::ArrowRight, move |event| {
+            step(hs, event, SCROLL_LINE)
+        })
+        .scroll(move |event| {
+            wheel(
+                event,
+                None,
+                Some(WheelAxis {
+                    offset: hs.scroll_x,
+                    viewport: hs.viewport.peek(),
+                    max: hs.max.peek(),
+                }),
+            );
+        })
     }
 }
 

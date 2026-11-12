@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent};
+use crate::events::{KeyEvent, NamedKey};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -12,7 +12,7 @@ pub(crate) enum ValueStep {
 
 pub(crate) fn step_keys(
     node: NodeBuilder,
-    keys: &[(Key, ValueStep)],
+    keys: &[(NamedKey, ValueStep)],
     on_step: impl Fn(ValueStep, &mut KeyEvent) + Clone + 'static,
 ) -> NodeBuilder {
     keys.iter().fold(node, |node, &(key, step)| {

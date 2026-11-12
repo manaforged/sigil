@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use accesskit::{Invalid, Role as AkRole};
-use sigil::events::Key;
+use sigil::events::NamedKey;
 use sigil::kernel::Role;
 use sigil::prelude::*;
 use sigil::style::{Locale, StringKey, Strings, Theme};
@@ -41,11 +41,11 @@ fn shown(ui: &mut Harness) -> String {
 
 fn retype(ui: &mut Harness, text: &str) {
     let input = ui.get(&Query::role(Role::TextInput));
-    ui.click(&input).press(Key::End);
+    ui.click(&input).press(NamedKey::End);
     for _ in 0..24 {
-        ui.press(Key::Backspace);
+        ui.press(NamedKey::Backspace);
     }
-    ui.type_text(text).press(Key::Enter).settle();
+    ui.type_text(text).press(NamedKey::Enter).settle();
 }
 
 #[test]

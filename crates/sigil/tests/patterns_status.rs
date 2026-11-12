@@ -102,7 +102,9 @@ fn pagination_moves_between_pages_with_buttons_and_keys() {
             ui.focused().and_then(|node| node.name().map(str::to_owned)),
             Some("Previous page".to_owned())
         );
-        ui.press(Key::Enter).settle().expect_text("Showing page 10");
+        ui.press(NamedKey::Enter)
+            .settle()
+            .expect_text("Showing page 10");
         assert!(
             ui.get_by_role(Role::Button, "…").is_disabled(),
             "gap is inert"

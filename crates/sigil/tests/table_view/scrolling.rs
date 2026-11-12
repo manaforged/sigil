@@ -48,7 +48,7 @@ fn quick_filter_keeps_keyboard_row_count_live() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::End).physical(PhysicalKey::End),
+            Event::key_down(NamedKey::End).physical(PhysicalKey::End),
         );
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let texts = glyph_texts(&cx, root);

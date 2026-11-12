@@ -55,7 +55,7 @@ fn step_paints_the_hud_like_the_live_host() {
 }
 
 fn tab() -> Event {
-    Event::key(crate::events::Key::Tab, crate::events::KeyPhase::Down)
+    Event::key(crate::events::NamedKey::Tab, crate::events::KeyPhase::Down)
         .physical(crate::events::PhysicalKey::Tab)
 }
 

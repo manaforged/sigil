@@ -1,6 +1,6 @@
 use super::{
-    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, LogicalKey, Modifiers, MouseButton,
-    MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
+    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons,
+    NamedKey, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
     ScrollPhase, WindowEvent,
 };
 use crate::geometry::Point;
@@ -8,19 +8,19 @@ use crate::geometry::Point;
 impl Event {
     /// Builds a key event with no modifiers, no text, and an unidentified physical key.
     #[must_use]
-    pub fn key(key: impl Into<LogicalKey>, phase: KeyPhase) -> Self {
+    pub fn key(key: impl Into<Key>, phase: KeyPhase) -> Self {
         Self::Key(KeyEvent::new(key.into(), phase))
     }
 
     /// Builds a key press.
     #[must_use]
-    pub fn key_down(key: impl Into<LogicalKey>) -> Self {
+    pub fn key_down(key: impl Into<Key>) -> Self {
         Self::key(key, KeyPhase::Down)
     }
 
     /// Builds the press and release of a key held with `modifiers`.
     #[must_use]
-    pub fn press(key: impl Into<LogicalKey>, modifiers: Modifiers) -> [Self; 2] {
+    pub fn press(key: impl Into<Key>, modifiers: Modifiers) -> [Self; 2] {
         let key = key.into();
         [
             Self::key(key.clone(), KeyPhase::Down).modifiers(modifiers),
@@ -31,7 +31,7 @@ impl Event {
     /// Builds the key press that types `text`.
     #[must_use]
     pub fn typed(text: &str) -> Self {
-        Self::key_down(LogicalKey::character(text)).text(Some(text.into()))
+        Self::key_down(Key::character(text)).text(Some(text.into()))
     }
 
     /// Builds the press and release of each character of `text`.
@@ -41,10 +41,7 @@ impl Event {
         text.chars()
             .flat_map(|ch| {
                 let ch: &str = ch.encode_utf8(&mut buffer);
-                [
-                    Self::typed(ch),
-                    Self::key(LogicalKey::character(ch), KeyPhase::Up),
-                ]
+                [Self::typed(ch), Self::key(Key::character(ch), KeyPhase::Up)]
             })
             .collect()
     }
@@ -54,7 +51,7 @@ impl Event {
     pub fn tab(shift: bool) -> Self {
         let mut modifiers = Modifiers::empty();
         modifiers.set(Modifiers::SHIFT, shift);
-        Self::key_down(Key::Tab)
+        Self::key_down(NamedKey::Tab)
             .physical(PhysicalKey::Tab)
             .modifiers(modifiers)
     }

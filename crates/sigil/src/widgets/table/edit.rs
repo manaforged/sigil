@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::events::pointer_dispatch::Clicks;
-use crate::events::{Key, KeyEvent, LogicalKey, MouseButton, PointerEvent};
+use crate::events::{Key, KeyEvent, MouseButton, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, memo, signal};
@@ -237,16 +237,16 @@ fn edit_key<Row: 'static>(
     cell: CellRef,
     event: &mut KeyEvent,
 ) {
-    let LogicalKey::Named(key) = &event.key else {
+    let Key::Named(key) = &event.key else {
         return;
     };
     match *key {
-        Key::Enter => {
+        NamedKey::Enter => {
             editor.commit(state);
             editor.finish(state, cell.row);
         }
-        Key::Escape => editor.finish(state, cell.row),
-        Key::Tab => editor.step(state, cell, !event.modifiers.shift()),
+        NamedKey::Escape => editor.finish(state, cell.row),
+        NamedKey::Tab => editor.step(state, cell, !event.modifiers.shift()),
         _ => return,
     }
     event.stop_propagation();

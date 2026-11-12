@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::Key;
+use sigil::events::NamedKey;
 use sigil::kernel::Role;
 use sigil::prelude::*;
 use sigil::widgets::tag_input;
@@ -39,7 +39,7 @@ fn tags(labels: Signal<Vec<String>>) -> Vec<String> {
 fn typing_filters_and_enter_or_click_adds_a_tag() {
     let (mut ui, labels) = open();
     type_in(&mut ui, "do");
-    ui.press(Key::Enter).settle();
+    ui.press(NamedKey::Enter).settle();
     assert_eq!(tags(labels), ["docs"]);
     ui.expect_text("docs");
     let input = ui.get(&Query::role(Role::TextInput));
@@ -55,14 +55,14 @@ fn each_tag_removes_with_its_button_and_backspace_removes_the_last() {
     let (mut ui, labels) = open();
     for query in ["bu", "qu", "fe"] {
         type_in(&mut ui, query);
-        ui.press(Key::Enter).settle();
+        ui.press(NamedKey::Enter).settle();
     }
     assert_eq!(tags(labels), ["bug", "question", "feature"]);
     let remove = ui.get_by_role(Role::Button, "Remove question");
     ui.click(&remove).settle();
     assert_eq!(tags(labels), ["bug", "feature"]);
     let input = ui.get(&Query::role(Role::TextInput));
-    ui.click(&input).press(Key::Backspace).settle();
+    ui.click(&input).press(NamedKey::Backspace).settle();
     assert_eq!(tags(labels), ["bug"]);
     assert!(
         ui.query(&Query::role(Role::Button).name("Remove feature"))
@@ -75,11 +75,11 @@ fn each_tag_removes_with_its_button_and_backspace_removes_the_last() {
 fn typing_a_whole_option_adds_it_and_clears_the_input() {
     let (mut ui, labels) = open();
     type_in(&mut ui, "docs");
-    ui.press(Key::Enter).settle();
+    ui.press(NamedKey::Enter).settle();
     assert_eq!(tags(labels), ["docs"]);
     let input = ui.get(&Query::role(Role::TextInput));
     assert_eq!(input.value().unwrap_or_default(), "");
-    ui.press(Key::Backspace).settle();
+    ui.press(NamedKey::Backspace).settle();
     assert!(tags(labels).is_empty());
 }
 

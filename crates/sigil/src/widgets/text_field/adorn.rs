@@ -46,7 +46,7 @@ pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> Nod
                 .shrink(0.0)
                 .align_items(AlignItems::Center),
         )
-        .visible_when(crate::reactive::memo(move || !value.get().is_empty()))
+        .visible(crate::reactive::memo(move || !value.get().is_empty()))
         .child(button)
 }
 

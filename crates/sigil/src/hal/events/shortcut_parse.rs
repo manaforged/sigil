@@ -2,7 +2,7 @@ use core::str::FromStr;
 
 use crate::{Error, ErrorKind};
 
-use super::{KEY_LABELS, Key, LogicalKey, MODIFIER_LABELS, Modifiers, Shortcut};
+use super::{KEY_LABELS, Key, MODIFIER_LABELS, Modifiers, NamedKey, Shortcut};
 
 const MODIFIER_ALIASES: [(Modifiers, &str); 8] = [
     (Modifiers::CTRL, "control"),
@@ -81,7 +81,7 @@ fn modifier_named(name: &str) -> Option<Modifiers> {
         })
 }
 
-fn key_named(name: &str) -> Result<LogicalKey, Error> {
+fn key_named(name: &str) -> Result<Key, Error> {
     if name.is_empty() {
         return Err(Error::fixed(ErrorKind::EmptyShortcut, "empty shortcut"));
     }
@@ -89,27 +89,25 @@ fn key_named(name: &str) -> Result<LogicalKey, Error> {
         .iter()
         .find(|(_, apple, other)| *apple == name || other.eq_ignore_ascii_case(name))
     {
-        return Ok(LogicalKey::Named(*key));
+        return Ok(Key::Named(*key));
     }
     let mut chars = name.chars();
     if let (Some(single), None) = (chars.next(), chars.next()) {
-        return Ok(LogicalKey::character(
-            single.to_lowercase().collect::<String>(),
-        ));
+        return Ok(Key::character(single.to_lowercase().collect::<String>()));
     }
-    Key::from_str(name)
+    NamedKey::from_str(name)
         .ok()
-        .filter(|key| !matches!(key, Key::Unidentified))
+        .filter(|key| !matches!(key, NamedKey::Unidentified))
         .or_else(|| named_case_insensitive(name))
-        .map(LogicalKey::Named)
+        .map(Key::Named)
         .ok_or_else(|| Error::message(ErrorKind::UnknownKey, format_args!("unknown key `{name}`")))
 }
 
-fn named_case_insensitive(name: &str) -> Option<Key> {
+fn named_case_insensitive(name: &str) -> Option<NamedKey> {
     let mut chars = name.chars();
     let first = chars.next()?.to_uppercase().collect::<String>();
     let candidate = first + &chars.as_str().to_ascii_lowercase();
-    Key::from_str(&candidate)
+    NamedKey::from_str(&candidate)
         .ok()
-        .filter(|key| !matches!(key, Key::Unidentified))
+        .filter(|key| !matches!(key, NamedKey::Unidentified))
 }

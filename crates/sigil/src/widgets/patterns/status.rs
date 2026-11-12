@@ -40,7 +40,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_row().align_items(AlignItems::Center))
-        .visible_when(shown)
+        .visible(shown)
         .children_reactive(move || {
             shown.get().then(|| {
                 chip(move || shown_text.get(), tone)

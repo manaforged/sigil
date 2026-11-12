@@ -276,6 +276,7 @@ First public release.
 
 - `panel` and `PanelBuilder` are removed; `card` takes a title. Migration: `panel().title("T").child(body)` becomes `card(body).title("T")`, and `.elevation(0)` becomes `.layer(Layer::Page)`. A card has 12 px padding where a panel had 16 px; chain `.layout(LayoutStyle::default().padding(Space::Lg))` to keep it.
 - Names shortened to one word each. Migration: `derived(f)` becomes `memo(f)`; `IntervalId` becomes `Timer`; `ModifiersState` becomes `Modifiers` and `ModifiersState::CONTROL` becomes `Modifiers::CTRL`; `.on_added(f)` becomes `.added(f)`; `.animate(keyframes)` becomes `.animation(keyframes)`; `signal_writer(s)` becomes `s.writer()`.
+- Key names follow the web: `Key` (the named keys) becomes `NamedKey`, and `LogicalKey` becomes `Key`, so `LogicalKey::Named(Key::Enter)` is now `Key::Named(NamedKey::Enter)`. `.invalid_when(flag)` becomes `.invalid(flag)` and `.visible_when(flag)` becomes `.visible(flag)`.
 - `Error::new` takes the kind: `Error::with_kind(kind, err)` becomes `Error::new(kind, err)`, and `Error::new(err)` becomes `Error::new(ErrorKind::Other, err)`. The unused `ErrorKind::Svg` is removed.
 - `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
 - `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.

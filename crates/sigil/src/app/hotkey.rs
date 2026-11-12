@@ -6,7 +6,7 @@ use crate::ErrorKind;
 use crate::app::Wake;
 use crate::app::bridge::Native;
 use crate::error::{AppResult, Error};
-use crate::hal::events::{KeyPhase, LogicalKey, Modifiers, Shortcut};
+use crate::hal::events::{Key, KeyPhase, Modifiers, Shortcut};
 use crate::reactive::EventChannel;
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
@@ -113,9 +113,9 @@ fn to_hotkey(shortcut: &Shortcut) -> AppResult<HotKey> {
             text
         });
     match &shortcut.key {
-        LogicalKey::Character(value) if value.as_str() == " " => text.push_str("Space"),
-        LogicalKey::Character(value) => text.push_str(value.as_str()),
-        LogicalKey::Named(named) => text.push_str(&named.to_string()),
+        Key::Character(value) if value.as_str() == " " => text.push_str("Space"),
+        Key::Character(value) => text.push_str(value.as_str()),
+        Key::Named(named) => text.push_str(&named.to_string()),
     }
     text.parse::<HotKey>()
         .map_err(|err| Error::new(ErrorKind::Config, err))

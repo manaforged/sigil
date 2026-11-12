@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
 use crate::widgets::Widget;
@@ -30,8 +30,8 @@ pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: &TextFieldRuntime)
         line: None,
     };
     let submit = input.clone();
-    let node =
-        edit_keys(node, input, &profile).key(Key::Enter, move |event| submit_text(event, &submit));
+    let node = edit_keys(node, input, &profile)
+        .key(NamedKey::Enter, move |event| submit_text(event, &submit));
     let node = clipboard_keys(node, input);
     let node = word_keys(node, input);
     let node = history_keys(node, input.clone());

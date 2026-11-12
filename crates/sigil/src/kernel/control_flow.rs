@@ -142,7 +142,7 @@ fn mount_kept(views: Vec<ViewFn>, slot: Signal<Option<usize>>) -> NodeBuilder {
         seen.iter()
             .filter_map(|&i| views.get(i).map(|view| (i, Rc::clone(view))))
             .map(|(i, view)| {
-                let page = crate::style::builder_ext::visible_when(
+                let page = crate::style::builder_ext::visible(
                     container().child(move || view()),
                     move || slot.get() == Some(i),
                 );

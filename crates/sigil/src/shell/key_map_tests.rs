@@ -5,30 +5,24 @@ fn maps_logical_keys_without_case_normalising() {
     for (winit, sigil) in [
         (
             WinitKey::Named(WinitNamedKey::Enter),
-            LogicalKey::Named(Key::Enter),
+            Key::Named(NamedKey::Enter),
         ),
         (
             WinitKey::Named(WinitNamedKey::Tab),
-            LogicalKey::Named(Key::Tab),
+            Key::Named(NamedKey::Tab),
         ),
         (
             WinitKey::Named(WinitNamedKey::Escape),
-            LogicalKey::Named(Key::Escape),
+            Key::Named(NamedKey::Escape),
         ),
-        (
-            WinitKey::Named(WinitNamedKey::F5),
-            LogicalKey::Named(Key::F5),
-        ),
+        (WinitKey::Named(WinitNamedKey::F5), Key::Named(NamedKey::F5)),
         (
             WinitKey::Named(WinitNamedKey::ArrowUp),
-            LogicalKey::Named(Key::ArrowUp),
+            Key::Named(NamedKey::ArrowUp),
         ),
-        (
-            WinitKey::Named(WinitNamedKey::Space),
-            LogicalKey::character(" "),
-        ),
-        (WinitKey::Character("s".into()), LogicalKey::character("s")),
-        (WinitKey::Character("S".into()), LogicalKey::character("S")),
+        (WinitKey::Named(WinitNamedKey::Space), Key::character(" ")),
+        (WinitKey::Character("s".into()), Key::character("s")),
+        (WinitKey::Character("S".into()), Key::character("S")),
     ] {
         assert_eq!(map_logical_key(winit), sigil);
     }

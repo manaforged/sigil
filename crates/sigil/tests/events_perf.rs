@@ -6,7 +6,7 @@ use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::{Event, Key, KeyPhase, Modifiers, PhysicalKey, PointerEvent, *};
+use sigil::events::{Event, KeyPhase, Modifiers, NamedKey, PhysicalKey, PointerEvent, *};
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
@@ -33,7 +33,7 @@ fn focused_key_route_depth_64_does_not_allocate() {
             container()
                 .focusable(true)
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                .key(Key::Enter, {
+                .key(NamedKey::Enter, {
                     let hits = Rc::clone(&hits);
                     move |_| hits.set(hits.get() + 1)
                 }),
@@ -47,7 +47,7 @@ fn focused_key_route_depth_64_does_not_allocate() {
         router.route(
             &mut cx,
             &layout,
-            Event::key_down(Key::Enter).physical(PhysicalKey::Enter),
+            Event::key_down(NamedKey::Enter).physical(PhysicalKey::Enter),
         );
     });
 
@@ -133,7 +133,7 @@ fn captured_pointer_move_does_not_allocate() {
 #[test]
 fn semantic_shortcut_scan_1000_nodes_does_not_allocate() {
     let hits = Rc::new(Cell::new(0_u32));
-    let shortcut = Shortcut::ctrl(LogicalKey::character("s"));
+    let shortcut = Shortcut::ctrl(Key::character("s"));
     let mut cx = Cx::new_root();
     let mut root_builder = container().layout(LayoutStyle::block().fixed_size(240.0, 240.0));
     for index in 0..1_000 {
@@ -211,7 +211,7 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
 }
 
 fn ctrl_s() -> Event {
-    Event::key(LogicalKey::character("s"), KeyPhase::Down)
+    Event::key(Key::character("s"), KeyPhase::Down)
         .physical(PhysicalKey::KeyS)
         .modifiers(Modifiers::CTRL)
 }

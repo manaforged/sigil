@@ -8,7 +8,7 @@ use crate::clipboard::Clipboard;
 use crate::clipboard::clipboard;
 use crate::events::EventRouter;
 use crate::events::Shortcut;
-use crate::events::{Event, KeyPhase, LogicalKey, Modifiers};
+use crate::events::{Event, Key, KeyPhase, Modifiers};
 use crate::geometry::Size;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -167,7 +167,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
         let root = cx.add(
             crate::kernel::container()
                 .key(
-                    Shortcut::new(LogicalKey::character("v"), Modifiers::CTRL),
+                    Shortcut::new(Key::character("v"), Modifiers::CTRL),
                     move |_| reached.set(true),
                 )
                 .child(text_edit(value).clipboard(Unreadable)),
@@ -204,5 +204,5 @@ fn press(editor: TextEditBuilder, key: &str, modifiers: Modifiers) {
 }
 
 fn shortcut(key: &str, modifiers: Modifiers) -> Event {
-    Event::key(LogicalKey::character(key), KeyPhase::Down).modifiers(modifiers)
+    Event::key(Key::character(key), KeyPhase::Down).modifiers(modifiers)
 }

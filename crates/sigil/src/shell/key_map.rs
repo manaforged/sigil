@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::events::{Key, LogicalKey, PhysicalKey};
+use crate::events::{Key, NamedKey, PhysicalKey};
 use crate::hal::events::{for_each_named_key, for_each_physical_key};
 use winit::keyboard::{
     Key as WinitKey, KeyCode as WinitKeyCode, NamedKey as WinitNamedKey,
@@ -19,19 +19,17 @@ macro_rules! same_name_match {
 #[cfg(feature = "menu")]
 pub(crate) use same_name_match;
 
-pub(crate) fn map_logical_key(key: WinitKey) -> LogicalKey {
+pub(crate) fn map_logical_key(key: WinitKey) -> Key {
     match key {
-        WinitKey::Named(WinitNamedKey::Space) => LogicalKey::character(" "),
-        WinitKey::Named(WinitNamedKey::Hyper | WinitNamedKey::Super) => {
-            LogicalKey::Named(Key::Meta)
-        }
-        WinitKey::Named(named) => LogicalKey::Named(map_named_key(named)),
-        WinitKey::Character(value) => LogicalKey::character(value.as_str()),
+        WinitKey::Named(WinitNamedKey::Space) => Key::character(" "),
+        WinitKey::Named(WinitNamedKey::Hyper | WinitNamedKey::Super) => Key::Named(NamedKey::Meta),
+        WinitKey::Named(named) => Key::Named(map_named_key(named)),
+        WinitKey::Character(value) => Key::character(value.as_str()),
         WinitKey::Dead(Some(ch)) => {
             let mut buffer = [0_u8; 4];
-            LogicalKey::character(ch.encode_utf8(&mut buffer))
+            Key::character(ch.encode_utf8(&mut buffer))
         }
-        WinitKey::Dead(None) | WinitKey::Unidentified(_) => LogicalKey::Named(Key::Unidentified),
+        WinitKey::Dead(None) | WinitKey::Unidentified(_) => Key::Named(NamedKey::Unidentified),
     }
 }
 
@@ -48,11 +46,11 @@ pub(crate) const fn map_physical_key(key: WinitPhysicalKey) -> PhysicalKey {
     clippy::too_many_lines,
     reason = "one sequential pass; splitting would scatter the ordering it documents"
 )]
-const fn map_named_key(key: WinitNamedKey) -> Key {
+const fn map_named_key(key: WinitNamedKey) -> NamedKey {
     for_each_named_key!(same_name_match!(
         key,
-        WinitNamedKey => Key,
-        default: Key::Unidentified,
+        WinitNamedKey => NamedKey,
+        default: NamedKey::Unidentified,
     ))
 }
 

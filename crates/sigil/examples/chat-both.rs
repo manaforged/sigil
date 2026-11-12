@@ -223,7 +223,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .fill()
         .gap(Space::None)
         .key_capture(
-            Shortcut::ctrl(LogicalKey::character("k")),
+            Shortcut::ctrl(Key::character("k")),
             move |_: &mut KeyEvent| show_picker(),
         )
         .child(

@@ -1,4 +1,4 @@
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
@@ -121,9 +121,13 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
         move |base, delta| width.set((base + delta).clamp(min, max)),
         || {},
     );
-    resize_keys(node, (Key::ArrowLeft, Key::ArrowRight), move |step| {
-        width.set((width.peek() + step).clamp(min, max));
-    })
+    resize_keys(
+        node,
+        (NamedKey::ArrowLeft, NamedKey::ArrowRight),
+        move |step| {
+            width.set((width.peek() + step).clamp(min, max));
+        },
+    )
 }
 
 builder_impls!([] SidebarBuilder: paint(style_accumulator), widget, node);

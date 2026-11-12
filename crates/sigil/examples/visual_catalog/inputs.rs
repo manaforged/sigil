@@ -24,7 +24,7 @@ fn text_field_row(state: State) -> NodeBuilder {
     node(
         crate::widget_fields::text_field_demo()
             .disabled(off(state))
-            .invalid_when(invalid(state)),
+            .invalid(invalid(state)),
     )
 }
 

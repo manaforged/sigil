@@ -1,4 +1,4 @@
-use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, Modifiers};
+use crate::events::{Key, KeyEvent, KeyPhase, Modifiers, NamedKey};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{LayoutStyle, rows};
 use crate::reactive::{Signal, signal};
@@ -43,11 +43,9 @@ fn key_payload(event: &KeyEvent, application: bool) -> Option<String> {
         return None;
     }
     let named = match &event.key {
-        LogicalKey::Named(key) => named_sequence(*key, event.modifiers, application),
-        LogicalKey::Character(text) if event.modifiers.contains(Modifiers::CTRL) => {
-            control_byte(text)
-                .map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string()))
-        }
+        Key::Named(key) => named_sequence(*key, event.modifiers, application),
+        Key::Character(text) if event.modifiers.contains(Modifiers::CTRL) => control_byte(text)
+            .map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string())),
         _ => None,
     };
     named.or_else(|| typed(event))
@@ -111,56 +109,56 @@ fn tilde(number: u8, code: u8) -> String {
     }
 }
 
-fn edit_sequence(key: Key, modifiers: Modifiers) -> Option<String> {
+fn edit_sequence(key: NamedKey, modifiers: Modifiers) -> Option<String> {
     let has = |flag: Modifiers| modifiers.contains(flag);
     Some(match key {
-        Key::Enter if has(Modifiers::SHIFT) || has(Modifiers::ALT) => "\u{1b}\r".to_string(),
-        Key::Enter => "\r".to_string(),
-        Key::Backspace if has(Modifiers::CTRL) => "\u{8}".to_string(),
-        Key::Backspace => alt_prefixed(modifiers, "\u{7f}".to_string()),
-        Key::Tab if has(Modifiers::CTRL) => return None,
-        Key::Tab if has(Modifiers::SHIFT) => "\u{1b}[Z".to_string(),
-        Key::Tab => "\t".to_string(),
-        Key::Escape => "\u{1b}".to_string(),
+        NamedKey::Enter if has(Modifiers::SHIFT) || has(Modifiers::ALT) => "\u{1b}\r".to_string(),
+        NamedKey::Enter => "\r".to_string(),
+        NamedKey::Backspace if has(Modifiers::CTRL) => "\u{8}".to_string(),
+        NamedKey::Backspace => alt_prefixed(modifiers, "\u{7f}".to_string()),
+        NamedKey::Tab if has(Modifiers::CTRL) => return None,
+        NamedKey::Tab if has(Modifiers::SHIFT) => "\u{1b}[Z".to_string(),
+        NamedKey::Tab => "\t".to_string(),
+        NamedKey::Escape => "\u{1b}".to_string(),
         _ => return None,
     })
 }
 
-const fn cursor_end(key: Key) -> Option<(char, bool)> {
+const fn cursor_end(key: NamedKey) -> Option<(char, bool)> {
     Some(match key {
-        Key::ArrowUp => ('A', false),
-        Key::ArrowDown => ('B', false),
-        Key::ArrowRight => ('C', false),
-        Key::ArrowLeft => ('D', false),
-        Key::Home => ('H', false),
-        Key::End => ('F', false),
-        Key::F1 => ('P', true),
-        Key::F2 => ('Q', true),
-        Key::F3 => ('R', true),
-        Key::F4 => ('S', true),
+        NamedKey::ArrowUp => ('A', false),
+        NamedKey::ArrowDown => ('B', false),
+        NamedKey::ArrowRight => ('C', false),
+        NamedKey::ArrowLeft => ('D', false),
+        NamedKey::Home => ('H', false),
+        NamedKey::End => ('F', false),
+        NamedKey::F1 => ('P', true),
+        NamedKey::F2 => ('Q', true),
+        NamedKey::F3 => ('R', true),
+        NamedKey::F4 => ('S', true),
         _ => return None,
     })
 }
 
-const fn tilde_number(key: Key) -> Option<u8> {
+const fn tilde_number(key: NamedKey) -> Option<u8> {
     Some(match key {
-        Key::Insert => 2,
-        Key::Delete => 3,
-        Key::PageUp => 5,
-        Key::PageDown => 6,
-        Key::F5 => 15,
-        Key::F6 => 17,
-        Key::F7 => 18,
-        Key::F8 => 19,
-        Key::F9 => 20,
-        Key::F10 => 21,
-        Key::F11 => 23,
-        Key::F12 => 24,
+        NamedKey::Insert => 2,
+        NamedKey::Delete => 3,
+        NamedKey::PageUp => 5,
+        NamedKey::PageDown => 6,
+        NamedKey::F5 => 15,
+        NamedKey::F6 => 17,
+        NamedKey::F7 => 18,
+        NamedKey::F8 => 19,
+        NamedKey::F9 => 20,
+        NamedKey::F10 => 21,
+        NamedKey::F11 => 23,
+        NamedKey::F12 => 24,
         _ => return None,
     })
 }
 
-fn named_sequence(key: Key, modifiers: Modifiers, application: bool) -> Option<String> {
+fn named_sequence(key: NamedKey, modifiers: Modifiers, application: bool) -> Option<String> {
     let code = modifier_code(modifiers);
     if let Some((end, always)) = cursor_end(key) {
         return Some(cursor(end, code, always || application));

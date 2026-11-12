@@ -3,7 +3,7 @@ use std::iter::once;
 use std::rc::Rc;
 
 use crate::events::EventRouter;
-use crate::events::{Event, KeyPhase, LogicalKey, Modifiers};
+use crate::events::{Event, Key, KeyPhase, Modifiers};
 use crate::geometry::Size;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -57,8 +57,7 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
                 router.route(
                     &mut cx,
                     &layout,
-                    Event::key(LogicalKey::character(key), KeyPhase::Down)
-                        .modifiers(modifiers | shift),
+                    Event::key(Key::character(key), KeyPhase::Down).modifiers(modifiers | shift),
                 );
                 assert_eq!(value.peek(), expected, "{modifiers:?} {key}: field text");
                 assert_eq!(

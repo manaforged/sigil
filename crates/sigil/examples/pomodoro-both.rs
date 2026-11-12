@@ -113,16 +113,16 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .to_string()
     });
     let count = memo(move || format!("Sessions: {}", timer.sessions.get()));
-    let space = Shortcut::plain(LogicalKey::character(" "));
-    let r = Shortcut::plain(LogicalKey::character("r"));
+    let space = Shortcut::plain(Key::character(" "));
+    let r = Shortcut::plain(Key::character("r"));
     column()
         .fill()
         .gap(rows(1.0))
         .padding(em(1.0))
         .shortcut(space, move |_| timer.toggle())
         .shortcut(r, move |_| timer.reset())
-        .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))
-        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
+        .shortcut(Key::character("s"), move |_| settings_open.set(true))
+        .shortcut(Key::character("q"), |_| sigil::request_exit())
         .child(text(phase))
         .child(text(clock).text_role(TextRole::Title))
         .child(text(count))

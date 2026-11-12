@@ -115,7 +115,7 @@ fn visible_when_toggle(c: &mut Criterion) {
     Owner::scope("sigil_style_bench_visible_toggle", || {
         let active = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(container().visible_when(active));
+        let id = cx.add(container().visible(active));
 
         active.set(true);
         active.set(false);

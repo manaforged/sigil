@@ -1,5 +1,5 @@
 use super::*;
-use sigil::events::{EventRouter, LogicalKey};
+use sigil::events::{EventRouter, Key};
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 
@@ -16,7 +16,7 @@ fn key_hook_on_a_widget_builder_runs_once_on_the_widget() {
     sigil::reactive::Owner::scope("sigil-widget-builder-key-hook", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(button("Go").key(LogicalKey::character("x"), {
+        let root = cx.add(button("Go").key(Key::character("x"), {
             let hits = Rc::clone(&hits);
             move |_| hits.set(hits.get() + 1)
         }));

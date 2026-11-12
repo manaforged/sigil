@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::animation::runtime::presets;
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
@@ -224,7 +224,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, reveal: Reveal) {
             focus_out.hide();
         }));
         handlers.add_key(
-            Key::Escape.into(),
+            NamedKey::Escape.into(),
             Box::new(move |event| {
                 if reveal.hide() {
                     event.stop_propagation();

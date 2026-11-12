@@ -153,7 +153,7 @@ fn text_field_external_write_resyncs_edit_buffer() {
         router.route(
             &mut cx,
             &layout,
-            Event::key(Key::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace),
+            Event::key(NamedKey::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace),
         );
 
         assert_eq!(
@@ -165,7 +165,7 @@ fn text_field_external_write_resyncs_edit_buffer() {
 }
 
 fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
-    Event::key(LogicalKey::character(ch), KeyPhase::Down)
+    Event::key(Key::character(ch), KeyPhase::Down)
         .physical(physical)
         .modifiers(Modifiers::CTRL)
 }
@@ -181,11 +181,11 @@ fn a_submit_added_to_a_number_field_keeps_its_clamp() {
         let mut ui = sigil_kittest::Harness::new(move || column().child(field)).pixels(400, 120);
         ui.settle();
         let input = ui.get(&sigil_kittest::Query::role(Role::TextInput));
-        ui.click(&input).press(Key::End);
+        ui.click(&input).press(NamedKey::End);
         for _ in 0..4 {
-            ui.press(Key::Backspace);
+            ui.press(NamedKey::Backspace);
         }
-        ui.type_text("500").press(Key::Enter).settle();
+        ui.type_text("500").press(NamedKey::Enter).settle();
         let shown = ui
             .get(&sigil_kittest::Query::role(Role::TextInput))
             .value()

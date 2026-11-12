@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::{Key, LogicalKey, Shortcut};
+use crate::events::{Key, NamedKey, Shortcut};
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
 use crate::widgets::Widget;
@@ -24,8 +24,8 @@ impl Trigger {
     fn shortcut(self) -> Option<Shortcut> {
         match self {
             Self::Release => None,
-            Self::Enter => Some(Key::Enter.into()),
-            Self::Space => Some(LogicalKey::character(" ").into()),
+            Self::Enter => Some(NamedKey::Enter.into()),
+            Self::Space => Some(Key::character(" ").into()),
         }
     }
 }

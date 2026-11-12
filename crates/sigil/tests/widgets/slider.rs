@@ -81,14 +81,14 @@ fn slider_keyboard_stepping() {
         router.route(
             &mut cx,
             &layout,
-            arrow_down(Key::ArrowRight, PhysicalKey::ArrowRight),
+            arrow_down(NamedKey::ArrowRight, PhysicalKey::ArrowRight),
         );
         assert_approx(value.get(), 55.0);
 
         router.route(
             &mut cx,
             &layout,
-            arrow_down(Key::ArrowLeft, PhysicalKey::ArrowLeft),
+            arrow_down(NamedKey::ArrowLeft, PhysicalKey::ArrowLeft),
         );
         assert_approx(value.get(), 50.0);
     });
@@ -117,7 +117,7 @@ fn slider_disabled_ignores_input() {
         router.route(
             &mut cx,
             &layout,
-            arrow_down(Key::ArrowRight, PhysicalKey::ArrowRight),
+            arrow_down(NamedKey::ArrowRight, PhysicalKey::ArrowRight),
         );
 
         assert_approx(value.get(), 25.0);

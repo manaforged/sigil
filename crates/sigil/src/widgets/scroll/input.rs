@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::events::selection::drag_active;
-use crate::events::{Key, KeyEvent, ScrollDelta, ScrollEvent};
+use crate::events::{KeyEvent, NamedKey, ScrollDelta, ScrollEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, effect, untrack};
 use crate::widgets::Widget;
@@ -9,13 +9,13 @@ use crate::widgets::Widget;
 use super::SCROLL_LINE;
 use crate::widgets::interaction::{ValueStep, step_keys};
 
-const SCROLL_KEYS: [(Key, ValueStep); 6] = [
-    (Key::ArrowDown, ValueStep::Unit(1.0)),
-    (Key::ArrowUp, ValueStep::Unit(-1.0)),
-    (Key::PageDown, ValueStep::Page(1.0)),
-    (Key::PageUp, ValueStep::Page(-1.0)),
-    (Key::Home, ValueStep::Start),
-    (Key::End, ValueStep::End),
+const SCROLL_KEYS: [(NamedKey, ValueStep); 6] = [
+    (NamedKey::ArrowDown, ValueStep::Unit(1.0)),
+    (NamedKey::ArrowUp, ValueStep::Unit(-1.0)),
+    (NamedKey::PageDown, ValueStep::Page(1.0)),
+    (NamedKey::PageUp, ValueStep::Page(-1.0)),
+    (NamedKey::Home, ValueStep::Start),
+    (NamedKey::End, ValueStep::End),
 ];
 
 fn travel(kind: ValueStep, event: &mut KeyEvent, scroll_y: Signal<f32>, max: f32, page: f32) {

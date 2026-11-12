@@ -1,7 +1,7 @@
 use std::iter::once;
 
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{Key, KeyEvent, LogicalKey, Modifiers, Shortcut};
+use crate::events::{Key, KeyEvent, Modifiers, NamedKey, Shortcut};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -40,11 +40,11 @@ pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRunti
     let node = command_keys(node, &runtime, &commands);
     let node = TERMINAL_UNDO.iter().fold(node, |node, key| {
         let runtime = runtime.clone();
-        node.key(Shortcut::ctrl(LogicalKey::character(*key)), move |event| {
+        node.key(Shortcut::ctrl(Key::character(*key)), move |event| {
             history(event, &runtime, TextEdit::undo);
         })
     });
-    node.key(Shortcut::ctrl(LogicalKey::character("y")), move |event| {
+    node.key(Shortcut::ctrl(Key::character("y")), move |event| {
         history(event, &runtime, TextEdit::redo);
     })
 }
@@ -59,7 +59,7 @@ fn command_keys(
     for modifiers in command_modifiers() {
         for &(key, extra, command) in commands {
             let runtime = runtime.clone();
-            let shortcut = Shortcut::new(LogicalKey::character(key), modifiers | extra);
+            let shortcut = Shortcut::new(Key::character(key), modifiers | extra);
             node = node.key(shortcut, move |event| command(event, &runtime));
         }
     }
@@ -74,11 +74,11 @@ pub(in crate::widgets) fn word_keys(
     mut node: NodeBuilder,
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
-    let alt = |key: LogicalKey| Shortcut::new(key, Modifiers::ALT);
-    let ch = |key: &str| LogicalKey::character(key);
+    let alt = |key: Key| Shortcut::new(key, Modifiers::ALT);
+    let ch = |key: &str| Key::character(key);
     let motions: [(Shortcut, Edit); 4] = [
-        (alt(Key::ArrowLeft.into()), TextEdit::move_word_left),
-        (alt(Key::ArrowRight.into()), TextEdit::move_word_right),
+        (alt(NamedKey::ArrowLeft.into()), TextEdit::move_word_left),
+        (alt(NamedKey::ArrowRight.into()), TextEdit::move_word_right),
         (alt(ch("b")), TextEdit::move_word_left),
         (alt(ch("f")), TextEdit::move_word_right),
     ];
@@ -87,7 +87,10 @@ pub(in crate::widgets) fn word_keys(
         node = node.key(shortcut, move |event| move_caret(event, &runtime, edit));
     }
     let deletions: [(Shortcut, Edit); 5] = [
-        (alt(Key::Backspace.into()), TextEdit::delete_word_backward),
+        (
+            alt(NamedKey::Backspace.into()),
+            TextEdit::delete_word_backward,
+        ),
         (Shortcut::ctrl(ch("w")), TextEdit::delete_word_backward),
         (alt(ch("d")), TextEdit::delete_word_forward),
         (Shortcut::ctrl(ch("u")), TextEdit::delete_to_line_start),

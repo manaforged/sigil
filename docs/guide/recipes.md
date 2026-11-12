@@ -11,18 +11,18 @@ A key event goes to the focused node first. Handlers run in two passes along the
 
 A handler calls `event.stop_propagation()` to end both passes.
 
-Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(Key::Tab, f)` on an ancestor owns Tab for its subtree.
+Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(NamedKey::Tab, f)` on an ancestor owns Tab for its subtree.
 
 A `Shortcut` is a key plus modifiers:
 
 | Constructor | Matches |
 | --- | --- |
-| `Shortcut::plain(Key::Enter)` | Enter with no modifiers |
-| `Shortcut::plain(LogicalKey::character("j"))` | The `j` key with no modifiers |
-| `Shortcut::ctrl(LogicalKey::character("s"))` | Ctrl+S |
+| `Shortcut::plain(NamedKey::Enter)` | Enter with no modifiers |
+| `Shortcut::plain(Key::character("j"))` | The `j` key with no modifiers |
+| `Shortcut::ctrl(Key::character("s"))` | Ctrl+S |
 | `Shortcut::new(key, Modifiers::CTRL \| Modifiers::SHIFT)` | Any modifier set |
 
-`Key::Escape` converts into a `Shortcut` directly, so `.key(Key::Escape, f)` also works.
+`NamedKey::Escape` converts into a `Shortcut` directly, so `.key(NamedKey::Escape, f)` also works.
 
 ### Bind a key on a focused node
 
@@ -36,9 +36,9 @@ fn tree() -> impl IntoNode {
     container()
         .focusable(true)
         .autofocus()
-        .key(LogicalKey::character("j"), move |_| count.update(|n| *n += 1))
-        .key(LogicalKey::character("k"), move |_| count.update(|n| *n -= 1))
-        .key(Key::Escape, |_| sigil::request_exit())
+        .key(Key::character("j"), move |_| count.update(|n| *n += 1))
+        .key(Key::character("k"), move |_| count.update(|n| *n -= 1))
+        .key(NamedKey::Escape, |_| sigil::request_exit())
         .child(text(memo(move || format!("row {}", count.get()))))
 }
 
@@ -63,8 +63,8 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let name = signal(String::new());
     container()
-        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
-        .shortcut(Shortcut::ctrl(LogicalKey::character("n")), move |_| name.set(String::new()))
+        .shortcut(Key::character("q"), |_| sigil::request_exit())
+        .shortcut(Shortcut::ctrl(Key::character("n")), move |_| name.set(String::new()))
         .child(text_field(name))
 }
 
@@ -85,7 +85,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let body = signal(String::new());
     container().child(text_edit(body)).key_capture_any(move |event: &mut KeyEvent| {
-        if event.key == LogicalKey::named(Key::Tab) {
+        if event.key == Key::named(NamedKey::Tab) {
             body.update(|text| text.push_str("  "));
             event.stop_propagation();
         }
@@ -442,9 +442,9 @@ fn tree() -> impl IntoNode {
         .max_scroll_bind(max)
         .follow_row(tail);
     let root = container()
-        .key(Key::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
-        .key(Key::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))
-        .key(Key::End, move |_| scroll.set(max.peek()));
+        .key(NamedKey::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
+        .key(NamedKey::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))
+        .key(NamedKey::End, move |_| scroll.set(max.peek()));
     root.child(list)
 }
 ```

@@ -7,7 +7,7 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::events::{Event, Key};
+use sigil::events::{Event, NamedKey};
 use sigil::kernel::IntoNode;
 use sigil::kernel::{container, text};
 use sigil::prelude::Paint;

@@ -128,7 +128,7 @@ macro_rules! define_key_enum {
 
 for_each_named_key!(define_key_enum!(
     /// A named key, by its meaning under the active layout.
-    Key prefix [Unidentified]
+    NamedKey prefix [Unidentified]
 ));
 
 for_each_physical_key!(define_key_enum!(

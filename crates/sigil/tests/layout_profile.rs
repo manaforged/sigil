@@ -111,7 +111,7 @@ fn hidden_subtree_is_not_measured() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
-                .child(container().visible_when(show).child(text("secret"))),
+                .child(container().visible(show).child(text("secret"))),
         );
         let mut engine = LayoutEngine::with_text_measure(Box::new(CountMeasure {
             hits: Rc::clone(&hits),

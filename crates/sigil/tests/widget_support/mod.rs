@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use sigil::a11y::node as access_node;
-use sigil::events::{Event, EventRouter, Key, KeyPhase, PhysicalKey};
+use sigil::events::{Event, EventRouter, KeyPhase, NamedKey, PhysicalKey};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil::layout::{LayoutEngine, TextMeasure};
@@ -66,7 +66,7 @@ pub(crate) fn assert_focus_follows_disabled(
     for off in [true, false, true] {
         disabled.set(off);
         let mut router = EventRouter::new();
-        let tab = Event::key(Key::Tab, KeyPhase::Down).physical(PhysicalKey::Tab);
+        let tab = Event::key(NamedKey::Tab, KeyPhase::Down).physical(PhysicalKey::Tab);
         router.route(cx, layout, tab);
         assert_eq!(router.focus().is_some(), !off, "Tab with disabled={off}");
         let props = &cx.get(root).expect("control").a11y;

@@ -25,9 +25,9 @@ fn key(code: KeyCode, modifiers: KeyModifiers) -> super::TermEvent {
 
 #[test]
 fn terminal_function_keys_reach_application_shortcuts() {
-    for (number, expected) in [(1, Key::F1), (5, Key::F5), (35, Key::F35)] {
+    for (number, expected) in [(1, NamedKey::F1), (5, NamedKey::F5), (35, NamedKey::F35)] {
         let key = mapped(KeyCode::F(number), KeyModifiers::SHIFT).expect("function key dropped");
-        assert_eq!(key.key, LogicalKey::Named(expected));
+        assert_eq!(key.key, Key::Named(expected));
         assert_eq!(key.modifiers, Modifiers::SHIFT);
         assert!(key.text.is_none());
     }
@@ -43,7 +43,7 @@ fn shifted_letters_map_to_uppercase() {
         KeyModifiers::CONTROL | KeyModifiers::SHIFT,
     )
     .expect("shifted letter did not map");
-    assert_eq!(key.key, LogicalKey::character("Z"));
+    assert_eq!(key.key, Key::character("Z"));
     assert!(key.modifiers.contains(Modifiers::SHIFT | Modifiers::CTRL));
 }
 

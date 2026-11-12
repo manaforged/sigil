@@ -1,7 +1,7 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, ControlSize, LogicalKey, NodeBuilder, Paint, Shortcut, Space, Token, Tone, avatar,
-    button, chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
+    AlignItems, ControlSize, Key, NodeBuilder, Paint, Shortcut, Space, Token, Tone, avatar, button,
+    chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
 };
 use sigil::widgets::ModalBuilder;
 
@@ -81,7 +81,7 @@ pub(crate) fn status(console: Console) -> NodeBuilder {
 }
 
 pub(crate) fn menu_shortcut() -> Shortcut {
-    Shortcut::primary(LogicalKey::character("k"))
+    Shortcut::primary(Key::character("k"))
 }
 
 pub(crate) fn command_modal(console: Console) -> ModalBuilder {

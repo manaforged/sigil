@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, LogicalKey, Modifiers, Shortcut};
+use crate::events::{Key, KeyEvent, Modifiers, NamedKey, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};
@@ -180,16 +180,16 @@ fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKe
     let submit = runtime.clone();
     let (newlines, send) = match submit_key {
         SubmitKey::CtrlEnter => (
-            vec![Shortcut::plain(Key::Enter)],
-            Shortcut::new(Key::Enter, Modifiers::CTRL),
+            vec![Shortcut::plain(NamedKey::Enter)],
+            Shortcut::new(NamedKey::Enter, Modifiers::CTRL),
         ),
         SubmitKey::Enter => (
             vec![
-                Shortcut::new(Key::Enter, Modifiers::SHIFT),
-                Shortcut::new(Key::Enter, Modifiers::ALT),
-                Shortcut::new(LogicalKey::character("j"), Modifiers::CTRL),
+                Shortcut::new(NamedKey::Enter, Modifiers::SHIFT),
+                Shortcut::new(NamedKey::Enter, Modifiers::ALT),
+                Shortcut::new(Key::character("j"), Modifiers::CTRL),
             ],
-            Shortcut::plain(Key::Enter),
+            Shortcut::plain(NamedKey::Enter),
         ),
     };
     let node = newlines.into_iter().fold(node, |node, shortcut| {

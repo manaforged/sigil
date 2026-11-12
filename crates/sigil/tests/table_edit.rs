@@ -65,7 +65,7 @@ fn double_click(ui: &mut Harness, label: &str) {
 
 fn erase(ui: &mut Harness, chars: usize) {
     for _ in 0..chars {
-        ui.press(Key::Backspace);
+        ui.press(NamedKey::Backspace);
     }
 }
 
@@ -82,7 +82,7 @@ fn double_click_edits_a_cell_and_enter_commits_it() {
         double_click(&mut ui, "Ada");
         assert_eq!(editor(&mut ui).name(), Some("Name"));
         erase(&mut ui, 3);
-        ui.type_text("Grace").press(Key::Enter).settle();
+        ui.type_text("Grace").press(NamedKey::Enter).settle();
         ui.expect_text("Grace");
         assert!(!editing(&mut ui), "Enter leaves the editor open");
         assert_eq!(name_at(&state, 0).as_deref(), Some("Grace"));
@@ -96,7 +96,7 @@ fn escape_cancels_an_edit_and_returns_focus_to_the_row() {
         let mut ui = open(&state);
         double_click(&mut ui, "Alan");
         editor(&mut ui);
-        ui.type_text("X").press(Key::Escape).settle();
+        ui.type_text("X").press(NamedKey::Escape).settle();
         assert!(!editing(&mut ui), "Escape leaves the editor open");
         ui.expect_text("Alan");
         assert!(ui.query(&Query::text("AlanX")).is_none());
@@ -125,18 +125,18 @@ fn enter_starts_an_edit_and_tab_walks_the_editable_cells() {
         let state = people();
         let mut ui = open(&state);
         double_click(&mut ui, "Ada");
-        ui.press(Key::Escape).press(Key::Enter);
+        ui.press(NamedKey::Escape).press(NamedKey::Enter);
         let first = editor(&mut ui);
         assert_eq!((first.name(), first.value()), (Some("Name"), Some("Ada")));
-        ui.press(Key::Tab);
+        ui.press(NamedKey::Tab);
         let age = editor(&mut ui);
         assert_eq!((age.name(), age.value()), (Some("Age"), Some("36")));
-        ui.press(Key::Tab);
+        ui.press(NamedKey::Tab);
         assert_eq!(editor(&mut ui).value(), Some("Alan"));
-        ui.press_with(Key::Tab, Modifiers::SHIFT);
+        ui.press_with(NamedKey::Tab, Modifiers::SHIFT);
         assert_eq!(editor(&mut ui).value(), Some("36"));
         erase(&mut ui, 2);
-        ui.type_text("37").press(Key::Enter).settle();
+        ui.type_text("37").press(NamedKey::Enter).settle();
         ui.expect_text("37");
         assert_eq!(state.rows().peek().first().map(|p| p.age), Some(37));
         assert!(!editing(&mut ui));
@@ -183,7 +183,7 @@ fn an_edit_follows_its_row_when_the_app_replaces_rows() {
         state.replace_rows(vec![named(2, "Alan"), named(3, "Grace")]);
         assert_eq!(editor(&mut ui).role(), Role::TextInput);
         erase(&mut ui, 8);
-        ui.type_text("Bob").press(Key::Enter).settle();
+        ui.type_text("Bob").press(NamedKey::Enter).settle();
         let names: Vec<String> = state
             .rows()
             .peek()

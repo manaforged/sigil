@@ -221,11 +221,11 @@ fn displayed_text(cx: &Cx, root: NodeId) -> String {
 }
 
 fn arrow_left() -> Event {
-    Event::key(Key::ArrowLeft, KeyPhase::Down).physical(sigil::events::PhysicalKey::ArrowLeft)
+    Event::key(NamedKey::ArrowLeft, KeyPhase::Down).physical(sigil::events::PhysicalKey::ArrowLeft)
 }
 
 fn backspace() -> Event {
-    Event::key(Key::Backspace, KeyPhase::Down).physical(sigil::events::PhysicalKey::Backspace)
+    Event::key(NamedKey::Backspace, KeyPhase::Down).physical(sigil::events::PhysicalKey::Backspace)
 }
 
 #[test]

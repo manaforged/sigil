@@ -51,14 +51,10 @@ fn toolbar(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
         )
         .child(heading(console))
         .child(spacer())
-        .child(
-            container()
-                .visible_when(move || picked.get() > 0)
-                .child(chip(
-                    move || format!("{} selected", picked.get()),
-                    Tone::Primary,
-                )),
-        )
+        .child(container().visible(move || picked.get() > 0).child(chip(
+            move || format!("{} selected", picked.get()),
+            Tone::Primary,
+        )))
         .child(pause_controls(console))
 }
 

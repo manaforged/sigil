@@ -71,8 +71,8 @@ impl Chrome {
         };
         container()
             .layout(LayoutStyle::flex_column().fill_width())
-            .child(preview.visible_when(move || !code.get()))
-            .child(code_view(source).visible_when(code))
+            .child(preview.visible(move || !code.get()))
+            .child(code_view(source).visible(code))
     }
 
     fn toolbar(self, source: &str, expandable: bool) -> NodeBuilder {

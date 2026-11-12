@@ -7,7 +7,7 @@ use crate::app::config::AppConfig;
 use crate::app::embed::Host;
 use crate::app::window::{CloseAction, allocate_window_id};
 use crate::events::Event;
-use crate::events::{Key, KeyPhase, LogicalKey};
+use crate::events::{Key, KeyPhase, NamedKey};
 use crate::reactive::Owner;
 use crate::shell::WinitWindowHandle;
 use crate::widgets::button;
@@ -30,7 +30,7 @@ fn counting_window(n: u64, count: Rc<Cell<u32>>, config: AppConfig) -> WindowRec
 }
 
 fn enter() -> Event {
-    Event::key(LogicalKey::Named(Key::Enter), KeyPhase::Down)
+    Event::key(Key::Named(NamedKey::Enter), KeyPhase::Down)
 }
 
 fn deliver(windows: &mut Windows, handle: WinitWindowHandle) {

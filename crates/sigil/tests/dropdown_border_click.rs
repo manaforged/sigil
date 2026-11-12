@@ -195,7 +195,7 @@ fn reactive_disable_vetoes_arrow_down_open() {
         router.route(
             &mut cx,
             &layout,
-            Event::key(Key::ArrowDown, KeyPhase::Down)
+            Event::key(NamedKey::ArrowDown, KeyPhase::Down)
                 .physical(sigil::events::PhysicalKey::ArrowDown),
         );
         assert_eq!(

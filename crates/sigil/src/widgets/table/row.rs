@@ -1,7 +1,7 @@
 use crate::layout::Space;
 use std::sync::Arc;
 
-use crate::events::{Key, MouseButton, PointerEvent};
+use crate::events::{MouseButton, NamedKey, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle, Overflow};
 use crate::reactive::{Signal, memo};
@@ -162,7 +162,7 @@ fn activate_key<Row: 'static>(
         row
     };
     let (state, chrome) = (state.clone(), chrome.clone());
-    row.focusable(true).key(Key::Enter, move |event| {
+    row.focusable(true).key(NamedKey::Enter, move |event| {
         if disabled.is_some_and(|off| off.get()) {
             return;
         }

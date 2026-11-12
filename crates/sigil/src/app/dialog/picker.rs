@@ -3,7 +3,7 @@ use crate::style::theme::ambient::theme_text;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::events::Key;
+use crate::events::NamedKey;
 use crate::events::request_focus;
 use crate::kernel::{Cx, IntoNode, NodeId, container, text};
 use crate::layout::LayoutStyle;
@@ -147,11 +147,11 @@ fn entry_list(picker: FilePicker) -> impl IntoNode {
         let back = picker.clone();
         let id = container()
             .layout(LayoutStyle::flex_column().fill_width())
-            .key(Key::Enter, move |event| {
+            .key(NamedKey::Enter, move |event| {
                 event.stop_propagation();
                 enter.activate();
             })
-            .key(Key::Backspace, move |event| {
+            .key(NamedKey::Backspace, move |event| {
                 event.stop_propagation();
                 back.up();
             })

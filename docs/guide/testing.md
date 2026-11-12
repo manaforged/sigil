@@ -72,7 +72,7 @@ assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
 | `hover(&target)` | a pointer move |
 | `scroll(&target, lines)` | a wheel event over the target |
 | `drag(&from, &to)` | press, four moves with the button held, release |
-| `press(Key::Enter)`, `press_with(key, modifiers)` | key down and up |
+| `press(NamedKey::Enter)`, `press_with(key, modifiers)` | key down and up |
 | `type_text("abc")` | one key per character |
 | `type_into("Name", "Ada")` | a click on the control labelled Name, then the text |
 | `focus_next()`, `focus_previous()` | Tab, Shift+Tab |

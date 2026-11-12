@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{Event, Key, KeyPhase, LogicalKey, Modifiers, Shortcut};
+use sigil::events::{Event, Key, KeyPhase, Modifiers, NamedKey, Shortcut};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 
@@ -40,18 +40,18 @@ fn window(
     );
     column()
         .shortcut(
-            Shortcut::new(LogicalKey::character("c"), Modifiers::CTRL),
+            Shortcut::new(Key::character("c"), Modifiers::CTRL),
             move |event| {
                 copy.set(copy.get() + 1);
                 event.stop_propagation();
             },
         )
-        .key_capture(Key::Enter, move |event| {
+        .key_capture(NamedKey::Enter, move |event| {
             enter.set(enter.get() + 1);
             event.stop_propagation();
         })
         .key_capture(
-            Shortcut::new(LogicalKey::character("k"), Modifiers::META),
+            Shortcut::new(Key::character("k"), Modifiers::META),
             move |event| {
                 command.set(command.get() + 1);
                 event.stop_propagation();
@@ -78,23 +78,23 @@ fn a_focused_terminal_gets_window_keys_except_command_shortcuts() {
         }
         press(
             &mut host,
-            Event::key(LogicalKey::character("a"), KeyPhase::Down).text(Some("a".into())),
+            Event::key(Key::character("a"), KeyPhase::Down).text(Some("a".into())),
         );
         press(
             &mut host,
-            Event::key(LogicalKey::Named(Key::Enter), KeyPhase::Down),
+            Event::key(Key::Named(NamedKey::Enter), KeyPhase::Down),
         );
         press(
             &mut host,
-            Event::key(LogicalKey::Named(Key::Tab), KeyPhase::Down),
+            Event::key(Key::Named(NamedKey::Tab), KeyPhase::Down),
         );
         press(
             &mut host,
-            Event::key(LogicalKey::character("c"), KeyPhase::Down).modifiers(Modifiers::CTRL),
+            Event::key(Key::character("c"), KeyPhase::Down).modifiers(Modifiers::CTRL),
         );
         press(
             &mut host,
-            Event::key(LogicalKey::character("k"), KeyPhase::Down).modifiers(Modifiers::META),
+            Event::key(Key::character("k"), KeyPhase::Down).modifiers(Modifiers::META),
         );
 
         assert_eq!((window_enter.get(), window_copy.get()), (0, 0));

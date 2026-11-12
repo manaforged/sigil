@@ -70,8 +70,8 @@ pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
             column()
                 .fill_width()
                 .gap(rows(0.5))
-                .key_capture(Key::ArrowDown, move |_| step(true))
-                .key_capture(Key::ArrowUp, move |_| step(false))
+                .key_capture(NamedKey::ArrowDown, move |_| step(true))
+                .key_capture(NamedKey::ArrowUp, move |_| step(false))
                 .child(search)
                 .child(results),
         )

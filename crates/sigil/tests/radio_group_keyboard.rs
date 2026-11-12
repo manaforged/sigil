@@ -19,7 +19,7 @@ fn press(
     router: &mut EventRouter,
     cx: &mut Cx,
     layout: &LayoutEngine,
-    key: Key,
+    key: NamedKey,
     physical: PhysicalKey,
 ) {
     router.route(
@@ -50,7 +50,7 @@ fn arrows_move_selection_with_wraparound() {
             &mut router,
             &mut cx,
             &layout,
-            Key::ArrowDown,
+            NamedKey::ArrowDown,
             PhysicalKey::ArrowDown,
         );
         assert_eq!(selected.get(), "b", "ArrowDown a → b");
@@ -58,7 +58,7 @@ fn arrows_move_selection_with_wraparound() {
             &mut router,
             &mut cx,
             &layout,
-            Key::ArrowDown,
+            NamedKey::ArrowDown,
             PhysicalKey::ArrowDown,
         );
         assert_eq!(selected.get(), "c", "ArrowDown b → c");
@@ -66,7 +66,7 @@ fn arrows_move_selection_with_wraparound() {
             &mut router,
             &mut cx,
             &layout,
-            Key::ArrowDown,
+            NamedKey::ArrowDown,
             PhysicalKey::ArrowDown,
         );
         assert_eq!(selected.get(), "a", "ArrowDown wraps c → a");
@@ -74,13 +74,25 @@ fn arrows_move_selection_with_wraparound() {
             &mut router,
             &mut cx,
             &layout,
-            Key::ArrowUp,
+            NamedKey::ArrowUp,
             PhysicalKey::ArrowUp,
         );
         assert_eq!(selected.get(), "c", "ArrowUp wraps a → c");
-        press(&mut router, &mut cx, &layout, Key::Home, PhysicalKey::Home);
+        press(
+            &mut router,
+            &mut cx,
+            &layout,
+            NamedKey::Home,
+            PhysicalKey::Home,
+        );
         assert_eq!(selected.get(), "a", "Home selects first");
-        press(&mut router, &mut cx, &layout, Key::End, PhysicalKey::End);
+        press(
+            &mut router,
+            &mut cx,
+            &layout,
+            NamedKey::End,
+            PhysicalKey::End,
+        );
         assert_eq!(selected.get(), "c", "End selects last");
     });
 }

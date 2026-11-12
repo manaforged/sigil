@@ -14,7 +14,7 @@ fn spoken(update: &accesskit::TreeUpdate) -> Vec<Option<String>> {
 fn a_keyboard_shortcut_is_exposed_as_its_display_text() {
     crate::reactive::Owner::scope("a11y::keyboard-shortcut", || {
         let mut cx = Cx::new_root();
-        let save = crate::events::Shortcut::primary(crate::events::LogicalKey::character("s"));
+        let save = crate::events::Shortcut::primary(crate::events::Key::character("s"));
         let label = save.label();
         let _ = cx.add(container().keyboard_shortcut(save));
         let update = tree(&cx, None, &|_| None);

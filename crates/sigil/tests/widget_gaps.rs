@@ -24,12 +24,12 @@ fn tree_expands_collapses_and_activates_leaves() {
             ui.query(&Query::text("main.rs")).is_some(),
             "a click opens a folder"
         );
-        ui.press(Key::ArrowLeft).settle();
+        ui.press(NamedKey::ArrowLeft).settle();
         assert!(
             ui.query(&Query::text("main.rs")).is_none(),
             "Left closes the folder"
         );
-        ui.press(Key::ArrowRight).settle();
+        ui.press(NamedKey::ArrowRight).settle();
         ui.click("main.rs").settle();
         assert_eq!(opened.get(), Some("main"), "a click on a leaf activates it");
     });
@@ -43,7 +43,7 @@ fn card_activates_on_click_and_enter() {
             Harness::new(move || card(text("Deploy")).activate(move || hits.update(|n| *n += 1)));
         ui.click("Deploy").settle();
         assert_eq!(hits.get(), 1);
-        ui.focus_next().press(Key::Enter).settle();
+        ui.focus_next().press(NamedKey::Enter).settle();
         assert_eq!(hits.get(), 2);
     });
 }

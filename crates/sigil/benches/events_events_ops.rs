@@ -9,8 +9,8 @@ use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::events::{
-    Event, EventRouter, Key, KeyPhase, LogicalKey, Modifiers, MouseButton, MouseButtons,
-    PhysicalKey, PointerEvent, PointerPhase, Shortcut,
+    Event, EventRouter, Key, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PhysicalKey,
+    PointerEvent, PointerPhase, Shortcut,
 };
 use sigil::geometry::{Point, Size};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
@@ -108,7 +108,7 @@ fn hit_test_10_000_nodes(c: &mut Criterion) {
 
 fn shortcut_dispatch_1000_nodes(c: &mut Criterion) {
     let hits = Rc::new(Cell::new(0_u32));
-    let shortcut = Shortcut::ctrl(LogicalKey::character("s"));
+    let shortcut = Shortcut::ctrl(Key::character("s"));
     let (mut cx, _root, layout) = wide_tree_with_shortcut(1_000, &shortcut, &hits);
     let mut router = EventRouter::new();
     c.bench_function("shortcut_dispatch_1000_nodes", |b| {
@@ -252,11 +252,11 @@ const fn pointer_up(x: f32, y: f32) -> Event {
 }
 
 fn tab() -> Event {
-    Event::key(Key::Tab, KeyPhase::Down).physical(PhysicalKey::Tab)
+    Event::key(NamedKey::Tab, KeyPhase::Down).physical(PhysicalKey::Tab)
 }
 
 fn ctrl_s() -> Event {
-    Event::key(LogicalKey::character("s"), KeyPhase::Down)
+    Event::key(Key::character("s"), KeyPhase::Down)
         .physical(PhysicalKey::KeyS)
         .modifiers(Modifiers::CTRL)
 }

@@ -21,7 +21,7 @@ pub(crate) fn text_edit_demo() -> TextEditBuilder {
 pub(crate) fn number_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
     number_field(signal(4_i32), 1..=99)
         .disabled(disabled)
-        .invalid_when(invalid)
+        .invalid(invalid)
 }
 
 pub(crate) fn date_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
@@ -31,7 +31,7 @@ pub(crate) fn date_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> 
         day: 1,
     }))
     .disabled(disabled)
-    .invalid_when(invalid)
+    .invalid(invalid)
 }
 
 pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
@@ -42,7 +42,7 @@ pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) ->
         a: 255,
     }))
     .disabled(disabled)
-    .invalid_when(invalid)
+    .invalid(invalid)
 }
 
 pub(crate) fn combobox_demo(disabled: Signal<bool>) -> NodeBuilder {

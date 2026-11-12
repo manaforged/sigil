@@ -49,13 +49,13 @@ mod text_edit;
 mod text_field;
 
 fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> Event {
-    Event::key(LogicalKey::character(ch), KeyPhase::Down)
+    Event::key(Key::character(ch), KeyPhase::Down)
         .physical(physical)
         .modifiers(Modifiers::CTRL | Modifiers::SHIFT)
 }
 
 fn type_char_owned(ch: String, physical: PhysicalKey) -> Event {
-    Event::key(LogicalKey::character(ch.as_str()), KeyPhase::Down)
+    Event::key(Key::character(ch.as_str()), KeyPhase::Down)
         .physical(physical)
         .text(Some(ch))
 }
@@ -112,41 +112,41 @@ const fn pointer_event(
 }
 
 fn text_down(text: &str) -> Event {
-    Event::key(LogicalKey::character(text), KeyPhase::Down)
+    Event::key(Key::character(text), KeyPhase::Down)
         .physical(PhysicalKey::KeyA)
         .text(Some(text.into()))
 }
 
 fn backspace_down() -> Event {
-    Event::key(Key::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
+    Event::key(NamedKey::Backspace, KeyPhase::Down).physical(PhysicalKey::Backspace)
 }
 
 fn enter_down() -> Event {
-    Event::key(Key::Enter, KeyPhase::Down).physical(PhysicalKey::Enter)
+    Event::key(NamedKey::Enter, KeyPhase::Down).physical(PhysicalKey::Enter)
 }
 
 fn space_down() -> Event {
-    Event::key(LogicalKey::character(" "), KeyPhase::Down).physical(PhysicalKey::Space)
+    Event::key(Key::character(" "), KeyPhase::Down).physical(PhysicalKey::Space)
 }
 
-fn arrow_down(key: Key, physical: PhysicalKey) -> Event {
+fn arrow_down(key: NamedKey, physical: PhysicalKey) -> Event {
     Event::key(key, KeyPhase::Down).physical(physical)
 }
 
 const SLIDER_TRACK: f32 = 180.0;
 
-fn named_key(key: Key, physical: PhysicalKey) -> Event {
+fn named_key(key: NamedKey, physical: PhysicalKey) -> Event {
     Event::key(key, KeyPhase::Down).physical(physical)
 }
 
-fn shift_arrow(key: Key, physical: PhysicalKey) -> Event {
+fn shift_arrow(key: NamedKey, physical: PhysicalKey) -> Event {
     Event::key(key, KeyPhase::Down)
         .physical(physical)
         .modifiers(Modifiers::SHIFT)
 }
 
 fn ctrl_key(ch: &str, physical: PhysicalKey) -> Event {
-    Event::key(LogicalKey::character(ch), KeyPhase::Down)
+    Event::key(Key::character(ch), KeyPhase::Down)
         .physical(physical)
         .modifiers(Modifiers::CTRL)
 }

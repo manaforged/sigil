@@ -9,12 +9,12 @@ fn map_enter_is_the_shell_enter_key() {
         crossterm::event::KeyModifiers::NONE,
     );
     let mapped = map_key(&event).expect("enter maps");
-    assert_eq!(mapped, Event::key_down(Key::Enter));
+    assert_eq!(mapped, Event::key_down(NamedKey::Enter));
 }
 
 #[test]
 fn map_backtab_is_shift_tab() {
-    use sigil::events::{Event, Key, LogicalKey, Modifiers};
+    use sigil::events::{Event, Key, Modifiers, NamedKey};
     use sigil::terminal::map_key;
 
     let event = crossterm::event::KeyEvent::new(
@@ -24,13 +24,13 @@ fn map_backtab_is_shift_tab() {
     let Some(Event::Key(mapped)) = map_key(&event) else {
         panic!("backtab did not map");
     };
-    assert_eq!(mapped.key, LogicalKey::Named(Key::Tab));
+    assert_eq!(mapped.key, Key::Named(NamedKey::Tab));
     assert_eq!(mapped.modifiers, Modifiers::SHIFT);
 }
 #[test]
 fn a_focus_change_reaches_the_terminal() {
     use sigil::Host;
-    use sigil::events::Key;
+    use sigil::events::NamedKey;
 
     sigil::reactive::Owner::scope("tui-animate", || {
         let mut host = Host::new(HostMode::Cell);
@@ -43,7 +43,7 @@ fn a_focus_change_reaches_the_terminal() {
         let (cx, layout, router) = host.parts();
         router.focus_next(cx, layout);
         let first = step(&mut host, [], 40, 8);
-        let moved = step(&mut host, [Event::key_down(Key::Tab)], 40, 8);
+        let moved = step(&mut host, [Event::key_down(NamedKey::Tab)], 40, 8);
         let settled = (0..12).fold(moved, |_, _| step(&mut host, [], 40, 8));
         assert_ne!(
             first,

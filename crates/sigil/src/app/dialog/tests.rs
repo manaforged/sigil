@@ -49,7 +49,7 @@ fn mocked_confirm_does_not_open_a_native_alert() {
 #[cfg(feature = "terminal")]
 #[test]
 fn terminal_picker_filters_and_picks_with_the_keyboard() {
-    use crate::events::Key;
+    use crate::events::NamedKey;
     use crate::terminal::step;
     let dir = std::env::temp_dir().join(format!("sigil-picker-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("sub")).expect("temp dir");
@@ -76,11 +76,11 @@ fn terminal_picker_filters_and_picks_with_the_keyboard() {
             "{listing}"
         );
         let keys = [
-            Event::key_down(Key::ArrowDown),
-            Event::key_down(Key::ArrowDown),
+            Event::key_down(NamedKey::ArrowDown),
+            Event::key_down(NamedKey::ArrowDown),
         ];
         let _ = step(&mut host, keys, 60, 20);
-        let _ = step(&mut host, [Event::key_down(Key::Enter)], 60, 20);
+        let _ = step(&mut host, [Event::key_down(NamedKey::Enter)], 60, 20);
         let picked = slot.borrow().and_then(resolved);
         assert_eq!(picked, Some(Some(dir.join("a.csv"))));
     });

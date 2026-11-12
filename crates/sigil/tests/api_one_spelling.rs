@@ -54,10 +54,10 @@ fn sparkline_redraws_when_its_values_change() {
 
 #[test]
 fn visible_when_follows_a_plain_closure() {
-    Owner::scope("api_one_spelling::visible_when", || {
+    Owner::scope("api_one_spelling::visible", || {
         let shown = signal(true);
         let mut host = Host::new(HostMode::Pixel);
-        host.mount(column().child(text("Toggled").visible_when(move || shown.get())));
+        host.mount(column().child(text("Toggled").visible(move || shown.get())));
         settle(&mut host);
         assert!(drawn(&mut host, "Toggled"));
 
@@ -81,7 +81,7 @@ fn virtual_list_rows_can_be_any_node_and_invalid_when_takes_a_closure() {
                 ))
                 .child(field(
                     "Email",
-                    text_field(email).invalid_when(move || !email.get().contains('@')),
+                    text_field(email).invalid(move || !email.get().contains('@')),
                 )),
         );
         settle(&mut host);

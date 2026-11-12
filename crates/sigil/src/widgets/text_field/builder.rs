@@ -116,7 +116,7 @@ impl TextFieldBuilder {
     }
 
     /// Marks the field invalid while `invalid` is true, in paint and for screen readers; each call adds a condition.
-    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
+    pub fn invalid(mut self, invalid: impl Reactive<bool>) -> Self {
         let added = invalid.into_signal();
         self.invalid = Some(match self.invalid {
             Some(before) => memo(move || before.get() || added.get()),
