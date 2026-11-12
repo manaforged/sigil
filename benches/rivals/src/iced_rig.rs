@@ -7,7 +7,7 @@ use iced_core::time::Instant;
 use iced_core::widget::Id;
 use iced_core::widget::operation::{Operation, Scrollable};
 use iced_core::{
-    Element, Event, Font, Length, Pixels, Point, Rectangle, Constraint, Theme, Vector, clipboard,
+    Constraint, Element, Event, Font, Length, Pixels, Point, Rectangle, Theme, Vector, clipboard,
     renderer, window,
 };
 use iced_runtime::user_interface::{Cache, State, UserInterface};
