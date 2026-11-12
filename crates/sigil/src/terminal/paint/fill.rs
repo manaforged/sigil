@@ -1,9 +1,9 @@
 use crate::geometry::Rect;
 use crate::style::Theme;
 use crate::widgets::spark_glyph;
-use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink, cell_edge, floor_cell};
+use crate::terminal::paint::Glyph;
 
 const EIGHTHS: usize = 8;
 
@@ -116,16 +116,16 @@ fn upper(cell: &mut Cell, level: usize, ink: Ink) {
         _ => "█",
     };
     *cell = Cell {
-        text: SmolStr::new_inline(text),
+        text: Glyph::inline(text),
         fg: ink,
         ..Cell::blank()
     };
 }
 
 #[allow(clippy::cast_precision_loss, reason = "block levels stay below eight")]
-fn block(level: usize) -> SmolStr {
+fn block(level: usize) -> Glyph {
     let fraction = (level as f32 - 0.5) / (EIGHTHS - 1) as f32;
-    SmolStr::new(spark_glyph(fraction).encode_utf8(&mut [0; 4]))
+    Glyph::new(spark_glyph(fraction).encode_utf8(&mut [0; 4]))
 }
 
 struct FillRows {

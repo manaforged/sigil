@@ -9,6 +9,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use smol_str::SmolStr;
 
 use super::{Cell, Face, Grid, Ink, Underline, cell_text, decoration, floor_cell};
+use crate::terminal::paint::Link;
 
 struct ClipRun<'a> {
     node: &'a Text<'a>,
@@ -207,7 +208,7 @@ struct StyledCell {
     face: Face,
     fg: Ink,
     bg: Option<Ink>,
-    link: Option<SmolStr>,
+    link: Option<Link>,
 }
 
 fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
@@ -216,7 +217,7 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
         face: node.face,
         fg: node.ink,
         bg: None,
-        link: node.link.cloned(),
+        link: node.link.and_then(|url| Link::new(url)),
     };
     let Some((runs, inks)) = node.runs else {
         return out;
@@ -241,7 +242,7 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
     out.fg = ink.color.map_or(out.fg, Ink::Exact);
     out.bg = ink.background.map(Ink::Exact);
     if let Some(link) = &face.link {
-        out.link = Some(SmolStr::from(&**link));
+        out.link = Link::new(link);
     }
     out
 }
@@ -250,7 +251,7 @@ fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &StyledCell) {
     cell.bold = styled.face.bold;
     cell.italic = styled.face.italic;
     cell.dim = styled.face.dim;
-    cell.link.clone_from(&styled.link);
+    cell.link = styled.link;
     cell.lines.strike |= styled.face.strike;
     if styled.face.underline != Underline::None {
         cell.lines.underline = styled.face.underline;

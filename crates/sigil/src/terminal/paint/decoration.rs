@@ -2,9 +2,9 @@ use crate::geometry::Rect;
 use crate::scene::CellBorder;
 use crate::style::{Color, Theme};
 use crate::terminal::caps::Borders;
-use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink, cell_edge};
+use crate::terminal::paint::Glyph;
 
 pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
     if let Ink::Exact(over) = ink {
@@ -18,7 +18,7 @@ pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
         }
     }
     *cell = Cell {
-        text: SmolStr::new_inline(" "),
+        text: Glyph::inline(" "),
         fg: Ink::Bare,
         bg: ink,
         ..Cell::blank()

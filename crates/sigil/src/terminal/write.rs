@@ -9,8 +9,8 @@ use crossterm::{cursor, queue};
 
 use crate::terminal::caps::{Capabilities, ColorDepth, Cursor, Erase};
 use crate::terminal::colour::paint;
+use crate::terminal::paint::Link;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
-use smol_str::SmolStr;
 
 mod diff;
 mod inline;
@@ -112,7 +112,7 @@ struct AnsiStyle {
     strike: bool,
     underline: Underline,
     underline_color: Option<Color>,
-    link: Option<SmolStr>,
+    link: Option<Link>,
 }
 
 impl AnsiStyle {
@@ -141,8 +141,7 @@ impl AnsiStyle {
                 .filter(|color| *color != Color::Reset),
             link: cell
                 .link
-                .clone()
-                .filter(|url| caps.hyperlinks && !url.chars().any(char::is_control)),
+                .filter(|url| caps.hyperlinks && !url.as_str().chars().any(char::is_control)),
         }
     }
 
@@ -322,7 +321,7 @@ fn lines(out: &mut impl Write, prev: &AnsiStyle, next: &AnsiStyle) -> io::Result
     }
     if prev.link != next.link {
         match &next.link {
-            Some(url) => queue!(out, Print(format!("\x1b]8;;{url}\x1b\\")))?,
+            Some(url) => queue!(out, Print(format!("\x1b]8;;{}\x1b\\", url.as_str())))?,
             None => queue!(out, Print(CLOSE_LINK))?,
         }
     }

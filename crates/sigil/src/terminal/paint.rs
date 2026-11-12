@@ -3,7 +3,6 @@ use crate::geometry::Rect;
 use crate::style::Theme;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
-use smol_str::SmolStr;
 use std::borrow::Cow;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -11,6 +10,7 @@ use unicode_segmentation::UnicodeSegmentation;
 mod cell;
 mod decoration;
 mod fill;
+mod glyph;
 mod image;
 mod junction;
 mod marks;
@@ -22,6 +22,7 @@ mod scene;
 
 pub(super) use cell::Face;
 pub use cell::{Cell, Ink, Lines, Underline};
+pub(crate) use glyph::{Glyph, Link};
 pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;
 #[cfg(test)]
@@ -352,11 +353,11 @@ fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
     }
 }
 
-pub(crate) fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
+pub(crate) fn cell_text(grapheme: &str, pad: usize) -> Glyph {
     if pad == 0 {
         crate::app::cell_glyph(grapheme).into()
     } else {
-        SmolStr::new_inline(CONTINUES)
+        Glyph::inline(CONTINUES)
     }
 }
 

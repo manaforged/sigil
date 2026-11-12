@@ -1,5 +1,6 @@
 use crate::style::{Color, Tone};
-use smol_str::SmolStr;
+
+use super::glyph::{Glyph, Link};
 
 /// The color source of a cell.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -51,9 +52,9 @@ pub struct Lines {
 }
 
 /// One character cell with its colors and attributes.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cell {
-    pub(crate) text: SmolStr,
+    pub(crate) text: Glyph,
     /// The fg.
     pub fg: Ink,
     /// The bg.
@@ -68,7 +69,7 @@ pub struct Cell {
     pub lines: Lines,
     /// The underline ink.
     pub underline_ink: Ink,
-    pub(crate) link: Option<SmolStr>,
+    pub(crate) link: Option<Link>,
 }
 
 impl Cell {
@@ -80,20 +81,20 @@ impl Cell {
 
     /// Sets the grapheme painted in this cell.
     pub fn set_text(&mut self, text: &str) {
-        self.text = SmolStr::new(text);
+        self.text = Glyph::new(text);
     }
 
     /// The hyperlink this cell opens.
     #[must_use]
     pub fn link(&self) -> Option<&str> {
-        self.link.as_deref()
+        self.link.map(Link::as_str)
     }
 
     /// Returns the blank cell.
     #[must_use]
     pub const fn blank() -> Self {
         Self {
-            text: SmolStr::new_inline(" "),
+            text: Glyph::inline(" "),
             fg: Ink::Bare,
             bg: Ink::Bare,
             bold: false,
