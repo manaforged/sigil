@@ -90,8 +90,8 @@ where
             });
         }
         dispatch_to_owner(&dispatcher, owner, move || {
-            if let Some(close) = slot.into_signal().try_peek().and_then(|h| h.close.take()) {
-                close();
+            if let Some(hook) = slot.into_signal().try_peek().and_then(|h| h.close.take()) {
+                hook();
             }
         });
     };
