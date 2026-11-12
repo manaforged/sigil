@@ -23,7 +23,7 @@ Run the same gate that CI runs before you push:
 scripts/gate.sh
 ```
 
-CI runs each gate job on its own runner. `scripts/gate.sh --list` names the jobs, and `scripts/gate.sh test` runs one.
+CI runs each gate job on its own runner. `scripts/gate.sh --list` names the jobs, `scripts/gate.sh test` runs one, and `scripts/gate.sh --parallel` runs them concurrently with isolated target directories.
 
 The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `mdbook`, and `wasm-bindgen-test-runner`. It names the install command for a missing tool. It installs the MSRV and nightly toolchains through `rustup`.
 
