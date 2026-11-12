@@ -352,6 +352,7 @@ mod text_wrap;
 mod text_wrap_fit;
 mod theme_file_i18n;
 mod time_field;
+mod tooltip;
 mod top_layer_culling;
 mod transform3d;
 mod two_hosts;
