@@ -84,6 +84,10 @@ impl Glyph {
         Self(bytes)
     }
 
+    pub(crate) const fn ascii(byte: u8) -> Self {
+        Self([byte, 0, 0, 0, 0, 0, 0, 1])
+    }
+
     pub(crate) fn new(text: &str) -> Self {
         if text.len() <= INLINE {
             return Self::inline(text);
