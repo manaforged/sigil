@@ -69,7 +69,7 @@ impl Screen {
         Self {
             scene: CommandScene::default(),
             grid: Grid::new(cols, rows),
-            prev: Grid::new(cols, rows),
+            prev: Grid::new(0, 0),
             fresh: true,
             dirty: true,
             exited: false,
@@ -169,7 +169,7 @@ impl Screen {
             {
                 self.fresh = false;
                 self.stale = None;
-                self.prev.mirror(&self.grid);
+                self.prev.fit(&self.grid);
             }
             self.dirty = false;
             core::mem::swap(&mut self.prev, &mut self.grid);

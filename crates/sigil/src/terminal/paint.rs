@@ -150,6 +150,12 @@ impl Grid {
         self.reshape(other.cols, other.rows, Cell::blank());
     }
 
+    pub(crate) fn fit(&mut self, other: &Self) {
+        if (self.cols, self.rows) != (other.cols, other.rows) {
+            self.reshape(other.cols, other.rows, Cell::blank());
+        }
+    }
+
     fn reshape(&mut self, cols: usize, rows: usize, fill: Cell) {
         if (self.cols, self.rows) == (cols, rows) {
             self.reset();
