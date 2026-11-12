@@ -326,7 +326,7 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
 }
 
 /// Sets the terminal title.
-pub fn set_title(title: &str) -> Result<(), crate::Error> {
+pub fn title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
     if applied() {
         write_title(title)?;
@@ -344,7 +344,7 @@ pub(crate) fn applied() -> bool {
 }
 
 /// Sets how much mouse movement the terminal reports.
-pub fn set_mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
+pub fn mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
     MOUSE.with(|mouse| mouse.set(tracking));
     if applied() {
         write_mouse(&mut io::stdout(), tracking)?;

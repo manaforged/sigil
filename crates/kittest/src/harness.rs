@@ -198,7 +198,7 @@ impl Harness {
     fn paint(&mut self, events: Vec<Event>, dt: f32) -> Result<(), Error> {
         let layout = match &mut self.surface {
             HarnessSurface::Cells { screen, size } => {
-                screen.set_dt(dt);
+                screen.dt(dt);
                 screen
                     .frame(&mut self.host, events, *size)
                     .map(|_| ())

@@ -123,7 +123,7 @@ pub mod widgets;
 
 pub use crate::app::config::AppConfig;
 pub use crate::app::embed::Host;
-pub use crate::app::exit::request_exit;
+pub use crate::app::exit::exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
 pub use crate::layout::IntoPx;

@@ -152,7 +152,7 @@ fn drain(mut pipe: impl std::io::Read + Send + 'static) -> std::thread::JoinHand
 )]
 fn quit_child() {
     let sent = std::cell::Cell::new(false);
-    let config = sigil::AppConfig::new(QUIT_TITLE).on_exit(|| {
+    let config = sigil::AppConfig::new(QUIT_TITLE).exit(|| {
         println!("{EXIT_HOOK_RAN}");
     });
     let result = sigil::run(config, move || {

@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::kernel::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
-use sigil::reactive::{Owner, debug, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, cleanup, debug, effect, signal};
 
 struct DisposableComponent {
     cleanup_count: Rc<Cell<u32>>,
@@ -18,7 +18,7 @@ impl IntoNode for DisposableComponent {
         let c = signal(3_i32);
 
         let cleanup_count = Rc::clone(&self.cleanup_count);
-        on_cleanup(move || cleanup_count.set(cleanup_count.get() + 1));
+        cleanup(move || cleanup_count.set(cleanup_count.get() + 1));
 
         let effect_runs = Rc::clone(&self.effect_runs);
         effect(move || {

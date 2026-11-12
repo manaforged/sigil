@@ -139,7 +139,7 @@ impl SigilRig {
     fn present(&mut self, event: Option<Event>) {
         let cells = self.cells();
         let screen = self.screen.as_mut().expect("the screen side owns a screen");
-        screen.set_dt(FRAME_SECONDS);
+        screen.dt(FRAME_SECONDS);
         screen.frame(&mut self.host, event, cells).expect("layout");
         self.out.clear();
         screen.flush(&mut self.out).expect("flush");

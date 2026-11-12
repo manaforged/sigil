@@ -24,13 +24,13 @@ fn three_level_owner_disposal_runs_grandchildren_first() {
                 let grandchild = Owner::new("grandchild", Owner::current());
                 grandchild.with(|| {
                     let log_g = Rc::clone(&log);
-                    on_cleanup(move || log_g.borrow_mut().push("grandchild"));
+                    cleanup(move || log_g.borrow_mut().push("grandchild"));
                 });
                 let log_c = Rc::clone(&log);
-                on_cleanup(move || log_c.borrow_mut().push("child"));
+                cleanup(move || log_c.borrow_mut().push("child"));
             });
             let log_p = Rc::clone(&log);
-            on_cleanup(move || log_p.borrow_mut().push("parent"));
+            cleanup(move || log_p.borrow_mut().push("parent"));
         });
         parent.dispose();
 
@@ -56,7 +56,7 @@ fn cleanup_can_read_signals_in_outer_scope() {
 
         let child = Owner::new("child", Owner::current());
         child.with(|| {
-            on_cleanup(move || cleanup_for.set(counter.peek()));
+            cleanup(move || cleanup_for.set(counter.peek()));
         });
         counter.set(42);
         child.dispose();
@@ -73,7 +73,7 @@ fn multiple_cleanups_in_one_owner_run_lifo() {
         owner.with(|| {
             for i in 0..5_u32 {
                 let log = Rc::clone(&log);
-                on_cleanup(move || log.borrow_mut().push(i));
+                cleanup(move || log.borrow_mut().push(i));
             }
         });
         owner.dispose();

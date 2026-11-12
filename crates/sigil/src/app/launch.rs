@@ -75,8 +75,8 @@ where
     renderer.set_transparent(config.overlay || config.frameless);
     clear_exit();
     shell.on_idle_deadline(next_interval_deadline);
-    if let Some(hook) = config.on_exit.0.clone() {
-        WinitShell::on_exit(move || hook());
+    if let Some(hook) = config.exit.0.clone() {
+        WinitShell::exit_hook(move || hook());
     }
     let state = LoopState::new(windows, renderer, async_rt, config.panic_policy);
     drive(shell, state, owner)
@@ -120,7 +120,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
                     #[cfg(target_arch = "wasm32")]
                     report(&error);
                     launch_failure.set(Some(error));
-                    shell.request_exit();
+                    shell.exit();
                 }
             });
         })
@@ -143,7 +143,7 @@ fn wake_fn(shell: &WinitShell) -> impl Fn() + Send + Sync + 'static {
 
 fn install_async_runtime(shell: &WinitShell, workers: crate::tasks::TaskWorkers) -> AsyncRuntime {
     let mut async_rt = AsyncRuntime::with_workers(workers);
-    async_rt.set_waker(wake_fn(shell));
+    async_rt.waker(wake_fn(shell));
     async_rt.install_current();
     async_rt
 }

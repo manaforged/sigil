@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, batch, cleanup, effect, signal};
 
 #[test]
 fn signal_get_and_set_roundtrip() {
@@ -85,9 +85,9 @@ fn on_cleanup_runs_in_lifo_order_on_owner_disposal() {
         let parent = Owner::new("parent", Owner::current());
         parent.with(|| {
             let log_a = Rc::clone(&log_for_scope);
-            on_cleanup(move || log_a.borrow_mut().push("a"));
+            cleanup(move || log_a.borrow_mut().push("a"));
             let log_b = Rc::clone(&log_for_scope);
-            on_cleanup(move || log_b.borrow_mut().push("b"));
+            cleanup(move || log_b.borrow_mut().push("b"));
         });
         parent.dispose();
     });
@@ -105,10 +105,10 @@ fn child_owners_dispose_before_parent_cleanups_run() {
             let child = Owner::new("child", Owner::current());
             child.with(|| {
                 let log_cleanup = Rc::clone(&log_child);
-                on_cleanup(move || log_cleanup.borrow_mut().push("child"));
+                cleanup(move || log_cleanup.borrow_mut().push("child"));
             });
             let log_parent = Rc::clone(&log);
-            on_cleanup(move || log_parent.borrow_mut().push("parent"));
+            cleanup(move || log_parent.borrow_mut().push("parent"));
             let _ = child;
         });
         parent.dispose();

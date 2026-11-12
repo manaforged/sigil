@@ -106,7 +106,7 @@ impl AsyncRuntime {
     }
 
     /// Sets the function that wakes the UI thread.
-    pub fn set_waker<F>(&mut self, waker: F)
+    pub fn waker<F>(&mut self, waker: F)
     where
         F: Fn() + Send + Sync + 'static,
     {
@@ -163,7 +163,7 @@ pub(crate) fn attach_task(parts: &SpawnParts, owner: Owner, task: TaskHandle) {
         .or_default()
         .push(task.clone());
     let registered = crate::reactive::owner_by_id(owner, move || {
-        crate::reactive::on_cleanup(move || task.abort());
+        crate::reactive::cleanup(move || task.abort());
     });
     if !registered {
         tracing::warn!(owner = ?owner, "task cleanup could not attach to a live owner");

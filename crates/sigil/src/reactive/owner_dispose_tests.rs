@@ -13,7 +13,7 @@ use std::rc::Rc;
 use crate::reactive::Runtime;
 use crate::reactive::batch::batch;
 use crate::reactive::effect::effect_named;
-use crate::reactive::owner::{Owner, is_live, on_cleanup};
+use crate::reactive::owner::{Owner, cleanup, is_live};
 use crate::reactive::signal::signal;
 
 #[test]
@@ -120,7 +120,7 @@ fn cleanups_skipped_during_unwind_run_at_recovery() {
         let result = catch_unwind(AssertUnwindSafe(|| {
             owner.with(move || {
                 effect_named("test::cleanup", move || {
-                    on_cleanup({
+                    cleanup({
                         let flag = Rc::clone(&flag);
                         move || flag.set(true)
                     });

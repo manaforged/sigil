@@ -1,5 +1,5 @@
 use crate::reactive::frame::{FrameSource, with_sources};
-use crate::reactive::{Owner, Runtime, Signal, batch, on_cleanup, signal};
+use crate::reactive::{Owner, Runtime, Signal, batch, cleanup, signal};
 
 pub(crate) struct ClockSource {
     seconds: Signal<f64>,
@@ -20,7 +20,7 @@ pub fn clock() -> Signal<f64> {
         elapsed: 0.0,
     });
     let id = with_sources(|sources| sources.map.insert(source));
-    on_cleanup(move || {
+    cleanup(move || {
         with_sources(|sources| sources.map.remove(id));
     });
     Runtime::mark_frame_dirty();

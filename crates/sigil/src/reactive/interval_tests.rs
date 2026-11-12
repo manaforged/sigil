@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 use super::*;
 use crate::reactive::Runtime;
-use crate::reactive::{effect_named, on_cleanup, signal};
+use crate::reactive::{cleanup, effect_named, signal};
 
 fn counter() -> (Rc<Cell<u32>>, impl Fn() + 'static) {
     let count = Rc::new(Cell::new(0_u32));
@@ -136,7 +136,7 @@ fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
             let flag = Rc::clone(&flag);
             fx_owner.with(move || {
                 effect_named("test::interval_reader", move || {
-                    on_cleanup({
+                    cleanup({
                         let flag = Rc::clone(&flag);
                         move || flag.set(true)
                     });

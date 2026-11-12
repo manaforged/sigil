@@ -12,7 +12,7 @@ fn spawned_task_completes_across_frames() {
     Owner::scope("tui-spawn", || {
         let mut async_rt = crate::tasks::AsyncRuntime::new().expect("async runtime");
         let (wake, ready) = std::sync::mpsc::channel();
-        async_rt.set_waker(move || wake.send(()).expect("notify the terminal test"));
+        async_rt.waker(move || wake.send(()).expect("notify the terminal test"));
         async_rt.install_current();
         let result = crate::tasks::spawn::<u32, core::convert::Infallible, _>(async { Ok(7) });
         let mut host = mounted(move || crate::kernel::text("hello"));

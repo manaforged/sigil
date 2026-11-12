@@ -67,7 +67,7 @@ fn an_event_reaches_only_its_window_and_closing_one_keeps_the_other() {
 fn close_to_tray_hides_the_window_and_keeps_it() {
     Owner::scope("close-to-tray", || {
         let mut windows = Windows::default();
-        let config = AppConfig::new("tray").on_close(|| CloseAction::Hide);
+        let config = AppConfig::new("tray").close(|| CloseAction::Hide);
         windows.insert(counting_window(7, Rc::new(Cell::new(0)), config));
         let handle = WinitWindowHandle::from_raw(7);
         assert_eq!(windows.close_requested(handle), CloseOutcome::Hidden);

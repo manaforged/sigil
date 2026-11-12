@@ -23,7 +23,7 @@ fn runtime() -> (AsyncRuntime, Arc<AtomicBool>) {
     let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
     let woke = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&woke);
-    runtime.set_waker(move || flag.store(true, Ordering::Release));
+    runtime.waker(move || flag.store(true, Ordering::Release));
     runtime.install_current();
     (runtime, woke)
 }

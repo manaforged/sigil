@@ -50,11 +50,11 @@ struct Handlers<T> {
     close: Cell<Option<Close>>,
 }
 
-/// Runs `f` on the UI thread per message, then `on_close` when all senders drop.
+/// Runs `f` on the UI thread per message, then `close` when all senders drop.
 ///
 /// Messages already waiting are handled together in one reactive batch, so effects run once per burst.
 #[track_caller]
-pub fn on_message<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, on_close: C)
+pub fn on_message<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, close: C)
 where
     T: Send + 'static,
     F: Fn(T) + 'static,
@@ -66,7 +66,7 @@ where
     };
     let handlers: Signal<Rc<Handlers<T>>> = signal(Rc::new(Handlers {
         message: Box::new(f),
-        close: Cell::new(Some(Box::new(on_close))),
+        close: Cell::new(Some(Box::new(close))),
     }));
     let slot = handlers.into_sendable();
     let dispatcher = parts.dispatcher.clone();

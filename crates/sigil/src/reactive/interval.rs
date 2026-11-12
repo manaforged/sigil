@@ -5,7 +5,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use web_time::Instant;
 
 use crate::reactive::frame::{FrameSource, SourceId, Sources, try_with_sources, with_sources};
-use crate::reactive::owner::{Owner, on_cleanup, owner_by_id};
+use crate::reactive::owner::{Owner, cleanup, owner_by_id};
 use crate::reactive::runtime::Runtime;
 
 /// Stops the interval or timeout.
@@ -52,7 +52,7 @@ fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) 
         };
         Timer(sources.map.insert(FrameSource::Deadline(deadline)))
     });
-    on_cleanup(move || id.cancel());
+    cleanup(move || id.cancel());
     id
 }
 

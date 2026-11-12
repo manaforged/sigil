@@ -223,7 +223,7 @@ pub(crate) fn app() -> impl IntoNode {
         .fill()
         .gap(Space::None)
         .keyboard_shortcut(quit.clone())
-        .key(quit, |_| sigil::request_exit())
+        .key(quit, |_| sigil::exit())
         .key_capture(NamedKey::Escape, move |event| {
             if let Some(id) = list_id.peek() {
                 request_focus(id);

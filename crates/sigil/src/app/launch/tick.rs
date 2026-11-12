@@ -67,7 +67,7 @@ impl LoopState {
             self.exit_requested = true;
         }
         if self.exit_requested || self.windows.is_empty() {
-            shell.request_exit();
+            shell.exit();
         }
         request_animation_frame(shell, target);
         Ok(())

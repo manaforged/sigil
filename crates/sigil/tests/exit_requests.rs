@@ -29,7 +29,7 @@ fn an_exit_requested_outside_a_frame_ends_the_next_frame() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     Owner::scope("exit-outside-frame", || {
         let mut host = mounted("Exit from outside a frame");
-        sigil::request_exit();
+        sigil::exit();
 
         let next = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
         let after = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
@@ -46,7 +46,7 @@ fn an_exit_requested_before_a_frame_whose_paint_panics_ends_the_next_frame() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     Owner::scope("exit-survives-paint-panic", || {
         let mut host = mounted("Exit after a failed paint");
-        sigil::request_exit();
+        sigil::exit();
 
         let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             host.frame(

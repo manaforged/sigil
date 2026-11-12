@@ -82,9 +82,9 @@ pub struct AppConfig {
     #[cfg(feature = "desktop")]
     pub(crate) resize: Resize,
     #[cfg(feature = "desktop")]
-    pub(crate) on_close: CloseHook,
+    pub(crate) close: CloseHook,
     #[cfg(app_host)]
-    pub(crate) on_exit: ExitHook,
+    pub(crate) exit: ExitHook,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
@@ -127,14 +127,14 @@ impl AppConfig {
 
     /// Exits the app on an Escape press the UI did not consume.
     #[must_use]
-    pub const fn esc_exits(mut self, yes: bool) -> Self {
+    pub const fn exit_on_esc(mut self, yes: bool) -> Self {
         self.quit.esc = yes;
         self
     }
 
     /// Exits a terminal app on a Ctrl+C press the UI did not consume.
     #[must_use]
-    pub const fn quit_on_ctrl_c(mut self, yes: bool) -> Self {
+    pub const fn exit_on_ctrl_c(mut self, yes: bool) -> Self {
         self.quit.ctrl_c = yes;
         self
     }
@@ -297,16 +297,16 @@ impl AppConfig {
     /// Sets the callback that runs on close.
     #[cfg(feature = "desktop")]
     #[must_use]
-    pub fn on_close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
-        self.on_close = CloseHook(Some(std::rc::Rc::new(decide)));
+    pub fn close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
+        self.close = CloseHook(Some(std::rc::Rc::new(decide)));
         self
     }
 
     /// Sets the callback that runs once when the app exits, on every host.
     #[cfg(app_host)]
     #[must_use]
-    pub fn on_exit(mut self, run: impl Fn() + 'static) -> Self {
-        self.on_exit = ExitHook(Some(std::rc::Rc::new(run)));
+    pub fn exit(mut self, run: impl Fn() + 'static) -> Self {
+        self.exit = ExitHook(Some(std::rc::Rc::new(run)));
         self
     }
 

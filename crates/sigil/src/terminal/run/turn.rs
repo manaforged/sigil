@@ -42,7 +42,7 @@ impl<'a> Turn<'a> {
             Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
             _ => (cols, rows),
         };
-        self.screen.set_dt(tick(self.last));
+        self.screen.dt(tick(self.last));
         profile::begin_frame(profile::BackendStatus::TERMINAL);
         let (screen, host) = (&mut *self.screen, &mut *self.host);
         let frame = isolated(config.panic_policy, || {

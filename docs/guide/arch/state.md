@@ -26,13 +26,13 @@ button("Increment").activate(move || count.set(count.peek() + 1));
 
 ## Owners and cleanup
 
-Every signal, effect, memo, interval, and subscription belongs to a reactive owner. When an owner is disposed, its children dispose first. Then the `on_cleanup` hooks run in last-in-first-out order. Then the owner's slots go away.
+Every signal, effect, memo, interval, and subscription belongs to a reactive owner. When an owner is disposed, its children dispose first. Then the `cleanup` hooks run in last-in-first-out order. Then the owner's slots go away.
 
 - `Owner::scope("name", || { ... })` creates a root. `run` wraps the app in one. Tests use it.
 - `Cx::add` creates one owner per node. Removing the node disposes the owner and its subtree.
 - Each effect run creates an owner for that run. The next run disposes the previous one, so subscriptions taken inside the closure stop first.
 
-`on_cleanup(|| { ... })` registers cleanup for the current owner. `EventChannel::subscribe` registers the same hook in an active scope. `spawn` registers an abort on the current owner. `Task::run` registers one on the owner that created the task.
+`cleanup(|| { ... })` registers cleanup for the current owner. `EventChannel::subscribe` registers the same hook in an active scope. `spawn` registers an abort on the current owner. `Task::run` registers one on the owner that created the task.
 
 A `Signal` is a `Copy` arena key. After dispose, `get` and `set` panic with a stale-handle message. `peek` and `get` do not revive a disposed slot.
 

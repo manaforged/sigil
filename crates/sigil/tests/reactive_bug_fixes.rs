@@ -4,7 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Signal, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, Signal, batch, cleanup, effect, signal};
 
 #[test]
 fn cleanup_inside_effect_fires_before_next_run() {
@@ -15,7 +15,7 @@ fn cleanup_inside_effect_fires_before_next_run() {
         effect(move || {
             let _ = trigger.get();
             let log_for_cleanup = Rc::clone(&log_for_effect);
-            on_cleanup(move || log_for_cleanup.borrow_mut().push("cleanup"));
+            cleanup(move || log_for_cleanup.borrow_mut().push("cleanup"));
             log_for_effect.borrow_mut().push("run");
         });
         assert_eq!(*log.borrow(), vec!["run"]);
