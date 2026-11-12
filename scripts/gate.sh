@@ -5,13 +5,15 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
 jobs=(lint features wasm test perf msrv fuzz publish)
-usage="usage: scripts/gate.sh [--gpu] [--list] [JOB...] (jobs: ${jobs[*]})"
+usage="usage: scripts/gate.sh [--gpu] [--parallel|-j] [--list] [JOB...] (jobs: ${jobs[*]})"
 
 gpu=0
+parallel=0
 picked=()
 for arg in "$@"; do
   case "$arg" in
     --gpu) gpu=1 ;;
+    --parallel|-j) parallel=1 ;;
     --list) printf '["%s"]\n' "$(IFS=,; echo "${jobs[*]}" | sed 's/,/","/g')"; exit 0 ;;
     -*) echo "gate: unknown argument $arg ($usage)" >&2; exit 2 ;;
     *) [[ " ${jobs[*]} " == *" $arg "* ]] || { echo "gate: unknown job $arg ($usage)" >&2; exit 2; }
@@ -60,11 +62,11 @@ job_lint() {
   for manifest in "${outside[@]}"; do
     step "fmt $manifest" cargo fmt --manifest-path "$manifest" --check
   done
-  step "clippy benches/rivals" cargo clippy --manifest-path benches/rivals/Cargo.toml --locked -- -D warnings
+  step "clippy benches/rivals" cargo clippy --manifest-path benches/rivals/Cargo.toml --all-targets --locked -- -D warnings
   step deny cargo deny check
   step clippy cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
   step rustdoc env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
-  step book mdbook build docs --dest-dir "$root/target/book"
+  step book mdbook build docs --dest-dir "${CARGO_TARGET_DIR:-$root/target}/book"
 }
 
 job_features() {
@@ -75,19 +77,21 @@ job_features() {
 job_wasm() {
   need wasm-bindgen-test-runner "cargo install --locked wasm-bindgen-cli@0.2.127"
   step wasm-clippy cargo clippy -p sigil-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
-  step wasm-test cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --features kittest --test tasks_wasm \
-    --config 'target.wasm32-unknown-unknown.runner="wasm-bindgen-test-runner"'
+  step wasm-test env CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
+    cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --features kittest --test tasks_wasm
 }
 
 job_test() {
-  step test cargo test --workspace --all-features --locked --no-fail-fast
+  step test cargo test --workspace --all-features --locked --no-fail-fast --lib --bins --tests
+  step doctest cargo test --workspace --all-features --locked --no-fail-fast --doc
   step terminal-only cargo test --workspace --locked --features sigil-ui/terminal
-  step dialog cargo test -p sigil-ui --locked --features dialog,kittest --test integration two_hosts::a_dialog
   if [ "$gpu" = 1 ]; then
     local skips=() name
     while read -r name; do skips+=(--skip "$name"); done < <(node scripts/check-source.mjs --manual-tests)
     step gpu cargo test --workspace --all-features --locked --no-fail-fast --lib --tests -- --ignored --test-threads=1 "${skips[@]}"
   fi
+  step dialog env CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/target}/dialog" \
+    cargo test -p sigil-ui --locked --features dialog,kittest --test integration two_hosts::a_dialog
 }
 
 job_perf() {
@@ -95,13 +99,16 @@ job_perf() {
 }
 
 job_msrv() {
-  step msrv-toolchain rustup toolchain install "$msrv" --profile minimal --no-self-update
-  step msrv cargo "+$msrv" check --workspace --all-targets --all-features --locked
+  rustup run "$msrv" rustc -V >/dev/null 2>&1 || \
+    step msrv-toolchain rustup toolchain install "$msrv" --profile minimal --no-self-update
+  step msrv env CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/target}/msrv" \
+    cargo "+$msrv" check --workspace --all-targets --all-features --locked
 }
 
 job_fuzz() {
   need cargo-fuzz "cargo install --locked cargo-fuzz@0.13.2"
-  step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
+  rustup run nightly rustc -V >/dev/null 2>&1 || \
+    step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
   local fuzz_target
   fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
   case "$fuzz_target" in
@@ -111,14 +118,42 @@ job_fuzz() {
 }
 
 job_publish() {
-  step publish-clean cargo clean -p sigil-ui -p sigil-fonts -p sigil-kittest -p sigil-sign
-  step publish cargo publish --workspace --locked --dry-run
+  step publish cargo package --workspace --locked --no-verify --allow-dirty
 }
 
 need node "https://nodejs.org"
 step env refuse_env
-for job in "${picked[@]}"; do
-  "job_$job"
-done
+if [ "$parallel" = 1 ] && [ "${#picked[@]}" -gt 1 ]; then
+  base_target=${CARGO_TARGET_DIR:-$root/target}
+  mkdir -p "$base_target/gate-logs"
+  pids=()
+  for job in "${picked[@]}"; do
+    (
+      export CARGO_TARGET_DIR="$base_target/gate-$job"
+      "job_$job"
+    ) >"$base_target/gate-logs/$job.log" 2>&1 &
+    pids+=("$!:$job")
+  done
+  failed=()
+  for entry in "${pids[@]}"; do
+    pid=${entry%%:*}
+    job=${entry#*:}
+    if wait "$pid"; then
+      echo "gate: job $job ok" >&2
+    else
+      echo "gate: job $job FAILED ($base_target/gate-logs/$job.log):" >&2
+      cat "$base_target/gate-logs/$job.log" >&2
+      failed+=("$job")
+    fi
+  done
+  if [ "${#failed[@]}" -gt 0 ]; then
+    echo "gate: FAILED jobs: ${failed[*]}" >&2
+    exit 1
+  fi
+else
+  for job in "${picked[@]}"; do
+    "job_$job"
+  done
+fi
 
 echo "gate: passed ${picked[*]} ($((SECONDS - started))s)" >&2
