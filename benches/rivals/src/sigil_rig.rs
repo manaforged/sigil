@@ -1,6 +1,7 @@
 use std::hint::black_box;
 
 use sigil::Host;
+use sigil::app::{FrameHooks, FrameInfo};
 use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::prelude::*;
@@ -16,6 +17,7 @@ const ESTIMATE_ROWS: f32 = 2.0;
 #[derive(Clone, Copy)]
 pub enum Surface {
     Scene,
+    Window,
     Grid,
     Screen,
 }
@@ -34,6 +36,7 @@ pub struct SigilRig {
     narrow: bool,
     screen: Option<Screen>,
     out: Vec<u8>,
+    painted: bool,
 }
 
 fn message(index: usize) -> NodeBuilder {
@@ -67,7 +70,7 @@ impl SigilRig {
     pub fn new(surface: Surface, tree: Tree) -> Self {
         let stream = signal(String::new());
         let mode = match surface {
-            Surface::Scene => HostMode::Pixel,
+            Surface::Scene | Surface::Window => HostMode::Pixel,
             Surface::Grid | Surface::Screen => HostMode::Cell,
         };
         let mut host = Host::new(mode);
@@ -82,6 +85,7 @@ impl SigilRig {
             narrow: false,
             screen: matches!(surface, Surface::Screen).then(|| Screen::new(COLS, LINES)),
             out: Vec::new(),
+            painted: false,
         }
     }
 
@@ -91,7 +95,7 @@ impl SigilRig {
 
     fn view(&self) -> (f32, f32) {
         match self.surface {
-            Surface::Scene => view(self.narrow),
+            Surface::Scene | Surface::Window => view(self.narrow),
             Surface::Grid | Surface::Screen => {
                 let (cols, lines) = self.cells();
                 (f32::from(cols) * Host::CELL, f32::from(lines) * Host::CELL)
@@ -107,6 +111,27 @@ impl SigilRig {
             Change::Wheel(lines) => Some(Event::wheel(at, lines)),
             _ => None,
         }
+    }
+
+    fn paint(&mut self, event: Option<Event>) {
+        let view = self.view();
+        let fresh = !std::mem::replace(&mut self.painted, true);
+        let hooks = FrameHooks {
+            input: Some(Box::new(move |host: &mut Host| {
+                if let Some(event) = event {
+                    host.route(event);
+                }
+                None
+            })),
+            after_layout: None,
+            paint: Some(Box::new(move |host: &mut Host, info: &FrameInfo| {
+                if fresh || info.dirty {
+                    black_box(host.emit(view));
+                }
+            })),
+        };
+        let out = self.host.frame(view, FRAME_SECONDS, hooks);
+        out.layout.expect("layout");
     }
 
     fn present(&mut self, event: Option<Event>) {
@@ -138,6 +163,7 @@ impl Rig for SigilRig {
                 }
                 black_box(self.host.scene(self.view()).expect("layout"));
             }
+            Surface::Window => self.paint(event),
             Surface::Grid => {
                 let (cols, lines) = self.cells();
                 black_box(self.host.grid(event, cols, lines).expect("layout"));
@@ -151,7 +177,7 @@ impl Rig for SigilRig {
 
     fn show(&mut self) -> String {
         match self.surface {
-            Surface::Scene => {
+            Surface::Scene | Surface::Window => {
                 let scene = self.host.scene(self.view()).expect("layout");
                 let runs: Vec<&str> = scene.glyph_runs().map(|run| run.text()).collect();
                 format!("glyph runs {}: {:?}", runs.len(), runs.first())

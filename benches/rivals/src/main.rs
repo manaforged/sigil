@@ -49,6 +49,12 @@ const SIDES: &[Side] = &[
     ("sigil-pixel-virtual", |side, only| {
         run(side, only, &|| SigilRig::new(Surface::Scene, Tree::Virtual));
     }),
+    ("sigil-window", |side, only| {
+        run(side, only, &|| SigilRig::new(Surface::Window, Tree::Scroll));
+    }),
+    ("sigil-window-virtual", |side, only| {
+        run(side, only, &|| SigilRig::new(Surface::Window, Tree::Virtual));
+    }),
     ("egui", |side, only| {
         run(side, only, &|| EguiRig::new(Mode::All));
     }),
