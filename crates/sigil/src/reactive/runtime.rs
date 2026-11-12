@@ -20,6 +20,7 @@ pub(crate) struct RuntimeState {
     pub(crate) signals: Arena<SignalSlot>,
     pub(crate) effects: Arena<EffectSlot>,
     pub(crate) current_owner: Option<OwnerKey>,
+    pub(crate) lazy_effect_owner: Option<EffectKey>,
     pub(crate) current_effect: Option<EffectKey>,
     pub(crate) batch_depth: u32,
     pending: Vec<VecDeque<(u64, EffectKey)>>,
@@ -44,6 +45,7 @@ impl RuntimeState {
             signals: Arena::new(),
             effects: Arena::new(),
             current_owner: None,
+            lazy_effect_owner: None,
             current_effect: None,
             batch_depth: 0,
             pending: Vec::new(),
@@ -111,6 +113,29 @@ impl RuntimeState {
         self.current_effect
             .and_then(|effect| self.effects.get(effect))
             .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
+    }
+
+    #[cfg(event_channel)]
+    pub(crate) const fn has_active_owner(&self) -> bool {
+        self.current_owner.is_some() || self.lazy_effect_owner.is_some()
+    }
+
+    pub(crate) fn active_owner(&mut self) -> Option<OwnerKey> {
+        if let Some(owner) = self.current_owner {
+            return Some(owner);
+        }
+        let eff_key = self.lazy_effect_owner.take()?;
+        let (parent, location) = self
+            .effects
+            .get(eff_key)
+            .map(|slot| (slot.owner, slot.location))?;
+        let parent_opt = self.owners.contains(parent).then_some(parent);
+        let run_owner = self.insert_owner("<effect-run>", parent_opt, location);
+        if let Some(slot) = self.effects.get_mut(eff_key) {
+            slot.run_owner = Some(run_owner);
+        }
+        self.current_owner = Some(run_owner);
+        Some(run_owner)
     }
 }
 

@@ -145,7 +145,7 @@ impl LayoutDrive {
         self.measure_keep_frame(root, avail)
     }
 
-    pub(crate) const fn begin_measure_frame(&mut self) {
+    pub(crate) fn begin_measure_frame(&mut self) {
         let _ = self.forest.next_frame();
     }
 
@@ -212,8 +212,18 @@ impl LayoutDrive {
         self.forest.boxed(node.0).map(resolved)
     }
 
-    pub(crate) fn write_box(&mut self, node: NodeHandle, cb: ResolvedBox) -> Result<(), Error> {
-        self.forest.write(node.0, computed(cb))
+    #[must_use]
+    pub(crate) fn frame_for(&self, node: NodeHandle) -> Option<u32> {
+        self.forest.frame_for(node.0)
+    }
+
+    pub(crate) fn restore_box(
+        &mut self,
+        node: NodeHandle,
+        cb: ResolvedBox,
+        frame: u32,
+    ) -> Result<(), Error> {
+        self.forest.write_at_frame(node.0, computed(cb), frame)
     }
 
     #[must_use]
@@ -242,7 +252,10 @@ impl LayoutDrive {
         }
         let handles = self.subtree_handles(root)?;
         let root_frame = self.forest.frame_for(root.0).unwrap_or(0);
+        self.forest.invalidate_solved_ancestors(root.0);
         for handle in handles {
+            self.forest
+                .shift_solved_from(handle.0, root_frame, (dx, dy));
             if self.forest.frame_for(handle.0).unwrap_or(0) < root_frame {
                 continue;
             }

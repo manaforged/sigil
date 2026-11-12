@@ -10,7 +10,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::bidi;
 use crate::cache::Bounded;
 use crate::text::FaceSpec;
-use crate::text::cache::ParagraphCache;
+use crate::text::cache::{CachedParagraph, ParagraphCache};
 use crate::text::paragraph::{FaceTable, Paragraph, TextMetrics, face_table};
 #[cfg(test)]
 use crate::text::shaper::Script;
@@ -144,9 +144,15 @@ impl OwnedTextEngine {
         }
         let (para, fit) = self.build_paragraph(text, max_width, style);
         let key = if fit.wrapped { max_width } else { None };
-        self.cache
-            .borrow_mut()
-            .insert(text, key, style, (para.clone(), fit.width));
+        self.cache.borrow_mut().insert(
+            text,
+            key,
+            style,
+            CachedParagraph {
+                paragraph: para.clone(),
+                bounds: fit.bounds,
+            },
+        );
         Ok(para)
     }
 
@@ -276,21 +282,7 @@ impl OwnedTextEngine {
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Option<Paragraph> {
-        let cache = self.cache.borrow();
-        if let Some((cached, _)) = cache.get(text, max_width, style) {
-            return Some(cached.clone());
-        }
-        let limit = max_width?;
-        cache
-            .get(text, None, style)
-            .filter(|(_, width)| {
-                LineFit {
-                    wrapped: false,
-                    width: *width,
-                }
-                .fits(limit)
-            })
-            .map(|(unbounded, _)| unbounded.clone())
+        self.cache.borrow().lookup(text, max_width, style).cloned()
     }
 
     fn build_paragraph(

@@ -16,7 +16,7 @@ mod parsed;
 
 pub(crate) use parsed::{FieldParser, ParsedField, parsed_controls};
 
-const FIELD_GAP: f32 = space(1);
+pub(crate) const FIELD_GAP: f32 = space(1);
 fn shown(visible: bool) -> &'static [StyleAtom] {
     static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(Display::None)];
     if visible { &[] } else { HIDDEN }

@@ -66,6 +66,7 @@ impl BlockSolver<'_> {
         let dx = x - provisional.x;
         let dy = y - provisional.y;
         if dx != 0.0 || dy != 0.0 {
+            self.scope.forest().forget_solved_subtree(child.id());
             self.shift_subtree(child, dx, dy);
         }
         let (w, h) = (box_w, box_h);

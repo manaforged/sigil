@@ -139,6 +139,7 @@ fn text_memo_keeps_recent_entries_across_overflow() {
         known_w: 0,
         known_h: 0,
         wrap: 0,
+        min_content: false,
         content: 0,
         fonts: 0,
     };

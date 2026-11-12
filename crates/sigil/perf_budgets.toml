@@ -3,9 +3,9 @@ bench_tolerance = 0.25
 [frames]
 idle = { allocs = 1 }
 hover = { allocs = 13 }
-scroll = { allocs = 1450 }
-typing = { allocs = 185 }
-chart = { allocs = 12 }
-terminal = { allocs = 290 }
+scroll = { allocs = 1435 }
+typing = { allocs = 140 }
+chart = { allocs = 6 }
+terminal = { allocs = 2 }
 
 [benches]

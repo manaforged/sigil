@@ -132,6 +132,7 @@ impl LayoutEngine {
         }
         let handle = self.handle(id).ok()?;
         let saved = self.drive.stored_box(handle);
+        let saved_frame = self.drive.frame_for(handle).unwrap_or(0);
         let probe = saved
             .filter(|_| wrap && self.drive.style_for(handle).is_some_and(width_is_own))
             .map(|cb| cb.w);
@@ -144,7 +145,7 @@ impl LayoutEngine {
             .ok()?;
         let measured = self.drive.computed_box(handle);
         if let Some(saved) = saved {
-            drop(self.drive.write_box(handle, saved));
+            drop(self.drive.restore_box(handle, saved, saved_frame));
         }
         measured.map(|cb| (probe.map(f32::to_bits), cb.w.to_bits(), cb.h.to_bits()))
     }

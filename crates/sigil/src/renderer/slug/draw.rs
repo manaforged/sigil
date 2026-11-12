@@ -135,13 +135,9 @@ impl SlugTextPipeline {
                 }),
         );
         let mut split = SplitEncoder::new(params.device, params.queue, real);
-        let owned_glyphs;
-        let glyphs = if let Some(glyphs) = params.glyphs {
-            glyphs
-        } else {
-            owned_glyphs = params.paragraph.rendered_glyphs();
-            &owned_glyphs
-        };
+        let glyphs = params
+            .glyphs
+            .unwrap_or_else(|| params.paragraph.rendered_glyphs_slice());
         let run = QueuedRun {
             instances: self.instances_for(glyphs, params),
             clip: params.clip,

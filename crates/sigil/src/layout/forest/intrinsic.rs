@@ -35,7 +35,7 @@ impl IntrinsicKey {
     }
 }
 
-const fn constraint_bits(constraint: SpaceConstraint) -> u64 {
+pub(super) const fn constraint_bits(constraint: SpaceConstraint) -> u64 {
     match constraint {
         SpaceConstraint::Definite(px) => px.to_bits() as u64,
         SpaceConstraint::MinContent => 1 << 32,
@@ -86,11 +86,18 @@ impl LayoutForest {
         for memo in &self.intrinsic {
             memo.0.borrow_mut().clear();
         }
+        self.clear_solved();
     }
 
     pub(super) fn forget(&self, index: usize) {
         if let Some(memo) = self.intrinsic.get(index) {
             memo.0.borrow_mut().clear();
+        }
+        if let Some(fills) = self.fills.get(index) {
+            fills.set(0);
+        }
+        if let Some(solved) = self.solved.get(index) {
+            solved.set(None);
         }
     }
 

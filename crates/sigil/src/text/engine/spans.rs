@@ -13,8 +13,8 @@ use crate::text::shaper::{FaceStyle, Font, Script};
 
 use super::FontCollection;
 use super::shape::{
-    ShapedSegment, WordCtx, is_line_terminator, mark_break_opportunities,
-    split_word_into_uniform_runs, u32_clamp,
+    ShapedSegment, SpanKey, WordCtx, is_line_terminator, mark_break_opportunities,
+    split_word_into_uniform_runs, u32_clamp, with_words,
 };
 
 pub(super) struct ShapeSpan {
@@ -22,6 +22,7 @@ pub(super) struct ShapeSpan {
     pub(super) end: usize,
     pub(super) chain: Arc<[Font]>,
     pub(super) style: FaceStyle,
+    pub(super) key: SpanKey,
     pub(super) slot: u16,
 }
 
@@ -32,11 +33,13 @@ pub(super) fn shape_segments(
     style: &FaceStyle,
     paragraph_bidi: &bidi::ParagraphBidi<'_>,
 ) -> Vec<ShapedSegment> {
+    let key = SpanKey::new(chain, style);
     let span = ShapeSpan {
         start: 0,
         end: text.len(),
         chain: Arc::from(chain),
         style: style.clone(),
+        key,
         slot: 0,
     };
     shape_spans(std::slice::from_ref(&span), text, paragraph_bidi)
@@ -53,35 +56,38 @@ pub(super) fn shape_spans(
     let levels = paragraph_bidi.levels();
     let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len() / 2 + 1);
     let mut first_span = 0;
-    for (word_start, fragment) in text.split_word_bound_indices() {
-        if fragment.is_empty() {
-            continue;
-        }
-        if is_line_terminator(fragment) {
-            out.push(hard_break(word_start, fragment.len()));
-            continue;
-        }
-        let is_ws = fragment.chars().all(char::is_whitespace);
-        let word_end = word_start + fragment.len();
-        for span in overlapping(spans, &mut first_span, word_start..word_end) {
-            let lo = span.start.max(word_start);
-            let Some(word) = text.get(lo..span.end.min(word_end)) else {
+    with_words(|words| {
+        for (word_start, fragment) in text.split_word_bound_indices() {
+            if fragment.is_empty() {
                 continue;
-            };
-            let first = out.len();
-            let ctx = WordCtx {
-                word,
-                word_start: lo,
-                is_ws,
-                chain: &span.chain,
-                style: &span.style,
-            };
-            split_word_into_uniform_runs(&ctx, &levels, &mut out);
-            for seg in out.iter_mut().skip(first) {
-                seg.face_slot = seg.face_slot.saturating_add(span.slot);
+            }
+            if is_line_terminator(fragment) {
+                out.push(hard_break(word_start, fragment.len()));
+                continue;
+            }
+            let is_ws = fragment.chars().all(char::is_whitespace);
+            let word_end = word_start + fragment.len();
+            for span in overlapping(spans, &mut first_span, word_start..word_end) {
+                let lo = span.start.max(word_start);
+                let Some(word) = text.get(lo..span.end.min(word_end)) else {
+                    continue;
+                };
+                let first = out.len();
+                let ctx = WordCtx {
+                    word,
+                    word_start: lo,
+                    is_ws,
+                    chain: &span.chain,
+                    style: &span.style,
+                    span_key: &span.key,
+                };
+                split_word_into_uniform_runs(&ctx, &levels, words, &mut out);
+                for seg in out.iter_mut().skip(first) {
+                    seg.face_slot = seg.face_slot.saturating_add(span.slot);
+                }
             }
         }
-    }
+    });
     mark_break_opportunities(text, &mut out);
     out
 }
@@ -174,14 +180,17 @@ pub(super) fn style_spans(
             chains.push((family, weight, italic, slot, chain.clone()));
             (slot, chain)
         });
+        let face_style = FaceStyle {
+            weight,
+            ..shaper.clone()
+        };
+        let key = SpanKey::new(&chain, &face_style);
         spans.push(ShapeSpan {
             start,
             end,
             chain,
-            style: FaceStyle {
-                weight,
-                ..shaper.clone()
-            },
+            style: face_style,
+            key,
             slot,
         });
     }

@@ -1,18 +1,22 @@
 use std::collections::HashMap;
+#[cfg(terminal_host)]
 use std::ops::Range;
 
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashSet;
 use slotmap::{DefaultKey, SecondaryMap};
+use smallvec::SmallVec;
 
 use crate::geometry::Rect;
 use crate::kernel::{Cx, FrameDelta, Node, NodeId};
 use crate::layout::LayoutResult;
 use crate::scene::canvas::CanvasPaint;
-use crate::scene::command::SceneCommand;
+use crate::scene::command::{CommandScene, SceneCommand};
 use crate::scene::emit_cache;
 use crate::style::{FocusRing, StyleBinding};
 
-use super::subtree::{Copied, EmitDiff, SubtreeSpan, rect_bits};
+#[cfg(terminal_host)]
+use super::subtree::{Copied, EmitDiff};
+use super::subtree::{SpanMap, SpanTrack, rect_bits};
 
 #[derive(Clone, Copy, PartialEq)]
 struct Seen {
@@ -23,8 +27,9 @@ struct Seen {
 
 #[derive(Default)]
 pub(crate) struct EmitMemo {
-    seen: SecondaryMap<DefaultKey, Seen>,
-    pub(super) spans: AHashMap<NodeId, SubtreeSpan>,
+    seen: Option<SecondaryMap<DefaultKey, Seen>>,
+    pub(super) spans: Option<SpanMap>,
+    pub(super) scratch: Option<SpanMap>,
     selected: HashMap<NodeId, (usize, usize)>,
     watched: Vec<NodeId>,
     prev_len: Option<usize>,
@@ -34,6 +39,22 @@ pub(crate) struct EmitMemo {
     theme_epoch: u64,
 }
 
+#[derive(Default)]
+pub(crate) struct CleanScene {
+    watched: Vec<(NodeId, Seen)>,
+    selected: HashMap<NodeId, (usize, usize)>,
+    scene: Option<CommandScene>,
+    probed: bool,
+    root: Option<NodeId>,
+    structure_gen: u64,
+    paint_epoch: u64,
+    layout_gen: u64,
+    scale: u32,
+    clip: Option<[u32; 4]>,
+    theme_epoch: u64,
+}
+
+#[cfg(terminal_host)]
 impl EmitDiff {
     pub(crate) fn between_scenes(old: &[SceneCommand], new: &[SceneCommand]) -> Self {
         Self::between(old, new, &[])
@@ -55,6 +76,7 @@ impl EmitDiff {
     }
 }
 
+#[cfg(terminal_host)]
 fn push_gap(
     changed: &mut Vec<(Range<usize>, Range<usize>)>,
     old: &[SceneCommand],
@@ -67,11 +89,106 @@ fn push_gap(
     }
 }
 
+impl CleanScene {
+    pub(crate) fn emit(
+        &mut self,
+        cx: &Cx,
+        (root, clip): (NodeId, Option<Rect>),
+        layout_gen: u64,
+    ) -> CommandScene {
+        let paint_epoch = cx.paint_epoch();
+        if self.root != Some(root)
+            || self.paint_epoch != paint_epoch
+            || self.layout_gen != layout_gen
+        {
+            self.probed = false;
+            self.scene = None;
+            self.root = Some(root);
+            self.paint_epoch = paint_epoch;
+            self.layout_gen = layout_gen;
+            return super::emit_scene(cx, root, clip);
+        }
+        self.emit_steady(cx, root, clip)
+    }
+
+    fn emit_steady(&mut self, cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
+        let selection = crate::events::selection::ranges(cx);
+        if self.probe_matches(cx, clip, &selection) {
+            if let Some(scene) = &self.scene {
+                return scene.clone();
+            }
+            let scene = super::run(cx, root, clip, &selection, &mut SpanTrack::off());
+            self.scene = Some(scene.clone());
+            return scene;
+        }
+        self.refresh_probe(cx, root, clip, &selection);
+        super::run(cx, root, clip, &selection, &mut SpanTrack::off())
+    }
+
+    fn probe_matches(
+        &self,
+        cx: &Cx,
+        clip: Option<Rect>,
+        selection: &HashMap<NodeId, (usize, usize)>,
+    ) -> bool {
+        self.probed
+            && self.structure_gen == cx.mutation_generation()
+            && self.scale == cx.scale().to_bits()
+            && self.clip == clip.map(rect_bits)
+            && self.theme_epoch == emit_cache::theme_epoch()
+            && self.selected == *selection
+            && self
+                .watched
+                .iter()
+                .all(|&(id, prev)| cx.get(id).map(seen_of) == Some(prev))
+    }
+
+    fn refresh_probe(
+        &mut self,
+        cx: &Cx,
+        root: NodeId,
+        clip: Option<Rect>,
+        selection: &HashMap<NodeId, (usize, usize)>,
+    ) {
+        let structure_gen = cx.mutation_generation();
+        if self.probed && self.structure_gen == structure_gen {
+            for (id, prev) in &mut self.watched {
+                if let Some(node) = cx.get(*id) {
+                    *prev = seen_of(node);
+                }
+            }
+        } else {
+            self.watched.clear();
+            walk_tree(cx, root, |id, node| {
+                if watches(node) {
+                    self.watched.push((id, seen_of(node)));
+                }
+            });
+        }
+        self.structure_gen = structure_gen;
+        self.scale = cx.scale().to_bits();
+        self.clip = clip.map(rect_bits);
+        self.theme_epoch = emit_cache::theme_epoch();
+        if self.selected != *selection {
+            self.selected.clone_from(selection);
+        }
+        self.probed = true;
+        self.scene = None;
+    }
+}
+
 impl EmitMemo {
-    pub(super) fn usable(&self, cx: &Cx, root: NodeId, prev: &[SceneCommand]) -> bool {
+    pub(super) fn usable(
+        &self,
+        cx: &Cx,
+        (root, clip): (NodeId, Option<Rect>),
+        prev: &[SceneCommand],
+    ) -> bool {
         self.prev_len == Some(prev.len())
             && self.root == Some(root)
             && self.scale == cx.scale().to_bits()
+            && self.clip == clip.map(rect_bits)
+            && self.theme_epoch == emit_cache::theme_epoch()
     }
 
     pub(crate) fn clean(
@@ -88,25 +205,63 @@ impl EmitMemo {
             && self.clip == clip.map(rect_bits)
             && self.theme_epoch == emit_cache::theme_epoch()
             && self.selected == *selection
-            && self
-                .watched
-                .iter()
-                .all(|id| cx.get(*id).map(seen_of) == self.seen.get(id.key()).copied())
+            && self.watched.iter().all(|id| {
+                cx.get(*id).map(seen_of)
+                    == self
+                        .seen
+                        .as_ref()
+                        .and_then(|seen| seen.get(id.key()))
+                        .copied()
+            })
     }
 
     pub(super) fn dirty(
         &mut self,
         cx: &Cx,
+        (root, usable): (NodeId, bool),
+        delta: &FrameDelta,
+        selection: &HashMap<NodeId, (usize, usize)>,
+    ) -> (bool, AHashSet<NodeId>) {
+        let mass_dirty =
+            !delta.structure && (delta.layout.len() + delta.paint.len()) * 4 > cx.len();
+        if !usable || mass_dirty {
+            self.seed_seen(cx, root);
+            return (false, AHashSet::new());
+        }
+        let direct = if delta.structure {
+            self.dirty_structural(cx, root, delta, selection)
+        } else {
+            self.dirty_incremental(cx, delta, selection)
+        };
+        (true, ancestors(cx, direct))
+    }
+
+    fn seed_seen(&mut self, cx: &Cx, root: NodeId) {
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
+        let watched = &mut self.watched;
+        seen.clear();
+        watched.clear();
+        walk_tree(cx, root, |id, node| {
+            let _ = seen.insert(id.key(), seen_of(node));
+            if watches(node) {
+                watched.push(id);
+            }
+        });
+    }
+
+    fn dirty_structural(
+        &mut self,
+        cx: &Cx,
         root: NodeId,
         delta: &FrameDelta,
         selection: &HashMap<NodeId, (usize, usize)>,
-    ) -> AHashSet<NodeId> {
+    ) -> Vec<NodeId> {
         let mut direct: Vec<NodeId> = delta.paint.iter().chain(&delta.layout).copied().collect();
-        direct.extend(self.selected.keys().copied());
-        direct.extend(selection.keys().copied());
-        let (seen, watched) = (&mut self.seen, &mut self.watched);
+        self.push_selection_diff(selection, &mut direct);
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
+        let watched = &mut self.watched;
         watched.clear();
-        cx.visit_preorder(root, |id, node| {
+        walk_tree(cx, root, |id, node| {
             let now = seen_of(node);
             if watches(node) {
                 watched.push(id);
@@ -115,34 +270,97 @@ impl EmitMemo {
                 direct.push(id);
             }
         });
-        let mut dirty = AHashSet::with_capacity(direct.len() * 4);
-        for id in direct {
-            let mut at = Some(id);
-            while let Some(step) = at {
-                if !dirty.insert(step) {
-                    break;
+        direct
+    }
+
+    fn dirty_incremental(
+        &mut self,
+        cx: &Cx,
+        delta: &FrameDelta,
+        selection: &HashMap<NodeId, (usize, usize)>,
+    ) -> Vec<NodeId> {
+        let mut direct = Vec::with_capacity(delta.paint.len() + delta.layout.len() + 4);
+        self.push_selection_diff(selection, &mut direct);
+        let seen = self.seen.get_or_insert_with(SecondaryMap::new);
+        for &id in delta.paint.iter().chain(&delta.layout) {
+            direct.push(id);
+            if let Some(node) = cx.get(id) {
+                let _ = seen.insert(id.key(), seen_of(node));
+                if watches(node) && !self.watched.contains(&id) {
+                    self.watched.push(id);
                 }
-                at = cx.parent(step);
             }
         }
-        dirty
+        for &id in &self.watched {
+            if let Some(node) = cx.get(id) {
+                let now = seen_of(node);
+                if seen.insert(id.key(), now) != Some(now) {
+                    direct.push(id);
+                }
+            }
+        }
+        direct
+    }
+
+    fn push_selection_diff(
+        &self,
+        selection: &HashMap<NodeId, (usize, usize)>,
+        direct: &mut Vec<NodeId>,
+    ) {
+        if self.selected != *selection {
+            direct.extend(self.selected.keys().copied());
+            direct.extend(selection.keys().copied());
+        }
     }
 
     pub(super) fn commit(
         &mut self,
         cx: &Cx,
         root: NodeId,
-        (spans, len, clip): (AHashMap<NodeId, SubtreeSpan>, usize, Option<Rect>),
+        (spans, len, clip): (Option<SpanMap>, usize, Option<Rect>),
         selection: &HashMap<NodeId, (usize, usize)>,
     ) {
         self.spans = spans;
-        self.selected.clone_from(selection);
+        if self.selected != *selection {
+            self.selected.clone_from(selection);
+        }
         self.prev_len = Some(len);
         self.root = Some(root);
         self.scale = cx.scale().to_bits();
         self.clip = clip.map(rect_bits);
         self.theme_epoch = emit_cache::theme_epoch();
     }
+}
+
+fn walk_tree(cx: &Cx, root: NodeId, mut visit: impl FnMut(NodeId, &Node)) {
+    let mut stack = SmallVec::<[NodeId; 32]>::new();
+    stack.push(root);
+    while let Some(id) = stack.pop() {
+        let Some(node) = cx.get(id) else {
+            continue;
+        };
+        visit(id, node);
+        for &child in node.children().iter().rev() {
+            stack.push(child);
+        }
+    }
+}
+
+fn ancestors(cx: &Cx, direct: Vec<NodeId>) -> AHashSet<NodeId> {
+    if direct.is_empty() {
+        return AHashSet::new();
+    }
+    let mut dirty = AHashSet::with_capacity(direct.len() * 4);
+    for id in direct {
+        let mut at = Some(id);
+        while let Some(step) = at {
+            if !dirty.insert(step) {
+                break;
+            }
+            at = cx.parent(step);
+        }
+    }
+    dirty
 }
 
 fn seen_of(node: &Node) -> Seen {
@@ -178,8 +396,13 @@ fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {
 }
 
 fn channels_key(binding: &StyleBinding) -> u64 {
+    let mut iter = binding.reactive_channels();
+    let Some(first) = iter.next() else {
+        return 0;
+    };
     let mut hasher = ahash::AHasher::default();
-    for atoms in binding.reactive_channels() {
+    std::ptr::hash(first, &mut hasher);
+    for atoms in iter {
         std::ptr::hash(atoms, &mut hasher);
     }
     std::hash::Hasher::finish(&hasher)

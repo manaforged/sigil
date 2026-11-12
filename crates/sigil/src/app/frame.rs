@@ -1,7 +1,7 @@
 use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
-#[cfg(any(feature = "terminal", debug_assertions))]
+#[cfg(any(host, debug_assertions))]
 use crate::kernel::FrameDelta;
 use crate::reactive::{Runtime, tick_frame};
 
@@ -17,7 +17,7 @@ pub struct FrameInfo {
     pub animating: bool,
     /// Whether layout ok.
     pub layout_ok: bool,
-    #[cfg(any(feature = "terminal", debug_assertions))]
+    #[cfg(any(host, debug_assertions))]
     pub(crate) delta: FrameDelta,
 }
 
@@ -71,6 +71,8 @@ impl Host {
     ) -> FrameOutput {
         #[cfg(hot_patch)]
         self.remount_patched();
+        #[cfg(feature = "terminal")]
+        self.drop_cell_screen();
         let _env = self.enter();
         Runtime::begin_effect();
         if let Some(next) = hooks.input.and_then(|input| input(self)) {
@@ -89,13 +91,13 @@ impl Host {
         Runtime::begin_paint();
         let dirty = Runtime::frame_dirty();
         let delta = self.cx().take_delta();
-        #[cfg(not(any(feature = "terminal", debug_assertions)))]
+        #[cfg(not(any(host, debug_assertions)))]
         drop(delta);
         let info = FrameInfo {
             dirty,
             animating,
             layout_ok,
-            #[cfg(any(feature = "terminal", debug_assertions))]
+            #[cfg(any(host, debug_assertions))]
             delta,
         };
         if let Some(paint) = hooks.paint {

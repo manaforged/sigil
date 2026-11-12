@@ -261,13 +261,19 @@ impl Grid {
             col..col.saturating_add(width).min(self.cols),
             row..row.saturating_add(height).min(self.rows),
         );
+        if self.mask.is_none() {
+            for y in ys {
+                let start = y.saturating_mul(self.cols);
+                for x in xs.clone() {
+                    self.fill_cell(start + x, inner, &mut paint);
+                }
+            }
+            return;
+        }
         let mut spans = Vec::new();
         for y in ys {
             if let Some(mask) = &self.mask {
                 mask.spans(y, &mut spans);
-            } else {
-                spans.clear();
-                spans.push(xs.clone());
             }
             for span in &spans {
                 for x in span.start.max(xs.start)..span.end.min(xs.end) {

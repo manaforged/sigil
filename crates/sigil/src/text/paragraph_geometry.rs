@@ -42,8 +42,22 @@ impl Paragraph {
     }
 
     #[must_use]
+    pub(crate) fn glyph_count(&self) -> usize {
+        self.inner.lines.iter().map(|line| line.glyphs.len()).sum()
+    }
+
+    #[must_use]
+    pub(crate) fn rendered_glyphs_slice(&self) -> &[RenderedGlyph] {
+        self.inner
+            .rendered
+            .get_or_init(|| self.rendered_glyphs_in(0, usize::MAX))
+    }
+
+    /// Returns a copy of all positioned glyphs.
+    #[cfg(any(test, feature = "kittest"))]
+    #[must_use]
     pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
-        self.rendered_glyphs_in(0, usize::MAX)
+        self.rendered_glyphs_slice().to_vec()
     }
 
     #[must_use]

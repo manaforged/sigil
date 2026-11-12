@@ -1,7 +1,7 @@
 use core::panic::Location;
 
 use crate::reactive::owner_dispose::dispose_owner;
-use crate::reactive::runtime::{OwnerKey, OwnerSlot, RuntimeState, with_rt};
+use crate::reactive::runtime::{EffectKey, OwnerKey, OwnerSlot, RuntimeState, with_rt};
 
 impl RuntimeState {
     pub(crate) fn insert_owner(
@@ -34,11 +34,15 @@ impl RuntimeState {
 
 struct OwnerWithGuard {
     prev: Option<OwnerKey>,
+    prev_lazy: Option<EffectKey>,
 }
 
 impl Drop for OwnerWithGuard {
     fn drop(&mut self) {
-        with_rt(|rt| rt.current_owner = self.prev);
+        with_rt(|rt| {
+            rt.current_owner = self.prev;
+            rt.lazy_effect_owner = self.prev_lazy;
+        });
     }
 }
 
@@ -77,7 +81,7 @@ impl Owner {
     /// Returns the current owner, if any.
     #[must_use]
     pub fn current() -> Option<Self> {
-        with_rt(|rt| rt.current_owner.map(Self))
+        with_rt(|rt| rt.active_owner().map(Self))
     }
 
     /// Returns whether this owner is alive.
@@ -114,6 +118,7 @@ fn enter(id: Owner) -> Option<OwnerWithGuard> {
     with_rt(|rt| {
         rt.owners.contains(id.0).then(|| OwnerWithGuard {
             prev: rt.current_owner.replace(id.0),
+            prev_lazy: rt.lazy_effect_owner.take(),
         })
     })
 }
@@ -133,7 +138,7 @@ pub fn on_cleanup(f: impl FnOnce() + 'static) {
     let f: Box<dyn FnOnce()> = Box::new(f);
     with_rt(|rt| {
         let owner = rt
-            .current_owner
+            .active_owner()
             .expect("on_cleanup called outside a reactive scope");
         rt.owners
             .get_mut(owner)

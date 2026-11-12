@@ -119,6 +119,14 @@ where
         if let Some(tag) = tag
             && previous != next
         {
+            if previous
+                .iter()
+                .chain(next)
+                .copied()
+                .any(StyleAtom::may_transform)
+            {
+                crate::style::binding::bump_transform_generation();
+            }
             let layout = previous
                 .iter()
                 .chain(next)

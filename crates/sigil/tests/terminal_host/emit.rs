@@ -245,3 +245,27 @@ fn a_scale_change_emits_fresh_geometry() {
         assert_eq!(second, host.emit(VIEW), "a scale change reused old paint");
     });
 }
+
+#[test]
+fn a_grid_after_a_caller_driven_frame_shows_the_new_text() {
+    Owner::scope("grid-after-frame", || {
+        let label = signal(String::from("AAAA"));
+        let mut host = Host::new(HostMode::Cell);
+        host.mount(move || text(move || label.get()));
+        let view = (20.0 * Host::CELL, 4.0 * Host::CELL);
+        assert!(
+            host.grid([], 20, 4)
+                .expect("layout")
+                .text()
+                .contains("AAAA")
+        );
+        label.set(String::from("CCCC"));
+        let _ = host.frame(view, 0.0, sigil::app::FrameHooks::default());
+        assert!(
+            host.grid([], 20, 4)
+                .expect("layout")
+                .text()
+                .contains("CCCC")
+        );
+    });
+}

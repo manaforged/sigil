@@ -100,7 +100,7 @@ pub(crate) fn replay(
         if entry.version != node.version()
             || entry.slot != slot_tag(node)
             || entry.inherit != inherit
-            || entry.rect[2..] != rect_key(rect)[2..]
+            || entry.rect[2..] != rect_bits(rect)[2..]
         {
             return false;
         }
@@ -111,7 +111,7 @@ pub(crate) fn replay(
             for command in &mut entry.cmds {
                 shift_command(command, dx, dy);
             }
-            entry.rect = rect_key(rect);
+            entry.rect = rect_bits(rect);
         }
         scene.extend_commands(entry.cmds.iter().cloned());
         true
@@ -132,7 +132,7 @@ pub(crate) fn store(
             EmitEntry {
                 version: node.version(),
                 slot: slot_tag(node),
-                rect: rect_key(rect),
+                rect: rect_bits(rect),
                 inherit,
                 cmds,
             },
@@ -156,8 +156,11 @@ pub(crate) fn content_key(node: &Node) -> u64 {
             wrote = true;
         }
         if let Some(overlay) = binding.animator_overlay() {
-            overlay.cache_key().hash(&mut hasher);
-            wrote = true;
+            let key = overlay.cache_key();
+            if key != 0 {
+                key.hash(&mut hasher);
+                wrote = true;
+            }
         }
     }
     if !wrote {
@@ -220,7 +223,7 @@ pub(crate) fn slot_tag(node: &Node) -> u8 {
         })
 }
 
-const fn rect_key(rect: Rect) -> [u32; 4] {
+pub(crate) const fn rect_bits(rect: Rect) -> [u32; 4] {
     [
         rect.origin.x.to_bits(),
         rect.origin.y.to_bits(),

@@ -57,6 +57,48 @@ pub trait TextMeasure {
     }
 }
 
+impl<T: TextMeasure + ?Sized> TextMeasure for std::rc::Rc<T> {
+    fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
+        (**self).measure(content, space)
+    }
+
+    fn measure_styled(&self, content: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
+        (**self).measure_styled(content, style, space)
+    }
+
+    fn begin_frame(&self) {
+        (**self).begin_frame();
+    }
+
+    fn font_generation(&self) -> u64 {
+        (**self).font_generation()
+    }
+
+    fn hit(&self, text: &str, style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition {
+        (**self).hit(text, style, width, point)
+    }
+
+    fn caret(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        position: HitPosition,
+    ) -> CaretGeometry {
+        (**self).caret(text, style, width, position)
+    }
+
+    fn selection_rects(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        selection: (HitPosition, HitPosition),
+    ) -> Vec<Rect> {
+        (**self).selection_rects(text, style, width, selection)
+    }
+}
+
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
