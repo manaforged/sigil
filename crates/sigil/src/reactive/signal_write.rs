@@ -93,11 +93,7 @@ impl<T: PartialEq + 'static> Signal<T> {
 
     #[track_caller]
     pub(crate) fn try_set(self, value: T) -> bool {
-        let writable = self.is_writable();
-        if writable {
-            self.set(value);
-        }
-        writable
+        self.when_writable(|| self.set(value))
     }
 }
 
@@ -139,17 +135,18 @@ impl<T: 'static> Signal<T> {
 
     #[track_caller]
     pub(crate) fn try_set_always(self, value: T) -> bool {
-        let writable = self.is_writable();
-        if writable {
-            self.set_always(value);
-        }
-        writable
+        self.when_writable(|| self.set_always(value))
     }
 
     pub(crate) fn try_update(self, f: impl FnOnce(&mut T)) -> bool {
+        self.when_writable(|| self.update(f))
+    }
+
+    #[track_caller]
+    fn when_writable(self, write: impl FnOnce()) -> bool {
         let writable = self.is_writable();
         if writable {
-            self.update(f);
+            write();
         }
         writable
     }

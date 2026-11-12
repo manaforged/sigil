@@ -159,8 +159,7 @@ impl LayoutEngine {
                 self.republished |= size.publish((rect.width, rect.height));
             }
             if let Some(bounds) = node.get_extension::<crate::layout::BoundsReactive>() {
-                self.republished |=
-                    bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+                self.republished |= bounds.publish(rect);
             }
             if unchanged {
                 continue;
@@ -185,8 +184,7 @@ impl LayoutEngine {
                     continue;
                 };
                 let rect = result.rect();
-                self.republished |=
-                    bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+                self.republished |= bounds.publish(rect);
             }
         });
     }

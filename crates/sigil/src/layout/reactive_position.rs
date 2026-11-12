@@ -56,8 +56,11 @@ pub struct BoundsReactive {
 }
 
 impl BoundsReactive {
-    pub(crate) fn publish(self, bounds: (f32, f32, f32, f32)) -> bool {
-        publish_changed(self.bounds, bounds)
+    pub(crate) fn publish(self, rect: crate::geometry::Rect) -> bool {
+        publish_changed(
+            self.bounds,
+            (rect.origin.x, rect.origin.y, rect.width, rect.height),
+        )
     }
 }
 
