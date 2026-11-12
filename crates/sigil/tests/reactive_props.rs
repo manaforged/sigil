@@ -16,14 +16,14 @@ fn a_closure_drives_disabled_until_the_field_has_text() {
     Owner::scope("reactive-props-disabled", || {
         let saves = signal(0_u32);
         let mut ui = Harness::new(move || save_form(saves));
-        let save = ui.get_by_role(Role::Button, "Save");
+        let save = ui.get((Role::Button, "Save"));
         assert!(save.is_disabled(), "Save must start disabled");
         ui.click(&save).settle();
         assert_eq!(saves.get(), 0, "a disabled Save must not fire");
 
-        let field = ui.get_by_role(Role::TextInput, "Name");
+        let field = ui.get((Role::TextInput, "Name"));
         ui.click(&field).type_text("Ada").settle();
-        let enabled = ui.get_by_role(Role::Button, "Save");
+        let enabled = ui.get((Role::Button, "Save"));
         assert!(
             !enabled.is_disabled(),
             "Save must enable once the field has text"
@@ -36,5 +36,5 @@ fn a_closure_drives_disabled_until_the_field_has_text() {
 #[test]
 fn a_plain_bool_disables_a_widget() {
     let mut ui = Harness::new(|| button("Save").disabled(true));
-    assert!(ui.get_by_role(Role::Button, "Save").is_disabled());
+    assert!(ui.get((Role::Button, "Save")).is_disabled());
 }

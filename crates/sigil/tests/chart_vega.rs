@@ -54,7 +54,7 @@ fn assert_left_to_right(ui: &mut Harness, names: &[&str]) {
 }
 
 fn x_of(ui: &mut Harness, label: &str) -> f32 {
-    ui.get(&Query::text(label))
+    ui.get(Query::text(label))
         .bounds()
         .expect("bounds")
         .origin

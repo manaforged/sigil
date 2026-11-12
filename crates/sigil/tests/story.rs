@@ -89,19 +89,19 @@ fn todo_adds_checks_and_deletes_on_both_hosts() {
 #[test]
 fn form_validates_and_thanks_on_both_hosts() {
     for mut ui in hosts(|| Harness::new(form::form)) {
-        let submit = ui.get_by_role(Role::Button, "Submit");
+        let submit = ui.get((Role::Button, "Submit"));
         assert!(submit.is_disabled(), "Submit starts disabled");
         ui.type_into("Name", "Ada")
             .type_into("Email", "ada")
             .expect_text("Enter an email");
-        assert!(ui.get_by_role(Role::Button, "Submit").is_disabled());
+        assert!(ui.get((Role::Button, "Submit")).is_disabled());
         ui.type_into("Email", "@x.io");
         assert!(
             !ui.text().contains("Enter an email"),
             "{}",
             ui.accessibility_snapshot()
         );
-        assert!(!ui.get_by_role(Role::Button, "Submit").is_disabled());
+        assert!(!ui.get((Role::Button, "Submit")).is_disabled());
         ui.click("Submit").expect_text("Thanks, Ada");
     }
 }
@@ -116,7 +116,7 @@ fn each_page_keeps_its_state_on_both_hosts() {
             .expect_text("Visits: 1");
         ui.click("Settings");
         assert_eq!(
-            ui.get_by_role(Role::Switch, "Dark mode").is_checked(),
+            ui.get((Role::Switch, "Dark mode")).is_checked(),
             Some(true),
             "{}",
             ui.accessibility_snapshot()

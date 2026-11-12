@@ -10,7 +10,7 @@ fn in_block(content: impl IntoNode + 'static) -> NodeBuilder {
 fn button_span(ui: &mut Harness, name: &str) -> (f32, f32) {
     ui.settle();
     let bounds = ui
-        .get_by_role(Role::Button, name)
+        .get((Role::Button, name))
         .bounds()
         .expect("the button is laid out");
     (bounds.origin.x, bounds.origin.x + bounds.width)

@@ -91,11 +91,11 @@ fn pagination_moves_between_pages_with_buttons_and_keys() {
             shown, PAGE_BUTTONS,
             "twelve pages collapse around the current one"
         );
-        assert!(ui.get_by_role(Role::Button, "Previous page").is_disabled());
+        assert!(ui.get((Role::Button, "Previous page")).is_disabled());
         ui.click("Next page").settle().expect_text("Showing page 2");
         ui.click("12").settle().expect_text("Showing page 12");
-        assert!(ui.get_by_role(Role::Button, "Next page").is_disabled());
-        assert_eq!(ui.get_by_role(Role::Button, "12").is_selected(), Some(true));
+        assert!(ui.get((Role::Button, "Next page")).is_disabled());
+        assert_eq!(ui.get((Role::Button, "12")).is_selected(), Some(true));
         ui.click("Previous page")
             .settle()
             .expect_text("Showing page 11");
@@ -106,10 +106,7 @@ fn pagination_moves_between_pages_with_buttons_and_keys() {
         ui.press(NamedKey::Enter)
             .settle()
             .expect_text("Showing page 10");
-        assert!(
-            ui.get_by_role(Role::Button, "…").is_disabled(),
-            "gap is inert"
-        );
+        assert!(ui.get((Role::Button, "…")).is_disabled(), "gap is inert");
     });
 }
 
@@ -157,20 +154,14 @@ fn a_stepper_marks_done_and_current_steps() {
         })
         .size(60, 8);
         ui.settle();
-        assert_eq!(
-            ui.get_by_role(Role::ListItem, "Cart").is_selected(),
-            Some(true)
-        );
+        assert_eq!(ui.get((Role::ListItem, "Cart")).is_selected(), Some(true));
         assert!(!ui.settle().text().contains('✓'), "nothing done yet");
         ui.click("Continue").settle();
         assert_eq!(
-            ui.get_by_role(Role::ListItem, "Shipping").is_selected(),
+            ui.get((Role::ListItem, "Shipping")).is_selected(),
             Some(true)
         );
-        assert_eq!(
-            ui.get_by_role(Role::ListItem, "Cart").is_selected(),
-            Some(false)
-        );
+        assert_eq!(ui.get((Role::ListItem, "Cart")).is_selected(), Some(false));
         assert!(
             ui.text().contains('✓'),
             "Cart shows a check:\n{}",
@@ -189,7 +180,7 @@ fn pagination_moves_the_page_into_range_when_pages_shrink() {
         pages.set(3);
         ui.settle();
         assert_eq!(page.peek(), 2);
-        let current = ui.get_by_role(Role::Button, "3");
+        let current = ui.get((Role::Button, "3"));
         assert_eq!(
             current.is_selected(),
             Some(true),
@@ -210,7 +201,7 @@ fn a_badge_at_zero_takes_no_gap_in_its_row() {
         })
         .size(40, 4);
         ui.settle();
-        ui.get_by_text("Sent").bounds().expect("bounds").origin.x
+        ui.get("Sent").bounds().expect("bounds").origin.x
     };
     assert!((place(true) - place(false)).abs() < 0.5);
 }

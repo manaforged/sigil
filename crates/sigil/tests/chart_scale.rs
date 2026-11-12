@@ -30,7 +30,7 @@ fn the_wheel_zooms_a_bound_x_range() {
     })
     .size(60, 20);
     ui.settle();
-    let plot = ui.get_by_role(Role::Figure, "Chart");
+    let plot = ui.get((Role::Figure, "Chart"));
     ui.hover(&plot).scroll(&plot, -3.0);
     ui.settle();
     let Range { start, end } = slot.get().expect("range signal").peek();
@@ -48,7 +48,7 @@ fn a_crosshair_reads_out_the_value_under_the_pointer() {
     })
     .size(60, 20);
     ui.settle();
-    let plot = ui.get_by_role(Role::Figure, "Chart");
+    let plot = ui.get((Role::Figure, "Chart"));
     ui.hover(&plot);
     ui.settle();
     let readout = ui
@@ -68,7 +68,7 @@ fn markdown_xycharts_preserve_the_line_mark() {
     })
     .size(60, 30);
     ui.settle();
-    drop(ui.get_by_role(Role::Figure, "Chart"));
+    drop(ui.get((Role::Figure, "Chart")));
     assert!(ui.query(&Query::text("Alpha")).is_some());
     assert!(ui.query(&Query::text("7")).is_none(), "line became bars");
 }
@@ -82,7 +82,7 @@ fn markdown_xycharts_preserve_each_series() {
     })
     .size(60, 30);
     ui.settle();
-    drop(ui.get_by_role(Role::Figure, "Chart"));
+    drop(ui.get((Role::Figure, "Chart")));
     for value in ["7", "9", "11", "13"] {
         assert!(ui.query(&Query::text(value)).is_some(), "lost {value}");
     }

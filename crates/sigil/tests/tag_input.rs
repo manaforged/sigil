@@ -27,7 +27,7 @@ fn open() -> (Harness, Signal<Vec<String>>) {
 }
 
 fn type_in(ui: &mut Harness, text: &str) {
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     ui.click(&input).type_text(text).settle();
 }
 
@@ -42,10 +42,10 @@ fn typing_filters_and_enter_or_click_adds_a_tag() {
     ui.press(NamedKey::Enter).settle();
     assert_eq!(tags(labels), ["docs"]);
     ui.expect_text("docs");
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     assert_eq!(input.value().unwrap_or_default(), "");
     type_in(&mut ui, "fea");
-    let option = ui.get_by_role(Role::ListBoxOption, "feature");
+    let option = ui.get((Role::ListBoxOption, "feature"));
     ui.click(&option).settle();
     assert_eq!(tags(labels), ["docs", "feature"]);
 }
@@ -58,10 +58,10 @@ fn each_tag_removes_with_its_button_and_backspace_removes_the_last() {
         ui.press(NamedKey::Enter).settle();
     }
     assert_eq!(tags(labels), ["bug", "question", "feature"]);
-    let remove = ui.get_by_role(Role::Button, "Remove question");
+    let remove = ui.get((Role::Button, "Remove question"));
     ui.click(&remove).settle();
     assert_eq!(tags(labels), ["bug", "feature"]);
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     ui.click(&input).press(NamedKey::Backspace).settle();
     assert_eq!(tags(labels), ["bug"]);
     assert!(
@@ -77,7 +77,7 @@ fn typing_a_whole_option_adds_it_and_clears_the_input() {
     type_in(&mut ui, "docs");
     ui.press(NamedKey::Enter).settle();
     assert_eq!(tags(labels), ["docs"]);
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     assert_eq!(input.value().unwrap_or_default(), "");
     ui.press(NamedKey::Backspace).settle();
     assert!(tags(labels).is_empty());
@@ -92,5 +92,5 @@ fn a_disabled_tag_input_disables_its_remove_buttons() {
     })
     .size(48, 16);
     ui.settle();
-    assert!(ui.get_by_role(Role::Button, "Remove bug").is_disabled());
+    assert!(ui.get((Role::Button, "Remove bug")).is_disabled());
 }

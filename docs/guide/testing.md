@@ -36,8 +36,8 @@ Queries read the accessibility tree, so a test finds a control by what a user or
 | Call | Matches |
 | --- | --- |
 | `expect_text("Saved")` | waits for a node whose name or value is the text |
-| `get_by_role(Role::Button, "Save")` | role and accessible name |
-| `get_by_text("Hello")` | a node whose name or value is the text |
+| `get((Role::Button, "Save"))` | role and accessible name |
+| `get("Hello")` | a node whose name or value is the text |
 | `get(&Query::role(Role::CheckBox))` | any `Query` |
 | `find_all(&query)`, `query(&query)` | every match, or the first |
 | `focused()` | the focused node |
@@ -60,8 +60,8 @@ fn form() -> impl IntoNode {
 
 let mut ui = Harness::new(form).size(40, 12);
 ui.type_into("Name", "Ada").click("Agree");
-assert_eq!(ui.get_by_role(Role::TextInput, "Name").value(), Some("Ada"));
-assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
+assert_eq!(ui.get((Role::TextInput, "Name")).value(), Some("Ada"));
+assert_eq!(ui.get((Role::CheckBox, "Agree")).is_checked(), Some(true));
 ```
 
 ## Act

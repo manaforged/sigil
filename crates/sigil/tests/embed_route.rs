@@ -21,7 +21,7 @@ fn routed_click_reaches_button_activate() {
             }))
     })
     .pixels(200, 100);
-    let target = ui.get_by_role(Role::Button, "hit me");
+    let target = ui.get((Role::Button, "hit me"));
     ui.click(&target);
 
     assert!(

@@ -24,8 +24,8 @@ fn open(start: RangeInclusive<f32>) -> (Harness, Signal<RangeInclusive<f32>>) {
 }
 
 fn thumbs(ui: &mut Harness) -> (f64, f64) {
-    let low = ui.get_by_role(Role::Slider, "Price minimum").numeric();
-    let high = ui.get_by_role(Role::Slider, "Price maximum").numeric();
+    let low = ui.get((Role::Slider, "Price minimum")).numeric();
+    let high = ui.get((Role::Slider, "Price maximum")).numeric();
     (low.expect("minimum value"), high.expect("maximum value"))
 }
 
@@ -56,13 +56,13 @@ fn each_thumb_takes_focus_and_keys_without_passing_the_other() {
 fn dragging_moves_the_nearest_thumb_and_stops_at_the_other() {
     let (mut ui, value) = open(20.0..=80.0);
     let track = ui
-        .get_by_role(Role::Group, "Price")
+        .get((Role::Group, "Price"))
         .bounds()
         .expect("slider bounds");
     let y = track.origin.y + track.height / 2.0;
     let left = Point::new(track.origin.x, y);
     let right = Point::new(track.origin.x + track.width - 1.0, y);
-    let high = ui.get_by_role(Role::Slider, "Price maximum");
+    let high = ui.get((Role::Slider, "Price maximum"));
     ui.drag(&high, &left).settle();
     assert_eq!(value.peek(), 20.0..=20.0);
     assert_eq!(focused(&mut ui), "Price maximum");
@@ -75,11 +75,11 @@ fn dragging_moves_the_nearest_thumb_and_stops_at_the_other() {
 fn overlapped_thumbs_follow_the_drag_direction() {
     let (mut ui, value) = open(100.0..=100.0);
     let track = ui
-        .get_by_role(Role::Group, "Price")
+        .get((Role::Group, "Price"))
         .bounds()
         .expect("slider bounds");
     let left = Point::new(track.origin.x, track.origin.y + track.height / 2.0);
-    let high = ui.get_by_role(Role::Slider, "Price maximum");
+    let high = ui.get((Role::Slider, "Price maximum"));
     ui.drag(&high, &left).settle();
     assert_eq!(value.peek(), 0.0..=100.0);
     assert_eq!(focused(&mut ui), "Price minimum");

@@ -179,69 +179,9 @@ impl StateStyle {
 impl StateStyle {
     /// Sets the atoms of one state slot.
     #[must_use]
-    pub const fn with(mut self, slot: StateSlot, atoms: &'static [StyleAtom]) -> Self {
+    pub const fn slot(mut self, slot: StateSlot, atoms: &'static [StyleAtom]) -> Self {
         *self.slots.get_mut(slot) = atoms;
         self
-    }
-
-    /// Sets the atoms of the rest state.
-    #[must_use]
-    pub const fn with_rest(self, atoms: &'static [StyleAtom]) -> Self {
-        self.with(StateSlot::Rest, atoms)
-    }
-
-    /// Sets the atoms of the focused state.
-    #[must_use]
-    pub const fn with_focused(self, atoms: &'static [StyleAtom]) -> Self {
-        self.with(StateSlot::Focused, atoms)
-    }
-
-    /// Sets the atoms of the hovered state.
-    #[must_use]
-    pub const fn with_hovered(self, atoms: &'static [StyleAtom]) -> Self {
-        self.with(StateSlot::Hovered, atoms)
-    }
-
-    /// Sets the atoms of the pressed state.
-    #[must_use]
-    pub const fn with_pressed(self, atoms: &'static [StyleAtom]) -> Self {
-        self.with(StateSlot::Pressed, atoms)
-    }
-
-    /// Sets the atoms of the disabled state.
-    #[must_use]
-    pub const fn with_disabled(self, atoms: &'static [StyleAtom]) -> Self {
-        self.with(StateSlot::Disabled, atoms)
-    }
-
-    /// Returns the rest.
-    #[must_use]
-    pub const fn rest(self) -> &'static [StyleAtom] {
-        self.get(StateSlot::Rest)
-    }
-
-    /// Returns the focused.
-    #[must_use]
-    pub const fn focused(self) -> &'static [StyleAtom] {
-        self.get(StateSlot::Focused)
-    }
-
-    /// Returns the hovered.
-    #[must_use]
-    pub const fn hovered(self) -> &'static [StyleAtom] {
-        self.get(StateSlot::Hovered)
-    }
-
-    /// Returns the pressed.
-    #[must_use]
-    pub const fn pressed(self) -> &'static [StyleAtom] {
-        self.get(StateSlot::Pressed)
-    }
-
-    /// Returns the disabled.
-    #[must_use]
-    pub const fn disabled(self) -> &'static [StyleAtom] {
-        self.get(StateSlot::Disabled)
     }
 }
 

@@ -180,14 +180,14 @@ fn a_submit_added_to_a_number_field_keeps_its_clamp() {
             .submit(move |text| submitted.set(text.to_owned()));
         let mut ui = sigil_kittest::Harness::new(move || column().child(field)).pixels(400, 120);
         ui.settle();
-        let input = ui.get(&sigil_kittest::Query::role(Role::TextInput));
+        let input = ui.get(sigil_kittest::Query::role(Role::TextInput));
         ui.click(&input).press(NamedKey::End);
         for _ in 0..4 {
             ui.press(NamedKey::Backspace);
         }
         ui.type_text("500").press(NamedKey::Enter).settle();
         let shown = ui
-            .get(&sigil_kittest::Query::role(Role::TextInput))
+            .get(sigil_kittest::Query::role(Role::TextInput))
             .value()
             .map(str::to_owned);
         assert_eq!(

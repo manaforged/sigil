@@ -57,7 +57,7 @@ fn an_item_with_an_event_sends_its_name_and_bound_context() {
     })
     .size(100, 60);
     shown.settle();
-    let row = shown.get_by_text("Checkout total off by a cent");
+    let row = shown.get("Checkout total off by a cent");
     shown.click(&row).settle();
     assert_eq!(
         *seen.borrow(),

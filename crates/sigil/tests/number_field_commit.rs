@@ -9,13 +9,13 @@ fn committing_text_that_does_not_parse_shows_the_stored_value() {
         let mut ui = Harness::new(move || column().child(number_field(value, 0.0..=1_000_000.0)))
             .pixels(400, 120);
         ui.settle();
-        let input = ui.get(&Query::role(Role::TextInput));
+        let input = ui.get(Query::role(Role::TextInput));
         ui.click(&input)
             .type_text("1.234,56")
             .press(NamedKey::Enter)
             .settle();
         let shown = ui
-            .get(&Query::role(Role::TextInput))
+            .get(Query::role(Role::TextInput))
             .value()
             .map(str::to_owned);
         assert_eq!(shown, Some(value.get().to_string()));
@@ -25,7 +25,7 @@ fn committing_text_that_does_not_parse_shows_the_stored_value() {
 fn commit(value_field: impl IntoNode + 'static, text: &str) -> Harness {
     let mut ui = Harness::new(move || column().child(value_field)).pixels(400, 120);
     ui.settle();
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     ui.click(&input).press(NamedKey::End);
     for _ in 0..24 {
         ui.press(NamedKey::Backspace);
@@ -36,7 +36,7 @@ fn commit(value_field: impl IntoNode + 'static, text: &str) -> Harness {
 }
 
 fn shown(ui: &mut Harness) -> Option<String> {
-    ui.get(&Query::role(Role::TextInput))
+    ui.get(Query::role(Role::TextInput))
         .value()
         .map(str::to_owned)
 }

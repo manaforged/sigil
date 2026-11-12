@@ -15,8 +15,8 @@ fn long_text_in_a_row_wraps_inside_the_window_and_pushes_later_widgets_down() {
             .child(button("Below"))
     })
     .pixels(200, 400);
-    let last = ui.get_by_role(Role::Button, "B").bounds().unwrap();
-    let below = ui.get_by_role(Role::Button, "Below").bounds().unwrap();
+    let last = ui.get((Role::Button, "B")).bounds().unwrap();
+    let below = ui.get((Role::Button, "Below")).bounds().unwrap();
     assert!(last.origin.x + last.width <= 200.5, "B ends at {last:?}");
     assert!(below.width <= 200.5, "the column is {} wide", below.width);
     assert!(
@@ -41,10 +41,7 @@ fn a_text_field_keeps_a_usable_width_inside_a_nested_row() {
             .child(text("Words"))
     })
     .pixels(1280, 200);
-    let field = ui
-        .get_by_role(Role::TextInput, "Text field")
-        .bounds()
-        .unwrap();
+    let field = ui.get((Role::TextInput, "Text field")).bounds().unwrap();
     assert!(field.width >= 96.0, "the field is {} wide", field.width);
 }
 
@@ -58,15 +55,12 @@ fn a_button_keeps_its_label_when_a_field_fills_its_row() {
     .pixels(360, 200);
     let alone = {
         let mut lone = Harness::new(|| row().child(button("Save changes"))).pixels(360, 200);
-        lone.get_by_role(Role::Button, "Save changes")
+        lone.get((Role::Button, "Save changes"))
             .bounds()
             .unwrap()
             .width
     };
-    let saved = ui
-        .get_by_role(Role::Button, "Save changes")
-        .bounds()
-        .unwrap();
+    let saved = ui.get((Role::Button, "Save changes")).bounds().unwrap();
     assert!(
         (saved.width - alone).abs() < 0.5,
         "{} and {alone}",
@@ -78,7 +72,7 @@ fn a_button_keeps_its_label_when_a_field_fills_its_row() {
 fn every_button_fill_has_the_same_width() {
     let width = |fill: fn(ButtonBuilder) -> ButtonBuilder| {
         let mut ui = Harness::new(move || fill(button("Go"))).pixels(200, 80);
-        ui.get_by_role(Role::Button, "Go").bounds().unwrap().width
+        ui.get((Role::Button, "Go")).bounds().unwrap().width
     };
     let plain = width(|b| b);
     for (name, fill) in [

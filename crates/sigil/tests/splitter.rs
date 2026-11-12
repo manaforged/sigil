@@ -222,16 +222,13 @@ fn dragging_the_handle_resizes_the_panes() {
             .child(pane("right"), 200.0),
     )
     .pixels(600, 200);
-    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let handle = ui.get(sigil_kittest::Query::role(Role::Splitter));
     let from = handle.center().expect("handle bounds");
     ui.drag(&handle, &Point::new(from.x + 50.0, from.y))
         .settle();
-    let left = ui
-        .get_by_role(Role::Image, "left")
-        .bounds()
-        .expect("left bounds");
+    let left = ui.get((Role::Image, "left")).bounds().expect("left bounds");
     let right = ui
-        .get_by_role(Role::Image, "right")
+        .get((Role::Image, "right"))
         .bounds()
         .expect("right bounds");
     assert!(
@@ -270,7 +267,7 @@ fn shared(width: u32) -> sigil_kittest::Harness {
 fn widths(ui: &mut sigil_kittest::Harness) -> (f32, f32) {
     let width = |harness: &mut sigil_kittest::Harness, name| {
         harness
-            .get_by_role(Role::Image, name)
+            .get((Role::Image, name))
             .bounds()
             .expect("pane bounds")
             .width
@@ -295,7 +292,7 @@ fn a_proportional_splitter_keeps_each_panes_share_at_any_width() {
 fn a_proportional_drag_stops_at_the_other_panes_minimum() {
     let mut ui = shared(806);
     ui.settle();
-    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let handle = ui.get(sigil_kittest::Query::role(Role::Splitter));
     let from = handle.center().expect("handle bounds");
     ui.drag(&handle, &Point::new(from.x + 700.0, from.y))
         .settle();
@@ -319,7 +316,7 @@ fn settle_after_drag() {
     )
     .pixels(600, 200);
     assert!(settled.peek().is_empty(), "nothing settles before a drag");
-    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let handle = ui.get(sigil_kittest::Query::role(Role::Splitter));
     let from = handle.center().expect("handle bounds");
     ui.drag(&handle, &Point::new(from.x + 50.0, from.y))
         .settle();

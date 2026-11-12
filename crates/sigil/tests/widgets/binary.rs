@@ -158,14 +158,14 @@ fn a_checkbox_with_a_signal_label_is_named_by_that_label() {
         let label = signal(String::from("Restock alerts"));
         let mut ui = Harness::new(move || checkbox(signal(false)).label(label));
         assert_eq!(
-            ui.get_by_role(Role::CheckBox, "Restock alerts").name(),
+            ui.get((Role::CheckBox, "Restock alerts")).name(),
             Some("Restock alerts")
         );
 
         label.set(String::from("Price alerts"));
         ui.settle();
         assert_eq!(
-            ui.get_by_role(Role::CheckBox, "Price alerts").name(),
+            ui.get((Role::CheckBox, "Price alerts")).name(),
             Some("Price alerts")
         );
     });
@@ -177,14 +177,14 @@ fn a_checkbox_with_a_closure_label_is_renamed_with_it() {
         let label = signal(String::from("Restock alerts"));
         let mut ui = Harness::new(move || checkbox(signal(false)).label(move || label.get()));
         assert_eq!(
-            ui.get_by_role(Role::CheckBox, "Restock alerts").name(),
+            ui.get((Role::CheckBox, "Restock alerts")).name(),
             Some("Restock alerts")
         );
 
         label.set(String::from("Price alerts"));
         ui.settle();
         assert_eq!(
-            ui.get_by_role(Role::CheckBox, "Price alerts").name(),
+            ui.get((Role::CheckBox, "Price alerts")).name(),
             Some("Price alerts")
         );
     });
@@ -297,11 +297,11 @@ fn named_by_its_signal_label<N: IntoNode + 'static>(
     sigil::reactive::Owner::scope("sigil-widget-signal-label", || {
         let label = signal(String::from(first));
         let mut ui = Harness::new(move || build(label));
-        assert_eq!(ui.get_by_role(role, first).name(), Some(first));
+        assert_eq!(ui.get((role, first)).name(), Some(first));
 
         label.set(String::from(second));
         ui.settle();
-        assert_eq!(ui.get_by_role(role, second).name(), Some(second));
+        assert_eq!(ui.get((role, second)).name(), Some(second));
     });
 }
 

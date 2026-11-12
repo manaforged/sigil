@@ -85,12 +85,12 @@ fn clearable_field_empties_the_value_and_fires_change() {
                 .change(move |_| changes.update(|n| *n += 1))
         });
         assert!(ui.query(&Query::role(Role::Button).name("Clear")).is_none());
-        let field = ui.get_by_role(Role::TextInput, "Search");
+        let field = ui.get((Role::TextInput, "Search"));
         ui.click(&field).type_text("ana").settle();
         assert_eq!(value.get(), "ana");
         let before = changes.get();
-        let clear = ui.get_by_role(Role::Button, "Clear");
-        let filled = ui.get_by_role(Role::TextInput, "Search");
+        let clear = ui.get((Role::Button, "Clear"));
+        let filled = ui.get((Role::TextInput, "Search"));
         let (outer, inner) = (filled.bounds().unwrap(), clear.bounds().unwrap());
         assert!(
             inner.origin.x >= outer.origin.x
@@ -130,7 +130,7 @@ fn menu_bar_is_as_wide_as_its_menus() {
             .child(text("after"))
     })
     .pixels(800, 200);
-    let after = ui.get_by_text("after").bounds().unwrap();
+    let after = ui.get("after").bounds().unwrap();
     assert!(
         after.origin.x < 400.0,
         "text after the menu bar sits at x {}",
@@ -151,7 +151,7 @@ fn tab_content_fills_the_space_below_the_strip() {
             }))
     })
     .pixels(600, 400);
-    let body = ui.get_by_role(Role::Group, "body").bounds().unwrap();
+    let body = ui.get((Role::Group, "body")).bounds().unwrap();
     assert!(
         body.height > 300.0,
         "tab content is {} px tall in a 400 px frame",
@@ -167,7 +167,7 @@ fn chart_fills_its_parent_width() {
             .child(chart(vec![1.0, 3.0, 2.0]).height(120.0))
     })
     .pixels(600, 300);
-    let figure = ui.get(&Query::role(Role::Figure)).bounds().unwrap();
+    let figure = ui.get(Query::role(Role::Figure)).bounds().unwrap();
     assert!(
         figure.width > 500.0,
         "chart is {} px wide in a 600 px parent",

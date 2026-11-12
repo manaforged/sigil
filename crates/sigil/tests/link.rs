@@ -25,7 +25,7 @@ fn a_link_runs_its_action_on_click_and_on_enter() {
         let opened = signal(0_u32);
         let mut ui = Harness::new(move || page(opened));
         ui.settle().expect_text("Opened: 0");
-        let link_node = ui.get_by_role(Role::Link, LABEL);
+        let link_node = ui.get((Role::Link, LABEL));
         assert!(!link_node.is_disabled(), "link reads as enabled");
         ui.click(LABEL).settle().expect_text("Opened: 1");
         ui.focus_next().settle();
