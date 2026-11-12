@@ -139,7 +139,7 @@ fn field_of(item: &Item) -> Box<dyn IntoNode> {
             let control = item
                 .children
                 .iter()
-                .fold(fragment(), |control, child| control.child(build(child)));
+                .fold(fragment(), |control, next| control.child(build(next)));
             Box::new(styled(field(label(item), control), attrs))
         }
     }

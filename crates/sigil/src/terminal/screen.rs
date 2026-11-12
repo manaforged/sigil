@@ -17,6 +17,10 @@ mod raster;
 const CELL: f32 = Host::CELL;
 
 /// The terminal screen state between frames.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "four independent facts about the last frame"
+)]
 pub struct Screen {
     scene: CommandScene,
     grid: Grid,

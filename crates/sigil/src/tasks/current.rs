@@ -13,21 +13,20 @@ thread_local! {
 pub(crate) fn install(parts: &SpawnParts) {
     HOST.with(|slot| {
         let mut host = slot.borrow_mut();
-        if !current(&host, &parts.dispatcher) {
+        if !current(host.as_ref(), &parts.dispatcher) {
             *host = Some(parts.clone());
         }
     });
 }
 
-fn current(host: &Option<SpawnParts>, dispatcher: &Dispatcher) -> bool {
-    host.as_ref()
-        .is_some_and(|parts| parts.dispatcher.tx.same_channel(&dispatcher.tx))
+fn current(host: Option<&SpawnParts>, dispatcher: &Dispatcher) -> bool {
+    host.is_some_and(|parts| parts.dispatcher.tx.same_channel(&dispatcher.tx))
 }
 
 pub(crate) fn uninstall(dispatcher: &Dispatcher) {
     HOST.with(|slot| {
         let mut host = slot.borrow_mut();
-        if current(&host, dispatcher) {
+        if current(host.as_ref(), dispatcher) {
             drop(host.take());
         }
     });

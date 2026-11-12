@@ -6,78 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-
-- `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
-- `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.
-- The `icon_svg` function is removed. Migration: `icon_svg(source)` becomes `icon(Glyph::svg(source))`. `Glyph` has a new `Svg` variant and is in the prelude.
-- Two `sigil_kittest::Harness` values on one thread each get the results of their own tasks. Before, the second harness took the thread's task dispatcher and the first one's `spawn`, `task` and `signal_writer` results never arrived.
-- A `SignalWriter` writes for as long as its signal is alive, and `signal_writer` works outside a reactive scope. Before, a writer made in a scope that later ended dropped every write without an error, and a write to a disposed signal panicked the UI thread; that write is now dropped.
-- A scroll moves one shared offset that `LayoutResult::rect` adds when read; it no longer rewrites the layout of every node under a `scroll`, a `virtual_list` or a `position_reactive` node. `rect` returns the same on-screen rectangle as before. `LayoutResult::rect` is no longer `const`, and `ReactivePosition` is `Clone` but no longer `Copy`.
-- A node gets its own reactive owner only when its build asks for the current owner, or when the node has event handlers or a style binding. Before, every node got one. A node without its own owner runs later callbacks under the nearest owner above it. Each row of a reactive child list still gets an owner.
-- `Host::frame_due()` returns whether a frame has work to do without new input: a signal write, an animation, a clock, or a timer that is due. An embed host calls it to skip `Host::frame` while the UI is idle.
-- `terminal::Cell` is `Copy` and holds its text and hyperlink in 30 bytes. Text longer than seven bytes and each hyperlink are stored once for the life of the process, up to 65,534 of each and 2,048 bytes per entry; past that a cell shows U+FFFD and a link is dropped.
-- `A11yProps` keeps `role`, `name`, `focusable`, `traps_tab`, `hittable` and `focus_scope`; its other fields moved to `A11yDetail`, which `A11yProps` dereferences to, so `props.checked` still reads and assigns. Migration: build one with `A11yProps::default()` and assign the fields; a struct literal can no longer name the moved fields. The `NodeBuilder` setters for the moved fields are no longer `const fn`.
-- The minimum supported Rust version is 1.96. Before, it was 1.95.
-- `Combobox::placeholder` and `TagInputBuilder::placeholder` take `impl Into<String>`. Before, they took `&'static str`.
-- `TextFieldBuilder::change`, `submit` and `blur` add a callback on each call. Before, a second call replaced the first, so `number_field(..).text_field().submit(f)` dropped the clamp on commit.
-- `range_slider` returns `SliderBuilder<RangeInclusive<f32>>`, and its `.change` gets the whole range after either thumb moves. Before, it got one thumb's value.
-- `Theme::token(name, value)` sets a theme token and takes a `Color`. It replaces `Theme::register_token` and `Theme::with_token`.
-- A table cell edit commits and closes when focus leaves the editor. Before, it stayed open.
-- `Theme` setters are named for their fields: `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale`, `with_direction`, `with_locale` and `with_strings` become `gray`, `accent_scale`, `success`, `warn`, `error`, `info`, `direction`, `locale` and `strings`.
-- `Theme::color` takes a `Token`, a `Color` or a `ColorAtom`, and replaces `Theme::resolve_color`. `Theme::text_muted`, `surface_subtle` and `border_strong` are removed; read `Theme::color(Token::OnSurfaceMuted)`, `Token::SurfaceSubtle` and `Token::BorderStrong`, which also follow token overrides.
-- A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
-- A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
-- The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.
-- `DateFieldBuilder` implements `FieldControl`, so `field(..).error(..)` accepts it.
-- `Locale` has a new `hour12` field. Migration: a `Locale { .. }` struct literal adds `hour12: false` for a 24-hour clock.
-- `virtual_list` with a fixed `viewport_height` and `follow_end`, `initial_scroll` or a scroll to a row no longer paints a blank viewport on first frame.
-- `open` and `link` URLs work in terminal-only builds (feature `terminal`).
-- Parsed fields (`date_field`, `number_field`, `color_field`, `time_field`) no longer reformat the text while the user types; before, a date field turned "2026-08-1" into "2026-08-01" under the caret. The text is rewritten to the stored value when the user presses Enter or leaves the field, when the app sets the value, and when the locale changes, so "500" in a `0..=100` field shows "100" and "1.50" shows "1.5".
-- `splitter` and `tabs` free their drag state when they unmount. Before, each mount leaked it.
-- `AppConfig::on_exit` runs on the terminal host and in builds without the `desktop` feature. Before, the terminal host never called it.
-- A text selection belongs to the host where it was made. Before, a frame in a second window or host could clear it or highlight text in the wrong tree.
-- Engine internals left the public API. `Cx::dirty_all`, `has_specific_dirty`, `get_mut_untracked`, `instance_id`, `root_owner`, `roots`, `host_mode` and `describe`, `Node::attach_untracked`, `get_extension_mut_untracked` and the `owner` field, `PointerEvent::set_captured` and `capture_requested`, `SceneBuilder::draw_glyph_run_for_node`, `Signal::try_peek` and `style::cell` are crate-private. `Cx::dirty`, `clear_dirty`, `mark_mutated`, `mutation_generation`, `scale`, `set_scale`, `first_child`, `flush_announcements`, `flush_reactive_children`, `dump_tree`, `Node::version`, `Host::set_hyperlinks`, `reset_emit`, `paint_cells` and `SceneBuilder::pop_layer` are public only under feature `kittest`. `Host::take_exit`, `Host::hit_path` and `Node::text_cursor` are removed; a frame's exit request is `FrameOutput::exit`.
-- Every type that a public function takes or returns can be named. `sigil::widgets` exports each widget builder and its value types (`Glyph`, `FuzzyMatch`, `LineId`, `LineKind`, `DiffSource`, `FieldControl`, `IntoList`, `NumericKind`). `sigil::style` exports `ColorScale`, `ScaleRole`, `Locale`, `DateOrder`, `Strings`, `StringKey`, `TextLineHeight`, `TextDecoration`, `TextRuns`, `TextRun`, `TextFace` and `StateStyleBuilder`. `sigil::scene` exports `SceneBuilder`, `CommandScene`, `DrawRect`, `GlyphRun`, `Wash`, `StrokeCap`, `StrokeJoin`, `BlendMode` and `Shadow`. The root exports `IntoPx`, and `sigil::geometry` exports `Scale`. `FrameOutput`, `FileDropEvent`, `PointerTilt`, `MessageReceiver`, `Span`, `Subscription` and the terminal `ClipRoute`, `Erase`, `Notices` and `Glyphs` are public. `FrameOutput` and `FileDropEvent` are `#[non_exhaustive]`.
-- Every builder type is `#[must_use]`.
-- `ButtonGlyph`, `IconSource` and `IntoIconSource` are one type, `widgets::Glyph` (`#[non_exhaustive]`, variants `Text` and `Icon`). `icon`, `icon_button` and `TreeNode::leading` take `impl Into<Glyph>`, so the same values work.
-- `ScrollBuilder::extent` takes `impl Reactive<f32>`: a number, a `Signal<f32>`, or a closure. `IntoScrollExtent` is removed.
-- `GlyphRun` no longer derefs to `SharedGlyph`. Read a run with `text()`, `color()`, `style()`, `opacity()` and `tone()`. `SharedGlyph` is crate-private. Migration: `run.text.clone()` becomes `run.text().to_owned()`.
-- `Theme::tokens` is crate-private, and `TokenTable` and `TokenLayer` are no longer exported. Read a token with `Theme::color` and set one with `Theme::token`. Writing the field directly left `accent` and its scale stale. A `Theme` is no longer built with `..Theme::default()` outside the crate; start from `Theme::default()` and set fields.
-- `app::FrameInputHook`, `FrameLayoutHook` and `FramePaintHook` are public, like `FrameHooks` that names them. `render_style_for` (feature `kittest`) no longer takes an unused node id.
-- `terminal::Capabilities` and `terminal::Notices` fields are private. Read them with getters of the same names, for example `caps.backdrop()`. `Screen::with_caps` and `Screen::set_caps` are public only under feature `kittest`; a host gets its capabilities from `Capabilities::detect` or `probe`. `terminal::ClipRoute` and `terminal::Fills` are `#[non_exhaustive]`.
-- `StyleAtom` and its payload types, the scene command types other than those above, `emit_scene`, `CommandScene::commands`, and the terminal `map_key` and `map_mouse` are public only under feature `kittest`.
-- `kernel::Patch` is renamed `NodePatch`. `LayoutStyle::pane`, `StyleAtom::UnknownThemeRef`, `unsupported_style_warning_count_for` and `Hotspot::RowRebuild` are removed. `AppConfig::on_exit` builds only with the `desktop` or `terminal` feature.
-- A signal write runs each effect that depends on it one time, in dependency order. Before, an effect that read two `derived` values ran one time with one new value and one old value, and then again.
-- A write outside `batch` follows the `batch` rules. When an effect runs because of a write, the writes it makes run their dependent effects after it returns. Before, they ran inside the write.
-- `NodeBuilder` has `.disabled(..)` and `.activate(..)`. Any node is an interactive element: it dims and ignores input when disabled, and runs the action on a primary click, Enter, or Space. `interactive()` and `InteractiveBuilder` are removed. Migration: `interactive(node).hover(..)` becomes `node.hover(..)`; `interactive(node).disabled(d)` becomes `node.disabled(d)`. The control hover fill is no longer implied: add `.hover(|s| s.background(Token::SurfaceHover))`.
-- A disabled node runs no pointer press, key, shortcut, or accessibility action handlers. Pointer enter and leave and focus out still run so hover and focus state stay correct. Before, only `.activate` checked the disabled flag.
-- A disabled node also runs no `.paste`, `.gesture`, or `.ime` handlers. An input method end still reaches it. A control that becomes busy or disabled during a press releases its pressed state on pointer up and shows no hover or press style while blocked. A radio option is selected only by a release that follows a press on that option. A node that mounts or moves under the pointer shows its hover style on the first frame, with no transition.
-- A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
-- A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
-- `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
-- A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
-- `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
-- Vega-Lite figures are behind the `vega` feature, which is on by default. `scene` no longer pulls in the QuickJS engine. Migration: a build with `default-features = false` that wants figures adds `features = ["vega"]`.
-- The terminal backdrop watcher stops at once when the app exits. Before, exit waited up to 250 ms.
-- `sigil-ui` no longer depends on `crossbeam-channel`, and `notify` builds only with the `desktop` or `terminal` feature.
-
-### Added
-
-- `TableColumn::editable(text, commit)` edits a cell in place. Double-click or Enter starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. The result is written into the table's rows, and an open edit follows its row by `Identifiable` id when the app replaces the rows.
-- `virtual_list(..).end_reached(rows, f)` and `table(..).end_reached(rows, f)` run `f` once each time the user scrolls within `rows` rows of the end, for load-more paging.
-- `link(label)`: focusable text that opens `href` or runs an action, with role link, theme hover and focus styles, and an OSC 8 hyperlink on the terminal host.
-- `Log` and `log_view(log)`: an append-only log that drops its oldest lines past a limit and follows the tail until the user scrolls up. `Log::push` splits at `\n` or `\r\n`, adds no empty line for a trailing break, and adds one empty line for empty text.
-- `badge`, `skeleton`, `pagination`, `breadcrumbs` and `stepper` patterns. A `badge` at zero takes no space or gap. `pagination` moves the page into range when the page count shrinks.
-- `range_slider(value, range)`: two thumbs on one track editing a `Signal<RangeInclusive<f32>>`. The start never passes the end, each thumb takes focus and keys, and a drag moves the nearest thumb. When both thumbs sit on one value, the drag direction picks the thumb.
-- `time_field` with `Time` and `DateTime` (both ordered): a time, or a date and time, input with a 12- or 24-hour clock from the new `Locale::hour12` field, and `Locale::format_time` and `parse_time`. `TimeFieldBuilder` implements `FieldControl`.
-- `tag_input(options, selected)`: a filterable multi-select whose chosen options show as removable tags. Backspace in an empty input removes the last tag. `.disabled(..)` also disables the remove buttons.
-- `widgets::load_image(location)` loads an image from a file path, `file://` URL (including `file://localhost/` and Windows drive paths) or `data:` URI off the UI thread, with a placeholder while loading and an error view with the reason. It takes the layout setters; on a sized axis the image fills the box with `.fit`. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`. Loads are cached by location and, for a file, its modified time and size, so a changed file loads again.
-- `load_image` and `ImageSource::load` fetch http(s) URLs in a browser (wasm32), and in native builds with the new `image-http` feature through leyline-http, with a 30 s timeout and a 64 MiB body limit. An error status fails with `ErrorKind::Http`. Without the feature, a native build fails the load with `ErrorKind::Fetch`.
-- `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
-- The recipes have a Lists section on per-row signals.
-
-## [0.2.0] - 2026-11-07
+## [0.2.0] - 2026-11-12
 
 First public release.
 
@@ -346,7 +275,60 @@ First public release.
 
 ### Changed
 
-- Vega-Lite charts and SVG icons (`icon(Icon::*)`, `icon_svg`) lower to scene commands like Mermaid instead of a CPU bitmap, so no vector widget rasters on the CPU in a window build. `icon_svg` now keeps explicit colors in the SVG; `currentColor` and a root with no `fill` take the tone's color.
+- `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
+- `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.
+- The `icon_svg` function is removed. Migration: `icon_svg(source)` becomes `icon(Glyph::svg(source))`. `Glyph` has a new `Svg` variant and is in the prelude.
+- Two `sigil_kittest::Harness` values on one thread each get the results of their own tasks. Before, the second harness took the thread's task dispatcher and the first one's `spawn`, `task` and `signal_writer` results never arrived.
+- A `SignalWriter` writes for as long as its signal is alive, and `signal_writer` works outside a reactive scope. Before, a writer made in a scope that later ended dropped every write without an error, and a write to a disposed signal panicked the UI thread; that write is now dropped.
+- A scroll moves one shared offset that `LayoutResult::rect` adds when read; it no longer rewrites the layout of every node under a `scroll`, a `virtual_list` or a `position_reactive` node. `rect` returns the same on-screen rectangle as before. `LayoutResult::rect` is no longer `const`, and `ReactivePosition` is `Clone` but no longer `Copy`.
+- A node gets its own reactive owner only when its build asks for the current owner, or when the node has event handlers or a style binding. Before, every node got one. A node without its own owner runs later callbacks under the nearest owner above it. Each row of a reactive child list still gets an owner.
+- `Host::frame_due()` returns whether a frame has work to do without new input: a signal write, an animation, a clock, or a timer that is due. An embed host calls it to skip `Host::frame` while the UI is idle.
+- `terminal::Cell` is `Copy` and holds its text and hyperlink in 30 bytes. Text longer than seven bytes and each hyperlink are stored once for the life of the process, up to 65,534 of each and 2,048 bytes per entry; past that a cell shows U+FFFD and a link is dropped.
+- `A11yProps` keeps `role`, `name`, `focusable`, `traps_tab`, `hittable` and `focus_scope`; its other fields moved to `A11yDetail`, which `A11yProps` dereferences to, so `props.checked` still reads and assigns. Migration: build one with `A11yProps::default()` and assign the fields; a struct literal can no longer name the moved fields. The `NodeBuilder` setters for the moved fields are no longer `const fn`.
+- The minimum supported Rust version is 1.96. Before, it was 1.95.
+- `Combobox::placeholder` and `TagInputBuilder::placeholder` take `impl Into<String>`. Before, they took `&'static str`.
+- `TextFieldBuilder::change`, `submit` and `blur` add a callback on each call. Before, a second call replaced the first, so `number_field(..).text_field().submit(f)` dropped the clamp on commit.
+- `range_slider` returns `SliderBuilder<RangeInclusive<f32>>`, and its `.change` gets the whole range after either thumb moves. Before, it got one thumb's value.
+- `Theme::token(name, value)` sets a theme token and takes a `Color`. It replaces `Theme::register_token` and `Theme::with_token`.
+- A table cell edit commits and closes when focus leaves the editor. Before, it stayed open.
+- `Theme` setters are named for their fields: `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale`, `with_direction`, `with_locale` and `with_strings` become `gray`, `accent_scale`, `success`, `warn`, `error`, `info`, `direction`, `locale` and `strings`.
+- `Theme::color` takes a `Token`, a `Color` or a `ColorAtom`, and replaces `Theme::resolve_color`. `Theme::text_muted`, `surface_subtle` and `border_strong` are removed; read `Theme::color(Token::OnSurfaceMuted)`, `Token::SurfaceSubtle` and `Token::BorderStrong`, which also follow token overrides.
+- A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
+- A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
+- The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.
+- `DateFieldBuilder` implements `FieldControl`, so `field(..).error(..)` accepts it.
+- `Locale` has a new `hour12` field. Migration: a `Locale { .. }` struct literal adds `hour12: false` for a 24-hour clock.
+- `virtual_list` with a fixed `viewport_height` and `follow_end`, `initial_scroll` or a scroll to a row no longer paints a blank viewport on first frame.
+- `open` and `link` URLs work in terminal-only builds (feature `terminal`).
+- Parsed fields (`date_field`, `number_field`, `color_field`, `time_field`) no longer reformat the text while the user types; before, a date field turned "2026-08-1" into "2026-08-01" under the caret. The text is rewritten to the stored value when the user presses Enter or leaves the field, when the app sets the value, and when the locale changes, so "500" in a `0..=100` field shows "100" and "1.50" shows "1.5".
+- `splitter` and `tabs` free their drag state when they unmount. Before, each mount leaked it.
+- `AppConfig::on_exit` runs on the terminal host and in builds without the `desktop` feature. Before, the terminal host never called it.
+- A text selection belongs to the host where it was made. Before, a frame in a second window or host could clear it or highlight text in the wrong tree.
+- Engine internals left the public API. `Cx::dirty_all`, `has_specific_dirty`, `get_mut_untracked`, `instance_id`, `root_owner`, `roots`, `host_mode` and `describe`, `Node::attach_untracked`, `get_extension_mut_untracked` and the `owner` field, `PointerEvent::set_captured` and `capture_requested`, `SceneBuilder::draw_glyph_run_for_node`, `Signal::try_peek` and `style::cell` are crate-private. `Cx::dirty`, `clear_dirty`, `mark_mutated`, `mutation_generation`, `scale`, `set_scale`, `first_child`, `flush_announcements`, `flush_reactive_children`, `dump_tree`, `Node::version`, `Host::set_hyperlinks`, `reset_emit`, `paint_cells` and `SceneBuilder::pop_layer` are public only under feature `kittest`. `Host::take_exit`, `Host::hit_path` and `Node::text_cursor` are removed; a frame's exit request is `FrameOutput::exit`.
+- Every type that a public function takes or returns can be named. `sigil::widgets` exports each widget builder and its value types (`Glyph`, `FuzzyMatch`, `LineId`, `LineKind`, `DiffSource`, `FieldControl`, `IntoList`, `NumericKind`). `sigil::style` exports `ColorScale`, `ScaleRole`, `Locale`, `DateOrder`, `Strings`, `StringKey`, `TextLineHeight`, `TextDecoration`, `TextRuns`, `TextRun`, `TextFace` and `StateStyleBuilder`. `sigil::scene` exports `SceneBuilder`, `CommandScene`, `DrawRect`, `GlyphRun`, `Wash`, `StrokeCap`, `StrokeJoin`, `BlendMode` and `Shadow`. The root exports `IntoPx`, and `sigil::geometry` exports `Scale`. `FrameOutput`, `FileDropEvent`, `PointerTilt`, `MessageReceiver`, `Span`, `Subscription` and the terminal `ClipRoute`, `Erase`, `Notices` and `Glyphs` are public. `FrameOutput` and `FileDropEvent` are `#[non_exhaustive]`.
+- Every builder type is `#[must_use]`.
+- `ButtonGlyph`, `IconSource` and `IntoIconSource` are one type, `widgets::Glyph` (`#[non_exhaustive]`, variants `Text`, `Icon` and `Svg`). `icon`, `button` and `TreeNode::leading` take `impl Into<Glyph>`, so the same values work.
+- `ScrollBuilder::extent` takes `impl Reactive<f32>`: a number, a `Signal<f32>`, or a closure. `IntoScrollExtent` is removed.
+- `GlyphRun` no longer derefs to `SharedGlyph`. Read a run with `text()`, `color()`, `style()`, `opacity()` and `tone()`. `SharedGlyph` is crate-private. Migration: `run.text.clone()` becomes `run.text().to_owned()`.
+- `Theme::tokens` is crate-private, and `TokenTable` and `TokenLayer` are no longer exported. Read a token with `Theme::color` and set one with `Theme::token`. Writing the field directly left `accent` and its scale stale. A `Theme` is no longer built with `..Theme::default()` outside the crate; start from `Theme::default()` and set fields.
+- `app::FrameInputHook`, `FrameLayoutHook` and `FramePaintHook` are public, like `FrameHooks` that names them. `render_style_for` (feature `kittest`) no longer takes an unused node id.
+- `terminal::Capabilities` and `terminal::Notices` fields are private. Read them with getters of the same names, for example `caps.backdrop()`. `Screen::with_caps` and `Screen::set_caps` are public only under feature `kittest`; a host gets its capabilities from `Capabilities::detect` or `probe`. `terminal::ClipRoute` and `terminal::Fills` are `#[non_exhaustive]`.
+- `StyleAtom` and its payload types, the scene command types other than those above, `emit_scene`, `CommandScene::commands`, and the terminal `map_key` and `map_mouse` are public only under feature `kittest`.
+- `kernel::Patch` is renamed `NodePatch`. `LayoutStyle::pane`, `StyleAtom::UnknownThemeRef`, `unsupported_style_warning_count_for` and `Hotspot::RowRebuild` are removed. `AppConfig::on_exit` builds only with the `desktop` or `terminal` feature.
+- A signal write runs each effect that depends on it one time, in dependency order. Before, an effect that read two `derived` values ran one time with one new value and one old value, and then again.
+- A write outside `batch` follows the `batch` rules. When an effect runs because of a write, the writes it makes run their dependent effects after it returns. Before, they ran inside the write.
+- `NodeBuilder` has `.disabled(..)` and `.activate(..)`. Any node is an interactive element: it dims and ignores input when disabled, and runs the action on a primary click, Enter, or Space. `interactive()` and `InteractiveBuilder` are removed. Migration: `interactive(node).hover(..)` becomes `node.hover(..)`; `interactive(node).disabled(d)` becomes `node.disabled(d)`. The control hover fill is no longer implied: add `.hover(|s| s.background(Token::SurfaceHover))`.
+- A disabled node runs no pointer press, key, shortcut, or accessibility action handlers. Pointer enter and leave and focus out still run so hover and focus state stay correct. Before, only `.activate` checked the disabled flag.
+- A disabled node also runs no `.paste`, `.gesture`, or `.ime` handlers. An input method end still reaches it. A control that becomes busy or disabled during a press releases its pressed state on pointer up and shows no hover or press style while blocked. A radio option is selected only by a release that follows a press on that option. A node that mounts or moves under the pointer shows its hover style on the first frame, with no transition.
+- A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
+- A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
+- `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
+- A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
+- `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
+- Vega-Lite figures are behind the `vega` feature, which is on by default. `scene` no longer pulls in the QuickJS engine. Migration: a build with `default-features = false` that wants figures adds `features = ["vega"]`.
+- The terminal backdrop watcher stops at once when the app exits. Before, exit waited up to 250 ms.
+- `sigil-ui` no longer depends on `crossbeam-channel`, and `notify` builds only with the `desktop` or `terminal` feature.
+- Vega-Lite charts and SVG icons (`icon(Icon::*)`, `icon(Glyph::svg(..))`) lower to scene commands like Mermaid instead of a CPU bitmap, so no vector widget rasters on the CPU in a window build. `icon_svg` now keeps explicit colors in the SVG; `currentColor` and a root with no `fill` take the tone's color.
 - Mermaid, Graphviz and math pictures lower their SVG to scene commands instead of one resvg bitmap: paths with fill rules, caps, joins and dashes, linear and radial gradients with spread methods and transforms, clip paths, masks, group opacity and blend modes, patterns, images, and blur, drop-shadow, saturate and hue-rotate filters. They stay sharp under zoom and past the 4096 px bitmap cap, and a theme change lowers them again instead of rastering. Other filter primitives, focal radial gradients and patterns of more than 4096 tiles keep a resvg bitmap for that subtree only, rastered again at the device size.
 - Each SVG picture, vector or bitmap, draws in one layer that composites over its backdrop in sRGB-encoded space, so antialiased edges and translucent ink match resvg over any surface and opaque ink keeps its color.
 - An SVG picture lowers to at most 65,536 scene commands and 16,384 nodes, counted at each clip, mask and pattern use; past that it draws as one resvg bitmap. Nested patterns whose copies pass the budget draw the patterned shape as a bitmap.
@@ -376,6 +358,18 @@ First public release.
 
 ### Added
 
+- `TableColumn::editable(text, commit)` edits a cell in place. Double-click or Enter starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. The result is written into the table's rows, and an open edit follows its row by `Identifiable` id when the app replaces the rows.
+- `virtual_list(..).end_reached(rows, f)` and `table(..).end_reached(rows, f)` run `f` once each time the user scrolls within `rows` rows of the end, for load-more paging.
+- `link(label)`: focusable text that opens `href` or runs an action, with role link, theme hover and focus styles, and an OSC 8 hyperlink on the terminal host.
+- `Log` and `log_view(log)`: an append-only log that drops its oldest lines past a limit and follows the tail until the user scrolls up. `Log::push` splits at `\n` or `\r\n`, adds no empty line for a trailing break, and adds one empty line for empty text.
+- `badge`, `skeleton`, `pagination`, `breadcrumbs` and `stepper` patterns. A `badge` at zero takes no space or gap. `pagination` moves the page into range when the page count shrinks.
+- `range_slider(value, range)`: two thumbs on one track editing a `Signal<RangeInclusive<f32>>`. The start never passes the end, each thumb takes focus and keys, and a drag moves the nearest thumb. When both thumbs sit on one value, the drag direction picks the thumb.
+- `time_field` with `Time` and `DateTime` (both ordered): a time, or a date and time, input with a 12- or 24-hour clock from the new `Locale::hour12` field, and `Locale::format_time` and `parse_time`. `TimeFieldBuilder` implements `FieldControl`.
+- `tag_input(options, selected)`: a filterable multi-select whose chosen options show as removable tags. Backspace in an empty input removes the last tag. `.disabled(..)` also disables the remove buttons.
+- `widgets::load_image(location)` loads an image from a file path, `file://` URL (including `file://localhost/` and Windows drive paths) or `data:` URI off the UI thread, with a placeholder while loading and an error view with the reason. It takes the layout setters; on a sized axis the image fills the box with `.fit`. `ImageSource::load(location)` returns the load as a `Signal<Status<ImageSource, Error>>`. Loads are cached by location and, for a file, its modified time and size, so a changed file loads again.
+- `load_image` and `ImageSource::load` fetch http(s) URLs in a browser (wasm32), and in native builds with the new `image-http` feature through leyline-http, with a 30 s timeout and a 64 MiB body limit. An error status fails with `ErrorKind::Http`. Without the feature, a native build fails the load with `ErrorKind::Fetch`.
+- `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
+- The recipes have a Lists section on per-row signals.
 - `CommandScene::glyph_runs()` returns the text runs of a scene in paint order.
 - `CommandScene::find_text` is public without feature `kittest`.
 - `Icon::Columns2`, the Lucide `columns-2` icon, for a split-pane control.
@@ -417,7 +411,7 @@ First public release.
 
 #### Widgets
 
-- Push buttons through `button` and `icon_button`, with independent tone and fill choices, disabled states, and activation callbacks.
+- Push buttons through `button`, with independent tone and fill choices, disabled states, and activation callbacks.
 - Boolean controls through `checkbox` and `toggle`.
 - Single-choice controls through `radio_group` and `segmented`.
 - Numeric sliders through `slider`, with step sizes and horizontal or vertical orientation.
@@ -438,7 +432,7 @@ First public release.
 - `scroll` measures its content or accepts an explicit extent.
 - Popup and context menus through `menu` and `context_menu`, plus an in-window `menu_bar`.
 - `command_menu` filters and ranks commands as you type, with nested submenus and keyboard navigation.
-- Modal dialogs through `modal` and side panels through `sheet`, with focus trapping and configurable dismissal.
+- Modal dialogs and side panels through `modal`, with focus trapping and configurable dismissal.
 - Hover hints through `tooltip` and keyboard hints through `hint_overlay`.
 - Transient messages through `toast` and `toast_queue`.
 - Status and progress indicators through `chip`, `dot`, `spinner`, `progress`, and `gauge`.

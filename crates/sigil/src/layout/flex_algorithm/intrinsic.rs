@@ -88,6 +88,16 @@ pub(super) fn container_intrinsic_cross(
     Some(extent)
 }
 
+fn plain_column(style: &StyleData) -> bool {
+    matches!(style.display, Display::Flex)
+        && matches!(style.flex_wrap, FlexWrap::NoWrap)
+        && matches!(style.size.width, Length::Auto)
+        && matches!(
+            style.align_items,
+            None | Some(AlignItems::Start | AlignItems::Stretch)
+        )
+}
+
 fn leaf_column_width(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -97,16 +107,7 @@ fn leaf_column_width(
 ) -> Option<f32> {
     let style = node.style();
     let own = Axis2::for_direction(style.flex_direction);
-    let plain = !axes.row
-        && !own.row
-        && matches!(style.display, Display::Flex)
-        && matches!(style.flex_wrap, FlexWrap::NoWrap)
-        && matches!(style.size.width, Length::Auto)
-        && matches!(
-            style.align_items,
-            None | Some(AlignItems::Start | AlignItems::Stretch)
-        );
-    if !plain {
+    if axes.row || own.row || !plain_column(style) {
         return None;
     }
     let probe = ctx.probe();

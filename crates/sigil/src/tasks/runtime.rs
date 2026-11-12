@@ -123,12 +123,11 @@ impl AsyncRuntime {
             let Ok(msg) = self.rx.try_recv() else {
                 break;
             };
-            let live = match msg.owner {
-                Some(owner) => owner.is_alive() && crate::reactive::owner_by_id(owner, msg.callback),
-                None => {
-                    (msg.callback)();
-                    true
-                }
+            let live = if let Some(owner) = msg.owner {
+                owner.is_alive() && crate::reactive::owner_by_id(owner, msg.callback)
+            } else {
+                (msg.callback)();
+                true
             };
             ran += usize::from(live);
         }
@@ -192,12 +191,10 @@ impl AsyncRuntime {
         owner: Owner,
         f: Box<dyn FnOnce() + Send + 'static>,
     ) -> Result<(), Error> {
-        self.parts
-            .dispatcher
-            .send(DispatchMessage {
-                owner: Some(owner),
-                callback: f,
-            })
+        self.parts.dispatcher.send(DispatchMessage {
+            owner: Some(owner),
+            callback: f,
+        })
     }
 
     /// Spawns a future that is cancelled when its owner is disposed.

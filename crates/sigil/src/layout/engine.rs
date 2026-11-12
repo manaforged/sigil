@@ -112,11 +112,11 @@ impl LayoutEngine {
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
         let handle = self.handle(id).ok()?;
         let layout = self.drive.computed_box(handle)?;
-        let shift = self.scopes.get(id.key()).copied().or_else(|| {
-            self.published_result
-                .get(id.key())
-                .map(LayoutResult::shift)
-        });
+        let shift = self
+            .scopes
+            .get(id.key())
+            .copied()
+            .or_else(|| self.published_result.get(id.key()).map(LayoutResult::shift));
         Some(
             LayoutResult::from_resolved_box(&layout, self.drive.clips_content(handle))
                 .shifted(shift.unwrap_or_default()),

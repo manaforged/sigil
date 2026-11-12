@@ -24,19 +24,22 @@ pub(super) type FocusSlot = Rc<Cell<Option<NodeId>>>;
 pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> NodeBuilder {
     let value = runtime.input.value;
     let input = runtime.input.clone();
-    let button = button(DISMISS_GLYPH).ghost().square().activate(move || {
-        if input.disabled() {
-            return;
-        }
-        let mut state = input.edit_mut();
-        state.replace("");
-        input.sync_value(&state);
-        drop(state);
-        if let Some(id) = target.get() {
-            crate::events::request_focus(id);
-        }
-    })
-    .accessible(theme_label(StringKey::Clear));
+    let button = button(DISMISS_GLYPH)
+        .ghost()
+        .square()
+        .activate(move || {
+            if input.disabled() {
+                return;
+            }
+            let mut state = input.edit_mut();
+            state.replace("");
+            input.sync_value(&state);
+            drop(state);
+            if let Some(id) = target.get() {
+                crate::events::request_focus(id);
+            }
+        })
+        .accessible(theme_label(StringKey::Clear));
     container()
         .layout(
             LayoutStyle::flex_row()

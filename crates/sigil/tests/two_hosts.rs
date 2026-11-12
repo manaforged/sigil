@@ -168,7 +168,7 @@ fn a_host_made_inside_another_does_not_take_its_announcement() {
 fn loads(label: &'static str) -> impl IntoNode {
     let status = sigil::tasks::spawn(async move { Ok::<_, ()>(label) });
     text(move || match status.get() {
-        sigil::tasks::Status::Ok(label) => format!("{label} loaded"),
+        sigil::tasks::Status::Ok(done) => format!("{done} loaded"),
         _ => String::from("waiting"),
     })
 }

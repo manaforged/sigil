@@ -6,15 +6,8 @@ fn pin(child: NodeBuilder) -> NodeBuilder {
     container().fill_width().shrink(0.0).child(child)
 }
 
-fn splash(draft: Signal<String>, open: Signal<bool>) -> NodeBuilder {
-    let menu = container().fill_width().children_reactive(move || {
-        open.get().then(|| {
-            (0..12).fold(column().gap(Space::None), |menu, at| {
-                menu.child(text(format!("command {at}")))
-            })
-        })
-    });
-    let prompt = row()
+fn prompt(draft: Signal<String>) -> NodeBuilder {
+    row()
         .fill_width()
         .align_items(AlignItems::Start)
         .child(text(">"))
@@ -24,7 +17,18 @@ fn splash(draft: Signal<String>, open: Signal<bool>) -> NodeBuilder {
                 .min_width(0.0)
                 .overflow_y(Overflow::Hidden)
                 .child(text(move || draft.get())),
-        );
+        )
+}
+
+fn splash(draft: Signal<String>, open: Signal<bool>) -> NodeBuilder {
+    let menu = container().fill_width().children_reactive(move || {
+        open.get().then(|| {
+            (0..12).fold(column().gap(Space::None), |menu, at| {
+                menu.child(text(format!("command {at}")))
+            })
+        })
+    });
+    let prompt = prompt(draft);
     let composer = column()
         .fill_width()
         .shrink(0.0)

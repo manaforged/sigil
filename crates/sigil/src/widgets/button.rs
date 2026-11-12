@@ -70,10 +70,7 @@ impl ButtonBuilder {
                 .ghost()
                 .square(),
             #[cfg(feature = "scene")]
-            Glyph::Svg(source) => Self::labelled("".into())
-                .icon_svg(source)
-                .ghost()
-                .square(),
+            Glyph::Svg(source) => Self::labelled("".into()).icon_svg(source).ghost().square(),
         }
     }
 
