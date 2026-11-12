@@ -1,5 +1,5 @@
 use crate::kernel::component::ErasedComponent;
-use crate::kernel::{A11yProps, AccessibleName, Cx, NodeBuilder, NodeId};
+use crate::kernel::{A11yDetail, A11yProps, AccessibleName, Cx, NodeBuilder, NodeId};
 
 impl NodeBuilder {
     pub(super) fn build_onto(mut self, widget: Box<dyn ErasedComponent>, cx: &mut Cx) -> NodeId {
@@ -40,9 +40,12 @@ fn overlay_a11y(base: &mut A11yProps, mut edits: A11yProps) {
     base.focusable |= edits.focusable;
     base.traps_tab |= edits.traps_tab;
     base.hittable &= edits.hittable;
-    base.actions.extend(std::mem::take(&mut edits.actions));
-    base.owns.extend(std::mem::take(&mut edits.owns));
-    overlay_options(base, edits);
+    keep(&mut base.focus_scope, edits.focus_scope);
+    if let Some(mut edits) = edits.into_detail() {
+        base.actions.extend(std::mem::take(&mut edits.actions));
+        base.owns.extend(std::mem::take(&mut edits.owns));
+        overlay_options(base, edits);
+    }
 }
 
 fn keep<T>(base: &mut Option<T>, edit: Option<T>) {
@@ -51,7 +54,7 @@ fn keep<T>(base: &mut Option<T>, edit: Option<T>) {
     }
 }
 
-fn overlay_options(base: &mut A11yProps, edits: A11yProps) {
+fn overlay_options(base: &mut A11yDetail, edits: A11yDetail) {
     keep(&mut base.description, edits.description);
     keep(&mut base.disabled, edits.disabled);
     keep(&mut base.tab_index, edits.tab_index);
@@ -81,5 +84,4 @@ fn overlay_options(base: &mut A11yProps, edits: A11yProps) {
     keep(&mut base.column_index, edits.column_index);
     keep(&mut base.position_in_set, edits.position_in_set);
     keep(&mut base.size_of_set, edits.size_of_set);
-    keep(&mut base.focus_scope, edits.focus_scope);
 }

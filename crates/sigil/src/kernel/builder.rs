@@ -112,7 +112,7 @@ impl NodeBuilder {
 
     /// Sets the labelled by.
     #[must_use]
-    pub const fn labelled_by(mut self, node: NodeId) -> Self {
+    pub fn labelled_by(mut self, node: NodeId) -> Self {
         self.a11y.labelled_by = Some(node);
         self
     }
@@ -151,7 +151,7 @@ impl NodeBuilder {
 
     /// Sets the tab index.
     #[must_use]
-    pub const fn tab_index(mut self, index: i32) -> Self {
+    pub fn tab_index(mut self, index: i32) -> Self {
         self.a11y.tab_index = Some(index);
         self
     }
@@ -172,63 +172,63 @@ impl NodeBuilder {
 
     /// Sets the checked.
     #[must_use]
-    pub const fn checked(mut self, signal: Signal<bool>) -> Self {
+    pub fn checked(mut self, signal: Signal<bool>) -> Self {
         self.a11y.checked = Some(signal);
         self
     }
 
     /// Sets the signal that announces the node as mixed, neither checked nor unchecked.
     #[must_use]
-    pub const fn mixed(mut self, signal: Signal<bool>) -> Self {
+    pub fn mixed(mut self, signal: Signal<bool>) -> Self {
         self.a11y.mixed = Some(signal);
         self
     }
 
     /// Sets the selected.
     #[must_use]
-    pub const fn selected(mut self, signal: Signal<bool>) -> Self {
+    pub fn selected(mut self, signal: Signal<bool>) -> Self {
         self.a11y.selected = Some(signal);
         self
     }
 
     /// Sets the expanded.
     #[must_use]
-    pub const fn expanded(mut self, signal: Signal<bool>) -> Self {
+    pub fn expanded(mut self, signal: Signal<bool>) -> Self {
         self.a11y.expanded = Some(signal);
         self
     }
 
     /// Sets the sort direction.
     #[must_use]
-    pub const fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
+    pub fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
         self.a11y.sort_direction = Some(signal);
         self
     }
 
     /// Sets the row count.
     #[must_use]
-    pub const fn row_count(mut self, signal: Signal<usize>) -> Self {
+    pub fn row_count(mut self, signal: Signal<usize>) -> Self {
         self.a11y.row_count = Some(signal);
         self
     }
 
     /// Sets the column count.
     #[must_use]
-    pub const fn column_count(mut self, count: usize) -> Self {
+    pub fn column_count(mut self, count: usize) -> Self {
         self.a11y.column_count = Some(count);
         self
     }
 
     /// Sets the row index.
     #[must_use]
-    pub const fn row_index(mut self, index: usize) -> Self {
+    pub fn row_index(mut self, index: usize) -> Self {
         self.a11y.row_index = Some(index);
         self
     }
 
     /// Sets the column index.
     #[must_use]
-    pub const fn column_index(mut self, index: usize) -> Self {
+    pub fn column_index(mut self, index: usize) -> Self {
         self.a11y.column_index = Some(index);
         self
     }
@@ -246,25 +246,21 @@ impl NodeBuilder {
 
     /// Sets the value step.
     #[must_use]
-    pub const fn value_step(mut self, step: f32) -> Self {
+    pub fn value_step(mut self, step: f32) -> Self {
         self.a11y.step = Some(step);
         self
     }
 
     /// Sets the text value.
     #[must_use]
-    pub const fn text_value(mut self, signal: Signal<String>) -> Self {
+    pub fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
         self
     }
 
     /// Sets the text cursor.
     #[must_use]
-    pub const fn text_cursor(
-        mut self,
-        caret: Signal<usize>,
-        anchor: Signal<Option<usize>>,
-    ) -> Self {
+    pub fn text_cursor(mut self, caret: Signal<usize>, anchor: Signal<Option<usize>>) -> Self {
         self.a11y.text_cursor = Some(TextCursor { caret, anchor });
         self
     }

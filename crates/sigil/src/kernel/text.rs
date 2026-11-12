@@ -197,7 +197,7 @@ impl TextBuilder {
 
     /// Sets the tab index.
     #[must_use]
-    pub const fn tab_index(mut self, index: i32) -> Self {
+    pub fn tab_index(mut self, index: i32) -> Self {
         self.node.a11y.tab_index = Some(index);
         self
     }

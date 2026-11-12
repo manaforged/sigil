@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `A11yProps` keeps `role`, `name`, `focusable`, `traps_tab`, `hittable` and `focus_scope`; its other fields moved to `A11yDetail`, which `A11yProps` dereferences to, so `props.checked` still reads and assigns. Migration: build one with `A11yProps::default()` and assign the fields; a struct literal can no longer name the moved fields. The `NodeBuilder` setters for the moved fields are no longer `const fn`.
 - The minimum supported Rust version is 1.96. Before, it was 1.95.
 - `Combobox::placeholder` and `TagInputBuilder::placeholder` take `impl Into<String>`. Before, they took `&'static str`.
 - `TextFieldBuilder::change`, `submit` and `blur` add a callback on each call. Before, a second call replaced the first, so `number_field(..).text_field().submit(f)` dropped the clamp on commit.

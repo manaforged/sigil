@@ -1,6 +1,7 @@
 use crate::events::Shortcut;
 use crate::reactive::Signal;
 use smallvec::SmallVec;
+use std::rc::Rc;
 
 use crate::kernel::NodeId;
 
@@ -58,24 +59,33 @@ pub struct A11yProps {
     pub role: super::Role,
     /// The name.
     pub name: AccessibleName,
+    /// Whether focusable.
+    pub focusable: bool,
+    /// Whether traps tab.
+    pub traps_tab: bool,
+    /// Whether hittable.
+    pub hittable: bool,
+    /// The focus scope, if any.
+    pub focus_scope: Option<FocusScopeKind>,
+    pub(crate) detail: Rc<A11yDetail>,
+}
+
+/// The less common accessibility properties of a node, read through `A11yProps`.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct A11yDetail {
     /// The description, if any.
     pub description: Option<AccessibleName>,
     /// The actions.
     pub actions: SmallVec<[super::Action; 4]>,
-    /// Whether focusable.
-    pub focusable: bool,
     /// The disabled, if any.
     pub disabled: Option<Signal<bool>>,
-    /// Whether traps tab.
-    pub traps_tab: bool,
     /// The tab index, if any.
     pub tab_index: Option<i32>,
     /// The tab stop, if any.
     pub tab_stop: Option<Signal<bool>>,
     /// The keyboard shortcut, if any.
     pub keyboard_shortcut: Option<Shortcut>,
-    /// Whether hittable.
-    pub hittable: bool,
     /// The checked, if any.
     pub checked: Option<Signal<bool>>,
     /// The mixed state of a checkbox, if any.
@@ -126,24 +136,21 @@ pub struct A11yProps {
     pub position_in_set: Option<usize>,
     /// The size of set, if any.
     pub size_of_set: Option<usize>,
-    /// The focus scope, if any.
-    pub focus_scope: Option<FocusScopeKind>,
 }
 
-impl Default for A11yProps {
-    fn default() -> Self {
+thread_local! {
+    static EMPTY: Rc<A11yDetail> = Rc::new(A11yDetail::new());
+}
+
+impl A11yDetail {
+    fn new() -> Self {
         Self {
-            role: super::Role::GenericContainer,
-            name: AccessibleName::None,
             description: None,
             actions: SmallVec::new(),
-            focusable: false,
             disabled: None,
-            traps_tab: false,
             tab_index: None,
             tab_stop: None,
             keyboard_shortcut: None,
-            hittable: true,
             checked: None,
             mixed: None,
             selected: None,
@@ -169,12 +176,44 @@ impl Default for A11yProps {
             column_index: None,
             position_in_set: None,
             size_of_set: None,
-            focus_scope: None,
         }
     }
 }
 
+impl Default for A11yProps {
+    fn default() -> Self {
+        Self {
+            role: super::Role::GenericContainer,
+            name: AccessibleName::None,
+            focusable: false,
+            traps_tab: false,
+            hittable: true,
+            focus_scope: None,
+            detail: EMPTY.with(Rc::clone),
+        }
+    }
+}
+
+impl core::ops::Deref for A11yProps {
+    type Target = A11yDetail;
+
+    fn deref(&self) -> &A11yDetail {
+        &self.detail
+    }
+}
+
+impl core::ops::DerefMut for A11yProps {
+    fn deref_mut(&mut self) -> &mut A11yDetail {
+        Rc::make_mut(&mut self.detail)
+    }
+}
+
 impl A11yProps {
+    pub(crate) fn into_detail(self) -> Option<A11yDetail> {
+        let untouched = EMPTY.with(|empty| Rc::ptr_eq(empty, &self.detail));
+        (!untouched).then(|| Rc::unwrap_or_clone(self.detail))
+    }
+
     /// Returns whether this a11y props is disabled.
     #[must_use]
     pub fn is_disabled(&self) -> bool {
