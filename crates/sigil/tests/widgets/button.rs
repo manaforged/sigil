@@ -44,7 +44,7 @@ fn button_is_focusable_and_activates_on_enter() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -70,7 +70,7 @@ fn disabled_button_does_not_focus_or_activate() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -94,7 +94,7 @@ fn button_pointer_activation_requires_press_inside() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -125,7 +125,7 @@ fn label_accepts_reactive_text() {
 fn resting_look(build: impl FnOnce() -> ButtonBuilder) -> Vec<Color> {
     let mut cx = Cx::new_root();
     let root = cx.add(build().primary());
-    let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
     layout
         .compute(&mut cx, root, Size::fixed(320.0, 120.0))
         .expect("layout computes");
@@ -147,7 +147,7 @@ fn pending_button_keeps_its_enabled_look_and_blocks_clicks() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

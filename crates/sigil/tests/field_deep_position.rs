@@ -12,7 +12,7 @@ use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::{LayoutEngine, LayoutResult, set_text_geometry};
+use sigil::layout::{LayoutEngine, LayoutResult, text_geometry};
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::find_text_node;
@@ -24,7 +24,7 @@ const SPACER_H: f32 = 800.0;
 #[allow(clippy::too_many_lines)]
 fn deep_text_field_glyphs_stay_in_field_after_typing() {
     sigil::reactive::Owner::scope("field-deep-position", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("a"));
 
         let mut spacer =
@@ -39,7 +39,7 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
 
         let mut cx = Cx::new_root();
         let root = cx.add(tree);
-        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+        let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, VIEWPORT)
             .expect("initial layout");

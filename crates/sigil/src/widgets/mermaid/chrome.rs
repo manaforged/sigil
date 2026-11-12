@@ -155,7 +155,7 @@ fn code_view(source: &str) -> NodeBuilder {
         .layout(LayoutStyle::flex_column().fill_width().padding(Space::Md))
         .background(Token::Field)
         .radius(Radius::Md)
-        .selectable_text(true);
+        .selectable(true);
     for line in source.trim_end().lines() {
         let line = if line.is_empty() { " " } else { line };
         block = block.child(text(line.to_string()).class(Token::OnSurface.text()));

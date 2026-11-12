@@ -12,7 +12,7 @@ use sigil::events::EventRouter;
 use sigil::events::{ImeEvent, PhysicalKey};
 use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
-use sigil::layout::set_text_geometry;
+use sigil::layout::text_geometry;
 use sigil::prelude::*;
 use sigil::widgets::text_edit;
 use widget_support::{compute, find_text_node};
@@ -22,7 +22,7 @@ const VIEWPORT: Size = Size::fixed(360.0, 160.0);
 #[test]
 fn text_edit_preedit_displays_inline() {
     sigil::reactive::Owner::scope("text-edit-ime-preedit", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -46,7 +46,7 @@ fn text_edit_preedit_displays_inline() {
 #[test]
 fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
     sigil::reactive::Owner::scope("text-edit-ime-line2-commit", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aaa\nbbb\nccc"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -81,7 +81,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
 #[test]
 fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
     sigil::reactive::Owner::scope("text-edit-ime-preedit-cursor", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -124,7 +124,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
 #[test]
 fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
     sigil::reactive::Owner::scope("text-edit-ime-multibyte-backspace", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aé"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -145,7 +145,7 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
 #[test]
 fn text_edit_selection_replace_during_preedit_does_not_panic() {
     sigil::reactive::Owner::scope("text-edit-ime-selection-replace", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("café"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -178,7 +178,7 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
 #[test]
 fn text_edit_external_value_mutation_survives_ime_commit() {
     sigil::reactive::Owner::scope("text-edit-ime-external-mutation", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("initial"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -213,7 +213,7 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
 #[test]
 fn text_edit_preedit_cancelled_on_focus_loss() {
     sigil::reactive::Owner::scope("text-edit-ime-focus-loss", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let other = cx.add(
@@ -245,7 +245,7 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
 #[test]
 fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
     sigil::reactive::Owner::scope("text-edit-ime-disable-immediate", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();

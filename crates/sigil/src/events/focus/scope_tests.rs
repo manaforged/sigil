@@ -88,7 +88,7 @@ fn sync_scopes_pops_scope_when_node_removed_and_restores_focus() {
     let root = cx.add(sized(100.0).child(focusable()));
     let outside = cx.nth_child(root, 0).expect("outside child should exist");
 
-    let modal = cx.add_child(root, scope(FocusScopeKind::Modal));
+    let modal = cx.append(root, scope(FocusScopeKind::Modal));
 
     let mut focus = FocusManager::default();
     focus.set_focus(&mut cx, Some(outside));
@@ -140,7 +140,7 @@ fn stale_restore_target_falls_back_to_document_order() {
     let mut focus = FocusManager::default();
     focus.set_focus(&mut cx, Some(a));
 
-    let modal = cx.add_child(root, scope(FocusScopeKind::Modal));
+    let modal = cx.append(root, scope(FocusScopeKind::Modal));
     focus.sync_scopes(&mut cx, None);
     assert_eq!(focus.scope_depth(), 1);
 

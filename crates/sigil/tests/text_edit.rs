@@ -1,11 +1,11 @@
 use sigil::layout::Length;
 use sigil::prelude::*;
-use sigil::testing::with_cx;
+use sigil::testing::cx;
 use sigil::widgets::{TextEditBuilder, text_edit};
 
 #[test]
 fn tree_builds_without_panic() {
-    with_cx("text-edit-tree", |cx| {
+    cx("text-edit-tree", |cx| {
         let value = signal(String::new());
         let _root = cx.add(
             text_edit(value)
@@ -18,7 +18,7 @@ fn tree_builds_without_panic() {
 
 #[test]
 fn factory_returns_a_builder_that_carries_supplied_signal() {
-    with_cx("text-edit-factory-binds-signal", |cx| {
+    cx("text-edit-factory-binds-signal", |cx| {
         let value = signal(String::from("hello"));
         let builder: TextEditBuilder = text_edit(value);
         let root = cx.add(builder);
@@ -36,7 +36,7 @@ fn factory_returns_a_builder_that_carries_supplied_signal() {
 fn submit_callback_is_registered_without_firing_on_construction() {
     use std::cell::Cell;
     use std::rc::Rc;
-    with_cx("text-edit-submit-not-fired", |cx| {
+    cx("text-edit-submit-not-fired", |cx| {
         let value = signal(String::from("hello"));
         let fired = Rc::new(Cell::new(false));
         let fired_for_cb = fired.clone();
@@ -49,7 +49,7 @@ fn submit_callback_is_registered_without_firing_on_construction() {
 
 #[test]
 fn widget_layout_ext_overrides_reach_root_node() {
-    with_cx("text-edit-layout-override", |cx| {
+    cx("text-edit-layout-override", |cx| {
         let value = signal(String::new());
         let root = cx.add(text_edit(value).width(200.0).height(150.0));
         let style = cx
@@ -71,7 +71,7 @@ fn widget_layout_ext_overrides_reach_root_node() {
 
 #[test]
 fn placeholder_accepts_string_literal() {
-    with_cx("text-edit-placeholder", |cx| {
+    cx("text-edit-placeholder", |cx| {
         let value = signal(String::new());
         let _root = cx.add(text_edit(value).placeholder("Type here…"));
     });

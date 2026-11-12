@@ -83,8 +83,7 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
                 .commit()
                 .layout(LayoutStyle::flex_row().fill()),
         );
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
+        let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         layout
             .compute(&mut cx, root, Size::fixed(1280.0, 900.0))
             .expect("layout");

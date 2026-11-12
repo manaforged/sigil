@@ -48,7 +48,7 @@ fn ctrl_c_copies_a_selection_before_it_exits() {
         host.mount(move || {
             let seen = Rc::clone(&seen);
             container()
-                .selectable_text(true)
+                .selectable(true)
                 .selection_copy(move |text, _| seen.borrow_mut().push(text.to_owned()))
                 .child(text("The quick brown fox"))
         });

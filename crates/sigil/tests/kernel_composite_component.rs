@@ -10,8 +10,8 @@ struct LabelledPanel {
 impl IntoNode for LabelledPanel {
     fn build(self, cx: &mut Cx) -> NodeId {
         let root = cx.add(container().role(Role::Group));
-        let _ = cx.add_child(root, text(self.title).role(Role::Heading));
-        let _ = cx.add_child(root, text(self.body));
+        let _ = cx.append(root, text(self.title).role(Role::Heading));
+        let _ = cx.append(root, text(self.body));
         root
     }
 }

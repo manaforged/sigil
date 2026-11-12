@@ -75,7 +75,7 @@ fn pointer_move_drives_style_reactive_without_allocating() {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(100.0, 100.0))
         .expect("layout computes");

@@ -47,7 +47,7 @@ fn text_height(node: TextBuilder) -> f32 {
                 .layout(LayoutStyle::flex_row().fixed_size(1100.0, 400.0))
                 .child(column),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(CharText));
+        let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
             .compute(&mut cx, root, Size::fixed(1100.0, 400.0))
             .expect("layout");
@@ -99,7 +99,7 @@ fn wrapped_text_stays_within_its_container_width() {
                 .layout(LayoutStyle::flex_row().fixed_size(1100.0, 400.0))
                 .child(column),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(CharText));
+        let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
             .compute(&mut cx, root, Size::fixed(1100.0, 400.0))
             .expect("layout");
@@ -132,7 +132,7 @@ fn row_cell_rect(style: LayoutStyle) -> sigil::geometry::Rect {
                 )
                 .child(cell),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(CharText));
+        let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 28.0))
             .expect("layout");
@@ -193,7 +193,7 @@ fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
                 .child(fixed)
                 .child(flex),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(CharText));
+        let mut layout = LayoutEngine::new(Box::new(CharText));
         layout
             .compute(&mut cx, root, Size::fixed(200.0, 28.0))
             .expect("layout");

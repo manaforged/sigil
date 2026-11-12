@@ -84,7 +84,7 @@ fn a_turned_card_hits_inside_its_projected_quad_and_reports_its_bounds() {
     );
     let want = extent(&css_quad(std::f32::consts::PI / 4.0));
     let bounds = ui
-        .get_by_role(Role::Button, "card")
+        .get((Role::Button, "card"))
         .bounds()
         .expect("a11y bounds");
     let found = [
@@ -161,7 +161,7 @@ fn a_card_with_an_edge_behind_the_viewer_reports_the_bounds_it_draws() {
     let mut ui = Harness::new(near_button).unaudited().pixels(300, 300);
     let drawn = ink_box(&frame_of(&mut ui));
     let bounds = ui
-        .get_by_role(Role::Button, "near")
+        .get((Role::Button, "near"))
         .bounds()
         .expect("a11y bounds");
     let found = [

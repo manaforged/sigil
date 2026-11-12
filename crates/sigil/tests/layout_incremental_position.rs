@@ -41,7 +41,7 @@ fn incremental_structural_remeasure_keeps_fixed_region_at_its_position() {
             .nth_child(region, 1)
             .expect("region has a hidden second child");
         for _ in 0..20 {
-            let _ = cx.add_child(
+            let _ = cx.append(
                 root,
                 container().layout(LayoutStyle::block().fixed_size(10.0, 4.0)),
             );

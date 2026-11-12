@@ -151,7 +151,7 @@ fn typography_atoms_drive_text_measurement() {
             .line_height(32.0),
     );
 
-    LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))
+    LayoutEngine::new(Box::new(StyleAwareMeasure))
         .compute(&mut cx, root, Size::max_content())
         .expect("compute succeeds");
 

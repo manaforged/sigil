@@ -174,7 +174,7 @@ fn shadow_class_parses_cleanly_and_paints() {
 }
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut engine = LayoutEngine::new(Box::new(FakeMeasure::default()));
     engine
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("layout compute succeeds");

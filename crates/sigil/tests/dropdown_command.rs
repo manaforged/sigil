@@ -82,7 +82,7 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
         let mut cx = Cx::new_root();
         let opts = vec!["Alpha".to_owned(), "Beta".to_owned()];
         let root = cx.add(dropdown(selected, opts));
-        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+        let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout");

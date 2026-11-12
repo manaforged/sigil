@@ -129,6 +129,24 @@ impl Query {
     }
 }
 
+impl From<&Self> for Query {
+    fn from(query: &Self) -> Self {
+        query.clone()
+    }
+}
+
+impl From<&str> for Query {
+    fn from(text: &str) -> Self {
+        Self::text(text)
+    }
+}
+
+impl From<(Role, &str)> for Query {
+    fn from((role, name): (Role, &str)) -> Self {
+        Self::role(role).name(name)
+    }
+}
+
 impl std::fmt::Display for Query {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(role) = self.role {
@@ -165,10 +183,12 @@ impl Harness {
         self.find_all(query).into_iter().next()
     }
 
+    /// Returns the one node that matches: a `Query`, a text, or a `(Role, name)` pair.
     #[must_use]
     #[track_caller]
-    pub fn get(&mut self, query: &Query) -> Node {
-        let mut found = self.find_all(query);
+    pub fn get(&mut self, query: impl Into<Query>) -> Node {
+        let query = query.into();
+        let mut found = self.find_all(&query);
         if found.len() == 1 {
             return found.remove(0);
         }
@@ -177,18 +197,6 @@ impl Harness {
             "expected one node for {query}, found {}\n{tree}",
             found.len()
         ))
-    }
-
-    #[must_use]
-    #[track_caller]
-    pub fn get_by_role(&mut self, role: Role, name: &str) -> Node {
-        self.get(&Query::role(role).name(name))
-    }
-
-    #[must_use]
-    #[track_caller]
-    pub fn get_by_text(&mut self, text: &str) -> Node {
-        self.get(&Query::text(text))
     }
 
     #[must_use]

@@ -29,8 +29,8 @@ fn default_text_measure_min_content_is_no_wider_than_max_content() {
 fn default_text_measure_definite_width_wraps_text() {
     let m = TextEngineMeasure::default();
     let content = TextContent::Static("Hello from the launch text measurer".to_string());
-    let wide = m.measure(&content, Size::max_content().with_fixed_width(400.0));
-    let narrow = m.measure(&content, Size::max_content().with_fixed_width(40.0));
+    let wide = m.measure(&content, Size::max_content().width(400.0));
+    let narrow = m.measure(&content, Size::max_content().width(40.0));
 
     assert!(
         narrow.height >= wide.height,

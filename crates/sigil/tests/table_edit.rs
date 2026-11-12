@@ -59,7 +59,7 @@ fn editor(ui: &mut Harness) -> Node {
 }
 
 fn double_click(ui: &mut Harness, label: &str) {
-    let cell = ui.get_by_text(label);
+    let cell = ui.get(label);
     ui.click(&cell).click(&cell).settle();
 }
 
@@ -209,7 +209,7 @@ fn clicking_outside_the_table_commits_the_open_edit() {
         editor(&mut ui);
         erase(&mut ui, 3);
         ui.type_text("Grace");
-        let elsewhere = ui.get_by_role(Role::Button, "Elsewhere");
+        let elsewhere = ui.get((Role::Button, "Elsewhere"));
         ui.click(&elsewhere).settle();
         assert_eq!(
             (editing(&mut ui), name_at(&state, 0).as_deref()),

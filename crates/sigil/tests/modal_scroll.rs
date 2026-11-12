@@ -45,7 +45,7 @@ fn a_wheel_over_an_open_modal_never_scrolls_the_page_behind_it() {
             .height(480.0)
             .scroll_bind(page),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");

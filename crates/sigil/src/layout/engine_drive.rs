@@ -62,7 +62,7 @@ impl LayoutDrive {
         self.forest.refer(handle.0)?.kernel()
     }
 
-    pub fn set_style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), Error> {
+    pub fn style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), Error> {
         self.forest.set_style(node.0, style)
     }
 
@@ -70,11 +70,7 @@ impl LayoutDrive {
         self.forest.style_for(node.0)
     }
 
-    pub(crate) fn set_text(
-        &mut self,
-        node: NodeHandle,
-        text: Option<LayoutText>,
-    ) -> Result<(), Error> {
+    pub(crate) fn text(&mut self, node: NodeHandle, text: Option<LayoutText>) -> Result<(), Error> {
         self.forest.set_text(node.0, text)
     }
 

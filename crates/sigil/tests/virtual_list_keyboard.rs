@@ -43,7 +43,7 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
                 .scroll_bind(scroll_y)
                 .cursor(focused_row),
         );
-        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+        let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout");

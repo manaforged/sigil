@@ -1,12 +1,12 @@
 use crate::app::{ResizeDirection, WindowCommand};
 
-use super::{request_window_command, take_window_commands};
+use super::{take_window_commands, window_command};
 
 #[test]
 fn queued_commands_drain_in_order() {
-    request_window_command(WindowCommand::Minimize);
-    request_window_command(WindowCommand::ToggleMaximize);
-    request_window_command(WindowCommand::DragResize(ResizeDirection::SouthEast));
+    window_command(WindowCommand::Minimize);
+    window_command(WindowCommand::ToggleMaximize);
+    window_command(WindowCommand::DragResize(ResizeDirection::SouthEast));
 
     assert_eq!(
         take_window_commands(),
@@ -20,7 +20,7 @@ fn queued_commands_drain_in_order() {
 
 #[test]
 fn drain_leaves_the_queue_empty() {
-    request_window_command(WindowCommand::Close);
+    window_command(WindowCommand::Close);
 
     let _ = take_window_commands();
 

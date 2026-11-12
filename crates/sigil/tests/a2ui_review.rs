@@ -57,9 +57,9 @@ fn a_data_path_deeper_than_the_limit_is_rejected() {
     );
     let typed = hostile(move || {
         let mut form = ui(&field);
-        let input = form.get(&Query::role(Role::TextInput));
+        let input = form.get(Query::role(Role::TextInput));
         form.click(&input).type_text("x").settle();
-        form.get(&Query::role(Role::TextInput))
+        form.get(Query::role(Role::TextInput))
             .value()
             .map(str::to_owned)
     });

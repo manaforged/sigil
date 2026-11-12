@@ -15,7 +15,7 @@ fn first_button_x(direction: Direction) -> f32 {
     })
     .pixels(600, 120);
     ui.settle();
-    ui.get_by_role(Role::Button, "Back")
+    ui.get((Role::Button, "Back"))
         .bounds()
         .expect("bounds")
         .origin
@@ -41,7 +41,7 @@ fn a_number_field_reads_the_theme_locale() {
     })
     .pixels(400, 80);
     ui.settle();
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     ui.click(&input)
         .type_text("1.234,56")
         .press(NamedKey::Enter)

@@ -11,7 +11,7 @@ use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
-use crate::style::{ColorAtom, StateStyleBuilder, Theme, Tone};
+use crate::style::{FocusRing, StateStyleBuilder, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
@@ -56,46 +56,16 @@ pub trait Widget: Sealed {
         self.map_target(move |node| look::tone(node, tone))
     }
 
-    /// Draws the focus ring while `visible` is true.
+    /// Sets the focus ring: a `Signal<bool>` that shows it, or a `FocusRing` with color, width, offset and opacity.
     #[must_use]
-    fn focus_ring(self, visible: Signal<bool>) -> Self {
-        self.map_target(move |node| look::focus_ring(node, move |ring| ring.show_when(visible)))
-    }
-
-    /// Sets the focus ring color.
-    #[must_use]
-    fn focus_ring_color(self, color: impl Into<ColorAtom>) -> Self {
-        let color = color.into();
-        self.map_target(move |node| look::focus_ring(node, move |ring| ring.color = color))
-    }
-
-    /// Sets the focus ring stroke width in pixels.
-    #[must_use]
-    fn focus_ring_width(self, width: f32) -> Self {
-        self.map_target(move |node| look::focus_ring(node, move |ring| ring.width = Some(width)))
-    }
-
-    /// Sets the focus ring distance from the node in pixels.
-    #[must_use]
-    fn focus_ring_offset(self, offset: f32) -> Self {
-        self.map_target(move |node| look::focus_ring(node, move |ring| ring.offset = Some(offset)))
-    }
-
-    /// Sets the focus ring opacity in ten-thousandths.
-    #[must_use]
-    fn focus_ring_opacity(self, opacity: u16) -> Self {
-        debug_assert!(opacity <= 10_000);
-        self.map_target(move |node| look::focus_ring(node, move |ring| ring.opacity = opacity))
+    fn focus_ring(self, ring: impl Into<FocusRing>) -> Self {
+        let ring = ring.into();
+        self.map_target(move |node| look::focus_ring(node, ring))
     }
 
     /// Fades the node in and out over `ms` as `shown` changes.
     #[must_use]
-    fn presence_tween(
-        self,
-        shown: Signal<bool>,
-        ms: u16,
-        easing: crate::animation::Easing,
-    ) -> Self {
+    fn presence(self, shown: Signal<bool>, ms: u16, easing: crate::animation::Easing) -> Self {
         self.map_target(move |node| {
             look::presence(
                 node,
@@ -228,7 +198,7 @@ pub trait Widget: Sealed {
 
     /// Lets the user select the node's text when `yes` is true.
     #[must_use]
-    fn selectable_text(self, yes: bool) -> Self {
+    fn selectable(self, yes: bool) -> Self {
         self.map_node(move |node| on::selectable_text(node, yes))
     }
 

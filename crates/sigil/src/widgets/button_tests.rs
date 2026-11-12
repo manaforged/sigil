@@ -21,9 +21,7 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
                 .pending(pending)
                 .activate(move || clicks.set(clicks.peek() + 1)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(
-            crate::layout::FakeMeasure::fixed(80.0, 20.0),
-        ));
+        let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(80.0, 20.0)));
         layout
             .compute(&mut cx, id, Size::fixed(160.0, 40.0))
             .expect("layout");

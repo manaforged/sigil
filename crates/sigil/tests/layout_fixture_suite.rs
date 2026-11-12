@@ -141,13 +141,11 @@ fn nested_absolute_uses_positioned_parent_origin() {
             .padding(Space::raw(5.0, "test fixture")),
     );
     cx.get_mut(child).expect("child exists").attach(
-        LayoutStyle::default()
-            .fixed_size(30.0, 20.0)
-            .with_layout(|style| {
-                style.position = Position::Absolute;
-                style.inset.left = StyleDimension::Px(10.0);
-                style.inset.top = StyleDimension::Px(12.0);
-            }),
+        LayoutStyle::default().fixed_size(30.0, 20.0).edit(|style| {
+            style.position = Position::Absolute;
+            style.inset.left = StyleDimension::Px(10.0);
+            style.inset.top = StyleDimension::Px(12.0);
+        }),
     );
 
     let mut engine = stub_engine();

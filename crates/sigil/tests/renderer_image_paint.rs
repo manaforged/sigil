@@ -55,8 +55,7 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
     let mut cx = sigil::kernel::Cx::new_root();
     let root = cx.add(image(quadrant_image()));
     let engine_size = sigil::geometry::Size::fixed(SIZE as f32, SIZE as f32);
-    let mut engine =
-        sigil::layout::LayoutEngine::with_text_measure(Box::new(support::TEXT_MEASURE));
+    let mut engine = sigil::layout::LayoutEngine::new(Box::new(support::TEXT_MEASURE));
     engine.compute(&mut cx, root, engine_size).expect("layout");
 
     let scene = emit_scene(&cx, root, None);

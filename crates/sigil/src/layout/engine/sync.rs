@@ -93,7 +93,7 @@ impl LayoutEngine {
         let Some(handle) = self.core_to_handle.get(id.key()).copied() else {
             let handle = self.drive.insert_with_kernel(id, intent.into_data());
             if text.is_some() {
-                self.drive.set_text(handle, text)?;
+                self.drive.text(handle, text)?;
             }
             self.core_to_handle.insert(id.key(), handle);
             return Ok(());
@@ -108,8 +108,8 @@ impl LayoutEngine {
         if style_matches && text.is_none() && self.drive.text_for(handle).is_none() {
             return Ok(());
         }
-        self.drive.set_style(handle, intent.into_data())?;
-        self.drive.set_text(handle, text)
+        self.drive.style(handle, intent.into_data())?;
+        self.drive.text(handle, text)
     }
 
     pub(super) fn apply_dirty_nodes(&mut self, cx: &Cx, dirty: &[NodeId]) -> Result<(), Error> {

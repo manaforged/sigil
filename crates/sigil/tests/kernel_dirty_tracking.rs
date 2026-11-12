@@ -28,7 +28,7 @@ fn add_child_dirties_parent_and_child() {
     let parent = cx.add(container());
     cx.clear_dirty();
 
-    let child = cx.add_child(parent, text("child"));
+    let child = cx.append(parent, text("child"));
     let dirty = dirty_set(&cx);
 
     assert!(dirty.contains(&parent));
@@ -39,7 +39,7 @@ fn add_child_dirties_parent_and_child() {
 fn remove_dirties_parent_and_clears_self() {
     let mut cx = Cx::new_root();
     let parent = cx.add(container());
-    let child = cx.add_child(parent, text("child"));
+    let child = cx.append(parent, text("child"));
     cx.clear_dirty();
     let _ = cx.get_mut(child).expect("child exists");
 

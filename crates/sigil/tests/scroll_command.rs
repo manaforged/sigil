@@ -129,7 +129,7 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
         );
         let scroll_id = cx.nth_child(root, 0).expect("scroll viewport exists");
         let body_id = cx.nth_child(scroll_id, 0).expect("scroll body exists");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("initial layout computes");

@@ -36,7 +36,7 @@ fn drag_copies(from: u16, to: u16) -> Option<String> {
     let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
     host.mount(|| {
         container()
-            .selectable_text(true)
+            .selectable(true)
             .child(text("The quick brown fox"))
     });
     step(&mut host, [], 40, 4);
@@ -75,7 +75,7 @@ fn a_drag_copy_reports_what_it_copied() {
     host.mount(move || {
         let seen = Rc::clone(&seen);
         container()
-            .selectable_text(true)
+            .selectable(true)
             .selection_copy(move |text, result| {
                 seen.borrow_mut().push((text.to_owned(), result.is_ok()));
             })
@@ -107,7 +107,7 @@ fn a_drag_in_a_following_list_copies_the_row_it_started_on() {
             let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
             host.mount(move || {
                 container()
-                    .selectable_text(true)
+                    .selectable(true)
                     .layout(LayoutStyle::flex_column().fill())
                     .child(
                         virtual_list(lines, |_, line: &String| text(line.clone()).nowrap())

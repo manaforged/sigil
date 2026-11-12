@@ -15,7 +15,7 @@ pub(crate) fn compute(
     viewport: Size,
     measure: Box<dyn TextMeasure>,
 ) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(measure);
+    let mut layout = LayoutEngine::new(measure);
     layout.compute(cx, root, viewport).expect("layout computes");
     layout
 }

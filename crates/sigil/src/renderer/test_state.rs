@@ -1,6 +1,6 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use crate::renderer::quad_paint::{set_test_atlas_size_override, test_atlas_size_override};
+use crate::renderer::quad_paint::{atlas_size, test_atlas_size_override};
 use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
 
 fn lock() -> &'static Mutex<()> {
@@ -19,7 +19,7 @@ impl Drop for GlobalTextState {
     fn drop(&mut self) {
         set_text_tuning(self.tuning);
         let (initial, max) = self.atlas;
-        set_test_atlas_size_override(initial, max);
+        atlas_size(initial, max);
     }
 }
 

@@ -186,7 +186,7 @@ fn deepest_child(cx: &Cx, root: NodeId) -> NodeId {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout.compute(cx, root, Size::fixed(240.0, 240.0)).unwrap();
     layout
 }

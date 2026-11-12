@@ -7,7 +7,7 @@ fn reactive_text_change_invalidates_cache() {
         let value = signal(String::from("tiny"));
         let mut cx = Cx::new_root();
         let root = cx.add(text(value));
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
 
         engine
             .compute(&mut cx, root, Size::max_content())

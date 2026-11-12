@@ -13,7 +13,7 @@ fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> 
     sigil::reactive::Owner::scope("text-presence", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(width, 400.0))
             .expect("layout computes");

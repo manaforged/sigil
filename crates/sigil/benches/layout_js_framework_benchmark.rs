@@ -129,7 +129,7 @@ fn bench_create_1k(c: &mut Criterion) {
             Cx::new_root,
             |mut cx| {
                 let (root, _) = build_owned_table(&mut cx, 1_000);
-                let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
                 engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 black_box(engine.result(root));
             },
@@ -156,7 +156,7 @@ fn bench_create_10k(c: &mut Criterion) {
             Cx::new_root,
             |mut cx| {
                 let (root, _) = build_owned_table(&mut cx, 10_000);
-                let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
                 engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 black_box(engine.result(root));
             },
@@ -185,7 +185,7 @@ fn bench_partial_update_10k(c: &mut Criterion) {
     c.bench_function("partial_update_10k/owned", |b| {
         let mut cx = Cx::new_root();
         let (root, rows) = build_owned_table(&mut cx, 10_000);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine.compute(&mut cx, root, AVAILABLE).expect("bench");
         cx.clear_dirty();
         let mut toggle = 0_f32;
@@ -240,7 +240,7 @@ fn bench_select_row(c: &mut Criterion) {
     c.bench_function("select_row/owned", |b| {
         let mut cx = Cx::new_root();
         let (root, rows) = build_owned_table(&mut cx, 1_000);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
         engine.compute(&mut cx, root, AVAILABLE).expect("bench");
         cx.clear_dirty();
         let mut i = 0usize;
@@ -294,7 +294,7 @@ fn bench_replace_1k(c: &mut Criterion) {
             || {
                 let mut cx = Cx::new_root();
                 let (root, _) = build_owned_table(&mut cx, 1_000);
-                let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
                 engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 (cx, root, engine)
             },

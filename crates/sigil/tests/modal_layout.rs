@@ -15,7 +15,7 @@ use sigil_kittest::FakeMeasure;
 const VIEW: (f32, f32) = (800.0, 600.0);
 
 fn engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(60.0, 16.0)))
+    LayoutEngine::new(Box::new(FakeMeasure::fixed(60.0, 16.0)))
 }
 
 fn lines(count: Signal<usize>) -> NodeBuilder {

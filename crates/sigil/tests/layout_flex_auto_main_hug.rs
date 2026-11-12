@@ -18,7 +18,7 @@ fn column_height(parent_h: f32) -> f32 {
         .layout(LayoutStyle::block().height(parent_h).width(300.0))
         .child(col);
     let root = cx.add(parent);
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(300.0, 800.0))
         .unwrap();

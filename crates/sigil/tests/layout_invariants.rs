@@ -127,7 +127,7 @@ fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
     sigil::reactive::Owner::scope("layout-invariants", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(width, 2000.0))
             .expect("layout computes");
@@ -205,10 +205,10 @@ fn stacked_widgets_are_sound_at_every_width() {
 #[test]
 fn compact_text_field_contains_native_line_height() {
     sigil::reactive::Owner::scope("compact-text-field-layout", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
+        sigil::layout::text_geometry(std::rc::Rc::new(NativeLineGeometry));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(560.0, 34.0))
             .expect("layout computes");
@@ -274,7 +274,7 @@ fn layout_re_resolves_when_the_container_resizes() {
             labeled_field("a", progress(signal(0.5_f32), 1.0)),
             labeled_field("b", progress(signal(0.5_f32), 1.0)),
         ]));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
 
         let mut widths = Vec::new();
         for w in [400.0_f32, 900.0, 250.0] {

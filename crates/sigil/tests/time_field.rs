@@ -33,14 +33,14 @@ fn open_in<T: TimeValue>(theme: Theme, start: T, seconds: bool) -> (Harness, Sig
 }
 
 fn shown(ui: &mut Harness) -> String {
-    ui.get(&Query::role(Role::TextInput))
+    ui.get(Query::role(Role::TextInput))
         .value()
         .unwrap_or_default()
         .to_owned()
 }
 
 fn retype(ui: &mut Harness, text: &str) {
-    let input = ui.get(&Query::role(Role::TextInput));
+    let input = ui.get(Query::role(Role::TextInput));
     ui.click(&input).press(NamedKey::End);
     for _ in 0..24 {
         ui.press(NamedKey::Backspace);

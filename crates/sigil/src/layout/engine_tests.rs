@@ -40,7 +40,7 @@ impl TextMeasure for WordWrap {
 }
 
 fn engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(WordWrap))
+    LayoutEngine::new(Box::new(WordWrap))
 }
 
 fn first_child(cx: &Cx, root: NodeId) -> NodeId {

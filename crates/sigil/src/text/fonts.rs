@@ -63,7 +63,7 @@ pub(crate) fn wake_font_listeners() {
 }
 
 #[cfg(host)]
-pub fn set_default_fonts(fonts: DefaultFonts) {
+pub fn default_fonts(fonts: DefaultFonts) {
     if let Ok(mut guard) = DEFAULT_FONTS.write() {
         *guard = DefaultFontSource::Custom(fonts);
         drop(guard);

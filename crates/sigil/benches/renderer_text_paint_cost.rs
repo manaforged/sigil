@@ -78,7 +78,7 @@ fn text_scene() -> sigil::scene::CommandScene {
         );
     }
     let root = cx.add(root);
-    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
+    LayoutEngine::new(Box::new(TEXT_MEASURE))
         .compute(&mut cx, root, Size::fixed(360.0, 1_200.0))
         .expect("bench scene layout computes");
     emit_scene(&cx, root, None)

@@ -34,7 +34,7 @@ fn page_down_moves_one_viewport_of_rows() {
                 .layout(LayoutStyle::block().fixed_size(400.0, PANE_H))
                 .child(code_edit(lines, caret).row_height(ROW_H)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, PANE_H))
             .unwrap();

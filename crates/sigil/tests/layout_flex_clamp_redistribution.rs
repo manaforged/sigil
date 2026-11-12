@@ -14,7 +14,7 @@ fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
             .child(container().layout(a))
             .child(container().layout(b)),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(root_w, 100.0))
         .unwrap();

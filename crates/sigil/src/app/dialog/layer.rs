@@ -126,7 +126,7 @@ pub(crate) fn sync(cx: &mut Cx, root: Option<NodeId>, mounted: &mut Vec<Mounted>
             resolve: Rc::new(RefCell::new(Some(request.resolve))),
         };
         let prompt = request.prompt;
-        let node = cx.add_child(
+        let node = cx.append(
             root,
             crate::kernel::WithCx(move |child: &mut Cx| match prompt {
                 Prompt::Files { dialog, kind } => picker_view(child, dialog, kind, finish),

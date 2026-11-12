@@ -8,7 +8,7 @@ static TEST_INITIAL_SIZE: AtomicU32 = AtomicU32::new(0);
 static TEST_MAX_SIZE: AtomicU32 = AtomicU32::new(0);
 
 #[cfg(feature = "kittest")]
-pub fn set_test_atlas_size_override(initial: u32, max: u32) {
+pub fn atlas_size(initial: u32, max: u32) {
     TEST_INITIAL_SIZE.store(initial, Ordering::Relaxed);
     TEST_MAX_SIZE.store(max, Ordering::Relaxed);
 }

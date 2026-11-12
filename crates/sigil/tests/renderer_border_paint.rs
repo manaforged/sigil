@@ -13,7 +13,7 @@ use support::{TEXT_MEASURE, capture, close};
 const SIZE: u32 = 64;
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
     engine
         .compute(cx, root, Size::fixed(SIZE as f32, SIZE as f32))
         .expect("layout compute");

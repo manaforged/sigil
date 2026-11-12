@@ -12,7 +12,7 @@ use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
-use sigil::layout::set_text_geometry;
+use sigil::layout::text_geometry;
 use sigil::prelude::*;
 use widget_support::compute;
 
@@ -94,7 +94,7 @@ fn text_field_select_all_then_type_replaces_buffer() {
 #[test]
 fn text_field_pointer_drag_selects_then_type_replaces() {
     sigil::reactive::Owner::scope("text-field-pointer-drag", || {
-        set_text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
+        text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("hello world"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -180,14 +180,14 @@ fn a_submit_added_to_a_number_field_keeps_its_clamp() {
             .submit(move |text| submitted.set(text.to_owned()));
         let mut ui = sigil_kittest::Harness::new(move || column().child(field)).pixels(400, 120);
         ui.settle();
-        let input = ui.get(&sigil_kittest::Query::role(Role::TextInput));
+        let input = ui.get(sigil_kittest::Query::role(Role::TextInput));
         ui.click(&input).press(NamedKey::End);
         for _ in 0..4 {
             ui.press(NamedKey::Backspace);
         }
         ui.type_text("500").press(NamedKey::Enter).settle();
         let shown = ui
-            .get(&sigil_kittest::Query::role(Role::TextInput))
+            .get(sigil_kittest::Query::role(Role::TextInput))
             .value()
             .map(str::to_owned);
         assert_eq!(

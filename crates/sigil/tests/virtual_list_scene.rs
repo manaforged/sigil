@@ -23,7 +23,7 @@ fn items_bind_tick_updates_reactive_text() {
             .viewport_height(80.0)
             .viewport_width(200.0),
         );
-        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
+        let mut layout = LayoutEngine::new(stub_text_measure());
         let avail = Size::fixed(200.0, 80.0);
         layout.compute(&mut cx, root, avail).expect("layout");
         assert!(emit_scene(&cx, root, None).find_text("alpha").is_some());

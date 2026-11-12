@@ -20,7 +20,7 @@ fn row_widths() -> Vec<f32> {
             .child(cell(0.8))
             .child(container().layout(LayoutStyle::block().width(96.0).height(20.0))),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(778.0, 300.0))
         .unwrap();

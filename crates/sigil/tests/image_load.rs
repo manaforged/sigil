@@ -163,7 +163,7 @@ fn a_sized_load_image_fills_its_box() {
     .pixels(200, 120);
     ui.expect_text("Red square");
     let bounds = ui
-        .get_by_role(Role::Image, "Red square")
+        .get((Role::Image, "Red square"))
         .bounds()
         .expect("image bounds");
     assert_eq!((bounds.width, bounds.height), (40.0, 24.0));

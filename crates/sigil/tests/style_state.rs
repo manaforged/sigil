@@ -58,17 +58,19 @@ fn state_style_resolves_overlay_slice() {
 
 #[test]
 fn state_style_builders_mutate_only_named_slot() {
-    let style = StateStyle::EMPTY.with_hovered(HOVER).with_pressed(PRESS);
+    let style = StateStyle::EMPTY
+        .slot(StateSlot::Hovered, HOVER)
+        .slot(StateSlot::Pressed, PRESS);
 
-    assert_eq!(style.rest(), &[] as &[StyleAtom]);
-    assert_eq!(style.focused(), &[] as &[StyleAtom]);
-    assert_eq!(style.disabled(), &[] as &[StyleAtom]);
-    assert_eq!(style.hovered(), HOVER);
-    assert_eq!(style.pressed(), PRESS);
+    assert_eq!(style.get(StateSlot::Rest), &[] as &[StyleAtom]);
+    assert_eq!(style.get(StateSlot::Focused), &[] as &[StyleAtom]);
+    assert_eq!(style.get(StateSlot::Disabled), &[] as &[StyleAtom]);
+    assert_eq!(style.get(StateSlot::Hovered), HOVER);
+    assert_eq!(style.get(StateSlot::Pressed), PRESS);
 
-    let refined = style.with_hovered(FOCUS);
-    assert_eq!(refined.hovered(), FOCUS);
-    assert_eq!(refined.pressed(), PRESS);
+    let refined = style.slot(StateSlot::Hovered, FOCUS);
+    assert_eq!(refined.get(StateSlot::Hovered), FOCUS);
+    assert_eq!(refined.get(StateSlot::Pressed), PRESS);
 }
 
 #[test]

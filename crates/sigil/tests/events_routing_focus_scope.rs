@@ -101,14 +101,14 @@ fn focus_repair_handles_replacement_and_new_modal_scope() {
     assert_eq!(router.focus(), Some(old));
 
     assert!(cx.remove(old));
-    let replacement = cx.add_child(root, focusable_in(10.0));
+    let replacement = cx.append(root, focusable_in(10.0));
     layout
         .compute(&mut cx, root, Size::fixed(200.0, 200.0))
         .unwrap();
     router.focus_if_needed(&mut cx, &layout);
     assert_eq!(router.focus(), Some(replacement));
 
-    let modal = cx.add_child(
+    let modal = cx.append(
         root,
         container()
             .mutate(scope_marker(FocusScopeKind::Modal))

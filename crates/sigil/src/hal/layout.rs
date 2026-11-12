@@ -47,24 +47,10 @@ impl Size {
         }
     }
 
-    /// Sets the fixed width.
+    /// Sets the width.
     #[must_use]
-    pub const fn with_fixed_width(mut self, width: f32) -> Self {
+    pub const fn width(mut self, width: f32) -> Self {
         self.width = Dim::Fixed(width);
-        self
-    }
-
-    /// Sets the min content width.
-    #[must_use]
-    pub const fn with_min_content_width(mut self) -> Self {
-        self.width = Dim::MinContent;
-        self
-    }
-
-    /// Sets the max content width.
-    #[must_use]
-    pub const fn with_max_content_width(mut self) -> Self {
-        self.width = Dim::MaxContent;
         self
     }
 

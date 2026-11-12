@@ -15,7 +15,7 @@ fn scale_change_keeps_launch_viewport_logical() {
         let root = cx.add(
             container().layout(LayoutStyle::block().fixed_size(logical.width, logical.height)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(TextEngineMeasure::default()));
 
         layout
             .compute(&mut cx, root, Size::fixed(logical.width, logical.height))

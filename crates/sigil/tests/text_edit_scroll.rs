@@ -29,17 +29,14 @@ const OUTER_HEIGHT: f32 = 160.0;
 #[test]
 fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
     sigil::reactive::Owner::scope("scroll-into-view", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(
-            sigil::layout::TextEngineMeasure::default(),
-        ));
+        sigil::layout::text_geometry(std::rc::Rc::new(sigil::layout::TextEngineMeasure::default()));
         let buffer: String = (0..40)
             .map(|i| format!("line{i}"))
             .collect::<Vec<_>>()
             .join("\n");
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(buffer)));
-        let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+        let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");

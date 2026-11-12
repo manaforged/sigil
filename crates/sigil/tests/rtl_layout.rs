@@ -13,7 +13,7 @@ fn x_of(direction: Direction, view: fn() -> NodeBuilder, name: &str) -> f32 {
     })
     .pixels(600, 200);
     ui.settle();
-    ui.get_by_role(Role::Button, name)
+    ui.get((Role::Button, name))
         .bounds()
         .expect("bounds")
         .origin

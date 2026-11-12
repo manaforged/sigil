@@ -14,7 +14,7 @@ use sigil_kittest::stub_text_measure;
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 fn fresh_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(stub_text_measure())
+    LayoutEngine::new(stub_text_measure())
 }
 
 fn recompute(layout: &mut LayoutEngine, cx: &mut Cx, root: NodeId) {

@@ -25,7 +25,7 @@ fn form() -> impl IntoNode {
 #[test]
 fn click_by_role_updates_the_terminal_grid() {
     let mut ui = Harness::new(counter).size(40, 6);
-    let increment = ui.get_by_role(Role::Button, "Increment");
+    let increment = ui.get((Role::Button, "Increment"));
     ui.click(&increment).click(&increment);
     assert!(ui.text().contains("Count: 2"), "{}", ui.text());
     assert_eq!(ui.find_all(&Query::text("Count: 2")).len(), 1);
@@ -34,17 +34,17 @@ fn click_by_role_updates_the_terminal_grid() {
 #[test]
 fn pixel_host_routes_the_same_click() {
     let mut ui = Harness::new(counter).pixels(320, 120);
-    let increment = ui.get_by_role(Role::Button, "Increment");
+    let increment = ui.get((Role::Button, "Increment"));
     ui.click(&increment);
-    assert_eq!(ui.get_by_text("Count: 1").value(), Some("Count: 1"));
+    assert_eq!(ui.get("Count: 1").value(), Some("Count: 1"));
 }
 
 #[test]
 fn typing_fills_the_labelled_field() {
     let mut ui = Harness::new(form).size(40, 12);
-    let field = ui.get_by_role(Role::TextInput, "Name");
+    let field = ui.get((Role::TextInput, "Name"));
     ui.click(&field).type_text("Ada");
-    let typed = ui.get_by_role(Role::TextInput, "Name");
+    let typed = ui.get((Role::TextInput, "Name"));
     assert_eq!(typed.value(), Some("Ada"));
     assert!(typed.is_focused());
 }
@@ -52,7 +52,7 @@ fn typing_fills_the_labelled_field() {
 #[test]
 fn click_toggles_a_checkbox() {
     let mut ui = Harness::new(form).size(40, 12);
-    let agree = ui.get_by_role(Role::CheckBox, "Agree");
+    let agree = ui.get((Role::CheckBox, "Agree"));
     assert_eq!(agree.is_checked(), Some(false));
     ui.click(&agree);
     assert_eq!(ui.refresh(&agree).and_then(|n| n.is_checked()), Some(true));
@@ -92,7 +92,7 @@ fn snapshot_compares_the_grid_to_a_text_golden() {
 #[should_panic(expected = "expected one node for role Button name \"Missing\"")]
 fn get_fails_with_the_tree_when_nothing_matches() {
     let mut ui = Harness::new(counter).size(20, 4);
-    let _ = ui.get_by_role(Role::Button, "Missing");
+    let _ = ui.get((Role::Button, "Missing"));
 }
 
 #[test]
@@ -123,11 +123,8 @@ fn terminal_images_capture_deterministic_frames_and_interactions() {
 fn a_label_finds_the_control_it_names() {
     let mut ui = Harness::new(form).size(40, 12);
     ui.type_into("Name", "Ada").click("Agree");
-    assert_eq!(ui.get_by_role(Role::TextInput, "Name").value(), Some("Ada"));
-    assert_eq!(
-        ui.get_by_role(Role::CheckBox, "Agree").is_checked(),
-        Some(true)
-    );
+    assert_eq!(ui.get((Role::TextInput, "Name")).value(), Some("Ada"));
+    assert_eq!(ui.get((Role::CheckBox, "Agree")).is_checked(), Some(true));
 }
 
 #[test]

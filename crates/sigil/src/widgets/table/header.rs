@@ -8,7 +8,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
 use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
-use crate::style::{StyleAtom, Token, space};
+use crate::style::{FocusRing, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
 use super::super::drag::axis_drag;
@@ -110,8 +110,7 @@ fn header_cell<Row: 'static>(
     let interaction = InteractionState::new(true);
     let cell = interaction
         .observe_style(row_states(cell, spec.disabled))
-        .focus_ring(interaction.focus_ring())
-        .focus_ring_offset(RING_INSET);
+        .focus_ring(FocusRing::from(interaction.focus_ring()).offset(RING_INSET));
     if column.is_sortable() {
         sortable_cell(state, id, visual, cell, chrome.clone())
     } else {

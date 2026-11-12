@@ -64,7 +64,7 @@ fn definite_width_produces_more_lines_than_unconstrained() {
     let m = make_measurer();
     let text = "The quick brown fox jumps over the lazy dog";
     let wide = measure_with_space(&m, text, Size::max_content());
-    let narrow = measure_with_space(&m, text, Size::max_content().with_fixed_width(80.0));
+    let narrow = measure_with_space(&m, text, Size::max_content().width(80.0));
 
     assert!(
         narrow.height > wide.height,

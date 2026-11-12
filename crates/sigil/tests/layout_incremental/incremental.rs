@@ -92,7 +92,7 @@ fn broadcast_mark_mutated_matches_pre_alpha() {
     let root = cx.add(container().layout(LayoutStyle::flex_column().fixed_size(120.0, 1000.0)));
     let mut ids = Vec::new();
     for _ in 0..100 {
-        ids.push(cx.add_child(
+        ids.push(cx.append(
             root,
             container().layout(LayoutStyle::block().fixed_size(20.0, 4.0)),
         ));
@@ -146,7 +146,7 @@ fn incremental_add_child_attaches_layout_result() {
     engine
         .compute(&mut cx, root, AVAILABLE)
         .expect("initial compute succeeds");
-    let added = cx.add_child(
+    let added = cx.append(
         root,
         container().layout(LayoutStyle::block().fixed_size(18.0, 10.0)),
     );

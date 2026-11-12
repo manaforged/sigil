@@ -43,8 +43,7 @@ fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<
     Owner::scope(name, || {
         let mut cx = Cx::new_root();
         let root: NodeId = cx.add(tree);
-        let mut engine =
-            LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
+        let mut engine = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         engine
             .compute(&mut cx, root, Size::fixed(200.0, 100.0))
             .expect("layout");

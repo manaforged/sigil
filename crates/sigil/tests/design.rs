@@ -76,8 +76,8 @@ fn a_field_and_a_button_in_a_row_are_the_same_height() {
         )
     })
     .pixels(360, 160);
-    let field = ui.get_by_role(Role::TextInput, "Text field");
-    let saved = ui.get_by_role(Role::Button, "Save");
+    let field = ui.get((Role::TextInput, "Text field"));
+    let saved = ui.get((Role::Button, "Save"));
     let height = |node: &sigil_kittest::Node| node.bounds().unwrap().height;
     assert!(height(&field) > 0.0);
     assert!((height(&field) - height(&saved)).abs() < 0.5);
@@ -139,8 +139,8 @@ fn a_gap_step_is_the_distance_between_children() {
         )
     })
     .pixels(360, 160);
-    let first = ui.get_by_role(Role::Button, "First").bounds().unwrap();
-    let second = ui.get_by_role(Role::Button, "Second").bounds().unwrap();
+    let first = ui.get((Role::Button, "First")).bounds().unwrap();
+    let second = ui.get((Role::Button, "Second")).bounds().unwrap();
     let between = second.origin.y - (first.origin.y + first.height);
     assert!((between - 24.0).abs() < 0.5, "gap is {between}");
 }
@@ -175,8 +175,8 @@ fn a_row_centres_short_children_against_tall_ones() {
     })
     .pixels(360, 160)
     .unaudited();
-    let tall = ui.get_by_role(Role::Button, "Tall").center().unwrap();
-    let short = ui.get_by_role(Role::Button, "Short").center().unwrap();
+    let tall = ui.get((Role::Button, "Tall")).center().unwrap();
+    let short = ui.get((Role::Button, "Short")).center().unwrap();
     assert!((tall.y - short.y).abs() < 0.5, "{} and {}", tall.y, short.y);
 }
 

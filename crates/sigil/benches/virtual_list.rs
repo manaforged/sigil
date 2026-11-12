@@ -73,7 +73,7 @@ fn bench_first_render(c: &mut Criterion) {
                     let data = make_data_source();
                     let scroll_y = signal(0.0_f32);
                     let cx = Cx::new_root();
-                    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                    let engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
                     (data, scroll_y, cx, engine)
                 },
                 |(data, scroll_y, mut cx, mut engine)| {
@@ -99,7 +99,7 @@ fn bench_scroll_step(c: &mut Criterion) {
                 || {
                     let data = data.clone();
                     let cx = Cx::new_root();
-                    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+                    let engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
                     (data, cx, engine)
                 },
                 |(data, mut cx, mut engine)| {

@@ -197,7 +197,7 @@ fn wide_tree_with_shortcut(
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+    let mut layout = LayoutEngine::new(Box::new(ZeroTextMeasure));
     layout
         .compute(cx, root, Size::fixed(240.0, 240.0))
         .expect("bench fixture layout computes");
@@ -231,7 +231,7 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
         .position(Position::Absolute)
-        .with_layout(move |style| {
+        .edit(move |style| {
             style.inset.left = Length::Px(x);
             style.inset.top = Length::Px(y);
         })

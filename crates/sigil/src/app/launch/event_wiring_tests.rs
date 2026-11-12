@@ -6,8 +6,7 @@ use crate::reactive::{Owner, signal};
 use accesskit::Action::{Click, Decrement, Increment};
 
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout =
-        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(40.0, 16.0)));
+    let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(40.0, 16.0)));
     layout
         .compute(cx, root, crate::geometry::Size::fixed(200.0, 100.0))
         .expect("layout computes");

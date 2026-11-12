@@ -1,7 +1,7 @@
 use crate::app::{WindowCommand, WindowId};
 
 /// Send a command to the window.
-pub fn request_window_command(command: WindowCommand) {
+pub fn window_command(command: WindowCommand) {
     crate::app::window::queue_command(crate::app::current_window(), command);
 }
 

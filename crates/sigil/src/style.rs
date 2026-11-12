@@ -85,10 +85,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use engine::StyleEngine;
 }
-kittest_pub! {
-    #[doc(hidden)]
-    pub use focus_ring::FocusRing;
-}
+pub use focus_ring::FocusRing;
 pub use font_family::FontFamily;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]

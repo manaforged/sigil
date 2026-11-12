@@ -67,9 +67,7 @@ fn top_row(cx: &Cx, layout: &crate::layout::LayoutEngine, root: NodeId) -> Optio
 }
 
 fn engine() -> crate::layout::LayoutEngine {
-    crate::layout::LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(
-        0.0, 0.0,
-    )))
+    crate::layout::LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
 }
 
 fn mounted<T: 'static, R: RowRender<T>>(list: impl FnOnce() -> VirtualListBuilder<T, R>) -> usize {

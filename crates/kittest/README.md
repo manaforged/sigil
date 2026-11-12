@@ -54,7 +54,7 @@ fn button_default() -> Result<(), sigil_kittest::Error> {
 
 The harness uses the real text engine. For a fixed 40x16 box per text node, call `.stub()`, or pass any measure with `.measure(|| ...)`.
 
-Layout tests that need a deterministic measure without rendering pass `FakeMeasure::fixed(width, height)` (one box per text node) or `FakeMeasure::chars(char_width, line_height)` (widest line times `char_width`, line count times `line_height`) to `LayoutEngine::with_text_measure`.
+Layout tests that need a deterministic measure without rendering pass `FakeMeasure::fixed(width, height)` (one box per text node) or `FakeMeasure::chars(char_width, line_height)` (widest line times `char_width`, line count times `line_height`) to `LayoutEngine::new`.
 
 ## No GPU
 

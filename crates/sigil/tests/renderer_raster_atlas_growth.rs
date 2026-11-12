@@ -4,9 +4,7 @@
 #![allow(clippy::cast_sign_loss, clippy::print_stdout)]
 
 use sigil::app::{TextTuning, set_text_tuning};
-use sigil::renderer::{
-    ScreenSubmission, WgpuRenderer, lock_global_text_state, set_test_atlas_size_override,
-};
+use sigil::renderer::{ScreenSubmission, WgpuRenderer, atlas_size, lock_global_text_state};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Color, TextLineHeight, TextStyle};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels};
@@ -40,10 +38,10 @@ fn growth_crossing_produces_correctly_placed_ink() {
         ..TextTuning::default()
     });
 
-    set_test_atlas_size_override(0, 0);
+    atlas_size(0, 0);
     let (reference, rw, rh) = render(&mut ref_renderer, GROWTH_TEXT);
 
-    set_test_atlas_size_override(40, 2048);
+    atlas_size(40, 2048);
     let (tiny, tw, th) = render(&mut tiny_renderer, GROWTH_TEXT);
 
     assert_eq!((rw, rh), (tw, th), "viewport size mismatch between renders");
@@ -76,14 +74,14 @@ fn atlas_full_falls_back_to_vector_with_ink_throughout() {
         return;
     };
 
-    set_test_atlas_size_override(0, 0);
+    atlas_size(0, 0);
     set_text_tuning(TextTuning {
         raster: false,
         ..TextTuning::default()
     });
     let (vector_px, vw, vh) = render(&mut vector_renderer, OVERFLOW_UNIQUE_GLYPHS);
 
-    set_test_atlas_size_override(32, 64);
+    atlas_size(32, 64);
     set_text_tuning(TextTuning {
         raster: true,
         ..TextTuning::default()

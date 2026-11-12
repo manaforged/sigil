@@ -44,7 +44,8 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
         });
         let mut caps = Capabilities::default();
         caps.set_glyphs(Glyphs::Ascii);
-        let mut screen = Screen::with_caps(COLS, ROWS, caps);
+        let mut screen = Screen::new(COLS, ROWS);
+        screen.set_caps(caps);
         let shown = |view: &mut Screen, embed: &mut Host| {
             let text = view.frame(embed, [], (COLS, ROWS)).expect("frame").text();
             view.flush(&mut std::io::sink()).expect("flush");
@@ -133,7 +134,8 @@ fn a_changed_link_target_reaches_the_terminal() {
             let mut host = linked(url, tick);
             let mut caps = Capabilities::default();
             caps.set_hyperlinks(true);
-            let mut screen = Screen::with_caps(COLS, ROWS, caps);
+            let mut screen = Screen::new(COLS, ROWS);
+            screen.set_caps(caps);
             for _ in 0..3 {
                 screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
                 screen.flush(&mut std::io::sink()).expect("flush");

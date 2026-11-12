@@ -106,7 +106,7 @@ impl Host {
         let env = HostEnv::new(cell, geometry, cx.root_owner());
         Self {
             cx,
-            layout: LayoutEngine::with_text_measure(measure),
+            layout: LayoutEngine::new(measure),
             router: EventRouter::new(),
             root: None,
             fill_root: false,
@@ -130,7 +130,7 @@ impl Host {
         if feature = "terminal";
         /// Tells widgets whether the host can show hyperlinks.
         #[doc(hidden)]
-        pub const fn set_hyperlinks(&mut self, yes: bool) {
+        pub const fn hyperlinks(&mut self, yes: bool) {
             self.env.caps.hyperlinks = yes;
         }
     }

@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use sigil::events::EventRouter;
 use sigil::geometry::Rect;
-use sigil::layout::{TextMeasure, set_text_geometry};
+use sigil::layout::{TextMeasure, text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{CommandScene, SceneCommand, emit_scene};
 use sigil::text::{HitPosition, TextAffinity};
@@ -50,7 +50,7 @@ fn caret_uses_the_fields_resolved_typography() {
 }
 
 fn focused_field_scene() -> CommandScene {
-    set_text_geometry(Rc::new(sigil::layout::TextEngineMeasure::default()));
+    text_geometry(Rc::new(sigil::layout::TextEngineMeasure::default()));
     let mut cx = Cx::new_root();
     let root = cx.add(
         text_field(signal(VALUE.to_owned()))
@@ -58,8 +58,7 @@ fn focused_field_scene() -> CommandScene {
             .height(40.0)
             .font_size(14.0, "test fixture"),
     );
-    let mut layout =
-        LayoutEngine::with_text_measure(Box::new(sigil::layout::TextEngineMeasure::default()));
+    let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(500.0, 100.0))
         .expect("initial layout");

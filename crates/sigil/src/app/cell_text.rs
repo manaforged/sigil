@@ -75,7 +75,7 @@ pub fn set_cell_width(width: CellWidth) {
 kittest_pub! {
 /// Sets the width of East Asian ambiguous characters.
 #[doc(hidden)]
-pub fn set_ambiguous(width: Ambiguous) {
+pub fn ambiguous(width: Ambiguous) {
     AMBIGUOUS.set(width);
 }
 }

@@ -23,7 +23,7 @@ fn accent(width: f32, height: f32) -> NodeBuilder {
 }
 
 fn lay_out(cx: &mut Cx, root: NodeId) {
-    LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
+    LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("compute succeeds");
 }

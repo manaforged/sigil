@@ -8,7 +8,7 @@ use super::SceneCache;
 fn laid_out() -> (Cx, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(container());
-    LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
+    LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
         .compute(&mut cx, root, Size::fixed(100.0, 80.0))
         .expect("layout");
     (cx, root)
