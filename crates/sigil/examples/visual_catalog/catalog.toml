@@ -114,7 +114,7 @@ captures = [
 id = "icon_button"
 title = "Icon button"
 group = "controls"
-builder = "icon_button"
+builder = "button"
 captures = [
   { build = "icon_button", size = [160, 64], hit = [12.0, 12.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
 ]
@@ -254,7 +254,7 @@ captures = [
 id = "sheet"
 title = "Sheet"
 group = "overlays"
-builder = "sheet"
+builder = "modal"
 preview = "open"
 captures = [
   { build = "sheet", size = [480, 300], hit = [40.0, 20.0], states = ["default", "shown"] },

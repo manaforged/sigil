@@ -8,7 +8,7 @@ use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Paint, Token};
 use crate::widgets::Layout;
 
-use super::super::button::icon_button;
+use super::super::button::button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
 
 const TITLE_HEIGHT: f32 = 24.0;
@@ -40,7 +40,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
         );
     match close {
         Some(show) => row.child(
-            icon_button(crate::widgets::icon::DISMISS_GLYPH, move || show.set(false))
+            button(crate::widgets::icon::DISMISS_GLYPH).ghost().square().activate(move || show.set(false))
                 .accessible(theme_label(StringKey::Close))
                 .size(ControlSize::Compact),
         ),

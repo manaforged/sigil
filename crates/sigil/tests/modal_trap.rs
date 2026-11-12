@@ -100,7 +100,7 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
                         .focusable(true)
                         .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
                 )
-                .child(sheet(show).title("Filters").close_button(false)),
+                .child(modal(show).side(Side::Right).dismiss_on_backdrop(true).title("Filters").close_button(false)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let sheet_root = cx.nth_child(root, 1).expect("sheet root");

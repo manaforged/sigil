@@ -14,10 +14,10 @@ fn a_tooltip_over_the_next_button_does_not_take_its_click() {
                     .child(text("Rail"))
                     .child(text("Icons"))
                     .child(tooltip("A long name for threads").child(
-                        icon_button("T", move || threads.update(|n| *n += 1)).accessible("Threads"),
+                        button("T").ghost().square().activate(move || threads.update(|n| *n += 1)).accessible("Threads"),
                     ))
                     .child(tooltip("A long name for team").child(
-                        icon_button("M", move || team.update(|n| *n += 1)).accessible("Team"),
+                        button("M").ghost().square().activate(move || team.update(|n| *n += 1)).accessible("Team"),
                     ))
             })
             .pixels(240, 240);

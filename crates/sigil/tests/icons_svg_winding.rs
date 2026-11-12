@@ -5,7 +5,7 @@
 #![cfg(feature = "kittest")]
 
 use sigil::prelude::*;
-use sigil::widgets::icon_svg;
+use sigil::widgets::Glyph;
 use sigil_kittest::Harness;
 
 const SIDE: u32 = 32;
@@ -22,7 +22,7 @@ fn frame(body: &'static str) -> image::RgbaImage {
             format!(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">{body}</svg>"#);
         column()
             .background(BLACK)
-            .child(icon_svg(svg).px(SIDE as f32))
+            .child(icon(Glyph::svg(svg)).px(SIDE as f32))
     };
     let mut ui = Harness::new(app).pixels(SIDE, SIDE);
     ui.image().expect("harness image").expect("gpu frame")
@@ -74,7 +74,7 @@ fn a_translucent_token_tints_an_icon_at_its_own_alpha() {
         column()
             .background(BLACK)
             .theme(theme.clone())
-            .child(icon_svg(svg).px(SIDE as f32))
+            .child(icon(Glyph::svg(svg)).px(SIDE as f32))
     };
     let mut ui = Harness::new(app).pixels(SIDE, SIDE);
     let shown = ui.image().expect("harness image").expect("gpu frame");

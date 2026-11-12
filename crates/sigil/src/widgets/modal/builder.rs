@@ -77,13 +77,6 @@ pub fn modal(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
 }
 
-/// A panel that slides in from a side.
-pub fn sheet(show: Signal<bool>) -> ModalBuilder {
-    ModalBuilder::new(show)
-        .side(Side::Right)
-        .dismiss_on_backdrop(true)
-}
-
 impl ModalBuilder {
     /// Creates a modal builder.
     pub fn new(show: Signal<bool>) -> Self {

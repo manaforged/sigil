@@ -9,7 +9,7 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
-use crate::widgets::{Layout, ModalBuilder, Widget, button, icon_button, modal};
+use crate::widgets::{Layout, ModalBuilder, Widget, button, modal};
 
 use super::picture;
 
@@ -142,7 +142,7 @@ fn controls(camera: Camera) -> NodeBuilder {
                 .align_items(AlignItems::Center),
         )
         .child(
-            icon_button(Icon::ZoomOut, move || camera.scale(-1.0))
+            button(Icon::ZoomOut).activate(move || camera.scale(-1.0))
                 .accessible(theme_string_once(StringKey::ZoomOut))
                 .size(ControlSize::Compact),
         )
@@ -152,7 +152,7 @@ fn controls(camera: Camera) -> NodeBuilder {
                 .class(Token::OnSurfaceMuted.text()),
         )
         .child(
-            icon_button(Icon::ZoomIn, move || camera.scale(1.0))
+            button(Icon::ZoomIn).activate(move || camera.scale(1.0))
                 .accessible(theme_string_once(StringKey::ZoomIn))
                 .size(ControlSize::Compact),
         )

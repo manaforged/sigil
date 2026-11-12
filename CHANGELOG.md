@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `button` takes a text label or an `Icon`, and `icon_button` is removed. Migration: `icon_button(Icon::Close, f)` becomes `button(Icon::Close).activate(f)`; `icon_button("×", f)` becomes `button("×").ghost().square().activate(f)`. `ButtonBuilder::square` is new.
+- `sheet` is removed. Migration: `sheet(show)` becomes `modal(show).side(Side::Right).dismiss_on_backdrop(true)`.
+- The `icon_svg` function is removed. Migration: `icon_svg(source)` becomes `icon(Glyph::svg(source))`. `Glyph` has a new `Svg` variant and is in the prelude.
 - Two `sigil_kittest::Harness` values on one thread each get the results of their own tasks. Before, the second harness took the thread's task dispatcher and the first one's `spawn`, `task` and `signal_writer` results never arrived.
 - A `SignalWriter` writes for as long as its signal is alive, and `signal_writer` works outside a reactive scope. Before, a writer made in a scope that later ended dropped every write without an error, and a write to a disposed signal panicked the UI thread; that write is now dropped.
 - A scroll moves one shared offset that `LayoutResult::rect` adds when read; it no longer rewrites the layout of every node under a `scroll`, a `virtual_list` or a `position_reactive` node. `rect` returns the same on-screen rectangle as before. `LayoutResult::rect` is no longer `const`, and `ReactivePosition` is `Clone` but no longer `Copy`.

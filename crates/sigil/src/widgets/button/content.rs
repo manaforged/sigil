@@ -5,7 +5,7 @@ use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics};
 use crate::widgets::Layout;
 #[cfg(feature = "scene")]
-use crate::widgets::icon::icon_svg;
+use crate::widgets::icon::{Glyph, icon};
 use crate::widgets::spinner::spinner;
 
 use super::ButtonBuilder;
@@ -25,7 +25,7 @@ impl ButtonBuilder {
         } else {
             16.0
         };
-        icon_svg(svg)
+        icon(Glyph::svg(svg))
             .tone(self.resolved_tone())
             .px(px.min(self.height))
             .on_solid(self.resolved_fill() == ButtonFill::Solid)

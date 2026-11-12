@@ -48,6 +48,17 @@ pub enum Glyph {
     /// A bundled icon.
     #[cfg(feature = "scene")]
     Icon(crate::icons::Icon),
+    /// The source of an SVG image.
+    #[cfg(feature = "scene")]
+    Svg(std::sync::Arc<str>),
+}
+
+#[cfg(feature = "scene")]
+impl Glyph {
+    /// Makes a glyph from the source of an SVG image.
+    pub fn svg(source: impl Into<std::sync::Arc<str>>) -> Self {
+        Self::Svg(source.into())
+    }
 }
 
 impl<T: Into<TextContent>> From<T> for Glyph {
@@ -69,21 +80,15 @@ impl From<Glyph> for Mark {
             Glyph::Text(text) => Self::Text(text),
             #[cfg(feature = "scene")]
             Glyph::Icon(icon) => Self::Svg(std::sync::Arc::from(icon.svg())),
+            #[cfg(feature = "scene")]
+            Glyph::Svg(source) => Self::Svg(source),
         }
     }
 }
 
-/// An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph.
+/// An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, a text glyph, or `Glyph::svg(source)`.
 pub fn icon(glyph: impl Into<Glyph>) -> IconBuilder {
     IconBuilder::new(glyph)
-}
-
-/// An SVG icon.
-#[cfg(feature = "scene")]
-pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
-    let mut builder = IconBuilder::new("");
-    builder.glyph = Mark::Svg(svg.into());
-    builder
 }
 
 impl IconBuilder {

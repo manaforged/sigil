@@ -54,9 +54,9 @@ pub fn spinner() -> NodeBuilder {
     if !grid {
         return indicator.children_reactive(move || {
             let at = usize::try_from(tick.get() % ARC_FRAMES.len() as u64).unwrap_or(0);
-            [super::icon_svg(
+            [super::icon(super::Glyph::svg(
                 ARC_FRAMES.get(at).copied().unwrap_or_default(),
-            )]
+            ))]
         });
     }
     let frame = derived(move || {

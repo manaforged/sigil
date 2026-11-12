@@ -21,16 +21,16 @@ Popups stay inside the window. A list popup opens below its trigger and flips ab
 - Escape closes the list. A focus loss closes it too.
 - A scrolling list keeps the highlighted row in view.
 
-## modal and sheet
+## modal
 
-`modal(show: Signal<bool>) -> ModalBuilder` and `sheet(show: Signal<bool>) -> ModalBuilder`. Both render a backdrop plus a dialog; `sheet` is `modal(...).side(Side::Right).dismiss_on_backdrop(true)`, a right-edge drawer.
+`modal(show: Signal<bool>) -> ModalBuilder` renders a backdrop plus a dialog. `modal(show).side(Side::Right).dismiss_on_backdrop(true)` is a right-edge drawer.
 
 - `.title(impl Into<TextContent>)`: dialog heading; also announced when the dialog opens.
 - `.child(node)`: dialog content.
 - `.side(Side)`: pin to `Side::Left|Right|Bottom` instead of centering.
 - `.trap(bool)`: focus trap inside the dialog (default true).
 - `.escape_closes(bool)`: Escape closes the topmost open dialog (default true; a stack tracks multiple modals).
-- `.dismiss_on_backdrop(bool)`: clicking the scrim writes `false` (default false for `modal`, true for `sheet`).
+- `.dismiss_on_backdrop(bool)`: clicking the scrim writes `false` (default false).
 - `.footer(node)`: adds an action to the footer row. The footer sits under the content and aligns its actions to the right.
 - `.actions(cancel, confirm)`: adds a cancel and confirm pair to the footer, in that order.
 
@@ -97,7 +97,7 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 ## hint_overlay
 
-`hint_overlay(&[(chord, description)])`. Renders a "Keyboard shortcuts" card of `key — description` rows; `.entry(chord, desc)` appends more. It is a styled container. Mount it inside `modal`/`sheet` or your own top-layer node to make it a real overlay.
+`hint_overlay(&[(chord, description)])`. Renders a "Keyboard shortcuts" card of `key — description` rows; `.entry(chord, desc)` appends more. It is a styled container. Mount it inside `modal` or your own top-layer node to make it a real overlay.
 
 ## States, keys, and accessibility
 
@@ -105,7 +105,7 @@ The visual catalog captures the closed and open state of each overlay, and the h
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
-| `modal`, `sheet` | closed, open | Escape closes the top dialog; Tab stays inside while `.trap(true)` | `Dialog` | `.title()`, else "Dialog" |
+| `modal` | closed, open | Escape closes the top dialog; Tab stays inside while `.trap(true)` | `Dialog` | `.title()`, else "Dialog" |
 | `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.label()` |
 | `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Menu`, rows `MenuItem` | "Command Menu" |
 | `tooltip` | hidden, shown on hover or keyboard focus | The bubble shows when the first focusable node in the target gets keyboard focus; blur or Escape hides it | `Tooltip` | The label, plus the shortcut in parentheses |

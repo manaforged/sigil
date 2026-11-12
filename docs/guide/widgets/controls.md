@@ -1,6 +1,6 @@
 # Controls
 
-Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `icon_button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
+Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
 
 ## button
 
@@ -30,7 +30,7 @@ Key options:
 
 Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
 
-`icon_button(glyph, activate)` is `button(glyph).ghost().activate(f)` with a square hit area: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
+`button(Icon::Close)` is a ghost button with a square hit area, named for the icon; `button("×").ghost().square()` does the same for a text glyph: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
 
 ## checkbox
 
@@ -110,7 +110,7 @@ The visual catalog captures each control in the states in the table. Hover, pres
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `button` | default, hover, pressed, focused, disabled, pending | Enter, Space | `Button` | The label, or `.accessible(name)` |
-| `icon_button` | default, hover, pressed, focused, disabled | Enter, Space | `Button` | `.accessible(name)`; without it, the glyph |
+| `button(Icon)` | default, hover, pressed, focused, disabled | Enter, Space | `Button` | `.accessible(name)`; without it, the glyph |
 | `checkbox` | default, hover, pressed, focused, disabled | Enter, Space | `CheckBox` | A static `.label()`, else "Checkbox" |
 | `toggle` | default, hover, pressed, focused, disabled | Enter, Space | `Switch` | A static `.label()`, else "Toggle" |
 | `radio_group` | default, hover, pressed, focused, disabled | Arrow keys, Home, End | `RadioGroup`, rows `RadioButton` | `.label()` or `.labelled_by(node)` for the group; each row uses its option label |

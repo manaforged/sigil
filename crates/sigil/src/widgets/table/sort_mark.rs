@@ -24,7 +24,7 @@ pub(super) fn sort_mark<Row: 'static>(
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
     use crate::layout::{LayoutStyle, Space};
     use crate::widgets::Layout;
-    use crate::widgets::icon_svg;
+    use crate::widgets::{Glyph, icon};
     let mark = state.sort_state(column, sortable);
     if crate::style::cell_size().is_some() {
         return glyph_mark(mark);
@@ -33,9 +33,9 @@ pub(super) fn sort_mark<Row: 'static>(
         let current = mark.get();
         let icon = match current {
             SortMark::None => return Vec::new(),
-            SortMark::Idle => icon_svg(CHEVRONS_UP_DOWN_SVG),
-            SortMark::Ascending => icon_svg(ARROW_UP_SVG).strong(),
-            SortMark::Descending => icon_svg(ARROW_DOWN_SVG).strong(),
+            SortMark::Idle => icon(Glyph::svg(CHEVRONS_UP_DOWN_SVG)),
+            SortMark::Ascending => icon(Glyph::svg(ARROW_UP_SVG)).strong(),
+            SortMark::Descending => icon(Glyph::svg(ARROW_DOWN_SVG)).strong(),
         };
         let slot = container()
             .layout(LayoutStyle::flex_row().padding_left(Space::Xs).shrink(0.0))
