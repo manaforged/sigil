@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- A scroll moves one shared offset that `LayoutResult::rect` adds when read; it no longer rewrites the layout of every node under a `scroll`, a `virtual_list` or a `position_reactive` node. `rect` returns the same on-screen rectangle as before. `LayoutResult::rect` is no longer `const`, and `ReactivePosition` is `Clone` but no longer `Copy`.
 - A node gets its own reactive owner only when its build asks for the current owner, or when the node has event handlers or a style binding. Before, every node got one. A node without its own owner runs later callbacks under the nearest owner above it. Each row of a reactive child list still gets an owner.
 - `Host::frame_due()` returns whether a frame has work to do without new input: a signal write, an animation, a clock, or a timer that is due. An embed host calls it to skip `Host::frame` while the UI is idle.
 - `terminal::Cell` is `Copy` and holds its text and hyperlink in 30 bytes. Text longer than seven bytes and each hyperlink are stored once for the life of the process, up to 65,534 of each and 2,048 bytes per entry; past that a cell shows U+FFFD and a link is dropped.

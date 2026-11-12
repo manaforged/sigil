@@ -90,7 +90,7 @@ impl LayoutEngine {
             .map(|id| {
                 self.published_result
                     .get(id.key())
-                    .map_or((0.0, 0.0), |res| (res.rect().origin.x, res.rect().origin.y))
+                    .map_or((0.0, 0.0), |res| (res.solved_origin().x, res.solved_origin().y))
             })
             .collect();
         self.remeasure_roots(roots, root, available)?;
@@ -218,21 +218,16 @@ impl LayoutEngine {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         let Some(next) = node
             .get_extension::<crate::layout::ReactivePosition>()
-            .copied()
             .map(crate::layout::ReactivePosition::get)
         else {
             return Ok(());
         };
-        let prior = self.positions.get(id.key()).copied().unwrap_or(next);
-        if prior == next {
+        if self.positions.get(id.key()).copied() == Some(next) {
             return Ok(());
         }
         self.sync_one_node(cx, id)?;
-        let handle = self.handle(id)?;
-        self.drive
-            .translate_subtree(handle, next.0 - prior.0, next.1 - prior.1)?;
-        self.positions.insert(id.key(), next);
-        self.attach_subtree_results(cx, id)
+        self.republish_bounds(cx);
+        Ok(())
     }
 
     fn containment_roots(

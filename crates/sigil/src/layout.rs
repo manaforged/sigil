@@ -30,6 +30,7 @@ mod orientation;
 pub(crate) mod reactive_position;
 mod resolve;
 mod result;
+mod shift;
 pub(crate) mod snap;
 mod space;
 pub(crate) mod style_adapter;

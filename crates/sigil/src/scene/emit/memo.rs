@@ -222,17 +222,27 @@ impl EmitMemo {
         delta: &FrameDelta,
         selection: &HashMap<NodeId, (usize, usize)>,
     ) -> (bool, AHashSet<NodeId>) {
-        let mass_dirty =
-            !delta.structure && (delta.layout.len() + delta.paint.len()) * 4 > cx.len();
+        let mut moved = Vec::new();
+        for &id in &delta.layout {
+            if cx.get(id).is_some_and(|node| {
+                node.get_extension::<crate::layout::ReactivePosition>()
+                    .is_some()
+            }) {
+                walk_tree(cx, id, |under, _| moved.push(under));
+            }
+        }
+        let touched = delta.layout.len() + delta.paint.len() + moved.len();
+        let mass_dirty = !delta.structure && touched * 4 > cx.len();
         if !usable || mass_dirty {
             self.seed_seen(cx, root);
             return (false, AHashSet::new());
         }
-        let direct = if delta.structure {
+        let mut direct = if delta.structure {
             self.dirty_structural(cx, root, delta, selection)
         } else {
             self.dirty_incremental(cx, delta, selection)
         };
+        direct.extend(moved);
         (true, ancestors(cx, direct))
     }
 

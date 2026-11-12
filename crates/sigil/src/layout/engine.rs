@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 use crate::Error;
 use crate::layout::cache_key::{LayoutCacheKey, reactive_layout_signature};
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
+use crate::layout::shift::Shift;
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutResult, TextMeasure};
 use crate::style::locale::Direction;
@@ -29,6 +30,8 @@ pub struct LayoutEngine {
     cached_key: Option<LayoutCacheKey>,
     reactive_layout: BTreeSet<slotmap::DefaultKey>,
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
+    scopes: SecondaryMap<slotmap::DefaultKey, Shift>,
+    scopes_generation: u64,
     text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
     prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
@@ -66,6 +69,8 @@ impl LayoutEngine {
             cached_key: None,
             reactive_layout: BTreeSet::new(),
             positions: SecondaryMap::new(),
+            scopes: SecondaryMap::new(),
+            scopes_generation: 0,
             text_sizes: SecondaryMap::new(),
             prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
@@ -116,10 +121,15 @@ impl LayoutEngine {
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
         let handle = self.handle(id).ok()?;
         let layout = self.drive.computed_box(handle)?;
-        Some(LayoutResult::from_resolved_box(
-            &layout,
-            self.drive.clips_content(handle),
-        ))
+        let shift = self.scopes.get(id.key()).copied().or_else(|| {
+            self.published_result
+                .get(id.key())
+                .map(LayoutResult::shift)
+        });
+        Some(
+            LayoutResult::from_resolved_box(&layout, self.drive.clips_content(handle))
+                .shifted(shift.unwrap_or_default()),
+        )
     }
 
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), Error> {
@@ -287,6 +297,7 @@ impl LayoutEngine {
         self.reactive_layout.clear();
         self.geometry_reactive.clear();
         self.positions.clear();
+        self.scopes.clear();
         self.text_sizes.clear();
         self.prepared.clear();
         self.reactive_sigs.clear();
@@ -315,6 +326,34 @@ impl LayoutEngine {
         }
         if let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() {
             self.positions.insert(id.key(), pos.get());
+            pos.place();
+        }
+    }
+
+    fn scope(&mut self, cx: &Cx, id: NodeId) -> Shift {
+        if let Some(shift) = self.scopes.get(id.key()) {
+            return *shift;
+        }
+        let under = cx
+            .parent(id)
+            .map_or_else(Shift::default, |parent| self.scope(cx, parent));
+        let own = self
+            .positions
+            .contains_key(id.key())
+            .then(|| cx.get(id))
+            .flatten()
+            .and_then(|node| node.get_extension::<crate::layout::ReactivePosition>())
+            .map(|pos| pos.nest(under));
+        let shift = own.unwrap_or(under);
+        self.scopes.insert(id.key(), shift);
+        shift
+    }
+
+    fn rescope(&mut self, cx: &Cx) {
+        let generation = cx.mutation_generation();
+        if self.scopes_generation != generation {
+            self.scopes.clear();
+            self.scopes_generation = generation;
         }
     }
 

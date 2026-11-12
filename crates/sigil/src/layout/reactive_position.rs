@@ -1,17 +1,29 @@
 use std::rc::Rc;
 
 use crate::kernel::{DeltaKind, NodeBuilder};
+use crate::layout::shift::{Shift, ShiftSlot};
+use crate::layout::snap;
 use crate::reactive::Signal;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ReactivePosition {
     pos: Signal<(f32, f32)>,
+    slot: Rc<ShiftSlot>,
 }
 
 impl ReactivePosition {
     #[must_use]
-    pub fn get(self) -> (f32, f32) {
+    pub fn get(&self) -> (f32, f32) {
         self.pos.try_peek().unwrap_or_default()
+    }
+
+    pub(crate) fn place(&self) {
+        let (x, y) = self.get();
+        self.slot.move_to((snap::offset(x), snap::offset(y)));
+    }
+
+    pub(crate) fn nest(&self, under: Shift) -> Shift {
+        self.slot.nest(under)
     }
 }
 
@@ -51,7 +63,10 @@ impl BoundsReactive {
 
 pub(crate) fn position(node: NodeBuilder, pos: Signal<(f32, f32)>) -> NodeBuilder {
     node.mutate(move |node| {
-        let _ = node.attach(ReactivePosition { pos });
+        let _ = node.attach(ReactivePosition {
+            pos,
+            slot: Rc::new(ShiftSlot::new()),
+        });
         let tag = node.tag();
         crate::reactive::effect_named("sigil-layout::position_delta", move || {
             let _ = pos.get();

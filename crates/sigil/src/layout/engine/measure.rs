@@ -140,7 +140,9 @@ impl LayoutEngine {
 
     fn attach_each(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
         let has_geometry_reactive = !self.geometry_reactive.is_empty();
+        self.rescope(cx);
         for id in ids {
+            let _ = self.scope(cx, id);
             let Some(result) = self.fresh(id) else {
                 continue;
             };
@@ -168,6 +170,25 @@ impl LayoutEngine {
             self.published_result.insert(id.key(), result);
         }
         Ok(())
+    }
+
+    pub(super) fn republish_bounds(&mut self, cx: &Cx) {
+        crate::reactive::batch(|| {
+            for key in &self.geometry_reactive {
+                let Some(node) = cx.get(NodeId::from_key(*key)) else {
+                    continue;
+                };
+                let (Some(bounds), Some(result)) = (
+                    node.get_extension::<crate::layout::BoundsReactive>(),
+                    node.get_extension::<LayoutResult>(),
+                ) else {
+                    continue;
+                };
+                let rect = result.rect();
+                self.republished |=
+                    bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+            }
+        });
     }
 
     fn remove_stale_extensions(&mut self, cx: &mut Cx, previous_ids: SmallVec<[NodeId; 32]>) {
