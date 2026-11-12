@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::cell_width;
@@ -14,7 +16,7 @@ pub(super) fn ranges(text: &str, max_cells: Option<usize>) -> Vec<(usize, usize)
         for_each_hard_line(text, |start, end| lines.push((start, end)));
         return lines;
     };
-    let breaks = break_positions(text);
+    let breaks = OnceCell::new();
     for_each_hard_line(text, |start, end| {
         push_wrapped(text, (start, end), max_cells, &breaks, |ls, le| {
             lines.push((ls, le));
@@ -38,7 +40,7 @@ pub(super) fn measure_lines(text: &str, max_cells: Option<usize>) -> (usize, usi
     {
         return (cell_width(text), 1);
     }
-    let breaks = break_positions(text);
+    let breaks = OnceCell::new();
     let (mut wide, mut count) = (0, 0);
     for_each_hard_line(text, |start, end| {
         push_wrapped(text, (start, end), max_cells, &breaks, |ls, le| {
@@ -71,7 +73,7 @@ fn push_wrapped(
     text: &str,
     (start, end): (usize, usize),
     max_cells: usize,
-    breaks: &[usize],
+    breaks: &OnceCell<Vec<usize>>,
     mut push: impl FnMut(usize, usize),
 ) {
     if start == end {
@@ -80,49 +82,43 @@ fn push_wrapped(
     }
     let mut line_start = start;
     while line_start < end {
-        let (fit_end, break_end) = fit_line(text, (line_start, end), max_cells, breaks);
+        let slice = text.get(line_start..end).unwrap_or_default();
+        let fit_end = line_start + fit(slice, max_cells).max(1).min(slice.len());
         let cut = if fit_end < end {
-            break_end
-                .filter(|value| *value > line_start)
+            let breaks = breaks.get_or_init(|| break_positions(text));
+            breaks
+                .get(breaks.partition_point(|at| *at <= fit_end).wrapping_sub(1))
+                .copied()
+                .filter(|at| *at > line_start)
                 .unwrap_or(fit_end)
         } else {
             end
         };
-        let rest = &text[cut..end];
+        let rest = text.get(cut..end).unwrap_or_default();
         let cut = cut + rest.len() - rest.trim_start_matches(' ').len();
         push(line_start, cut);
         line_start = cut;
     }
 }
 
-fn fit_line(
-    text: &str,
-    (line_start, end): (usize, usize),
-    max_cells: usize,
-    breaks: &[usize],
-) -> (usize, Option<usize>) {
+fn fit(slice: &str, max_cells: usize) -> usize {
     let mut width = 0_usize;
-    let mut fit_end = line_start;
-    let mut break_end = None;
-    for (offset, grapheme) in text[line_start..end].grapheme_indices(true) {
-        let grapheme_end = line_start + offset + grapheme.len();
+    let mut fit = 0_usize;
+    let mut take = |grapheme: &str| {
         let next = width.saturating_add(cell_width(grapheme));
-        if fit_end > line_start && next > max_cells {
-            break;
+        if fit > 0 && next > max_cells {
+            return false;
         }
         width = next;
-        fit_end = grapheme_end;
-        if breaks.binary_search(&grapheme_end).is_ok() {
-            break_end = Some(grapheme_end);
-        }
+        fit += grapheme.len();
+        true
+    };
+    if slice.is_ascii() {
+        let _ = (0..slice.len()).all(|at| slice.get(at..=at).is_some_and(&mut take));
+    } else {
+        let _ = slice.graphemes(true).all(take);
     }
-    if fit_end == line_start {
-        fit_end = text[line_start..end]
-            .graphemes(true)
-            .next()
-            .map_or(end, |grapheme| line_start + grapheme.len());
-    }
-    (fit_end, break_end)
+    fit
 }
 
 fn break_positions(text: &str) -> Vec<usize> {
