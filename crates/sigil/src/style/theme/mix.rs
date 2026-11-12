@@ -28,7 +28,7 @@ pub(super) fn ramp_accent(surface: Color, solid: Color) -> crate::style::scale::
     steps[9] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.18);
     steps[10] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.36);
     steps[11] = alpha_mix(solid, Color::rgb(255, 255, 255), 0.55);
-    crate::style::scale::ColorScale::from_steps(steps).with_on_solid(surface)
+    crate::style::scale::ColorScale::from_steps(steps).on_solid(surface)
 }
 
 pub(super) fn alpha_mix(a: Color, b: Color, t: f32) -> Color {

@@ -21,7 +21,7 @@ impl<'t> EmitWalk<'_, 't> {
         let Some(node) = self.cx.get(id) else {
             return;
         };
-        let Some(result) = node.get_extension::<LayoutResult>() else {
+        let Some(result) = node.extension::<LayoutResult>() else {
             return;
         };
         let rect = result.rect();
@@ -44,7 +44,7 @@ impl<'t> EmitWalk<'_, 't> {
         let deferred = &mut *self.deferred;
         let selection = self.selection;
         let track = &mut *self.track;
-        self.scene.with_composite_layer(
+        self.scene.composite(
             LayerScope {
                 clip: bounds,
                 clip_radii: CornerRadii::ZERO,
@@ -114,9 +114,9 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
     if is_display_none(node) {
         return None;
     }
-    let result = node.get_extension::<LayoutResult>()?;
+    let result = node.extension::<LayoutResult>()?;
     let mut bounds = result.rect();
-    if let Some(elevation) = node.get_extension::<StyleBinding>().and_then(|binding| {
+    if let Some(elevation) = node.extension::<StyleBinding>().and_then(|binding| {
         binding
             .cascade()
             .filter_map(|atom| match atom {
@@ -130,10 +130,7 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
             super::paint::elevation_shadow(elevation),
         ));
     }
-    if let Some(ring) = node
-        .get_extension::<FocusRing>()
-        .filter(|ring| ring.visible())
-    {
+    if let Some(ring) = node.extension::<FocusRing>().filter(|ring| ring.visible()) {
         bounds = bounds.union(result.rect().expand(
             ring.offset_px(Metrics::current()).max(0.0)
                 + ring.stroke_width(Metrics::current()).max(0.0),
@@ -155,8 +152,8 @@ fn transformed_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
         return None;
     }
     let bounds = content_bounds(cx, id)?;
-    let rect = node.get_extension::<LayoutResult>()?.rect();
-    let Some(binding) = node.get_extension::<StyleBinding>() else {
+    let rect = node.extension::<LayoutResult>()?.rect();
+    let Some(binding) = node.extension::<StyleBinding>() else {
         return Some(bounds);
     };
     let flat = Transform2D::for_binding(binding);

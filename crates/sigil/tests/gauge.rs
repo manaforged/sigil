@@ -10,10 +10,7 @@ use sigil::style::{ColorAtom, StyleAtom, StyleBinding, Token};
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
-    let Some(binding) = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
-    else {
+    let Some(binding) = cx.get(id).and_then(|node| node.extension::<StyleBinding>()) else {
         return &[];
     };
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();

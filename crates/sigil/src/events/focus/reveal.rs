@@ -18,7 +18,7 @@ pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
     while let Some(id) = current {
         if let Some(reveal) = cx
             .get(id)
-            .and_then(|node| node.get_extension::<ScrollReveal>())
+            .and_then(|node| node.extension::<ScrollReveal>())
             .copied()
             && let Some(view) = layout.result(id).map(|result| result.rect())
         {
@@ -40,7 +40,7 @@ pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
 
 fn layer_parent(cx: &Cx, id: NodeId) -> Option<NodeId> {
     cx.get(id)
-        .filter(|node| node.get_extension::<TopLayer>().is_none())
+        .filter(|node| node.extension::<TopLayer>().is_none())
         .and_then(Node::parent)
 }
 

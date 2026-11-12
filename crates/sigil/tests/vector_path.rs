@@ -115,7 +115,7 @@ fn fitted_diagonal() -> impl IntoNode {
 fn zoomed_diagonal() -> impl IntoNode {
     canvas(|scene: &mut SceneBuilder, _rect: Rect| {
         let zoom = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0]];
-        scene.with_transform(zoom, |scene| {
+        scene.transform(zoom, |scene| {
             let destination = Rect::new(Point::new(0.0, 0.0), 15.0, 15.0);
             small_diagonal().draw(scene, destination, &Theme::light());
         });

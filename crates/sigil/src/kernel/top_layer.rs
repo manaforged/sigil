@@ -16,7 +16,7 @@ impl Cx {
         }
         let mut reach = Vec::new();
         for (key, node) in &self.nodes {
-            if node.get_extension::<TopLayer>().is_some() {
+            if node.extension::<TopLayer>().is_some() {
                 reach.extend(std::iter::successors(Some(NodeId::from_key(key)), |id| {
                     self.parent(*id)
                 }));

@@ -138,7 +138,7 @@ impl Walk {
         };
         let region = Clip::polygon(&corners(mask.rect(), t));
         let commands = self.detached(|walk, scene| {
-            scene.with_clip(region, |scene| walk.children(scene, mask.root(), t));
+            scene.clip(region, |scene| walk.children(scene, mask.root(), t));
         });
         Mask::new(mode, commands)
     }

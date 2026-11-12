@@ -22,7 +22,7 @@ impl CanvasPaint {
     }
 
     pub(crate) fn record(&self, scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
-        scene.with_clip(rect, |scene| {
+        scene.clip(rect, |scene| {
             let start = scene.recorded();
             (self.record)(scene, rect, theme);
             scene.mark_leaf_from(start);

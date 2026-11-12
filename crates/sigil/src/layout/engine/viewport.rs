@@ -66,7 +66,7 @@ impl LayoutEngine {
         !self.published_result.contains_key(id.key())
             || cx
                 .get(id)
-                .is_some_and(|node| node.get_extension::<Popup>().is_some())
+                .is_some_and(|node| node.extension::<Popup>().is_some())
             || solved
                 .iter()
                 .any(|&subroot| subroot != id && contains(cx, subroot, id))
@@ -100,7 +100,7 @@ impl LayoutEngine {
             let Some(target) = cx.get_mut_untracked(node) else {
                 continue;
             };
-            if target.get_extension::<crate::layout::LayoutResult>() == Some(&placed) {
+            if target.extension::<crate::layout::LayoutResult>() == Some(&placed) {
                 continue;
             }
             target.attach_untracked(placed);
@@ -118,7 +118,7 @@ fn anchor_of(cx: &Cx, id: NodeId, popup: Popup) -> Option<NodeId> {
         *child != id
             && cx
                 .get(*child)
-                .is_some_and(|node| node.get_extension::<Popup>().is_none())
+                .is_some_and(|node| node.extension::<Popup>().is_none())
     })
 }
 
@@ -176,10 +176,10 @@ fn collect(cx: &Cx, root: NodeId, found: &mut Found) {
         let Some(node) = cx.get(id) else {
             continue;
         };
-        if node.get_extension::<ViewportOverlay>().is_some() {
+        if node.extension::<ViewportOverlay>().is_some() {
             found.overlays.push(id);
         }
-        if let Some(popup) = node.get_extension::<Popup>() {
+        if let Some(popup) = node.extension::<Popup>() {
             found.popups.push((id, *popup));
         }
     }

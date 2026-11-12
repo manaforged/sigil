@@ -185,6 +185,6 @@ fn text_field_focus_ring_visible_when_focused() {
         router.set_focus(&mut cx, Some(root));
 
         let node = cx.get(root).unwrap();
-        assert!(node.get_extension::<FocusRing>().unwrap().visible());
+        assert!(node.extension::<FocusRing>().unwrap().visible());
     });
 }

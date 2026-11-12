@@ -150,7 +150,7 @@ pub(crate) fn content_key(node: &Node) -> u64 {
         content.hash_into(&mut hasher);
         wrote = true;
     }
-    if let Some(binding) = node.get_extension::<StyleBinding>() {
+    if let Some(binding) = node.extension::<StyleBinding>() {
         for slice in binding.reactive_channels() {
             slice.hash(&mut hasher);
             wrote = true;
@@ -213,7 +213,7 @@ pub(crate) fn shadow_key(shadows: &[Shadow]) -> u64 {
 }
 
 pub(crate) fn slot_tag(node: &Node) -> u8 {
-    node.get_extension::<StyleBinding>()
+    node.extension::<StyleBinding>()
         .map_or(0, |binding| match binding.interaction_slot() {
             crate::style::StateSlot::Rest => 0,
             crate::style::StateSlot::Focused => 1,

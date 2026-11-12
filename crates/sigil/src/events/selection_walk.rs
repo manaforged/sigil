@@ -11,7 +11,7 @@ use crate::style::{StyleBinding, TextStyle, Theme, text_style_for};
 use super::selection::{Endpoint, TextSelection, Unit};
 
 fn hidden(node: &Node) -> bool {
-    node.get_extension::<StyleBinding>()
+    node.extension::<StyleBinding>()
         .is_some_and(StyleBinding::hides)
 }
 
@@ -23,7 +23,7 @@ struct Inherit<'a> {
 pub(super) fn endpoint_at(cx: &Cx, region: NodeId, point: Point) -> Option<Endpoint> {
     let node = cx.get(region)?;
     let theme: &Theme = node
-        .get_extension::<Theme>()
+        .extension::<Theme>()
         .unwrap_or_else(crate::style::theme::fallback_theme);
     let inherit = Inherit {
         theme,
@@ -47,13 +47,13 @@ fn walk_text(
     if hidden(node) {
         return;
     }
-    let theme = node.get_extension::<Theme>().unwrap_or(inherit.theme);
+    let theme = node.extension::<Theme>().unwrap_or(inherit.theme);
     let text_style = node
-        .get_extension::<StyleBinding>()
+        .extension::<StyleBinding>()
         .and_then(|binding| TextStyle::layered_over_binding(&inherit.text_style, binding))
         .map_or_else(|| Rc::clone(&inherit.text_style), Rc::new);
     if let NodeType::Text { content, wrap, .. } = &node.kind
-        && let Some(rect) = node.get_extension::<LayoutResult>().map(LayoutResult::rect)
+        && let Some(rect) = node.extension::<LayoutResult>().map(LayoutResult::rect)
     {
         let distance = gap(rect, point);
         if best.is_none_or(|(score, _)| distance < score) {

@@ -48,10 +48,10 @@ fn clip_shape(binding: &StyleBinding) -> Option<ClipShape> {
 }
 
 pub(super) fn inside_clip_path(cx: &Cx, id: NodeId, node: &Node, position: Point) -> bool {
-    let Some(shape) = node.get_extension::<StyleBinding>().and_then(clip_shape) else {
+    let Some(shape) = node.extension::<StyleBinding>().and_then(clip_shape) else {
         return true;
     };
-    let Some(rect) = node.get_extension::<LayoutResult>().map(LayoutResult::rect) else {
+    let Some(rect) = node.extension::<LayoutResult>().map(LayoutResult::rect) else {
         return true;
     };
     super::local_position(cx, id, position).is_some_and(|point| shape.contains(rect, point))

@@ -56,7 +56,7 @@ fn clipped(clips: Vec<Clip>) -> impl IntoNode {
 
 fn nest(scene: &mut SceneBuilder, clips: &[Clip], rect: Rect) {
     match clips.split_first() {
-        Some((first, inner)) => scene.with_clip(first.clone(), |scene| nest(scene, inner, rect)),
+        Some((first, inner)) => scene.clip(first.clone(), |scene| nest(scene, inner, rect)),
         None => scene.draw_rect(DrawRect::new(rect, RED)),
     }
 }
@@ -235,7 +235,7 @@ fn a_disc_inside_a_polygon_keeps_only_their_intersection() {
 
 fn layers(clip: Clip) -> (usize, usize, usize) {
     let mut builder = SceneBuilder::new();
-    builder.with_clip(clip, |scene| scene.draw_rect(DrawRect::new(whole(), RED)));
+    builder.clip(clip, |scene| scene.draw_rect(DrawRect::new(whole(), RED)));
     let scene = builder.finish();
     let pushed = scene
         .commands

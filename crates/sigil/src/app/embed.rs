@@ -58,8 +58,8 @@ pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
     let mut out = Vec::new();
     cx.visit_preorder(root, |_, node| {
         if let (Some(hole), Some(layout)) = (
-            node.get_extension::<Surface>(),
-            node.get_extension::<LayoutResult>(),
+            node.extension::<Surface>(),
+            node.extension::<LayoutResult>(),
         ) {
             out.push((hole.key, layout.rect()));
         }
@@ -361,7 +361,7 @@ impl Host {
     pub fn theme(&self) -> &Theme {
         self.root
             .and_then(|root| self.cx.get(root))
-            .and_then(Node::get_extension::<Theme>)
+            .and_then(Node::extension::<Theme>)
             .unwrap_or(&self.theme)
     }
 

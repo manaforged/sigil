@@ -45,12 +45,12 @@ impl Marked {
 
 fn is_marked(node: &Node) -> bool {
     node.a11y.focus_scope.is_some()
-        || node.get_extension::<ViewportOverlay>().is_some()
-        || node.get_extension::<Popup>().is_some()
+        || node.extension::<ViewportOverlay>().is_some()
+        || node.extension::<Popup>().is_some()
 }
 
 fn hides(node: &Node) -> bool {
-    node.get_extension::<StyleBinding>()
+    node.extension::<StyleBinding>()
         .is_some_and(StyleBinding::hides)
 }
 

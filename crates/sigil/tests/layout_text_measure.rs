@@ -37,7 +37,7 @@ fn computed_text_width(mut engine: LayoutEngine) -> f32 {
         .expect("compute succeeds");
 
     cx.get(child)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("text result")
         .rect()
         .width

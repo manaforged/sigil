@@ -92,7 +92,7 @@ fn incremental_structural_remeasure_keeps_fixed_region_at_its_position() {
 
 fn region_top(cx: &Cx, id: NodeId) -> f32 {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("region has a layout result")
         .rect()
         .origin

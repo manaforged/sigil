@@ -36,7 +36,7 @@ pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> Nod
             input.sync_value(&state);
             drop(state);
             if let Some(id) = target.get() {
-                crate::events::request_focus(id);
+                id.focus();
             }
         })
         .accessible(theme_label(StringKey::Clear));

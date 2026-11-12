@@ -225,7 +225,7 @@ impl EmitMemo {
         let mut moved = Vec::new();
         for &id in &delta.layout {
             if cx.get(id).is_some_and(|node| {
-                node.get_extension::<crate::layout::ReactivePosition>()
+                node.extension::<crate::layout::ReactivePosition>()
                     .is_some()
             }) {
                 walk_tree(cx, id, |under, _| moved.push(under));
@@ -376,20 +376,20 @@ fn ancestors(cx: &Cx, direct: Vec<NodeId>) -> AHashSet<NodeId> {
 fn seen_of(node: &Node) -> Seen {
     Seen {
         version: node.version(),
-        layout: node.get_extension::<LayoutResult>().copied(),
+        layout: node.extension::<LayoutResult>().copied(),
         volatile: volatile_key(node),
     }
 }
 
 fn watches(node: &Node) -> bool {
-    node.get_extension::<StyleBinding>()
+    node.extension::<StyleBinding>()
         .is_some_and(StyleBinding::has_reactive)
-        || node.get_extension::<CanvasPaint>().is_some()
-        || node.get_extension::<FocusRing>().is_some()
+        || node.extension::<CanvasPaint>().is_some()
+        || node.extension::<FocusRing>().is_some()
 }
 
 fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {
-    let binding = node.get_extension::<StyleBinding>();
+    let binding = node.extension::<StyleBinding>();
     let animated = binding.and_then(StyleBinding::animator_overlay).map_or(
         0,
         crate::style::animator_overlay::AnimatorOverlay::cache_key,
@@ -398,9 +398,9 @@ fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {
         emit_cache::slot_tag(node),
         animated,
         binding.map_or(0, channels_key),
-        node.get_extension::<CanvasPaint>()
+        node.extension::<CanvasPaint>()
             .map_or(0, CanvasPaint::version),
-        node.get_extension::<FocusRing>()
+        node.extension::<FocusRing>()
             .is_some_and(FocusRing::visible),
     )
 }

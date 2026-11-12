@@ -65,7 +65,7 @@ fn app() -> impl IntoNode {
 - `show(cond, then, otherwise)` switches between subtrees. `for_each(items, key, render)` renders a keyed list.
 - Colors come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `background`, `text_color`, or `border_color`. Do not hard-code colors.
 - Async work uses `task` (reruns and cancels) or `spawn` (runs once). Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
-- Write signals on the UI thread. From another thread, use `Signal::writer`, or `tasks::on_message` for a channel.
+- Write signals on the UI thread. From another thread, use `Signal::writer`, or `tasks::listen` for a channel.
 - Public event, command, error, and config types are `#[non_exhaustive]`. Match them with a `_` arm, and build `AppConfig` with its builder methods.
 
 ## Follow the design rules

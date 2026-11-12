@@ -1,7 +1,6 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::request_focus;
 use crate::events::{A11yEdit, with_handlers};
 use crate::events::{KeyEvent, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, NodeId};
@@ -98,7 +97,7 @@ pub(super) fn attach_pointer_drag(
             let thumb = runtime.on(runtime.value.nearest(runtime.value_at(event)));
             let grip = begin.get(thumb.value.index())?;
             if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
-                request_focus(id);
+                id.focus();
             }
             opened.set(thumb);
             let start = thumb.value.peek();
@@ -146,7 +145,7 @@ fn drag_to(
         if let Some(grip) = grips.get(thumb.value.index()) {
             grip.interaction.drag(true);
             if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
-                request_focus(id);
+                id.focus();
             }
         }
     }

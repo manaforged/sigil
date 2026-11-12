@@ -57,7 +57,7 @@ fn button_is_focusable_and_activates_on_enter() {
         let node = cx.get(root).unwrap();
         assert_eq!(node.a11y.role, Role::Button);
         assert!(node.a11y.focusable);
-        assert!(node.get_extension::<FocusRing>().unwrap().visible());
+        assert!(node.extension::<FocusRing>().unwrap().visible());
     });
 }
 

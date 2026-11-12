@@ -11,11 +11,11 @@ pub fn render_style_for(
     inherited_text: Option<Color>,
 ) -> RenderStyle {
     let mut render = RenderStyle::default();
-    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
+    let theme = node.extension::<Theme>().unwrap_or(inherited);
     if matches!(node.kind, NodeType::Text { .. }) {
         render.text_color = Some(inherited_text.unwrap_or(theme.on_surface));
     }
-    let Some(binding) = node.get_extension::<StyleBinding>() else {
+    let Some(binding) = node.extension::<StyleBinding>() else {
         return render;
     };
     let engine = engine_for(node, theme);
@@ -35,11 +35,11 @@ pub fn render_style_for(
 #[must_use]
 pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
     let mut style = base.clone();
-    let Some(binding) = node.get_extension::<StyleBinding>() else {
+    let Some(binding) = node.extension::<StyleBinding>() else {
         return style;
     };
 
-    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
+    let theme = node.extension::<Theme>().unwrap_or(inherited);
     let engine = engine_for(node, theme);
 
     for atom in binding.cascade() {
@@ -53,7 +53,7 @@ pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -
 
 fn engine_for<'a>(node: &Node, theme: &'a Theme) -> StyleEngine<'a> {
     let tone = node
-        .get_extension::<ToneContext>()
+        .extension::<ToneContext>()
         .copied()
         .unwrap_or_default()
         .tone;

@@ -46,7 +46,7 @@ impl LayoutEngine {
         }
 
         let inherited = inherited.under(node);
-        let binding = node.get_extension::<StyleBinding>();
+        let binding = node.extension::<StyleBinding>();
         let layered = binding.and_then(|b| TextStyle::layered_over_binding(inherited.style, b));
         let effective = inherited.layered(layered.as_ref());
         publish_text_style(node, effective.style);
@@ -55,7 +55,7 @@ impl LayoutEngine {
         let existing_handle = self.core_to_handle.get(id.key()).copied();
         let has_reactive = binding.is_some_and(StyleBinding::has_reactive)
             || node
-                .get_extension::<crate::layout::ReactivePosition>()
+                .extension::<crate::layout::ReactivePosition>()
                 .is_some();
         let version_matches = !has_reactive
             && existing_handle.is_some()
@@ -142,7 +142,7 @@ impl LayoutEngine {
         self.synced_version.insert(id.key(), node.version());
 
         let layered = node
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(&inherited, binding));
         let effective = layered.as_ref().unwrap_or(&inherited);
         publish_text_style(node, effective);
@@ -175,7 +175,7 @@ impl LayoutEngine {
         }
         let inherited = inherited.under(node);
         let layered = node
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(inherited.style, binding));
         let effective = inherited.layered(layered.as_ref());
         publish_text_style(node, effective.style);
@@ -200,16 +200,13 @@ impl LayoutEngine {
         direction: Direction,
         shared: &mut Option<Rc<TextStyle>>,
     ) -> (LayoutStyle, Option<LayoutText>) {
-        let mut intent = node
-            .get_extension::<LayoutStyle>()
-            .cloned()
-            .unwrap_or_default();
+        let mut intent = node.extension::<LayoutStyle>().cloned().unwrap_or_default();
         if let NodeType::Image { source, .. } = &node.kind {
             intent = apply_intrinsic_image_size(intent, source.width(), source.height());
         }
         let is_text = matches!(node.kind, NodeType::Text { .. });
-        let runs = node.get_extension::<crate::style::TextRuns>();
-        let plain = node.get_extension::<StyleBinding>().is_none()
+        let runs = node.extension::<crate::style::TextRuns>();
+        let plain = node.extension::<StyleBinding>().is_none()
             && runs.is_none()
             && inherited_text.runs.is_none();
         let style = if !is_text {
@@ -254,7 +251,7 @@ fn shared_style(shared: &mut Option<Rc<TextStyle>>, style: &TextStyle) -> Rc<Tex
 }
 
 fn publish_text_style(node: &crate::kernel::Node, style: &TextStyle) {
-    if let Some(capture) = node.get_extension::<TextStyleCapture>() {
+    if let Some(capture) = node.extension::<TextStyleCapture>() {
         capture.publish(style);
     }
 }

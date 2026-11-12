@@ -103,7 +103,7 @@ fn masked_red(scene: &mut SceneBuilder, rect: Rect, mask: Mask) {
         opacity: 1.0,
         blend: sigil::scene::BlendMode::Normal,
     };
-    scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
+    scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
 }
 
 fn masked(mask: fn(Rect) -> Mask) -> impl IntoNode {
@@ -134,7 +134,7 @@ fn image_masked() -> impl IntoNode {
 
 fn overlap(scene: &mut SceneBuilder, rect: Rect) {
     let (x, y) = (rect.origin.x, rect.origin.y);
-    scene.with_layer(0.5, |scene| {
+    scene.layer(0.5, |scene| {
         scene.draw_rect(DrawRect::new(
             Rect::new(Point::new(x + 5.0, y + 15.0), 30.0, 30.0),
             RED,

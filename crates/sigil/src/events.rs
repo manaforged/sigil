@@ -17,10 +17,10 @@ mod selection_walk;
 mod window_command;
 
 pub(crate) use builder_ext::{event_methods, handler_methods, mutate_handlers, with_handlers};
+pub use focus::FocusDirection;
 pub(crate) use focus::ScrollReveal;
 pub(crate) use focus::focus_from_keyboard;
 pub(crate) use focus::note_focus_source;
-pub use focus::{FocusDirection, request_focus};
 pub(crate) use handlers::EventHandlers;
 pub(crate) use handlers::{A11yEdit, dispatch};
 #[cfg(not(feature = "kittest"))]

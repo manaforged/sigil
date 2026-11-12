@@ -99,7 +99,7 @@ impl Node {
 
     /// Returns the get extension.
     #[must_use]
-    pub fn get_extension<T: 'static>(&self) -> Option<&T> {
+    pub fn extension<T: 'static>(&self) -> Option<&T> {
         if inline::<T>() {
             return (&self.layout as &dyn Any)
                 .downcast_ref::<Option<T>>()
@@ -109,7 +109,7 @@ impl Node {
     }
 
     /// Returns the extension of type `T` for writing.
-    pub fn get_extension_mut<T: 'static>(&mut self) -> Option<&mut T> {
+    pub fn extension_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.bump_version();
         self.get_extension_mut_untracked()
     }

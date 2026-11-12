@@ -85,11 +85,11 @@ pub(crate) fn pointer_targets(
     let mut transformed = false;
     for id in path.iter().copied() {
         if visual_transforms && let Some(node) = cx.get(id) {
-            if node.get_extension::<crate::kernel::TopLayer>().is_some() {
+            if node.extension::<crate::kernel::TopLayer>().is_some() {
                 transformed = false;
             }
             transformed |= node
-                .get_extension::<StyleBinding>()
+                .extension::<StyleBinding>()
                 .is_some_and(StyleBinding::may_transform);
         }
         let (origin, size) = layout

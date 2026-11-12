@@ -33,7 +33,7 @@ fn first_child_height(host: &mut Host) -> f32 {
         .first()
         .expect("child");
     cx.get(child)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("laid out")
         .rect()
         .height

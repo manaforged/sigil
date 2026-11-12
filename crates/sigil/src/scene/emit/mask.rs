@@ -39,7 +39,7 @@ impl<'t> EmitWalk<'_, 't> {
     ) {
         let node = self.cx.get(id);
         let Some(rect) = node
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .map(LayoutResult::rect)
         else {
             self.push_filtered(id, inherited, clip, &style);
@@ -81,8 +81,8 @@ impl<'t> EmitWalk<'_, 't> {
             });
         };
         match around {
-            LayerOrClip::Layer(scope) => self.scene.with_composite_layer(scope, inner),
-            LayerOrClip::Clip(shape) => self.scene.with_clip(shape, inner),
+            LayerOrClip::Layer(scope) => self.scene.composite(scope, inner),
+            LayerOrClip::Clip(shape) => self.scene.clip(shape, inner),
         }
     }
 }

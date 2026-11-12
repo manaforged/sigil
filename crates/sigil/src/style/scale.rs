@@ -19,7 +19,7 @@ impl ColorScale {
 
     /// Sets the on solid.
     #[must_use]
-    pub const fn with_on_solid(mut self, on_solid: Color) -> Self {
+    pub const fn on_solid(mut self, on_solid: Color) -> Self {
         self.on_solid = on_solid;
         self
     }
@@ -64,7 +64,7 @@ kittest_pub! {
             Color::rgb(0x60, 0x64, 0x6C),
             Color::rgb(0x1C, 0x20, 0x24),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -86,7 +86,7 @@ pub const fn iris_light() -> ColorScale {
         Color::rgb(0x57, 0x53, 0xC6),
         Color::rgb(0x27, 0x29, 0x62),
     ])
-    .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+    .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
 kittest_pub! {
@@ -107,7 +107,7 @@ kittest_pub! {
             Color::rgb(0x1F, 0x7B, 0x53),
             Color::rgb(0x19, 0x3B, 0x2D),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -129,7 +129,7 @@ kittest_pub! {
             Color::rgb(0x9F, 0x5D, 0x00),
             Color::rgb(0x4F, 0x34, 0x22),
         ])
-        .with_on_solid(Color::rgb(0x4F, 0x34, 0x22))
+        .on_solid(Color::rgb(0x4F, 0x34, 0x22))
     }
 }
 
@@ -151,7 +151,7 @@ kittest_pub! {
             Color::rgb(0xCA, 0x24, 0x4D),
             Color::rgb(0x64, 0x17, 0x23),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -173,7 +173,7 @@ kittest_pub! {
             Color::rgb(0x0F, 0x76, 0x90),
             Color::rgb(0x0D, 0x34, 0x42),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -195,7 +195,7 @@ kittest_pub! {
             Color::rgb(0xB0, 0xB4, 0xBA),
             Color::rgb(0xED, 0xEE, 0xF0),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -217,7 +217,7 @@ pub const fn iris_dark() -> ColorScale {
         Color::rgb(0xB1, 0xA9, 0xFF),
         Color::rgb(0xE1, 0xDE, 0xFF),
     ])
-    .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+    .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
 kittest_pub! {
@@ -238,7 +238,7 @@ kittest_pub! {
             Color::rgb(0x2F, 0x5B, 0xA8),
             Color::rgb(0x1E, 0x3A, 0x6B),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -260,7 +260,7 @@ kittest_pub! {
             Color::rgb(0x8F, 0xB4, 0xE8),
             Color::rgb(0xD8, 0xE4, 0xF8),
         ])
-        .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+        .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
     }
 }
 
@@ -281,7 +281,7 @@ pub(crate) const fn green_dark() -> ColorScale {
         Color::rgb(0x4C, 0xC3, 0x8A),
         Color::rgb(0xD2, 0xF7, 0xE3),
     ])
-    .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+    .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
 /// The dark amber scale.
@@ -301,7 +301,7 @@ pub(crate) const fn amber_dark() -> ColorScale {
         Color::rgb(0xFF, 0xCA, 0x68),
         Color::rgb(0xFF, 0xE8, 0xC2),
     ])
-    .with_on_solid(Color::rgb(0x4F, 0x34, 0x22))
+    .on_solid(Color::rgb(0x4F, 0x34, 0x22))
 }
 
 /// The dark ruby scale.
@@ -321,7 +321,7 @@ pub(crate) const fn ruby_dark() -> ColorScale {
         Color::rgb(0xF5, 0x82, 0x9A),
         Color::rgb(0xFE, 0xD2, 0xDE),
     ])
-    .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+    .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
 /// The dark cyan scale.
@@ -341,7 +341,7 @@ pub(crate) const fn cyan_dark() -> ColorScale {
         Color::rgb(0x4C, 0xCC, 0xE6),
         Color::rgb(0xB6, 0xEC, 0xF7),
     ])
-    .with_on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
+    .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
 /// The job of a color scale in a theme.

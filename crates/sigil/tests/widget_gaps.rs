@@ -292,7 +292,7 @@ fn chip_dot_follows_a_reactive_tone() {
         layout.compute(&mut cx, root, size).unwrap();
         let mut tones = Vec::new();
         cx.visit_preorder(root, |_, node| {
-            if let Some(context) = node.get_extension::<sigil::style::ToneContext>() {
+            if let Some(context) = node.extension::<sigil::style::ToneContext>() {
                 tones.push(context.tone);
             }
         });

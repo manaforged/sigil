@@ -175,7 +175,7 @@ pub(super) fn push_node(
         NodeType::Container => push_container(scene, (id, node), rect, paint),
         NodeType::Text { .. } => push_text(scene, id, node, rect, paint),
         NodeType::Image { source, fit } => {
-            let themed = node.get_extension::<ThemedImage>();
+            let themed = node.extension::<ThemedImage>();
             let source = themed
                 .and_then(|themed| themed.resolve(paint.theme))
                 .unwrap_or_else(|| source.clone());
@@ -185,7 +185,7 @@ pub(super) fn push_node(
                 fit: *fit,
                 destination: rect,
                 opacity: style.opacity,
-                crop: node.get_extension::<ImageCrop>().copied(),
+                crop: node.extension::<ImageCrop>().copied(),
                 raster: themed.map(|themed| themed.raster(paint.theme)),
             });
         }
@@ -208,7 +208,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     };
     let flow = text_flow(*wrap, *ellipsis);
     let mut text_style = text_style_for(node, paint.theme, paint.text_base);
-    text_style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
+    text_style.runs = node.extension::<crate::style::TextRuns>().cloned();
     let text = content.resolve();
     if let Some(range) = paint.selected {
         super::selection::push_selection(
@@ -267,7 +267,7 @@ fn emit_run(
         target.draw_glyph_run_for_node(id, run);
     };
     if let Some(rect) = clip_rect {
-        scene.with_clip(rect, emit);
+        scene.clip(rect, emit);
     } else {
         emit(scene);
     }

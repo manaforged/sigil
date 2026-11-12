@@ -13,13 +13,13 @@ fn extension_attach_get_overwrite_and_remove_roundtrip() {
 
     assert_eq!(node.attach(Behavior(1)), None);
     assert!(node.has_extensions());
-    assert_eq!(node.get_extension::<Behavior>(), Some(&Behavior(1)));
+    assert_eq!(node.extension::<Behavior>(), Some(&Behavior(1)));
 
     assert_eq!(node.attach(Behavior(2)), Some(Behavior(1)));
-    assert_eq!(node.get_extension::<Behavior>(), Some(&Behavior(2)));
+    assert_eq!(node.extension::<Behavior>(), Some(&Behavior(2)));
 
     assert_eq!(node.remove_extension::<Behavior>(), Some(Behavior(2)));
-    assert_eq!(node.get_extension::<Behavior>(), None);
+    assert_eq!(node.extension::<Behavior>(), None);
 }
 
 #[test]

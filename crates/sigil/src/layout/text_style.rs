@@ -64,9 +64,9 @@ pub(crate) const fn signature_is_rtl(sig: u64) -> bool {
 }
 
 fn explicit_direction(node: &Node) -> Option<Direction> {
-    node.get_extension::<Direction>()
+    node.extension::<Direction>()
         .copied()
-        .or_else(|| node.get_extension::<Theme>().map(|theme| theme.direction))
+        .or_else(|| node.extension::<Theme>().map(|theme| theme.direction))
 }
 
 pub(crate) fn node_direction(node: &Node, inherited: Direction) -> Direction {
@@ -100,7 +100,7 @@ pub(crate) fn inherited_text_style(cx: &Cx, id: NodeId) -> TextStyle {
         let Some(node) = cx.get(*ancestor) else {
             continue;
         };
-        if let Some(binding) = node.get_extension::<StyleBinding>()
+        if let Some(binding) = node.extension::<StyleBinding>()
             && let Some(layered) = TextStyle::layered_over_binding(&style, binding)
         {
             style = layered;
@@ -110,6 +110,6 @@ pub(crate) fn inherited_text_style(cx: &Cx, id: NodeId) -> TextStyle {
 }
 
 pub(crate) fn theme_for(node: &Node) -> &Theme {
-    node.get_extension::<Theme>()
+    node.extension::<Theme>()
         .unwrap_or_else(crate::style::theme::fallback_theme)
 }

@@ -101,7 +101,7 @@ fn field_text_field_root(cx: &Cx, root: NodeId) -> NodeId {
 
 fn attached_top(cx: &Cx, id: NodeId) -> f32 {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("text node has an attached layout result")
         .rect()
         .origin

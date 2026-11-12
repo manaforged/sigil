@@ -34,7 +34,7 @@ fn flex_row_grow_child_fills_remaining_space() {
 
     let second = cx
         .get(second)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("second child result");
     assert_close(second.rect().width, 92.0);
 }
@@ -58,7 +58,7 @@ fn flex_column_gap_offsets_children() {
 
     let second = cx
         .get(children.get(1).copied().expect("second child id exists"))
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("second child result");
     assert_close(second.rect().origin.y, 20.0);
 }
@@ -85,7 +85,7 @@ fn padding_moves_content_origin() {
 
     let result = cx
         .get(child)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("child result");
     assert_close(result.rect().origin.x, 6.0);
     assert_close(result.rect().origin.y, 6.0);
@@ -114,7 +114,7 @@ fn block_auto_width_fills_available_space() {
 
     let result = cx
         .get(child)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("child result");
     assert_close(result.rect().width, 200.0);
 }
@@ -233,7 +233,7 @@ fn fragment_children_treated_as_siblings_of_parent() {
 
 fn result_for(cx: &Cx, id: NodeId) -> &LayoutResult {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("layout result exists")
 }
 

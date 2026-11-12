@@ -10,9 +10,11 @@ thread_local! {
     static PENDING: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Asks the host to focus a node on the next frame.
-pub fn request_focus(id: NodeId) {
-    PENDING.with(|cell| cell.borrow_mut().push(id));
+impl NodeId {
+    /// Asks the host to focus this node on the next frame.
+    pub fn focus(self) {
+        PENDING.with(|cell| cell.borrow_mut().push(self));
+    }
 }
 
 pub(crate) fn take_focus_requests() -> Vec<NodeId> {

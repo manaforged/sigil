@@ -69,9 +69,8 @@ impl FocusManager {
 
 fn initial_focus(cx: &Cx, scope_root: NodeId) -> Option<NodeId> {
     first_in_subtree(cx, scope_root, &|id| {
-        cx.get(id).is_some_and(|node| {
-            node.a11y.is_focusable() && node.get_extension::<Autofocus>().is_some()
-        })
+        cx.get(id)
+            .is_some_and(|node| node.a11y.is_focusable() && node.extension::<Autofocus>().is_some())
     })
     .or_else(|| {
         cx.get(scope_root)

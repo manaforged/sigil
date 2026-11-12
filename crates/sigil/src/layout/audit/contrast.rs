@@ -66,7 +66,7 @@ fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: 
     {
         return;
     }
-    let theme = node.get_extension::<Theme>().unwrap_or(above.theme);
+    let theme = node.extension::<Theme>().unwrap_or(above.theme);
     let render = render_style_for(node, theme, above.text);
     if render.opacity < OPAQUE
         || render.background_gradient.is_some()

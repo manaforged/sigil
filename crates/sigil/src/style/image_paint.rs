@@ -24,7 +24,7 @@ impl ImagePaints {
         if self.is_empty() {
             return;
         }
-        if let Some(owned) = node.get_extension_mut::<Self>() {
+        if let Some(owned) = node.extension_mut::<Self>() {
             for source in self.0 {
                 owned.push(source);
             }
@@ -35,7 +35,7 @@ impl ImagePaints {
 }
 
 pub(crate) fn lookup(node: &Node, id: u64) -> Option<&ImageSource> {
-    node.get_extension::<ImagePaints>()?.get(id)
+    node.extension::<ImagePaints>()?.get(id)
 }
 
 impl std::fmt::Debug for ImagePaints {

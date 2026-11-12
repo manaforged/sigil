@@ -6,7 +6,7 @@ use std::rc::Rc;
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{Event, FocusDirection, request_focus};
+use sigil::events::{Event, FocusDirection};
 use sigil::kernel::{Live, NodeId, announce};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -72,13 +72,13 @@ fn an_announcement_stays_with_the_host_that_made_it() {
 #[test]
 fn a_focus_request_stays_with_the_host_that_made_it() {
     Owner::scope("two_hosts::focus", || {
-        let wanted = Rc::new(Cell::new(None));
+        let wanted = Rc::new(Cell::new(None::<NodeId>));
         let request = Rc::clone(&wanted);
         let mut one = host(
             column()
                 .child(button("Jump").autofocus().activate(move || {
                     if let Some(id) = request.get() {
-                        request_focus(id);
+                        id.focus();
                     }
                 }))
                 .child(button("Target")),

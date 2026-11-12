@@ -226,7 +226,7 @@ pub(crate) fn app() -> impl IntoNode {
         .key(quit, |_| sigil::exit())
         .key_capture(NamedKey::Escape, move |event| {
             if let Some(id) = list_id.peek() {
-                request_focus(id);
+                id.focus();
                 event.stop_propagation();
             }
         })

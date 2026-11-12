@@ -57,8 +57,8 @@ impl Cx {
                 || node.a11y.traps_tab
                 || node.a11y.tab_index.is_some()
                 || node.a11y.keyboard_shortcut.is_some()
-                || node.get_extension::<TopLayer>().is_some()
-                || node.get_extension::<EventHandlers>().is_some()
+                || node.extension::<TopLayer>().is_some()
+                || node.extension::<EventHandlers>().is_some()
         })
     }
 

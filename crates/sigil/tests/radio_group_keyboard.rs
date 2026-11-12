@@ -99,7 +99,7 @@ fn checked_row_shows_focus_ring_only_while_group_focused() {
             .expect("second row");
         let ring_visible = |cx: &Cx| {
             cx.get(checked_row)
-                .and_then(|node| node.get_extension::<FocusRing>())
+                .and_then(|node| node.extension::<FocusRing>())
                 .is_some_and(FocusRing::visible)
         };
 

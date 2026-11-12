@@ -49,7 +49,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`request_focus` gives the node keyboard focus. Without focus, a node receives no key events through the focus path.
+`NodeId::focus` gives the node keyboard focus. Without focus, a node receives no key events through the focus path.
 
 ### Bind a key that fires from anywhere
 
@@ -381,10 +381,10 @@ For work the user starts, such as a Load button, `task` builds a new future on e
 
 A chat transcript has rows whose height depends on the width: wrapped markdown, tool cards, images. `.measured()` sizes each row from its layout. `.follow_end(true)` keeps the last row in view while a reply streams in.
 
-App state that is not `Send` stays on the UI thread. A worker sends messages on a tokio channel. `on_message` runs the handler on the UI thread for each message. A send wakes the event loop, so the app does not poll.
+App state that is not `Send` stays on the UI thread. A worker sends messages on a tokio channel. `listen` runs the handler on the UI thread for each message. A send wakes the event loop, so the app does not poll.
 
 ```rust,no_run
-use sigil::tasks::on_message;
+use sigil::tasks::listen;
 use sigil::prelude::*;
 use std::rc::Rc;
 
@@ -396,7 +396,7 @@ enum Event {
 fn tree() -> impl IntoNode {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    on_message(rx, move |event| {
+    listen(rx, move |event| {
         messages.update(|list| match event {
             Event::Start => Rc::make_mut(list).push(String::new()),
             Event::Chunk(text) => {
@@ -449,7 +449,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`on_message(rx, f, close)` runs `close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
+`listen(rx, f, close)` runs `close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 

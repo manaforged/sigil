@@ -49,8 +49,8 @@ impl Transform2D {
 
 fn parent_perspective(cx: &Cx, id: NodeId) -> Option<Transform3D> {
     let parent = cx.get(cx.parent(id)?)?;
-    let rect = parent.get_extension::<LayoutResult>()?.rect();
-    SpaceStyle::for_binding(parent.get_extension::<StyleBinding>()?).perspective_at(rect)
+    let rect = parent.extension::<LayoutResult>()?.rect();
+    SpaceStyle::for_binding(parent.extension::<StyleBinding>()?).perspective_at(rect)
 }
 
 pub(crate) fn projection(

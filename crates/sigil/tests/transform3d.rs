@@ -63,7 +63,7 @@ fn record(scene: &mut SceneBuilder, transform: Transform3D, hide_backface: bool)
         opacity: 1.0,
         blend: sigil::scene::BlendMode::Normal,
     };
-    scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(card(), INK)));
+    scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(card(), INK)));
 }
 
 fn card_canvas(radians: f32, hide_backface: bool) -> impl Fn() -> NodeBuilder {

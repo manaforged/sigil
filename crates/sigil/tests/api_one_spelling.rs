@@ -103,7 +103,7 @@ fn button_width_takes_text_relative_units() {
         let button_id = *column.children().first().expect("button child");
         let width = cx
             .get(button_id)
-            .and_then(|node| node.get_extension::<LayoutResult>())
+            .and_then(|node| node.extension::<LayoutResult>())
             .expect("button laid out")
             .rect()
             .width;

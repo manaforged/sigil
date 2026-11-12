@@ -183,7 +183,7 @@ impl SceneBuilder {
     kittest_pub! {
     /// Clips the commands that `body` appends to `clip`.
     #[doc(hidden)]
-    pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
+    pub fn clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
         let open = SceneCommand::PushClip(clip.into());
         self.with_scope(open, SceneCommand::PopClip, body);
     }
@@ -192,7 +192,7 @@ impl SceneBuilder {
     #[cfg(feature = "kittest")]
     /// Draw `body` under `transform`.
     #[doc(hidden)]
-    pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
+    pub fn transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
         let open = SceneCommand::PushTransform(transform);
         self.with_scope(open, SceneCommand::PopTransform, body);
     }
@@ -200,7 +200,7 @@ impl SceneBuilder {
     #[cfg(feature = "kittest")]
     /// Draw `body` into a layer composited at `opacity`.
     #[doc(hidden)]
-    pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
+    pub fn layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
         let open = SceneCommand::SaveLayer { opacity };
         self.with_scope(open, SceneCommand::RestoreLayer, body);
     }
@@ -208,7 +208,7 @@ impl SceneBuilder {
     kittest_pub! {
     /// Draws the commands that `body` appends into a layer.
     #[doc(hidden)]
-    pub fn with_composite_layer<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
+    pub fn composite<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
         self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, body);
     }
     }

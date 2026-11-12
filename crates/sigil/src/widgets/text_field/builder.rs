@@ -266,11 +266,11 @@ impl IntoNode for TextFieldBuilder {
         let id = node.build(cx);
         target.set(Some(id));
         if autofocus {
-            crate::events::request_focus(id);
+            id.focus();
         }
         if let Some(trigger) = focus_trigger {
             crate::events::focus::focus_on_trigger(trigger, move || {
-                crate::events::request_focus(id);
+                id.focus();
             });
         }
         id

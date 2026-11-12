@@ -203,7 +203,7 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
     if let Some(shortcut) = node.a11y.keyboard_shortcut.as_ref() {
         entries.push((shortcut.clone(), id));
     }
-    if let Some(handlers) = node.get_extension::<EventHandlers>() {
+    if let Some(handlers) = node.extension::<EventHandlers>() {
         entries.extend(handlers.shortcuts().map(|shortcut| (shortcut.clone(), id)));
     }
     for child in node.children().iter().copied() {

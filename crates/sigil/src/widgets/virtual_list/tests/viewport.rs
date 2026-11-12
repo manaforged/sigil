@@ -12,7 +12,7 @@ fn fill_sets_root_dimensions_to_fill() {
         let style = cx
             .get(root)
             .expect("root node")
-            .get_extension::<crate::layout::LayoutStyle>()
+            .extension::<crate::layout::LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
         assert_eq!(style.data().size.width, Length::Fill);

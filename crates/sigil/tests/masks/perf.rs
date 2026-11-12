@@ -54,7 +54,7 @@ fn layered() -> CommandScene {
             opacity: 0.99,
             blend: sigil::scene::BlendMode::Normal,
         };
-        scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
+        scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
     }
     scene.finish()
 }

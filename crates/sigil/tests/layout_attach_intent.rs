@@ -34,7 +34,7 @@ fn sync_updates_intent_without_allocating_new_layout_nodes() {
 
     let result = cx
         .get(root)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("root result attached");
     assert_eq!(result.rect().width, 200.0);
 }
@@ -51,7 +51,7 @@ fn text_builder_accepts_layout_intent() {
 
     let result = cx
         .get(root)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("text result attached");
     assert_eq!(result.rect().width, 96.0);
 }

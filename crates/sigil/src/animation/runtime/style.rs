@@ -346,17 +346,17 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     let Some(node) = cx.get(id) else {
         return;
     };
-    let Some(binding) = node.get_extension::<StyleBinding>() else {
+    let Some(binding) = node.extension::<StyleBinding>() else {
         return;
     };
     if binding.animator_overlay().is_none() && !binding.has_transition() {
         return;
     }
     let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
-        .find_map(|ancestor| cx.get(ancestor)?.get_extension::<Theme>())
+        .find_map(|ancestor| cx.get(ancestor)?.extension::<Theme>())
         .unwrap_or_else(crate::style::theme::fallback_theme);
     let tone = node
-        .get_extension::<ToneContext>()
+        .extension::<ToneContext>()
         .copied()
         .unwrap_or_default()
         .tone;

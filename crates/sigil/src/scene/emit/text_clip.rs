@@ -18,7 +18,7 @@ impl TextFill {
         if !style.paint.clip_text || !matches!(node.kind, NodeType::Container) {
             return None;
         }
-        let rect = node.get_extension::<LayoutResult>()?.rect();
+        let rect = node.extension::<LayoutResult>()?.rect();
         let gradient = super::background::fill(rect, style, theme)?;
         let mut hasher = AHasher::default();
         format!("{gradient:?}").hash(&mut hasher);

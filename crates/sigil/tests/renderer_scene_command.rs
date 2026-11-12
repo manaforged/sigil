@@ -9,7 +9,7 @@ use sigil::style::Color;
 fn builder_emits_balanced_push_pop_for_with_clip() {
     let mut builder = SceneBuilder::new();
 
-    builder.with_clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
+    builder.clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
         scene.draw_rect(rect_style(rect(4.0, 6.0, 20.0, 12.0)));
     });
 
@@ -22,9 +22,9 @@ fn builder_emits_balanced_push_pop_for_with_clip() {
 fn builder_nests_layers_correctly() {
     let mut builder = SceneBuilder::new();
 
-    builder.with_layer(0.8, |scene| {
+    builder.layer(0.8, |scene| {
         scene.draw_rect(rect_style(rect(0.0, 0.0, 10.0, 10.0)));
-        scene.with_layer(0.5, |scene| {
+        scene.layer(0.5, |scene| {
             scene.draw_rect(rect_style(rect(1.0, 1.0, 8.0, 8.0)));
         });
     });
@@ -57,8 +57,8 @@ fn builder_closes_scopes_on_drop_of_inner_scope() {
     let mut builder = SceneBuilder::new();
     let transform: Transform = [[1.0, 0.0, 4.0], [0.0, 1.0, 8.0]];
 
-    builder.with_clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
-        scene.with_transform(transform, |scene| {
+    builder.clip(rect(0.0, 0.0, 100.0, 80.0), |scene| {
+        scene.transform(transform, |scene| {
             scene.draw_rect(rect_style(rect(2.0, 2.0, 12.0, 12.0)));
         });
         scene.draw_rect(rect_style(rect(20.0, 20.0, 12.0, 12.0)));

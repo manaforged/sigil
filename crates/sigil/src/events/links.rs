@@ -22,22 +22,20 @@ pub(crate) fn link_text(cx: &Cx, id: NodeId) -> Option<LinkText> {
     let NodeType::Text { content, wrap, .. } = &node.kind else {
         return None;
     };
-    let runs = node.get_extension::<TextRuns>()?.clone();
+    let runs = node.extension::<TextRuns>()?.clone();
     if !runs.0.iter().any(|run| run.face.link.is_some()) {
         return None;
     }
-    let rect = node
-        .get_extension::<LayoutResult>()
-        .map(LayoutResult::rect)?;
+    let rect = node.extension::<LayoutResult>().map(LayoutResult::rect)?;
     let mut theme = crate::style::theme::fallback_theme();
     let mut base = Rc::new(TextStyle::default());
     for step in path_to_node(cx, id) {
         let Some(at) = cx.get(step) else {
             continue;
         };
-        theme = at.get_extension::<Theme>().unwrap_or(theme);
+        theme = at.extension::<Theme>().unwrap_or(theme);
         if let Some(layered) = at
-            .get_extension::<StyleBinding>()
+            .extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(&base, binding))
         {
             base = Rc::new(layered);

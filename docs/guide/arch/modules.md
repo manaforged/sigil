@@ -18,7 +18,7 @@ The public modules are `animation`, `app`, `clipboard`, `events`, `geometry`, `i
 | `renderer` | wgpu, `CommandScene`, emit cache, layer pool. |
 | `shell` | winit window and event loop. |
 | `a11y` | AccessKit projection. |
-| `tasks` | Tokio runtime, `task`, `spawn`, `Signal::writer`, `on_message`, `Status`. |
+| `tasks` | Tokio runtime, `task`, `spawn`, `Signal::writer`, `listen`, `Status`. |
 | `animation` | Easing, keyframes, transitions, and the private runtime that plays them. |
 | `app` | `run`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |
 | `widgets` | The widget catalog and the `Widget` setter trait. No window, no GPU. |

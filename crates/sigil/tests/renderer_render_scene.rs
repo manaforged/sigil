@@ -52,7 +52,7 @@ fn render_command_scene_paints_nested_clip() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn render_command_scene_paints_save_layer_with_opacity() {
     let mut builder = SceneBuilder::new();
-    builder.with_layer(0.5, |scene| {
+    builder.layer(0.5, |scene| {
         scene.draw_rect(rect_style(rect(0.0, 0.0, 10.0, 10.0)));
     });
     let scene = builder.finish();
@@ -74,7 +74,7 @@ fn render_command_scene_paints_save_layer_with_opacity() {
 fn render_command_scene_transform_affects_descendants() {
     let transform = [[1.0, 0.0, 8.0], [0.0, 1.0, 12.0]];
     let mut builder = SceneBuilder::new();
-    builder.with_transform(transform, |scene| {
+    builder.transform(transform, |scene| {
         scene.draw_rect(rect_style(rect(1.0, 2.0, 10.0, 10.0)));
     });
     let scene = builder.finish();
@@ -101,8 +101,8 @@ type RenderCommandScene = fn(
 
 fn nested_clip_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
-    builder.with_clip(rect(0.0, 0.0, 100.0, 100.0), |scene| {
-        scene.with_clip(rect(10.0, 10.0, 40.0, 40.0), |scene| {
+    builder.clip(rect(0.0, 0.0, 100.0, 100.0), |scene| {
+        scene.clip(rect(10.0, 10.0, 40.0, 40.0), |scene| {
             scene.draw_rect(rect_style(rect(5.0, 5.0, 80.0, 80.0)));
         });
     });

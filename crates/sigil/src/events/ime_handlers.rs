@@ -17,10 +17,10 @@ impl core::fmt::Debug for ImeEligible {
 }
 
 fn wants_ime(node: &Node) -> bool {
-    node.get_extension::<EventHandlers>()
+    node.extension::<EventHandlers>()
         .is_some_and(|handlers| handlers.handles(EventKind::Ime))
         && node
-            .get_extension::<ImeEligible>()
+            .extension::<ImeEligible>()
             .is_none_or(|eligible| (eligible.0)())
 }
 
@@ -101,7 +101,7 @@ impl EventRouter {
         pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
             let focused = self.focus()?;
             let node = cx.get(focused)?;
-            let local = node.get_extension::<CaretAnchorExt>()?.0.get()?;
+            let local = node.extension::<CaretAnchorExt>()?.0.get()?;
             let origin = layout.result(focused)?.rect().origin;
             Some(Rect::new(
                 Point::new(origin.x + local.x, origin.y + local.top),

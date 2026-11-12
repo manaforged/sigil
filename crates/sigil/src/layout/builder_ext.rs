@@ -155,11 +155,11 @@ pub(crate) fn asymmetric(node: NodeBuilder, reason: &'static str) -> NodeBuilder
 
 pub(crate) fn install_layout(node: &mut Node, style: &LayoutStyle) {
     let slots = style.slots();
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+    if let Some(binding) = node.extension_mut::<StyleBinding>() {
         binding.strip(slots);
         binding.note_user(slots);
     }
-    if let Some(existing) = node.get_extension_mut::<LayoutStyle>() {
+    if let Some(existing) = node.extension_mut::<LayoutStyle>() {
         existing.merge(style);
     } else {
         let _previous = node.attach(style.clone());

@@ -13,7 +13,7 @@ pub(crate) fn stub_engine() -> LayoutEngine {
 
 pub(crate) fn layout_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
     cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
+        .and_then(|node| node.extension::<LayoutResult>())
         .expect("layout result exists")
         .rect()
 }

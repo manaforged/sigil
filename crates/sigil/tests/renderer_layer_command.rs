@@ -132,7 +132,7 @@ fn layer_scene() -> CommandScene {
 
 fn rounded_clip_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
-    builder.with_composite_layer(
+    builder.composite(
         LayerScope {
             clip: rect(40.0, 24.0, 96.0, 64.0),
             clip_radii: CornerRadii::uniform(24.0),
@@ -159,8 +159,8 @@ fn nested_layer_scene() -> CommandScene {
         opacity: 1.0,
         blend: sigil::scene::BlendMode::Normal,
     };
-    builder.with_composite_layer(plain(rect(30.0, 10.0, 160.0, 100.0)), |scene| {
-        scene.with_composite_layer(plain(rect(80.0, 35.0, 60.0, 50.0)), |scene| {
+    builder.composite(plain(rect(30.0, 10.0, 160.0, 100.0)), |scene| {
+        scene.composite(plain(rect(80.0, 35.0, 60.0, 50.0)), |scene| {
             scene.draw_rect(DrawRect::new(
                 rect(80.0, 35.0, 60.0, 50.0),
                 color(30, 240, 30, 255),

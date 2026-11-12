@@ -28,7 +28,7 @@ fn shadow_constructor_defaults_to_outer_and_builder_sets_inner() {
     let shadow = Shadow::new([1.0, 2.0], 3.0, 4.0, [0.1, 0.2, 0.3, 0.4]);
 
     assert_eq!(shadow.kind, ShadowKind::Outer);
-    assert_eq!(shadow.with_kind(ShadowKind::Inner).kind, ShadowKind::Inner);
+    assert_eq!(shadow.kind(ShadowKind::Inner).kind, ShadowKind::Inner);
 }
 
 #[test]

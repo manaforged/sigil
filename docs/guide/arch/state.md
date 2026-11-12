@@ -44,4 +44,4 @@ A `Signal` is a `Copy` arena key. After dispose, `get` and `set` panic with a st
 
 Background work must not touch the arena. It holds an `Owner`, which carries identity only and is `Send + Sync`. Completions post a closure through the dispatcher. The closure runs on the main thread with that owner current, or it is dropped if the owner is gone.
 
-Use `task` for work that runs on demand and may run again, and `spawn` for a future that starts now and owns state it cannot rebuild. A worker that already exists writes through `signal.writer()`, which keeps the current owner and lets the worker write repeatedly, or sends on a channel that `on_message` drains on the main thread.
+Use `task` for work that runs on demand and may run again, and `spawn` for a future that starts now and owns state it cannot rebuild. A worker that already exists writes through `signal.writer()`, which keeps the current owner and lets the worker write repeatedly, or sends on a channel that `listen` drains on the main thread.

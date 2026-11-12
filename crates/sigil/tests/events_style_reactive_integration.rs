@@ -85,7 +85,7 @@ fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
     let binding = cx
         .get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
+        .and_then(|node| node.extension::<StyleBinding>())
         .unwrap();
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())
