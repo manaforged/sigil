@@ -134,8 +134,7 @@ impl<'a> MeasureScope<'a> {
         wrap_to: Option<f32>,
     ) -> Option<crate::layout::style_data::Axes<f32>> {
         let text = node.text()?;
-        let mut memo_key =
-            text_memo_key(node.id(), known, wrap_to, text, self.font_generation());
+        let mut memo_key = text_memo_key(node.id(), known, wrap_to, text, self.font_generation());
         if text.wrap && known.width.is_none() && wrap_to.is_none() {
             match self.available.w {
                 SpaceConstraint::Definite(value) => memo_key.wrap = value.to_bits(),
@@ -156,6 +155,20 @@ impl<'a> MeasureScope<'a> {
             }
             return Some(hit);
         }
+        let out = self.shape(text, known, wrap_to);
+        self.forest.text_memo.borrow_mut().store(memo_key, out);
+        if let Some(last) = last {
+            last.set(Some((memo_key, out)));
+        }
+        Some(out)
+    }
+
+    fn shape(
+        &self,
+        text: &super::LayoutText,
+        known: crate::layout::style_data::Axes<Option<f32>>,
+        wrap_to: Option<f32>,
+    ) -> crate::layout::style_data::Axes<f32> {
         let width = if text.wrap {
             known.width.or(wrap_to).map_or_else(
                 || space_constraint_to_hal_dim(self.available.w),
@@ -180,15 +193,10 @@ impl<'a> MeasureScope<'a> {
         } else {
             measured.width
         };
-        let out = crate::layout::style_data::Axes {
+        crate::layout::style_data::Axes {
             width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
-        };
-        self.forest.text_memo.borrow_mut().store(memo_key, out);
-        if let Some(last) = last {
-            last.set(Some((memo_key, out)));
         }
-        Some(out)
     }
 }
 

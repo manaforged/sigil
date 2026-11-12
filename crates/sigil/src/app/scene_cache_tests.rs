@@ -76,19 +76,21 @@ fn a_frame_whose_paint_was_skipped_keeps_the_next_scene_current() {
             rows
         });
         let mut cache = SceneCache::default();
-        let frame = |host: &mut Host, cache: &mut SceneCache, paint: bool| {
+        let frame = |target: &mut Host, memo: &mut SceneCache, paint: bool| {
             let hooks = FrameHooks {
                 input: None,
                 after_layout: None,
-                paint: Some(Box::new(|host: &mut Host, info: &crate::app::FrameInfo| {
-                    if !paint {
-                        cache.skip();
-                    } else if let Some((cx, _, _, root)) = host.tree() {
-                        let _ = cache.scene(cx, (root, VIEW), (false, Some(&info.delta)));
-                    }
-                })),
+                paint: Some(Box::new(
+                    |painted: &mut Host, info: &crate::app::FrameInfo| {
+                        if !paint {
+                            memo.skip();
+                        } else if let Some((cx, _, _, root)) = painted.tree() {
+                            let _ = memo.scene(cx, (root, VIEW), (false, Some(&info.delta)));
+                        }
+                    },
+                )),
             };
-            let _ = host.frame(VIEW, 0.0, hooks);
+            let _ = target.frame(VIEW, 0.0, hooks);
         };
         frame(&mut host, &mut cache, true);
         frame(&mut host, &mut cache, true);

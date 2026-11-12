@@ -146,7 +146,10 @@ where
                 .into_iter()
                 .map(|tag| {
                     let label = tag.to_string();
-                    let remove = button(DISMISS_GLYPH).ghost().square().activate(move || toggle(selected, &tag))
+                    let remove = button(DISMISS_GLYPH)
+                        .ghost()
+                        .square()
+                        .activate(move || toggle(selected, &tag))
                         .accessible(theme.fill(StringKey::RemoveItem, &[&label]));
                     let remove = match disabled {
                         Some(flag) => remove.disabled(flag),

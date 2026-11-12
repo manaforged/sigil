@@ -61,7 +61,9 @@ impl LayoutEngine {
                     return CacheDecision::Hit;
                 }
                 if !cx.dirty_all() {
-                    return CacheDecision::Miss(key(prev.input_signature.wrapping_add(reactive | 1)));
+                    return CacheDecision::Miss(key(prev
+                        .input_signature
+                        .wrapping_add(reactive | 1)));
                 }
             }
         }

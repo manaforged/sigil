@@ -39,7 +39,7 @@ pub(crate) use vega::vega_lite;
 const DEFAULT_HEIGHT: f32 = 180.0;
 const MIN_HEIGHT: f32 = 48.0;
 const MIN_WIDTH: f32 = 80.0;
-pub(self) const PERCENT: f32 = 100.0;
+const PERCENT: f32 = 100.0;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum ChartMark {

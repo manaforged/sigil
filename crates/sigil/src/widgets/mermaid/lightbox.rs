@@ -142,7 +142,8 @@ fn controls(camera: Camera) -> NodeBuilder {
                 .align_items(AlignItems::Center),
         )
         .child(
-            button(Icon::ZoomOut).activate(move || camera.scale(-1.0))
+            button(Icon::ZoomOut)
+                .activate(move || camera.scale(-1.0))
                 .accessible(theme_string_once(StringKey::ZoomOut))
                 .size(ControlSize::Compact),
         )
@@ -152,7 +153,8 @@ fn controls(camera: Camera) -> NodeBuilder {
                 .class(Token::OnSurfaceMuted.text()),
         )
         .child(
-            button(Icon::ZoomIn).activate(move || camera.scale(1.0))
+            button(Icon::ZoomIn)
+                .activate(move || camera.scale(1.0))
                 .accessible(theme_string_once(StringKey::ZoomIn))
                 .size(ControlSize::Compact),
         )

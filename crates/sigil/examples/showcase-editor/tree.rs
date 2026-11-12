@@ -21,7 +21,10 @@ pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
         |strip, (activity, glyph, name)| {
             let activity = *activity;
             strip.child(container().children_reactive(move || {
-                let base = button("").ghost().square().activate(move || ws.activity.set(activity))
+                let base = button("")
+                    .ghost()
+                    .square()
+                    .activate(move || ws.activity.set(activity))
                     .icon(*glyph)
                     .accessible(*name)
                     .size(ControlSize::Default);

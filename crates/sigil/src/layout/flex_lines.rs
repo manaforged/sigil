@@ -47,10 +47,10 @@ impl FlexItem {
         let edges = node.edges(measured.cb.w);
         let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges, false);
         let cross_dim = ctx.axes.pick(style.size.height, style.size.width);
-        let stretched = stretches
+        let fills_cross = stretches
             && matches!(cross_dim, crate::layout::style_data::Length::Auto)
             && matches!(style.align_self, None | Some(AlignItems::Stretch));
-        let (cross_resolved, was_auto) = if stretched {
+        let (cross_resolved, was_auto) = if fills_cross {
             (None, true)
         } else {
             item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges)

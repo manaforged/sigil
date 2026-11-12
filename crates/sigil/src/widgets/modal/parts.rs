@@ -40,7 +40,10 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
         );
     match close {
         Some(show) => row.child(
-            button(crate::widgets::icon::DISMISS_GLYPH).ghost().square().activate(move || show.set(false))
+            button(crate::widgets::icon::DISMISS_GLYPH)
+                .ghost()
+                .square()
+                .activate(move || show.set(false))
                 .accessible(theme_label(StringKey::Close))
                 .size(ControlSize::Compact),
         ),

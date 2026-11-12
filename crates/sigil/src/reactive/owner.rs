@@ -51,7 +51,7 @@ impl Drop for OwnerWithGuard {
 pub(crate) struct Deferred {
     prev: Option<OwnerKey>,
     prev_lazy: Option<EffectKey>,
-    prev_deferred: Option<usize>,
+    outer: Option<usize>,
     fallback: OwnerKey,
     owner: Option<OwnerKey>,
     name: &'static str,
@@ -66,22 +66,22 @@ impl RuntimeState {
         if let Some(owner) = entry.owner {
             return owner;
         }
-        let (prev, prev_lazy, prev_deferred, fallback, name, location) = (
+        let (prev, prev_lazy, outer, fallback, name, location) = (
             entry.prev,
             entry.prev_lazy,
-            entry.prev_deferred,
+            entry.outer,
             entry.fallback,
             entry.name,
             entry.location,
         );
         let parent = if let Some(owner) = prev {
             owner
-        } else if let Some(outer) = prev_deferred {
+        } else if let Some(outer) = outer {
             self.materialize(outer)
         } else if let Some(run_owner) = prev_lazy.and_then(|key| self.effect_run_owner(key)) {
-            if let Some(entry) = self.deferred.get_mut(at) {
-                entry.prev = Some(run_owner);
-                entry.prev_lazy = None;
+            if let Some(slot) = self.deferred.get_mut(at) {
+                slot.prev = Some(run_owner);
+                slot.prev_lazy = None;
             }
             run_owner
         } else {
@@ -92,8 +92,8 @@ impl RuntimeState {
             "Owner::new with a disposed parent (id={parent:?}, creating {name:?} at {location})",
         );
         let owner = self.insert_owner(name, Some(parent), location);
-        if let Some(entry) = self.deferred.get_mut(at) {
-            entry.owner = Some(owner);
+        if let Some(slot) = self.deferred.get_mut(at) {
+            slot.owner = Some(owner);
         }
         owner
     }
@@ -108,13 +108,11 @@ impl RuntimeState {
             if let Some(owner) = entry.owner.or(entry.prev) {
                 return Some(owner);
             }
-            match entry.prev_deferred {
-                Some(outer) => at = outer,
-                None => {
-                    let effect = entry.prev_lazy.and_then(|key| self.effects.get(key));
-                    return Some(effect.map_or(entry.fallback, |slot| slot.owner));
-                }
-            }
+            let Some(outer) = entry.outer else {
+                let effect = entry.prev_lazy.and_then(|key| self.effects.get(key));
+                return Some(effect.map_or(entry.fallback, |slot| slot.owner));
+            };
+            at = outer;
         }
     }
 }
@@ -135,7 +133,7 @@ impl Drop for DeferredOwner {
             if let Some(entry) = rt.deferred.pop() {
                 rt.current_owner = entry.prev;
                 rt.lazy_effect_owner = entry.prev_lazy;
-                rt.deferred_at = entry.prev_deferred;
+                rt.deferred_at = entry.outer;
             }
         });
     }
@@ -181,7 +179,7 @@ impl Owner {
             let entry = Deferred {
                 prev: rt.current_owner.take(),
                 prev_lazy: rt.lazy_effect_owner.take(),
-                prev_deferred: rt.deferred_at.replace(at),
+                outer: rt.deferred_at.replace(at),
                 fallback: fallback.0,
                 owner: None,
                 name,

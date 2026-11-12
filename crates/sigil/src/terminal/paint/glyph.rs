@@ -8,23 +8,7 @@ const LONG: u8 = u8::MAX;
 const ENTRIES: usize = u16::MAX as usize - 1;
 const ENTRY_BYTES: usize = 2048;
 const REPLACEMENT: &str = "\u{fffd}";
-const ASCII_COUNT: usize = 128;
-
-const ASCII: &str = {
-    const BYTES: [u8; ASCII_COUNT] = {
-        let mut bytes = [0; ASCII_COUNT];
-        let mut at = 0;
-        while at < ASCII_COUNT {
-            bytes[at] = at as u8;
-            at += 1;
-        }
-        bytes
-    };
-    match std::str::from_utf8(&BYTES) {
-        Ok(text) => text,
-        Err(_) => "",
-    }
-};
+const ASCII: &str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f";
 
 #[derive(Default)]
 struct Table {
@@ -38,21 +22,23 @@ static GLYPHS: Shared = LazyLock::new(RwLock::default);
 static LINKS: Shared = LazyLock::new(RwLock::default);
 
 fn intern(table: &Shared, text: &str) -> Option<u16> {
-    let known = |table: &Table| table.ids.get(text).copied();
-    if let Some(id) = known(&table.read().unwrap_or_else(PoisonError::into_inner)) {
+    let known = |seen: &Table| seen.ids.get(text).copied();
+    let read = known(&table.read().unwrap_or_else(PoisonError::into_inner));
+    if read.is_some() {
+        return read;
+    }
+    let mut write = table.write().unwrap_or_else(PoisonError::into_inner);
+    if let Some(id) = known(&write) {
         return Some(id);
     }
-    let mut table = table.write().unwrap_or_else(PoisonError::into_inner);
-    if let Some(id) = known(&table) {
-        return Some(id);
-    }
-    if table.texts.len() >= ENTRIES || text.len() > ENTRY_BYTES {
+    if write.texts.len() >= ENTRIES || text.len() > ENTRY_BYTES {
         return None;
     }
-    let id = u16::try_from(table.texts.len()).ok()?;
+    let id = u16::try_from(write.texts.len()).ok()?;
     let kept: &'static str = Box::leak(Box::from(text));
-    table.texts.push(kept);
-    table.ids.insert(kept, id);
+    write.texts.push(kept);
+    write.ids.insert(kept, id);
+    drop(write);
     Some(id)
 }
 
@@ -75,12 +61,15 @@ impl Glyph {
         let source = text.as_bytes();
         assert!(source.len() <= INLINE, "an inline glyph holds seven bytes");
         let mut bytes = [0; INLINE + 1];
-        let mut at = 0;
-        while at < source.len() {
-            bytes[at] = source[at];
-            at += 1;
+        bytes.split_at_mut(source.len()).0.copy_from_slice(source);
+        let [.., len] = &mut bytes;
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "the assert above bounds the length to seven"
+        )]
+        {
+            *len = source.len() as u8;
         }
-        bytes[INLINE] = source.len() as u8;
         Self(bytes)
     }
 

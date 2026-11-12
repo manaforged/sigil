@@ -90,7 +90,9 @@ impl LayoutEngine {
             .map(|id| {
                 self.published_result
                     .get(id.key())
-                    .map_or((0.0, 0.0), |res| (res.solved_origin().x, res.solved_origin().y))
+                    .map_or((0.0, 0.0), |res| {
+                        (res.solved_origin().x, res.solved_origin().y)
+                    })
             })
             .collect();
         self.remeasure_roots(roots, root, available)?;
@@ -195,7 +197,7 @@ impl LayoutEngine {
 
     pub(super) fn translate_moved(
         &mut self,
-        cx: &mut Cx,
+        cx: &Cx,
         dirty: &mut Vec<NodeId>,
     ) -> Result<Vec<NodeId>, Error> {
         let _translate = crate::profile::span(crate::profile::Phase::LayoutTranslate);
@@ -214,7 +216,7 @@ impl LayoutEngine {
         Ok(moved)
     }
 
-    fn translate(&mut self, cx: &mut Cx, id: NodeId) -> Result<(), Error> {
+    fn translate(&mut self, cx: &Cx, id: NodeId) -> Result<(), Error> {
         let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
         let Some(next) = node
             .get_extension::<crate::layout::ReactivePosition>()

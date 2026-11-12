@@ -200,7 +200,7 @@ impl Grid {
     #[must_use]
     pub fn get(&self, col: usize, row: usize) -> Option<Cell> {
         let i = self.index(col, row)?;
-        self.cells.get(i).cloned()
+        self.cells.get(i).copied()
     }
 
     /// Returns the text.

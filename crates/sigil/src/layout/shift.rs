@@ -72,7 +72,10 @@ impl ShiftSlot {
     pub(crate) fn new() -> Self {
         SLOTS.with_borrow_mut(|slots| {
             if let Some(index) = slots.free.pop() {
-                let era = slots.entries.get(index as usize - 1).map_or(0, |entry| entry.era);
+                let era = slots
+                    .entries
+                    .get(index as usize - 1)
+                    .map_or(0, |entry| entry.era);
                 return Self(Shift(u32::from(era) << 24 | index));
             }
             slots.entries.push(Entry::default());
@@ -109,14 +112,14 @@ impl Drop for ShiftSlot {
     fn drop(&mut self) {
         let shift = self.0;
         let _ = SLOTS.try_with(|slots| {
-            if let Ok(mut slots) = slots.try_borrow_mut() {
-                if let Some(entry) = slots.entry_mut(shift) {
-                    *entry = Entry {
-                        era: entry.era.wrapping_add(1),
-                        ..Entry::default()
-                    };
-                    slots.free.push(shift.0 & INDEX);
-                }
+            if let Ok(mut slots) = slots.try_borrow_mut()
+                && let Some(entry) = slots.entry_mut(shift)
+            {
+                *entry = Entry {
+                    era: entry.era.wrapping_add(1),
+                    ..Entry::default()
+                };
+                slots.free.push(shift.0 & INDEX);
             }
         });
     }

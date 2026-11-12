@@ -27,7 +27,11 @@ pub(crate) fn button_pending_demo() -> ButtonBuilder {
 }
 
 pub(crate) fn icon_button_demo() -> ButtonBuilder {
-    button("×").ghost().square().activate(|| {}).accessible("Reset")
+    button("×")
+        .ghost()
+        .square()
+        .activate(|| {})
+        .accessible("Reset")
 }
 
 pub(crate) fn checkbox_demo(disabled: Signal<bool>) -> impl IntoNode {

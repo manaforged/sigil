@@ -17,13 +17,13 @@ fn a_row_with_changes_far_apart_rewrites_only_the_changed_cells() {
         .map(|(index, cell)| match index {
             2 => Cell {
                 text: "A".into(),
-                ..cell.clone()
+                ..*cell
             },
             37 => Cell {
                 text: "B".into(),
-                ..cell.clone()
+                ..*cell
             },
-            _ => cell.clone(),
+            _ => *cell,
         })
         .collect();
     let mut next = Grid::new(40, 1);
