@@ -57,6 +57,13 @@ pub(super) fn min_content_memo_key(id: LocalId, text: &LayoutText, fonts: u64) -
 }
 
 fn text_memo_content(text: &LayoutText) -> u64 {
+    if matches!(text.content, TextContent::Static(_)) {
+        return *text.sig.get_or_init(|| content_signature(text));
+    }
+    content_signature(text)
+}
+
+fn content_signature(text: &LayoutText) -> u64 {
     let mut hasher = AHasher::default();
     match &text.content {
         TextContent::Static(value) => value.hash(&mut hasher),

@@ -211,6 +211,7 @@ impl LayoutEngine {
                 style: Some(inherited_text.clone()),
                 wrap: *wrap,
                 ellipsis: *ellipsis,
+                sig: std::cell::OnceCell::new(),
             }),
             NodeType::Container | NodeType::Fragment | NodeType::Image { .. } => None,
         };

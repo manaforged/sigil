@@ -73,6 +73,7 @@ pub(crate) struct LayoutText {
     pub(crate) style: Option<TextStyle>,
     pub(crate) wrap: bool,
     pub(crate) ellipsis: bool,
+    pub(crate) sig: std::cell::OnceCell<u64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
