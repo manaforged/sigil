@@ -53,7 +53,6 @@ Input is bounded to 256 lines of 512 chars and output to 512 lines of 1024 chars
 - `.path(text)`: header label; falls back to the patch's own paths.
 - `.status(text)`: extra header label (e.g. "modified").
 - `.view(DiffView::Split | DiffView::Unified)`: default Split.
-- `.change(Fn(DiffView))`: makes the header's split/unified buttons live; the callback receives the picked layout so you can rebuild.
 - `.max_rows(n)`: truncates rendered rows.
 
 ## States, keys, and accessibility

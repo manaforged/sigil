@@ -37,7 +37,7 @@ pub enum DiffView {
 }
 
 impl DiffView {
-    /// Returns the name.
+    /// The lowercase name of the view: `split` or `unified`.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -71,7 +71,6 @@ impl DiffSource for Signal<Patch> {
     }
 }
 
-type ViewChange = Rc<dyn Fn(DiffView)>;
 type PatchThunk = Box<dyn FnOnce() -> Signal<Rc<Patch>>>;
 
 #[derive(Clone)]
@@ -81,7 +80,6 @@ struct DiffShape {
     view: DiffView,
     max_rows: usize,
     wrap: bool,
-    on_change: Option<ViewChange>,
     selection: Option<Signal<Selection>>,
 }
 
@@ -113,7 +111,6 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
             view: DiffView::Split,
             max_rows: usize::MAX,
             wrap: false,
-            on_change: None,
             selection: None,
         },
         style_accumulator: Style::new(),
@@ -122,43 +119,37 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
 }
 
 impl DiffBuilder {
-    /// Sets the path.
+    /// Sets the file path shown in the header and used to pick the syntax language.
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.shape.path = Some(path.into());
         self
     }
 
-    /// Sets the status.
+    /// Shows `status` as a line of small text below the rows.
     pub fn status(mut self, status: impl Into<String>) -> Self {
         self.shape.status = Some(status.into());
         self
     }
 
-    /// Sets the view.
+    /// Shows the rows side by side or unified; the default is `DiffView::Split`.
     pub const fn view(mut self, view: DiffView) -> Self {
         self.shape.view = view;
         self
     }
 
-    /// Sets the max rows.
+    /// Cuts the diff at `rows` rows and adds an overflow row; the default is no limit.
     pub const fn max_rows(mut self, rows: usize) -> Self {
         self.shape.max_rows = rows;
         self
     }
 
-    /// Sets the wrap.
+    /// Wraps long lines when `on` is true; the default is false.
     pub const fn wrap(mut self, on: bool) -> Self {
         self.shape.wrap = on;
         self
     }
 
-    /// Sets the change.
-    pub fn change(mut self, on_change: impl Fn(DiffView) + 'static) -> Self {
-        self.shape.on_change = Some(Rc::new(on_change));
-        self
-    }
-
-    /// Sets the line selection.
+    /// Binds the selection; a press on a hunk row or a line row updates it.
     pub const fn select(mut self, selection: Signal<Selection>) -> Self {
         self.shape.selection = Some(selection);
         self
