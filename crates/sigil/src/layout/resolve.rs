@@ -69,6 +69,16 @@ const ZERO_AUTO: AutoEdges = AutoEdges {
 };
 
 impl NodeEdges {
+    pub(crate) const BARE: Self = Self {
+        padding: ZERO_RESOLVED,
+        border: ZERO_RESOLVED,
+        margin: ZERO_AUTO,
+    };
+
+    pub(crate) fn bare(style: &StyleData) -> bool {
+        zero(style.padding) && zero(style.border) && zero(style.margin)
+    }
+
     pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
         let padding = if zero(style.padding) {
             ZERO_RESOLVED

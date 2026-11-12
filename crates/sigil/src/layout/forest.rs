@@ -300,6 +300,23 @@ impl NodeRef<'_> {
     pub(crate) fn text(&self) -> Option<&LayoutText> {
         self.forest.node(self.id).and_then(LayoutNode::text)
     }
+
+    pub(crate) fn edges(&self, cb_inline: f32) -> crate::layout::resolve::NodeEdges {
+        use crate::layout::resolve::NodeEdges;
+        match self.forest.edgeless_get(self.id) {
+            Some(true) => NodeEdges::BARE,
+            Some(false) => NodeEdges::build(self.style(), cb_inline),
+            None => {
+                let bare = NodeEdges::bare(self.style());
+                self.forest.edgeless_put(self.id, bare);
+                if bare {
+                    NodeEdges::BARE
+                } else {
+                    NodeEdges::build(self.style(), cb_inline)
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

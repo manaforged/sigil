@@ -5,7 +5,7 @@ use crate::layout::flex_algorithm::{
     FlexCtx, automatic_min_main, gap_along, item_cross_basis, item_main_basis, item_min_max_main,
 };
 use crate::layout::forest::{LocalId, NodeRef};
-use crate::layout::resolve::{NodeEdges, clamp};
+use crate::layout::resolve::clamp;
 use crate::layout::style_data::{AlignItems, FlexWrap, StyleData};
 use smallvec::{SmallVec, smallvec};
 
@@ -44,7 +44,7 @@ impl FlexItem {
             ..*ctx
         };
         let style = node.style();
-        let edges = NodeEdges::build(style, measured.cb.w);
+        let edges = node.edges(measured.cb.w);
         let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges, false);
         let cross_dim = ctx.axes.pick(style.size.height, style.size.width);
         let stretched = stretches

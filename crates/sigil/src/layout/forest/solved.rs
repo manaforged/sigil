@@ -55,6 +55,7 @@ const fn shift_box(cb: ComputedBox, dx: f32, dy: f32) -> ComputedBox {
 const TRAIT_MASK: u8 = 0b11;
 const FILLS_WIDTH: u8 = 0;
 const HEIGHT_FREE: u8 = 2;
+const EDGELESS: u8 = 4;
 
 impl LayoutForest {
     pub(crate) fn fills_get(&self, id: LocalId) -> Option<bool> {
@@ -71,6 +72,14 @@ impl LayoutForest {
 
     pub(crate) fn height_free_put(&self, id: LocalId, free: bool) {
         self.trait_put(id, HEIGHT_FREE, free);
+    }
+
+    pub(crate) fn edgeless_get(&self, id: LocalId) -> Option<bool> {
+        self.trait_get(id, EDGELESS)
+    }
+
+    pub(crate) fn edgeless_put(&self, id: LocalId, edgeless: bool) {
+        self.trait_put(id, EDGELESS, edgeless);
     }
 
     fn trait_get(&self, id: LocalId, shift: u8) -> Option<bool> {

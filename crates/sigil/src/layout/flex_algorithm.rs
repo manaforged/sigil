@@ -113,7 +113,7 @@ pub(crate) fn layout_root(
     origin: Position2,
 ) -> Result<(), Error> {
     let style = node.style();
-    let edges = NodeEdges::build(style, ctx.cb.w);
+    let edges = node.edges(ctx.cb.w);
     let ctx = &FlexCtx {
         assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node, &edges)),
         ..*ctx

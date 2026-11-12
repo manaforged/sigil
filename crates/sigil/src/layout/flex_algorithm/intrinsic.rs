@@ -13,7 +13,7 @@ pub(super) fn min_content_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> f32
     if matches!(style.display, Display::None) || matches!(style.position, Position::Absolute) {
         return 0.0;
     }
-    let edges = NodeEdges::build(style, ctx.cb.w);
+    let edges = node.edges(ctx.cb.w);
     let chrome = edges.inline_chrome();
     let m = edges.margin.or_zero();
     let (min, max) = (
@@ -130,7 +130,7 @@ fn leaf_column_width(
         {
             continue;
         }
-        let child_edges = NodeEdges::build(child_style, measured.cb.w);
+        let child_edges = child.edges(measured.cb.w);
         let m = child_edges.margin.or_zero();
         let flush = m.left == 0.0 && m.right == 0.0;
         if !child.children().is_empty() || child_style.align_self.is_some() || !flush {
@@ -207,7 +207,7 @@ fn content_main_from_children(
         {
             continue;
         }
-        let child_edges = NodeEdges::build(child_style, cb_inline);
+        let child_edges = child.edges(cb_inline);
         let inner = item_main_basis(
             &measured,
             child,
@@ -253,8 +253,7 @@ pub(super) fn probed_content_extent(
     along_main: bool,
     axes: Axis2,
 ) -> f32 {
-    let style = node.style();
-    let edges = NodeEdges::build(style, ctx.cb.w);
+    let edges = node.edges(ctx.cb.w);
     let horizontal = axes.row == along_main;
     let (chrome, lead) = if horizontal {
         (
@@ -287,7 +286,7 @@ pub(super) fn text_intrinsic(
     if !node.children().is_empty() {
         return None;
     }
-    let edges = NodeEdges::build(style, ctx.cb.w);
+    let edges = node.edges(ctx.cb.w);
     let known = crate::layout::style_data::Axes {
         width: dim_to_border_box(
             style.size.width,
