@@ -47,8 +47,13 @@ pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, 
     raster_with(grid, scene, &paint);
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &CellPaint<'_>) {
     grid.reset();
+    raster_onto(grid, scene, paint);
+}
+
+pub(crate) fn raster_onto(grid: &mut Grid, scene: &CommandScene, paint: &CellPaint<'_>) {
     walk(grid, scene, paint, None);
     grid.map_glyphs(paint.caps.glyphs);
 }

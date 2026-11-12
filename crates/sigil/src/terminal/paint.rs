@@ -28,7 +28,9 @@ pub(crate) use region::raster_regions;
 pub(crate) use scene::raster;
 #[cfg(feature = "kittest")]
 pub(crate) use scene::raster_into;
-pub(crate) use scene::{CellPaint, raster_with};
+#[cfg(test)]
+pub(crate) use scene::raster_with;
+pub(crate) use scene::{CellPaint, raster_onto};
 
 /// The text of a cell that continues a wide character.
 pub(crate) const CONTINUES: &str = "";
@@ -142,6 +144,12 @@ impl Grid {
         if (self.cols, self.rows) != (cols as usize, rows as usize) {
             self.reshape(cols as usize, rows as usize, Cell::default());
         }
+        self.cursor = None;
+    }
+
+    pub(crate) fn clear_to(&mut self, cols: u16, rows: u16) {
+        self.reshape(cols as usize, rows as usize, Cell::blank());
+        self.images.clear();
         self.cursor = None;
     }
 

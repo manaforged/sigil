@@ -22,6 +22,7 @@ pub struct Screen {
     grid: Grid,
     prev: Grid,
     fresh: bool,
+    blank: bool,
     dirty: bool,
     exited: bool,
     dt: f32,
@@ -69,6 +70,7 @@ impl Screen {
         Self {
             scene: CommandScene::default(),
             grid: Grid::new(cols, rows),
+            blank: true,
             prev: Grid::new(0, 0),
             fresh: true,
             dirty: true,
