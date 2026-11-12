@@ -87,7 +87,7 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 - `.hint(Some("⌘K"))`: secondary hint text in the bubble.
 - `.delay(ms)`: hover time before showing.
-- `.clamp_top()`: open the bubble below the target instead of above it.
+- `.below()`: open the bubble below the target instead of above it.
 
 ## toast and toast_queue
 

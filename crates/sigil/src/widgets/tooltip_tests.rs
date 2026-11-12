@@ -10,7 +10,7 @@ use crate::widgets::popup::shown_when;
 fn tooltip_builds_with_target_child_on_either_side() {
     Owner::scope("tooltip-build", || {
         let _below = tooltip("Hint")
-            .clamp_top()
+            .below()
             .child(kernel_container())
             .into_node_builder();
         let _above = tooltip("Save the file")

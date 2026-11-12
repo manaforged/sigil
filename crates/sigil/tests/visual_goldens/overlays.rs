@@ -258,7 +258,7 @@ fn tooltip_visible() {
 
 #[test]
 fn tooltip_offscreen_clamp() {
-    let img = Harness::render(|| tooltip("Save the file").clamp_top().child(button("Save")))
+    let img = Harness::render(|| tooltip("Save the file").below().child(button("Save")))
         .stub()
         .mode(InteractionMode::Hover)
         .size([150, 44])

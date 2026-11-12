@@ -52,7 +52,7 @@ fn initial_scroll_seeds_the_signal() {
         assert_eq!(end.get(), 2800.0);
         let row = signal(0.0_f32);
         let _row = seeded(
-            virtual_list(hundred(), |_, _| container()).scroll_into_view(50),
+            virtual_list(hundred(), |_, _| container()).initial_scroll(50),
             row,
         );
         assert_eq!(row.get(), 1500.0);
