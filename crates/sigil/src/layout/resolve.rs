@@ -50,7 +50,11 @@ pub(crate) struct NodeEdges {
     pub(crate) margin: AutoEdges,
 }
 
-const ZERO_EDGES: Edges<Length> = Edges::splat(Length::Px(0.0));
+fn zero(edges: Edges<Length>) -> bool {
+    let zero = |side: Length| matches!(side, Length::Px(px) if px == 0.0);
+    zero(edges.left) && zero(edges.right) && zero(edges.top) && zero(edges.bottom)
+}
+
 const ZERO_RESOLVED: ResolvedEdges = ResolvedEdges {
     left: 0.0,
     right: 0.0,
@@ -66,12 +70,12 @@ const ZERO_AUTO: AutoEdges = AutoEdges {
 
 impl NodeEdges {
     pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
-        let padding = if style.padding == ZERO_EDGES {
+        let padding = if zero(style.padding) {
             ZERO_RESOLVED
         } else {
             edges_lp(style.padding, cb_inline).map(snap::gap)
         };
-        let border = if style.border == ZERO_EDGES {
+        let border = if zero(style.border) {
             ZERO_RESOLVED
         } else {
             snap::rule_edges(
@@ -79,7 +83,7 @@ impl NodeEdges {
                 fixed_px(style.size.height),
             )
         };
-        let margin = if style.margin == ZERO_EDGES {
+        let margin = if zero(style.margin) {
             ZERO_AUTO
         } else {
             snap::gap_auto_edges(edges_lp_auto(style.margin, cb_inline))
