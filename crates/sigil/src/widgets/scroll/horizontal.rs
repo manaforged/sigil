@@ -76,10 +76,10 @@ impl Horizontal {
             root = root.child(probe(measure));
         }
         root.key(NamedKey::ArrowLeft, move |event| {
-            step(hs, event, -SCROLL_LINE)
+            step(hs, event, -SCROLL_LINE);
         })
         .key(NamedKey::ArrowRight, move |event| {
-            step(hs, event, SCROLL_LINE)
+            step(hs, event, SCROLL_LINE);
         })
         .scroll(move |event| {
             wheel(

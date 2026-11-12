@@ -46,54 +46,38 @@ fn arrows_move_selection_with_wraparound() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
 
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::ArrowDown,
-            PhysicalKey::ArrowDown,
-        );
-        assert_eq!(selected.get(), "b", "ArrowDown a → b");
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::ArrowDown,
-            PhysicalKey::ArrowDown,
-        );
-        assert_eq!(selected.get(), "c", "ArrowDown b → c");
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::ArrowDown,
-            PhysicalKey::ArrowDown,
-        );
-        assert_eq!(selected.get(), "a", "ArrowDown wraps c → a");
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::ArrowUp,
-            PhysicalKey::ArrowUp,
-        );
-        assert_eq!(selected.get(), "c", "ArrowUp wraps a → c");
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::Home,
-            PhysicalKey::Home,
-        );
-        assert_eq!(selected.get(), "a", "Home selects first");
-        press(
-            &mut router,
-            &mut cx,
-            &layout,
-            NamedKey::End,
-            PhysicalKey::End,
-        );
-        assert_eq!(selected.get(), "c", "End selects last");
+        let steps = [
+            (
+                NamedKey::ArrowDown,
+                PhysicalKey::ArrowDown,
+                "b",
+                "ArrowDown a → b",
+            ),
+            (
+                NamedKey::ArrowDown,
+                PhysicalKey::ArrowDown,
+                "c",
+                "ArrowDown b → c",
+            ),
+            (
+                NamedKey::ArrowDown,
+                PhysicalKey::ArrowDown,
+                "a",
+                "ArrowDown wraps c → a",
+            ),
+            (
+                NamedKey::ArrowUp,
+                PhysicalKey::ArrowUp,
+                "c",
+                "ArrowUp wraps a → c",
+            ),
+            (NamedKey::Home, PhysicalKey::Home, "a", "Home selects first"),
+            (NamedKey::End, PhysicalKey::End, "c", "End selects last"),
+        ];
+        for (key, physical, want, why) in steps {
+            press(&mut router, &mut cx, &layout, key, physical);
+            assert_eq!(selected.get(), want, "{why}");
+        }
     });
 }
 
