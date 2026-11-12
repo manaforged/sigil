@@ -34,6 +34,7 @@ pub(crate) struct RuntimeState {
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
     pub(crate) frame_dirty: bool,
+    pub(crate) write_clock: u64,
     pub(crate) paints: u64,
     pub(crate) runtime_id: u64,
 }
@@ -59,6 +60,7 @@ impl RuntimeState {
             panic_origin: None,
             phase: DrawPhase::Idle,
             frame_dirty: true,
+            write_clock: 0,
             paints: 0,
             runtime_id: 0,
         }
@@ -107,6 +109,11 @@ impl RuntimeState {
             .and_then(|effect| self.effects.get(effect))
             .filter(|slot| !slot.deps.contains(&written) && !slot.prev_deps.contains(&written))
             .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
+    }
+
+    pub(crate) const fn next_stamp(&mut self) -> u64 {
+        self.write_clock = self.write_clock.wrapping_add(1);
+        self.write_clock
     }
 
     pub(crate) fn creator_level(&self) -> u32 {

@@ -26,6 +26,7 @@ pub(crate) struct SignalSlot {
     pub(crate) value: Box<dyn Any>,
     pub(crate) subscribers: SmallVec<[EffectKey; 4]>,
     pub(crate) level: u32,
+    pub(crate) stamp: u64,
 }
 
 pub(crate) struct EffectSlot {

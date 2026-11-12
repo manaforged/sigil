@@ -51,6 +51,13 @@ fn is_stale_running_subscription(
             .is_some_and(|slot| slot.prev_deps.contains(&signal) && !slot.deps.contains(&signal))
 }
 
+fn restamp(rt: &mut RuntimeState, signal: SignalKey) {
+    let stamp = rt.next_stamp();
+    if let Some(slot) = rt.signals.get_mut(signal) {
+        slot.stamp = stamp;
+    }
+}
+
 fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
     let written = rt.writer_level(signal);
     let Some(slot) = rt.signals.get_mut(signal) else {
@@ -115,6 +122,7 @@ impl<T: 'static> Signal<T> {
                 return (None, false);
             }
             let old = core::mem::replace(current, value);
+            restamp(rt, self.key);
             (Some(old), notify(rt, self.key))
         });
         drop(old);
@@ -152,7 +160,9 @@ impl<T: 'static> Signal<T> {
         let caller = Location::caller();
         let taken = with_rt(|rt| {
             assert_paint_safe(rt, "update");
-            take_value(rt, self.key, "update", caller)
+            let taken = take_value(rt, self.key, "update", caller);
+            restamp(rt, self.key);
+            taken
         });
         let mut guard = UpdateGuard::new(self.key, taken);
         f(guard
