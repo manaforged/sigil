@@ -20,9 +20,9 @@ use intrinsic::IntrinsicMemo;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
 pub(crate) use solved::SolvedKey;
 use solved::SolvedSubtree;
-use text_memo::TextMemo;
 #[cfg(test)]
 use text_memo::{TEXT_MEMO_LIVE, TextMemoKey};
+use text_memo::{TextMemo, TextSize};
 
 static DEFAULT_STYLE: StyleData = StyleData::DEFAULT;
 
@@ -93,6 +93,7 @@ pub(crate) struct LayoutForest {
     text_memo: std::cell::RefCell<TextMemo>,
     intrinsic: Vec<IntrinsicMemo>,
     fills: Vec<std::cell::Cell<u8>>,
+    last_text: Vec<std::cell::Cell<Option<TextSize>>>,
     solved: Vec<std::cell::Cell<Option<SolvedSubtree>>>,
 }
 
@@ -107,6 +108,7 @@ impl LayoutForest {
             text_memo: std::cell::RefCell::new(TextMemo::default()),
             intrinsic: Vec::new(),
             fills: Vec::new(),
+            last_text: Vec::new(),
             solved: Vec::new(),
         }
     }
@@ -129,6 +131,7 @@ impl LayoutForest {
         self.boxes.reserve(more);
         self.intrinsic.reserve(more);
         self.fills.reserve(more);
+        self.last_text.reserve(more);
         self.solved.reserve(more);
     }
 
@@ -168,6 +171,7 @@ impl LayoutForest {
             self.boxes.push(BoxCell::new(ComputedBox::default()));
             self.intrinsic.push(IntrinsicMemo::default());
             self.fills.push(std::cell::Cell::new(0));
+            self.last_text.push(std::cell::Cell::new(None));
             self.solved.push(std::cell::Cell::new(None));
         }
         id

@@ -77,6 +77,8 @@ fn content_signature(text: &LayoutText) -> u64 {
     hasher.finish()
 }
 
+pub(super) type TextSize = (TextMemoKey, crate::layout::style_data::Axes<f32>);
+
 pub(super) const TEXT_MEMO_LIVE: usize = 8_192;
 
 #[derive(Debug, Default)]

@@ -136,7 +136,17 @@ impl<'a> MeasureScope<'a> {
                 SpaceConstraint::MaxContent => {}
             }
         }
+        let last = self.forest.last_text.get(node.id().index as usize);
+        if let Some((_, size)) = last
+            .and_then(std::cell::Cell::get)
+            .filter(|(key, _)| *key == memo_key)
+        {
+            return Some(size);
+        }
         if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
+            if let Some(last) = last {
+                last.set(Some((memo_key, hit)));
+            }
             return Some(hit);
         }
         let width = if text.wrap {
@@ -168,6 +178,9 @@ impl<'a> MeasureScope<'a> {
             height: known.height.unwrap_or(measured.height),
         };
         self.forest.text_memo.borrow_mut().store(memo_key, out);
+        if let Some(last) = last {
+            last.set(Some((memo_key, out)));
+        }
         Some(out)
     }
 }
