@@ -98,7 +98,8 @@ impl Cx {
     }
 
     pub(crate) fn take_delta(&mut self) -> FrameDelta {
-        let mut delta = std::mem::take(&mut self.delta);
+        let spare = self.spare_delta.take().unwrap_or_default();
+        let mut delta = std::mem::replace(&mut self.delta, spare);
         if let Some(pending) = PENDING.with(|cell| cell.borrow_mut().remove(&self.instance_id())) {
             delta.absorb(pending);
         }
@@ -113,10 +114,8 @@ impl Cx {
     pub(crate) fn reuse_delta(&mut self, mut spent: FrameDelta) {
         spent.paint.clear();
         spent.layout.clear();
-        let pending = std::mem::take(&mut self.delta);
-        spent.structure = pending.structure;
-        spent.absorb(pending);
-        self.delta = spent;
+        spent.structure = false;
+        self.spare_delta = Some(spent);
     }
 }
 
