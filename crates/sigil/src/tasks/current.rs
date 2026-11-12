@@ -52,9 +52,8 @@ pub fn signal_writer<T>(signal: Signal<T>) -> SignalWriter<T>
 where
     T: Send + 'static,
 {
-    let owner = Owner::current().expect("signal_writer() called outside a reactive scope");
     let dispatcher = dispatcher().expect("signal_writer() requires AsyncRuntime::install_current");
-    SignalWriter::new(dispatcher, owner, signal)
+    SignalWriter::new(dispatcher, signal)
 }
 
 pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {

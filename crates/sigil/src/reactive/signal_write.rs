@@ -146,6 +146,14 @@ impl<T: 'static> Signal<T> {
         writable
     }
 
+    pub(crate) fn try_update(self, f: impl FnOnce(&mut T)) -> bool {
+        let writable = self.is_writable();
+        if writable {
+            self.update(f);
+        }
+        writable
+    }
+
     fn is_writable(self) -> bool {
         with_rt(|rt| {
             rt.signals

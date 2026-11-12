@@ -12,7 +12,6 @@ use crate::tasks::task::{Outcome, TaskHandle};
 #[derive(Clone)]
 pub struct SignalWriter<T: Send + 'static> {
     dispatcher: Dispatcher,
-    owner: Owner,
     signal: SendableSignal<T>,
 }
 
@@ -20,24 +19,24 @@ impl<T: Send + 'static> core::fmt::Debug for SignalWriter<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SignalWriter")
             .field("dispatcher", &self.dispatcher)
-            .field("owner", &self.owner)
             .field("signal", &self.signal)
             .finish()
     }
 }
 
 impl<T: Send + 'static> SignalWriter<T> {
-    pub(crate) fn new(dispatcher: Dispatcher, owner: Owner, signal: Signal<T>) -> Self {
+    pub(crate) fn new(dispatcher: Dispatcher, signal: Signal<T>) -> Self {
         Self {
             dispatcher,
-            owner,
             signal: signal.into_sendable(),
         }
     }
 
     /// Writes `value` to the signal from any thread.
     pub fn set(&self, value: T) -> Result<(), Error> {
-        self.send(move |signal| signal.set_always(value))
+        self.send(move |signal| {
+            let _ = signal.try_set_always(value);
+        })
     }
 
     /// Changes the signal's value in place from any thread.
@@ -45,13 +44,15 @@ impl<T: Send + 'static> SignalWriter<T> {
     where
         F: FnOnce(&mut T) + Send + 'static,
     {
-        self.send(move |signal| signal.update(update))
+        self.send(move |signal| {
+            let _ = signal.try_update(update);
+        })
     }
 
     fn send(&self, write: impl FnOnce(Signal<T>) + Send + 'static) -> Result<(), Error> {
         let signal = self.signal;
         self.dispatcher.send(DispatchMessage {
-            owner: self.owner,
+            owner: None,
             callback: Box::new(move || write(signal.into_signal())),
         })
     }
@@ -62,7 +63,7 @@ where
     F: FnOnce() + Send + 'static,
 {
     let sent = dispatcher.send(DispatchMessage {
-        owner: handle,
+        owner: Some(handle),
         callback: Box::new(f),
     });
     if sent.is_err() {

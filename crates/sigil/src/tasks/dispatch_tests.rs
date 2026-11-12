@@ -127,3 +127,29 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
         },
     );
 }
+
+#[test]
+fn a_writer_made_in_a_scope_that_ended_still_writes() {
+    Owner::scope("writer-outlives-scope", || {
+        let mut tasks = AsyncRuntime::new().expect("build tokio runtime");
+        tasks.install_current();
+        let total = crate::reactive::signal(0);
+        let writer = Owner::scope("child", || crate::tasks::signal_writer(total));
+        writer.set(7).expect("send");
+        let _ = tasks.pump();
+        assert_eq!(total.peek(), 7);
+    });
+}
+
+#[test]
+fn a_write_to_a_disposed_signal_is_dropped_without_a_panic() {
+    Owner::scope("writer-outlives-signal", || {
+        let mut tasks = AsyncRuntime::new().expect("build tokio runtime");
+        tasks.install_current();
+        let gone = Owner::scope("child", || crate::reactive::signal(0));
+        let writer = crate::tasks::signal_writer(gone);
+        writer.set(7).expect("send");
+        writer.update(|value| *value += 1).expect("send");
+        let _ = tasks.pump();
+    });
+}
