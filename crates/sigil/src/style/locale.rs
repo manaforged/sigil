@@ -167,7 +167,7 @@ impl Locale {
 
     /// Sets the number of digits in each group; the default is 3.
     #[must_use]
-    pub const fn group(mut self, size: u8) -> Self {
+    pub const fn group_size(mut self, size: u8) -> Self {
         self.group_size = size;
         self
     }

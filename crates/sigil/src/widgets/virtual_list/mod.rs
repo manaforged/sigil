@@ -126,6 +126,12 @@ pub enum ScrollAnchor {
     Index(usize),
 }
 
+impl From<usize> for ScrollAnchor {
+    fn from(index: usize) -> Self {
+        Self::Index(index)
+    }
+}
+
 /// A collection that can become a virtual list.
 pub trait IntoList<T, R: RowRender<T>> {
     /// Creates a virtual list that renders with `render`.
@@ -338,15 +344,9 @@ where
         self
     }
 
-    /// Starts with the row at `index` at the top of the viewport.
-    pub const fn scroll_into_view(mut self, index: usize) -> Self {
-        self.initial_scroll = Some(ScrollAnchor::Index(index));
-        self
-    }
-
-    /// Sets where the list is scrolled when it is first built.
-    pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
-        self.initial_scroll = match anchor {
+    /// Sets where the list is scrolled when it is first built: a `ScrollAnchor` or a row index.
+    pub fn initial_scroll(mut self, anchor: impl Into<ScrollAnchor>) -> Self {
+        self.initial_scroll = match anchor.into() {
             ScrollAnchor::Top => None,
             anchor => Some(anchor),
         };

@@ -28,7 +28,7 @@ pub struct TooltipBuilder {
     label: String,
     shortcut: Option<String>,
     child: Option<Box<dyn IntoNode>>,
-    clamp_top: bool,
+    below: bool,
     delay_ms: u64,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
@@ -39,7 +39,7 @@ impl core::fmt::Debug for TooltipBuilder {
         f.debug_struct("TooltipBuilder")
             .field("label", &self.label)
             .field("shortcut", &self.shortcut)
-            .field("clamp_top", &self.clamp_top)
+            .field("below", &self.below)
             .field("delay_ms", &self.delay_ms)
             .field("style_accumulator", &self.style_accumulator)
             .field("layout_overrides", &self.layout_overrides)
@@ -59,7 +59,7 @@ impl TooltipBuilder {
             label: label.into(),
             shortcut: None,
             child: None,
-            clamp_top: false,
+            below: false,
             delay_ms: 0,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -85,14 +85,14 @@ impl TooltipBuilder {
     }
 
     /// Shows the tooltip below its child and not above.
-    pub const fn clamp_top(mut self) -> Self {
-        self.clamp_top = true;
+    pub const fn below(mut self) -> Self {
+        self.below = true;
         self
     }
 
     fn root(self) -> NodeBuilder {
         let visible = signal(false);
-        let side = if self.clamp_top {
+        let side = if self.below {
             PopupSide::Below
         } else {
             PopupSide::Above
