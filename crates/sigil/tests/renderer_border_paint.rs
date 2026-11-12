@@ -2,7 +2,7 @@
 
 use crate::paint_support as support;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::scene::{SceneCommand, StrokeAlign, StrokeStyle, emit_scene};
@@ -15,7 +15,7 @@ const SIZE: u32 = 64;
 fn layout(cx: &mut Cx, root: NodeId) {
     let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
     engine
-        .compute(cx, root, Size::fixed(SIZE as f32, SIZE as f32))
+        .compute(cx, root, Constraint::fixed(SIZE as f32, SIZE as f32))
         .expect("layout compute");
 }
 

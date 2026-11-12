@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle, Length};
 use sigil::widgets::Layout;
@@ -16,7 +16,7 @@ fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
     );
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(root_w, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(root_w, 100.0))
         .unwrap();
     let kids: Vec<NodeId> = cx.get(root).unwrap().children().to_vec();
     kids.iter()

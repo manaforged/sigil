@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
+use crate::geometry::{Constraint, Dim, Point, Rect, Size};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
 use crate::layout::{CaretGeometry, TextMeasure};
@@ -229,11 +229,11 @@ impl CellGeometry {
 }
 
 impl TextMeasure for CellGeometry {
-    fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
+    fn measure(&self, content: &TextContent, space: Constraint) -> Size {
         content.with_str(|text| {
             if matches!(space.width, Dim::MinContent) {
                 let longest = text.split_whitespace().map(cell_width).max().unwrap_or(0);
-                return LogicalSize::new(cells_to_px(longest, self.px), self.px);
+                return Size::new(cells_to_px(longest, self.px), self.px);
             }
             let width = match space.width {
                 Dim::Fixed(width) => Some(width),
@@ -241,7 +241,7 @@ impl TextMeasure for CellGeometry {
             };
             let (cells, lines) = measure_lines(text, self.max_cells(width));
             let wide = cells_to_px(cells, self.px);
-            LogicalSize::new(
+            Size::new(
                 width.map_or(wide, |width| wide.min(width.max(self.px))),
                 cells_to_px(lines.max(1), self.px),
             )

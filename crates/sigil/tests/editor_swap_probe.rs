@@ -19,7 +19,7 @@ use std::env::temp_dir;
 use std::process;
 use wgpu::TextureFormat;
 
-const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
+const VIEWPORT: Constraint = Constraint::fixed(1440.0, 900.0);
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.8);
 

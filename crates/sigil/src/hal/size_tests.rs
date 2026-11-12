@@ -1,4 +1,4 @@
-use super::{LogicalSize, Scale};
+use super::{Scale, Size};
 use crate::geometry::{PhysicalSize, Point};
 
 #[test]
@@ -11,7 +11,7 @@ fn scale_new_clamps_invalid_to_one() {
 #[test]
 fn to_physical_roundtrips_at_scale_2x() {
     assert_eq!(
-        Scale::new(2.0).to_physical(LogicalSize::new(720.0, 480.0)),
+        Scale::new(2.0).to_physical(Size::new(720.0, 480.0)),
         PhysicalSize::new(1440, 960)
     );
 }
@@ -19,7 +19,7 @@ fn to_physical_roundtrips_at_scale_2x() {
 #[test]
 fn to_physical_clamps_to_one_minimum() {
     assert_eq!(
-        Scale::ONE.to_physical(LogicalSize::new(0.4, 0.4)),
+        Scale::ONE.to_physical(Size::new(0.4, 0.4)),
         PhysicalSize::new(1, 1)
     );
 }
@@ -28,7 +28,7 @@ fn to_physical_clamps_to_one_minimum() {
 fn to_logical_roundtrips_at_scale_125() {
     assert_eq!(
         Scale::new(1.25).to_logical(PhysicalSize::new(900, 600)),
-        LogicalSize::new(720.0, 480.0)
+        Size::new(720.0, 480.0)
     );
 }
 

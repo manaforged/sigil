@@ -4,7 +4,7 @@
 use crate::layout_stub as stub;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -27,7 +27,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(300.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(300.0, 40.0))
         .expect("compute succeeds");
 
     let widths = children
@@ -71,7 +71,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(100.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 40.0))
         .expect("initial compute succeeds");
 
     assert!(
@@ -85,7 +85,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
     cx.mark_mutated();
 
     engine
-        .compute(&mut cx, root, Size::fixed(100.0, 40.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 40.0))
         .expect("second compute succeeds");
 
     assert_eq!(

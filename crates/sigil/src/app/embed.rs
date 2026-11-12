@@ -2,7 +2,7 @@ use accesskit::ActionRequest;
 
 use crate::events::Event;
 use crate::events::{EventRouter, FocusDirection};
-use crate::geometry::{Point, Rect, Size};
+use crate::geometry::{Constraint, Point, Rect};
 use crate::reactive::Runtime;
 use std::rc::Rc;
 
@@ -331,8 +331,11 @@ impl Host {
         let Some(root) = self.root else {
             return Ok(None);
         };
-        self.layout
-            .compute(&mut self.cx, root, Size::fixed(viewport.0, viewport.1))?;
+        self.layout.compute(
+            &mut self.cx,
+            root,
+            Constraint::fixed(viewport.0, viewport.1),
+        )?;
         Ok(Some(root))
     }
 

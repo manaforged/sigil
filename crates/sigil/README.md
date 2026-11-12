@@ -77,7 +77,7 @@ Owner::scope("embed", || {
 
 Clipboard: call `copy("text")` inside `run`, or after `install(OsClipboard)` on an embed host.
 
-With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` URL to the OS handler. It rejects every other scheme.
+With the `desktop` feature, `open_url(url)` passes an `http`, `https`, or `mailto` URL to the OS handler. It rejects every other scheme.
 
 ## Design rules
 

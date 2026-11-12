@@ -10,14 +10,14 @@ fn reactive_text_change_invalidates_cache() {
         let mut engine = LayoutEngine::new(Box::new(TEXT_MEASURE));
 
         engine
-            .compute(&mut cx, root, Size::max_content())
+            .compute(&mut cx, root, Constraint::max_content())
             .expect("initial text compute succeeds");
         let generation = engine.generation();
         let initial_width = layout_rect(&cx, root).width;
 
         value.set(String::from("much wider"));
         engine
-            .compute(&mut cx, root, Size::max_content())
+            .compute(&mut cx, root, Constraint::max_content())
             .expect("changed text compute succeeds");
 
         assert_ne!(engine.generation(), generation);

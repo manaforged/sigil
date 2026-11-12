@@ -2,7 +2,7 @@
 
 use sigil::a11y::node as access_node;
 use sigil::events::{Event, EventRouter, KeyPhase, NamedKey, PhysicalKey};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::reactive::Signal;
@@ -12,7 +12,7 @@ use sigil::style::Color;
 pub(crate) fn compute(
     cx: &mut Cx,
     root: NodeId,
-    viewport: Size,
+    viewport: Constraint,
     measure: Box<dyn TextMeasure>,
 ) -> LayoutEngine {
     let mut layout = LayoutEngine::new(measure);

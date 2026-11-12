@@ -5,7 +5,7 @@ use crate::layout_stub as stub;
 use sigil::widgets::Layout;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -29,7 +29,7 @@ fn sync_updates_intent_without_allocating_new_layout_nodes() {
 
     assert_eq!(engine.mirrored_node_count(), 3);
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 20.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 20.0))
         .expect("compute succeeds");
 
     let result = cx
@@ -46,7 +46,7 @@ fn text_builder_accepts_layout_intent() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(320.0, 240.0))
+        .compute(&mut cx, root, Constraint::fixed(320.0, 240.0))
         .expect("compute succeeds");
 
     let result = cx

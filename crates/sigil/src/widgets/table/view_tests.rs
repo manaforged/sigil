@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::events::EventRouter;
 use crate::events::{Event, MouseButton, MouseButtons, PointerPhase};
-use crate::geometry::{Point, Rect, Size};
+use crate::geometry::{Constraint, Point, Rect};
 use crate::kernel::{AccessibleName, Cx, NodeId, container};
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
@@ -42,7 +42,7 @@ fn fractional_columns_align_across_headers_rows_and_content_changes() {
             state.replace_rows(rows);
             cx.flush_reactive_children();
             layout
-                .compute(&mut cx, root, Size::fixed(800.0, 300.0))
+                .compute(&mut cx, root, Constraint::fixed(800.0, 300.0))
                 .unwrap();
             let columns = column_rects(&cx, &layout, root);
             assert_eq!(columns.len(), 2);
@@ -124,7 +124,7 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
 fn relayout(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     cx.flush_reactive_children();
     layout
-        .compute(cx, root, Size::fixed(800.0, 600.0))
+        .compute(cx, root, Constraint::fixed(800.0, 600.0))
         .expect("layout");
 }
 

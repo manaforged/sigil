@@ -1,12 +1,7 @@
-use crate::app::{WindowCommand, WindowId};
-
-/// Send a command to the window.
-pub fn window_command(command: WindowCommand) {
-    crate::app::window::queue_command(crate::app::current_window(), command);
-}
+use crate::app::{Window, WindowCommand};
 
 #[must_use]
-pub(crate) fn take_window_commands() -> Vec<(Option<WindowId>, WindowCommand)> {
+pub(crate) fn take_window_commands() -> Vec<(Option<Window>, WindowCommand)> {
     crate::app::window::take_commands()
 }
 

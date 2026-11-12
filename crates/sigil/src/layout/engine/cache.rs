@@ -1,4 +1,4 @@
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::cache_key::{
     AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature, reactive_layout_signature,
@@ -33,7 +33,7 @@ impl LayoutEngine {
         &self,
         cx: &Cx,
         root: NodeId,
-        available: Size,
+        available: Constraint,
     ) -> CacheDecision {
         let cx_instance = cx.instance_id();
         let cx_generation = cx.mutation_generation();

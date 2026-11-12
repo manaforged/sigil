@@ -1,4 +1,4 @@
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::{Cx, NodeId, container};
 use crate::layout::LayoutEngine;
 use crate::reactive::Owner;
@@ -9,7 +9,7 @@ fn laid_out() -> (Cx, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(container());
     LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
-        .compute(&mut cx, root, Size::fixed(100.0, 80.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 80.0))
         .expect("layout");
     (cx, root)
 }

@@ -1,4 +1,4 @@
-use crate::geometry::{Dim, Size};
+use crate::geometry::{Constraint, Dim};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeType};
 use crate::profile::Counter;
 use ahash::AHashSet;
@@ -21,7 +21,7 @@ impl LayoutEngine {
         cx: &mut Cx,
         dirty: &[NodeId],
         root: NodeId,
-        available: Size,
+        available: Constraint,
         structural: bool,
     ) -> Result<Vec<NodeId>, Error> {
         let roots = {
@@ -83,7 +83,7 @@ impl LayoutEngine {
         &mut self,
         roots: &[NodeId],
         root: NodeId,
-        available: Size,
+        available: Constraint,
     ) -> Result<(), Error> {
         let origins: SmallVec<[(f32, f32); 4]> = roots
             .iter()
@@ -138,7 +138,7 @@ impl LayoutEngine {
         let probe = saved
             .filter(|_| wrap && self.drive.style_for(handle).is_some_and(width_is_own))
             .map(|cb| cb.w);
-        let space = Size {
+        let space = Constraint {
             width: probe.map_or(Dim::MaxContent, Dim::Fixed),
             height: Dim::MaxContent,
         };

@@ -15,7 +15,7 @@ use widget_support::compute;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 #[test]
 fn scroll_viewport_has_scroll_view_role() {
@@ -131,7 +131,7 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
         let body_id = cx.nth_child(scroll_id, 0).expect("scroll body exists");
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("initial layout computes");
 
         let viewport_height = layout
@@ -154,7 +154,7 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
             ),
         );
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("scrolled layout computes");
 
         let content_id = cx.nth_child(body_id, 0).expect("scroll content exists");

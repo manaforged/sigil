@@ -12,7 +12,7 @@ fn slider_click_jumps_to_position() {
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -35,7 +35,7 @@ fn slider_drag_updates_value_continuously() {
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -54,7 +54,7 @@ fn slider_drag_with_step_quantizes_value() {
         let root = cx.add(slider(value, 0.0..=100.0).step(10.0).length(SLIDER_TRACK));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -73,7 +73,7 @@ fn slider_keyboard_stepping() {
         let root = cx.add(slider(value, 0.0..=100.0).step(5.0).length(SLIDER_TRACK));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -108,7 +108,7 @@ fn slider_disabled_ignores_input() {
         );
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -138,7 +138,7 @@ fn slider_capture_releases_on_pointer_up() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();

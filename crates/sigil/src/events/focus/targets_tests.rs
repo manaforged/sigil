@@ -1,5 +1,5 @@
 use crate::geometry::Point;
-use crate::geometry::{Rect, Size};
+use crate::geometry::{Constraint, Rect};
 use crate::kernel::container;
 use crate::layout::*;
 use crate::widgets::Layout;
@@ -46,7 +46,7 @@ fn laid_out(child: crate::kernel::NodeBuilder) -> (Cx, NodeId, LayoutEngine) {
     let target = cx.nth_child(root, 0).expect("child must exist");
     let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
     layout
-        .compute(&mut cx, root, Size::fixed(100.0, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 100.0))
         .expect("layout must succeed");
     (cx, target, layout)
 }

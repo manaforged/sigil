@@ -236,7 +236,11 @@ fn divider_vertical_takes_a_fixed_height() {
             sigil_kittest::FakeMeasure::fixed(10.0, 16.0),
         ));
         layout
-            .compute(&mut cx, root, sigil::geometry::Size::fixed(200.0, 100.0))
+            .compute(
+                &mut cx,
+                root,
+                sigil::geometry::Constraint::fixed(200.0, 100.0),
+            )
             .unwrap();
         let divider = cx
             .get(root)
@@ -286,7 +290,7 @@ fn chip_dot_follows_a_reactive_tone() {
         let mut layout = sigil::layout::LayoutEngine::new(Box::new(
             sigil_kittest::FakeMeasure::fixed(10.0, 16.0),
         ));
-        let size = sigil::geometry::Size::fixed(200.0, 40.0);
+        let size = sigil::geometry::Constraint::fixed(200.0, 40.0);
         layout.compute(&mut cx, root, size).unwrap();
         tone.set(Tone::Error);
         layout.compute(&mut cx, root, size).unwrap();

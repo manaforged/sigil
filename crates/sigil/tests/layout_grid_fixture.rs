@@ -2,7 +2,7 @@
 
 use crate::layout_stub as stub;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::{LayoutResult, TrackSize, *};
@@ -36,7 +36,7 @@ fn grid_rects(
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(w, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(w, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     kids.into_iter().map(|k| rect_of(&cx, k)).collect()
@@ -96,7 +96,7 @@ fn grid_rects_with_rows(rows: Vec<TrackSize>, cells: &[f32]) -> Vec<(f32, f32, f
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(200.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     kids.into_iter().map(|k| rect_of(&cx, k)).collect()
@@ -132,7 +132,7 @@ fn grid_span_rects(
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(w, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(w, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     kids.into_iter().map(|k| rect_of(&cx, k)).collect()
@@ -156,7 +156,7 @@ fn grid_span_rects_dense(
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(w, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(w, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     kids.into_iter().map(|k| rect_of(&cx, k)).collect()
@@ -228,7 +228,7 @@ fn auto_cells_stretch_to_their_row() {
             .child(container().layout(LayoutStyle::block())),
     );
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(100.0, 200.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 200.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();
@@ -252,7 +252,7 @@ fn fr_rows_share_leftover_when_height_is_definite() {
             .child(container().layout(LayoutStyle::block().height(20.0))),
     );
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(100.0, 200.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 200.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();
@@ -275,7 +275,7 @@ fn grid_cols_class_lays_out_as_a_grid() {
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(200.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();

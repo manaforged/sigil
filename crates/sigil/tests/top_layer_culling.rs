@@ -1,4 +1,4 @@
-use sigil::geometry::{Point, Rect, Size};
+use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::reactive::{Owner, signal};
@@ -9,7 +9,7 @@ use sigil_kittest::FakeMeasure;
 fn layout(cx: &mut Cx, root: NodeId) {
     let mut engine = LayoutEngine::new(Box::new(FakeMeasure::default()));
     engine
-        .compute(cx, root, Size::fixed(320.0, 240.0))
+        .compute(cx, root, Constraint::fixed(320.0, 240.0))
         .expect("layout compute succeeds");
 }
 

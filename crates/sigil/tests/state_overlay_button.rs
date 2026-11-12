@@ -11,7 +11,7 @@ use sigil::style::Tone;
 use sigil::style::scale::{ruby_light, slate_light};
 use widget_support::{compute, rect_colors};
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 #[test]
 fn button_user_pressed_overlay_overrides_widget_pressed_bg() {

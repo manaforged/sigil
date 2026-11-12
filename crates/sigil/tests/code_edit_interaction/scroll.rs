@@ -143,7 +143,7 @@ fn wheel_virtualizes_and_scrolls_the_window_past_the_caret() {
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, scroll_at(200.0, 100.0, -50.0 * ROW_H));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+            .compute(&mut cx, root, Constraint::fixed(400.0, pane_h))
             .unwrap();
         assert!(
             !caret_bar_present(&cx, &layout, root),
@@ -170,7 +170,7 @@ fn render_budget_tracks_the_published_viewport_height() {
             sigil::app::__drive_test_frame(
                 || {
                     layout
-                        .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+                        .compute(&mut cx, root, Constraint::fixed(400.0, pane_h))
                         .unwrap();
                 },
                 || {},
@@ -204,7 +204,7 @@ fn short_doc_does_not_scroll_into_blank_space() {
             sigil::app::__drive_test_frame(
                 || {
                     layout
-                        .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+                        .compute(&mut cx, root, Constraint::fixed(400.0, pane_h))
                         .unwrap();
                 },
                 || {},
@@ -218,7 +218,7 @@ fn short_doc_does_not_scroll_into_blank_space() {
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, scroll_at(200.0, 100.0, -50.0 * ROW_H));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+            .compute(&mut cx, root, Constraint::fixed(400.0, pane_h))
             .unwrap();
         assert!(
             caret_bar_present(&cx, &layout, root),
@@ -237,16 +237,16 @@ impl sigil::layout::TextMeasure for WrapToWidth {
     fn measure(
         &self,
         content: &TextContent,
-        space: sigil::geometry::Size,
-    ) -> sigil::geometry::LogicalSize {
+        space: sigil::geometry::Constraint,
+    ) -> sigil::geometry::Size {
         let width = content.resolve().chars().count() as f32 * 8.0;
         if let Some(limit) = space.fixed_width()
             && limit > 0.0
             && width > limit
         {
-            return sigil::geometry::LogicalSize::new(limit, (width / limit).ceil() * 16.0);
+            return sigil::geometry::Size::new(limit, (width / limit).ceil() * 16.0);
         }
-        sigil::geometry::LogicalSize::new(width, 16.0)
+        sigil::geometry::Size::new(width, 16.0)
     }
 }
 
@@ -264,7 +264,7 @@ fn long_line_stays_one_row_under_a_wrapping_measure() {
         );
         let mut layout = LayoutEngine::new(Box::new(WrapToWidth));
         layout
-            .compute(&mut cx, root, Size::fixed(pane_w, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(pane_w, 400.0))
             .unwrap();
         let mut tallest = 0.0_f32;
         cx.visit_preorder(root, |id, node| {

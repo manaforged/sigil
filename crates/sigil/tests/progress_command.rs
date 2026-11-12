@@ -55,7 +55,7 @@ fn progress_track_emits_border_strong_color() {
         let root = cx.add(progress(value, 100.0));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
@@ -75,7 +75,7 @@ fn progress_fill_emits_accent_color() {
         let root = cx.add(progress(value, 100.0));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
@@ -95,7 +95,7 @@ fn progress_indeterminate_emits_accent_fill() {
         let root = cx.add(progress(phase, 1.0).indeterminate());
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();

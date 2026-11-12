@@ -6,7 +6,7 @@
 #![allow(clippy::unwrap_used)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, container, text};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, emit_scene};
@@ -79,7 +79,7 @@ fn text_scene() -> sigil::scene::CommandScene {
     }
     let root = cx.add(root);
     LayoutEngine::new(Box::new(TEXT_MEASURE))
-        .compute(&mut cx, root, Size::fixed(360.0, 1_200.0))
+        .compute(&mut cx, root, Constraint::fixed(360.0, 1_200.0))
         .expect("bench scene layout computes");
     emit_scene(&cx, root, None)
 }

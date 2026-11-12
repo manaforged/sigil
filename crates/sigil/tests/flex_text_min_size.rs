@@ -20,7 +20,7 @@ fn stacked_text_in_a_short_column_does_not_crush() {
         let root = cx.add(container().layout(LayoutStyle::flex_column()).child(col));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 400.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 400.0))
             .unwrap();
 
         let col_id = *cx.get(root).unwrap().children().first().unwrap();

@@ -12,7 +12,7 @@ fn text_field_typing_updates_signal() {
         let root = cx.add(text_field(value).placeholder("Notes"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -36,14 +36,14 @@ fn text_field_typing_emits_the_updated_glyph_run() {
         let root = cx.add(text_field(value).placeholder("Notes"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, text_down("a"));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout recomputes");
 
         assert_eq!(value.get(), "a", "typing must update editing state");
@@ -62,7 +62,7 @@ fn text_field_backspace_removes_last_character() {
         let root = cx.add(text_field(value));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -82,7 +82,7 @@ fn text_field_disabled_ignores_typing() {
         let root = cx.add(text_field(value).disabled(disabled));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -109,7 +109,7 @@ fn text_field_enter_fires_submit_with_current_value() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -129,7 +129,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
         let root = cx.add(text_field(value).placeholder("Add note"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let scene = emit_scene(&cx, root, None);
@@ -157,13 +157,13 @@ fn text_field_placeholder_remains_visible_when_focused() {
         let root = cx.add(text_field(value).placeholder("Add note"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout recomputes");
 
         assert!(scene_has_text(&cx, root, "Add note"));
@@ -178,7 +178,7 @@ fn text_field_focus_ring_visible_when_focused() {
         let root = cx.add(text_field(value).placeholder("Notes"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();

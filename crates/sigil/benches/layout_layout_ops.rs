@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container, text};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -23,7 +23,7 @@ const ROWS_100K: usize = 1000;
 const LEAVES_PER_ROW_100K: usize = 100;
 const ROW_HEIGHT_100K: f32 = 1.0;
 const LEAF_WIDTH_100K: f32 = 12.8;
-const AVAILABLE_100K: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
+const AVAILABLE_100K: Constraint = Constraint::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
 enum BenchCommand {
     Run,
@@ -138,7 +138,7 @@ fn bench_compute_single_node(c: &mut Criterion) {
         b.iter(|| {
             cx.mark_mutated();
             engine
-                .compute(&mut cx, root, Size::fixed(100.0, 40.0))
+                .compute(&mut cx, root, Constraint::fixed(100.0, 40.0))
                 .expect("layout compute succeeds");
             black_box(engine.result(root));
         });
@@ -159,7 +159,7 @@ fn bench_compute_flex_row_100_children(c: &mut Criterion) {
         b.iter(|| {
             cx.mark_mutated();
             engine
-                .compute(&mut cx, root, Size::fixed(1200.0, 40.0))
+                .compute(&mut cx, root, Constraint::fixed(1200.0, 40.0))
                 .expect("layout compute succeeds");
             black_box(engine.result(root));
         });
@@ -180,7 +180,7 @@ fn bench_compute_tree_100(c: &mut Criterion) {
         b.iter(|| {
             cx.mark_mutated();
             engine
-                .compute(&mut cx, root, Size::fixed(800.0, 1200.0))
+                .compute(&mut cx, root, Constraint::fixed(800.0, 1200.0))
                 .expect("layout compute succeeds");
             black_box(engine.result(root));
         });
@@ -247,14 +247,14 @@ fn bench_scale_change_reflow_1000_nodes(c: &mut Criterion) {
                 );
                 let mut engine = stub_engine();
                 engine
-                    .compute(&mut cx, root, Size::fixed(1280.0, 720.0))
+                    .compute(&mut cx, root, Constraint::fixed(1280.0, 720.0))
                     .expect("initial layout compute succeeds");
                 (cx, root, engine)
             },
             |(mut cx, root, mut engine)| {
                 cx.set_scale(2.0);
                 engine
-                    .compute(&mut cx, root, Size::fixed(1280.0, 720.0))
+                    .compute(&mut cx, root, Constraint::fixed(1280.0, 720.0))
                     .expect("scale-change layout compute succeeds");
                 black_box(engine.result(root));
             },

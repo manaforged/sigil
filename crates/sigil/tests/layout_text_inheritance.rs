@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::geometry::{LogicalSize, Size};
+use sigil::geometry::{Constraint, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::style::{Paint, StyleAtom, StyleBinding, TextStyle};
@@ -14,20 +14,15 @@ struct RecordingMeasure {
 }
 
 impl TextMeasure for RecordingMeasure {
-    fn measure(&self, content: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(8.0 * text_len(content), 16.0)
+    fn measure(&self, content: &TextContent, _space: Constraint) -> Size {
+        Size::new(8.0 * text_len(content), 16.0)
     }
 
-    fn measure_styled(
-        &self,
-        content: &TextContent,
-        style: &TextStyle,
-        _space: Size,
-    ) -> LogicalSize {
+    fn measure_styled(&self, content: &TextContent, style: &TextStyle, _space: Constraint) -> Size {
         self.calls
             .borrow_mut()
             .push((text_of(content), style.clone()));
-        LogicalSize::new(style.font_size * text_len(content) * 0.5, style.font_size)
+        Size::new(style.font_size * text_len(content) * 0.5, style.font_size)
     }
 }
 
@@ -72,7 +67,7 @@ fn text_child_measures_with_inherited_typography() {
 
     let (mut engine, calls) = engine_with_recorder();
     engine
-        .compute(&mut cx, root, Size::fixed(300.0, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(300.0, 100.0))
         .expect("compute succeeds");
 
     let calls = calls.borrow();
@@ -111,7 +106,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
 
     let (mut engine, calls) = engine_with_recorder();
     engine
-        .compute(&mut cx, root, Size::fixed(600.0, 400.0))
+        .compute(&mut cx, root, Constraint::fixed(600.0, 400.0))
         .expect("first compute");
     {
         let first = calls.borrow();
@@ -126,7 +121,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
             std::iter::once(StyleAtom::FontSize(20)).collect(),
         ));
     engine
-        .compute(&mut cx, root, Size::fixed(600.0, 400.0))
+        .compute(&mut cx, root, Constraint::fixed(600.0, 400.0))
         .expect("second compute");
 
     let second = calls.borrow();

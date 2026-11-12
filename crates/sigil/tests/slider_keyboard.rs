@@ -20,7 +20,7 @@ fn setup(
     let root = cx.add(slider(value, range).step(step));
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout
-        .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+        .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
         .expect("layout");
     let router = EventRouter::new();
     (cx, layout, router, root)
@@ -142,7 +142,7 @@ fn slider_focus_ring_visible_when_focused() {
         router.set_focus(&mut cx, Some(root));
         let mut layout2 = LayoutEngine::new(stub_text_measure());
         layout2
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout after focus");
         let _ = layout;
     });

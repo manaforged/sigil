@@ -4,7 +4,7 @@ use crate::widget_support;
 
 use sigil::animation::{MotionPrefs, presets, tick};
 use sigil::events::{Event, EventRouter};
-use sigil::geometry::{Point, Size};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -14,7 +14,7 @@ use widget_support::compute;
 const DT_60HZ: f32 = 1.0 / 60.0;
 const OPACITY_BASE: u16 = 5_000;
 const OPACITY_HOVER: u16 = 10_000;
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 #[expect(
     clippy::cast_possible_truncation,

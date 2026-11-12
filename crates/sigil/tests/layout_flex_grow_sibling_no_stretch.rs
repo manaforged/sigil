@@ -6,7 +6,7 @@ use crate::layout_stub as stub;
 use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -37,7 +37,7 @@ fn non_grow_row_beside_grow_spacer_stays_intrinsic_height() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(1408.0, 750.0))
+        .compute(&mut cx, root, Constraint::fixed(1408.0, 750.0))
         .expect("compute");
 
     let row_rect = layout_rect(&cx, row_id);

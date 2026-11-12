@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use super::*;
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::Cx;
 use crate::kernel::{AccessibleName, NodeId, Role};
 use crate::layout::LayoutEngine;
@@ -44,7 +44,7 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
             let mut layout =
                 LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(40.0, 16.0)));
             layout
-                .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+                .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
                 .unwrap();
             let list = layout
                 .result(find(&cx, root, Role::TabList, "test"))

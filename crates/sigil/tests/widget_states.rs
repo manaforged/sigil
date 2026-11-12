@@ -12,7 +12,7 @@ use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
 use sigil::style::scale::ScaleRole;
 use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 const fn pointer_down_event(x: f32, y: f32) -> Event {
     Event::pointer(PointerPhase::Down, Point::new(x, y))

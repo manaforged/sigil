@@ -7,7 +7,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::events::{Event, KeyPhase, Modifiers, NamedKey, PhysicalKey, PointerEvent, *};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -187,7 +187,9 @@ fn deepest_child(cx: &Cx, root: NodeId) -> NodeId {
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
-    layout.compute(cx, root, Size::fixed(240.0, 240.0)).unwrap();
+    layout
+        .compute(cx, root, Constraint::fixed(240.0, 240.0))
+        .unwrap();
     layout
 }
 

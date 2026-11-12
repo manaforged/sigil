@@ -21,7 +21,7 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
     let layout = compute(
         &mut cx,
         root,
-        Size::fixed(612.0, 200.0),
+        Constraint::fixed(612.0, 200.0),
         Box::new(FakeMeasure::default()),
     );
 
@@ -59,7 +59,7 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
     let layout = compute(
         &mut cx,
         root,
-        Size::fixed(300.0, 206.0),
+        Constraint::fixed(300.0, 206.0),
         Box::new(FakeMeasure::default()),
     );
 
@@ -99,7 +99,7 @@ fn nested_splitter_renders_all_leaves() {
     let _layout = compute(
         &mut cx,
         root,
-        Size::fixed(306.0, 206.0),
+        Constraint::fixed(306.0, 206.0),
         Box::new(FakeMeasure::default()),
     );
 
@@ -131,7 +131,7 @@ fn pane_builder_carries_initial_min_max_into_layout() {
     let layout = compute(
         &mut cx,
         root,
-        Size::fixed(406.0, 200.0),
+        Constraint::fixed(406.0, 200.0),
         Box::new(FakeMeasure::default()),
     );
 
@@ -168,7 +168,7 @@ fn grow_pane_takes_leftover_width() {
         let layout = compute(
             &mut cx,
             root,
-            Size::fixed(406.0, 200.0),
+            Constraint::fixed(406.0, 200.0),
             Box::new(FakeMeasure::default()),
         );
         let side = cx.nth_child(root, 0).expect("side pane");

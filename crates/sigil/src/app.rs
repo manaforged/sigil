@@ -104,7 +104,7 @@ pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]
 pub(crate) use launch::launch;
 #[cfg(app_host)]
-pub use open::open;
+pub use open::open_url;
 #[cfg(feature = "pty")]
 pub use pty::Session;
 #[cfg(app_host)]
@@ -112,9 +112,7 @@ pub(crate) use theme_file::launch as launch_theme;
 #[cfg(app_host)]
 pub use theme_watch::{ThemeWatcher, watch_theme};
 #[cfg(feature = "desktop")]
-pub(crate) use window::current_window;
-#[cfg(feature = "desktop")]
-pub use window::{CloseAction, WindowId};
+pub use window::{CloseAction, Window};
 
 #[cfg(desktop_harness)]
 pub use launch::__drive_test_frame;

@@ -8,7 +8,7 @@ use crate::reactive::{Signal, signal};
 
 /// Open another window with its own tree on the same event loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct WindowId(u64);
+pub struct Window(u64);
 
 /// What happens when the user closes a window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -32,20 +32,20 @@ pub(crate) struct WindowSignals {
 pub(crate) type Mount = Box<dyn FnOnce(&mut Host)>;
 
 pub(crate) struct OpenRequest {
-    pub(crate) id: WindowId,
+    pub(crate) id: Window,
     pub(crate) config: AppConfig,
     pub(crate) mount: Mount,
 }
 
 thread_local! {
     static NEXT_ID: Cell<u64> = const { Cell::new(0) };
-    static CURRENT: Cell<Option<WindowId>> = const { Cell::new(None) };
+    static CURRENT: Cell<Option<Window>> = const { Cell::new(None) };
     static OPENS: RefCell<Vec<OpenRequest>> = const { RefCell::new(Vec::new()) };
-    static COMMANDS: RefCell<Vec<(Option<WindowId>, WindowCommand)>> = const { RefCell::new(Vec::new()) };
-    static SIGNALS: RefCell<Vec<(WindowId, WindowSignals)>> = const { RefCell::new(Vec::new()) };
+    static COMMANDS: RefCell<Vec<(Option<Window>, WindowCommand)>> = const { RefCell::new(Vec::new()) };
+    static SIGNALS: RefCell<Vec<(Window, WindowSignals)>> = const { RefCell::new(Vec::new()) };
 }
 
-impl WindowId {
+impl Window {
     /// Opens another window with its own tree.
     pub fn open<C, F, N>(config: C, view: F) -> Self
     where
@@ -93,7 +93,7 @@ impl WindowId {
 }
 
 #[must_use]
-pub(crate) fn current_window() -> Option<WindowId> {
+pub(crate) fn current_window() -> Option<Window> {
     CURRENT.with(Cell::get)
 }
 
@@ -104,7 +104,7 @@ fn fresh_signals() -> WindowSignals {
     }
 }
 
-fn signals_for(id: WindowId) -> Option<WindowSignals> {
+fn signals_for(id: Window) -> Option<WindowSignals> {
     SIGNALS.with(|cell| {
         cell.borrow()
             .iter()
@@ -112,25 +112,25 @@ fn signals_for(id: WindowId) -> Option<WindowSignals> {
     })
 }
 
-pub(crate) fn allocate_window_id() -> WindowId {
+pub(crate) fn allocate_window_id() -> Window {
     NEXT_ID.with(|next| {
         let id = next.get();
         next.set(id.wrapping_add(1));
-        WindowId(id)
+        Window(id)
     })
 }
 
-pub(crate) fn register_window(id: WindowId) -> WindowSignals {
+pub(crate) fn register_window(id: Window) -> WindowSignals {
     let signals = fresh_signals();
     SIGNALS.with(|cell| cell.borrow_mut().push((id, signals)));
     signals
 }
 
-pub(crate) fn unregister_window(id: WindowId) {
+pub(crate) fn unregister_window(id: Window) {
     SIGNALS.with(|cell| cell.borrow_mut().retain(|(stored, _)| *stored != id));
 }
 
-pub(crate) fn set_current_window(id: Option<WindowId>) -> Option<WindowId> {
+pub(crate) fn set_current_window(id: Option<Window>) -> Option<Window> {
     CURRENT.with(|cell| cell.replace(id))
 }
 
@@ -138,11 +138,11 @@ pub(crate) fn take_open_requests() -> Vec<OpenRequest> {
     OPENS.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
 }
 
-pub(crate) fn queue_command(target: Option<WindowId>, command: WindowCommand) {
+pub(crate) fn queue_command(target: Option<Window>, command: WindowCommand) {
     COMMANDS.with(|cell| cell.borrow_mut().push((target, command)));
 }
 
-pub(crate) fn take_commands() -> Vec<(Option<WindowId>, WindowCommand)> {
+pub(crate) fn take_commands() -> Vec<(Option<Window>, WindowCommand)> {
     COMMANDS.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
 }
 

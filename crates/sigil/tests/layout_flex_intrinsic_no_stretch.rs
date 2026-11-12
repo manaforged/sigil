@@ -7,7 +7,7 @@ use sigil::layout::Space;
 use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -33,7 +33,7 @@ fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(600.0, 80.0))
+        .compute(&mut cx, root, Constraint::fixed(600.0, 80.0))
         .expect("compute");
 
     let first_rect = layout_rect(&cx, first);
@@ -79,7 +79,7 @@ fn column_with_container_then_text_does_not_collapse_text() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(600.0, 80.0))
+        .compute(&mut cx, root, Constraint::fixed(600.0, 80.0))
         .expect("compute");
 
     let inner_rect = layout_rect(&cx, inner);
@@ -110,7 +110,7 @@ fn column_with_text_and_empty_container_child_does_not_collapse_text() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(600.0, 80.0))
+        .compute(&mut cx, root, Constraint::fixed(600.0, 80.0))
         .expect("compute");
 
     let first_rect = layout_rect(&cx, first);

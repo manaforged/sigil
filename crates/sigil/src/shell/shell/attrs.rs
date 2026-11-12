@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::app::Anchor;
-use crate::geometry::LogicalSize;
+use crate::geometry::Size;
 use winit::{
     dpi::{
         LogicalSize as WinitLogicalSize, PhysicalPosition as WinitPhysicalPosition,
@@ -16,7 +16,7 @@ use crate::shell::dpi::scale_from_f64;
 use super::{PendingWindow, PendingWindowSize, WinitShell};
 
 impl WinitShell {
-    fn logical_to_physical_px(size: LogicalSize, scale: f64) -> (u32, u32) {
+    fn logical_to_physical_px(size: Size, scale: f64) -> (u32, u32) {
         #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,

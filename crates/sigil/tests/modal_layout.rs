@@ -59,7 +59,7 @@ fn settle(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     for _ in 0..2 {
         sigil::animation::tick(1.0);
         layout
-            .compute(cx, root, Size::fixed(VIEW.0, VIEW.1))
+            .compute(cx, root, Constraint::fixed(VIEW.0, VIEW.1))
             .unwrap();
         tick_frame();
     }

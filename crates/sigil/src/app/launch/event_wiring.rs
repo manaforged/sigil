@@ -15,7 +15,7 @@ use std::sync::Arc;
 use super::backend::{Backend, RenderSurface};
 use super::record::WindowView;
 use super::{clamp_physical_size, resize_surface, scale_from_f64};
-use crate::geometry::LogicalSize;
+use crate::geometry::Size;
 
 pub(super) struct DrainCtx<'a> {
     pub(super) view: &'a mut WindowView,
@@ -69,7 +69,7 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
         let logical = scale.to_logical(physical);
         *viewport = (logical.width, logical.height);
     }
-    let logical = LogicalSize::new(viewport.0, viewport.1);
+    let logical = Size::new(viewport.0, viewport.1);
 
     #[cfg(not(target_arch = "wasm32"))]
     renderer.set_wake(super::wake_fn(shell));
@@ -187,7 +187,7 @@ impl WindowEventCtx<'_> {
             }
             WindowEvent::ScaleFactorChanged(scale) => {
                 self.cx.set_scale(scale.factor());
-                let logical = LogicalSize::new(self.viewport.0, self.viewport.1);
+                let logical = Size::new(self.viewport.0, self.viewport.1);
                 resize_surface(self.renderer, self.surface, scale.to_physical(logical));
             }
             WindowEvent::CloseRequested

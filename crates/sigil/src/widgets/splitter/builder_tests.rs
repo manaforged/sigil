@@ -4,7 +4,7 @@ use crate::kernel::{Cx, NodeBuilder, container};
 use crate::reactive::Owner;
 
 use super::{Orientation, splitter};
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::layout::{FlexDirection, LayoutEngine, LayoutStyle, Length};
 use crate::widgets::{Layout, Widget};
 
@@ -85,7 +85,7 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
         );
         let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         layout
-            .compute(&mut cx, root, Size::fixed(1280.0, 900.0))
+            .compute(&mut cx, root, Constraint::fixed(1280.0, 900.0))
             .expect("layout");
         let first = cx.nth_child(root, 0).expect("sidebar");
         let handle = cx.nth_child(root, 1).expect("handle");

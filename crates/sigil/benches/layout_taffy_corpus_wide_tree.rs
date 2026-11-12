@@ -9,7 +9,7 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -24,7 +24,7 @@ const GRANDCHILD_WIDTH: f32 = 12.0;
 const GRANDCHILD_HEIGHT: f32 = 1.0;
 const CHILDREN: usize = 1_000;
 const GRANDCHILDREN_PER_CHILD: usize = 100;
-const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
+const AVAILABLE: Constraint = Constraint::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 

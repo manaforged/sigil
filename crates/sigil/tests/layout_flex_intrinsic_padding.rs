@@ -7,7 +7,7 @@ use sigil::layout::Space;
 use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -37,7 +37,7 @@ fn chip_row_is_laid_out_without_overlap() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, row, Size::fixed(700.0, 40.0))
+        .compute(&mut cx, row, Constraint::fixed(700.0, 40.0))
         .expect("compute");
 
     let mut prev_right = 0.0_f32;
@@ -78,7 +78,7 @@ fn container_intrinsic_main_does_not_double_count_padding() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, row, Size::fixed(500.0, 40.0))
+        .compute(&mut cx, row, Constraint::fixed(500.0, 40.0))
         .expect("compute");
 
     let r = layout_rect(&cx, chip_id);

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
@@ -20,7 +20,7 @@ fn column_height(parent_h: f32) -> f32 {
     let root = cx.add(parent);
     let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(300.0, 800.0))
+        .compute(&mut cx, root, Constraint::fixed(300.0, 800.0))
         .unwrap();
     let c = *cx.get(root).unwrap().children().first().unwrap();
     layout.result(c).unwrap().rect().height

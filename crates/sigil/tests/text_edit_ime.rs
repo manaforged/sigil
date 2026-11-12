@@ -17,7 +17,7 @@ use sigil::prelude::*;
 use sigil::widgets::text_edit;
 use widget_support::{compute, find_text_node};
 
-const VIEWPORT: Size = Size::fixed(360.0, 160.0);
+const VIEWPORT: Constraint = Constraint::fixed(360.0, 160.0);
 
 #[test]
 fn text_edit_preedit_displays_inline() {

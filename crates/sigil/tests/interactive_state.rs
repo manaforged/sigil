@@ -29,7 +29,7 @@ const REST_BG: Color = Color {
     b: 240,
     a: 255,
 };
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 const fn pointer_down_event(x: f32, y: f32) -> Event {
     Event::pointer(PointerPhase::Down, Point::new(x, y))

@@ -20,7 +20,7 @@ fn click_at(x: f32, width: f32) -> f32 {
         );
         let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(width, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(width, 40.0))
             .expect("layout");
 
         let mut router = EventRouter::new();
@@ -58,7 +58,7 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
         );
         let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 40.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.route(

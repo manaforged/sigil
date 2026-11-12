@@ -9,7 +9,7 @@ fn spec(opts: WindowOpts) -> PendingWindow {
     PendingWindow {
         handle: WinitWindowHandle::from_raw(0),
         title: "test".to_owned(),
-        size: PendingWindowSize::Logical(LogicalSize::new(100.0, 100.0)),
+        size: PendingWindowSize::Logical(Size::new(100.0, 100.0)),
         opts,
     }
 }

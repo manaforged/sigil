@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use sigil::geometry::{LogicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;
@@ -211,10 +211,10 @@ fn capture(
 ) -> Result<Option<Capture>, Error> {
     sigil::reactive::Owner::scope("sigil-visual-golden", || {
         let [viewport_w, viewport_h] = target.logical;
-        sigil::app::viewport_size().set(LogicalSize::new(viewport_w, viewport_h));
+        sigil::app::viewport_size().set(Size::new(viewport_w, viewport_h));
         let mut cx = Cx::new_root();
         let root = cx.add(build);
-        let viewport = Size::fixed(viewport_w, viewport_h);
+        let viewport = Constraint::fixed(viewport_w, viewport_h);
         let mut layout = LayoutEngine::new(text_measure);
         let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {
             engine

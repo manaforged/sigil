@@ -31,7 +31,7 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
 
         show.set(false);
         layout
-            .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 200.0))
             .expect("recompute after hide must succeed");
 
         dispatch(
@@ -90,7 +90,7 @@ fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
 
         pos.set((5000.0, 5000.0));
         layout
-            .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 200.0))
             .expect("recompute after scroll must succeed");
 
         dispatch(

@@ -14,7 +14,7 @@ use sigil::style::scale::ruby_light;
 use widget_support::{compute, rect_colors};
 
 const LEAVE_XY: (f32, f32) = (500.0, 400.0);
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 fn assert_hover_overlay_paints(
     cx: &mut Cx,

@@ -38,12 +38,12 @@ fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
         let root = cx.add(text_edit(signal(buffer)));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))
             .expect("relayout after focus");
 
         let caret = caret_rects(&cx, root).first().copied().expect("caret");

@@ -6,7 +6,7 @@ use crate::layout_stub as stub;
 use sigil::layout::Space;
 use stub::{layout_rect, stub_engine};
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 
@@ -30,7 +30,7 @@ fn fill_resolves_to_parent_content_box() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);
@@ -60,7 +60,7 @@ fn fill_honours_parent_padding() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);
@@ -94,7 +94,7 @@ fn fill_axis_specific() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);
@@ -122,7 +122,7 @@ fn fill_height_axis_specific() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
         .expect("compute succeeds");
 
     let r = layout_rect(&cx, child);
@@ -150,7 +150,7 @@ fn fill_shorthand_matches_fill_width_fill_height() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
         .expect("compute succeeds");
 
     let ra = layout_rect(&cx, kids[0]);

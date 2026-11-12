@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::hash::{Hash as _, Hasher as _};
 
-use crate::geometry::{Dim, Size};
+use crate::geometry::{Constraint, Dim};
 use crate::kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use crate::style::StyleBinding;
 use ahash::AHasher;
@@ -44,7 +44,7 @@ enum DimKey {
 }
 
 impl AvailableKey {
-    pub(crate) const fn from_size(size: Size) -> Self {
+    pub(crate) const fn from_size(size: Constraint) -> Self {
         Self {
             width: DimKey::from_dim(size.width),
             height: DimKey::from_dim(size.height),

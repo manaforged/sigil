@@ -2,7 +2,7 @@
 
 use accesskit::{Node as AkNode, Role, TreeUpdate};
 use sigil::a11y::tree;
-use sigil::geometry::{Point, Rect, Size};
+use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
@@ -56,7 +56,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
 
 fn recompute(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     layout
-        .compute(cx, root, Size::fixed(400.0, 400.0))
+        .compute(cx, root, Constraint::fixed(400.0, 400.0))
         .expect("layout compute must succeed");
 }
 

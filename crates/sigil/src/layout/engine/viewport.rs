@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::Error;
-use crate::geometry::{Dim, Rect, Size};
+use crate::geometry::{Constraint, Dim, Rect};
 use crate::kernel::{Cx, DeltaKind, NodeId};
 use crate::layout::snap;
 
@@ -38,7 +38,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         root: NodeId,
-        available: Size,
+        available: Constraint,
         solved: &[NodeId],
     ) -> Result<(), Error> {
         let mut found = Found::default();

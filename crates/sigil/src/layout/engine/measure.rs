@@ -1,4 +1,4 @@
-use crate::geometry::{Dim, Size};
+use crate::geometry::{Constraint, Dim};
 use crate::kernel::{Cx, DeltaKind, NodeId};
 use smallvec::SmallVec;
 
@@ -41,7 +41,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         root: NodeId,
-        available: Size,
+        available: Constraint,
         pass: Pass<'_>,
     ) -> Result<SmallVec<[NodeId; 8]>, Error> {
         match pass {
@@ -63,7 +63,7 @@ impl LayoutEngine {
         Ok(smallvec::smallvec![root])
     }
 
-    fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), Error> {
+    fn compute_mirror(&mut self, root: NodeId, available: Constraint) -> Result<(), Error> {
         let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
         self.drive.clear_intrinsic();
         self.drive
@@ -74,7 +74,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         root: NodeId,
-        available: Size,
+        available: Constraint,
     ) -> Result<(), Error> {
         self.compute_mirror(root, available)?;
         let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
@@ -85,7 +85,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         root: NodeId,
-        available: Size,
+        available: Constraint,
     ) -> Result<(), Error> {
         let previous_ids: SmallVec<[NodeId; 32]> =
             self.core_to_handle.keys().map(NodeId::from_key).collect();
@@ -103,7 +103,7 @@ impl LayoutEngine {
         &mut self,
         roots: &[NodeId],
         tree_root: NodeId,
-        available: Size,
+        available: Constraint,
     ) -> Result<(), Error> {
         self.drive.begin_measure_frame();
         let space = to_available_space(available);
@@ -212,7 +212,7 @@ impl LayoutEngine {
     }
 }
 
-pub(super) const fn to_available_space(size: Size) -> AvailableSpace {
+pub(super) const fn to_available_space(size: Constraint) -> AvailableSpace {
     AvailableSpace {
         w: to_space_constraint(size.width),
         h: to_space_constraint(size.height),

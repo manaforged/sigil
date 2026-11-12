@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::events::EventRouter;
 use crate::events::{Event, Key, KeyPhase, Modifiers};
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, signal};
@@ -40,7 +40,7 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
             let mut layout =
                 LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(80.0, 20.0)));
             layout
-                .compute(&mut cx, root, Size::fixed(400.0, 40.0))
+                .compute(&mut cx, root, Constraint::fixed(400.0, 40.0))
                 .expect("field layout");
             let mut router = EventRouter::new();
             router.set_focus(&mut cx, Some(root));

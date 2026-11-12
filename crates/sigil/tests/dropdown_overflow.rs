@@ -38,7 +38,7 @@ fn open_popup(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
         Event::key(NamedKey::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
     );
     layout
-        .compute(cx, root, Size::fixed(640.0, 640.0))
+        .compute(cx, root, Constraint::fixed(640.0, 640.0))
         .expect("relayout after open");
 }
 
@@ -49,7 +49,7 @@ fn few_options_use_a_plain_popup() {
         let root = cx.add(dropdown(signal(0_usize), labels(3)).width(200.0));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 640.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 640.0))
             .expect("layout");
         open_popup(&mut cx, root, &mut layout);
         assert!(
@@ -66,7 +66,7 @@ fn many_options_scroll_within_the_popup() {
         let root = cx.add(dropdown(signal(0_usize), labels(20)).width(200.0));
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 640.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 640.0))
             .expect("layout");
 
         assert!(!has_scrollview(&cx, root));

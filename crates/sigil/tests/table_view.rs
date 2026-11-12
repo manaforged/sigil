@@ -18,7 +18,7 @@ const ROW_H: f32 = 20.0;
 const HEADER_H: f32 = 28.0;
 const VIEW_H: f32 = 200.0;
 const WIDTH: f32 = 200.0;
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 #[derive(Clone)]
 struct Item {

@@ -19,7 +19,7 @@ fn checkbox_click_flips_signal() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -42,7 +42,7 @@ fn checkbox_keyboard_activation() {
         let root = cx.add(checkbox(checked).label("Monitor"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -73,7 +73,7 @@ fn checkbox_disabled_ignores_click() {
         );
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -95,7 +95,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         let root = cx.add(checkbox(checked).label("Visual").tone(Tone::Primary));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let theme = Theme::default();
@@ -205,7 +205,7 @@ fn toggle_click_flips_signal() {
         }));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -228,7 +228,7 @@ fn toggle_keyboard_activation() {
         let root = cx.add(toggle(on).label("Monitor"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -249,7 +249,7 @@ fn toggle_scene_emits_on_and_off_variants() {
         let root = cx.add(toggle(on).label("Visual"));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let theme = Theme::default();
@@ -260,7 +260,7 @@ fn toggle_scene_emits_on_and_off_variants() {
 
         on.set(true);
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout recomputes");
         for _ in 0..120 {
             sigil::animation::tick(1.0 / 60.0);

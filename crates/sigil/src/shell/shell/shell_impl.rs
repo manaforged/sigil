@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::app::WindowCommand;
 use crate::events::Event;
-use crate::geometry::{LogicalSize, PhysicalSize, Rect};
+use crate::geometry::{PhysicalSize, Rect, Size};
 use crate::hal::Shell;
 use winit::dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize};
 
@@ -44,7 +44,7 @@ impl Shell for WinitShell {
     fn create_window_logical(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
     ) -> Result<Self::Window, Self::Error> {
         Ok(self.queue_window(
             title,
@@ -56,7 +56,7 @@ impl Shell for WinitShell {
     fn create_window_with(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
         opts: WindowOpts,
     ) -> Result<Self::Window, Self::Error> {
         Ok(self.queue_window(title, PendingWindowSize::Logical(initial), opts))

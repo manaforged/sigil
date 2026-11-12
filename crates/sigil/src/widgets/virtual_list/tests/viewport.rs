@@ -22,7 +22,7 @@ fn fill_sets_root_dimensions_to_fill() {
 
 #[test]
 fn fill_tracks_parent_pane_measured_size() {
-    use crate::geometry::Size;
+    use crate::geometry::Constraint;
     use crate::layout::LayoutStyle;
     use crate::widgets::Widget;
 
@@ -42,7 +42,7 @@ fn fill_tracks_parent_pane_measured_size() {
 
         let mut layout = engine();
         layout
-            .compute(&mut cx, parent, Size::fixed(800.0, 600.0))
+            .compute(&mut cx, parent, Constraint::fixed(800.0, 600.0))
             .expect("layout");
 
         let parent_rect = layout.result(parent).expect("parent layout").rect();

@@ -11,7 +11,7 @@ use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 #[test]
 fn dropdown_has_combobox_role() {
@@ -84,7 +84,7 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
         let root = cx.add(dropdown(selected, opts));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
-            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
             .expect("layout");
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));

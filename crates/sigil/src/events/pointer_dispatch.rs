@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::events::{MouseButton, PointerEvent, PointerPhase};
-use crate::geometry::{LogicalSize, Point};
+use crate::geometry::{Point, Size};
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -15,7 +15,7 @@ pub(crate) type PointerTargets = SmallVec<[PointerTarget; 64]>;
 pub(crate) struct PointerTarget {
     pub(crate) id: NodeId,
     pub(crate) origin: Point,
-    pub(crate) size: LogicalSize,
+    pub(crate) size: Size,
     transformed: bool,
 }
 
@@ -95,8 +95,8 @@ pub(crate) fn pointer_targets(
         let (origin, size) = layout
             .result(id)
             .map(|result| result.rect())
-            .map_or((Point::new(0.0, 0.0), LogicalSize::new(0.0, 0.0)), |r| {
-                (r.origin, LogicalSize::new(r.width, r.height))
+            .map_or((Point::new(0.0, 0.0), Size::new(0.0, 0.0)), |r| {
+                (r.origin, Size::new(r.width, r.height))
             });
         targets.push(PointerTarget {
             id,
@@ -138,7 +138,7 @@ pub(crate) fn pointer_target_for_node(
         .unwrap_or(PointerTarget {
             id: target,
             origin: Point::new(0.0, 0.0),
-            size: LogicalSize::new(0.0, 0.0),
+            size: Size::new(0.0, 0.0),
             transformed: false,
         })
 }

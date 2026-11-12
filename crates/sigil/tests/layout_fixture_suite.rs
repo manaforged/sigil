@@ -5,7 +5,7 @@ use sigil::layout::Space;
 use sigil_kittest::FakeMeasure;
 use stub::stub_engine;
 
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::{Display, LayoutDrive, Length as StyleDimension, Position, StyleData, *};
 
@@ -29,7 +29,7 @@ fn flex_row_grow_child_fills_remaining_space() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(100.0, 20.0))
+        .compute(&mut cx, root, Constraint::fixed(100.0, 20.0))
         .expect("compute succeeds");
 
     let second = cx
@@ -53,7 +53,7 @@ fn flex_column_gap_offsets_children() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::max_content())
+        .compute(&mut cx, root, Constraint::max_content())
         .expect("compute succeeds");
 
     let second = cx
@@ -80,7 +80,7 @@ fn padding_moves_content_origin() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::max_content())
+        .compute(&mut cx, root, Constraint::max_content())
         .expect("compute succeeds");
 
     let result = cx
@@ -109,7 +109,7 @@ fn block_auto_width_fills_available_space() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 50.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 50.0))
         .expect("compute succeeds");
 
     let result = cx
@@ -150,7 +150,7 @@ fn nested_absolute_uses_positioned_parent_origin() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::fixed(200.0, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 100.0))
         .expect("compute succeeds");
 
     let result = result_for(&cx, child);
@@ -208,7 +208,7 @@ fn fragment_children_treated_as_siblings_of_parent() {
 
     let mut engine = stub_engine();
     engine
-        .compute(&mut cx, root, Size::max_content())
+        .compute(&mut cx, root, Constraint::max_content())
         .expect("compute succeeds");
 
     let root_children: Vec<_> = cx.get(root).expect("root").children().to_vec();

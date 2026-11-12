@@ -17,7 +17,7 @@ fn grid_2d_rects(cells: &[(f32, u16, u16)]) -> Vec<(f32, f32, f32, f32)> {
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(200.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     kids.into_iter().map(|k| rect_of(&cx, k)).collect()
@@ -51,7 +51,7 @@ fn explicit_placement_reserves_and_auto_items_flow_around() {
     }
     let root = cx.add(root_b);
     stub_engine()
-        .compute(&mut cx, root, Size::fixed(200.0, 600.0))
+        .compute(&mut cx, root, Constraint::fixed(200.0, 600.0))
         .expect("grid computes");
     let kids = cx.get(root).unwrap().children().to_vec();
     let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();

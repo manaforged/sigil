@@ -9,8 +9,8 @@ use crate::widget_support;
 use scene_support::color;
 use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::geometry::Constraint;
 use sigil::geometry::Point;
-use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
 use sigil::layout::Space;
 use sigil::layout::{
@@ -24,7 +24,7 @@ use sigil::style::{
 use sigil::widgets::Layout;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(200.0, 100.0);
+const VIEWPORT: Constraint = Constraint::fixed(200.0, 100.0);
 const REST: Color = color(240, 240, 240, 255);
 const A: Color = color(200, 20, 20, 255);
 const B: Color = color(20, 200, 20, 255);

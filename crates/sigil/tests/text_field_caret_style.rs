@@ -60,11 +60,11 @@ fn focused_field_scene() -> CommandScene {
     );
     let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
     layout
-        .compute(&mut cx, root, Size::fixed(500.0, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(500.0, 100.0))
         .expect("initial layout");
     EventRouter::new().set_focus(&mut cx, Some(root));
     layout
-        .compute(&mut cx, root, Size::fixed(500.0, 100.0))
+        .compute(&mut cx, root, Constraint::fixed(500.0, 100.0))
         .expect("focused layout");
     emit_scene(&cx, root, None)
 }

@@ -13,7 +13,7 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
         let root = cx.add(text_field(value));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -43,7 +43,7 @@ fn text_field_ctrl_a_selects_all_and_delete_clears() {
         let root = cx.add(text_field(value));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -63,7 +63,7 @@ fn text_field_undo_restores_previous_value() {
         let root = cx.add(builder);
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -101,7 +101,7 @@ fn text_field_undo_answers_the_terminal_undo_keys() {
             let root = cx.add(text_field(value));
             let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
             layout
-                .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+                .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
                 .expect("layout computes");
             let mut router = EventRouter::new();
             router.set_focus(&mut cx, Some(root));
@@ -124,7 +124,7 @@ fn text_field_redo_reapplies_undone_change() {
         let root = cx.add(text_field(value));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();
@@ -154,7 +154,7 @@ fn text_field_caret_visible_resets_on_keystroke() {
         let root = cx.add(builder);
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         assert!(caret_visible.get(), "starts visible");
@@ -187,7 +187,7 @@ fn text_field_scroll_offset_advances_past_visible_window() {
         let root = cx.add(builder);
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .compute(&mut cx, root, Constraint::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let mut router = EventRouter::new();

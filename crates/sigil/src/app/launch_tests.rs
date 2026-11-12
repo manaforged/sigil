@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use crate::animation::runtime::{Animator, MotionPrefs, active_count, config, presets};
 use crate::events::Event;
-use crate::geometry::{LogicalSize, PhysicalSize};
+use crate::geometry::{PhysicalSize, Size};
 use crate::hal::Shell;
 use crate::kernel::container;
 use crate::layout::LayoutStyle;
@@ -72,8 +72,8 @@ struct MockWaker;
 #[derive(Debug, PartialEq)]
 enum CreateCall {
     Physical(String, PhysicalSize),
-    Logical(String, LogicalSize),
-    With(String, LogicalSize, crate::app::WindowOpts),
+    Logical(String, Size),
+    With(String, Size, crate::app::WindowOpts),
 }
 
 #[derive(Default)]
@@ -107,7 +107,7 @@ impl Shell for MockShell {
     fn create_window_logical(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
     ) -> Result<Self::Window, Self::Error> {
         self.calls
             .push(CreateCall::Logical(title.to_owned(), initial));
@@ -117,7 +117,7 @@ impl Shell for MockShell {
     fn create_window_with(
         &mut self,
         title: &str,
-        initial: LogicalSize,
+        initial: Size,
         opts: crate::app::WindowOpts,
     ) -> Result<Self::Window, Self::Error> {
         self.calls
@@ -183,7 +183,7 @@ fn initial_window_threads_config_into_logical_size_and_opts() {
 
 #[test]
 fn native_initial_window_ignores_web_canvas() {
-    let logical = LogicalSize::new(720.0, 480.0);
+    let logical = Size::new(720.0, 480.0);
     let mut plain = MockShell::default();
     let mut bound = MockShell::default();
 

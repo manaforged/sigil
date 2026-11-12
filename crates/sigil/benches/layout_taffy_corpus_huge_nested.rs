@@ -9,7 +9,7 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::Size;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::widgets::Layout;
@@ -18,7 +18,7 @@ use taffy::prelude::*;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;
-const AVAILABLE: Size = Size::fixed(NODE_SIZE, NODE_SIZE);
+const AVAILABLE: Constraint = Constraint::fixed(NODE_SIZE, NODE_SIZE);
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 

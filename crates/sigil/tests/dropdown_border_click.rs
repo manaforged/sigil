@@ -15,7 +15,7 @@ use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
 use sigil_kittest::stub_text_measure;
 use widget_support::compute;
 
-const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 
 fn recompute(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
     layout.compute(cx, root, VIEWPORT).expect("layout");

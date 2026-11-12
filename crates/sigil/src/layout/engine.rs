@@ -1,4 +1,4 @@
-use crate::geometry::Size;
+use crate::geometry::Constraint;
 use crate::kernel::{Cx, NodeId};
 use crate::style::TextStyle;
 use ahash::AHashSet;
@@ -136,7 +136,12 @@ impl LayoutEngine {
             .map(|_handles| ())
     }
 
-    pub fn compute(&mut self, cx: &mut Cx, root: NodeId, available: Size) -> Result<(), Error> {
+    pub fn compute(
+        &mut self,
+        cx: &mut Cx,
+        root: NodeId,
+        available: Constraint,
+    ) -> Result<(), Error> {
         if cx.get(root).is_none() {
             return Err(Error::node_missing(root));
         }
@@ -207,7 +212,7 @@ impl LayoutEngine {
     fn finish_translated(
         &mut self,
         cx: &mut Cx,
-        (root, available): (NodeId, Size),
+        (root, available): (NodeId, Constraint),
         solved: &[NodeId],
         cache_key: LayoutCacheKey,
     ) -> Result<(), Error> {

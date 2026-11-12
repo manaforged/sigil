@@ -7,7 +7,7 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::geometry::{Point, Rect, Size};
+use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -43,7 +43,7 @@ fn layout_then_emit(c: &mut Criterion) {
                 {
                     let _layout = profile::span(sigil::profile::Phase::Layout);
                     layout
-                        .compute(&mut cx, root, Size::fixed(1280.0, 800.0))
+                        .compute(&mut cx, root, Constraint::fixed(1280.0, 800.0))
                         .expect("bench harness invariant");
                 }
                 {

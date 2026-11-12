@@ -18,7 +18,7 @@ fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) 
         );
         let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(parent_w, 200.0))
+            .compute(&mut cx, root, Constraint::fixed(parent_w, 200.0))
             .expect("layout");
         let child = *cx.get(root).unwrap().children().first().unwrap();
         width = layout.result(child).unwrap().rect().width;
@@ -94,7 +94,7 @@ fn hug_button_keeps_width_next_to_a_grow_spacer() {
         let children: Vec<_> = cx.get(root).expect("row").children().to_vec();
         let mut layout = LayoutEngine::new(Box::new(CHAR_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(160.0, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(160.0, 40.0))
             .expect("layout");
         let create = layout
             .result(*children.first().expect("create"))
@@ -124,7 +124,7 @@ fn button_hugs_its_label_at_desktop_density() {
         let root = cx.add(button("Save"));
         let mut layout = LayoutEngine::new(Box::new(CHAR_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(300.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(300.0, 100.0))
             .expect("layout");
         let rect = layout.result(root).expect("button rect").rect();
 
@@ -161,7 +161,7 @@ fn grow_size_fills_button_without_collapsing_its_height() {
             .expect("button");
         let mut layout = LayoutEngine::new(Box::new(CHAR_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(300.0, 100.0))
+            .compute(&mut cx, root, Constraint::fixed(300.0, 100.0))
             .expect("layout");
         let rect = layout.result(button).expect("button rect").rect();
 
@@ -194,7 +194,7 @@ fn text_field_inner_surface_leaves_one_pixel_frame() {
             .expect("inner surface");
         let mut layout = LayoutEngine::new(Box::new(CHAR_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(600.0, 42.0))
+            .compute(&mut cx, root, Constraint::fixed(600.0, 42.0))
             .expect("layout");
         let outer = layout.result(root).expect("field rect").rect();
         let inner = layout.result(inner).expect("inner rect").rect();
@@ -223,7 +223,7 @@ fn button_and_toggle_fill_via_grow() {
         );
         let mut layout = LayoutEngine::new(Box::new(FakeMeasure::default()));
         layout
-            .compute(&mut cx, root, Size::fixed(400.0, 60.0))
+            .compute(&mut cx, root, Constraint::fixed(400.0, 60.0))
             .expect("layout");
         for child in cx.get(root).unwrap().children() {
             cx_widths.push(layout.result(*child).unwrap().rect().width);
@@ -267,7 +267,7 @@ fn a_filling_button_shares_a_narrow_row_with_its_sibling() {
         let second = children.last().copied().expect("button");
         let mut layout = LayoutEngine::new(Box::new(CHAR_MEASURE));
         layout
-            .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+            .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
             .expect("layout");
         let sibling = layout.result(first).expect("sibling").rect();
         let button = layout.result(second).expect("button").rect();

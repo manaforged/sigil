@@ -17,7 +17,7 @@ use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::find_text_node;
 
-const VIEWPORT: Size = Size::fixed(1000.0, 1000.0);
+const VIEWPORT: Constraint = Constraint::fixed(1000.0, 1000.0);
 const SPACER_H: f32 = 800.0;
 
 #[test]

@@ -16,7 +16,7 @@ fn engine() -> LayoutEngine {
 
 fn compute(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     layout
-        .compute(cx, root, Size::fixed(VIEW.0, VIEW.1))
+        .compute(cx, root, Constraint::fixed(VIEW.0, VIEW.1))
         .unwrap();
     tick_frame();
 }

@@ -3,7 +3,7 @@
 use crate::events_support::mock_shell;
 
 use mock_shell::MockShell;
-use sigil::geometry::{LogicalSize, PhysicalSize};
+use sigil::geometry::{PhysicalSize, Size};
 use sigil::hal::Shell;
 
 #[test]
@@ -11,7 +11,7 @@ fn default_create_window_logical_uses_scale_one_physical_size() {
     let mut shell = MockShell::default();
 
     let handle = shell
-        .create_window_logical("test", LogicalSize::new(720.0, 480.0))
+        .create_window_logical("test", Size::new(720.0, 480.0))
         .expect("default logical create should delegate");
 
     assert_eq!(handle, 0);
@@ -28,7 +28,7 @@ fn default_create_window_with_ignores_opts_and_delegates() {
     let handle = shell
         .create_window_with(
             "pill",
-            LogicalSize::new(200.0, 48.0),
+            Size::new(200.0, 48.0),
             sigil::app::WindowOpts {
                 overlay: true,
                 frameless: false,
