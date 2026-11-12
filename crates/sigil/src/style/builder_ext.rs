@@ -121,11 +121,8 @@ pub(crate) fn tone(node: NodeBuilder, tone: Tone) -> NodeBuilder {
     node.mutate(move |node| install_tone(node, tone))
 }
 
-pub(crate) fn focus_ring(
-    node: NodeBuilder,
-    change: impl FnOnce(&mut FocusRing) + 'static,
-) -> NodeBuilder {
-    node.mutate(move |node| install_focus_ring(node, change))
+pub(crate) fn focus_ring(node: NodeBuilder, ring: FocusRing) -> NodeBuilder {
+    node.mutate(move |node| install_focus_ring(node, ring))
 }
 
 pub(crate) fn presence(

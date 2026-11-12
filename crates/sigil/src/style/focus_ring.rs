@@ -2,33 +2,61 @@ use crate::reactive::Signal;
 
 use crate::style::{ColorAtom, Metrics, Token};
 
-kittest_pub! {
-    /// Focus ring settings on a node.
-    #[derive(Clone, Debug)]
-    pub struct FocusRing {
-        visible: Option<Signal<bool>>,
-        pub(crate) color: ColorAtom,
-        pub(crate) width: Option<f32>,
-        pub(crate) offset: Option<f32>,
-        pub(crate) opacity: u16,
-    }
+/// The focus ring of a node: when it shows, and its color, width, offset and opacity.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FocusRing {
+    visible: Option<Signal<bool>>,
+    color: Option<ColorAtom>,
+    width: Option<f32>,
+    offset: Option<f32>,
+    opacity: Option<u16>,
 }
 
-impl Default for FocusRing {
-    fn default() -> Self {
+impl From<Signal<bool>> for FocusRing {
+    fn from(visible: Signal<bool>) -> Self {
         Self {
-            visible: None,
-            color: Token::Ring.color(),
-            width: None,
-            offset: None,
-            opacity: 10_000,
+            visible: Some(visible),
+            ..Self::default()
         }
     }
 }
 
 impl FocusRing {
-    pub(crate) const fn show_when(&mut self, visible: Signal<bool>) {
-        self.visible = Some(visible);
+    /// Sets the ring color.
+    #[must_use]
+    pub fn color(mut self, color: impl Into<ColorAtom>) -> Self {
+        self.color = Some(color.into());
+        self
+    }
+
+    /// Sets the stroke width in pixels.
+    #[must_use]
+    pub const fn width(mut self, width: f32) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    /// Sets the distance from the node in pixels.
+    #[must_use]
+    pub const fn offset(mut self, offset: f32) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    /// Sets the opacity in ten-thousandths.
+    #[must_use]
+    pub const fn opacity(mut self, opacity: u16) -> Self {
+        debug_assert!(opacity <= 10_000);
+        self.opacity = Some(opacity);
+        self
+    }
+
+    pub(crate) fn merge(&mut self, over: Self) {
+        self.visible = over.visible.or(self.visible);
+        self.color = over.color.or(self.color);
+        self.width = over.width.or(self.width);
+        self.offset = over.offset.or(self.offset);
+        self.opacity = over.opacity.or(self.opacity);
     }
 
     kittest_pub! {
@@ -39,8 +67,8 @@ impl FocusRing {
         }
     }
 
-    pub(crate) const fn color_atom(&self) -> ColorAtom {
-        self.color
+    pub(crate) fn color_atom(&self) -> ColorAtom {
+        self.color.unwrap_or_else(|| Token::Ring.color())
     }
 
     pub(crate) fn stroke_width(&self, metrics: Metrics) -> f32 {
@@ -51,7 +79,7 @@ impl FocusRing {
         self.offset.unwrap_or_else(|| metrics.ring_offset())
     }
 
-    pub(crate) const fn opacity_value(&self) -> u16 {
-        self.opacity
+    pub(crate) fn opacity_value(&self) -> u16 {
+        self.opacity.unwrap_or(10_000)
     }
 }

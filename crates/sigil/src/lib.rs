@@ -229,8 +229,8 @@ pub mod prelude {
     #[cfg(app_host)]
     pub use crate::run;
     pub use crate::style::{
-        Color, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, States, TextRole, Theme,
-        Token, Tone,
+        Color, ControlSize, Elevation, FocusRing, FontFamily, Layer, Paint, Radius, States,
+        TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, spawn, task};
     pub use crate::view::View;
