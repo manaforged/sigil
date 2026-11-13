@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use sigil::Host;
-use sigil::app::{FrameHooks, Frame};
+use sigil::app::{Frame, FrameHooks};
 use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::prelude::*;
