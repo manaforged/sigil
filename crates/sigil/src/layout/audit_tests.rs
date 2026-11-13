@@ -7,7 +7,7 @@ use crate::style::Theme;
 use crate::widgets::Orientation;
 use crate::widgets::{Layout, Widget};
 
-use super::{Issue, Tolerance, flaws};
+use super::{Flaw, Issue, Tolerance, flaws};
 
 fn cell(width: f32) -> NodeBuilder {
     container().layout(LayoutStyle::block().fixed_size(width, 2.0))
@@ -93,7 +93,7 @@ fn right_aligned_numbers_are_clean() {
 
 #[test]
 fn asymmetric_container_is_skipped() {
-    let tree = stack(ragged()).asymmetric("titles run ragged on purpose");
+    let tree = stack(ragged()).allow_flaw(Flaw::Column, "titles run ragged on purpose");
     assert_eq!(found("align-waived", tree), Vec::new());
 }
 

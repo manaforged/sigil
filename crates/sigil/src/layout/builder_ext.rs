@@ -4,9 +4,6 @@ use crate::widgets::Layout;
 use crate::layout::{LayoutStyle, Space, TrackSize};
 use crate::style::{Metrics, StyleBinding};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Asymmetric(pub &'static str);
-
 /// A container that places its children left to right, centred across the row, with the theme gap: 8 px in a window, one cell in a terminal.
 #[must_use]
 pub fn row() -> NodeBuilder {
@@ -145,12 +142,6 @@ pub(crate) use {layout_methods, layout_setters};
 
 fn default_gap() -> f32 {
     Metrics::current().control_gap(crate::style::ControlSize::Default)
-}
-
-pub(crate) fn asymmetric(node: NodeBuilder, reason: &'static str) -> NodeBuilder {
-    node.mutate(move |node| {
-        let _previous = node.attach(Asymmetric(reason));
-    })
 }
 
 pub(crate) fn install_layout(node: &mut Node, style: &LayoutStyle) {
