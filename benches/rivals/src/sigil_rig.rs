@@ -118,20 +118,18 @@ impl SigilRig {
     fn paint(&mut self, event: Option<Event>) {
         let view = self.view();
         let fresh = !std::mem::replace(&mut self.painted, true);
-        let hooks = FrameHooks {
-            input: Some(Box::new(move |host: &mut Host| {
+        let hooks = FrameHooks::default()
+            .input(move |host: &mut Host| {
                 if let Some(event) = event {
                     host.route(event);
                 }
                 None
-            })),
-            after_layout: None,
-            paint: Some(Box::new(move |host: &mut Host, info: &FrameInfo| {
+            })
+            .paint(move |host: &mut Host, info: &FrameInfo| {
                 if fresh || info.dirty {
                     black_box(host.emit(view));
                 }
-            })),
-        };
+            });
         let out = self.host.frame(view, FRAME_SECONDS, hooks);
         out.layout.expect("layout");
     }
