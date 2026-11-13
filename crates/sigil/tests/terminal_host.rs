@@ -17,13 +17,8 @@ use sigil::widgets::button;
 
 use sigil_kittest::Harness;
 
-fn present<N: IntoNode>(
-    tree: impl Fn() -> N + 'static,
-    cols: u16,
-    rows: u16,
-    events: &[Event],
-) -> String {
-    Harness::present(tree, cols, rows, events).expect("layout")
+fn present<N: IntoNode>(tree: impl Fn() -> N + 'static, cols: u16, rows: u16) -> String {
+    Harness::new(tree).size(cols, rows).text()
 }
 
 fn step(

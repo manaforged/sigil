@@ -14,15 +14,15 @@ const WAVE_PERIOD_PER_REACH: f32 = 4.0;
 /// The position and size of a text decoration.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct DecorationGeometry {
-    /// The band.
+    /// The rectangle the decoration is drawn in.
     pub(crate) band: Rect,
-    /// The center.
+    /// The y coordinate of the middle of the line, halfway down `band`.
     pub(crate) center: f32,
-    /// The thickness.
+    /// The thickness of the line, at most the height of `band`.
     pub(crate) thickness: f32,
-    /// The amplitude.
+    /// How far a wavy line rises and falls from `center`; 0 for a straight line.
     pub(crate) amplitude: f32,
-    /// The period.
+    /// The horizontal length of one full wave, at least 1.
     pub(crate) period: f32,
 }
 

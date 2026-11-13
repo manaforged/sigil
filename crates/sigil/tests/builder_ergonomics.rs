@@ -5,21 +5,17 @@ use std::collections::HashSet;
 use sigil::icons::Icon;
 use sigil::kernel::Role;
 use sigil::prelude::*;
-use sigil::style::{BgGradient, Color, ColorAtom, GradientAxis, GradientStopKey};
+use sigil::style::{BgGradient, Color, ColorValue, GradientAxis, GradientStopKey};
 use sigil_kittest::{Harness, Query};
 
 #[test]
 fn widget_builders_collect_into_one_child_list() {
-    let grid = sigil_kittest::Harness::present(
-        || {
-            let items: Vec<NodeBuilder> = vec![text("alpha").into(), button("beta").into()];
-            items.into_iter().fold(column(), NodeBuilder::child)
-        },
-        30,
-        6,
-        &[],
-    )
-    .expect("layout");
+    let grid = sigil_kittest::Harness::new(|| {
+        let items: Vec<NodeBuilder> = vec![text("alpha").into(), button("beta").into()];
+        items.into_iter().fold(column(), NodeBuilder::child)
+    })
+    .size(30, 6)
+    .text();
     assert!(grid.contains("alpha") && grid.contains("beta"), "{grid}");
 }
 
@@ -52,7 +48,7 @@ fn equal_owned_gradient_stops_share_one_copy() {
         vec![
             GradientStopKey::new(
                 0,
-                ColorAtom::Color(Color {
+                ColorValue::Color(Color {
                     r: 255,
                     g: 0,
                     b: 0,
@@ -61,7 +57,7 @@ fn equal_owned_gradient_stops_share_one_copy() {
             ),
             GradientStopKey::new(
                 1000,
-                ColorAtom::Color(Color {
+                ColorValue::Color(Color {
                     r: 0,
                     g: 0,
                     b: 255,

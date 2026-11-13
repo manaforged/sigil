@@ -1,4 +1,4 @@
-use crate::profile::{Counter, count_add, enabled};
+use crate::profile::{Counter, count, enabled};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
@@ -57,7 +57,7 @@ impl FrameStats {
             (Counter::RenderFrames, 1),
             (Counter::GpuBatches, self.batches()),
         ] {
-            count_add(name, value);
+            count(name, value);
         }
     }
 

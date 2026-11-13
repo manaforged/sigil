@@ -21,9 +21,7 @@ fn hint_overlay_default() {
     .size([232, 96])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("hint_overlay_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("hint_overlay_default").assert(img);
 }
 
 #[test]
@@ -49,9 +47,7 @@ fn pattern_app_shell() {
     .size([376, 216])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("pattern_app_shell")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("pattern_app_shell").assert(img);
 }
 
 #[test]
@@ -73,7 +69,7 @@ fn pattern_field() {
     .size([232, 82])
     .hit((116.0, 41.0))
     .image();
-    Golden::new("pattern_field").delta(DELTA_PCT).assert(img);
+    Golden::new("pattern_field").assert(img);
 }
 
 #[test]
@@ -98,5 +94,5 @@ fn pattern_kv_grid() {
     .size([292, 108])
     .hit((146.0, 54.0))
     .image();
-    Golden::new("pattern_kv_grid").delta(DELTA_PCT).assert(img);
+    Golden::new("pattern_kv_grid").assert(img);
 }

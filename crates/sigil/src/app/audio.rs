@@ -7,13 +7,13 @@ use crate::reactive::{Signal, effect, signal};
 /// Audio player (feature `audio`).
 #[derive(Clone)]
 pub struct Player {
-    /// The playing.
+    /// True while audio plays; false when it is paused, stopped, or the queue has run out.
     pub playing: Signal<bool>,
-    /// The progress.
+    /// The position in the current track, from 0 to 1; it stays 0 when the length is unknown.
     pub progress: Signal<f32>,
-    /// The volume.
+    /// The volume, where 1 is full; a write changes the volume of the device.
     pub volume: Signal<f32>,
-    /// The duration.
+    /// The length of the current track, or `None` when the decoder cannot tell.
     pub duration: Signal<Option<Duration>>,
     device: std::rc::Rc<std::cell::RefCell<Option<device::Device>>>,
 }

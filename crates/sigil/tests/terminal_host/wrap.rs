@@ -16,7 +16,6 @@ fn wrapped_label_fills_the_container_width() {
         },
         60,
         10,
-        &[],
     );
     let count = out.lines().filter(|l| l.contains('x')).count();
     assert!(
@@ -59,7 +58,6 @@ fn wrapped_label_inside_modal_band_wraps() {
             },
             60,
             10,
-            &[],
         );
         let count = out.lines().filter(|l| l.contains('x')).count();
         assert!(count >= 2, "modal band must wrap the label, got:\n{out}");
@@ -89,7 +87,6 @@ fn wrapped_label_inside_flex_row_band_wraps() {
         },
         60,
         10,
-        &[],
     );
     let count = out.lines().filter(|l| l.contains('x')).count();
     assert!(count >= 2, "flex_row band must wrap the label, got:\n{out}");
@@ -135,7 +132,6 @@ fn grow_fill_does_not_clip_row_labels() {
         },
         40,
         8,
-        &[],
     );
     assert!(grid.contains("L_L_L_L"), "left label clipped in:\n{grid}");
     assert!(

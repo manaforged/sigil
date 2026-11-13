@@ -24,8 +24,7 @@ static EMPTY: &[StyleAtom] = &[];
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
-    /// True when the bar shows a moving segment and not a filled fraction.
-    pub indeterminate: bool,
+    indeterminate: bool,
     tone: Tone,
     name: Option<AccessibleName>,
     caption: Option<TextContent>,
@@ -40,7 +39,7 @@ pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
 
 impl ProgressBuilder {
     /// Creates a bar that shows `value` as a fraction of `max`.
-    pub fn new(value: Signal<f32>, max: f32) -> Self {
+    pub(crate) fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
             value,
             max: max.max(f32::EPSILON),

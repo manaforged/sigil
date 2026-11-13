@@ -6,7 +6,7 @@ use crate::animation::runtime::motion_prefs::MotionPrefs;
 use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::animation::{Keyframes, KeyframesId};
 use crate::reactive::{Signal, signal};
-use crate::style::{Color, ColorAtom, ColorAtomKind, NumericAtomKind, StyleAtom, StyleEngine};
+use crate::style::{Color, ColorAtomKind, ColorValue, NumericAtomKind, StyleAtom, StyleEngine};
 
 struct Playing {
     id: KeyframesId,
@@ -17,7 +17,7 @@ struct Playing {
 pub(crate) struct Player {
     time: Signal<f32>,
     playing: Option<Playing>,
-    colors: SmallVec<[(ColorAtom, Color); 4]>,
+    colors: SmallVec<[(ColorValue, Color); 4]>,
 }
 
 pub(crate) fn animation(atoms: &[StyleAtom]) -> Option<KeyframesId> {
@@ -90,7 +90,7 @@ impl Player {
 
     pub(crate) fn color(&self, kind: ColorAtomKind, underlying: Color) -> Option<Color> {
         let (keyframes, progress) = self.progress()?;
-        let resolve = |atom: ColorAtom| {
+        let resolve = |atom: ColorValue| {
             self.colors
                 .iter()
                 .find(|(key, _)| *key == atom)

@@ -65,14 +65,12 @@ impl From<Style> for ClassSource {
 }
 
 impl NodeBuilder {
-    #[must_use]
     pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
         let source = source.into();
         self.flush_paint()
             .mutate(move |node| install_class(node, source))
     }
 
-    #[must_use]
     pub(crate) fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static,
@@ -81,7 +79,6 @@ impl NodeBuilder {
             .mutate(move |node| install_reactive(node, f))
     }
 
-    #[must_use]
     pub(crate) fn flush_paint(mut self) -> Self {
         let atoms = self.pending_style().take_atoms();
         let images = self.pending_style().take_images();
@@ -98,13 +95,11 @@ impl NodeBuilder {
 }
 
 impl TextBuilder {
-    #[must_use]
     pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
         let source = source.into();
         self.map_node(move |node| node.class(source))
     }
 
-    #[must_use]
     pub(crate) fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static,
@@ -163,7 +158,6 @@ pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -
 }
 
 impl NodeBuilder {
-    #[must_use]
     pub(crate) fn style(self, style: Style) -> Self {
         crate::style::styled::node::attach_style(self.flush_paint(), style)
     }
@@ -176,13 +170,11 @@ impl NodeBuilder {
         })
     }
 
-    #[must_use]
     pub(crate) fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
         self.flush_paint()
             .mutate(move |node| install_state_overlay(node, overlay, slot))
     }
 
-    #[must_use]
     pub(crate) fn stateful_style<F>(
         self,
         variant: StyleVariant,
@@ -203,7 +195,6 @@ impl NodeBuilder {
             .state_overlay(overlay, slot_cell)
     }
 
-    #[must_use]
     pub(crate) fn class_when(self, signal: Signal<bool>, class: &'static str) -> Self {
         let atoms = parse_classes(class);
         self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })

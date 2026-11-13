@@ -181,7 +181,7 @@ fn scroll_can_follow_growth_without_overriding_manual_position() {
             scroll(container())
                 .extent(extent)
                 .height(240.0)
-                .scroll_bind(offset)
+                .scroll_y(offset)
                 .follow_end(true),
         );
         assert_eq!(offset.get(), 560.0);

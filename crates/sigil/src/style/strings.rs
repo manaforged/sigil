@@ -105,7 +105,7 @@ impl StringKey {
     }
 }
 
-/// The translated texts of an app.
+/// Holds the text of every `StringKey` for one language.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Strings {
     values: [Cow<'static, str>; StringKey::ALL.len()],

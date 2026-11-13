@@ -25,10 +25,10 @@ pub(crate) fn commands(ws: Workspace) -> NodeBuilder {
             let title = command
                 .hint()
                 .map_or_else(|| String::from(*label), |hint| format!("{label}    {hint}"));
-            menu.item(title, move || {
+            menu.item(MenuItem::new(title).activate(move || {
                 open.set(false);
                 run(ws, command);
-            })
+            }))
         })
         .placeholder("Type a command")
         .cancel(move || open.set(false))
@@ -41,10 +41,10 @@ pub(crate) fn quick_open(ws: Workspace) -> NodeBuilder {
     let menu = FileId::ALL
         .into_iter()
         .fold(command_menu(), |menu, file| {
-            menu.item(file.path(), move || {
+            menu.item(MenuItem::new(file.path()).activate(move || {
                 open.set(false);
                 ws.open_file(file);
-            })
+            }))
         })
         .placeholder("Search files by name")
         .cancel(move || open.set(false))

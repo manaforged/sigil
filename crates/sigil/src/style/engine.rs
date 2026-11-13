@@ -1,6 +1,6 @@
 use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
 use crate::style::{
-    AnimatorOverlay, Color, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, StyleAtom,
+    AnimatorOverlay, Color, ColorAtomKind, ColorValue, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
@@ -77,7 +77,7 @@ impl<'theme> StyleEngine<'theme> {
 
     #[must_use]
     fn tone_step(&self, step: u8) -> Color {
-        let role = self.tone.scale_role();
+        let role = self.tone;
         Token::scale(role, step).map_or_else(
             || self.theme.scale(role).step(step),
             |token| self.theme.color(token),
@@ -86,7 +86,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Resolves a color atom against the theme.
     #[must_use]
-    pub(crate) fn resolve_color(&self, color: ColorAtom) -> Color {
+    pub(crate) fn resolve_color(&self, color: ColorValue) -> Color {
         self.theme.color(color)
     }
 
@@ -104,7 +104,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BgToneStep(step) => fill(render, Some(self.tone_step(step)), None),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
-                render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
+                render.text_color = Some(self.theme.scale(self.tone).on_solid);
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::Radius(radius) => {

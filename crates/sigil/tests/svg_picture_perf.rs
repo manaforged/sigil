@@ -95,21 +95,19 @@ impl Painter {
                 let _ = render_to_image(ImageRenderer::Cpu(renderer), &scene, target).expect("cpu");
             }
             Self::Gpu(renderer) => {
-                let frame = Frame {
-                    scene: &scene,
-                    viewport: VIEW,
-                    size,
-                    clear,
-                };
+                let frame = Frame::new(&scene, VIEW, size, clear);
                 let _ = gpu_rgba(renderer, &frame).expect("gpu");
             }
         }
     }
 }
 
-fn median(mut samples: Vec<Duration>) -> f64 {
-    samples.sort();
-    samples[samples.len() / 2].as_secs_f64() * 1000.0
+fn median(samples: Vec<Duration>) -> f64 {
+    let mut ms: Vec<f64> = samples
+        .into_iter()
+        .map(|d| d.as_secs_f64() * 1000.0)
+        .collect();
+    crate::scene_support::median(&mut ms)
 }
 
 fn measure(name: &str, mut painter: Painter) {

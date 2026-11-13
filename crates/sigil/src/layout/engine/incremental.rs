@@ -65,15 +65,15 @@ impl LayoutEngine {
             .copied()
             .filter(|id| !self.steady.contains(id) && !self.text_kept_size(cx, *id))
             .collect();
-        crate::profile::count_add(Counter::LayoutDirtyNodes, dirty.len() as u64);
-        crate::profile::count_add(Counter::LayoutResizedNodes, resized.len() as u64);
+        crate::profile::count(Counter::LayoutDirtyNodes, dirty.len() as u64);
+        crate::profile::count(Counter::LayoutResizedNodes, resized.len() as u64);
         for id in &resized {
             if let Ok(handle) = self.handle(*id) {
                 self.drive.invalidate(handle);
             }
         }
         let roots = self.containment_roots(cx, &resized, root, &repositioned);
-        crate::profile::count_add(Counter::LayoutRoots, roots.len() as u64);
+        crate::profile::count(Counter::LayoutRoots, roots.len() as u64);
         attribution::note_resized(cx, &resized);
         attribution::note_roots(cx, &roots, &resized);
         Ok(roots)
@@ -210,7 +210,7 @@ impl LayoutEngine {
             !only
         });
         for id in moved.iter().copied() {
-            crate::profile::count(Counter::LayoutTranslate);
+            crate::profile::count(Counter::LayoutTranslate, 1);
             self.translate(cx, id)?;
         }
         Ok(moved)

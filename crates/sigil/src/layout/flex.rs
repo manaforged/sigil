@@ -160,7 +160,7 @@ impl<'a> FlexSolver<'a> {
     ) {
         let key = self.intrinsic_key(cb_main, cb_cross, along_main);
         self.scope.forest().intrinsic_put(id, key, extent);
-        crate::profile::count(crate::profile::Counter::LayoutIntrinsicMiss);
+        crate::profile::count(crate::profile::Counter::LayoutIntrinsicMiss, 1);
         self.intrinsic_stores
             .set(self.intrinsic_stores.get().saturating_add(1));
     }

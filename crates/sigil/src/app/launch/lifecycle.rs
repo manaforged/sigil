@@ -87,7 +87,7 @@ fn resolve_target(
 
 fn note_command(windows: &mut Windows, handle: WinitWindowHandle, command: &WindowCommand) {
     match command {
-        WindowCommand::SetZoom(percent) if *percent > 0 => {
+        WindowCommand::Zoom(percent) if *percent > 0 => {
             if let Some(record) = windows.get_mut(handle) {
                 record.view.config.user_zoom = f32::from(*percent) / 100.0;
             }

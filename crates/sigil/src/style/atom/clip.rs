@@ -11,7 +11,7 @@ pub enum ClipShape {
     Inset {
         /// The top, right, bottom, and left insets.
         inset: [i16; 4],
-        /// The corner radius.
+        /// The corner radius of the inset box, in pixels.
         round: i16,
     },
     /// `circle(radius)` centred in the box; `None` reaches the closest side.

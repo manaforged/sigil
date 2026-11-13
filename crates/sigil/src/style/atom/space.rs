@@ -32,7 +32,7 @@ kittest_pub! {
         Perspective(Option<f32>),
         /// The perspective origin in ten-thousandths of the width and height.
         PerspectiveOrigin([u16; 2]),
-        /// The backface visibility.
+        /// Whether the node draws while its back faces the viewer.
         Backface(Backface),
     }
 }
@@ -43,13 +43,13 @@ kittest_pub! {
     pub struct SpaceStyle {
         /// The x, y, and z turns in radians.
         pub turn: [f32; 3],
-        /// The z move in px.
+        /// The move along the z axis in pixels; the default is 0.
         pub depth: f32,
         /// The perspective distance this node gives its children.
         pub perspective: Option<f32>,
         /// The perspective origin in ten-thousandths.
         pub perspective_origin: [u16; 2],
-        /// The backface visibility.
+        /// Whether the node draws while its back faces the viewer; the default is visible.
         pub backface: Backface,
     }
 }

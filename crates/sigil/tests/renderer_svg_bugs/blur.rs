@@ -37,7 +37,9 @@ fn blurred(sigma: f32) -> NodeBuilder {
 }
 
 fn frame_time(sigma: f32, side: u32) -> Option<Duration> {
-    let mut surface = Harness::new(move || blurred(sigma)).gpu(side, side, 1.0);
+    let mut surface = Harness::new(move || blurred(sigma))
+        .gpu(side, side)
+        .scale(1.0);
     let started = Instant::now();
     let frame = surface.image().expect("gpu frame");
     frame.map(|_| started.elapsed())

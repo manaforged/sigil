@@ -43,7 +43,7 @@ fn border_class_emits_inside_stroke_command() {
     assert!((stroke.width - 2.0).abs() < f32::EPSILON);
     assert_eq!(stroke.align, StrokeAlign::Inside);
     assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.color, Theme::default().accent);
+    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
 }
 
 #[test]
@@ -63,14 +63,20 @@ fn border_paints_edge_and_leaves_interior() {
     let edge = img.get_pixel(2, SIZE / 2).0;
     let interior = img.get_pixel(SIZE / 2, SIZE / 2).0;
     assert!(
-        close(edge[0], edge[1], edge[2], theme.accent, 6),
+        close(edge[0], edge[1], edge[2], theme.color(Token::Accent), 6),
         "border edge must paint accent, got ({},{},{})",
         edge[0],
         edge[1],
         edge[2],
     );
     assert!(
-        close(interior[0], interior[1], interior[2], theme.surface, 6),
+        close(
+            interior[0],
+            interior[1],
+            interior[2],
+            theme.color(Token::Surface),
+            6
+        ),
         "interior must stay the surface fill, got ({},{},{})",
         interior[0],
         interior[1],
@@ -98,7 +104,7 @@ fn border_without_background_shows_parent_through_interior() {
     let edge = img.get_pixel(2, 24).0;
     let interior = img.get_pixel(24, 24).0;
     assert!(
-        close(edge[0], edge[1], edge[2], theme.accent, 6),
+        close(edge[0], edge[1], edge[2], theme.color(Token::Accent), 6),
         "edge must paint accent, got ({},{},{})",
         edge[0],
         edge[1],
@@ -109,7 +115,7 @@ fn border_without_background_shows_parent_through_interior() {
             interior[0],
             interior[1],
             interior[2],
-            theme.surface_hover,
+            theme.color(Token::SurfaceHover),
             6
         ),
         "borderless interior must show the parent surface through the \

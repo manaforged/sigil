@@ -1,10 +1,20 @@
 use super::{Harness, HarnessSurface};
 use crate::compare::assert_text_matches_golden;
 use crate::gpu::{headless_renderer, render_scene_to_image};
-use crate::render::physical_extent;
 use crate::{Error, ErrorKind, Golden, Rendered};
 
 impl Harness {
+    /// Renders the frame as an image and fails the test when no GPU adapter exists.
+    #[track_caller]
+    pub fn expect_image(&mut self) -> image::RgbaImage {
+        match self.image() {
+            Ok(Some(frame)) => frame,
+            Ok(None) => super::fail("no GPU adapter: the harness returned no frame"),
+            Err(err) => super::fail(format!("harness image failed: {err}")),
+        }
+    }
+
+    /// Renders the frame as an image, or `None` when a pixel surface has no GPU adapter.
     pub fn image(&mut self) -> Rendered {
         self.live();
         if let HarnessSurface::Cells { screen, size } = &mut self.surface {
@@ -19,8 +29,8 @@ impl Harness {
                 .map(Some)
                 .map_err(|error| Error::caused(ErrorKind::Render, error));
         }
-        let (size, scale) = match &self.surface {
-            HarnessSurface::Pixels { size, scale, .. } => (*size, *scale),
+        let scale = match &self.surface {
+            HarnessSurface::Pixels { scale, .. } => *scale,
             HarnessSurface::Gpu(gpu) => return gpu.image().map(Some),
             HarnessSurface::Cells { .. } => {
                 return Err(Error::text(
@@ -35,19 +45,14 @@ impl Harness {
         let Some(mut renderer) = headless_renderer()? else {
             return Ok(None);
         };
-        let device = [size.0, size.1].map(|extent| physical_extent(extent, scale));
+        let device = crate::physical_extent(viewport, scale);
         render_scene_to_image(&mut renderer, &scene, viewport, device).map(Some)
     }
 
+    /// Compares the screen text or the image of this surface with the golden `name`.
     #[track_caller]
     pub fn snapshot(&mut self, name: &str) {
         self.snapshot_as(name, &Golden::new(name));
-    }
-
-    /// Compares this surface with a golden at a pixel budget.
-    #[track_caller]
-    pub fn snapshot_with(&mut self, name: &str, max_delta_pct: f32) {
-        self.snapshot_as(name, &Golden::new(name).delta(max_delta_pct));
     }
 
     #[track_caller]

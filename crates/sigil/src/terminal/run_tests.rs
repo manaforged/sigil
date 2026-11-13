@@ -45,7 +45,7 @@ fn step_paints_the_hud_like_the_live_host() {
         let mut host = mounted(move || crate::kernel::text("hello"));
         crate::profile::reset();
         crate::profile::begin_frame(crate::profile::BackendStatus::TERMINAL);
-        crate::profile::tick_frame();
+        crate::profile::end_frame();
         let text = step(&mut host, [], 80, 8)
             .map(|grid| grid.text())
             .unwrap_or_default();

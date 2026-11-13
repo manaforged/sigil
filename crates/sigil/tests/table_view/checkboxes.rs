@@ -142,7 +142,7 @@ fn header_checkbox_indeterminate_when_partial() {
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
-        state.select_only(1);
+        state.select(1);
         assert_eq!(
             header_checked(&cx, root),
             Some(false),

@@ -2,7 +2,7 @@ use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder};
 use sigil::style::{Rgba, Theme, Token};
-use sigil::widgets::{PathNode, path};
+use sigil::widgets::{PathBuilder, path};
 use sigil_kittest::gpu::{headless_renderer, pixel_rgba};
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
 
@@ -10,7 +10,7 @@ const SIDE: f32 = 60.0;
 const PIXELS: u32 = 120;
 const CLEAR: Rgba = Rgba::new(0.5, 0.5, 0.5, 1.0);
 
-fn scene_of(node: PathNode, theme: &Theme) -> CommandScene {
+fn scene_of(node: PathBuilder, theme: &Theme) -> CommandScene {
     let mut scene = SceneBuilder::new();
     node.draw(
         &mut scene,
@@ -20,7 +20,7 @@ fn scene_of(node: PathNode, theme: &Theme) -> CommandScene {
     scene.finish()
 }
 
-fn wedge(tip: (f32, f32)) -> PathNode {
+fn wedge(tip: (f32, f32)) -> PathBuilder {
     path(60, 60)
         .move_to(0.0, 0.0)
         .line_to(60.0, 0.0)
@@ -32,12 +32,12 @@ fn wedge(tip: (f32, f32)) -> PathNode {
 }
 
 const fn frame(scene: &CommandScene) -> Frame<'_> {
-    Frame {
+    Frame::new(
         scene,
-        viewport: (SIDE, SIDE),
-        size: PhysicalSize::new(PIXELS, PIXELS),
-        clear: CLEAR,
-    }
+        (SIDE, SIDE),
+        PhysicalSize::new(PIXELS, PIXELS),
+        CLEAR,
+    )
 }
 
 fn gpu(renderer: &mut WgpuRenderer, scene: &CommandScene) -> Vec<u8> {

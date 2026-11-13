@@ -35,7 +35,7 @@ impl Default for HostCaps {
     }
 }
 
-/// The viewport size in logical px.
+/// The size of the viewport in logical pixels, as a signal that each frame updates.
 #[must_use]
 #[track_caller]
 pub fn viewport_size() -> Signal<Size> {

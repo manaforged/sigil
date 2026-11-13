@@ -98,7 +98,7 @@ impl RasterAtlas {
     pub(super) fn begin_frame(&mut self, queue: &wgpu::Queue) {
         self.frame += 1;
         if self.compact_pending {
-            crate::profile::count(crate::profile::Counter::TextAtlasCompactions);
+            crate::profile::count(crate::profile::Counter::TextAtlasCompactions, 1);
             self.compact_pending = false;
             self.evict_stale();
             self.repack(queue);
@@ -139,7 +139,7 @@ impl RasterAtlas {
         key: RasterKey,
         mask: GlyphMask,
     ) -> Option<AtlasPlacement> {
-        crate::profile::count(crate::profile::Counter::TextAtlasMisses);
+        crate::profile::count(crate::profile::Counter::TextAtlasMisses, 1);
         let rect = self.alloc_or_grow(device, queue, mask.width, mask.height)?;
         upload(queue, &self.texture, rect, &mask.data);
         let cached = CachedMask {

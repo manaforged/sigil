@@ -12,13 +12,14 @@ use std::sync::Arc;
 use resvg::usvg::{self, Tree};
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{BlendMode, CommandScene, DrawRect, SceneBuilder};
 use sigil::style::Rgba;
 use sigil::widgets::{SvgMode, svg_scene};
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::headless_renderer;
-use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
+use sigil_kittest::parity::{Frame, gpu_rgba};
+
+use crate::scene_support;
 
 const BLACK: Color = Color {
     r: 0,
@@ -34,24 +35,17 @@ const WHITE: Color = Color {
 };
 
 fn cpu_frame(scene: &CommandScene, side: (u32, u32)) -> image::RgbaImage {
-    let frame = Frame {
-        scene,
-        viewport: (side.0 as f32, side.1 as f32),
-        size: PhysicalSize::new(side.0, side.1),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(side.0, side.1, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, side, 1.0, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn gpu_frame(scene: &CommandScene, side: (u32, u32)) -> Option<image::RgbaImage> {
     let mut renderer = headless_renderer().expect("adapter")?;
-    let frame = Frame {
+    let frame = Frame::new(
         scene,
-        viewport: (side.0 as f32, side.1 as f32),
-        size: PhysicalSize::new(side.0, side.1),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        (side.0 as f32, side.1 as f32),
+        PhysicalSize::new(side.0, side.1),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let rgba = gpu_rgba(&mut renderer, &frame).expect("gpu render");
     image::RgbaImage::from_raw(side.0, side.1, rgba)
 }
@@ -161,7 +155,7 @@ fn halves() -> NodeBuilder {
 #[test]
 fn blur_mixes_a_black_white_edge_in_srgb_as_filter_effects_requires() {
     let mut pixels = Harness::new(halves).pixels(120, 80);
-    let mut surface = Harness::new(halves).gpu(120, 80, 1.0);
+    let mut surface = Harness::new(halves).gpu(120, 80).scale(1.0);
     let scene = surface.host().emit((120.0, 80.0));
     let frames = [
         ("pixels", harness_frame(&mut pixels)),
@@ -218,7 +212,7 @@ fn turned_multiply() -> NodeBuilder {
 #[test]
 fn mix_blend_on_a_3d_turned_node_still_multiplies() {
     let mut pixels = Harness::new(turned_multiply).pixels(100, 100);
-    let mut surface = Harness::new(turned_multiply).gpu(100, 100, 1.0);
+    let mut surface = Harness::new(turned_multiply).gpu(100, 100).scale(1.0);
     let scene = surface.host().emit((100.0, 100.0));
     let frames = [
         ("pixels", harness_frame(&mut pixels)),

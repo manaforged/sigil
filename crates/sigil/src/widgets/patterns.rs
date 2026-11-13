@@ -20,7 +20,6 @@ static TOP_CHROME: &[StyleAtom] = &[
 ];
 
 /// Top bar, work area, status bar, and modal slot.
-#[must_use]
 pub fn app_shell(
     top: impl IntoNode + 'static,
     work: impl IntoNode + 'static,
@@ -85,7 +84,6 @@ fn chrome_section(
 }
 
 /// A two-column key/value grid.
-#[must_use]
 pub fn kv_grid<K, V>(rows: impl IntoIterator<Item = (K, V)>) -> NodeBuilder
 where
     K: Into<TextContent>,
@@ -124,7 +122,7 @@ pub struct HintOverlayBuilder {
 
 impl HintOverlayBuilder {
     /// Creates an overlay with one row for each `(chord, description)` pair in `hints`.
-    pub fn new(hints: &[(&str, &str)]) -> Self {
+    pub(crate) fn new(hints: &[(&str, &str)]) -> Self {
         let entries = hints
             .iter()
             .map(|(chord, desc)| ((*chord).to_owned(), (*desc).to_owned()))
@@ -181,7 +179,6 @@ pub fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder {
 }
 
 /// Flexible empty space.
-#[must_use]
 pub fn spacer() -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
@@ -189,7 +186,6 @@ pub fn spacer() -> NodeBuilder {
 }
 
 /// A placeholder for empty content.
-#[must_use]
 pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
     let title: TextContent = title.into();
     let name = accessible_name(&title);
@@ -212,7 +208,6 @@ pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) 
 }
 
 /// A section heading row.
-#[must_use]
 pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
     container()
         .layout(
@@ -225,7 +220,6 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
 }
 
 /// A key hint row.
-#[must_use]
 pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> NodeBuilder {
     container()
         .layout(
@@ -241,7 +235,6 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
 }
 
 /// Initials in a circle.
-#[must_use]
 pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let content: TextContent = initials.into();
     let name = accessible_name(&content);
@@ -274,7 +267,7 @@ mod status;
 pub use card::{CardBuilder, card};
 pub use disclosure::disclosure;
 use list_row::row_height;
-pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
+pub use list_row::{Disclosure, ListRowBuilder, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
 pub use navigation::{breadcrumbs, pagination};
 pub use sidebar::{SidebarBuilder, sidebar};

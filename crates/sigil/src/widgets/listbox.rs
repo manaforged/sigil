@@ -55,7 +55,6 @@ pub(crate) trait ListModel: 'static {
 }
 
 /// Route list keys on `node` to `model`.
-#[must_use]
 pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     let model: Rc<dyn ListModel> = Rc::new(model);
     let down = Rc::clone(&model);
@@ -162,7 +161,6 @@ fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
     found.inspect(|&index| model.cursor().set(index)).is_some()
 }
 
-#[must_use]
 pub(crate) fn scrolled(
     list: NodeBuilder,
     cursor: Signal<usize>,
@@ -175,7 +173,7 @@ pub(crate) fn scrolled(
     let view = scroll(list)
         .extent(extent)
         .height(viewport.1)
-        .scroll_bind(scroll_y);
+        .scroll_y(scroll_y);
     let view = match viewport.0 {
         Some(width) => view.width(width),
         None => view,

@@ -12,9 +12,7 @@ fn text_edit_multiline() {
     .size([220, 88])
     .hit((60.0, 18.0))
     .image();
-    Golden::new("text_edit_multiline")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_edit_multiline").assert(img);
 }
 
 fn chip_in(label: &'static str, tone: Tone) -> NodeBuilder {
@@ -31,7 +29,7 @@ fn chip_neutral() {
         .size([50, 35])
         .hit((42.0, 29.4))
         .image();
-    Golden::new("chip_neutral").delta(DELTA_PCT).assert(img);
+    Golden::new("chip_neutral").assert(img);
 }
 
 #[test]
@@ -42,7 +40,7 @@ fn chip_info() {
         .size([50, 35])
         .hit((42.0, 29.4))
         .image();
-    Golden::new("chip_info").delta(DELTA_PCT).assert(img);
+    Golden::new("chip_info").assert(img);
 }
 
 #[test]
@@ -53,7 +51,7 @@ fn chip_success() {
         .size([50, 35])
         .hit((42.0, 29.4))
         .image();
-    Golden::new("chip_success").delta(DELTA_PCT).assert(img);
+    Golden::new("chip_success").assert(img);
 }
 
 #[test]
@@ -64,7 +62,7 @@ fn chip_warn() {
         .size([50, 35])
         .hit((42.0, 29.4))
         .image();
-    Golden::new("chip_warn").delta(DELTA_PCT).assert(img);
+    Golden::new("chip_warn").assert(img);
 }
 
 #[test]
@@ -75,7 +73,7 @@ fn chip_error() {
         .size([50, 35])
         .hit((42.0, 29.4))
         .image();
-    Golden::new("chip_error").delta(DELTA_PCT).assert(img);
+    Golden::new("chip_error").assert(img);
 }
 
 #[test]
@@ -100,9 +98,7 @@ fn divider_horizontal_default() {
     .size([192, 72])
     .hit((90.0, 30.0))
     .image();
-    Golden::new("divider_horizontal_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("divider_horizontal_default").assert(img);
 }
 
 #[test]
@@ -127,9 +123,7 @@ fn divider_vertical_default() {
     .size([136, 72])
     .hit((80.0, 32.0))
     .image();
-    Golden::new("divider_vertical_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("divider_vertical_default").assert(img);
 }
 
 #[test]
@@ -149,7 +143,7 @@ fn kv_row_default() {
     .size([232, 52])
     .hit((116.0, 26.0))
     .image();
-    Golden::new("kv_row_default").delta(DELTA_PCT).assert(img);
+    Golden::new("kv_row_default").assert(img);
 }
 
 #[test]
@@ -169,9 +163,7 @@ fn status_bar_default() {
     .size([292, 60])
     .hit((146.0, 30.0))
     .image();
-    Golden::new("status_bar_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("status_bar_default").assert(img);
 }
 
 #[test]
@@ -185,9 +177,7 @@ fn number_field_default() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("number_field_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("number_field_default").assert(img);
 }
 
 #[test]
@@ -201,7 +191,5 @@ fn number_field_focused() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("number_field_focused")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("number_field_focused").assert(img);
 }

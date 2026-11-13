@@ -3,10 +3,10 @@ use super::strings::{StringKey, Strings};
 /// Layout direction.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Direction {
-    /// The ltr direction.
+    /// Text and layout run from left to right; the default.
     #[default]
     Ltr,
-    /// The rtl direction.
+    /// Text and layout run from right to left.
     Rtl,
 }
 
@@ -48,12 +48,12 @@ fn lookup<T: Copy>(table: &[(&str, T)], name: &str) -> Option<T> {
 /// The order of day, month, and year in a date.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub enum DateOrder {
-    /// The ymd date order.
+    /// Year, then month, then day; the default.
     #[default]
     Ymd,
-    /// The dmy date order.
+    /// Day, then month, then year.
     Dmy,
-    /// The mdy date order.
+    /// Month, then day, then year.
     Mdy,
 }
 
@@ -82,18 +82,19 @@ impl DateOrder {
 
 /// The number and date formats of a language.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub struct Locale {
-    /// The decimal.
+    /// The character between the whole part and the fraction of a number.
     pub decimal: char,
-    /// The group, if any.
+    /// The character between digit groups; `None` writes no groups.
     pub group: Option<char>,
-    /// The group size.
+    /// The number of digits in each group; the default is 3.
     pub group_size: u8,
-    /// The zero.
+    /// The character for the digit zero; the digits 1 to 9 follow it in Unicode order.
     pub zero: char,
-    /// The date order.
+    /// The order of the day, month, and year in a date.
     pub date_order: DateOrder,
-    /// The date separator.
+    /// The character between the parts of a date; the default is `-`.
     pub date_separator: char,
     /// Whether times show a 12-hour clock with AM and PM.
     pub hour12: bool,

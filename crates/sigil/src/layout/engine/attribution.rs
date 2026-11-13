@@ -7,8 +7,8 @@ pub(super) fn note_dirty(cx: &Cx, dirty: &[NodeId], kernel_len: usize) {
     }
     let split = kernel_len.min(dirty.len());
     let (kernel, seeded) = dirty.split_at(split);
-    crate::profile::count_add(Counter::LayoutDirtyKernel, kernel.len() as u64);
-    crate::profile::count_add(Counter::LayoutDirtySeed, seeded.len() as u64);
+    crate::profile::count(Counter::LayoutDirtyKernel, kernel.len() as u64);
+    crate::profile::count(Counter::LayoutDirtySeed, seeded.len() as u64);
     for id in kernel.iter().copied() {
         crate::profile::attribute(Hotspot::LayoutDirtyKernel, 1, key(id), || cx.describe(id));
     }
@@ -32,7 +32,7 @@ pub(super) fn note_roots(cx: &Cx, roots: &[NodeId], resized: &[NodeId]) {
     }
     for root in roots.iter().copied() {
         let nodes = subtree_len(cx, root);
-        crate::profile::count_add(Counter::LayoutSolvedNodes, nodes);
+        crate::profile::count(Counter::LayoutSolvedNodes, nodes);
         let trigger = resized
             .iter()
             .copied()
@@ -56,7 +56,7 @@ pub(super) fn note_full_root(cx: &Cx, root: NodeId, reason: Counter) {
         return;
     }
     let nodes = subtree_len(cx, root);
-    crate::profile::count_add(Counter::LayoutSolvedNodes, nodes);
+    crate::profile::count(Counter::LayoutSolvedNodes, nodes);
     crate::profile::attribute(Hotspot::LayoutRoot, nodes, u64::MAX - reason as u64, || {
         format!("full: {reason}")
     });

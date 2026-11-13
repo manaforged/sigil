@@ -6,12 +6,12 @@ use super::glyph::{Glyph, Link};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ink {
-    /// The bare ink.
+    /// No color is set; the terminal uses its default color.
     #[default]
     Bare,
-    /// The of ink.
+    /// The ANSI color of a tone from the palette of the terminal; `Tone::Neutral` is the default color.
     Of(Tone),
-    /// The exact ink.
+    /// This RGB color, mapped to the nearest color the terminal shows.
     Exact(Color),
 }
 
@@ -33,41 +33,43 @@ impl Ink {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Underline {
-    /// The none underline.
+    /// No underline.
     #[default]
     None,
-    /// The straight underline.
+    /// A straight line under the text.
     Straight,
-    /// The curly underline.
+    /// A wavy line under the text, drawn straight where the terminal has no underline styles.
     Curly,
 }
 
 /// The text decoration lines of a cell.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Lines {
-    /// The underline.
+    /// The underline under the text; none by default.
     pub underline: Underline,
-    /// Whether strike.
+    /// Whether a line strikes through the text.
     pub strike: bool,
 }
 
 /// One character cell with its colors and attributes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Cell {
     pub(crate) text: Glyph,
-    /// The fg.
+    /// The color of the text; `Ink::Bare` by default.
     pub fg: Ink,
-    /// The bg.
+    /// The color behind the text; `Ink::Bare` by default.
     pub bg: Ink,
-    /// Whether bold.
+    /// Whether the text is bold; bold wins over `dim`.
     pub bold: bool,
-    /// Whether italic.
+    /// Whether the text is italic.
     pub italic: bool,
-    /// Whether dim.
+    /// Whether the text is faint; ignored when `bold` is set.
     pub dim: bool,
-    /// The lines.
+    /// The underline and the strike-through of the text.
     pub lines: Lines,
-    /// The underline ink.
+    /// The color of the underline; `Ink::Bare` uses the text color.
     pub underline_ink: Ink,
     pub(crate) link: Option<Link>,
 }
@@ -84,17 +86,32 @@ impl Cell {
         self.text = Glyph::new(text);
     }
 
-    /// The hyperlink this cell opens.
+    /// Returns the URL that this cell opens as a hyperlink, or `None` when it has no link.
     #[must_use]
     pub fn link(&self) -> Option<&str> {
         self.link.map(Link::as_str)
     }
 
     pub(crate) fn styled_like(&self, other: &Self) -> bool {
-        Self {
-            text: other.text,
-            ..*self
-        } == *other
+        let Self {
+            text: _,
+            fg,
+            bg,
+            bold,
+            italic,
+            dim,
+            lines,
+            underline_ink,
+            link,
+        } = *self;
+        fg == other.fg
+            && bg == other.bg
+            && bold == other.bold
+            && italic == other.italic
+            && dim == other.dim
+            && lines == other.lines
+            && underline_ink == other.underline_ink
+            && link == other.link
     }
 
     /// A cell that holds one space with no colors and no attributes.

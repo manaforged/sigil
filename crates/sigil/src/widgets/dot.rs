@@ -25,7 +25,7 @@ pub fn dot(tone: Tone) -> DotBuilder {
 
 impl DotBuilder {
     /// Creates a status dot in `tone` at `ControlSize::Compact`.
-    pub fn new(tone: Tone) -> Self {
+    pub(crate) fn new(tone: Tone) -> Self {
         Self {
             tone,
             size: ControlSize::Compact,

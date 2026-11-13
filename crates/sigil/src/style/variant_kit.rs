@@ -18,7 +18,7 @@ const SOLID_STATES: StateStyle = StateStyle::new(
     SOLID_DISABLED,
 );
 
-/// The solid control look.
+/// The filled look: step 9 of the tone with `on_solid` text, and steps 10 and 11 on hover and press.
 pub(crate) const SOLID_VARIANT: StyleVariant = StyleVariant::new(SOLID_BASE, SOLID_STATES);
 
 static SOFT_BASE: &[StyleAtom] = &[StyleAtom::BgToneStep(4), StyleAtom::FgToneStep(11)];
@@ -39,7 +39,7 @@ const SOFT_STATES: StateStyle = StateStyle::new(
     SOFT_DISABLED,
 );
 
-/// The soft control look.
+/// The tinted look: a step 4 fill with step 11 text, and steps 5 and 6 on hover and press.
 pub(crate) const SOFT_VARIANT: StyleVariant = StyleVariant::new(SOFT_BASE, SOFT_STATES);
 
 static GHOST_BASE: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
@@ -51,5 +51,5 @@ static GHOST_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
 const GHOST_STATES: StateStyle =
     StateStyle::new(GHOST_REST, GHOST_FOCUS, GHOST_HOVER, GHOST_PRESSED, DIMMED);
 
-/// The ghost control look.
+/// The bare look: step 11 text with no fill at rest, and step 4 and 5 fills on hover and press.
 pub(crate) const GHOST_VARIANT: StyleVariant = StyleVariant::new(GHOST_BASE, GHOST_STATES);

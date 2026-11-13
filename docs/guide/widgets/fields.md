@@ -19,9 +19,9 @@ text_field(name)
 Key options:
 
 - `.placeholder(impl Into<TextContent>)`: ghost text while empty.
-- `.change(Fn(&str))`: runs after each committed edit. Each call to `.change`, `.submit` or `.blur` adds a callback.
+- `.change(Fn(&str))`: runs after each committed edit. Each call to `.change` or `.submit` adds a callback.
 - `.submit(Fn(&str))`: runs on Enter.
-- `.blur(Fn())`: runs when the field loses focus.
+- `.focus_out(Fn())`: runs when the field loses focus, as on every widget.
 - `.disabled(impl Reactive<bool>)`: blocks input and paints disabled.
 - `.invalid(Signal<bool>)`: paints the error frame; a failed clipboard write also raises it.
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).
@@ -29,7 +29,7 @@ Key options:
 - `.reveal(Signal<bool>)`: shows the plaintext while true.
 - `.autofocus()`: focus this field when it mounts.
 - `.focus_when(Signal<u64>)`: bump the signal to focus this field after it mounts.
-- `caret_visible()` / `scroll_offset()`: `&mut self` accessors that return the internal signals so you can observe or drive them.
+- `.caret_visible(Signal<bool>)` / `.scroll_offset(Signal<f32>)`: bind the caret visibility and scroll offset signals.
 
 Editing keys: Arrow Left/Right, Home, End, and Shift variants for selection; Backspace/Delete; Ctrl (or Cmd on macOS) + C/X/V for clipboard, A for select-all, Z for undo, Shift+Z or Ctrl+Y for redo. IME input lands as inline preedit, and the caret rect is published to the accessibility tree for the IME candidate window.
 
@@ -39,7 +39,7 @@ Editing keys: Arrow Left/Right, Home, End, and Shift variants for selection; Bac
 
 - `.placeholder()`, `.disabled()`, `.change(Fn(&str))`, `.clipboard()`, `.autofocus()`, and `.focus_when(Signal<u64>)` work as in `text_field`. `.submit(Fn(&str))` runs on Ctrl+Enter. Plain Enter inserts a newline.
 - `.caret_position(Signal<usize>)`: bind the caret as a byte offset.
-- `.caret_visible()`: accessor for the caret visibility signal.
+- `.caret_visible(Signal<bool>)`: bind the caret visibility signal.
 - `.content_padding(horizontal, vertical)`: inner padding in px.
 - `.chrome(bool)`: `false` drops the field frame/background.
 - `.state(TextEditState)`: hand the widget a shared state object instead of loose signals.
@@ -66,7 +66,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 `date_field(Signal<Date>)`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
 
-`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
+`Date::new(year, month, day)` validates month and day including leap years and returns `None` for a date that is not in the calendar; `year()`, `month()` and `day()` read it back, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
 
 ## color_field
 

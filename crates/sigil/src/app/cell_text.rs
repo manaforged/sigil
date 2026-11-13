@@ -20,17 +20,17 @@ kittest_pub! {
     /// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
     #[derive(Clone, Copy, Debug, Default)]
     pub enum CellWidth {
-        /// The unicode cell width.
+        /// A string is as wide as Unicode East Asian Width makes it.
         #[default]
         Unicode,
-        /// The scalar cell width.
+        /// Each character is measured alone, with fixed widths for the joiner, the non-joiner, and the keycap mark.
         #[cfg(terminal_host)]
         Scalar {
-            /// The joiner.
+            /// The width in cells of a zero width joiner, U+200D.
             joiner: usize,
-            /// The nonjoiner.
+            /// The width in cells of a zero width non-joiner, U+200C.
             nonjoiner: usize,
-            /// The keycap.
+            /// The width in cells of a combining enclosing keycap, U+20E3.
             keycap: usize,
         },
     }
@@ -42,10 +42,10 @@ macro_rules! ambiguous {
         #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
         #[non_exhaustive]
         $vis enum Ambiguous {
-            /// The narrow ambiguous.
+            /// An ambiguous character takes one cell.
             #[default]
             Narrow,
-            /// The wide ambiguous.
+            /// An ambiguous character takes two cells, as in a CJK terminal.
             #[cfg(terminal_host)]
             Wide,
         }
@@ -103,6 +103,9 @@ pub(crate) fn cell_glyph(text: &str) -> &str {
 /// Returns the width of `text` in terminal cells.
 #[must_use]
 pub fn cell_width(text: &str) -> usize {
+    if text.bytes().all(|byte| matches!(byte, b' '..=b'~')) {
+        return text.len();
+    }
     match CELL_WIDTH.get() {
         CellWidth::Unicode => match AMBIGUOUS.get() {
             Ambiguous::Narrow => UnicodeWidthStr::width(text),

@@ -28,10 +28,7 @@ fn text_paint_cost(c: &mut Criterion) {
         .collect::<Vec<_>>();
     assert_eq!(runs.len(), 50);
 
-    let engine = OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    });
+    let engine = OwnedTextEngine::new(TextStyle::default().font_size(16.0));
     warm_interim_cache(&engine, &runs);
 
     c.bench_function("text_paint_cost/dr025_interim_50_text_nodes", |b| {

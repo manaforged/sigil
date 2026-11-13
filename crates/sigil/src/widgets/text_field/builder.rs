@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::Style;
-use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -15,21 +14,13 @@ use super::handlers::{TextFieldRuntime, attach_key_handlers};
 use super::render::{FieldInputs, build_base_node, field_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
-pub(super) use crate::widgets::shared::TextChange;
-use crate::widgets::shared::caller_style;
+use crate::widgets::shared::{TextInputProps, caller_style};
 
 /// Builder of a text input.
 #[must_use]
 pub struct TextFieldBuilder {
-    pub(super) value: Signal<String>,
-    pub(super) placeholder: TextContent,
-    pub(super) disabled: Option<Signal<bool>>,
+    pub(super) input: TextInputProps,
     pub(super) invalid: Option<Signal<bool>>,
-    pub(super) change: Option<TextChange>,
-    pub(super) submit: Option<TextChange>,
-    blur: Option<Rc<dyn Fn() + 'static>>,
-    pub(super) clipboard: Option<Rc<dyn Clipboard>>,
-    pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
     focus_trigger: Option<Signal<u64>>,
     autofocus: bool,
@@ -45,11 +36,8 @@ pub struct TextFieldBuilder {
 impl core::fmt::Debug for TextFieldBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("TextFieldBuilder")
-            .field("value", &self.value)
-            .field("placeholder", &self.placeholder)
-            .field("disabled", &self.disabled)
+            .field("input", &self.input)
             .field("invalid", &self.invalid)
-            .field("caret_visible", &self.caret_visible)
             .field("scroll_offset", &self.scroll_offset)
             .field("focus_trigger", &self.focus_trigger)
             .field("autofocus", &self.autofocus)
@@ -69,17 +57,10 @@ pub fn text_field(value: Signal<String>) -> TextFieldBuilder {
 
 impl TextFieldBuilder {
     /// Creates a single-line input that edits `value`.
-    pub fn new(value: Signal<String>) -> Self {
+    pub(crate) fn new(value: Signal<String>) -> Self {
         Self {
-            value,
-            placeholder: TextContent::Static(String::new()),
-            disabled: None,
+            input: TextInputProps::new(value),
             invalid: None,
-            change: None,
-            submit: None,
-            blur: None,
-            clipboard: None,
-            caret_visible: None,
             scroll_offset: None,
             focus_trigger: None,
             autofocus: false,
@@ -93,25 +74,27 @@ impl TextFieldBuilder {
         }
     }
 
-    /// A signal that controls whether the caret is drawn; it starts true.
-    pub fn caret_visible(&mut self) -> Signal<bool> {
-        *self.caret_visible.get_or_insert_with(|| signal(true))
+    /// Binds whether the caret is drawn to `visible`.
+    pub const fn caret_visible(mut self, visible: Signal<bool>) -> Self {
+        self.input.caret_visible(visible);
+        self
     }
 
-    /// A signal of the horizontal scroll offset of the text; it starts at 0.
-    pub fn scroll_offset(&mut self) -> Signal<f32> {
-        *self.scroll_offset.get_or_insert_with(|| signal(0.0_f32))
+    /// Binds the horizontal scroll offset of the text to `offset`.
+    pub const fn scroll_offset(mut self, offset: Signal<f32>) -> Self {
+        self.scroll_offset = Some(offset);
+        self
     }
 
     /// Sets the text shown while the field is empty.
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
-        self.placeholder = text.into();
+        self.input.placeholder(text);
         self
     }
 
     /// Blocks edits while `flag` is true.
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
-        self.disabled = Some(flag.into_signal());
+        self.input.disabled(flag);
         self
     }
 
@@ -127,31 +110,19 @@ impl TextFieldBuilder {
 
     /// Calls `f` with the text after each edit; each call adds a callback.
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.change = Some(chain(self.change.take(), f));
+        self.input.add_change(f);
         self
     }
 
     /// Calls `f` with the text when Enter is pressed; each call adds a callback.
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.submit = Some(chain(self.submit.take(), f));
-        self
-    }
-
-    /// Calls `f` when the field loses focus; each call adds a callback.
-    pub fn blur(mut self, f: impl Fn() + 'static) -> Self {
-        self.blur = Some(match self.blur.take() {
-            Some(before) => Rc::new(move || {
-                before();
-                f();
-            }),
-            None => Rc::new(f),
-        });
+        self.input.add_submit(f);
         self
     }
 
     /// Replaces the default clipboard that cut, copy, and paste use.
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
-        self.clipboard = Some(Rc::new(clipboard));
+        self.input.clipboard(clipboard);
         self
     }
 
@@ -187,12 +158,12 @@ impl TextFieldBuilder {
 
     fn runtime(&mut self, column: f32) -> TextFieldRuntime {
         let input = TextEditRuntime::new(
-            TextEditState::new(self.value, signal(self.value.peek().len())),
-            self.disabled,
-            self.change.take().unwrap_or_else(noop_change),
-            self.submit.take().unwrap_or_else(noop_change),
-            self.clipboard.take().unwrap_or_else(clipboard),
-            self.caret_visible.unwrap_or_else(|| signal(true)),
+            TextEditState::new(self.input.value, signal(self.input.value.peek().len())),
+            self.input.disabled,
+            self.input.change.take().unwrap_or_else(noop_change),
+            self.input.submit.take().unwrap_or_else(noop_change),
+            self.input.clipboard.take().unwrap_or_else(clipboard),
+            self.input.caret_visible.unwrap_or_else(|| signal(true)),
             (0.0, 0.0),
         )
         .single_line(
@@ -209,7 +180,7 @@ impl TextFieldBuilder {
     pub(super) fn into_node_builder(mut self) -> (NodeBuilder, TextFieldRuntime) {
         let width = self.layout_overrides.width_hint();
         let runtime = self.runtime(super::selection::column_width(width));
-        let interaction = InteractionState::new(true).disabled(self.disabled);
+        let interaction = InteractionState::new(true).disabled(self.input.disabled);
         let clip_fail = runtime.input.clip_fail;
         let invalid = self.invalid;
         let inputs = FieldInputs {
@@ -225,28 +196,15 @@ impl TextFieldBuilder {
         }
         let node = build_base_node(
             inputs,
-            &self.placeholder,
+            &self.input.placeholder,
             interaction,
             runtime.clone(),
             adorn,
         );
-        let mut node = interaction.install(attach_key_handlers(node, &runtime));
-        if let Some(blur) = self.blur {
-            node = node.focus_out(move || blur());
-        }
+        let node = interaction.install(attach_key_handlers(node, &runtime));
         let node = caller_style(node, self.style_accumulator);
         let overrides = std::mem::take(&mut self.layout_overrides);
         (overrides.finish(node.with(field_layout(width))), runtime)
-    }
-}
-
-fn chain(before: Option<TextChange>, f: impl Fn(&str) + 'static) -> TextChange {
-    match before {
-        Some(before) => Rc::new(move |text| {
-            before(text);
-            f(text);
-        }),
-        None => Rc::new(f),
     }
 }
 

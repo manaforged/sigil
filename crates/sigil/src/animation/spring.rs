@@ -2,15 +2,15 @@ kittest_pub! {
     /// Spring constants.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     pub enum SpringPreset {
-        /// The gentle spring preset.
+        /// Stiffness 80, damping 14, mass 1: the slowest preset, with a small overshoot.
         Gentle,
-        /// The smooth spring preset.
+        /// Stiffness 180, damping 20, mass 1: a medium speed with a small overshoot.
         Smooth,
-        /// The snappy spring preset.
+        /// Stiffness 260, damping 26, mass 1: a quick move with a small overshoot.
         Snappy,
-        /// The bouncy spring preset.
+        /// Stiffness 300, damping 12, mass 1: a quick move that swings past the target several times.
         Bouncy,
-        /// The stiff spring preset.
+        /// Stiffness 500, damping 40, mass 1: the fastest preset, with almost no overshoot.
         Stiff,
     }
 }

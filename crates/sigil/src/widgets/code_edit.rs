@@ -64,13 +64,13 @@ impl Change {
 /// The severity of a code diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
-    /// The hint diag severity.
+    /// A suggestion; the lowest severity, tinted like `Info`.
     Hint,
-    /// The info diag severity.
+    /// A note for the reader, tinted with the info color.
     Info,
-    /// The warning diag severity.
+    /// A likely problem, tinted with the warning color.
     Warning,
-    /// The error diag severity.
+    /// A definite problem; the highest severity, tinted with the error color.
     Error,
 }
 
@@ -84,17 +84,54 @@ impl Severity {
     }
 }
 
-/// A code diagnostic on a byte range.
+/// A code diagnostic on a range of columns of one line.
 #[derive(Clone, Copy, Debug)]
 pub struct Diagnostic {
-    /// The line.
-    pub line: usize,
-    /// The start.
-    pub start: usize,
-    /// The end.
-    pub end: usize,
-    /// The severity.
-    pub severity: Severity,
+    /// The 0-based index of the line that carries the mark.
+    pub(crate) line: usize,
+    /// The first marked column of the line, 0-based.
+    pub(crate) start: usize,
+    /// The column after the last marked column.
+    pub(crate) end: usize,
+    /// The severity, which picks the tint of the mark.
+    pub(crate) severity: Severity,
+}
+
+impl Diagnostic {
+    /// Creates a diagnostic on `line` over the columns `start..end`.
+    #[must_use]
+    pub const fn new(line: usize, start: usize, end: usize, severity: Severity) -> Self {
+        Self {
+            line,
+            start,
+            end,
+            severity,
+        }
+    }
+
+    /// Returns the 0-based index of the line that carries the mark.
+    #[must_use]
+    pub const fn line(&self) -> usize {
+        self.line
+    }
+
+    /// Returns the first marked column of the line, 0-based.
+    #[must_use]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    /// Returns the column after the last marked column.
+    #[must_use]
+    pub const fn end(&self) -> usize {
+        self.end
+    }
+
+    /// Returns the severity, which picks the tint of the mark.
+    #[must_use]
+    pub const fn severity(&self) -> Severity {
+        self.severity
+    }
 }
 
 type Diagnostics = Signal<Vec<Diagnostic>>;

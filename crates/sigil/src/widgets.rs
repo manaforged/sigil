@@ -185,7 +185,6 @@ macro_rules! builder_impls {
     (@node [$($g:tt)*] $ty:ty $(, $vis:vis)?) => {
         impl<$($g)*> $ty {
             /// Builds the root node, then applies the queued layout edits and node changes.
-            #[must_use]
             $($vis)? fn into_node_builder(self) -> crate::kernel::NodeBuilder {
                 let overrides = self.layout_overrides.clone();
                 overrides.finish(self.root())
@@ -251,7 +250,6 @@ pub(crate) mod overlay;
 pub(crate) mod patterns;
 mod popup;
 pub(crate) use popup::close_light as popup_close_light;
-pub use popup::close_top_escape;
 pub(crate) use popup::{PopupStacks, swap_layers as popup_swap_layers};
 #[cfg(feature = "a2ui")]
 mod a2ui;
@@ -305,7 +303,7 @@ pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
 pub use diff::{
-    DiffBuilder, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, Selection, diff,
+    DiffBuilder, DiffSelection, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, diff,
 };
 pub use divider::divider;
 pub use dot::{DotBuilder, dot};
@@ -333,7 +331,7 @@ pub use modal::{ModalBuilder, Side, modal};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use patterns::{
-    CardBuilder, Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
+    CardBuilder, Disclosure, HintOverlayBuilder, ListRowBuilder, RowTone, SidebarBuilder,
     app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
     kv_grid, list_row, notice_band, pagination, section_label, sidebar, skeleton, spacer, stepper,
 };
@@ -370,10 +368,9 @@ pub use toast_queue::{ToastQueue, toast_queue};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
 pub use tree::{TreeBuilder, TreeNode, tree};
-pub use vector::{PathNode, path};
+pub use vector::{PathBuilder, path};
 pub use virtual_list::{
-    IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,
-    virtual_list,
+    IntoList, RowRender, ScrollAnchor, Selection, SelectionMode, VirtualListBuilder, virtual_list,
 };
 pub use widget::Widget;
 kittest_pub! {
@@ -399,7 +396,7 @@ crate::kernel::into_node_builder!(
     MenuBarBuilder,
     MenuBuilder,
     ModalBuilder,
-    PathNode,
+    PathBuilder,
     ProgressBuilder,
     RadioGroupBuilder,
     SegmentedBuilder,

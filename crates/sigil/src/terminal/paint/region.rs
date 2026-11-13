@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::ops::Range;
 
 use crate::geometry::Rect;
-use crate::profile::{Counter, count_add};
+use crate::profile::{Counter, count};
 use crate::scene::CommandScene;
 use crate::terminal::glyphs::Glyphs;
 
@@ -39,7 +39,7 @@ pub(crate) fn raster_regions(
         let copied = scratch
             .borrow_mut()
             .raster(grid, scene, paint, (regions, &mut rows));
-        count_add(Counter::TuiCellsRastered, copied);
+        count(Counter::TuiCellsRastered, copied);
     });
     rows
 }

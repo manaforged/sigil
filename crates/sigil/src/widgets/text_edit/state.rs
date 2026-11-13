@@ -1,4 +1,4 @@
-use std::cell::{RefCell, RefMut};
+use std::cell::{Cell, RefCell, RefMut};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -13,6 +13,7 @@ pub struct TextEditState {
     pub(in crate::widgets::text_edit) caret: Signal<usize>,
     pub(super) selection: Signal<Option<usize>>,
     pub(super) edit: Rc<RefCell<TextEdit>>,
+    pub(super) preferred_x: Rc<Cell<Option<f32>>>,
 }
 
 impl std::fmt::Debug for TextEditState {
@@ -36,6 +37,7 @@ impl TextEditState {
             caret,
             selection: signal(None),
             edit: Rc::new(RefCell::new(edit)),
+            preferred_x: Rc::new(Cell::new(None)),
         }
     }
 
@@ -65,12 +67,17 @@ impl TextEditState {
     }
 
     fn publish(&self, edit: &TextEdit, value: bool) {
+        self.preferred_x.set(None);
         batch(|| {
             if value {
                 super::write_value(self.value, edit.as_str());
             }
-            self.caret.set(edit.caret());
-            self.selection.set(edit.selection());
+            if self.caret.peek() != edit.caret() {
+                self.caret.set(edit.caret());
+            }
+            if self.selection.peek() != edit.selection() {
+                self.selection.set(edit.selection());
+            }
         });
     }
 

@@ -16,7 +16,7 @@ The family pages carry signatures, options, and behavior notes:
 
 ## Inputs
 
-- **button(label)**: `label` is a `Glyph`: text (`&str` or `Signal<String>`) or an `Icon`. Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`. Use `.accessible("Play")` when the visible label is a glyph.
+- **button(label)**: `label` is a `Glyph`: text (`&str` or `Signal<String>`) or an `Icon`. Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_paint()`. Use `.accessible("Play")` when the visible label is a glyph.
 - **button(Icon::Play)**: a square ghost `button` that shows an icon and is named for it. For a text glyph, write `button("▶").ghost().square().accessible("Play")`.
 - **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the signal is true.
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
@@ -29,11 +29,11 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, Vec\<String\>)**: chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
-- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
+- **command_menu()**: a nested action tree: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
 
-- **table(TableState\<Row\>)**: the data tier: sticky sortable header, virtualized body (100k rows), selection styling, hover, keyboard navigation, and AccessKit grid roles. Build columns with `TableColumn::new(id, title)` plus `.sort_by(|row| row.name.clone())`, or `.sortable` for a custom `Ordering`. `TableState::sort(id, dir)` applies a sort; `sort_key()` is the signal; `toggle_sort` cycles the header. Chain `.filterable()`, `.cell(|row| text(...))` (any `IntoNode`), `.width(ColumnWidth)`, and `.min_width(px)`. Implement `Identifiable` on the row and construct with `TableState::identified(rows, cols)` so `replace_rows` keeps the clicked row. `TableState::new` is index-only. `selected_row()` and `selected_index()` subscribe with `get`. `.density(Density::Compact)` gives 28 px rows. An empty filter shows "No rows"; override it with `.empty(|| ...)`.
+- **table(TableState\<Row\>)**: the data tier: sticky sortable header, virtualized body (100k rows), selection styling, hover, keyboard navigation, and AccessKit grid roles. Build columns with `TableColumn::new(id, title)` plus `.sort_by(|row| row.name.clone())`, or `.sortable` for a custom `Ordering`. `TableState::sort(id, dir)` applies a sort; `sort_key()` is the signal; `cycle_sort` cycles the header. Chain `.filterable()`, `.cell(|row| text(...))` (any `IntoNode`), `.width(ColumnWidth)`, and `.min_width(px)`. Implement `Identifiable` on the row and construct with `TableState::identified(rows, cols)` so `replace_rows` keeps the clicked row. `TableState::new` is index-only. `selected_row()` and `selected_index()` subscribe with `get`. `.density(Density::Compact)` gives 28 px rows. An empty filter shows "No rows"; override it with `.empty(|| ...)`.
 - **diff(patch)**: a unified-diff viewer. Pass the patch text; the widget parses hunks itself. `.view(DiffView::Split)` shows before and after side by side with per-line numbers and intraline highlighting of the changed range; `DiffView::Unified` stacks the removed rows above the added rows. Chain `.path(name)` for the header, `.status(text)` for the footer, and `.max_rows(n)` to cap a long patch.
 - **chart(values)**: a bar chart by default; `.line()` draws a polyline. Chain `.tone(Tone)`, `.labels(["Mon", ...])`, and `.series(name, values, Tone)` for more marks. The color is theme scale step 9. `.width` and `.height` pin the plot.
 - **virtual_list(items, render)**: a windowed list. `items` is a `Vec` (snapshot) or a `Signal` (live). Default keys are list indices. `.identified()` keys by `Identifiable::id`. `.key_by` takes any other domain key. `.follow_end(true)` keeps a live list on the last row when it grows.
@@ -96,7 +96,7 @@ let hits = memo(move || {
 modal(open).title("Command").child(
     container()
         .child(text_field(query).placeholder("Filter…"))
-        .child(virtual_list(hits, |_i, row| list_row(false, *row, ListRowSlots::default()))),
+        .child(virtual_list(hits, |_i, row| list_row(*row))),
 );
 # };
 ```

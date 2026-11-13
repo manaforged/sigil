@@ -1,5 +1,5 @@
 use sigil::events::Event;
-use sigil::events::{Key, Modifiers};
+use sigil::events::Shortcut;
 use sigil::geometry::Point;
 
 use super::{Harness, Node};
@@ -52,18 +52,21 @@ impl Target for str {
 }
 
 impl Harness {
+    /// Clicks the primary button at `target`.
     #[track_caller]
     pub fn click(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
         let at = target.point(self);
         self.send(Event::click(Point::new(at.x, at.y)))
     }
 
+    /// Moves the pointer to `target`.
     #[track_caller]
     pub fn hover(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
         let at = target.point(self);
         self.send([Event::pointer_move(Point::new(at.x, at.y))])
     }
 
+    /// Moves the pointer to `target` and turns the wheel by `lines` lines.
     #[track_caller]
     pub fn scroll(&mut self, target: &(impl Target + ?Sized), lines: f32) -> &mut Self {
         let at = target.point(self);
@@ -73,6 +76,7 @@ impl Harness {
         ])
     }
 
+    /// Presses at `from`, moves to `to` in four steps, and releases.
     #[track_caller]
     pub fn drag(
         &mut self,
@@ -96,31 +100,32 @@ impl Harness {
         self.send(events)
     }
 
+    /// Presses and releases a key, or a `Shortcut` for a key with modifiers.
     #[track_caller]
-    pub fn press(&mut self, key: impl Into<Key>) -> &mut Self {
-        self.press_with(key, Modifiers::empty())
-    }
-
-    #[track_caller]
-    pub fn press_with(&mut self, key: impl Into<Key>, modifiers: Modifiers) -> &mut Self {
+    pub fn press(&mut self, key: impl Into<Shortcut>) -> &mut Self {
+        let Shortcut { key, modifiers, .. } = key.into();
         self.send(Event::press(key, modifiers))
     }
 
+    /// Types `text` into the focused control.
     #[track_caller]
     pub fn type_text(&mut self, text: &str) -> &mut Self {
         self.send(Event::type_text(text))
     }
 
+    /// Clicks the control named `label`, then types `text` into it.
     #[track_caller]
     pub fn type_into(&mut self, label: &str, text: &str) -> &mut Self {
         self.click(label).type_text(text)
     }
 
+    /// Presses Tab.
     #[track_caller]
     pub fn focus_next(&mut self) -> &mut Self {
         self.send([Event::tab(false)])
     }
 
+    /// Presses Shift+Tab.
     #[track_caller]
     pub fn focus_previous(&mut self) -> &mut Self {
         self.send([Event::tab(true)])

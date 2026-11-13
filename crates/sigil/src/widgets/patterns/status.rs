@@ -25,7 +25,6 @@ const MARKER_PX: f32 = space(6);
 ///     row().child(text("Inbox")).child(badge(unread, Tone::Error))
 /// }
 /// ```
-#[must_use]
 pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
     let count = count.into_signal();
     let shown = memo(move || count.get() > 0);
@@ -61,7 +60,6 @@ static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Token::Gray4.background()];
 ///     column().child(skeleton(3))
 /// }
 /// ```
-#[must_use]
 pub fn skeleton(lines: usize) -> NodeBuilder {
     let lines = lines.max(1);
     let mut root = container()
@@ -108,7 +106,6 @@ static LABEL_OTHER: &[StyleAtom] = &[Token::Gray11.text()];
 ///     stepper(["Cart", "Shipping", "Pay"], step)
 /// }
 /// ```
-#[must_use]
 pub fn stepper<S: Into<String>>(
     steps: impl IntoIterator<Item = S>,
     current: impl Reactive<usize>,

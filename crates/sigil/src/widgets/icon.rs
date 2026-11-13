@@ -93,7 +93,7 @@ pub fn icon(glyph: impl Into<Glyph>) -> IconBuilder {
 
 impl IconBuilder {
     /// Creates an icon in `Tone::Neutral` at `ControlSize::Default`.
-    pub fn new(glyph: impl Into<Glyph>) -> Self {
+    pub(crate) fn new(glyph: impl Into<Glyph>) -> Self {
         Self {
             glyph: Mark::from(glyph.into()),
             tone: Tone::Neutral,
@@ -177,7 +177,7 @@ impl IconBuilder {
                 let token = if self.on_solid {
                     Token::OnSolid
                 } else {
-                    Token::scale(self.tone.scale_role(), self.step).unwrap_or(Token::Gray11)
+                    Token::scale(self.tone, self.step).unwrap_or(Token::Gray11)
                 };
                 container_node.child(svg::glyph(svg, token, drawn))
             }

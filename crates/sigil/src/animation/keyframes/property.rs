@@ -1,6 +1,6 @@
 use crate::scene::Shadow;
 use crate::style::atom::{OPACITY_UNITS, shadow_color};
-use crate::style::{ColorAtom, ColorAtomKind, Family, NumericAtomKind};
+use crate::style::{ColorAtomKind, ColorValue, Family, NumericAtomKind};
 
 /// One animatable property and its value, set by a keyframe or driven from a signal.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -31,11 +31,11 @@ pub enum Property {
     /// The perspective distance in pixels that the node gives its children; the node must set one.
     Perspective(f32),
     /// Background color.
-    Background(ColorAtom),
+    Background(ColorValue),
     /// Text color.
-    TextColor(ColorAtom),
+    TextColor(ColorValue),
     /// Border color.
-    BorderColor(ColorAtom),
+    BorderColor(ColorValue),
     /// The `blur()` filter's standard deviation in pixels.
     Blur(f32),
     /// The `brightness()` filter amount, 1.0 unchanged.
@@ -56,12 +56,12 @@ pub enum Property {
     DropShadow(Shadow),
     /// The text shadow offset, blur, and color; a node with several text shadows keeps them.
     TextShadow(Shadow),
-    /// The first gradient color.
-    GradientFrom(ColorAtom),
+    /// The color of the first stop of the node's gradient.
+    GradientFrom(ColorValue),
     /// The middle gradient color; the node's gradient must have a middle stop.
-    GradientVia(ColorAtom),
-    /// The last gradient color.
-    GradientTo(ColorAtom),
+    GradientVia(ColorValue),
+    /// The color of the last stop of the node's gradient.
+    GradientTo(ColorValue),
     /// Where the first gradient color sits, in percent.
     GradientFromPosition(f32),
     /// Where the middle gradient color sits, in percent.
@@ -106,7 +106,7 @@ pub enum Property {
     TextShadowBlur(f32),
 }
 
-pub(super) type Key = (u8, [u32; 3], Option<ColorAtom>);
+pub(super) type Key = (u8, [u32; 3], Option<ColorValue>);
 
 impl Property {
     pub(crate) fn numeric(self, kind: NumericAtomKind) -> Option<f32> {
@@ -194,7 +194,7 @@ impl Property {
         })
     }
 
-    pub(crate) fn color(self, kind: ColorAtomKind) -> Option<ColorAtom> {
+    pub(crate) fn color(self, kind: ColorAtomKind) -> Option<ColorValue> {
         match (self, kind) {
             (Self::Background(color), ColorAtomKind::Background)
             | (Self::TextColor(color), ColorAtomKind::Text)

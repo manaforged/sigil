@@ -20,10 +20,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Ascending,
-            }),
+            Some(SortKey::new("name", SortDirection::Ascending)),
             "first click sorts ascending",
         );
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
@@ -31,10 +28,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Descending,
-            })
+            Some(SortKey::new("name", SortDirection::Descending))
         );
         assert_eq!(visible_names(&state), ["gamma", "delta", "beta", "alpha"]);
 
@@ -45,10 +39,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 150.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "count",
-                dir: SortDirection::Ascending,
-            })
+            Some(SortKey::new("count", SortDirection::Ascending))
         );
     });
 }
@@ -111,19 +102,19 @@ fn selected_row_paints_selection_bg() {
                 .viewport_height(VIEW_H),
         );
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let selection_bg = Theme::default().accent_scale.step(5);
+        let selection_bg = Theme::default().scale(Tone::Primary).step(5);
         assert!(
             !rect_colors(&cx, root).contains(&selection_bg),
             "nothing selected at rest",
         );
-        state.select_only(1);
+        state.select(1);
         assert!(
             rect_colors(&cx, root).contains(&selection_bg),
             "selected row paints the accent-5 selection slice; \
              colours: {:?}",
             rect_colors(&cx, root),
         );
-        state.clear_selection();
+        state.clear();
         assert!(
             !rect_colors(&cx, root).contains(&selection_bg),
             "clearing the selection restores the rest paint",
@@ -145,7 +136,7 @@ fn hover_row_paints_hover_slice() {
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        let hover = Theme::default().surface_hover;
+        let hover = Theme::default().color(Token::SurfaceHover);
         assert_eq!(
             rect_colors(&cx, root)
                 .iter()
@@ -221,7 +212,7 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
         assert_eq!(body_runs(&cx).len(), 11, "window stays viewport-sized");
         assert_eq!(body_runs(&cx).first().map(String::as_str), Some("r0099999"));
 
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_eq!(body_runs(&cx).len(), 11, "window cost unchanged by sort");
         assert_eq!(body_runs(&cx).first().map(String::as_str), Some("r0000000"));

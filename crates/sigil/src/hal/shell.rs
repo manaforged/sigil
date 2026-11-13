@@ -12,9 +12,9 @@ use crate::hal::{
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Anchor {
-    /// The bottom center anchor.
+    /// Centres the window horizontally at the bottom of the monitor.
     BottomCenter {
-        /// The distance from the bottom edge.
+        /// The gap between the window and the bottom edge of the monitor, in logical pixels.
         margin: f32,
     },
 }
@@ -34,21 +34,21 @@ pub struct WindowOpts {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ResizeDirection {
-    /// The east resize direction.
+    /// The right edge.
     East,
-    /// The north resize direction.
+    /// The top edge.
     North,
-    /// The north east resize direction.
+    /// The top right corner.
     NorthEast,
-    /// The north west resize direction.
+    /// The top left corner.
     NorthWest,
-    /// The south resize direction.
+    /// The bottom edge.
     South,
-    /// The south east resize direction.
+    /// The bottom right corner.
     SouthEast,
-    /// The south west resize direction.
+    /// The bottom left corner.
     SouthWest,
-    /// The west resize direction.
+    /// The left edge.
     West,
 }
 
@@ -56,12 +56,12 @@ pub enum ResizeDirection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum WindowLevel {
-    /// The always on bottom window level.
+    /// The window stays below all other windows.
     AlwaysOnBottom,
-    /// The normal window level.
+    /// The window stacks with other windows in the usual way.
     #[default]
     Normal,
-    /// The always on top window level.
+    /// The window stays above all other windows.
     AlwaysOnTop,
 }
 
@@ -69,30 +69,30 @@ pub enum WindowLevel {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum WindowCommand {
-    /// The close window command.
+    /// Asks the window to close; the app receives `WindowEvent::CloseRequested`.
     Close,
-    /// The minimize window command.
+    /// Minimizes the window.
     Minimize,
-    /// The toggle maximize window command.
+    /// Maximizes the window, or restores it when it is maximized.
     ToggleMaximize,
-    /// The drag window command.
+    /// Starts a move of the window that follows the pointer.
     Drag,
-    /// The drag resize window command.
+    /// Starts a resize of the window from an edge or a corner that follows the pointer.
     DragResize(ResizeDirection),
-    /// The set zoom window command.
-    SetZoom(u16),
-    /// The show window command.
+    /// Sets the zoom of the window in percent, where 100 is no zoom; 0 does nothing.
+    Zoom(u16),
+    /// Makes the window visible.
     Show,
-    /// The hide window command.
+    /// Hides the window.
     Hide,
-    /// The focus window command.
+    /// Makes the window visible and gives it input focus.
     Focus,
-    /// The set title window command.
-    SetTitle(alloc::string::String),
-    /// The set position window command.
-    SetPosition(Point),
-    /// The set level window command.
-    SetLevel(WindowLevel),
+    /// Sets the title of the window.
+    Title(alloc::string::String),
+    /// Moves the outer frame of the window to a position in logical pixels.
+    Position(Point),
+    /// Sets the stacking level of the window.
+    Level(WindowLevel),
 }
 
 pub trait Shell: Sized {

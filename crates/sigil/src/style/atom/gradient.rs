@@ -1,4 +1,4 @@
-use super::{Color, ColorAtom, GradientAxis};
+use super::{Color, ColorValue, GradientAxis};
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
@@ -145,7 +145,7 @@ kittest_pub! {
 
 kittest_pub! {
     #[doc(hidden)]
-    /// The line style of a border.
+    /// Selects how the line of a border is drawn: solid, dashed, or dotted.
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
     pub enum BorderStyle {
         /// A solid line.
@@ -163,12 +163,12 @@ kittest_pub! {
     /// A paint style atom: gradients, stops, clip, image, and border style.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub enum PaintAtom {
-        /// The background gradient geometry.
+        /// The shape of the background gradient: linear, radial, or conic.
         Gradient(GradientShape),
         /// No background gradient.
         NoGradient,
         /// A gradient stop color.
-        Stop(StopSlot, ColorAtom),
+        Stop(StopSlot, ColorValue),
         /// No color at a gradient stop.
         NoStop(StopSlot),
         /// A gradient stop position in percent.
@@ -179,7 +179,7 @@ kittest_pub! {
         ClipText,
         /// A tiled background image, by image id.
         Image(u64),
-        /// The border line style.
+        /// How the line of the border is drawn: solid, dashed, or dotted.
         Border(BorderStyle),
     }
 }
@@ -188,7 +188,7 @@ kittest_pub! {
     /// The resolved paint atoms of one node.
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
     pub struct PaintStyle {
-        /// The background gradient geometry, if any.
+        /// The shape of the background gradient, when one is set.
         pub gradient: Option<GradientShape>,
         /// The from, via, and to colors.
         pub stops: [Option<Color>; 3],
@@ -196,9 +196,9 @@ kittest_pub! {
         pub positions: [Option<u8>; 3],
         /// Whether the background shows only inside text.
         pub clip_text: bool,
-        /// The tiled background image id, if any.
+        /// The id of the tiled background image, when one is set.
         pub image: Option<u64>,
-        /// The border line style.
+        /// How the line of the border is drawn; the default is solid.
         pub border: BorderStyle,
     }
 }

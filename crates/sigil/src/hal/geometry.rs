@@ -1,9 +1,9 @@
 /// Size in device pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PhysicalSize {
-    /// The width.
+    /// The width, in device pixels.
     pub width: u32,
-    /// The height.
+    /// The height, in device pixels.
     pub height: u32,
 }
 
@@ -18,9 +18,9 @@ impl PhysicalSize {
 /// A position in logical px.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
-    /// The x.
+    /// The horizontal coordinate, in logical pixels.
     pub x: f32,
-    /// The y.
+    /// The vertical coordinate, in logical pixels.
     pub y: f32,
 }
 
@@ -35,11 +35,11 @@ impl Point {
 /// A rectangle in logical units.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect {
-    /// The origin.
+    /// The corner with the smallest x and y.
     pub origin: Point,
-    /// The width.
+    /// The width, in logical units.
     pub width: f32,
-    /// The height.
+    /// The height, in logical units.
     pub height: f32,
 }
 
@@ -103,13 +103,13 @@ impl Rect {
 /// A color with `f32` red, green, blue, and alpha channels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rgba {
-    /// The r.
+    /// The red channel, from 0.0 to 1.0.
     pub r: f32,
-    /// The g.
+    /// The green channel, from 0.0 to 1.0.
     pub g: f32,
-    /// The b.
+    /// The blue channel, from 0.0 to 1.0.
     pub b: f32,
-    /// The a.
+    /// The opacity, from 0.0 for transparent to 1.0 for opaque.
     pub a: f32,
 }
 

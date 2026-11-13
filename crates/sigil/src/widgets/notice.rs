@@ -20,7 +20,6 @@ static NOTICE_CELL: &[StyleAtom] = &[StyleAtom::BgToneStep(3)];
 static NOTICE_TEXT: &[StyleAtom] = &[StyleAtom::FgToneStep(12)];
 
 /// A full-width notice.
-#[must_use]
 pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let (role, name) = match tone {
         Tone::Error => (Role::Alert, StringKey::NoticeError),

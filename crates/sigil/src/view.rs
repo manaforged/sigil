@@ -158,10 +158,10 @@ impl Watch {
         if seen.0 == Some(changed) {
             return;
         }
-        seen.0 = Some(changed);
         let Ok(source) = std::fs::read_to_string(&self.path) else {
             return;
         };
+        seen.0 = Some(changed);
         if source == seen.1 {
             return;
         }

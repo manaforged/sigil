@@ -11,11 +11,10 @@
     reason = "pixel coordinates are small"
 )]
 
-use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder,
     Shadow,
@@ -23,7 +22,9 @@ use sigil::scene::{
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "filters/model.rs"]
 mod model;
@@ -86,25 +87,8 @@ fn solid(scene: &mut SceneBuilder, rect: Rect) {
     scene.draw_rect(DrawRect::new(rect, INPUT));
 }
 
-#[track_caller]
-pub(crate) fn gpu_frame(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 pub(crate) fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
-    let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
-    let frame = Frame {
-        scene,
-        viewport: (width as f32, SIDE as f32),
-        size: PhysicalSize::new(device_w, device_h),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (width, SIDE), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 pub(crate) fn frames_of<N: IntoNode + 'static>(
@@ -114,11 +98,11 @@ pub(crate) fn frames_of<N: IntoNode + 'static>(
         .unaudited()
         .pixels(SIDE, SIDE)
         .scale(SCALE);
-    let mut surface = Harness::new(app).unaudited().gpu(SIDE, SIDE, SCALE);
+    let mut surface = Harness::new(app).unaudited().gpu(SIDE, SIDE).scale(SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene, SIDE)),
     ]
 }
@@ -286,18 +270,15 @@ fn gallery() -> impl IntoNode {
 #[test]
 fn filtered_scenes_agree_on_the_cpu_and_the_gpu() {
     let (width, height) = (SIDE * 5, SIDE);
-    let mut ui = Harness::new(gallery).gpu(width, height, SCALE);
-    let gpu = gpu_frame(&mut ui);
+    let mut ui = Harness::new(gallery).gpu(width, height).scale(SCALE);
+    let gpu = ui.expect_image();
     let scene = ui.host().emit((width as f32, height as f32));
     let cpu = cpu_frame(&scene, width);
     let measured = diff(gpu.as_raw(), cpu.as_raw());
     println!(
         "filters cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }

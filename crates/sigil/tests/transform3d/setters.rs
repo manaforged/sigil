@@ -5,9 +5,7 @@ use sigil::geometry::Point;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 
-use super::{
-    CENTRE, DISTANCE, INK, SCALE, SIDE, VIEW, assert_corners, coverage, css_quad, frame_of,
-};
+use super::{CENTRE, DISTANCE, INK, SCALE, SIDE, VIEW, assert_corners, coverage, css_quad};
 
 fn stage(card: impl IntoNode + 'static) -> NodeBuilder {
     let pad = CENTRE - SIDE / 2.0;
@@ -36,9 +34,11 @@ fn a_card_turned_by_the_rotate_y_setter_lands_on_the_css_corners() {
     let mut cpu = Harness::new(painted(45.0, false))
         .pixels(VIEW, VIEW)
         .scale(SCALE);
-    assert_corners(&frame_of(&mut cpu), "setter pixels");
-    let mut gpu = Harness::new(painted(45.0, false)).gpu(VIEW, VIEW, SCALE);
-    assert_corners(&frame_of(&mut gpu), "setter gpu");
+    assert_corners(&cpu.expect_image(), "setter pixels");
+    let mut gpu = Harness::new(painted(45.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
+    assert_corners(&gpu.expect_image(), "setter gpu");
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn a_card_turned_to_its_back_by_the_setters_draws_nothing_when_backface_hidden()
         let mut ui = Harness::new(painted(180.0, hidden))
             .pixels(VIEW, VIEW)
             .scale(SCALE);
-        let found = coverage(&frame_of(&mut ui), Point::new(CENTRE, CENTRE));
+        let found = coverage(&ui.expect_image(), Point::new(CENTRE, CENTRE));
         assert_eq!(
             found >= 0.9,
             expect,
@@ -159,7 +159,7 @@ fn ink_box(frame: &image::RgbaImage) -> [f32; 4] {
 #[test]
 fn a_card_with_an_edge_behind_the_viewer_reports_the_bounds_it_draws() {
     let mut ui = Harness::new(near_button).unaudited().pixels(300, 300);
-    let drawn = ink_box(&frame_of(&mut ui));
+    let drawn = ink_box(&ui.expect_image());
     let bounds = ui
         .get((Role::Button, "near"))
         .bounds()

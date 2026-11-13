@@ -20,8 +20,8 @@ impl Screen {
         let _phase = profile::span(profile::Phase::TuiWrite);
         let mut measured = CountingWriter::new(out);
         let result = self.emit(&mut measured, inline);
-        profile::count_add(profile::Counter::TuiBytes, measured.bytes);
-        profile::count_add(profile::Counter::TuiWrites, measured.writes);
+        profile::count(profile::Counter::TuiBytes, measured.bytes);
+        profile::count(profile::Counter::TuiWrites, measured.writes);
         result.map_err(Into::into)
     }
 
@@ -64,9 +64,7 @@ impl Screen {
         if kitty {
             self.grid.stamp_placeholders();
         }
-        let full = self.fresh
-            || self.prev.cols() != self.grid.cols()
-            || self.prev.rows() != self.grid.rows();
+        let full = self.needs_full_redraw();
         let tracked = if self.caps.graphics.is_some() || profile::enabled() {
             self.grid.rows()
         } else {
@@ -76,14 +74,12 @@ impl Screen {
         if kitty {
             self.emit_images(out, &rewritten, full)?;
         }
-        profile::count_add(
+        profile::count(
             profile::Counter::TuiRowsWritten,
             rewritten.iter().filter(|row| **row).count() as u64,
         );
         if full {
-            self.fresh = false;
-            self.stale = None;
-            self.prev.fit(&self.grid);
+            self.reset_full_redraw();
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
             crate::terminal::write::dirty(

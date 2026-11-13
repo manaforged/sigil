@@ -71,14 +71,14 @@ fn table_default() {
         .size([320, 172])
         .hit((1.0, 1.0))
         .image();
-    Golden::new("table_default").delta(DELTA_PCT).assert(img);
+    Golden::new("table_default").assert(img);
 }
 
 #[test]
 fn table_selected() {
     let img = Harness::render(|| {
         let state = table_golden_state();
-        state.select_only(1);
+        state.select(1);
         container()
             .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
             .background(Token::Surface)
@@ -95,14 +95,14 @@ fn table_selected() {
     .size([320, 172])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("table_selected").delta(DELTA_PCT).assert(img);
+    Golden::new("table_selected").assert(img);
 }
 
 #[test]
 fn table_sorted() {
     let img = Harness::render(|| {
         let state = table_golden_state();
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         container()
             .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
             .background(Token::Surface)
@@ -119,5 +119,5 @@ fn table_sorted() {
     .size([320, 172])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("table_sorted").delta(DELTA_PCT).assert(img);
+    Golden::new("table_sorted").assert(img);
 }

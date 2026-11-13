@@ -19,10 +19,10 @@ impl WinitShell {
             return;
         };
         match command {
-            WindowCommand::SetZoom(percent) if percent > 0 => {
+            WindowCommand::Zoom(percent) if percent > 0 => {
                 self.set_zoom(handle, &window, percent);
             }
-            WindowCommand::SetZoom(_) | WindowCommand::Close => {}
+            WindowCommand::Zoom(_) | WindowCommand::Close => {}
             command => apply_to_window(&window, command),
         }
     }
@@ -69,13 +69,13 @@ fn apply_to_window(window: &Window, command: WindowCommand) {
             window.set_visible(true);
             window.focus_window();
         }
-        WindowCommand::SetTitle(title) => window.set_title(&title),
-        WindowCommand::SetPosition(point) => window.set_outer_position(WinitLogicalPosition::new(
+        WindowCommand::Title(title) => window.set_title(&title),
+        WindowCommand::Position(point) => window.set_outer_position(WinitLogicalPosition::new(
             f64::from(point.x),
             f64::from(point.y),
         )),
-        WindowCommand::SetLevel(level) => window.set_window_level(winit_level(level)),
-        WindowCommand::Close | WindowCommand::SetZoom(_) => {}
+        WindowCommand::Level(level) => window.set_window_level(winit_level(level)),
+        WindowCommand::Close | WindowCommand::Zoom(_) => {}
     }
 }
 

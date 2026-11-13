@@ -16,9 +16,9 @@ use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJoin};
 use sigil::style::Rgba;
-use sigil::widgets::{PathNode, canvas, path};
+use sigil::widgets::{PathBuilder, canvas, path};
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 #[path = "vector_path/blend.rs"]
 mod blend;
@@ -38,15 +38,6 @@ const INK: Color = Color {
     b: 40,
     a: 255,
 };
-
-#[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
 
 fn distance(a: image::Rgba<u8>, b: image::Rgba<u8>) -> u32 {
     a.0.iter()
@@ -88,14 +79,14 @@ fn widest_edge(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usize {
     .unwrap_or(0)
 }
 
-fn diagonal() -> PathNode {
+fn diagonal() -> PathBuilder {
     path(SIDE, SIDE)
         .move_to(10.0, 10.0)
         .line_to(50.0, 50.0)
         .stroke(INK, 1.0)
 }
 
-fn small_diagonal() -> PathNode {
+fn small_diagonal() -> PathBuilder {
     path(15, 15)
         .move_to(2.5, 2.5)
         .line_to(12.5, 12.5)
@@ -147,7 +138,7 @@ fn split_block_rows(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usi
 
 #[track_caller]
 fn assert_sharp(ui: &mut Harness, what: &str) {
-    let frame = frame_of(ui);
+    let frame = ui.expect_image();
     let device = (SIDE as f32 * SCALE) as u32;
     assert_eq!(frame.dimensions(), (device, device), "{what}: device size");
     let (widest, peak) = (widest_edge(&frame, 30..90), weakest_peak(&frame, 30..90));
@@ -181,7 +172,7 @@ fn a_one_px_diagonal_at_scale_two_has_device_sharp_edges() {
 
 #[test]
 fn a_one_px_diagonal_on_the_gpu_surface_has_device_sharp_edges() {
-    let mut ui = Harness::new(diagonal_canvas).gpu(SIDE, SIDE, SCALE);
+    let mut ui = Harness::new(diagonal_canvas).gpu(SIDE, SIDE).scale(SCALE);
     assert_sharp(&mut ui, "gpu 2x");
 }
 
@@ -199,11 +190,11 @@ fn a_path_under_a_four_times_transform_stays_sharp() {
 
 #[test]
 fn a_path_under_a_four_times_transform_stays_sharp_on_the_gpu() {
-    let mut ui = Harness::new(zoomed_diagonal).gpu(SIDE, SIDE, SCALE);
+    let mut ui = Harness::new(zoomed_diagonal).gpu(SIDE, SIDE).scale(SCALE);
     assert_sharp(&mut ui, "transform 4x gpu");
 }
 
-fn star(node: PathNode) -> PathNode {
+fn star(node: PathBuilder) -> PathBuilder {
     let point = |k: usize| {
         let angle = 144.0f32.mul_add(k as f32, -90.0).to_radians();
         (
@@ -222,7 +213,7 @@ fn star(node: PathNode) -> PathNode {
         .fill(INK)
 }
 
-fn shape_canvas(shape: fn() -> PathNode) -> impl IntoNode {
+fn shape_canvas(shape: fn() -> PathBuilder) -> impl IntoNode {
     canvas(move |scene: &mut SceneBuilder, rect: Rect| {
         shape().draw(scene, rect, &Theme::light());
     })
@@ -230,11 +221,11 @@ fn shape_canvas(shape: fn() -> PathNode) -> impl IntoNode {
     .height(80.0)
 }
 
-fn probes(shape: fn() -> PathNode, points: &[(f32, f32)]) -> Vec<f32> {
+fn probes(shape: fn() -> PathBuilder, points: &[(f32, f32)]) -> Vec<f32> {
     let mut ui = Harness::new(shape_canvas(shape))
         .pixels(80, 80)
         .scale(SCALE);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     points
         .iter()
         .map(|&(x, y)| at_logical(&frame, x, y, SCALE))
@@ -268,28 +259,25 @@ fn path_scene() -> impl IntoNode {
 
 #[test]
 fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(path_scene).gpu(120, 80, SCALE);
-    let gpu = frame_of(&mut ui);
+    let mut ui = Harness::new(path_scene).gpu(120, 80).scale(SCALE);
+    let gpu = ui.expect_image();
     let viewport = (120.0, 80.0);
     let scene = ui.host().emit(viewport);
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(240, 160),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(240, 160),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     assert_lit(coverage(&gpu, 60, 60), "the gpu frame's star centre");
     let measured = diff(gpu.as_raw(), &cpu);
     println!(
         "cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }
 
 #[test]
@@ -317,7 +305,7 @@ fn an_even_odd_star_leaves_its_centre_empty() {
     assert_empty(found[0], "the even-odd star's centre");
 }
 
-fn capped(cap: StrokeCap) -> PathNode {
+fn capped(cap: StrokeCap) -> PathBuilder {
     path(80, 80)
         .move_to(20.0, 20.0)
         .line_to(50.0, 20.0)
@@ -334,7 +322,7 @@ fn a_square_cap_extends_the_stroke_by_half_its_width() {
     assert_empty(butt[0], "3 px past the end of a butt cap");
 }
 
-fn joined(join: StrokeJoin) -> PathNode {
+fn joined(join: StrokeJoin) -> PathBuilder {
     path(80, 80)
         .move_to(10.0, 50.0)
         .line_to(50.0, 50.0)

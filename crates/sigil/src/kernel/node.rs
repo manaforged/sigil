@@ -14,19 +14,26 @@ pub struct TopLayer;
 /// Marker of a host-drawn surface.
 #[derive(Debug, Clone, Copy)]
 pub struct Surface {
-    /// The key.
-    pub key: u64,
+    pub(crate) key: u64,
+}
+
+impl Surface {
+    /// Marks a node as the surface that the host draws under `key`.
+    #[must_use]
+    pub const fn new(key: u64) -> Self {
+        Self { key }
+    }
 }
 
 /// A node in the tree, as `NodeBuilder::mutate` sees it.
 #[derive(Debug)]
 pub struct Node {
-    /// The kind.
+    /// What the node is: a container, text, an image, or a fragment.
     #[cfg(feature = "kittest")]
     pub kind: NodeType,
     #[cfg(not(feature = "kittest"))]
     pub(crate) kind: NodeType,
-    /// The a11y.
+    /// The accessibility properties of the node.
     #[cfg(feature = "kittest")]
     pub a11y: A11yProps,
     #[cfg(not(feature = "kittest"))]
@@ -162,25 +169,25 @@ impl Node {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum NodeType {
-    /// The container node type.
+    /// A box that holds child nodes.
     Container,
-    /// The text node type.
+    /// A run of text.
     Text {
-        /// The content.
+        /// The text, either fixed or read from a signal or a closure.
         content: TextContent,
-        /// Whether wrap.
+        /// True when the text wraps onto more lines; `text` starts with true.
         wrap: bool,
-        /// Whether ellipsis.
+        /// True when text that does not fit on one line ends in an ellipsis; `text` starts with false.
         ellipsis: bool,
     },
-    /// The image node type.
+    /// An image.
     Image {
-        /// The source.
+        /// The image to draw.
         source: crate::kernel::ImageSource,
-        /// The fit.
+        /// How the image fills its box; `image` starts with `Fill`.
         fit: crate::kernel::ObjectFit,
     },
-    /// The fragment node type.
+    /// A group with no box of its own; its children count as children of its parent.
     Fragment,
 }
 

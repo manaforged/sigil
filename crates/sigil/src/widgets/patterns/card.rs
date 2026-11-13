@@ -85,7 +85,6 @@ impl CardBuilder {
         self
     }
 
-    #[must_use]
     fn root(self) -> NodeBuilder {
         let titled = match self.title {
             Some(title) => self.node.child(

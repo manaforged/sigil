@@ -9,7 +9,7 @@ use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
-    ClassSource, Color, ColorAtom, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
+    ClassSource, Color, ColorValue, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
     StyleVariant, Token, space,
 };
 use crate::widgets::Layout;
@@ -52,7 +52,7 @@ static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::F
 static LINE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(presets::SMOOTH),
     StyleAtom::BorderBottom(2),
-    StyleAtom::BorderColor(ColorAtom::Color(Color {
+    StyleAtom::BorderColor(ColorValue::Color(Color {
         r: 0,
         g: 0,
         b: 0,

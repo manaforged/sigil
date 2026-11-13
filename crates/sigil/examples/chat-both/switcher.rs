@@ -17,7 +17,7 @@ fn rank(names: &[String], query: &str) -> Vec<usize> {
     let mut hits: Vec<(usize, usize)> = names
         .iter()
         .enumerate()
-        .filter_map(|(index, name)| fuzzy_score(query, name).map(|hit| (hit.score, index)))
+        .filter_map(|(index, name)| fuzzy_score(query, name).map(|hit| (hit.score(), index)))
         .collect();
     hits.sort_unstable();
     hits.into_iter().map(|(_, index)| index).collect()
@@ -57,8 +57,7 @@ pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
             entries
                 .filter_map(|(row, channel)| {
                     let name = names.get(channel)?;
-                    let item =
-                        list_row(row == cursor, format!("# {name}"), ListRowSlots::default());
+                    let item = list_row(format!("# {name}")).selected(row == cursor);
                     Some(item.pointer_up(move |_| pick(chat, picker, channel)))
                 })
                 .collect::<Vec<_>>()

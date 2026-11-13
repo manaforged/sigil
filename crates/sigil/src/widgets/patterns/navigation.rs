@@ -53,7 +53,6 @@ fn row_layout() -> LayoutStyle {
 ///     pagination(page, pages)
 /// }
 /// ```
-#[must_use]
 pub fn pagination(page: Signal<usize>, pages: impl Reactive<usize>) -> NodeBuilder {
     let pages = pages.into_signal();
     let count = memo(move || pages.get().min(SLOTS));
@@ -119,7 +118,6 @@ fn page_button(index: usize, page: Signal<usize>, pages: Signal<usize>) -> Butto
 ///     breadcrumbs(path, move |at| path.update(|segments| segments.truncate(at + 1)))
 /// }
 /// ```
-#[must_use]
 pub fn breadcrumbs(
     segments: impl Reactive<Vec<String>>,
     activate: impl Fn(usize) + 'static,

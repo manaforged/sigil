@@ -33,7 +33,7 @@ fn dropdown_trigger_emits_surface_inset_rect() {
         ));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
+        assert!(rect_colors(&cx, root).contains(&theme.scale(Tone::Neutral).step(1)));
     });
 }
 
@@ -48,7 +48,7 @@ fn dropdown_popup_hidden_emits_trigger_rect_only() {
         let colors = rect_colors(&cx, root);
         assert!(!colors.is_empty(), "trigger rect should emit when closed");
         assert!(
-            colors.contains(&theme.gray.step(1)),
+            colors.contains(&theme.scale(Tone::Neutral).step(1)),
             "trigger uses the surface-inset color (gray step 1)"
         );
     });

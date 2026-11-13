@@ -155,7 +155,7 @@ fn modal_width_height_override_reaches_dialog_frame() {
 #[test]
 fn path_and_hint_stay_send() {
     fn send_sync<T: Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe>() {}
-    send_sync::<crate::widgets::PathNode>();
+    send_sync::<crate::widgets::PathBuilder>();
     send_sync::<crate::widgets::patterns::HintOverlayBuilder>();
 }
 

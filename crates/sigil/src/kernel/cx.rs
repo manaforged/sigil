@@ -14,14 +14,14 @@ use crate::kernel::{A11yProps, Node, NodeId, NodeType};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum HostMode {
-    /// The pixel host mode.
+    /// The host is a window and lays out in logical pixels.
     #[default]
     Pixel,
-    /// The cell host mode.
+    /// The host is a terminal and lays out in character cells.
     Cell,
 }
 
-/// The node tree.
+/// Owns the nodes of one UI tree and records which nodes changed in a frame.
 pub struct Cx {
     instance_id: u64,
     pub(crate) nodes: SlotMap<DefaultKey, Node>,

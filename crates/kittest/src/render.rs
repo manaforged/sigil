@@ -102,7 +102,7 @@ impl<B> Render<B> {
     fn target(&self) -> Extent {
         let logical = self.size.map(crate::extent_f32);
         let physical = self.scale.map_or(self.size, |scale| {
-            self.size.map(|extent| physical_extent(extent, scale))
+            crate::physical_extent(logical.into(), scale)
         });
         Extent { logical, physical }
     }
@@ -195,11 +195,6 @@ struct Drive {
     mode: InteractionMode,
     hit: (f32, f32),
     focus_first: bool,
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-pub(crate) fn physical_extent(logical: u32, scale: f32) -> u32 {
-    (crate::extent_f32(logical) * scale).round().max(0.0) as u32
 }
 
 fn capture(

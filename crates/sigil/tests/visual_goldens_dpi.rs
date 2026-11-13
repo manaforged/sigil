@@ -8,7 +8,6 @@ use sigil::prelude::*;
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
-const DELTA_PCT: f32 = 0.5;
 const LOGICAL_SIZE: [u32; 2] = [160, 56];
 const HIT_POINT: (f32, f32) = (74.0, 22.0);
 
@@ -36,7 +35,7 @@ fn capture_at_scale(stem: &str, scale: f32) {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
-    Golden::new(stem).delta(DELTA_PCT).assert_image(&img);
+    Golden::new(stem).assert_image(&img);
 }
 
 #[test]

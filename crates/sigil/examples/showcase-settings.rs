@@ -14,10 +14,10 @@ fn navigation() -> impl IntoNode {
         column()
             .gap(Space::None)
             .child(section_label("Settings"))
-            .child(list_row(true, "General", ListRowSlots::default()))
-            .child(list_row(false, "Appearance", ListRowSlots::default()))
-            .child(list_row(false, "Notifications", ListRowSlots::default()))
-            .child(list_row(false, "Privacy", ListRowSlots::default())),
+            .child(list_row("General").selected(true))
+            .child(list_row("Appearance"))
+            .child(list_row("Notifications"))
+            .child(list_row("Privacy")),
     )
 }
 

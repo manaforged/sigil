@@ -32,11 +32,11 @@ static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Side {
-    /// The left side.
+    /// The sheet fills the height of the left edge and is 360 px wide.
     Left,
-    /// The right side.
+    /// The sheet fills the height of the right edge and is 360 px wide.
     Right,
-    /// The bottom side.
+    /// The sheet fills the width of the bottom edge and is 320 px high.
     Bottom,
 }
 
@@ -79,7 +79,7 @@ pub fn modal(show: Signal<bool>) -> ModalBuilder {
 
 impl ModalBuilder {
     /// Creates a centred dialog that is shown while `show` is true.
-    pub fn new(show: Signal<bool>) -> Self {
+    pub(crate) fn new(show: Signal<bool>) -> Self {
         Self {
             show,
             title: None,
@@ -104,12 +104,6 @@ impl ModalBuilder {
     /// Sets the title shown in the header, which is also the accessible name.
     pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
-        self
-    }
-
-    /// Replaces the signal that shows the modal while it is true.
-    pub const fn show(mut self, show: Signal<bool>) -> Self {
-        self.show = show;
         self
     }
 

@@ -8,7 +8,7 @@ use sigil::geometry::Rect;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::profile::{Counter, disable, enable, frames, reset, tick_frame};
+use sigil::profile::{Counter, disable, enable, end_frame, frames, reset};
 use sigil::reactive::Owner;
 use sigil_kittest::FakeMeasure;
 
@@ -61,7 +61,7 @@ fn settle(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
         layout
             .compute(cx, root, Constraint::fixed(VIEW.0, VIEW.1))
             .unwrap();
-        tick_frame();
+        end_frame();
     }
 }
 
@@ -94,17 +94,14 @@ fn overlay_passes(above: usize, inside: usize) -> (u64, Rect) {
 }
 
 fn frame(host: &mut Host, event: Option<Event>) {
-    let hooks = FrameHooks {
-        input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host| {
-                target.route(event);
-                None
-            })
-        }),
-        ..FrameHooks::default()
-    };
+    let hooks = FrameHooks::default().input(move |target: &mut Host| {
+        if let Some(event) = event {
+            target.route(event);
+        }
+        None
+    });
     host.frame(VIEW, 1.0 / 60.0, hooks);
-    tick_frame();
+    end_frame();
 }
 
 #[test]
@@ -123,7 +120,7 @@ fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
                             .row_height(24.0)
                             .viewport_height(240.0)
                             .viewport_width(280.0)
-                            .scroll_bind(offset),
+                            .scroll_y(offset),
                     ),
                 ),
         );

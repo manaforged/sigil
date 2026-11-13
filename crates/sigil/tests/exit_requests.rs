@@ -34,8 +34,8 @@ fn an_exit_requested_outside_a_frame_ends_the_next_frame() {
         let next = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
         let after = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
 
-        assert!(next.exit, "an exit requested outside a frame was dropped");
-        assert!(!after.exit, "an exit request ends one frame only");
+        assert!(next.exit(), "an exit requested outside a frame was dropped");
+        assert!(!after.exit(), "an exit request ends one frame only");
     });
 }
 
@@ -52,12 +52,8 @@ fn an_exit_requested_before_a_frame_whose_paint_panics_ends_the_next_frame() {
             host.frame(
                 VIEW,
                 1.0 / 60.0,
-                FrameHooks {
-                    paint: Some(Box::new(|_, _| {
-                        std::panic::resume_unwind(Box::new("paint failed"))
-                    })),
-                    ..FrameHooks::default()
-                },
+                FrameHooks::default()
+                    .paint(|_, _| std::panic::resume_unwind(Box::new("paint failed"))),
             )
         }));
         Runtime::recover_from_panic();
@@ -65,7 +61,7 @@ fn an_exit_requested_before_a_frame_whose_paint_panics_ends_the_next_frame() {
 
         assert!(failed.is_err());
         assert!(
-            next.exit,
+            next.exit(),
             "the exit request was lost with the panicking frame"
         );
     });

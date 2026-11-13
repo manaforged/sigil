@@ -3,8 +3,7 @@ use sigil::scene::BlendMode;
 use sigil_kittest::Harness;
 
 use super::{
-    BACKDROP, CELL, HEIGHT, SCALE, SOURCE, TOLERANCE, WIDTH, cpu_frame, gpu_frame, model, probe,
-    rgba,
+    BACKDROP, CELL, HEIGHT, SCALE, SOURCE, TOLERANCE, WIDTH, cpu_frame, model, probe, rgba,
 };
 
 fn blended_cell(mode: BlendMode) -> impl IntoNode {
@@ -33,11 +32,11 @@ fn a_node_with_mix_blend_mixes_with_its_parent_by_the_spec_formula() {
     let mut pixels = Harness::new(styled_gallery)
         .pixels(WIDTH, HEIGHT)
         .scale(SCALE);
-    let mut surface = Harness::new(styled_gallery).gpu(WIDTH, HEIGHT, SCALE);
+    let mut surface = Harness::new(styled_gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
     let scene = surface.host().emit((WIDTH as f32, HEIGHT as f32));
     let frames = [
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene)),
     ];
     let mut failures = Vec::new();

@@ -19,12 +19,14 @@ fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuB
     move || {
         command_menu()
             .width(180.0)
-            .item("Attack", || {})
+            .item(MenuItem::new("Attack").activate(|| {}))
             .submenu("Ability", |m| {
-                m.item("Fire", || {}).item("Cure", || {}).disabled("Ultima")
+                m.item(MenuItem::new("Fire").activate(|| {}))
+                    .item(MenuItem::new("Cure").activate(|| {}))
+                    .item(MenuItem::new("Ultima").disabled(true))
             })
-            .disabled("Item")
-            .item("Wait", || {})
+            .item(MenuItem::new("Item").disabled(true))
+            .item(MenuItem::new("Wait").activate(|| {}))
             .submit(select)
     }
 }
@@ -63,8 +65,8 @@ fn nested_submenu_opens_and_esc_ascends() {
     Owner::scope("cmd-menu-nested-esc", || {
         let (mut cx, mut layout, mut router, root) = setup(|| {
             command_menu()
-                .item("Attack", || {})
-                .submenu("Ability", |m| m.item("Fire", || {}))
+                .item(MenuItem::new("Attack").activate(|| {}))
+                .submenu("Ability", |m| m.item(MenuItem::new("Fire").activate(|| {})))
         });
 
         assert_eq!(panel_count(&cx, root), 1, "starts with only the root panel");
@@ -110,9 +112,9 @@ fn disabled_item_skipped_by_navigation() {
         let selected: Signal<Vec<String>> = signal(Vec::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
             command_menu()
-                .item("A", || {})
-                .disabled("B")
-                .item("C", || {})
+                .item(MenuItem::new("A").activate(|| {}))
+                .item(MenuItem::new("B").disabled(true))
+                .item(MenuItem::new("C").activate(|| {}))
                 .submit(move |label| selected.update(|v| v.push(label.to_owned())))
         });
 
@@ -141,7 +143,7 @@ fn cancel_fires_on_root_esc() {
         let cancelled = signal(false);
         let (mut cx, mut layout, mut router, root) = setup(move || {
             command_menu()
-                .item("Attack", || {})
+                .item(MenuItem::new("Attack").activate(|| {}))
                 .cancel(move || cancelled.set(true))
         });
 
@@ -163,8 +165,8 @@ fn leaf_select_fires_observer_and_closes() {
         let selected_label: Signal<String> = signal(String::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
             command_menu()
-                .item("Attack", move || fired.set(true))
-                .submenu("Ability", |m| m.item("Fire", || {}))
+                .item(MenuItem::new("Attack").activate(move || fired.set(true)))
+                .submenu("Ability", |m| m.item(MenuItem::new("Fire").activate(|| {})))
                 .submit(move |label| selected_label.set(label.to_owned()))
         });
 
@@ -208,8 +210,6 @@ fn leaf_select_fires_observer_and_closes() {
     });
 }
 
-const DELTA_PCT: f32 = 0.5;
-
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(NamedKey, PhysicalKey)]) {
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout
@@ -240,9 +240,7 @@ fn command_menu_open() {
         .size([432, 176])
         .hit((1.0, 1.0))
         .image();
-    Golden::new("command_menu_open")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_open").assert(img);
 }
 
 #[test]
@@ -264,9 +262,7 @@ fn command_menu_nested() {
     .size([432, 176])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("command_menu_nested")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_nested").assert(img);
 }
 
 #[test]
@@ -288,9 +284,7 @@ fn command_menu_disabled_item() {
     .size([432, 176])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("command_menu_disabled_item")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_disabled_item").assert(img);
 }
 
 #[test]
@@ -305,9 +299,9 @@ fn filtered_click() {
     let mut harness = sigil_kittest::Harness::new(move || {
         container().focusable(true).child(
             command_menu()
-                .item("Attack", || {})
-                .item("Wait", || {})
-                .item("Run", || {})
+                .item(MenuItem::new("Attack").activate(|| {}))
+                .item(MenuItem::new("Wait").activate(|| {}))
+                .item(MenuItem::new("Run").activate(|| {}))
                 .submit(move |label| chosen.set(label.to_owned())),
         )
     })
@@ -358,7 +352,7 @@ fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
         let labels: Vec<String> = (1..=30).map(|n| format!("Action {n}")).collect();
         let mut harness = sigil_kittest::Harness::new(move || {
             labels.iter().fold(command_menu(), |menu, label| {
-                menu.item(label.clone(), || {})
+                menu.item(MenuItem::new(label.clone()).activate(|| {}))
             })
         })
         .pixels(420, 600);

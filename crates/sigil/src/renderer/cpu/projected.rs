@@ -11,7 +11,6 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::plan::PlanNode;
 use crate::renderer::projected::ProjectedFrame;
 use crate::renderer::scene_command::LayerScope;
-use crate::renderer::scene_command::state::SceneState;
 use crate::scene::command::BlendMode;
 use crate::scene::command::transform3d::{apply, invert};
 
@@ -34,17 +33,9 @@ impl CpuPainter<'_> {
             return;
         };
         let bounds = frame.bounds;
-        let width = (bounds.width * self.scale).ceil().max(1.0) as u32;
-        let height = (bounds.height * self.scale).ceil().max(1.0) as u32;
-        let Some(mut layer) = self.take_pixmap(width, height) else {
+        let Some((layer, width, height)) = self.offscreen(bounds, frame.content, children) else {
             return;
         };
-        self.spawn(
-            &mut layer,
-            Point::new(bounds.origin.x * self.scale, bounds.origin.y * self.scale),
-            SceneState::new(Some(bounds), frame.content, 1.0),
-        )
-        .walk(children);
         if let Some(inverse) = invert(frame.composite.homography())
             && let Some(screen) = self.screen_span(frame)
         {

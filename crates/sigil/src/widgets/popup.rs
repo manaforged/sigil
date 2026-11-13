@@ -9,7 +9,6 @@ use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, 
 use crate::widgets::Layout;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
-pub use layer::close_top_escape;
 pub(crate) use layer::{
     PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when,
 };
@@ -23,12 +22,10 @@ pub(crate) static SURFACE: &[StyleAtom] = Layer::Overlay.atoms();
 
 static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.background()];
 
-#[must_use]
 pub(crate) fn surface(role: Role) -> NodeBuilder {
     container().role(role).class(SURFACE)
 }
 
-#[must_use]
 pub(crate) fn popup(role: Role, side: PopupSide) -> NodeBuilder {
     surface(role).with(TopLayer).with(Popup {
         side,
@@ -48,7 +45,6 @@ pub(crate) fn separator_height() -> f32 {
     Metrics::current().overlay_padding().mul_add(2.0, 1.0)
 }
 
-#[must_use]
 pub(crate) fn separator() -> NodeBuilder {
     let metrics = Metrics::current();
     container()

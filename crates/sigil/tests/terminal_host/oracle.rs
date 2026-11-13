@@ -171,7 +171,8 @@ pub(super) fn tree(model: Signal<Model>) -> impl IntoNode {
 
 pub(super) fn ansi(grid: &Grid) -> Vec<u8> {
     let mut out = Vec::new();
-    Host::ansi(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
+    grid.write_ansi(&mut out, &Grid::new(0, 0), ColorDepth::Truecolor)
+        .expect("render");
     out
 }
 

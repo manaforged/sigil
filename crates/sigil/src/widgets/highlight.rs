@@ -14,11 +14,37 @@ static CATALOG: LazyLock<Vec<Lang>> =
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Highlight {
     /// The first grapheme column.
-    pub start: usize,
+    pub(crate) start: usize,
     /// The column past the last grapheme.
-    pub end: usize,
-    /// The token.
-    pub token: Token,
+    pub(crate) end: usize,
+    /// The theme token that colors the columns.
+    pub(crate) token: Token,
+}
+
+impl Highlight {
+    /// Creates a highlight of the columns `start..end` in the color of `token`.
+    #[must_use]
+    pub const fn new(start: usize, end: usize, token: Token) -> Self {
+        Self { start, end, token }
+    }
+
+    /// Returns the first grapheme column of the mark, 0-based.
+    #[must_use]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    /// Returns the grapheme column after the last one of the mark.
+    #[must_use]
+    pub const fn end(&self) -> usize {
+        self.end
+    }
+
+    /// Returns the theme token that colors the mark.
+    #[must_use]
+    pub const fn token(&self) -> Token {
+        self.token
+    }
 }
 
 #[derive(Default)]

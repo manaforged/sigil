@@ -8,7 +8,7 @@ Run `cargo run -p sigil-ui --example headless_driver` for the complete loop: it 
 
 ## Terminal host
 
-The same drive runs without the terminal. `sigil_kittest::Harness::present(tree, cols, rows, events)` mounts, routes, and returns the rendered grid as a string. `Host::grid` advances an existing `Host` by one frame. A driver of a terminal app gets the screen as text on every step.
+The same drive runs without the terminal. `sigil_kittest::Harness::new(tree).size(cols, rows).send(events).text()` mounts, routes, and returns the rendered grid as a string. `Host::grid` advances an existing `Host` by one frame. A driver of a terminal app gets the screen as text on every step.
 
 ## Golden images
 
@@ -58,8 +58,8 @@ Requests are serviced between frames on the UI thread, so replies reflect the tr
 ## Profile frames
 
 - `sigil::profile` keys are typed. `span(Phase)` times a phase and
-  `count_add(Counter, n)` records counters. `name()` and `Display` give the trace text. `Frame::counter(Counter)` reads a counter; `Frame::phases` and `Frame::counts` hold `PhaseTime` and `CounterValue` pairs.
+  `count(Counter, n)` records counters. `name()` and `Display` give the trace text. With the `kittest` feature, `profile::Frame::counter(Counter)` reads a counter; its `phases` and `counts` hold `PhaseTime` and `CounterValue` pairs.
 - `profile::begin_frame(BackendStatus)` opens a frame for one host. A
-  `BackendStatus` is a `Backend` (`Gpu`, `GpuSoftware`, `Cpu`, `Terminal`) and a `FallbackCause` (`None`, `NoAdapter`, `DeviceError`, `ForcedByEnv`, `UnknownEnv`). `BackendStatus::TERMINAL` is the terminal host's status. `Frame::backend` holds the status of the host that drew that frame, so a window host and a terminal host in one process keep separate statuses.
+  `BackendStatus` is a `Backend` (`Gpu`, `GpuSoftware`, `Cpu`, `Terminal`) and a `FallbackCause` (`None`, `NoAdapter`, `DeviceError`, `ForcedByEnv`, `UnknownEnv`). `BackendStatus::TERMINAL` is the terminal host's status. The `backend` of a `profile::Frame` holds the status of the host that drew that frame, so a window host and a terminal host in one process keep separate statuses.
 - `profile::interact(Cause)` marks the input that caused a frame.
-  `Cause` is `Idle`, `Pointer`, `Hover`, `Key`, `Scroll`, `Ime`, `Resize`, `A11y`, `Expose`, or `Input`. When several inputs land in one frame, the highest `Cause::rank()` wins. `Frame::cause` holds it.
+  `Cause` is `Idle`, `Pointer`, `Hover`, `Key`, `Scroll`, `Ime`, `Resize`, `A11y`, `Expose`, or `Input`. When several inputs land in one frame, the highest `Cause::rank()` wins. The `cause` of a `profile::Frame` holds it.

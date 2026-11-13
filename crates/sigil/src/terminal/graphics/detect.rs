@@ -4,11 +4,11 @@ use crate::terminal::caps::{Known, known_env};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Protocol {
-    /// The kitty protocol.
+    /// The terminal shows images sent with the kitty graphics protocol.
     Kitty,
-    /// The iterm2 protocol.
+    /// The terminal shows images sent with the iTerm2 inline image sequence (OSC 1337).
     Iterm2,
-    /// The sixel protocol.
+    /// The terminal shows images sent as sixel data.
     Sixel,
 }
 
@@ -16,9 +16,9 @@ pub enum Protocol {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Mux {
-    /// The tmux mux.
+    /// The terminal runs inside tmux, found from the `TMUX` variable.
     Tmux,
-    /// The screen mux.
+    /// The terminal runs inside GNU screen, found from the `STY` variable.
     Screen,
 }
 

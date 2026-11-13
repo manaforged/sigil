@@ -147,7 +147,7 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         };
         assert_eq!(
             thumb_rim(&cx, root),
-            Some(theme.accent),
+            Some(theme.color(Token::Accent)),
             "thumb rim must rest at accent"
         );
         let mut router = EventRouter::new();
@@ -158,7 +158,7 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         );
         assert_eq!(
             thumb_rim(&cx, root),
-            Some(theme.accent_hover),
+            Some(theme.color(Token::AccentHover)),
             "thumb rim must lift to accent-hover with no user overlay"
         );
     });

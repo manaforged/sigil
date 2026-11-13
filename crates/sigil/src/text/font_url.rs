@@ -4,6 +4,7 @@ use crate::reactive::{Signal, signal};
 use crate::tasks::Status;
 use crate::text::fonts::{add_fallback_font, wake_font_listeners};
 
+/// Fetches the font file at `url` and adds its face `face_index` as a fallback font; the signal reports the result.
 #[allow(
     clippy::must_use_candidate,
     reason = "starts the font fetch; the status signal is optional"

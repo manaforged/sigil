@@ -8,53 +8,53 @@ use std::num::NonZeroU16;
 #[derive(Clone, Copy, Debug, Default)]
 #[non_exhaustive]
 pub enum Easing {
-    /// The linear easing.
+    /// Constant speed: the output equals the progress.
     #[default]
     Linear,
-    /// The quad in easing.
+    /// Starts slow and speeds up, as the square of the progress.
     QuadIn,
-    /// The quad out easing.
+    /// Starts fast and slows down, as a mirrored square.
     QuadOut,
-    /// The quad in out easing.
+    /// Speeds up over the first half and slows down over the second, each as a square.
     QuadInOut,
-    /// The cubic in easing.
+    /// Starts slow and speeds up, as the cube of the progress.
     CubicIn,
-    /// The cubic out easing.
+    /// Starts fast and slows down, as a mirrored cube.
     CubicOut,
-    /// The cubic in out easing.
+    /// Speeds up over the first half and slows down over the second, each as a cube.
     CubicInOut,
-    /// The sine in easing.
+    /// Starts slow and speeds up along a quarter of a cosine wave.
     SineIn,
-    /// The sine out easing.
+    /// Starts fast and slows down along a quarter of a sine wave.
     SineOut,
-    /// The sine in out easing.
+    /// Speeds up then slows down along half of a cosine wave.
     SineInOut,
-    /// The expo in easing.
+    /// Starts almost still and speeds up as 2 to the power of `10 * t - 10`.
     ExpoIn,
-    /// The expo out easing.
+    /// Starts fast and slows down as 1 minus 2 to the power of `-10 * t`.
     ExpoOut,
-    /// The back out easing.
+    /// Runs past 1 by about a tenth, then settles back to 1.
     BackOut,
-    /// The back in out easing.
+    /// Dips below 0 at the start and runs past 1 before the end.
     BackInOut,
-    /// The bounce out easing.
+    /// Falls to 1 and bounces off it three times, each bounce smaller.
     BounceOut,
-    /// The steps easing.
+    /// Jumps between `count` equal levels in place of a smooth curve, as in CSS `steps()`.
     Steps {
-        /// The count.
+        /// The number of steps the progress is cut into.
         count: NonZeroU16,
-        /// Whether start.
+        /// True to jump at the start of each step, false to jump at its end.
         start: bool,
     },
     /// The CSS `cubic-bezier(x1, y1, x2, y2)` easing.
     CubicBezier {
         /// The first control point x, in 0..=1.
         x1: f32,
-        /// The first control point y.
+        /// The y of the first control point, which may lie outside 0..=1.
         y1: f32,
         /// The second control point x, in 0..=1.
         x2: f32,
-        /// The second control point y.
+        /// The y of the second control point, which may lie outside 0..=1.
         y2: f32,
     },
 }

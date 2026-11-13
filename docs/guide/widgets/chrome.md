@@ -57,7 +57,7 @@ splitter(Orientation::Horizontal)
 - `.child(node, initial_px)`: simple pane.
 - `.pane(node)`: returns a pane builder. Every setter after it sets the pane: on the main axis, `.width(px)` or `.height(px)` is the initial size, `.min_width(px)` and `.max_width(px)` (or `.min_height`, `.max_height`) clamp the drag, and `.grow(factor)` shares the leftover space. Paint and event setters, such as `.background(..)`, also set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component; call splitter setters before the first `.pane(..)` or after `.commit()`.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
-- `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
+- `.sizes(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.
 
 ## scroll
@@ -65,7 +65,7 @@ splitter(Orientation::Horizontal)
 `scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
-- `.scroll_bind(Signal<f32>)`: expose the scroll offset.
+- `.scroll_y(Signal<f32>)`: expose the scroll offset.
 - `.follow_end(bool)`: start at the end and stay pinned there while content grows, until the user scrolls up (logs, chat).
 
 Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and as tall as the viewport. The fully rounded thumb is 4 px wide at rest. It widens to 8 px and the track shows `surface-subtle` while the pointer is over the track or the thumb is dragged. For large homogeneous rows prefer `virtual_list`, which virtualizes row construction too. `scroll` still builds every child.
@@ -85,8 +85,8 @@ Small composites in `sigil::widgets`:
 - `field(label, control)`: label stacked over a control with a 4 px gap. `.error(reactive)` shows the error text under a text, number, or color field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)`: a row at least 28 px tall. The key is a muted 16-column cell that ellipsizes. The value starts 12 px after it and fills the rest, so values in a stack align.
 - `kv_grid([(key, value)])`: a stack of `kv_row`s with a 1 px divider between rows; values render monospace.
-- `list_row(selected, title, ListRowSlots { .. })`: a 24 px row with an ellipsized title and an optional right-aligned `status`. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
-- Other `ListRowSlots` fields (`depth`, `disclosure`, `marker`, `columns`) add tree slots, an optional leading marker glyph, and fixed-width, right-aligned `(text, width_px)` columns. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
+- `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
+- The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
 - `section_label(title)`: a small muted heading for groups.
 - `empty_state(title, body)`: centered `Role::Status` placeholder.
 - `notice_band(body, tone)`: a full-width tinted status strip.

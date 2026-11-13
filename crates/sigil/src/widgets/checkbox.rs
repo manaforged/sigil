@@ -89,7 +89,7 @@ pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
 
 impl CheckboxBuilder {
     /// Creates a checkbox that reads and writes `checked`; the tone defaults to `Tone::Primary`.
-    pub fn new(checked: Signal<bool>) -> Self {
+    pub(crate) fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
             partial: None,

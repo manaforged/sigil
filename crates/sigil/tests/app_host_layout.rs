@@ -61,7 +61,7 @@ fn host_surfaces_reports_hole_rect() {
     host.mount(move || {
         container()
             .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
-            .with(Surface { key: 3 })
+            .with(Surface::new(3))
             .child(text("hole"))
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
@@ -81,7 +81,7 @@ fn host_paint_skips_surface_children() {
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
-                    .with(Surface { key: 1 })
+                    .with(Surface::new(1))
                     .background(Token::Accent)
                     .child(text("secret")),
             )

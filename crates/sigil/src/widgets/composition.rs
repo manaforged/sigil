@@ -18,7 +18,6 @@ pub(crate) static STATUS_CHROME: &[StyleAtom] = &[
 ];
 
 /// A status line.
-#[must_use]
 pub fn status_bar<I>(children: I) -> NodeBuilder
 where
     I: IntoIterator,
@@ -54,7 +53,6 @@ where
 }
 
 /// One key/value row.
-#[must_use]
 pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)

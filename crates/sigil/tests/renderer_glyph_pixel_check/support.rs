@@ -124,18 +124,13 @@ pub(super) fn render_text_inner(
     let texture = create_capture_texture(device, phys_w, phys_h);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-    let engine = OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    });
-    let style = TextStyle {
-        font_family: String::from("system-ui"),
-        font_size: FONT_SIZE,
-        font_weight: 400,
-        line_height: TextLineHeight::FontSizeRelative(1.2),
-        letter_spacing_em: 0.0,
-        ..Default::default()
-    };
+    let engine = OwnedTextEngine::new(TextStyle::default().font_size(16.0));
+    let style = TextStyle::default()
+        .font_family("system-ui")
+        .font_size(FONT_SIZE)
+        .font_weight(400)
+        .line_height(TextLineHeight::FontSizeRelative(1.2))
+        .letter_spacing_em(0.0);
     let paragraph = engine
         .layout_paragraph_styled(content, None, &style)
         .expect("layout_paragraph_styled");

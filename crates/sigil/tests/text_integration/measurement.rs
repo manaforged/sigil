@@ -7,10 +7,7 @@ use sigil::style::{TextLineHeight, TextStyle};
 use sigil::text::OwnedTextEngine;
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    })
+    OwnedTextEngine::new(TextStyle::default().font_size(16.0))
 }
 
 #[test]
@@ -114,20 +111,16 @@ fn hyphen_offers_a_break_but_solid_run_does_not() {
 #[test]
 fn styled_font_size_and_line_height_change_metrics() {
     let e = engine();
-    let small = TextStyle {
-        font_size: 12.0,
-        line_height: TextLineHeight::Absolute(14.0),
-        letter_spacing_em: 0.0,
-        tabular_nums: false,
-        ..TextStyle::default()
-    };
-    let large = TextStyle {
-        font_size: 24.0,
-        line_height: TextLineHeight::Absolute(32.0),
-        letter_spacing_em: 0.0,
-        tabular_nums: false,
-        ..TextStyle::default()
-    };
+    let small = TextStyle::default()
+        .font_size(12.0)
+        .line_height(TextLineHeight::Absolute(14.0))
+        .letter_spacing_em(0.0)
+        .tabular_nums(false);
+    let large = TextStyle::default()
+        .font_size(24.0)
+        .line_height(TextLineHeight::Absolute(32.0))
+        .letter_spacing_em(0.0)
+        .tabular_nums(false);
 
     let small = e
         .layout_paragraph_styled("Typography", None, &small)
@@ -163,13 +156,11 @@ fn baseline_is_half_leading_plus_real_ascent() {
 
     let mut e = engine();
     e.register_font(bytes.clone(), 0).unwrap();
-    let style = TextStyle {
-        font_size: FONT_SIZE,
-        line_height: TextLineHeight::Absolute(LINE_HEIGHT),
-        letter_spacing_em: 0.0,
-        tabular_nums: false,
-        ..TextStyle::default()
-    };
+    let style = TextStyle::default()
+        .font_size(FONT_SIZE)
+        .line_height(TextLineHeight::Absolute(LINE_HEIGHT))
+        .letter_spacing_em(0.0)
+        .tabular_nums(false);
     let para = e.layout_paragraph_styled("A\ng", None, &style).unwrap();
 
     let glyphs = para.rendered_glyphs();

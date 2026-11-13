@@ -6,13 +6,13 @@ kittest_pub! {
     /// Phase of the frame that the runtime is in.
     #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     pub enum DrawPhase {
-        /// The idle draw phase.
+        /// No frame is in progress; a frame starts and ends here.
         Idle,
-        /// The effect draw phase.
+        /// The frame runs its effects; it follows `Idle`.
         Effect,
-        /// The layout draw phase.
+        /// The frame lays out the tree; it follows `Effect`.
         Layout,
-        /// The paint draw phase.
+        /// The frame paints; it follows `Layout`, and a signal write here fails a debug assertion.
         Paint,
     }
 }
@@ -21,7 +21,7 @@ kittest_pub! {
 #[inline]
 pub(crate) fn assert_paint_safe(rt: &RuntimeState, site: &'static str) {
     debug_assert!(
-        rt.phase != DrawPhase::Paint,
+        rt.frame.phase() != DrawPhase::Paint,
         "Signal::{site} called during DrawPhase::Paint — reactive writes are illegal in the paint pass \
          (call site: {})",
         Location::caller(),

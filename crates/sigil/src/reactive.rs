@@ -63,6 +63,7 @@ kittest_pub! {
 pub(crate) use signal::SendableSignal;
 pub use signal::{Signal, signal};
 pub use source::Reactive;
+pub(crate) use source::sealed;
 
 #[cfg(feature = "kittest")]
 pub use trace::test_hook as __trace_test_hook;

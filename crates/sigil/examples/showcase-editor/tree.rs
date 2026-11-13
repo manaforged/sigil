@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{ListRowSlots, RowTone, TreeNode};
+use sigil::widgets::{RowTone, TreeNode};
 
 use super::project::{FileId, Folder, GitStatus, PROJECT_NAME, TreeItem};
 use super::state::{Activity, Workspace};
@@ -73,15 +73,11 @@ fn explorer(ws: Workspace) -> NodeBuilder {
         .padding_y(Space::Xs)
         .gap(Space::None)
         .child(header("EXPLORER"))
-        .child(list_row(
-            false,
-            PROJECT_NAME.to_uppercase(),
-            ListRowSlots {
-                disclosure: Disclosure::Expanded,
-                tone: RowTone::Muted,
-                ..ListRowSlots::default()
-            },
-        ))
+        .child(
+            list_row(PROJECT_NAME.to_uppercase())
+                .disclosure(Disclosure::Expanded)
+                .tone(RowTone::Muted),
+        )
         .child(
             tree(move || {
                 let expanded = ws.expanded.get();

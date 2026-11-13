@@ -40,7 +40,7 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
             virtual_list(items, |_, _| container())
                 .row_height(32.0)
                 .viewport_height(480.0)
-                .scroll_bind(scroll_y)
+                .scroll_y(scroll_y)
                 .cursor(focused_row),
         );
         let mut layout = LayoutEngine::new(stub_text_measure());

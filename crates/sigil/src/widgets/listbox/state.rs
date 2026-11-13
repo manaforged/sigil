@@ -6,24 +6,20 @@ use super::Matcher;
 /// What a list cursor does at the end of the list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CursorEdge {
-    /// The clamp cursor edge.
+    /// The cursor stops at the first and the last row.
     Clamp,
-    /// The wrap cursor edge.
+    /// The cursor moves from the last row to the first, and back.
     Wrap,
 }
 
 /// The cursor, selection, expansion, and query of a list.
+#[non_exhaustive]
 pub struct ListState<K: Clone + Eq + Hash + 'static = String> {
-    /// The cursor.
-    pub cursor: Signal<usize>,
-    /// The scroll.
-    pub scroll: Signal<f32>,
-    /// The expanded.
-    pub expanded: Signal<Vec<K>>,
-    /// The query.
-    pub query: Signal<String>,
-    /// The caret.
-    pub caret: Signal<usize>,
+    pub(crate) cursor: Signal<usize>,
+    pub(crate) scroll: Signal<f32>,
+    pub(crate) expanded: Signal<Vec<K>>,
+    pub(crate) query: Signal<String>,
+    pub(crate) caret: Signal<usize>,
 }
 
 impl<K: Clone + Eq + Hash + 'static> core::fmt::Debug for ListState<K> {
@@ -69,6 +65,36 @@ impl<K: Clone + Eq + Hash + 'static> ListState<K> {
         }
     }
 
+    /// Returns the signal of the cursor row index.
+    #[must_use]
+    pub const fn cursor(self) -> Signal<usize> {
+        self.cursor
+    }
+
+    /// Returns the signal of the scroll offset in pixels.
+    #[must_use]
+    pub const fn scroll(self) -> Signal<f32> {
+        self.scroll
+    }
+
+    /// Returns the signal of the expanded row keys.
+    #[must_use]
+    pub const fn expanded(self) -> Signal<Vec<K>> {
+        self.expanded
+    }
+
+    /// Returns the signal of the type-ahead or filter query.
+    #[must_use]
+    pub const fn query(self) -> Signal<String> {
+        self.query
+    }
+
+    /// Returns the signal of the caret position in the query, in bytes.
+    #[must_use]
+    pub const fn caret(self) -> Signal<usize> {
+        self.caret
+    }
+
     /// Returns the cursor index clamped to `len`.
     #[must_use]
     pub fn at(self, len: usize) -> usize {
@@ -86,7 +112,7 @@ impl<K: Clone + Eq + Hash + 'static> ListState<K> {
     }
 
     /// Moves the cursor to `index`.
-    pub fn select(self, index: usize) {
+    pub fn move_to(self, index: usize) {
         self.cursor.set(index);
     }
 
@@ -97,7 +123,7 @@ impl<K: Clone + Eq + Hash + 'static> ListState<K> {
     }
 
     /// Flips the expansion of `key`.
-    pub fn toggle(self, key: &K) {
+    pub fn toggle_expanded(self, key: &K) {
         let mut held = self.expanded.peek();
         match held.iter().position(|item| item == key) {
             Some(index) => drop(held.remove(index)),

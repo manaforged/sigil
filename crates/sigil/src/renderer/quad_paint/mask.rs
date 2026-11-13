@@ -149,7 +149,7 @@ impl AtlasPipeline {
             .as_ref()
             .is_none_or(|(atlas, _)| atlas != view)
         {
-            count(crate::profile::Counter::AllocRasterBindGroups);
+            count(crate::profile::Counter::AllocRasterBindGroups, 1);
             let group = texture_group(
                 frame.device,
                 "sigil-renderer raster text bind group",

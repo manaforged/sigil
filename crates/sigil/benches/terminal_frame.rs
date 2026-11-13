@@ -258,7 +258,9 @@ fn write(c: &mut Criterion) {
             let same = frame.clone();
             b.iter(|| {
                 let mut sink = io::sink();
-                let _: () = sigil::Host::ansi(&mut sink, &same, &frame, TRUECOLOR).expect("write");
+                let _: () = frame
+                    .write_ansi(&mut sink, &same, TRUECOLOR)
+                    .expect("write");
                 black_box(());
             });
         });
@@ -272,7 +274,9 @@ fn write(c: &mut Criterion) {
             let blank = Grid::new(COLS, ROWS);
             b.iter(|| {
                 let mut sink = io::sink();
-                let _: () = sigil::Host::ansi(&mut sink, &blank, &frame, TRUECOLOR).expect("write");
+                let _: () = frame
+                    .write_ansi(&mut sink, &blank, TRUECOLOR)
+                    .expect("write");
                 black_box(());
             });
         });

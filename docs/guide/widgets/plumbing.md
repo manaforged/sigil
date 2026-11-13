@@ -4,7 +4,7 @@ The low-level pieces the widgets are built from: drag mechanics, clipboard, and 
 
 ## Interactive nodes
 
-Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()`, and `.disabled_style()` style it per state, and the node tracks its own hover, press, and focus.
+Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()`, and `.disabled_paint()` style it per state, and the node tracks its own hover, press, and focus.
 
 - `.activate(f)`: run `f` on a primary click, Enter, or Space. The node takes focus and shows the focus ring.
 - `.disabled(value, signal, or closure)`: dim the node, ignore its pointer and keys, and report it as disabled.

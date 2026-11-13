@@ -42,7 +42,7 @@ pub trait States: Widget + StateTarget {
 
     /// Sets the style while the node is disabled.
     #[must_use]
-    fn disabled_style<F>(self, configure: F) -> Self
+    fn disabled_paint<F>(self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {

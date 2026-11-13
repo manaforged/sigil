@@ -208,6 +208,7 @@ fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) -> AppResult<()> {
     }
 }
 
+/// Runs `layout_pass` in the layout phase and `paint_pass` in the paint phase of one frame.
 #[cfg(feature = "kittest")]
 pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
     Runtime::begin_effect();

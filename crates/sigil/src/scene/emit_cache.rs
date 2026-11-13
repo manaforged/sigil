@@ -104,7 +104,7 @@ pub(crate) fn replay(
         {
             return false;
         }
-        crate::profile::count(crate::profile::Counter::EmitReplays);
+        crate::profile::count(crate::profile::Counter::EmitReplays, 1);
         let dx = rect.origin.x - f32::from_bits(entry.rect[0]);
         let dy = rect.origin.y - f32::from_bits(entry.rect[1]);
         if dx != 0.0 || dy != 0.0 {

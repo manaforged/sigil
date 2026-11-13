@@ -20,21 +20,21 @@ pub use pointer::{
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Event {
-    /// The pointer event.
+    /// A mouse, touch, or pen event.
     Pointer(PointerEvent),
-    /// The key event.
+    /// A key press or release.
     Key(KeyEvent),
-    /// The ime event.
+    /// An input method composition event.
     Ime(ImeEvent),
-    /// The scroll event.
+    /// A wheel or trackpad scroll.
     Scroll(ScrollEvent),
-    /// The gesture event.
+    /// A trackpad or touch gesture.
     Gesture(GestureEvent),
-    /// The file drop event.
+    /// A file dragged over or dropped onto the window.
     FileDrop(FileDropEvent),
-    /// The paste event.
+    /// Text that the user pasted.
     Paste(alloc::string::String),
-    /// The window event.
+    /// A resize, focus, or close event of the window.
     Window(WindowEvent),
 }
 
@@ -42,11 +42,11 @@ pub enum Event {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum FileDropPhase {
-    /// The hovered file drop phase.
+    /// A dragged file is over the window.
     Hovered,
-    /// The dropped file drop phase.
+    /// The file was dropped onto the window.
     Dropped,
-    /// The cancelled file drop phase.
+    /// The drag was cancelled; the event has no path.
     Cancelled,
 }
 
@@ -54,9 +54,9 @@ pub enum FileDropPhase {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct FileDropEvent {
-    /// The path, if any.
+    /// The path of the file; `None` when the drag is cancelled.
     pub path: Option<alloc::string::String>,
-    /// The phase.
+    /// Whether the file hovers, was dropped, or the drag was cancelled.
     pub phase: FileDropPhase,
 }
 
@@ -64,9 +64,9 @@ pub struct FileDropEvent {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Key {
-    /// The named logical key.
+    /// A key with a name, such as Enter or an arrow key.
     Named(NamedKey),
-    /// The character logical key.
+    /// A key that types text, held as that text.
     Character(String),
 }
 
@@ -125,10 +125,11 @@ const KEY_LABELS: [(NamedKey, &str, &str); 12] = [
 
 /// A key plus modifiers.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub struct Shortcut {
-    /// The key.
+    /// The key that triggers the shortcut.
     pub key: Key,
-    /// The modifiers.
+    /// The modifiers that must be held with the key.
     pub modifiers: Modifiers,
 }
 
@@ -225,9 +226,9 @@ impl From<Key> for Shortcut {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum KeyPhase {
-    /// The down key phase.
+    /// The key was pressed.
     Down,
-    /// The up key phase.
+    /// The key was released.
     Up,
 }
 
@@ -235,17 +236,17 @@ pub enum KeyPhase {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct KeyEvent {
-    /// The key.
+    /// The key by its meaning: a named key or the text that it types.
     pub key: Key,
-    /// The physical.
+    /// The key by its place on the keyboard; `Unidentified` when the host does not report it.
     pub physical: PhysicalKey,
-    /// The modifiers.
+    /// The modifiers held during the event.
     pub modifiers: Modifiers,
-    /// Whether repeat.
+    /// True when the event is an auto-repeat of a held key.
     pub repeat: bool,
-    /// The phase.
+    /// Whether the key was pressed or released.
     pub phase: KeyPhase,
-    /// The text, if any.
+    /// The text that the key press types; `None` when it types none.
     pub text: Option<String>,
     propagation_stopped: bool,
 }
@@ -274,13 +275,13 @@ impl KeyEvent {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ImeEvent {
-    /// The enabled ime event.
+    /// The input method turned on; composed text can follow.
     Enabled,
-    /// The preedit ime event.
+    /// The text being composed and the caret range in it, in bytes; an empty text clears it.
     Preedit(String, Option<(usize, usize)>),
-    /// The commit ime event.
+    /// The composed text to insert.
     Commit(String),
-    /// The disabled ime event.
+    /// The input method was turned off, which ends a composition.
     Disabled,
 }
 
@@ -288,13 +289,13 @@ pub enum ImeEvent {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum ScrollPhase {
-    /// The started scroll phase.
+    /// The scroll or gesture began.
     Started,
-    /// The moved scroll phase.
+    /// The scroll or gesture continues with a new delta.
     Moved,
-    /// The ended scroll phase.
+    /// The scroll or gesture finished.
     Ended,
-    /// The cancelled scroll phase.
+    /// The system cancelled the scroll or gesture.
     Cancelled,
 }
 
@@ -302,9 +303,9 @@ pub enum ScrollPhase {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum ScrollDelta {
-    /// The pixels scroll delta.
+    /// A distance in logical pixels, as a trackpad sends.
     Pixels(Point),
-    /// The lines scroll delta.
+    /// A distance in lines, as a mouse wheel sends.
     Lines(Point),
 }
 
@@ -312,13 +313,13 @@ pub enum ScrollDelta {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct ScrollEvent {
-    /// The position.
+    /// The pointer position at the time of the scroll, in logical pixels.
     pub position: Point,
-    /// The delta.
+    /// The amount to scroll, in pixels or in lines.
     pub delta: ScrollDelta,
-    /// The modifiers.
+    /// The modifiers held during the scroll.
     pub modifiers: Modifiers,
-    /// The phase.
+    /// The stage of the scroll: started, moved, ended, or cancelled.
     pub phase: ScrollPhase,
     propagation_stopped: bool,
 }
@@ -358,17 +359,17 @@ propagation!(PointerEvent, KeyEvent, ScrollEvent, GestureEvent);
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum WindowEvent {
-    /// The resized window event.
+    /// The window has a new size, in device pixels.
     Resized(PhysicalSize),
-    /// The scale factor changed window event.
+    /// The scale from logical pixels to device pixels changed.
     ScaleFactorChanged(Scale),
-    /// The focused window event.
+    /// The window gained input focus (`true`) or lost it (`false`).
     Focused(bool),
-    /// The close requested window event.
+    /// The user or `WindowCommand::Close` asked the window to close.
     CloseRequested,
-    /// The destroyed window event.
+    /// The window was destroyed.
     Destroyed,
-    /// The occluded window event.
+    /// The window became fully hidden (`true`) or visible again (`false`).
     Occluded(bool),
 }
 

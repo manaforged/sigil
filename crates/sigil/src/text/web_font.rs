@@ -4,31 +4,31 @@ use std::sync::{PoisonError, RwLock};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum WebFontScript {
-    /// The cjk web font script.
+    /// Chinese, Japanese, and Korean text; the default font is Noto Sans CJK SC.
     Cjk,
-    /// The arabic web font script.
+    /// Arabic script; the default font is Noto Sans Arabic.
     Arabic,
-    /// The hebrew web font script.
+    /// Hebrew script; the default font is Noto Sans Hebrew.
     Hebrew,
-    /// The devanagari web font script.
+    /// Devanagari script; the default font is Noto Sans Devanagari.
     Devanagari,
-    /// The khmer web font script.
+    /// Khmer script; the default font is Noto Sans Khmer.
     Khmer,
-    /// The thai web font script.
+    /// Thai script; the default font is Noto Sans Thai.
     Thai,
-    /// The lao web font script.
+    /// Lao script; the default font is Noto Sans Lao.
     Lao,
 }
 
 /// A fallback font that the web build downloads.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WebFont {
-    /// The script.
-    pub script: WebFontScript,
-    /// The url.
-    pub url: String,
-    /// The face index.
-    pub face_index: u32,
+    /// The script whose first use in shaped text starts the download.
+    pub(crate) script: WebFontScript,
+    /// The address the font file is fetched from.
+    pub(crate) url: String,
+    /// The 0-based index of the face to load from the font file.
+    pub(crate) face_index: u32,
 }
 
 impl WebFont {
@@ -40,6 +40,12 @@ impl WebFont {
             url: url.into(),
             face_index,
         }
+    }
+
+    /// The address the font file is fetched from.
+    #[must_use]
+    pub fn url(&self) -> &str {
+        &self.url
     }
 
     /// Returns the default Noto fallback fonts.

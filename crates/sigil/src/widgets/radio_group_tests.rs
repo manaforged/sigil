@@ -33,7 +33,6 @@ fn defaults_to_primary_tone() {
 #[test]
 fn mark_ring_clears_non_text_contrast() {
     use crate::style::Color;
-    use crate::style::scale::ScaleRole;
     use crate::style::theme::Theme;
 
     #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
@@ -50,7 +49,7 @@ fn mark_ring_clears_non_text_contrast() {
     }
 
     for (name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
-        let ring = theme.scale(ScaleRole::Gray).step(9);
+        let ring = theme.scale(Tone::Neutral).step(9);
         let (lr, ls) = (luminance(ring), luminance(theme.surface));
         let ratio = (lr.max(ls) + 0.05) / (lr.min(ls) + 0.05);
         assert!(

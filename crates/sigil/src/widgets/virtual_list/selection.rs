@@ -20,7 +20,7 @@ pub enum SelectionMode {
 
 /// Selected indexes of a list.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SelectionState {
+pub struct Selection {
     mode: SelectionMode,
     selected: BTreeSet<usize>,
     anchor: Option<usize>,
@@ -28,10 +28,10 @@ pub struct SelectionState {
 
 #[derive(Clone, Copy)]
 pub(super) struct SelectionRuntime {
-    state: Signal<SelectionState>,
+    state: Signal<Selection>,
 }
 
-impl SelectionState {
+impl Selection {
     /// Creates an empty selection with `mode`.
     #[must_use]
     pub fn new(mode: SelectionMode) -> Self {
@@ -42,7 +42,7 @@ impl SelectionState {
         }
     }
 
-    /// The selection mode.
+    /// Returns the mode that decides how many rows a click can select.
     #[must_use]
     pub const fn mode(&self) -> SelectionMode {
         self.mode
@@ -55,30 +55,36 @@ impl SelectionState {
     }
 
     /// The selected indexes in ascending order.
-    pub fn selected_indices(&self) -> impl Iterator<Item = usize> + '_ {
+    pub fn indices(&self) -> impl Iterator<Item = usize> + '_ {
         self.selected.iter().copied()
     }
 
+    /// Removes every index.
+    pub fn clear(&mut self) {
+        self.selected.clear();
+        self.anchor = None;
+    }
+
     /// Selects only `index`.
-    pub fn click(&mut self, index: usize) {
+    pub fn select(&mut self, index: usize) {
         self.apply_click(index, false, false);
     }
 
-    /// Flips the selection of `index`.
-    pub fn ctrl_click(&mut self, index: usize) {
+    /// Flips the selection of `index`; in `Single` mode it selects only `index`.
+    pub fn toggle(&mut self, index: usize) {
         self.apply_click(index, false, true);
     }
 
-    /// Selects the range from the anchor to `index`.
-    pub fn shift_click(&mut self, index: usize) {
+    /// Selects the range from the anchor to `index`; outside `Extend` mode it selects only `index`.
+    pub fn extend(&mut self, index: usize) {
         self.apply_click(index, true, false);
     }
 
     fn apply_click(&mut self, index: usize, extend: bool, toggle: bool) {
         match self.mode {
             SelectionMode::None => {}
-            SelectionMode::Extend if extend => self.extend(index),
-            SelectionMode::Multi | SelectionMode::Extend if toggle => self.toggle(index),
+            SelectionMode::Extend if extend => self.span_to(index),
+            SelectionMode::Multi | SelectionMode::Extend if toggle => self.flip(index),
             SelectionMode::Single | SelectionMode::Multi | SelectionMode::Extend => {
                 self.replace(index);
             }
@@ -89,12 +95,12 @@ impl SelectionState {
         only(&mut self.selected, &mut self.anchor, index);
     }
 
-    fn toggle(&mut self, index: usize) {
+    fn flip(&mut self, index: usize) {
         toggle(&mut self.selected, index);
         self.anchor = Some(index);
     }
 
-    fn extend(&mut self, index: usize) {
+    fn span_to(&mut self, index: usize) {
         let anchor = self.anchor.unwrap_or(index);
         span(&mut self.selected, anchor.min(index)..=anchor.max(index));
         self.anchor = Some(anchor);
@@ -102,7 +108,7 @@ impl SelectionState {
 }
 
 impl SelectionRuntime {
-    pub(super) const fn new(state: Signal<SelectionState>) -> Self {
+    pub(super) const fn new(state: Signal<Selection>) -> Self {
         Self { state }
     }
 

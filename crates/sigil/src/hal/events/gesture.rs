@@ -5,13 +5,13 @@ use crate::geometry::Point;
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Gesture {
-    /// The pinch gesture kind.
+    /// A two-finger pinch; a positive delta zooms in and a negative delta zooms out.
     Pinch(f64),
-    /// The rotate gesture kind.
+    /// A two-finger rotation; a positive delta turns counterclockwise.
     Rotate(f32),
-    /// The pan gesture kind.
+    /// A pan by a distance in logical pixels.
     Pan(Point),
-    /// The double tap gesture kind.
+    /// A double tap, sent once with the `Ended` phase.
     DoubleTap,
 }
 
@@ -19,13 +19,13 @@ pub enum Gesture {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct GestureEvent {
-    /// The kind.
+    /// Which gesture it is, with its delta.
     pub kind: Gesture,
-    /// The phase.
+    /// The stage of the gesture: started, moved, ended, or cancelled.
     pub phase: ScrollPhase,
-    /// The position.
+    /// The pointer position at the time of the gesture, in logical pixels.
     pub position: Point,
-    /// The modifiers.
+    /// The modifiers held during the gesture.
     pub modifiers: Modifiers,
     pub(super) propagation_stopped: bool,
 }

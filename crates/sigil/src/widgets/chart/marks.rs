@@ -1,8 +1,8 @@
 use crate::layout::{LayoutStyle, Position};
-use crate::style::{ColorAtom, Tone};
+use crate::style::{ColorValue, Tone};
 use crate::widgets::Layout;
 
-use super::super::vector::{PathNode, path};
+use super::super::vector::{PathBuilder, path};
 use super::decimate::{self, Candle};
 use super::span::ValueSpan;
 
@@ -101,7 +101,7 @@ pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
     tops
 }
 
-pub(super) fn line(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
+pub(super) fn line(trace: &Trace<'_>, color: ColorValue) -> PathBuilder {
     let mut stroke = path(VIEW_W, VIEW_H);
     let mut pen_down = false;
     for (x, value) in trace.points() {
@@ -123,7 +123,7 @@ pub(super) fn line(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
         .layout(layer_layout())
 }
 
-pub(super) fn area(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
+pub(super) fn area(trace: &Trace<'_>, color: ColorValue) -> PathBuilder {
     let base = y_of(trace.span, 0.0_f32.clamp(trace.span.lo, trace.span.hi));
     let points = trace.points();
     let runs = points
@@ -147,7 +147,7 @@ pub(super) fn area(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
     clippy::cast_precision_loss,
     reason = "candle counts stay far below f32 precision limits at render scale"
 )]
-pub(super) fn candles(rows: &[Candle], span: ValueSpan, columns: usize) -> [PathNode; 2] {
+pub(super) fn candles(rows: &[Candle], span: ValueSpan, columns: usize) -> [PathBuilder; 2] {
     let rows = decimate::candles(rows, columns);
     let count = rows.len();
     let half = VIEW_W_F / count.max(1) as f32 * BODY_SHARE / 2.0;
@@ -166,7 +166,7 @@ pub(super) fn candles(rows: &[Candle], span: ValueSpan, columns: usize) -> [Path
     [finish(up, RISING), finish(down, FALLING)]
 }
 
-fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: ValueSpan) -> PathNode {
+fn candle(shape: PathBuilder, x: f32, half: f32, row: Candle, span: ValueSpan) -> PathBuilder {
     let top = y_of(span, row.open.max(row.close));
     let bottom = y_of(span, row.open.min(row.close)).max(top + MIN_BODY);
     shape
@@ -179,7 +179,7 @@ fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: ValueSpan) -> P
         .close()
 }
 
-fn finish(shape: PathNode, tone: Tone) -> PathNode {
+fn finish(shape: PathBuilder, tone: Tone) -> PathBuilder {
     shape
         .fill(tone.fill())
         .stroke(tone.fill(), WICK_STROKE)

@@ -21,7 +21,7 @@ mod rows;
 mod selection;
 
 pub use patch::{Hunk, Line, LineId, LineKind, Patch};
-pub use selection::Selection;
+pub use selection::DiffSelection;
 
 use model::{DiffRow, model};
 use rows::ROW_INSET;
@@ -29,10 +29,11 @@ use selection::HunkPicker;
 
 /// Diff view: side-by-side or unified rows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DiffView {
-    /// The split diff view.
+    /// The old text is on the left and the new text is on the right, side by side.
     Split,
-    /// The unified diff view.
+    /// The removed and the added lines share one column, in patch order.
     Unified,
 }
 
@@ -80,7 +81,7 @@ struct DiffShape {
     view: DiffView,
     max_rows: usize,
     wrap: bool,
-    selection: Option<Signal<Selection>>,
+    selection: Option<Signal<DiffSelection>>,
 }
 
 /// Builder of a diff view.
@@ -150,7 +151,7 @@ impl DiffBuilder {
     }
 
     /// Binds the selection; a press on a hunk row or a line row updates it.
-    pub const fn select(mut self, selection: Signal<Selection>) -> Self {
+    pub const fn select(mut self, selection: Signal<DiffSelection>) -> Self {
         self.shape.selection = Some(selection);
         self
     }
@@ -175,7 +176,7 @@ impl DiffBuilder {
         let list = virtual_list(rows, move |_, row: &DiffRow| rows::render(row, draw))
             .measured()
             .estimate(18.0)
-            .shrink_to_content()
+            .fit()
             .keyboard(false);
         let top = shape.clone();
         let mut root = container()

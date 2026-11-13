@@ -424,7 +424,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-Page the transcript from outside the list. `.max_scroll_bind` receives the largest scroll offset. Write `scroll_bind` clamped to that value. `.follow` stops at the user's position after a scroll up, and follows again when the view is back at the bottom.
+Page the transcript from outside the list. `.max_scroll` receives the largest scroll offset. Write `scroll_y` clamped to that value. `.follow` stops at the user's position after a scroll up, and follows again when the view is back at the bottom.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -438,8 +438,8 @@ fn tree() -> impl IntoNode {
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
         .fill()
-        .scroll_bind(scroll)
-        .max_scroll_bind(max)
+        .scroll_y(scroll)
+        .max_scroll(max)
         .follow_row(tail);
     let root = container()
         .key(NamedKey::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
@@ -507,14 +507,14 @@ fn main() -> AppResult<()> {
 
 ## Host hooks
 
-These functions work in the terminal host. Outside the terminal host, `suspend` runs its function, and the other functions do nothing.
+These are methods of `sigil::terminal::Terminal::current()`, and they work in the terminal host. Outside the terminal host, `suspend` runs its function, and the other methods do nothing.
 
-| Function | Effect |
+| Call | Effect |
 | --- | --- |
-| `sigil::terminal::suspend(f)` | Restore the terminal, run `f`, then take the screen back. |
-| `sigil::terminal::title(title)` | Set the terminal window title. |
-| `sigil::terminal::bell(note)` | Ring the bell, and send a desktop notification if `note` is `Some`. |
-| `sigil::terminal::focused()` | `true` if the terminal window has focus. |
+| `term.suspend(f)` | Restore the terminal, run `f`, then take the screen back. |
+| `term.title(title)` | Set the terminal window title. |
+| `term.bell(note)` | Ring the bell, and send a desktop notification if `note` is `Some`. |
+| `term.is_focused()` | `true` if the terminal window has focus. |
 | `sigil::exit()` | Exit after this frame, on any host. |
 
 ```rust,no_run
@@ -524,11 +524,12 @@ use sigil::prelude::*;
 
 fn edit() {
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".into());
-    let status = sigil::terminal::suspend(|| std::process::Command::new(editor).status());
+    let term = sigil::terminal::Terminal::current();
+    let status = term.suspend(|| std::process::Command::new(editor).status());
     let note = if matches!(status, Ok(Ok(code)) if code.success()) { "saved" } else { "editor failed" };
-    drop(sigil::terminal::title(note));
-    if !sigil::terminal::focused() {
-        drop(sigil::terminal::bell(Some(note)));
+    drop(term.title(note));
+    if !term.is_focused() {
+        drop(term.bell(note));
     }
 }
 

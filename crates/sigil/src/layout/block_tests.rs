@@ -233,5 +233,6 @@ fn solver_writes_root_and_child_boxes_through_forest() {
     assert!(s.boxed(root).is_some() && s.boxed(child).is_some());
 }
 
+#[cfg(test)]
 #[path = "block_tests/sizing.rs"]
 mod sizing;

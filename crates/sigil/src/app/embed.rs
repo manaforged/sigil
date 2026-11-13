@@ -320,6 +320,7 @@ impl Host {
         self.router.focus()
     }
 
+    /// The tree, the layout engine, and the event router of this host.
     #[cfg(feature = "kittest")]
     pub const fn parts(&mut self) -> (&mut Cx, &LayoutEngine, &mut EventRouter) {
         (&mut self.cx, &self.layout, &mut self.router)

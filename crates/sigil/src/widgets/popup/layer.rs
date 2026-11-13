@@ -1,12 +1,13 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread::LocalKey;
 
 use crate::events::NamedKey;
 use crate::kernel::{FocusScopeKind, Live, NodeBuilder, TopLayer, announce};
 use crate::layout::Display;
 use crate::layout::{Popup, ViewportOverlay};
-use crate::reactive::{Signal, cleanup, effect_named};
+use crate::reactive::{Signal, cleanup, effect_named, signal};
 use crate::style::StyleAtom;
 use crate::widgets::Widget;
 
@@ -65,17 +66,12 @@ impl PopupLayer {
     }
 
     pub(crate) fn register_escape(self) {
-        register_escape(self.show);
+        register_layer(&ESCAPE_LAYERS, self.show);
     }
 
     /// Closes this popup when a press lands outside every popup panel.
     pub(crate) fn register_light(self) {
-        let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
-        let show = self.show;
-        LIGHT_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
-        cleanup(move || {
-            LIGHT_LAYERS.with(|stack| stack.borrow_mut().retain(|layer| layer.id != id));
-        });
+        register_layer(&LIGHT_LAYERS, self.show);
     }
 
     pub(crate) fn announce_open(self, name: &'static str, open: impl Fn() -> String + 'static) {
@@ -93,7 +89,7 @@ impl PopupLayer {
 
 pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
     node.key(NamedKey::Escape, |event| {
-        if close_top_escape() {
+        if close_popup() {
             event.stop_propagation();
         }
     })
@@ -123,6 +119,7 @@ pub(crate) const fn shown_when(show: bool) -> &'static [StyleAtom] {
 pub(crate) struct EscapeLayer {
     id: u64,
     show: Signal<bool>,
+    opened_at: Signal<u64>,
 }
 
 thread_local! {
@@ -143,9 +140,9 @@ pub(crate) fn swap_layers(stacks: Stacks) -> Stacks {
     )
 }
 
-/// Closes every open light popup; false when none was open.
+/// Closes every open light popup in reverse open order; false when none was open.
 pub(crate) fn close_light() -> bool {
-    let open: Vec<EscapeLayer> = LIGHT_LAYERS.with(|stack| {
+    let mut open: Vec<EscapeLayer> = LIGHT_LAYERS.with(|stack| {
         stack
             .borrow()
             .iter()
@@ -153,6 +150,7 @@ pub(crate) fn close_light() -> bool {
             .filter(|layer| layer.show.peek())
             .collect()
     });
+    open.sort_by_key(|layer| std::cmp::Reverse((layer.opened_at.peek(), layer.id)));
     let mut closed = false;
     for layer in &open {
         closed |= hide(layer.show);
@@ -161,30 +159,77 @@ pub(crate) fn close_light() -> bool {
 }
 
 static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);
+static NEXT_OPEN_SEQ: AtomicU64 = AtomicU64::new(1);
 
-fn register_escape(show: Signal<bool>) {
+fn register_layer(stack: &'static LocalKey<RefCell<Vec<EscapeLayer>>>, show: Signal<bool>) {
     let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
-    ESCAPE_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
+    let initial = if show.peek() {
+        NEXT_OPEN_SEQ.fetch_add(1, Ordering::Relaxed)
+    } else {
+        0
+    };
+    let opened_at = signal(initial);
+    let was_open = Cell::new(show.peek());
+    effect_named("sigil::popup::open_order", move || {
+        let open_now = show.get();
+        if open_now && !was_open.replace(open_now) {
+            opened_at.set(NEXT_OPEN_SEQ.fetch_add(1, Ordering::Relaxed));
+        }
+    });
+    stack.with(|layers| {
+        layers.borrow_mut().push(EscapeLayer {
+            id,
+            show,
+            opened_at,
+        });
+    });
     cleanup(move || {
-        ESCAPE_LAYERS.with(|stack| {
-            stack.borrow_mut().retain(|layer| layer.id != id);
+        stack.with(|layers| {
+            layers.borrow_mut().retain(|layer| layer.id != id);
         });
     });
 }
 
-/// Closes the topmost open popup; false when none is open.
+/// Closes the most recently opened popup; false when none is open.
 #[allow(
     clippy::must_use_candidate,
     reason = "closes the top popup; the result is optional"
 )]
-pub fn close_top_escape() -> bool {
+fn close_popup() -> bool {
     ESCAPE_LAYERS.with(|stack| {
         let top = stack
             .borrow()
             .iter()
-            .rev()
             .copied()
-            .find(|layer| layer.show.peek());
+            .filter(|layer| layer.show.peek())
+            .max_by_key(|layer| (layer.opened_at.peek(), layer.id));
         top.is_some_and(|layer| hide(layer.show))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::runtime;
+
+    #[test]
+    fn escape_closes_most_recently_opened_popup_regardless_of_build_order() {
+        runtime("popup-open-order", |_| {
+            let first = signal(false);
+            let second = signal(false);
+            PopupLayer::new(second, PopupAnchor::Top).register_escape();
+            PopupLayer::new(first, PopupAnchor::Top).register_escape();
+
+            first.set(true);
+            second.set(true);
+
+            assert!(close_popup());
+            assert!(first.peek());
+            assert!(!second.peek());
+
+            assert!(close_popup());
+            assert!(!first.peek());
+            assert!(!close_popup());
+        });
+    }
 }

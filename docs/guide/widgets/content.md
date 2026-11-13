@@ -42,7 +42,7 @@ Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contai
 
 ## path
 
-`path(width, height) -> PathNode`: a tiny vector canvas rasterized through tiny-skia into an image. Build with commands:
+`path(width, height) -> PathBuilder`: a tiny vector canvas rasterized through tiny-skia into an image. Build with commands:
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -61,7 +61,7 @@ Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with 
 
 `chart(values: impl IntoIterator<Item = f32>) -> ChartBuilder`. A framed 280×180 bar chart by default.
 
-- `.bar()` / `.line()`: mark type (`ChartMark::Bar` is the default).
+- `.bar()` / `.line()`: mark type (bars are the default).
 - `.tone(Tone)`: recolors the first series.
 - `.labels(iter)`: x-axis category labels.
 - `.series(name, values, tone)`: appends another series; all series share the label axis.

@@ -155,7 +155,7 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     /// Binds the vertical scroll offset of the body in px to `scroll_y`.
-    pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
+    pub const fn scroll_y(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
@@ -294,9 +294,9 @@ fn body_view<Row: 'static>(
     let body = virtual_list(state.visible(), body_row(state, row, chrome, hs))
         .key_by(|_, id| u64::from(*id))
         .row_height(row.row_height)
-        .scroll_x_bind(hs.scroll_x, hs.max, hs.viewport);
+        .scroll_x(hs.scroll_x, hs.max, hs.viewport);
     let body = match spec.scroll_y {
-        Some(scroll_y) => body.scroll_bind(scroll_y),
+        Some(scroll_y) => body.scroll_y(scroll_y),
         None => body,
     };
     let body = match follow {
@@ -308,7 +308,7 @@ fn body_view<Row: 'static>(
         None => body,
     };
     match spec.viewport {
-        Some(height) => body.viewport_height(height).shrink_to_content(),
+        Some(height) => body.viewport_height(height).fit(),
         None => body.fill(),
     }
 }

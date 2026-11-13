@@ -72,7 +72,7 @@ assert_eq!(ui.get((Role::CheckBox, "Agree")).is_checked(), Some(true));
 | `hover(&target)` | a pointer move |
 | `scroll(&target, lines)` | a wheel event over the target |
 | `drag(&from, &to)` | press, four moves with the button held, release |
-| `press(NamedKey::Enter)`, `press_with(key, modifiers)` | key down and up |
+| `press(NamedKey::Enter)`, `press(Shortcut::new(key, modifiers))` | key down and up |
 | `type_text("abc")` | one key per character |
 | `type_into("Name", "Ada")` | a click on the control labelled Name, then the text |
 | `focus_next()`, `focus_previous()` | Tab, Shift+Tab |
@@ -116,7 +116,7 @@ assert!(ui.text().contains("ticks 3"));
 `snapshot("name")` compares the harness output with a committed golden under `tests/goldens/` of the crate that runs the test:
 
 - A cell harness writes the grid text to `<name>.txt`.
-- A pixel harness renders offscreen and compares `<name>.png` within 0.5% of its pixels. `snapshot_with(name, pct)` sets the budget.
+- A pixel harness renders offscreen and compares `<name>.png` within 0.5% of its pixels. `Golden::new(name).delta(pct).assert(ui.image())` sets the budget.
 
 `image()` captures either surface as an RGBA image. A cell harness uses the CPU renderer at 10×20 pixels per cell, with no window, GPU, or terminal process. Save it with `image().unwrap().unwrap().save("terminal.png")`. The capture preserves cell positions, colors, text styles, and cursor position; it does not reproduce a particular terminal application's font rendering. Terminal graphics images return an error. Cell `snapshot()` keeps its existing text-golden behavior; use `Golden::assert_image` on `image()` when a pixel comparison is needed.
 

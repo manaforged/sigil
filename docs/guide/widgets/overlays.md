@@ -62,18 +62,18 @@ modal(open)
 
 ## command_menu
 
-`command_menu()`: a nested, keyboard-driven menu (`Role::Menu`, "Command Menu"), not a search palette. Build a tree of entries:
+`command_menu()`: a nested, keyboard-driven command menu (`Role::Menu`, "Command Menu") that filters and ranks items as you type. Build a tree of entries:
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 command_menu()
-    .item("New file", || { /* ... */ })
+    .item(MenuItem::new("New file").activate(|| { /* ... */ }))
     .submenu("Export", |sub| {
-        sub.item("PNG", || { /* ... */ })
-            .item("SVG", || { /* ... */ })
+        sub.item(MenuItem::new("PNG").activate(|| { /* ... */ }))
+            .item(MenuItem::new("SVG").activate(|| { /* ... */ }))
     })
-    .disabled("Print")
+    .item(MenuItem::new("Print").disabled(true))
     .submit(|label| tracing::info!(label, "ran"))
     .cancel(|| tracing::info!("cancelled"));
 # };
@@ -93,7 +93,7 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 `toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. You own the timeout.
 
-`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append a `ToastEntry`. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
+`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append an entry. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
 
 ## hint_overlay
 

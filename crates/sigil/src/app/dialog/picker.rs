@@ -9,7 +9,7 @@ use crate::layout::LayoutStyle;
 use crate::layout::rows;
 use crate::reactive::{Signal, effect_named, signal};
 use crate::widgets::{Layout, Widget};
-use crate::widgets::{ListRowSlots, button, list_row, modal, text_field, virtual_list};
+use crate::widgets::{button, list_row, modal, text_field, virtual_list};
 
 use super::entries::{EntryKind, FileEntry, list, start_dir};
 use super::layer::{Answer, Finish};
@@ -172,13 +172,7 @@ fn entry_row(cursor: Signal<usize>, index: usize, entry: &FileEntry) -> crate::k
     container()
         .layout(LayoutStyle::flex_column().fill_width())
         .pointer_down(move |_| cursor.set(index))
-        .children_reactive(move || {
-            [list_row(
-                cursor.get() == index,
-                title.clone(),
-                ListRowSlots::default(),
-            )]
-        })
+        .children_reactive(move || [list_row(title.clone()).selected(cursor.get() == index)])
 }
 
 pub(super) fn alert_view(

@@ -18,15 +18,15 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 /// One menu entry.
 #[derive(Clone)]
 pub struct MenuItem {
-    /// The label.
-    pub label: String,
-    /// The hint text, if any.
-    pub hint: Option<String>,
-    /// Whether disabled.
-    pub disabled: bool,
-    /// Whether submenu indicator.
-    pub submenu_indicator: bool,
-    pub(super) on_activate: Option<Rc<dyn Fn()>>,
+    /// The text that the entry shows.
+    pub(crate) label: String,
+    /// The shortcut text shown in the entry; `None` shows none.
+    pub(crate) hint: Option<String>,
+    /// Whether the entry is disabled.
+    pub(crate) disabled: bool,
+    /// Whether the entry shows a chevron to mark that it opens a submenu; false by default.
+    pub(crate) submenu_indicator: bool,
+    pub(crate) on_activate: Option<Rc<dyn Fn()>>,
 }
 
 impl std::fmt::Debug for MenuItem {
@@ -103,7 +103,7 @@ pub fn menu(open: Signal<bool>) -> MenuBuilder {
 
 impl MenuBuilder {
     /// Creates a popup menu that is shown while `open` is true.
-    pub fn new(open: Signal<bool>) -> Self {
+    pub(crate) fn new(open: Signal<bool>) -> Self {
         Self {
             open,
             host: Owner::current(),

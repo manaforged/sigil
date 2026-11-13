@@ -7,21 +7,16 @@ mod engine_segmentation {
     use super::*;
 
     fn engine() -> OwnedTextEngine {
-        OwnedTextEngine::new(TextStyle {
-            font_size: 16.0,
-            ..TextStyle::default()
-        })
+        OwnedTextEngine::new(TextStyle::default().font_size(16.0))
     }
 
     fn style_at(size: f32) -> TextStyle {
-        TextStyle {
-            font_family: String::from("system-ui"),
-            font_size: size,
-            font_weight: 400,
-            line_height: TextLineHeight::FontSizeRelative(1.2),
-            letter_spacing_em: 0.0,
-            ..Default::default()
-        }
+        TextStyle::default()
+            .font_family("system-ui")
+            .font_size(size)
+            .font_weight(400)
+            .line_height(TextLineHeight::FontSizeRelative(1.2))
+            .letter_spacing_em(0.0)
     }
 
     #[test]
@@ -319,14 +314,8 @@ mod engine_segmentation {
     #[test]
     fn mono_family_uses_different_face_than_sans() {
         let e = engine();
-        let sans_style = TextStyle {
-            font_family: String::from("sans"),
-            ..style_at(16.0)
-        };
-        let mono_style = TextStyle {
-            font_family: String::from("mono"),
-            ..style_at(16.0)
-        };
+        let sans_style = style_at(16.0).font_family("sans");
+        let mono_style = style_at(16.0).font_family("mono");
         let sans = e
             .layout_paragraph_styled("iiii", None, &sans_style)
             .unwrap();
@@ -344,14 +333,8 @@ mod engine_segmentation {
     #[test]
     fn unknown_family_falls_back_to_sans() {
         let e = engine();
-        let unknown_style = TextStyle {
-            font_family: String::from("does-not-exist"),
-            ..style_at(16.0)
-        };
-        let sans_style = TextStyle {
-            font_family: String::from("sans"),
-            ..style_at(16.0)
-        };
+        let unknown_style = style_at(16.0).font_family("does-not-exist");
+        let sans_style = style_at(16.0).font_family("sans");
         let unknown = e
             .layout_paragraph_styled("hello", None, &unknown_style)
             .unwrap();

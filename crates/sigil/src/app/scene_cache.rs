@@ -54,9 +54,9 @@ impl SceneCache {
             && self.key == Some(key)
             && self.built_backdrop == self.backdrop
         {
-            crate::profile::count(Counter::SceneReplay);
+            crate::profile::count(Counter::SceneReplay, 1);
         } else {
-            crate::profile::count(Counter::SceneEmit);
+            crate::profile::count(Counter::SceneEmit, 1);
             self.rebuild(cx, (root, viewport, key), delta);
             #[cfg(test)]
             {
@@ -192,9 +192,9 @@ fn note_scene(scene: &CommandScene) {
             _ => {}
         }
     }
-    crate::profile::count_add(Counter::SceneGlyphs, glyphs);
-    crate::profile::count_add(Counter::SceneRects, rects);
-    crate::profile::count_add(Counter::SceneImages, images);
+    crate::profile::count(Counter::SceneGlyphs, glyphs);
+    crate::profile::count(Counter::SceneRects, rects);
+    crate::profile::count(Counter::SceneImages, images);
 }
 
 pub(super) struct PaintRequest<'a> {

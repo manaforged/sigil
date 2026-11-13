@@ -47,7 +47,7 @@ fn prepending_items_keeps_the_top_visible_item_in_place() {
                 .measured()
                 .estimate(48.0)
                 .key_by(|_, id: &u64| *id)
-                .scroll_bind(scroll)
+                .scroll_y(scroll)
                 .fill(),
             )
         })

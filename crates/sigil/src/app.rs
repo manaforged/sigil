@@ -69,7 +69,7 @@ pub use crate::text::load_font_url;
 #[doc(hidden)]
 pub use crate::text::web_fallbacks;
 #[cfg(feature = "scene")]
-pub use crate::text::{WebFont, WebFontScript, set_web_fallbacks};
+pub use crate::text::{WebFont, WebFontScript};
 #[cfg(feature = "audio")]
 pub use audio::Player;
 #[cfg(feature = "terminal")]
@@ -96,9 +96,7 @@ pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
-pub use frame::{
-    FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
-};
+pub use frame::{Frame, FrameHooks, FrameInputHook, FrameLayoutHook, FramePaintHook};
 pub(crate) use host_env::HostCaps;
 pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]

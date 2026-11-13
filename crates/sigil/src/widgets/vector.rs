@@ -11,7 +11,7 @@ use crate::scene::command::{
     DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::geometry::IDENTITY;
-use crate::style::{Color, ColorAtom, Theme};
+use crate::style::{Color, ColorValue, Theme};
 use crate::widgets::Layout;
 use crate::widgets::layout_ext::LayoutOverrides;
 
@@ -26,12 +26,12 @@ type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 
 /// Builder of a vector path.
 #[derive(Debug)]
-pub struct PathNode {
+pub struct PathBuilder {
     width: u32,
     height: u32,
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
-    stroke: Option<(ColorAtom, f32)>,
+    stroke: Option<(ColorValue, f32)>,
     rule: FillRule,
     cap: Option<StrokeCap>,
     join: Option<StrokeJoin>,
@@ -43,8 +43,8 @@ pub struct PathNode {
 
 /// A vector path.
 #[must_use]
-pub const fn path(width: u32, height: u32) -> PathNode {
-    PathNode {
+pub const fn path(width: u32, height: u32) -> PathBuilder {
+    PathBuilder {
         width,
         height,
         cmds: Vec::new(),
@@ -60,7 +60,7 @@ pub const fn path(width: u32, height: u32) -> PathNode {
     }
 }
 
-impl PathNode {
+impl PathBuilder {
     /// Starts a new subpath at this point.
     #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
@@ -102,7 +102,7 @@ impl PathNode {
 
     /// Sets a solid fill.
     #[must_use]
-    pub fn fill(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn fill(mut self, color: impl Into<ColorValue>) -> Self {
         self.fill = Some(PathFill::Solid(color.into()));
         self
     }
@@ -144,7 +144,7 @@ impl PathNode {
 
     /// Strokes the path in `color` with a line of `width`.
     #[must_use]
-    pub fn stroke(mut self, color: impl Into<ColorAtom>, width: f32) -> Self {
+    pub fn stroke(mut self, color: impl Into<ColorValue>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }
@@ -295,7 +295,7 @@ fn fixed(width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block().fixed_size(width, height).shrink(0.0)
 }
 
-builder_impls!([] PathNode: widget, node(pub(crate)));
+builder_impls!([] PathBuilder: widget, node(pub(crate)));
 
 #[cfg(test)]
 #[path = "vector_tests.rs"]

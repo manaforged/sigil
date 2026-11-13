@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use accesskit::TreeUpdate;
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInfo, FramePaintHook};
+use sigil::app::{Frame, FrameHooks, FramePaintHook};
 use sigil::events::Event;
 use sigil::prelude::*;
 use sigil::profile::{self, Backend, BackendStatus, FallbackCause};
@@ -55,10 +55,7 @@ impl HarnessSurface {
     const fn backend(&self) -> BackendStatus {
         match self {
             Self::Cells { .. } => BackendStatus::TERMINAL,
-            Self::Pixels { fallback, .. } => BackendStatus {
-                kind: Backend::Cpu,
-                fallback: *fallback,
-            },
+            Self::Pixels { fallback, .. } => BackendStatus::new(Backend::Cpu, *fallback),
             Self::Gpu(_) => GPU_STATUS,
         }
     }
@@ -76,26 +73,7 @@ pub struct Harness {
 }
 
 impl Harness {
-    /// Runs one terminal frame of a tree and returns the screen text.
-    pub fn present<N: IntoNode>(
-        tree: impl Fn() -> N + 'static,
-        cols: u16,
-        rows: u16,
-        events: &[Event],
-    ) -> Result<String, Error> {
-        Owner::scope("sigil-terminal-present", || {
-            let mut host = Host::new(sigil::kernel::HostMode::Cell);
-            host.mount(tree);
-            host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))
-                .map_err(|err| Error::caused(ErrorKind::Layout, err))?;
-            host.repair_focus();
-            let grid = host
-                .grid(events.iter().cloned(), cols, rows)
-                .map_err(|err| Error::caused(ErrorKind::Render, err))?;
-            Ok(grid.text())
-        })
-    }
-
+    /// Mounts `app` on an 80 by 24 terminal surface; the first step runs the first frame.
     #[must_use]
     pub fn new(app: impl IntoNode + 'static) -> Self {
         let clock = Instant::now();
@@ -120,6 +98,7 @@ impl Harness {
         }
     }
 
+    /// Uses a terminal surface of `cols` by `rows` cells.
     #[must_use]
     pub fn size(mut self, cols: u16, rows: u16) -> Self {
         self.host = Host::new(sigil::kernel::HostMode::Cell);
@@ -127,6 +106,7 @@ impl Harness {
         self
     }
 
+    /// Uses a pixel surface of `width` by `height` logical pixels; `image` renders it and needs a GPU adapter.
     #[must_use]
     pub fn pixels(mut self, width: u32, height: u32) -> Self {
         self.host = Host::new(sigil::kernel::HostMode::Pixel);
@@ -138,31 +118,37 @@ impl Harness {
         self
     }
 
-    /// Sets the device scale of a pixel harness; its image is the logical size times this.
+    /// Sets the device scale of a pixel or GPU surface; its image is the logical size times this.
     #[must_use]
     #[track_caller]
     pub fn scale(mut self, device_scale: f32) -> Self {
         match &mut self.surface {
             HarnessSurface::Pixels { scale, .. } => *scale = device_scale,
-            HarnessSurface::Cells { .. } => fail("scale needs a pixel harness: call pixels first"),
-            HarnessSurface::Gpu(_) => {
-                fail("a gpu harness takes its scale in gpu(width, height, scale)")
+            HarnessSurface::Gpu(gpu) => {
+                gpu.rescale(device_scale);
+                if self.pending.is_none() {
+                    gpu.paint(&mut self.host);
+                }
+            }
+            HarnessSurface::Cells { .. } => {
+                fail("scale needs a pixel surface: call pixels or gpu first")
             }
         }
         self
     }
 
+    /// Uses a GPU surface of `width` by `height` logical pixels, or the pixel surface when no adapter exists.
     #[must_use]
-    pub fn gpu(mut self, width: u32, height: u32, scale: f32) -> Self {
+    pub fn gpu(mut self, width: u32, height: u32) -> Self {
         self.host = Host::new(sigil::kernel::HostMode::Pixel);
-        let opened = GpuSurface::open(width, height, scale);
+        let opened = GpuSurface::open(width, height);
         if let Some(gpu) = opened.unwrap_or_else(|err| fail(err.chain())) {
             self.surface = HarnessSurface::Gpu(Box::new(gpu));
         } else {
             eprintln!("sigil-kittest: no GPU adapter; gpu surface falls back to pixels");
             self.surface = HarnessSurface::Pixels {
                 size: (width, height),
-                scale,
+                scale: 1.0,
                 fallback: FallbackCause::NoAdapter,
             };
         }
@@ -191,7 +177,7 @@ impl Harness {
         let owner = self.owner;
         profile::begin_frame(self.surface.backend());
         let painted = owner.with(|| self.paint(events, dt));
-        profile::tick_frame();
+        profile::end_frame();
         painted
     }
 
@@ -206,16 +192,16 @@ impl Harness {
             }
             HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
-                self.host.frame(viewport, dt, hooks(events, None)).layout
+                self.host.frame(viewport, dt, hooks(events, None)).layout()
             }
             HarnessSurface::Gpu(gpu) => {
                 let viewport = gpu.viewport;
                 let paint: FramePaintHook<'_> =
-                    Box::new(|host: &mut Host, _: &FrameInfo| gpu.paint(host));
+                    Box::new(|host: &mut Host, _: &Frame| gpu.paint(host));
                 let layout = self
                     .host
                     .frame(viewport, dt, hooks(events, Some(paint)))
-                    .layout;
+                    .layout();
                 gpu.take_error()?;
                 layout
             }
@@ -228,6 +214,7 @@ impl Harness {
         crate::settle::settle(busy, || self.frame_at(Vec::new(), settle_dt()))
     }
 
+    /// Routes `events` in one frame, then runs frames until the UI settles.
     #[track_caller]
     pub fn send(&mut self, events: impl IntoIterator<Item = Event>) -> &mut Self {
         let events = events.into_iter().collect();
@@ -237,11 +224,13 @@ impl Harness {
         self
     }
 
+    /// Runs frames until no signal write and no animation asks for another frame.
     #[track_caller]
     pub fn settle(&mut self) -> &mut Self {
         self.send([])
     }
 
+    /// Moves the test clock forward by `by`, one frame at a time, so timers and animations run.
     #[track_caller]
     pub fn advance(&mut self, by: Duration) -> &mut Self {
         self.live();
@@ -281,6 +270,7 @@ impl Harness {
         }
     }
 
+    /// The screen text of a terminal surface, or the accessibility snapshot of a pixel surface.
     #[must_use]
     pub fn text(&mut self) -> String {
         if let HarnessSurface::Cells { screen, .. } = &self.live().surface {
@@ -289,17 +279,20 @@ impl Harness {
         self.accessibility_snapshot()
     }
 
+    /// The accessibility tree as indented text, one node per line.
     #[must_use]
     pub fn accessibility_snapshot(&mut self) -> String {
         sigil::a11y::snapshot(&self.accessibility_tree())
     }
 
+    /// The accessibility tree that a screen reader receives.
     #[must_use]
     pub fn accessibility_tree(&mut self) -> TreeUpdate {
         self.live();
         self.host.accessibility_tree()
     }
 
+    /// The host that runs the app, for a check that the steps above cannot make.
     pub fn host(&mut self) -> &mut Host {
         self.live();
         &mut self.host
@@ -344,17 +337,17 @@ pub(crate) fn fail(message: impl std::fmt::Display) -> ! {
 }
 
 fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_> {
-    FrameHooks {
-        input: Some(Box::new(move |host: &mut Host| {
-            let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
-            for event in events {
-                sigil::profile::note_input(&event);
-                host.route(event);
-            }
-            None
-        })),
-        paint,
-        ..FrameHooks::default()
+    let hooks = FrameHooks::default().input(move |host: &mut Host| {
+        let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
+        for event in events {
+            sigil::profile::note_input(&event);
+            host.route(event);
+        }
+        None
+    });
+    match paint {
+        Some(paint) => hooks.paint(paint),
+        None => hooks,
     }
 }
 

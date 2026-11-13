@@ -4,6 +4,7 @@ use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, Transition
 use crate::animation::runtime::config::AnimationConfig;
 
 kittest_pub! {
+    /// The ids of the built-in transitions.
     pub mod presets {
         use crate::style::TransitionId;
 
@@ -14,6 +15,7 @@ kittest_pub! {
         pub(crate) const STIFF: TransitionId = TransitionId(4);
         pub(crate) const FAST: TransitionId = TransitionId(16);
         kittest_pub! {
+            /// The default transition: 200 ms, ease in and out.
             pub const DEFAULT: TransitionId = TransitionId(17);
         }
         pub(crate) const SLOW: TransitionId = TransitionId(18);
@@ -22,6 +24,7 @@ kittest_pub! {
         pub(crate) const OPACITY: TransitionId = TransitionId(21);
         pub(crate) const TRANSFORM: TransitionId = TransitionId(22);
         kittest_pub! {
+            /// The transition that animates every property.
             pub const ALL: TransitionId = TransitionId(23);
         }
     }

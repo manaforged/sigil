@@ -238,7 +238,6 @@ impl ListModel for Combobox {
 }
 
 /// A text input with a filtered list.
-#[must_use]
 pub fn combobox(state: Combobox) -> NodeBuilder {
     let placeholder = state.placeholder.peek();
     let label = if placeholder.is_empty() {
@@ -277,7 +276,7 @@ fn build_field(state: Combobox) -> TextFieldBuilder {
     };
     field
         .placeholder(state.placeholder)
-        .blur(move || ListModel::blur(&state))
+        .focus_out(move || ListModel::blur(&state))
         .height(FIELD_HEIGHT)
         .change(move |text| state.edit(text))
         .submit(move |_| {

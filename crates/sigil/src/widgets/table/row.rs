@@ -281,7 +281,7 @@ fn select_pointer<Row: 'static>(
         }
         if event.button == Some(MouseButton::Right) {
             if !state.selection().peek().contains(&row_index) {
-                state.select_only(row_index);
+                state.select(row_index);
             }
             chrome.open(
                 ContextKind::Row(row_index),
@@ -298,11 +298,11 @@ fn select_pointer<Row: 'static>(
         }
         let modifiers = event.modifiers;
         if modifiers.shift() {
-            state.select_range_to(row_index);
+            state.extend(row_index);
         } else if modifiers.ctrl() || modifiers.meta() {
-            state.toggle_selected(row_index);
+            state.toggle(row_index);
         } else {
-            state.select_only(row_index);
+            state.select(row_index);
             chrome.activate(&state, row_index);
         }
         event.stop_propagation();

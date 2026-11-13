@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
-use crate::reactive::{Owner, Signal, signal};
+use crate::reactive::{Owner, Signal, effect, memo, signal};
 use crate::style::{ControlSize, Metrics};
 use crate::widgets::{Layout, Widget};
 
@@ -20,14 +20,18 @@ pub(super) enum ContextKind {
     Row(u32),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct OpenContext {
+    kind: ContextKind,
+    pos: (f32, f32),
+}
+
 pub(super) type RowMenu<Row> = Rc<dyn Fn(&Row) -> Vec<MenuItem>>;
 pub(super) type RowActivate<Row> = Rc<dyn Fn(&Row)>;
 
 pub(super) struct TableChrome<Row: 'static> {
-    pub open: Signal<bool>,
-    pub pos: Signal<(f32, f32)>,
+    pub context: Signal<Option<OpenContext>>,
     pub bounds: Signal<(f32, f32, f32, f32)>,
-    pub kind: Signal<Option<ContextKind>>,
     pub row_menu: Option<RowMenu<Row>>,
     pub row_activate: Option<RowActivate<Row>>,
     pub host: Option<Owner>,
@@ -37,10 +41,8 @@ pub(super) struct TableChrome<Row: 'static> {
 impl<Row: 'static> Clone for TableChrome<Row> {
     fn clone(&self) -> Self {
         Self {
-            open: self.open,
-            pos: self.pos,
+            context: self.context,
             bounds: self.bounds,
-            kind: self.kind,
             row_menu: self.row_menu.clone(),
             row_activate: self.row_activate.clone(),
             host: self.host,
@@ -55,10 +57,8 @@ impl<Row: 'static> TableChrome<Row> {
         row_activate: Option<RowActivate<Row>>,
     ) -> Self {
         Self {
-            open: signal(false),
-            pos: signal((0.0, 0.0)),
+            context: signal(None),
             bounds: signal((0.0, 0.0, 0.0, 0.0)),
-            kind: signal(None),
             row_menu,
             row_activate,
             host: Owner::current(),
@@ -76,9 +76,10 @@ impl<Row: 'static> TableChrome<Row> {
     }
 
     pub(super) fn open(&self, kind: ContextKind, pos: impl Into<(f32, f32)>) {
-        self.kind.set(Some(kind));
-        self.pos.set(pos.into());
-        self.open.set(true);
+        self.context.set(Some(OpenContext {
+            kind,
+            pos: pos.into(),
+        }));
     }
 }
 
@@ -86,6 +87,7 @@ pub(super) fn context_overlay<Row: 'static>(
     state: TableState<Row>,
     chrome: TableChrome<Row>,
 ) -> NodeBuilder {
+    let visible = memo(move || chrome.context.get().is_some());
     container()
         .layout(
             LayoutStyle::block()
@@ -95,43 +97,52 @@ pub(super) fn context_overlay<Row: 'static>(
                 .fill_width()
                 .fill_height(),
         )
-        .visible(chrome.open)
-        .children_reactive(move || {
-            if !chrome.open.get() {
-                return Vec::new();
-            }
-            let (x, y) = chrome.pos.get();
-            let Some(kind) = chrome.kind.get() else {
-                return Vec::new();
-            };
-            let items = match kind {
-                ContextKind::Header(id) => header_menu(&state, id),
-                ContextKind::Row(index) => row_menu_items(&state, &chrome, index),
-            };
-            if items.is_empty() {
-                return Vec::new();
-            }
-            let (left, top, width, height) = chrome.bounds.get();
-            let menu_width = width.min(200.0);
-            let item_height = Metrics::current().control_height(ControlSize::Default);
-            let menu_height = items
-                .iter()
-                .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
-            let x = (x - left).clamp(0.0, (width - menu_width).max(0.0));
-            let y = (y - top).clamp(0.0, (height - menu_height).max(0.0));
-            let mut panel = menu(chrome.open);
-            if let Some(host) = chrome.host {
-                panel = panel.host(host);
-            }
-            let mut panel = panel
-                .label(theme_string(StringKey::TableMenu))
-                .anchor(x, y)
-                .width(menu_width);
-            for item in items {
-                panel = panel.item(item);
-            }
-            vec![panel]
-        })
+        .visible(visible)
+        .children_reactive(move || build_context_menu(&state, &chrome))
+}
+
+fn build_context_menu<Row: 'static>(
+    state: &TableState<Row>,
+    chrome: &TableChrome<Row>,
+) -> Vec<crate::widgets::MenuBuilder> {
+    let Some(ctx) = chrome.context.get() else {
+        return Vec::new();
+    };
+    let (x, y) = ctx.pos;
+    let items = match ctx.kind {
+        ContextKind::Header(id) => header_menu(state, id),
+        ContextKind::Row(index) => row_menu_items(state, chrome, index),
+    };
+    if items.is_empty() {
+        return Vec::new();
+    }
+    let (left, top, width, height) = chrome.bounds.get();
+    let menu_width = width.min(200.0);
+    let item_height = Metrics::current().control_height(ControlSize::Default);
+    let menu_height = items
+        .iter()
+        .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
+    let x = (x - left).clamp(0.0, (width - menu_width).max(0.0));
+    let y = (y - top).clamp(0.0, (height - menu_height).max(0.0));
+    let menu_open = signal(true);
+    let context = chrome.context;
+    effect(move || {
+        if !menu_open.get() {
+            context.set(None);
+        }
+    });
+    let mut panel = menu(menu_open);
+    if let Some(host) = chrome.host {
+        panel = panel.host(host);
+    }
+    let mut panel = panel
+        .label(theme_string(StringKey::TableMenu))
+        .anchor(x, y)
+        .width(menu_width);
+    for item in items {
+        panel = panel.item(item);
+    }
+    vec![panel]
 }
 
 fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<MenuItem> {

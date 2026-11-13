@@ -37,8 +37,8 @@ pub(crate) fn sidebar_demo() -> NodeBuilder {
                 .padding(Space::Sm)
                 .gap(Space::Xxs)
                 .child(section_label("Widgets"))
-                .child(list_row(true, "Controls", ListRowSlots::default()))
-                .child(list_row(false, "Inputs", ListRowSlots::default())),
+                .child(list_row("Controls").selected(true))
+                .child(list_row("Inputs")),
         ))
 }
 

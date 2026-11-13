@@ -1,3 +1,4 @@
+use crate::scene_support::median;
 use std::time::Instant;
 
 use sigil::geometry::{Point, Rect};
@@ -94,11 +95,6 @@ fn frame(renderer: &mut WgpuRenderer, scene: &CommandScene) -> f64 {
     let [w, h] = capture.size_px();
     std::hint::black_box(read_pixels(device, queue, &texture, w, h).expect("readback"));
     start.elapsed().as_secs_f64() * 1e3
-}
-
-fn median(values: &mut [f64]) -> f64 {
-    values.sort_by(f64::total_cmp);
-    values[values.len() / 2]
 }
 
 #[test]

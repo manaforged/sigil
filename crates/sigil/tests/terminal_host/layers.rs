@@ -107,7 +107,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                     .collect::<Vec<_>>()
             }))
             .fill()
-            .scroll_bind(knobs.offset),
+            .scroll_y(knobs.offset),
         )
 }
 
@@ -130,7 +130,7 @@ fn frames(steps: &[Step], full: bool) -> Vec<String> {
         let mut size = (48_u16, 16_u16);
         let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(shared));
-        let mut screen = Side::mounted(host, size, Access::default().status);
+        let mut screen = Side::mounted(host, size, Access::default());
         for _ in 0..2 {
             screen.frame(Vec::new(), size, full);
         }

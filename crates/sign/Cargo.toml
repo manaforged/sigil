@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+documentation = "https://docs.rs/sigil-sign"
 authors.workspace = true
 description = "App bundle and minisign signing for Sigil release packages."
 readme = "README.md"

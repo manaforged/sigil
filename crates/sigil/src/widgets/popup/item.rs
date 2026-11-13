@@ -33,7 +33,6 @@ impl ItemSlots {
     }
 }
 
-#[must_use]
 pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder {
     let disabled = slots.disabled;
     let mut row = container()
@@ -124,7 +123,6 @@ pub(crate) fn chevron(direction: ChevronDirection, size: f32) -> impl IntoNode {
     shape.stroke(Tone::Neutral.solid(), 1.6).fit_size(size)
 }
 
-#[must_use]
 pub(crate) fn footer(actions: Vec<Box<dyn IntoNode>>, inset_end: f32) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()

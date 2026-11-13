@@ -6,26 +6,71 @@ use sigil::style::Rgba;
 use crate::gpu::{Capture, read_pixels, render_capture};
 use crate::{Error, ErrorKind};
 
+/// The largest per-channel difference, out of 255, at which `diff` still counts a pixel as close.
 pub const CLOSE_TOLERANCE: u8 = 48;
+/// The largest mean channel difference, out of 255, that the parity tests accept between the CPU and GPU renderers.
 pub const MAX_MEAN_DIFF: f32 = 20.0;
+/// The smallest fraction of close pixels, from 0 to 1, that the parity tests accept between the CPU and GPU renderers.
 pub const MIN_CLOSE_FRACTION: f32 = 0.85;
 
 /// One scene and the target that both renderers draw it into.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub struct Frame<'a> {
-    pub scene: &'a CommandScene,
-    pub viewport: (f32, f32),
-    pub size: PhysicalSize,
-    pub clear: Rgba,
+    scene: &'a CommandScene,
+    viewport: (f32, f32),
+    size: PhysicalSize,
+    clear: Rgba,
 }
 
-impl Frame<'_> {
+impl<'a> Frame<'a> {
+    /// Creates a frame target for comparing CPU and GPU renders.
+    #[must_use]
+    pub const fn new(
+        scene: &'a CommandScene,
+        viewport: (f32, f32),
+        size: PhysicalSize,
+        clear: Rgba,
+    ) -> Self {
+        Self {
+            scene,
+            viewport,
+            size,
+            clear,
+        }
+    }
+
+    /// The scene to draw.
+    #[must_use]
+    pub const fn scene(&self) -> &'a CommandScene {
+        self.scene
+    }
+
+    /// The logical viewport as width and height.
+    #[must_use]
+    pub const fn viewport(&self) -> (f32, f32) {
+        self.viewport
+    }
+
+    /// The size of the output in pixels.
+    #[must_use]
+    pub const fn size(&self) -> PhysicalSize {
+        self.size
+    }
+
+    /// The color the target is cleared to before drawing.
+    #[must_use]
+    pub const fn clear(&self) -> Rgba {
+        self.clear
+    }
+
     #[allow(clippy::cast_precision_loss)]
     fn scale(&self) -> f32 {
         self.size.width as f32 / self.viewport.0.max(1.0)
     }
 }
 
+/// Draws the frame with the CPU renderer and returns straight-alpha RGBA bytes, four per pixel; `Err` has kind `ErrorKind::Render`.
 pub fn cpu_rgba(renderer: &mut CpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>, Error> {
     let pixmap = renderer
         .render(frame.scene, frame.clear, frame.viewport, frame.size)
@@ -38,6 +83,7 @@ pub fn cpu_rgba(renderer: &mut CpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>
     Ok(rgba)
 }
 
+/// Draws the frame with the GPU renderer and reads back four bytes per pixel; `Err` of kind `ErrorKind::Device` means the renderer has no device or queue.
 pub fn gpu_rgba(renderer: &mut WgpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8>, Error> {
     let device = renderer
         .device()
@@ -60,12 +106,44 @@ pub fn gpu_rgba(renderer: &mut WgpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8
     )
 }
 
+/// How far two RGBA images differ, as measured by `diff`.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Diff {
-    pub mean: f32,
-    pub close: f32,
+    mean: f32,
+    close: f32,
 }
 
+impl Diff {
+    /// The mean absolute difference of the red, green, and blue channels, out of 255.
+    #[must_use]
+    pub const fn mean(self) -> f32 {
+        self.mean
+    }
+
+    /// The fraction of pixels, from 0 to 1, whose red, green, and blue channels each differ by at most `CLOSE_TOLERANCE`.
+    #[must_use]
+    pub const fn close(self) -> f32 {
+        self.close
+    }
+
+    /// Whether the difference is inside `MAX_MEAN_DIFF` and `MIN_CLOSE_FRACTION`.
+    #[must_use]
+    pub fn is_close(self) -> bool {
+        self.mean <= MAX_MEAN_DIFF && self.close >= MIN_CLOSE_FRACTION
+    }
+
+    /// Fails unless the difference is inside `MAX_MEAN_DIFF` and `MIN_CLOSE_FRACTION`.
+    #[track_caller]
+    pub fn assert_close(self) {
+        assert!(
+            self.is_close(),
+            "cpu and gpu differ: {self:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
+        );
+    }
+}
+
+/// Compares two RGBA byte buffers pixel by pixel over their common length, ignoring alpha.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn diff(a: &[u8], b: &[u8]) -> Diff {
@@ -91,6 +169,7 @@ pub fn diff(a: &[u8], b: &[u8]) -> Diff {
     }
 }
 
+/// Shrinks the index set `0..len` by removing chunks while `fails` still returns true for what remains, and returns the indices that could not be removed.
 pub fn minimize(len: usize, mut fails: impl FnMut(&[usize]) -> bool) -> Vec<usize> {
     let mut kept: Vec<usize> = (0..len).collect();
     let mut chunk = kept.len().div_ceil(2).max(1);
@@ -119,7 +198,9 @@ pub fn minimize(len: usize, mut fails: impl FnMut(&[usize]) -> bool) -> Vec<usiz
     }
 }
 
+/// Checks that the CPU renderer draws `scene` at the target size with valid premultiplied pixels and the same bytes on a repeat and on a fresh renderer; `Err` holds the reason.
 pub fn check_cpu(scene: &crate::scene_gen::GeneratedScene) -> Result<(), String> {
+    let _text = sigil::renderer::lock_global_text_state();
     let commands = scene.scene();
     let size = scene.physical();
     let render = |renderer: &mut CpuRenderer| {

@@ -28,8 +28,8 @@ mod hook;
 pub(crate) use frame::paint_frame;
 pub(crate) use hook::HookGuard;
 
-pub use above::print_above;
-pub use calibrate::calibrate;
+pub(crate) use above::print_above;
+pub(crate) use calibrate::calibrate;
 pub(crate) use calibrate::{Calibration, ProbeRow};
 #[cfg(unix)]
 pub(crate) use calibrate::{measure, query as calibration};
@@ -234,7 +234,7 @@ fn modify_keys_sequence(keyboard: Keyboard, wanted: bool) -> &'static str {
 
 /// The capabilities the terminal host probed when it entered raw mode, for the current thread.
 #[must_use]
-pub fn caps() -> Option<Capabilities> {
+pub(crate) fn caps() -> Option<Capabilities> {
     CAPS.with(Cell::get)
 }
 
@@ -310,7 +310,7 @@ pub(crate) fn set_focused(yes: bool) {
 }
 
 /// Leaves terminal mode, runs `run`, and returns to terminal mode.
-pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
+pub(crate) fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
     if !live() {
         return Ok(run());
     }
@@ -326,7 +326,7 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
 }
 
 /// Sets the terminal title; it is written at once when the terminal host is live.
-pub fn title(title: &str) -> Result<(), crate::Error> {
+pub(crate) fn title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
     if applied() {
         write_title(title)?;
@@ -344,7 +344,7 @@ pub(crate) fn applied() -> bool {
 }
 
 /// Sets how much mouse movement the terminal reports.
-pub fn mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
+pub(crate) fn mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
     MOUSE.with(|mouse| mouse.set(tracking));
     if applied() {
         write_mouse(&mut io::stdout(), tracking)?;
@@ -360,7 +360,7 @@ fn write_mouse(out: &mut impl Write, tracking: MouseTracking) -> io::Result<()> 
 
 /// Returns whether the terminal has focus.
 #[must_use]
-pub fn focused() -> bool {
+pub(crate) fn focused() -> bool {
     FOCUSED.with(Cell::get)
 }
 

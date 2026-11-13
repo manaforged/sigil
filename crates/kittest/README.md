@@ -94,7 +94,7 @@ The offscreen target clears to opaque black.
 
 ## Profile a scenario
 
-`Harness::gpu(width, height, scale)` paints each frame through the GPU renderer and waits for the GPU. Every harness frame is a profile frame, so `sigil::profile::summary()` reports layout, emit, submit, and GPU time, plus a `why` section that names the nodes, layers, and repaints behind the cost.
+`Harness::gpu(width, height)` paints each frame through the GPU renderer and waits for the GPU. Every harness frame is a profile frame, so `sigil::profile::summary()` reports layout, emit, submit, and GPU time, plus a `why` section that names the nodes, layers, and repaints behind the cost.
 
 ```sh
 cargo bench -p sigil-kittest --bench frame_scenarios

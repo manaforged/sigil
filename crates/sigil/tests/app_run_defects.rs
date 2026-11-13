@@ -59,13 +59,10 @@ fn a_tab_capture_handler_runs_before_focus_moves() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(|target| {
-                    target.route(tab_key());
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(|target| {
+                target.route(tab_key());
+                None
+            }),
         );
         settle(&mut host);
 
@@ -85,7 +82,7 @@ fn follow_row_keeps_its_row_when_rows_arrive_later() {
                 virtual_list(items, |_, row: &String| text(row.clone()))
                     .row_height(20.0)
                     .viewport_height(100.0)
-                    .scroll_bind(scroll)
+                    .scroll_y(scroll)
                     .follow_row(signal(0)),
             ),
         );
@@ -112,7 +109,7 @@ fn a_selected_row_the_filter_hides_leaves_the_selection() {
                 TableColumn::new("name", "Name").filterable(|p: &Proc, q: &str| p.name.contains(q)),
             ],
         );
-        state.select_only(0);
+        state.select(0);
         assert_eq!(state.selected_row().map(|p| p.name), Some("postgres"));
 
         state.quick_filter().set(String::from("sh"));

@@ -6,7 +6,7 @@ use sigil::style::{MaskImage, MaskSize, Rgba};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
-use super::{GAP, RED, SCALE, SIDE, alpha_ramp, assert_ramp, coverage, frames, gpu_frame, masked};
+use super::{GAP, RED, SCALE, SIDE, alpha_ramp, assert_ramp, coverage, frames, masked};
 
 fn below_gap(node: NodeBuilder) -> impl IntoNode {
     container()
@@ -123,20 +123,20 @@ fn moved_frames() -> Vec<(&'static str, image::RgbaImage)> {
     Owner::scope("masks-moved-cache", || {
         let flag = signal(false);
         let width = SIDE + SHIFT as u32;
-        let mut ui = Harness::new(shifted(flag)).gpu(width, SIDE, SCALE);
+        let mut ui = Harness::new(shifted(flag)).gpu(width, SIDE).scale(SCALE);
         ui.settle();
-        drop(gpu_frame(&mut ui));
+        drop(ui.expect_image());
         flag.set(true);
         ui.settle();
-        let gpu = gpu_frame(&mut ui);
+        let gpu = ui.expect_image();
         let scene = ui.host().emit((width as f32, SIDE as f32));
         let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
-        let frame = Frame {
-            scene: &scene,
-            viewport: (width as f32, SIDE as f32),
-            size: PhysicalSize::new(device_w, device_h),
-            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-        };
+        let frame = Frame::new(
+            &scene,
+            (width as f32, SIDE as f32),
+            PhysicalSize::new(device_w, device_h),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
+        );
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let cpu = image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame");
         vec![("gpu", gpu), ("cpu", cpu)]

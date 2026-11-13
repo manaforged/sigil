@@ -40,13 +40,13 @@ impl PathCmd {
 /// The outline drawn around a path.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct PathStroke {
-    /// The paint.
+    /// The color or gradient the line is painted with.
     pub paint: PathPaint,
     /// The width in path units.
     pub width: f32,
-    /// The cap.
+    /// The shape of the line's open ends.
     pub cap: StrokeCap,
-    /// The join.
+    /// The shape of the corners where two segments meet.
     pub join: StrokeJoin,
     /// The dash lengths, on then off; empty for a solid line.
     pub dash: SmallVec<[f32; 4]>,

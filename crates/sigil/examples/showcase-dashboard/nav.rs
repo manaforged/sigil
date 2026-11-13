@@ -1,8 +1,7 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, Icon, IntoNode, ListRowSlots, NodeBuilder, Orientation, Paint, Radius, Space,
-    TextContent, Token, Tone, column, divider, icon, list_row, row, section_label, sidebar, spacer,
-    text,
+    AlignItems, Icon, IntoNode, NodeBuilder, Orientation, Paint, Radius, Space, Token, Tone,
+    column, divider, icon, list_row, row, section_label, sidebar, spacer, text,
 };
 
 use super::data::{RAIL_WIDTH, Section, TEXT_SMALL, TEXT_TITLE, VERSION_LINE, WEIGHT_STRONG};
@@ -57,14 +56,15 @@ fn sections(console: Console) -> NodeBuilder {
 }
 
 fn nav_row(console: Console, section: Section, active: bool) -> NodeBuilder {
-    let slots = ListRowSlots {
-        leading: Some(Box::new(icon(section.icon()))),
-        badge: section
-            .badge()
-            .map(|(count, tone)| (TextContent::from(count), tone)),
-        ..ListRowSlots::default()
-    };
-    list_row(active, section.label(), slots).pointer_up(move |_| console.section.set(section))
+    let mut entry = list_row(section.label())
+        .selected(active)
+        .leading(icon(section.icon()));
+    if let Some((count, tone)) = section.badge() {
+        entry = entry.badge(count, tone);
+    }
+    entry
+        .pointer_up(move |_| console.section.set(section))
+        .into_node_builder()
 }
 
 fn footer(console: Console) -> impl IntoNode {

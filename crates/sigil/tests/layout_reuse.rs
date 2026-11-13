@@ -3,7 +3,7 @@
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::profile::{Counter, Frame, disable, enable, frames, reset, tick_frame};
+use sigil::profile::{Counter, Frame, disable, enable, end_frame, frames, reset};
 use sigil::reactive::Owner;
 use sigil_kittest::FakeMeasure;
 
@@ -18,7 +18,7 @@ fn compute(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
     layout
         .compute(cx, root, Constraint::fixed(VIEW.0, VIEW.1))
         .unwrap();
-    tick_frame();
+    end_frame();
 }
 
 fn measured(run: impl FnOnce()) -> Frame {
@@ -43,7 +43,7 @@ fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(VIEW.0, VIEW.1))
-                .child(scroll(rows).extent(2_000.0).fill().scroll_bind(offset)),
+                .child(scroll(rows).extent(2_000.0).fill().scroll_y(offset)),
         );
         let mut layout = engine();
         compute(&mut cx, &mut layout, root);

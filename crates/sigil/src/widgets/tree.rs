@@ -24,19 +24,19 @@ const ROW_ESTIMATE: f32 = space(6);
 #[derive(Clone, Debug)]
 pub struct TreeNode<K: Clone + Eq + Hash + 'static> {
     /// The key that names the node in `expanded`, `selected`, and `activate`.
-    pub id: K,
+    pub(crate) id: K,
     /// The text of the row.
-    pub label: TextContent,
+    pub(crate) label: TextContent,
     /// The glyph before the label, if any.
-    pub leading: Option<Glyph>,
+    pub(crate) leading: Option<Glyph>,
     /// The status text and its color, if any.
-    pub status: Option<(TextContent, Tone)>,
+    pub(crate) status: Option<(TextContent, Tone)>,
     /// The secondary text of the row, if any.
-    pub detail: Option<TextContent>,
+    pub(crate) detail: Option<TextContent>,
     /// The emphasis of the row.
-    pub tone: RowTone,
+    pub(crate) tone: RowTone,
     /// The child nodes, shown while this node is expanded.
-    pub children: Vec<Self>,
+    pub(crate) children: Vec<Self>,
 }
 
 impl<K: Clone + Eq + Hash + 'static> TreeNode<K> {

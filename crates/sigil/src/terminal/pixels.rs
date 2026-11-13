@@ -23,7 +23,7 @@ static REQUESTED: AtomicBool = AtomicBool::new(false);
 static AVAILABLE: AtomicBool = AtomicBool::new(false);
 
 /// Asks the terminal host to draw the window layout as images, and returns whether it will.
-pub fn set_pixels(on: bool) -> bool {
+pub(crate) fn set_pixels(on: bool) -> bool {
     REQUESTED.store(on, Ordering::Relaxed);
     crate::reactive::Runtime::mark_frame_dirty();
     pixels()
@@ -31,7 +31,7 @@ pub fn set_pixels(on: bool) -> bool {
 
 /// Returns whether the terminal host draws the window layout as images.
 #[must_use]
-pub fn pixels() -> bool {
+pub(crate) fn pixels() -> bool {
     REQUESTED.load(Ordering::Relaxed) && AVAILABLE.load(Ordering::Relaxed)
 }
 

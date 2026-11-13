@@ -2,15 +2,15 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FontFamily {
-    /// The sans font family.
+    /// The sans-serif family, named `sans`.
     Sans,
-    /// The mono font family.
+    /// The fixed-width family, named `mono`.
     Mono,
-    /// The serif font family.
+    /// The serif family, named `serif`; text falls back to sans when no serif font is loaded.
     Serif,
-    /// The icon font family.
+    /// The family of icon glyphs, named `icon`; text falls back to sans when no icon font is loaded.
     Icon,
-    /// The display font family.
+    /// The display family, named `display`; text falls back to sans when no display font is loaded.
     Display,
 }
 

@@ -1,53 +1,44 @@
 use core::time::Duration;
 
-/// Whether the current track plays.
+/// Whether the current track is stopped, paused, or playing.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum PlaybackState {
-    /// The stopped playback state.
+    /// Nothing plays, and no track is published to the system's media controls.
     #[default]
     Stopped,
-    /// The paused playback state.
+    /// A track is loaded and playback is halted at its position.
     Paused,
-    /// The playing playback state.
+    /// A track is loaded and its position advances.
     Playing,
 }
 
-/// The repeat mode of a player.
+/// Which tracks a player plays again when they end.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Repeat {
-    /// The off repeat.
+    /// Playback stops after the last track.
     #[default]
     Off,
-    /// The one repeat.
+    /// The current track plays again when it ends.
     One,
-    /// The all repeat.
+    /// The whole queue plays again when its last track ends.
     All,
 }
 
-/// The metadata of the current track.
+/// The metadata and playback state of the current track, as the system's media controls show it.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Track {
-    /// The title.
-    pub title: String,
-    /// The artist, if any.
-    pub artist: Option<String>,
-    /// The album, if any.
-    pub album: Option<String>,
-    /// The cover url, if any.
-    pub cover_url: Option<String>,
-    /// The duration, if any.
-    pub duration: Option<Duration>,
-    /// The position, if any.
-    pub position: Option<Duration>,
-    /// The state.
-    pub state: PlaybackState,
-    /// Whether shuffle.
-    pub shuffle: bool,
-    /// The repeat.
-    pub repeat: Repeat,
+    pub(crate) title: String,
+    pub(crate) artist: Option<String>,
+    pub(crate) album: Option<String>,
+    pub(crate) cover_url: Option<String>,
+    pub(crate) duration: Option<Duration>,
+    pub(crate) position: Option<Duration>,
+    pub(crate) state: PlaybackState,
+    pub(crate) shuffle: bool,
+    pub(crate) repeat: Repeat,
 }
 
 impl Track {
@@ -121,39 +112,39 @@ impl Track {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum MediaKey {
-    /// The play media key.
+    /// A request to start or resume playback.
     Play,
-    /// The pause media key.
+    /// A request to pause playback.
     Pause,
-    /// The toggle media key.
+    /// A request to pause when playing and to play when paused.
     Toggle,
-    /// The next media key.
+    /// A request to skip to the next track.
     Next,
-    /// The previous media key.
+    /// A request to go back to the previous track.
     Previous,
-    /// The stop media key.
+    /// A request to stop playback.
     Stop,
-    /// The seek forward media key.
+    /// A request to seek forward by a step that the app chooses.
     SeekForward,
-    /// The seek backward media key.
+    /// A request to seek backward by a step that the app chooses.
     SeekBackward,
-    /// The seek by media key.
+    /// A request to seek by `amount` from the current position.
     SeekBy {
-        /// Whether the seek moves forward.
+        /// True to seek forward, false to seek backward.
         forward: bool,
         /// How far to seek.
         amount: Duration,
     },
-    /// The set position media key.
+    /// A request to move playback to this position from the start of the track.
     SetPosition(Duration),
-    /// The set volume media key.
+    /// A request to set the volume to this level.
     SetVolume(f64),
-    /// The set shuffle media key.
+    /// A request to turn shuffle on with `true` or off with `false`.
     SetShuffle(bool),
-    /// The set repeat media key.
+    /// A request to change the repeat mode.
     SetRepeat(Repeat),
-    /// The raise media key.
+    /// A request to bring the app's window to the front.
     Raise,
-    /// The quit media key.
+    /// A request to quit the app.
     Quit,
 }

@@ -56,9 +56,9 @@ impl Scale {
 /// A size in logical px or cells.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Size {
-    /// The width.
+    /// The width, in logical pixels or character cells.
     pub width: f32,
-    /// The height.
+    /// The height, in logical pixels or character cells.
     pub height: f32,
 }
 

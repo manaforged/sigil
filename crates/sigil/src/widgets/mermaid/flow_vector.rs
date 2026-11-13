@@ -3,7 +3,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::scene::geometry::KAPPA as CIRCLE_K;
 use crate::style::{BORDER_WIDTH, Paint, Radius, Token, space};
 use crate::widgets::Layout;
-use crate::widgets::vector::{PathNode, path};
+use crate::widgets::vector::{PathBuilder, path};
 
 use super::flow::{Graph, GridRect, NodeShape, arrange};
 use super::flow_parse::parse;
@@ -166,7 +166,7 @@ pub(super) fn edge_width() -> f32 {
     f32::from(BORDER_WIDTH) * 1.25
 }
 
-pub(super) fn canvas(size: (f32, f32)) -> PathNode {
+pub(super) fn canvas(size: (f32, f32)) -> PathBuilder {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -176,7 +176,7 @@ pub(super) fn canvas(size: (f32, f32)) -> PathNode {
     path(width.max(1), height.max(1))
 }
 
-pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
+pub(super) fn layer(node: PathBuilder, size: (f32, f32)) -> PathBuilder {
     node.layout(
         LayoutStyle::block()
             .position(Position::Absolute)
@@ -186,7 +186,7 @@ pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
     )
 }
 
-pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
+pub(super) fn rounded(node: PathBuilder, area: Area, radius: f32) -> PathBuilder {
     let r = radius.min(area.w / 2.0).min(area.h / 2.0);
     let (x0, y0, x1, y1) = (area.x, area.y, area.right(), area.bottom());
     node.move_to(x0 + r, y0)
@@ -217,7 +217,7 @@ pub(super) fn node_label(lines: &[String], area: Area) -> NodeBuilder {
     column
 }
 
-type Edges = (PathNode, PathNode, PathNode, Vec<NodeBuilder>);
+type Edges = (PathBuilder, PathBuilder, PathBuilder, Vec<NodeBuilder>);
 
 fn edges(graph: &Graph, areas: &[Area], size: (f32, f32)) -> Edges {
     let vertical = graph.dir.vertical();
@@ -275,7 +275,7 @@ fn unit(from: Point, to: Point) -> (Point, f32) {
     ((dx / length, dy / length), length)
 }
 
-pub(super) fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
+pub(super) fn polyline(mut node: PathBuilder, points: &[Point]) -> PathBuilder {
     let points = distinct(points);
     let Some(first) = points.first() else {
         return node;
@@ -303,7 +303,7 @@ pub(super) fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
     }
 }
 
-pub(super) fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
+pub(super) fn dashed_line(mut node: PathBuilder, points: &[Point]) -> PathBuilder {
     for pair in distinct(points).windows(2) {
         let &[start, finish] = pair else {
             continue;
@@ -320,7 +320,7 @@ pub(super) fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
     node
 }
 
-fn arrow_head(node: PathNode, points: &mut [Point]) -> PathNode {
+fn arrow_head(node: PathBuilder, points: &mut [Point]) -> PathBuilder {
     let count = points.len();
     let (Some(tip), Some(before)) = (
         points.last().copied(),
@@ -337,7 +337,13 @@ fn arrow_head(node: PathNode, points: &mut [Point]) -> PathNode {
     barb(node, tip, base, (ux, uy), head * 0.55)
 }
 
-pub(super) fn barb(node: PathNode, tip: Point, base: Point, dir: Point, half: f32) -> PathNode {
+pub(super) fn barb(
+    node: PathBuilder,
+    tip: Point,
+    base: Point,
+    dir: Point,
+    half: f32,
+) -> PathBuilder {
     let (ux, uy) = dir;
     node.move_to(tip.0, tip.1)
         .line_to((-uy).mul_add(half, base.0), ux.mul_add(half, base.1))

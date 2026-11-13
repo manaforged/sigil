@@ -7,32 +7,48 @@ use crate::reactive::{Runtime, tick_frame};
 
 const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
-/// State of the current frame that `Host::frame` passes to the paint hook, with the frame's `FrameDelta` for `Host::emit_since`.
+/// One frame of a `Host`: what `Host::frame` returns, and what the paint hook sees before the frame ends.
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct FrameInfo {
-    /// Whether dirty.
-    pub dirty: bool,
-    /// Whether animating.
-    pub animating: bool,
-    /// Whether layout ok.
-    pub layout_ok: bool,
+pub struct Frame {
+    pub(crate) exit: bool,
+    pub(crate) intervals: usize,
+    pub(crate) animating: bool,
+    pub(crate) dirty: bool,
+    pub(crate) layout: Result<(), Error>,
     #[cfg(any(host, debug_assertions))]
     pub(crate) delta: FrameDelta,
 }
 
-/// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
-#[non_exhaustive]
-#[derive(Debug)]
-pub struct FrameOutput {
-    /// Whether exit.
-    pub exit: bool,
-    /// The intervals.
-    pub intervals: usize,
-    /// Whether animating.
-    pub animating: bool,
-    /// The layout.
-    pub layout: Result<(), Error>,
+impl Frame {
+    /// Returns whether the app asked to exit since the last frame.
+    #[must_use]
+    pub const fn exit(&self) -> bool {
+        self.exit
+    }
+
+    /// Returns how many interval timers fired in this frame.
+    #[must_use]
+    pub const fn intervals(&self) -> usize {
+        self.intervals
+    }
+
+    /// Returns whether an animation or a clock is still running, so another frame is due.
+    #[must_use]
+    pub const fn animating(&self) -> bool {
+        self.animating
+    }
+
+    /// Returns whether a signal write or another change asked for a frame.
+    #[must_use]
+    pub const fn dirty(&self) -> bool {
+        self.dirty
+    }
+
+    /// Returns `Ok` when layout finished, or the error that stopped it.
+    pub fn layout(&self) -> Result<(), Error> {
+        self.layout.clone()
+    }
 }
 
 /// Runs before layout and may return a new viewport.
@@ -42,17 +58,35 @@ pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 
 pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 
 /// Runs when the frame paints.
-pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
+pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &Frame) + 'a>;
 
 /// The optional hooks that `Host::frame` runs.
+#[must_use]
 #[derive(Default)]
 pub struct FrameHooks<'a> {
-    /// The input, if any.
-    pub input: Option<FrameInputHook<'a>>,
-    /// The after layout, if any.
-    pub after_layout: Option<FrameLayoutHook<'a>>,
-    /// The paint, if any.
-    pub paint: Option<FramePaintHook<'a>>,
+    pub(crate) input: Option<FrameInputHook<'a>>,
+    pub(crate) after_layout: Option<FrameLayoutHook<'a>>,
+    pub(crate) paint: Option<FramePaintHook<'a>>,
+}
+
+impl<'a> FrameHooks<'a> {
+    /// Runs `input` before layout; a returned size replaces the viewport.
+    pub fn input(mut self, input: impl FnOnce(&mut Host) -> Option<(f32, f32)> + 'a) -> Self {
+        self.input = Some(Box::new(input));
+        self
+    }
+
+    /// Runs `after_layout` after layout and before paint.
+    pub fn after_layout(mut self, after_layout: impl FnOnce(&mut Host) + 'a) -> Self {
+        self.after_layout = Some(Box::new(after_layout));
+        self
+    }
+
+    /// Runs `paint` when the frame paints.
+    pub fn paint(mut self, paint: impl FnOnce(&mut Host, &Frame) + 'a) -> Self {
+        self.paint = Some(Box::new(paint));
+        self
+    }
 }
 
 impl core::fmt::Debug for FrameHooks<'_> {
@@ -75,12 +109,7 @@ impl Host {
 
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
-    pub fn frame(
-        &mut self,
-        mut viewport: (f32, f32),
-        dt: f32,
-        hooks: FrameHooks<'_>,
-    ) -> FrameOutput {
+    pub fn frame(&mut self, mut viewport: (f32, f32), dt: f32, hooks: FrameHooks<'_>) -> Frame {
         #[cfg(hot_patch)]
         self.remount_patched();
         #[cfg(feature = "terminal")]
@@ -98,37 +127,36 @@ impl Host {
         self.publish_viewport(viewport);
         let exit = ExitOnUnwind(take_exit());
         let layout = self.layout_phase(viewport, hooks.after_layout);
-        let layout_ok = layout.is_ok();
         self.cx().flush_announcements();
         Runtime::begin_paint();
         let dirty = Runtime::frame_dirty();
         let delta = self.cx().take_delta();
         #[cfg(not(any(host, debug_assertions)))]
         self.cx().reuse_delta(delta);
-        let info = FrameInfo {
-            dirty,
+        let mut frame = Frame {
+            exit: exit.0,
+            intervals,
             animating,
-            layout_ok,
+            dirty,
+            layout,
             #[cfg(any(host, debug_assertions))]
             delta,
         };
         if let Some(paint) = hooks.paint {
-            paint(self, &info);
+            paint(self, &frame);
         }
         #[cfg(debug_assertions)]
-        if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
+        if frame.layout.is_ok()
+            && !animating
+            && (frame.delta.structure || !frame.delta.layout.is_empty())
+        {
             self.report_flaws();
         }
         #[cfg(any(host, debug_assertions))]
-        self.cx().reuse_delta(info.delta);
+        self.cx().reuse_delta(std::mem::take(&mut frame.delta));
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
-        FrameOutput {
-            exit: exit.0,
-            intervals,
-            animating,
-            layout,
-        }
+        frame
     }
 
     fn layout_phase(

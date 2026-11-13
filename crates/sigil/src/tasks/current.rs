@@ -7,40 +7,33 @@ use crate::tasks::dispatch::SignalWriter;
 use crate::tasks::runtime::{Dispatcher, SpawnParts};
 
 thread_local! {
-    static HOST: RefCell<Option<SpawnParts>> = const { RefCell::new(None) };
+    static HOST: RefCell<Vec<SpawnParts>> = const { RefCell::new(Vec::new()) };
 }
 
 pub(crate) fn install(parts: &SpawnParts) {
     HOST.with(|slot| {
-        let mut host = slot.borrow_mut();
-        if !current(host.as_ref(), &parts.dispatcher) {
-            *host = Some(parts.clone());
+        let mut stack = slot.borrow_mut();
+        if stack.last().is_some_and(|top| top.id == parts.id) {
+            return;
         }
+        stack.retain(|entry| entry.id != parts.id);
+        stack.push(parts.clone());
     });
 }
 
-fn current(host: Option<&SpawnParts>, dispatcher: &Dispatcher) -> bool {
-    host.is_some_and(|parts| parts.dispatcher.tx.same_channel(&dispatcher.tx))
-}
-
-pub(crate) fn uninstall(dispatcher: &Dispatcher) {
-    HOST.with(|slot| {
-        let mut host = slot.borrow_mut();
-        if current(host.as_ref(), dispatcher) {
-            drop(host.take());
-        }
-    });
+pub(crate) fn uninstall(id: u64) {
+    HOST.with(|slot| slot.borrow_mut().retain(|entry| entry.id != id));
 }
 
 /// Tells whether a task dispatcher is installed on this thread.
 #[cfg(feature = "kittest")]
 #[must_use]
 pub fn installed() -> bool {
-    HOST.with(|slot| slot.borrow().is_some())
+    HOST.with(|slot| !slot.borrow().is_empty())
 }
 
 pub(crate) fn dispatcher() -> Option<Dispatcher> {
-    HOST.with(|slot| slot.borrow().as_ref().map(|parts| parts.dispatcher.clone()))
+    HOST.with(|slot| slot.borrow().last().map(|parts| parts.dispatcher.clone()))
 }
 
 pub(crate) fn scope_parts(caller: &'static str) -> Option<(Owner, SpawnParts)> {
@@ -63,7 +56,7 @@ impl<T: Send + 'static> Signal<T> {
 }
 
 pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {
-    let parts = HOST.with(|slot| slot.borrow().clone());
+    let parts = HOST.with(|slot| slot.borrow().last().cloned());
     if parts.is_none() {
         tracing::warn!(
             target: "sigil::tasks",

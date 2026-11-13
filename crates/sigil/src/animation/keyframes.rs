@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
 use super::Easing;
-use crate::style::{ColorAtom, ColorAtomKind};
+use crate::style::{ColorAtomKind, ColorValue};
 
 mod property;
 mod sample;
@@ -154,7 +154,7 @@ impl Keyframes {
         Some(if backward { 1.0 - local } else { local })
     }
 
-    pub(crate) fn colors(&self) -> impl Iterator<Item = ColorAtom> + '_ {
+    pub(crate) fn colors(&self) -> impl Iterator<Item = ColorValue> + '_ {
         self.frames.iter().flat_map(|(_, property)| {
             ColorAtomKind::ALL
                 .into_iter()

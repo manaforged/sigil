@@ -126,15 +126,12 @@ fn a_resizable_sidebar_grows_from_its_handle_keys() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(move |target| {
-                    let (cx, _, router) = target.parts();
-                    router.set_focus(cx, Some(handle));
-                    target.route(key_down(NamedKey::ArrowRight));
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(move |target| {
+                let (cx, _, router) = target.parts();
+                router.set_focus(cx, Some(handle));
+                target.route(key_down(NamedKey::ArrowRight));
+                None
+            }),
         );
         settle(&mut host);
         let after = host
@@ -172,32 +169,23 @@ fn procs() -> TableState<Proc> {
 fn table_sort_cycles_reverses_and_moves_the_selection() {
     Owner::scope("primitives::table", || {
         let state = procs();
-        state.cycle_sort();
+        state.next_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Ascending
-            })
+            Some(SortKey::new("name", SortDirection::Ascending))
         );
-        state.cycle_sort();
+        state.next_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "cpu",
-                dir: SortDirection::Ascending
-            })
+            Some(SortKey::new("cpu", SortDirection::Ascending))
         );
         state.reverse_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "cpu",
-                dir: SortDirection::Descending
-            })
+            Some(SortKey::new("cpu", SortDirection::Descending))
         );
-        state.cycle_sort();
-        assert_eq!(state.sort_key().get().map(|key| key.column), Some("name"));
+        state.next_sort();
+        assert_eq!(state.sort_key().get().map(|key| key.column()), Some("name"));
 
         state.select_by(1);
         let first = state.selected_index();
@@ -247,9 +235,9 @@ fn typing_in_the_command_menu_filters_its_items() {
         host.mount(
             column().child(
                 command_menu()
-                    .item("Attack", || {})
-                    .item("Defend", || {})
-                    .item("Wait", || {}),
+                    .item(MenuItem::new("Attack").activate(|| {}))
+                    .item(MenuItem::new("Defend").activate(|| {}))
+                    .item(MenuItem::new("Wait").activate(|| {})),
             ),
         );
         settle(&mut host);
@@ -258,19 +246,16 @@ fn typing_in_the_command_menu_filters_its_items() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(|target| {
-                    for ch in ["w", "a"] {
-                        target.route(
-                            Event::key(Key::character(ch), KeyPhase::Down)
-                                .physical(PhysicalKey::KeyA)
-                                .text(Some(ch.into())),
-                        );
-                    }
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(|target| {
+                for ch in ["w", "a"] {
+                    target.route(
+                        Event::key(Key::character(ch), KeyPhase::Down)
+                            .physical(PhysicalKey::KeyA)
+                            .text(Some(ch.into())),
+                    );
+                }
+                None
+            }),
         );
         settle(&mut host);
 

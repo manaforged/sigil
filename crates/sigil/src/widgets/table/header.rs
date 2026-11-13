@@ -230,16 +230,16 @@ fn sortable_cell<Row: 'static>(
                 .take()
                 .is_some_and(|x| try_reorder(&up_state, visual, event.window_position.x - x));
             if !moved {
-                up_state.toggle_sort(column);
+                up_state.cycle_sort(column);
             }
         })
         .key(NamedKey::Enter, move |event| {
             event.stop_propagation();
-            enter_state.toggle_sort(column);
+            enter_state.cycle_sort(column);
         })
         .key(Shortcut::plain(Key::character(" ")), move |event| {
             event.stop_propagation();
-            space_state.toggle_sort(column);
+            space_state.cycle_sort(column);
         })
 }
 

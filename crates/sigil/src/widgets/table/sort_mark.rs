@@ -75,7 +75,7 @@ fn glyph_mark(mark: Signal<SortMark>) -> NodeBuilder {
 
 impl<Row: 'static> TableState<Row> {
     /// Moves the sort to the next column.
-    pub fn cycle_sort(&self) {
+    pub fn next_sort(&self) {
         let sortable = || self.columns().iter().filter(|col| col.is_sortable());
         let current = self.sort_key().peek().map(|key| key.column);
         let next = current

@@ -168,7 +168,6 @@ impl TabsBuilder {
     }
 
     /// Wraps the tabs in a plain container node.
-    #[must_use]
     pub fn into_container(self) -> NodeBuilder {
         container().child(self)
     }

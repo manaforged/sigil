@@ -1,4 +1,4 @@
-use crate::style::{Color, ColorAtom, StyleAtom, Token, Tone};
+use crate::style::{Color, ColorValue, StyleAtom, Token, Tone};
 
 const FILL: u8 = 9;
 const SOFT_DROP: u8 = 5;
@@ -56,23 +56,23 @@ impl Hue {
         self.tone.token(self.step)
     }
 
-    pub(super) fn color(self) -> ColorAtom {
+    pub(super) fn color(self) -> ColorValue {
         self.rgb
-            .map_or_else(|| ColorAtom::Token(self.token()), ColorAtom::Color)
+            .map_or_else(|| ColorValue::Token(self.token()), ColorValue::Color)
     }
 
     pub(super) fn background(self) -> StyleAtom {
         self.rgb.map_or_else(
             || self.token().background(),
-            |color| StyleAtom::BackgroundColor(ColorAtom::Color(color)),
+            |color| StyleAtom::BackgroundColor(ColorValue::Color(color)),
         )
     }
 
-    pub(super) fn soft(self) -> ColorAtom {
+    pub(super) fn soft(self) -> ColorValue {
         self.rgb.map_or_else(
-            || ColorAtom::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
+            || ColorValue::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
             |color| {
-                ColorAtom::Color(Color {
+                ColorValue::Color(Color {
                     a: SOFT_ALPHA,
                     ..color
                 })

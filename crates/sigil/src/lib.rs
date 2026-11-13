@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 #![cfg_attr(
     all(feature = "scene", not(window_host)),
     allow(
@@ -117,8 +118,8 @@ pub mod text;
 #[cfg(scene_internal)]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod text;
-/// The widget catalog.
 mod view;
+/// The widget catalog.
 pub mod widgets;
 
 pub use crate::app::config::AppConfig;
@@ -160,10 +161,13 @@ where
 
 /// Read and write the system clipboard.
 pub mod clipboard;
+/// Helpers that Sigil's own tests use to reach the kernel.
 #[cfg(feature = "kittest")]
+#[doc(hidden)]
 pub mod testing;
 
 #[cfg(fuzzing)]
+#[doc(hidden)]
 pub mod fuzzing {
     pub fn render_mermaid(input: &str) {
         drop(crate::widgets::mermaid_figure(input));
@@ -207,8 +211,8 @@ pub mod prelude {
     pub use crate::kernel::NodePatch;
     pub use crate::kernel::{
         AccessibleName, Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder,
-        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each,
-        fragment, image, node, show, switch, text,
+        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, container, for_each, fragment,
+        image, node, show, switch, text,
     };
     pub use crate::layout::audit::Flaw;
     #[cfg(feature = "image-decode")]
@@ -238,7 +242,7 @@ pub mod prelude {
     pub use crate::widgets::a2ui;
     pub use crate::widgets::{
         ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Glyph, Identifiable,
-        ListRowSlots, Log, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
+        ListRowBuilder, Log, MenuItem, ModalBuilder, Orientation, PathBuilder, SelectionMode, Side,
         SortDirection, SortKey, TableColumn, TableState, Time, ToastQueue, Widget, app_shell,
         avatar, axis_drag, badge, breadcrumbs, button, card, chart, checkbox, chip, code_edit,
         color_field, combobox, command_menu, context_menu, date_field, diff, divider, dot,

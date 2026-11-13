@@ -9,8 +9,6 @@ use sigil::prelude::*;
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
-const DELTA_PCT: f32 = 0.5;
-
 fn on_black(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
     container()
         .layout(

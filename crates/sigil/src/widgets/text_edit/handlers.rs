@@ -8,9 +8,9 @@ use crate::reactive::{Signal, batch, signal};
 use crate::style::TextStyle;
 use crate::widgets::Widget;
 
-use super::super::shared::disabled_now;
+use super::super::shared::{TextChange, disabled_now};
 use super::TextEdit;
-use super::builder::{SubmitKey, TextChange};
+use super::builder::SubmitKey;
 use super::ime::ImeState;
 use crate::clipboard::Clipboard;
 
@@ -84,7 +84,7 @@ impl TextEditRuntime {
             viewport_size: signal((0.0, 0.0)),
             scroll_y: signal(0.0),
             content_padding,
-            preferred_x: Rc::new(Cell::new(None)),
+            preferred_x: state.preferred_x,
             caret_affinity: signal(TextAffinity::Downstream),
             anchor_affinity: signal(TextAffinity::Downstream),
             scroll_x: signal(0.0),

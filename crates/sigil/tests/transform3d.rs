@@ -128,15 +128,6 @@ fn edge_probes(quad: &[Point; 4]) -> Vec<(Point, bool)> {
     probes
 }
 
-#[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no renderer: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn coverage(frame: &image::RgbaImage, point: Point) -> f32 {
     let background = *frame.get_pixel(2, 2);
     let pixel = *frame.get_pixel((point.x * SCALE) as u32, (point.y * SCALE) as u32);
@@ -175,13 +166,15 @@ fn a_card_turned_45_degrees_under_perspective_500_lands_on_the_css_corners() {
     let mut ui = Harness::new(card_canvas(PI / 4.0, false))
         .pixels(VIEW, VIEW)
         .scale(SCALE);
-    assert_corners(&frame_of(&mut ui), "cpu");
+    assert_corners(&ui.expect_image(), "cpu");
 }
 
 #[test]
 fn a_card_turned_45_degrees_lands_on_the_css_corners_on_the_gpu() {
-    let mut ui = Harness::new(card_canvas(PI / 4.0, false)).gpu(VIEW, VIEW, SCALE);
-    assert_corners(&frame_of(&mut ui), "gpu");
+    let mut ui = Harness::new(card_canvas(PI / 4.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
+    assert_corners(&ui.expect_image(), "gpu");
 }
 
 #[test]
@@ -190,7 +183,7 @@ fn a_card_turned_to_its_back_with_backface_hidden_draws_nothing() {
         let mut ui = Harness::new(card_canvas(PI, hide))
             .pixels(VIEW, VIEW)
             .scale(SCALE);
-        let found = coverage(&frame_of(&mut ui), Point::new(CENTRE, CENTRE));
+        let found = coverage(&ui.expect_image(), Point::new(CENTRE, CENTRE));
         assert_eq!(
             found >= 0.9,
             expect,
@@ -201,17 +194,19 @@ fn a_card_turned_to_its_back_with_backface_hidden_draws_nothing() {
 
 #[test]
 fn a_turned_card_agrees_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(card_canvas(PI / 4.0, false)).gpu(VIEW, VIEW, SCALE);
-    let gpu = frame_of(&mut ui);
+    let mut ui = Harness::new(card_canvas(PI / 4.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
+    let gpu = ui.expect_image();
     let viewport = (VIEW as f32, VIEW as f32);
     let scene = ui.host().emit(viewport);
     let side = (VIEW as f32 * SCALE) as u32;
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(side, side),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(side, side),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let (mut worst, mut far, mut total) = (0_u8, 0_usize, 0_usize);
     for (a, b) in gpu.as_raw().chunks(4).zip(cpu.chunks(4)) {

@@ -6,7 +6,7 @@ use crate::style::Style;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
 use super::nav::{PaletteEntry, SubmitObserver};
-use crate::widgets::{Edit, NodeEdit, Sealed, Widget};
+use crate::widgets::{Edit, MenuItem, NodeEdit, Sealed, Widget};
 
 #[derive(Default)]
 pub(super) struct LevelDef {
@@ -14,19 +14,13 @@ pub(super) struct LevelDef {
 }
 
 impl LevelDef {
-    fn item(&mut self, label: impl Into<String>, action: impl Fn() + 'static) {
+    fn item(&mut self, item: MenuItem) {
         self.entries.push(PaletteEntry::Leaf {
-            label: label.into(),
-            detail: None,
-            action: Some(Rc::new(action)),
-            disabled: false,
+            label: item.label,
+            detail: item.hint,
+            action: item.on_activate,
+            disabled: item.disabled,
         });
-    }
-
-    fn detail(&mut self, text: impl Into<String>) {
-        if let Some(PaletteEntry::Leaf { detail, .. }) = self.entries.last_mut() {
-            *detail = Some(text.into());
-        }
     }
 
     fn submenu(&mut self, label: impl Into<String>, def: Self) {
@@ -34,15 +28,6 @@ impl LevelDef {
             label: label.into(),
             disabled: false,
             entries: Rc::new(def.entries),
-        });
-    }
-
-    fn disabled(&mut self, label: impl Into<String>) {
-        self.entries.push(PaletteEntry::Leaf {
-            label: label.into(),
-            detail: None,
-            action: None,
-            disabled: true,
         });
     }
 }
@@ -62,15 +47,9 @@ impl core::fmt::Debug for SubmenuBuilder {
 
 macro_rules! level_builder_methods {
     () => {
-        /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
-        pub fn detail(mut self, text: impl Into<String>) -> Self {
-            self.level.detail(text);
-            self
-        }
-
-        /// Adds an item.
-        pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
-            self.level.item(label, action);
+        /// Adds an item; its hint shows after the label and search matches it, and its submenu mark is not drawn.
+        pub fn item(mut self, item: MenuItem) -> Self {
+            self.level.item(item);
             self
         }
 
@@ -82,12 +61,6 @@ macro_rules! level_builder_methods {
         ) -> Self {
             let nested = build(SubmenuBuilder::default()).level;
             self.level.submenu(label, nested);
-            self
-        }
-
-        /// Adds an item named `label` that is disabled and has no action.
-        pub fn disabled(mut self, label: impl Into<String>) -> Self {
-            self.level.disabled(label);
             self
         }
     };

@@ -109,16 +109,7 @@ fn clearable_field_empties_the_value_and_fires_change() {
 
 #[test]
 fn list_row_draws_its_badge() {
-    let mut ui = Harness::new(|| {
-        list_row(
-            false,
-            "Incidents",
-            ListRowSlots {
-                badge: Some(("12".into(), Tone::Error)),
-                ..ListRowSlots::default()
-            },
-        )
-    });
+    let mut ui = Harness::new(|| list_row("Incidents").badge("12", Tone::Error));
     ui.expect_text("Incidents").expect_text("12");
 }
 

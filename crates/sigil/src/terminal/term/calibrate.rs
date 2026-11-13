@@ -92,7 +92,7 @@ pub(crate) fn measure(reports: &[(u16, u16)]) -> Calibration {
 }
 
 /// Measures the width of ambiguous characters in this terminal.
-pub fn calibrate(out: &mut impl Write) -> Result<(), crate::Error> {
+pub(crate) fn calibrate(out: &mut impl Write) -> Result<(), crate::Error> {
     set_cell_width(CellWidth::Unicode);
     let [modifier, joiner, nonjoiner, keycap] = match MEASURED.get() {
         #[cfg(unix)]

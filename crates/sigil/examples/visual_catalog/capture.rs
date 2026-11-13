@@ -227,7 +227,7 @@ fn cell_style(cell: &Cell, theme: &Theme) -> String {
 fn ink_css(ink: Ink, theme: &Theme) -> Option<String> {
     match ink {
         Ink::Exact(rgba) => Some(hex(rgba)),
-        Ink::Of(tone) => Token::scale(tone.scale_role(), 11).map(|token| hex(theme.color(token))),
+        Ink::Of(tone) => Token::scale(tone, 11).map(|token| hex(theme.color(token))),
         _ => None,
     }
 }

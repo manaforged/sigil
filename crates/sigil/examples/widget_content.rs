@@ -44,7 +44,7 @@ pub(crate) fn image_rgba_demo() -> NodeBuilder {
     }
 }
 
-pub(crate) fn path_demo() -> PathNode {
+pub(crate) fn path_demo() -> PathBuilder {
     path(24, 24)
         .move_to(4.0, 20.0)
         .line_to(12.0, 4.0)

@@ -36,7 +36,7 @@ pub fn text_tuning() -> TextTuning {
     *TUNING.read().unwrap_or_else(PoisonError::into_inner)
 }
 
-#[cfg(host)]
+#[cfg(all(host, any(test, feature = "kittest")))]
 pub fn set_text_tuning(tuning: TextTuning) {
     *TUNING.write().unwrap_or_else(PoisonError::into_inner) = tuning;
 }

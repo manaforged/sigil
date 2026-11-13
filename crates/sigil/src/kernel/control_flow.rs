@@ -7,7 +7,6 @@ use crate::kernel::{IntoNode, NodeBuilder, container, fragment, node};
 use crate::reactive::{Reactive, Signal, memo};
 
 /// Mounts `then()` while `cond` is true and `otherwise()` while it is false.
-#[must_use]
 pub fn show<A, B>(
     cond: impl Reactive<bool>,
     then: impl Fn() -> A + 'static,
@@ -29,7 +28,6 @@ where
 }
 
 /// One child per item, reconciled by key; `render` runs once for each new key.
-#[must_use]
 pub fn for_each<T, K, N>(
     items: Signal<Vec<T>>,
     key: impl Fn(&T) -> K + 'static,

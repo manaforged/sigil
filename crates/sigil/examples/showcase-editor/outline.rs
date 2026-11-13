@@ -4,19 +4,13 @@ use super::facts::{SYMBOLS, Symbol};
 use super::state::Workspace;
 
 fn symbol_row(ws: Workspace, symbol: Symbol, selected: bool) -> NodeBuilder {
-    list_row(
-        selected,
-        symbol.name,
-        ListRowSlots {
-            depth: symbol.depth,
-            leading: Some(Box::new(
-                icon(symbol.kind.icon()).size(ControlSize::Compact),
-            )),
-            status: Some((symbol.line + 1).to_string().into()),
-            ..ListRowSlots::default()
-        },
-    )
-    .pointer_down(move |_| ws.goto(symbol.file, symbol.line, 0))
+    list_row(symbol.name)
+        .selected(selected)
+        .depth(symbol.depth)
+        .leading(icon(symbol.kind.icon()).size(ControlSize::Compact))
+        .status((symbol.line + 1).to_string())
+        .pointer_down(move |_| ws.goto(symbol.file, symbol.line, 0))
+        .into()
 }
 
 fn current_symbol(symbols: &[Symbol], line: usize) -> Option<usize> {

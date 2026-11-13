@@ -43,7 +43,7 @@ pub(super) fn row_cell<Row: 'static>(
     let check = select_box(
         mark,
         ActiveTheme::capture().fill(StringKey::SelectRow, &[&(row + 1)]),
-        move || toggle.toggle_selected(row),
+        move || toggle.toggle(row),
     );
     select_cell(Role::GridCell, height, check)
 }
@@ -136,7 +136,7 @@ impl<Row: 'static> TableState<Row> {
             None => 0,
         };
         if let Some(&row) = visible.get(target) {
-            self.select_only(row);
+            self.select(row);
         }
     }
 }

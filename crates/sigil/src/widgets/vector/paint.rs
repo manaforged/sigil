@@ -3,17 +3,17 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 
 use super::key::{hash_cmd, mix, mix_f32, mix_fill, mix_stroke};
-use super::{PathCmd, PathFill, PathNode};
+use super::{PathBuilder, PathCmd, PathFill};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint, Transform};
-use crate::style::{Color, ColorAtom, Theme};
+use crate::style::{Color, ColorValue, Theme};
 
 type Resolved = (Option<PathPaint>, Option<(Color, f32)>);
 
 pub(super) fn resolve(
     fill: Option<&PathFill>,
-    stroke: Option<(ColorAtom, f32)>,
+    stroke: Option<(ColorValue, f32)>,
     theme: &Theme,
 ) -> Resolved {
     let point = |(x, y): (f32, f32)| Point::new(x, y);
@@ -53,7 +53,7 @@ pub(super) fn resolve(
 }
 
 pub(super) fn path_key(
-    node: &PathNode,
+    node: &PathBuilder,
     fill: Option<&PathPaint>,
     stroke: Option<(Color, f32)>,
 ) -> u64 {
@@ -74,7 +74,7 @@ pub(super) fn path_key(
     hash
 }
 
-pub(super) fn theme_key(node: &PathNode, theme: &Theme) -> u64 {
+pub(super) fn theme_key(node: &PathBuilder, theme: &Theme) -> u64 {
     let (fill, stroke) = resolve(node.fill.as_ref(), node.stroke, theme);
     let mut hash = OFFSET;
     mix_stroke(&mut hash, stroke);

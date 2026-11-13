@@ -210,7 +210,7 @@ impl<Row> TableColumn<Row> {
         self.id
     }
 
-    /// The header text.
+    /// Returns the text shown in the column header.
     #[must_use]
     pub fn title(&self) -> &str {
         &self.title

@@ -22,7 +22,7 @@ pub fn exit() {
 }
 
 pub(crate) fn defer_exit() {
-    FALLBACK.store(true, Ordering::SeqCst);
+    exit();
 }
 
 #[must_use]

@@ -18,7 +18,6 @@ fn boxed(rounded: bool) -> String {
         },
         30,
         8,
-        &[],
     )
 }
 
@@ -136,7 +135,6 @@ fn a_thick_rounded_border_stays_heavy() {
         },
         30,
         8,
-        &[],
     );
     assert!(grid.contains('┏') && !grid.contains('╭'), "{grid}");
 }

@@ -15,9 +15,32 @@ use super::identity::{self, Identifiable};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SortKey {
     /// The id of the sorted column.
-    pub column: &'static str,
-    /// The sort direction.
-    pub dir: SortDirection,
+    pub(crate) column: &'static str,
+    /// Whether the rows sort ascending or descending.
+    pub(crate) dir: SortDirection,
+}
+
+impl SortKey {
+    /// Creates a sort of `column` in `direction`.
+    #[must_use]
+    pub const fn new(column: &'static str, direction: SortDirection) -> Self {
+        Self {
+            column,
+            dir: direction,
+        }
+    }
+
+    /// The id of the sorted column.
+    #[must_use]
+    pub const fn column(&self) -> &'static str {
+        self.column
+    }
+
+    /// Returns whether the rows sort ascending or descending.
+    #[must_use]
+    pub const fn direction(&self) -> SortDirection {
+        self.dir
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -218,7 +241,7 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Cycles `column` through ascending, descending, and no sort.
-    pub fn toggle_sort(&self, column: &'static str) {
+    pub fn cycle_sort(&self, column: &'static str) {
         if !self.is_sortable(column) {
             return;
         }
@@ -245,7 +268,7 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Selects one row and clears the others.
-    pub fn select_only(&self, row: u32) {
+    pub fn select(&self, row: u32) {
         let mut set: HashSet<u32> = HashSet::new();
         let mut anchor = None;
         only(&mut set, &mut anchor, row);
@@ -254,7 +277,7 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Flips the selection of one row.
-    pub fn toggle_selected(&self, row: u32) {
+    pub fn toggle(&self, row: u32) {
         let mut set = (*self.selection.peek()).clone();
         toggle(&mut set, row);
         self.selection.set(Rc::new(set));
@@ -262,15 +285,15 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Selects from the anchor row to `row`.
-    pub fn select_range_to(&self, row: u32) {
+    pub fn extend(&self, row: u32) {
         let Some(anchor) = self.select_anchor.peek() else {
-            self.select_only(row);
+            self.select(row);
             return;
         };
         let visible = self.visible.peek();
         let position = |needle: u32| visible.iter().position(|&index| index == needle);
         let (Some(from), Some(to)) = (position(anchor), position(row)) else {
-            self.select_only(row);
+            self.select(row);
             return;
         };
         let (lo, hi) = if from <= to { (from, to) } else { (to, from) };
@@ -287,7 +310,7 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Clears the selection.
-    pub fn clear_selection(&self) {
+    pub fn clear(&self) {
         self.selection.set(Rc::new(HashSet::new()));
         self.select_anchor.set(None);
     }

@@ -30,7 +30,7 @@ fn theme_accent_rect_emits_in_scene() {
     assert_eq!(rect.node, Some(root));
     assert_eq!(rect.rect.width, 120.0);
     assert_eq!(rect.rect.height, 48.0);
-    assert_eq!(rect.color, Theme::default().accent);
+    assert_eq!(rect.color, Theme::default().color(Token::Accent));
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn text_emits_default_on_surface_color() {
 
     assert_eq!(text.node, Some(root));
     assert_eq!(text.text(), "Readable");
-    assert_eq!(text.color(), Theme::default().on_surface);
+    assert_eq!(text.color(), Theme::default().color(Token::OnSurface));
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn styled_text_color_overrides_default() {
     let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Accent").unwrap();
 
-    assert_eq!(text.color(), Theme::default().accent);
+    assert_eq!(text.color(), Theme::default().color(Token::Accent));
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn visible_focus_ring_stroke() {
     assert_eq!(first.color.a, 0);
 
     let stroke = first.stroke.expect("focus ring has an outside stroke");
-    assert_eq!(stroke.color, Theme::default().accent);
+    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
     assert_eq!(stroke.width, 2.0);
     assert_eq!(stroke.style, StrokeStyle::Solid);
     assert_eq!(stroke.align, StrokeAlign::Outside);
@@ -223,9 +223,9 @@ fn container_text_class_cascades_to_child_glyphs() {
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
         run.color(),
-        Theme::default().accent,
+        Theme::default().color(Token::Accent),
         "a bare text child must inherit the nearest ancestor's text-* class \
-         (pre-cascade it silently painted theme.on_surface — the chip-tone \
+         (pre-cascade it silently painted theme.color(Token::OnSurface) — the chip-tone \
          ghost-pass and the turn-strip WCAG blocker)"
     );
 }
@@ -316,7 +316,7 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     assert_eq!(run.style().font_weight, 700);
     assert_eq!(
         run.color(),
-        Theme::default().accent,
+        Theme::default().color(Token::Accent),
         "the color cascade must also survive the deferral"
     );
 }
@@ -337,7 +337,7 @@ fn own_text_class_beats_inherited_cascade() {
     let run = find_text(&scene, "Own").expect("child glyph run emitted");
     assert_eq!(
         run.color(),
-        Theme::default().on_accent,
+        Theme::default().color(Token::OnAccent),
         "a text node's own text-* class must beat the inherited color"
     );
 }
@@ -361,13 +361,13 @@ fn top_layer_subtree_paints_after_later_siblings() {
     let accent_pos = scene
         .commands
         .iter()
-        .position(|c| matches!(c, SceneCommand::Rect(r) if r.color == theme.accent))
+        .position(|c| matches!(c, SceneCommand::Rect(r) if r.color == theme.color(Token::Accent)))
         .expect("top-layer rect emitted");
     let sibling_pos = scene
         .commands
         .iter()
         .position(
-            |c| matches!(c, SceneCommand::Rect(r) if r.color != theme.accent && r.node.is_some()),
+            |c| matches!(c, SceneCommand::Rect(r) if r.color != theme.color(Token::Accent) && r.node.is_some()),
         )
         .expect("sibling rect emitted");
     assert!(

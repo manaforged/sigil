@@ -16,31 +16,29 @@ pub(super) fn frame_hooks<'s>(
     size: (u16, u16),
 ) -> FrameHooks<'s> {
     let (cols, rows) = size;
-    FrameHooks {
-        input: Some(Box::new(move |host| {
+    FrameHooks::default()
+        .input(move |host| {
             let _phase = profile::span(profile::Phase::Effect);
             for event in events {
                 profile::interact(profile::Cause::Input);
-                profile::count(profile::Counter::TuiEvents);
+                profile::count(profile::Counter::TuiEvents, 1);
                 host.route(event);
             }
             None
-        })),
-        paint: Some(Box::new(move |host, info| {
+        })
+        .paint(move |host, info| {
             paint(screen, host, info, (cols, rows));
-        })),
-        ..FrameHooks::default()
-    }
+        })
 }
 
 fn paint(
     screen: &mut Screen,
     host: &mut crate::Host,
-    info: &crate::app::FrameInfo,
+    info: &crate::app::Frame,
     (cols, rows): (u16, u16),
 ) {
     let _phase = profile::span(profile::Phase::TuiPaint);
-    if !info.layout_ok {
+    if info.layout().is_err() {
         screen.projection.quiet = false;
         host.reset_emit();
         return;
@@ -52,7 +50,7 @@ fn paint(
         && host.emit_unchanged(view(cols, rows), &info.delta, &screen.scene)
     {
         screen.dirty = false;
-        screen.projection.quiet &= !info.dirty;
+        screen.projection.quiet &= !info.dirty();
         return;
     }
     screen.projection.quiet = false;

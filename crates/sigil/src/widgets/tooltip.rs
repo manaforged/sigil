@@ -54,7 +54,7 @@ pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
 
 impl TooltipBuilder {
     /// Creates a tooltip that shows `label` above its child with no delay.
-    pub fn new(label: impl Into<String>) -> Self {
+    pub(crate) fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
             shortcut: None,

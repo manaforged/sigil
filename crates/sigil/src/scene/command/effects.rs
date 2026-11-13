@@ -21,13 +21,13 @@ kittest_pub! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum SpriteKind {
         #[cfg(feature = "kittest")]
-        /// The mono sprite kind.
+        /// The atlas alpha is coverage, tinted with the command's color.
         Mono,
         #[cfg(feature = "kittest")]
-        /// The subpixel sprite kind.
+        /// The atlas alpha is sampled a third of a texel apart for red, green, and blue, then tinted with the command's color.
         Subpixel,
         #[cfg(scene_paint)]
-        /// The poly sprite kind.
+        /// The atlas holds full color, drawn without a tint.
         Poly,
     }
 }
@@ -38,11 +38,11 @@ kittest_pub! {
     #[cfg(scene_paint)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct SpriteSource {
-        /// The atlas.
+        /// The id of the atlas texture that holds the sprite.
         pub atlas: u32,
-        /// The region.
+        /// The sprite's rectangle in the atlas, in texels.
         pub region: Rect,
-        /// The phase.
+        /// The horizontal shift of the sample point of a `Subpixel` sprite, in texels.
         pub phase: f32,
     }
 }
@@ -75,12 +75,12 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum DecorationKind {
-        /// The underline decoration kind.
+        /// A straight line under the text.
         Underline,
-        /// The strikethrough decoration kind.
+        /// A straight line through the middle of the text.
         Strikethrough,
         #[cfg(cpu_paint)]
-        /// The wavy underline decoration kind.
+        /// A sine wave under the text.
         WavyUnderline,
     }
 }
@@ -90,13 +90,13 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct LayerScope {
-        /// The clip.
+        /// The rectangle that bounds the layer; pixels outside it are not drawn.
         pub clip: Rect,
-        /// The clip radii.
+        /// The corner radii of `clip`; zero keeps square corners.
         pub clip_radii: CornerRadii,
-        /// The effect.
+        /// The transform, mask, or filters the layer is drawn through.
         pub effect: LayerEffect,
-        /// The opacity.
+        /// The opacity the layer is composited at, from 0 to 1.
         pub opacity: f32,
         /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
         pub blend: BlendMode,
@@ -184,9 +184,9 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub enum LayerEffect {
-        /// The identity layer effect.
+        /// No effect; the layer is drawn as its commands paint it.
         Identity,
-        /// The transform layer effect.
+        /// The layer is drawn through a 2D affine transform.
         Transform(Transform),
         /// The layer is drawn as a CSS 3D plane through a perspective transform.
         Projected {

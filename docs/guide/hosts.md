@@ -50,7 +50,7 @@ Both hosts run the same components, signals, layout, events, focus, accessibilit
 ### TUI only
 
 - `sigil::terminal`: hooks, capabilities, cells, and images on the grid.
-- Inline mode and `sigil::terminal::print_above`.
+- Inline mode and `Terminal::current().print_above`.
 - The OSC 52 clipboard, which `run` installs.
 - The `SIGIL_TUI_TRANSCRIPT` accessibility transcript.
 - Box-drawing borders and cell colors.

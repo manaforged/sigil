@@ -44,12 +44,19 @@ pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -
     }
 }
 
+pub(crate) mod field_sealed {
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed {}
+}
+
 /// A control that can show an invalid state: `text_field`, `number_field`, `color_field`, `date_field`, `time_field`.
-pub trait FieldControl: IntoNode + Sized + 'static {
+pub trait FieldControl: IntoNode + Sized + field_sealed::Sealed + 'static {
     /// Marks the control invalid while the value is true.
     #[must_use]
     fn invalid(self, invalid: impl Reactive<bool>) -> Self;
 }
+
+impl field_sealed::Sealed for TextFieldBuilder {}
 
 impl FieldControl for TextFieldBuilder {
     fn invalid(self, invalid: impl Reactive<bool>) -> Self {

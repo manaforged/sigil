@@ -64,7 +64,7 @@ fn rebuilt(from: Row, to: Row) -> (u64, u64) {
         profile::begin_frame(BackendStatus::TERMINAL);
         rows.set((0..5).map(|at| (to, format!("new {at}"))).collect());
         screen.frame(&mut host, [], SIZE).expect("frame");
-        profile::tick_frame();
+        profile::end_frame();
         let counted = profile::frames().last().map_or((0, 0), |frame| {
             (
                 frame.counter(Counter::KernelPatched),

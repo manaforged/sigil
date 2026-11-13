@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::kernel::{NodeBuilder, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Space};
 use crate::style::{Token, Tone};
-use crate::widgets::{Layout, ListRowSlots, chart, diff, list_row, markdown, mermaid, stat};
+use crate::widgets::{Layout, chart, diff, list_row, markdown, mermaid, stat};
 
 use super::model::display;
 use super::render::Render;
@@ -147,18 +147,22 @@ impl Render {
             let shown = self.shown(value);
             (!shown.is_empty()).then(|| self.live(value))
         };
-        list_row(
-            false,
-            self.live(&item.title),
-            ListRowSlots {
-                depth: item.depth,
-                marker: optional(&item.marker),
-                status: optional(&item.status),
-                status_tone: tone(item.tone),
-                detail: optional(&item.detail),
-                activate: item.event.as_ref().and_then(|event| self.trigger(event)),
-                ..ListRowSlots::default()
-            },
-        )
+        let mut row = list_row(self.live(&item.title)).depth(item.depth);
+        if let Some(marker) = optional(&item.marker) {
+            row = row.marker(marker);
+        }
+        if let Some(status) = optional(&item.status) {
+            row = row.status(status);
+        }
+        if let Some(tone) = tone(item.tone) {
+            row = row.status_tone(tone);
+        }
+        if let Some(detail) = optional(&item.detail) {
+            row = row.detail(detail);
+        }
+        if let Some(run) = item.event.as_ref().and_then(|event| self.trigger(event)) {
+            row = row.activate(move || run());
+        }
+        row.into_node_builder()
     }
 }

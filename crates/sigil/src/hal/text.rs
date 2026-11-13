@@ -22,18 +22,18 @@ pub struct RenderedGlyph {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 #[non_exhaustive]
 pub enum TextAffinity {
-    /// The downstream text affinity.
+    /// At a soft line break, the position is at the start of the next line.
     #[default]
     Downstream,
-    /// The upstream text affinity.
+    /// At a soft line break, the position is at the end of the line before the break.
     Upstream,
 }
 
 /// The text position found under a point.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct HitPosition {
-    /// The byte index.
+    /// The byte offset of the position in the text.
     pub byte_index: usize,
-    /// The affinity.
+    /// The line that the position belongs to when it falls on a soft line break.
     pub affinity: TextAffinity,
 }

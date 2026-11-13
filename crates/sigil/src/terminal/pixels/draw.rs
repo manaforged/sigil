@@ -5,7 +5,7 @@ use std::rc::Rc;
 use rayon::prelude::*;
 use tiny_skia::Pixmap;
 
-use crate::app::{FrameHooks, FrameInfo};
+use crate::app::FrameHooks;
 use crate::events::{Event, WindowEvent};
 use crate::geometry::{PhysicalSize, Point, Rect, Scale, Size};
 use crate::kernel::{HostMode, IntoNode};
@@ -92,29 +92,27 @@ impl Draw {
         let out = self.host.frame(
             frame.viewport,
             dt,
-            FrameHooks {
-                input: Some(Box::new(move |host: &mut Host| {
+            FrameHooks::default()
+                .input(move |host: &mut Host| {
                     for event in events {
                         host.route(event);
                     }
                     None
-                })),
-                paint: Some(Box::new(|host: &mut Host, info: &FrameInfo| {
-                    if force || info.dirty || info.animating {
+                })
+                .paint(|host: &mut Host, info: &crate::app::Frame| {
+                    if force || info.dirty() || info.animating() {
                         let _emit = profile::span(Phase::Emit);
                         scene = Some(host.emit(frame.viewport));
                     }
-                })),
-                ..FrameHooks::default()
-            },
+                }),
         );
-        out.layout?;
+        out.layout()?;
         if let Some(scene) = scene {
             let clear = caps.background.map_or(SURFACE_CLEAR, opaque);
             self.paint(frame, scene, force, (caps.mux, clear))?;
         }
-        profile::tick_frame();
-        Ok(out.exit)
+        profile::end_frame();
+        Ok(out.exit())
     }
 
     /// Repaints the damaged part of the canvas and sends the tiles it touched.

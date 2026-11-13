@@ -1,5 +1,5 @@
 use super::*;
-use crate::style::{Color, ColorAtom};
+use crate::style::{Color, ColorValue};
 
 #[test]
 fn new_overlay_is_empty() {
@@ -18,7 +18,7 @@ fn atoms_for_returns_matching_slot() {
         a: 255,
     };
     let mut hover = SmallVec::new();
-    hover.push(StyleAtom::BackgroundColor(ColorAtom::Color(red)));
+    hover.push(StyleAtom::BackgroundColor(ColorValue::Color(red)));
     let overlay = StyleOverlay::from_slots(
         SmallVec::new(),
         hover.clone(),

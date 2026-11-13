@@ -165,7 +165,7 @@ fn text_field_styled_composes_with_state_variant() {
                 .hover(|s| s.background(B))
                 .focus(|s| s.background(C))
                 .pressed(|s| s.background(D));
-            States::disabled_style(field, |s| s.background(E))
+            States::disabled_paint(field, |s| s.background(E))
         };
         assert_paints(&painted(build(), Drive::Rest), A, "text_field bg");
         assert_paints(&painted(build(), Drive::Hover), B, "text_field hover");
@@ -261,18 +261,6 @@ fn menu_accepts_styled_surface() {
             .layout(LayoutStyle::default().padding_x(Space::raw(20.0, "test fixture")));
         assert_paints(&painted(build, Drive::Rest), A, "menu bg");
     });
-}
-
-#[test]
-fn menu_item_chain_works() {
-    let item = MenuItem::new("Save As\u{2026}")
-        .hint("Ctrl+Shift+S")
-        .disabled(true)
-        .submenu(false);
-    assert_eq!(item.label, "Save As\u{2026}");
-    assert_eq!(item.hint.as_deref(), Some("Ctrl+Shift+S"));
-    assert!(item.disabled);
-    assert!(!item.submenu_indicator);
 }
 
 #[test]

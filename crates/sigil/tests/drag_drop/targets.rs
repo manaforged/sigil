@@ -7,7 +7,7 @@ fn target_highlight_is_reactive_and_clears_on_move_away() {
     sigil::reactive::Owner::scope("drag-drop-highlight", || {
         let (_state, drops, _downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let highlight = Theme::default().accent_scale.step(4);
+        let highlight = Theme::default().scale(Tone::Primary).step(4);
         assert!(
             !rect_colors(&cx, root).contains(&highlight),
             "rest: no highlight",
@@ -71,7 +71,7 @@ fn rejecting_target_neither_highlights_nor_accepts() {
             payload != "task-7"
         }));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let highlight = Theme::default().accent_scale.step(4);
+        let highlight = Theme::default().scale(Tone::Primary).step(4);
         let mut router = EventRouter::new();
 
         route(

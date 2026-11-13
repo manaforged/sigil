@@ -154,12 +154,12 @@ fn same_target(prev: &LayoutCacheKey, next: &LayoutCacheKey) -> bool {
 pub(super) fn take_cache_miss(cx: &mut Cx, decision: CacheDecision) -> Option<LayoutCacheKey> {
     match decision {
         CacheDecision::Hit => {
-            crate::profile::count(crate::profile::Counter::LayoutHit);
+            crate::profile::count(crate::profile::Counter::LayoutHit, 1);
             cx.clear_dirty();
             None
         }
         CacheDecision::Miss(key) => {
-            crate::profile::count(crate::profile::Counter::LayoutMiss);
+            crate::profile::count(crate::profile::Counter::LayoutMiss, 1);
             Some(key)
         }
     }

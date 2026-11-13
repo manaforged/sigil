@@ -6,7 +6,7 @@ use crate::events::{
 };
 use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, Flaw};
-use crate::layout::builder_ext::{asymmetric, layout_methods};
+use crate::layout::builder_ext::layout_methods;
 use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
@@ -99,12 +99,6 @@ pub trait Widget: Sealed {
     {
         let built = paint(StateStyleBuilder::new());
         self.map_target(move |node| look::paint_when(node, active, built))
-    }
-
-    /// Marks the node as intentionally asymmetric, with the reason.
-    #[must_use]
-    fn asymmetric(self, reason: &'static str) -> Self {
-        self.map_node(move |node| asymmetric(node, reason))
     }
 
     /// Opts the node and its children out of a design rule, with the reason.

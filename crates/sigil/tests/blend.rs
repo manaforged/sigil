@@ -11,18 +11,19 @@
     reason = "a test fails loudly on a missing value"
 )]
 
-use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder,
 };
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "blend/model.rs"]
 mod model;
@@ -87,37 +88,17 @@ fn gallery() -> impl IntoNode {
         .child(row(HALF))
 }
 
-#[track_caller]
-fn gpu_frame(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
-    let (device_w, device_h) = (
-        (WIDTH as f32 * SCALE) as u32,
-        (HEIGHT as f32 * SCALE) as u32,
-    );
-    let frame = Frame {
-        scene,
-        viewport: (WIDTH as f32, HEIGHT as f32),
-        size: PhysicalSize::new(device_w, device_h),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (WIDTH, HEIGHT), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn frames() -> Vec<(&'static str, image::RgbaImage)> {
     let mut pixels = Harness::new(gallery).pixels(WIDTH, HEIGHT).scale(SCALE);
-    let mut surface = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
+    let mut surface = Harness::new(gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
     let scene = surface.host().emit((WIDTH as f32, HEIGHT as f32));
     vec![
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene)),
     ]
 }
@@ -171,20 +152,17 @@ fn a_half_transparent_source_composites_its_blend_over_the_backdrop() {
 
 #[test]
 fn blended_layers_agree_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
-    let gpu = gpu_frame(&mut ui);
+    let mut ui = Harness::new(gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
+    let gpu = ui.expect_image();
     let scene = ui.host().emit((WIDTH as f32, HEIGHT as f32));
     let cpu = cpu_frame(&scene);
     let measured = diff(gpu.as_raw(), cpu.as_raw());
     println!(
         "blend cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
     for (row, alpha) in [(0, 255), (1, HALF)] {
         for column in (0..COLUMNS).filter(|c| checked(BlendMode::ALL[*c], alpha)) {
             let (a, b) = (probe(&gpu, column, row), probe(&cpu, column, row));

@@ -27,7 +27,7 @@ fn widget_renders_only_visible_window_at_100k_items() {
                 .row_height(ROW_HEIGHT)
                 .viewport_height(480.0)
                 .viewport_width(VIEWPORT_WIDTH)
-                .scroll_bind(signal(0.0_f32)),
+                .scroll_y(signal(0.0_f32)),
         );
 
         assert!(count_role(&cx, root, Role::ListItem) <= 45);
@@ -69,7 +69,7 @@ fn keyboard_navigation_end_to_end() {
                 .viewport_height(96.0)
                 .viewport_width(320.0)
                 .keyboard(true)
-                .scroll_bind(scroll_y)
+                .scroll_y(scroll_y)
                 .cursor(focused_row),
         );
         let layout = compute_layout(&mut cx, root, Constraint::fixed(320.0, 96.0));
@@ -96,7 +96,7 @@ fn selection_propagates_to_a11y() {
             .viewport_width(320.0)
             .selection(SelectionMode::Single);
         let selection = builder.selection_state();
-        selection.update(|state| state.click(5));
+        selection.update(|state| state.select(5));
 
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
@@ -128,7 +128,7 @@ fn fastest_scroll_step(count: usize) -> Duration {
                     .row_height(ROW_HEIGHT)
                     .viewport_height(VIEWPORT_WIDTH)
                     .viewport_width(VIEWPORT_WIDTH)
-                    .scroll_bind(scroll_y),
+                    .scroll_y(scroll_y),
             );
             let mut engine = LayoutEngine::new(stub_text_measure());
             engine
@@ -173,7 +173,7 @@ fn build_recording_list(scroll_y: Signal<f32>, rendered: Rc<RefCell<Vec<usize>>>
         .row_height(ROW_HEIGHT)
         .viewport_height(480.0)
         .viewport_width(320.0)
-        .scroll_bind(scroll_y),
+        .scroll_y(scroll_y),
     );
 }
 

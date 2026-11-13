@@ -8,7 +8,7 @@ use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, memo};
 use crate::style::{
-    Color, ColorAtom, ControlSize, Metrics, ReactiveStateSlot, StateSlot, StyleAtom, StyleOverlay,
+    Color, ColorValue, ControlSize, Metrics, ReactiveStateSlot, StateSlot, StyleAtom, StyleOverlay,
     space,
 };
 use crate::widgets::{Layout, Widget};
@@ -22,7 +22,7 @@ use super::super::shared::{FIELD_VARIANT, binary_style_state};
 
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
-static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorAtom::Color(Color {
+static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorValue::Color(Color {
     r: 211,
     g: 47,
     b: 47,

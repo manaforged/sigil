@@ -15,36 +15,38 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    Color, ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
+    Color, ColorValue, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 use sigil::widgets::Layout;
 
 static APPLY_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-    StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorValue::Token(Token::OnSurface)),
     StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
 static THEME_SWAP_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-    StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorValue::Token(Token::OnAccent)),
     StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
-static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
-static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
+static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
+    Token::Surface,
+))];
+static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
     Token::SurfaceHover,
 ))];
-static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
+static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
     Token::SurfaceHover,
 ))];
 static STATE_PRESS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(8_800),
 ];
 static STATE_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(5_000),
 ];
 
@@ -166,25 +168,10 @@ fn state_style_resolve_1000_widgets(c: &mut Criterion) {
 
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
-    let mut accent_theme = Theme::default();
-    accent_theme.accent = Color {
-        r: 220,
-        g: 38,
-        b: 38,
-        a: 255,
-    };
-    accent_theme.accent_hover = Color {
-        r: 185,
-        g: 28,
-        b: 28,
-        a: 255,
-    };
-    accent_theme.on_accent = Color {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 255,
-    };
+    let accent_theme = Theme::default()
+        .token("accent", Color::rgb(220, 38, 38))
+        .token("accent-hover", Color::rgb(185, 28, 28))
+        .token("on-accent", Color::rgb(255, 255, 255));
     let mut render_styles = vec![RenderStyle::default(); 10_000];
     let mut use_accent_theme = false;
 

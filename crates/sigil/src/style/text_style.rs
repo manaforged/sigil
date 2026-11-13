@@ -1,9 +1,9 @@
 /// Gives line height as a multiple of font size or in pixels.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TextLineHeight {
-    /// The font size relative text line height.
+    /// A multiple of the font size; the default is 1.2.
     FontSizeRelative(f32),
-    /// The absolute text line height.
+    /// A fixed line height in pixels.
     Absolute(f32),
 }
 
@@ -15,24 +15,25 @@ impl Default for TextLineHeight {
 
 /// Holds the resolved typography of a text node.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct TextStyle {
-    /// The font family.
+    /// The font family name, such as `sans` or `mono`; the default is `system-ui`.
     pub font_family: String,
-    /// The font size.
+    /// The font size in pixels; the default is 14.
     pub font_size: f32,
-    /// The font weight.
+    /// The font weight from 1 to 1000; the default is 400.
     pub font_weight: u16,
-    /// Whether italic.
+    /// Whether the text is italic.
     pub italic: bool,
-    /// The line height.
+    /// The line height, as a multiple of the font size or in pixels.
     pub line_height: TextLineHeight,
-    /// The letter spacing em.
+    /// The extra space between letters, in ems.
     pub letter_spacing_em: f32,
-    /// Whether tabular nums.
+    /// Whether digits all take the same width.
     pub tabular_nums: bool,
-    /// The decoration.
+    /// The line drawn with the text: none, underline, or line-through.
     pub decoration: crate::style::TextDecoration,
-    /// The runs, if any.
+    /// The styled runs that override this style over byte ranges; `None` for plain text.
     pub runs: Option<TextRuns>,
 }
 
@@ -42,48 +43,58 @@ pub struct TextStyle {
     clippy::struct_excessive_bools,
     reason = "each flag is an independent text attribute that combines freely with the others"
 )]
+#[non_exhaustive]
 pub struct TextFace {
-    /// Whether bold.
+    /// Whether the run is bold: weight 700 unless the base weight is already 700 or more.
     pub bold: bool,
-    /// Whether italic.
+    /// Whether the run is italic.
     pub italic: bool,
-    /// Whether mono.
+    /// Whether the run uses the `mono` font family.
     pub mono: bool,
-    /// Whether struck through.
+    /// Whether a line is drawn through the run.
     pub strike: bool,
-    /// The color, if any.
+    /// The theme token for the text color of the run, when it sets one.
     pub color: Option<crate::style::Token>,
-    /// The background, if any.
+    /// The theme token for the background behind the run, when it sets one.
     pub background: Option<crate::style::Token>,
     /// The exact color, if any; it wins over `color`.
     pub ink: Option<crate::style::Color>,
     /// The exact background, if any; it wins over `background`.
     pub fill: Option<crate::style::Color>,
-    /// Whether underlined.
+    /// Whether a line is drawn under the run.
     pub underline: bool,
-    /// Whether drawn fainter.
+    /// Whether the run is drawn fainter than the text around it.
     pub dim: bool,
     /// Whether this is a terminal cell: a square background on a fixed character grid.
     pub square: bool,
-    /// The link, if any.
+    /// The link target that the run carries; `None` when the run is not a link.
     pub link: Option<std::sync::Arc<str>>,
 }
 
 /// A byte range of text with a face.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub struct TextRun {
-    /// The start.
+    /// The byte offset where the run starts, inclusive.
     pub start: usize,
-    /// The end.
+    /// The byte offset where the run ends, exclusive.
     pub end: usize,
-    /// The face.
+    /// The overrides that apply to this byte range.
     pub face: TextFace,
+}
+
+impl TextRun {
+    /// Creates a run that applies `face` to the bytes from `start` up to `end`.
+    #[must_use]
+    pub const fn new(start: usize, end: usize, face: TextFace) -> Self {
+        Self { start, end, face }
+    }
 }
 
 /// The styled runs of a text, sorted by byte offset.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextRuns(
-    /// The runs.
+    /// The runs in order of their start byte offset.
     pub std::sync::Arc<[TextRun]>,
 );
 
@@ -106,6 +117,71 @@ impl TextRuns {
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
         if face.bold && base < 700 { 700 } else { base }
+    }
+}
+
+impl TextStyle {
+    /// Sets the font family name; the default is `system-ui`.
+    #[must_use]
+    pub fn font_family(mut self, font_family: impl Into<String>) -> Self {
+        self.font_family = font_family.into();
+        self
+    }
+
+    /// Sets the font size in pixels; the default is 14.
+    #[must_use]
+    pub const fn font_size(mut self, font_size: f32) -> Self {
+        self.font_size = font_size;
+        self
+    }
+
+    /// Sets the font weight from 100 to 900; the default is 400.
+    #[must_use]
+    pub const fn font_weight(mut self, font_weight: u16) -> Self {
+        self.font_weight = font_weight;
+        self
+    }
+
+    /// Sets whether the text is italic.
+    #[must_use]
+    pub const fn italic(mut self, italic: bool) -> Self {
+        self.italic = italic;
+        self
+    }
+
+    /// Sets the line height.
+    #[must_use]
+    pub const fn line_height(mut self, line_height: TextLineHeight) -> Self {
+        self.line_height = line_height;
+        self
+    }
+
+    /// Sets the extra space between letters, as a fraction of the font size.
+    #[must_use]
+    pub const fn letter_spacing_em(mut self, letter_spacing_em: f32) -> Self {
+        self.letter_spacing_em = letter_spacing_em;
+        self
+    }
+
+    /// Sets whether digits all take the same width.
+    #[must_use]
+    pub const fn tabular_nums(mut self, tabular_nums: bool) -> Self {
+        self.tabular_nums = tabular_nums;
+        self
+    }
+
+    /// Sets the underline or strike line.
+    #[must_use]
+    pub const fn decoration(mut self, decoration: crate::style::TextDecoration) -> Self {
+        self.decoration = decoration;
+        self
+    }
+
+    /// Sets the styled runs that override this style over byte ranges.
+    #[must_use]
+    pub fn runs(mut self, runs: TextRuns) -> Self {
+        self.runs = Some(runs);
+        self
     }
 }
 

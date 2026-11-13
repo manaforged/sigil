@@ -8,20 +8,20 @@ use crate::kernel::NodeId;
 /// Kind of focus scope on a node: a modal traps focus and a popup closes on focus loss.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FocusScopeKind {
-    /// The modal focus scope kind.
+    /// Traps focus inside the node, and screen readers treat the node as modal.
     Modal,
-    /// The popup focus scope kind.
+    /// Closes when focus leaves the node.
     Popup,
 }
 
 /// None, static, or signal name.
 #[derive(Clone, Debug)]
 pub enum AccessibleName {
-    /// The none accessible name.
+    /// No name.
     None,
-    /// The static accessible name.
+    /// A name that does not change.
     Static(String),
-    /// The derived accessible name.
+    /// A name read from a signal each time the accessibility tree is built.
     Derived(Signal<String>),
 }
 
@@ -43,29 +43,26 @@ impl From<Signal<String>> for AccessibleName {
     }
 }
 
-/// Caret and selection anchor of an editable text node, exported to accessibility.
 #[derive(Clone, Copy, Debug)]
-pub struct TextCursor {
-    /// The caret.
-    pub caret: Signal<usize>,
-    /// The anchor.
-    pub anchor: Signal<Option<usize>>,
+pub(crate) struct TextCursor {
+    pub(crate) caret: Signal<usize>,
+    pub(crate) anchor: Signal<Option<usize>>,
 }
 
 /// Accessibility properties of a node.
 #[derive(Clone, Debug)]
 pub struct A11yProps {
-    /// The role.
+    /// What the node is to a screen reader; the default is `GenericContainer`.
     pub role: super::Role,
-    /// The name.
+    /// The name that a screen reader speaks for the node.
     pub name: AccessibleName,
-    /// Whether focusable.
+    /// True when the node can take keyboard focus; the default is false.
     pub focusable: bool,
-    /// Whether traps tab.
+    /// True when a Tab press goes to the focused node instead of moving focus to the next node.
     pub traps_tab: bool,
-    /// Whether hittable.
+    /// True when pointer hit tests and focus moves can land on the node; the default is true.
     pub hittable: bool,
-    /// The focus scope, if any.
+    /// The focus scope that the node opens; `None` for a node that opens none.
     pub focus_scope: Option<FocusScopeKind>,
     pub(crate) detail: Rc<A11yDetail>,
 }
@@ -74,67 +71,64 @@ pub struct A11yProps {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct A11yDetail {
-    /// The description, if any.
+    /// The longer text that a screen reader speaks after the name.
     pub description: Option<AccessibleName>,
-    /// The actions.
+    /// The actions that a screen reader can ask the node to do.
     pub actions: SmallVec<[super::Action; 4]>,
-    /// The disabled, if any.
+    /// The signal that is true while the node is disabled; a disabled node takes no focus.
     pub disabled: Option<Signal<bool>>,
-    /// The tab index, if any.
+    /// The place in the tab order: lower indexes come first, and a negative index skips the node.
     pub tab_index: Option<i32>,
-    /// The tab stop, if any.
+    /// The signal that is true while Tab can stop on the node; the focused node stays in the order.
     pub tab_stop: Option<Signal<bool>>,
-    /// The keyboard shortcut, if any.
+    /// The shortcut that the node reports to assistive technology.
     pub keyboard_shortcut: Option<Shortcut>,
-    /// The checked, if any.
+    /// The signal that is true while the node is checked.
     pub checked: Option<Signal<bool>>,
-    /// The mixed state of a checkbox, if any.
+    /// The signal that is true while the node is neither checked nor unchecked; it needs `checked`.
     pub mixed: Option<Signal<bool>>,
-    /// The selected, if any.
+    /// The signal that is true while the node is selected.
     pub selected: Option<Signal<bool>>,
-    /// The value now, if any.
+    /// The signal that holds the numeric value; reported only with `value_min` and `value_max`.
     pub value_now: Option<Signal<f32>>,
-    /// The value min, if any.
+    /// The lowest numeric value that the node reports.
     pub value_min: Option<f32>,
-    /// The value max, if any.
+    /// The highest numeric value that the node reports.
     pub value_max: Option<f32>,
-    /// The step, if any.
+    /// The amount by which one step changes the numeric value.
     pub step: Option<f32>,
-    /// The text value, if any.
+    /// The signal that holds the text of the node, such as the content of a text field.
     pub text_value: Option<Signal<String>>,
-    /// The text cursor, if any.
-    pub text_cursor: Option<TextCursor>,
-    /// The placeholder, if any.
+    pub(crate) text_cursor: Option<TextCursor>,
+    /// The hint text that the node reports for an empty field.
     pub placeholder: Option<String>,
-    /// The owns.
-    pub owns: SmallVec<[NodeId; 2]>,
-    /// The labelled by, if any.
+    /// The node that labels this node; when set, `name` is not reported.
     pub labelled_by: Option<NodeId>,
-    /// The described by, if any.
+    /// The node that describes this node.
     pub described_by: Option<NodeId>,
-    /// The invalid, if any.
+    /// The signal that is true while the value of the node fails validation.
     pub invalid: Option<Signal<bool>>,
-    /// The required, if any.
+    /// The signal that is true while the user must fill in the node.
     pub required: Option<Signal<bool>>,
-    /// The live, if any.
+    /// How a screen reader announces changes to the node; `None` uses the default of the role.
     pub live: Option<super::Live>,
-    /// The expanded, if any.
+    /// The signal that is true while the node is expanded; it adds the collapse or expand action.
     pub expanded: Option<Signal<bool>>,
-    /// The level, if any.
+    /// The heading rank or the depth in a tree, 1-based.
     pub level: Option<usize>,
-    /// The sort direction, if any.
+    /// The signal that holds the sort direction of a column; `None` in the signal means not sorted.
     pub sort_direction: Option<Signal<Option<super::SortDirection>>>,
-    /// The row count, if any.
+    /// The signal that holds the number of rows of a table or a grid.
     pub row_count: Option<Signal<usize>>,
-    /// The column count, if any.
+    /// The number of columns of a table or a grid.
     pub column_count: Option<usize>,
-    /// The row index, if any.
+    /// The row that the node is in, 1-based, where the header row is 1.
     pub row_index: Option<usize>,
-    /// The column index, if any.
+    /// The column that the node is in, 1-based.
     pub column_index: Option<usize>,
-    /// The position in set, if any.
+    /// The place of the node in its set, 1-based.
     pub position_in_set: Option<usize>,
-    /// The size of set, if any.
+    /// The number of items in the set that the node belongs to.
     pub size_of_set: Option<usize>,
 }
 
@@ -161,7 +155,6 @@ impl A11yDetail {
             text_value: None,
             text_cursor: None,
             placeholder: None,
-            owns: SmallVec::new(),
             labelled_by: None,
             described_by: None,
             invalid: None,

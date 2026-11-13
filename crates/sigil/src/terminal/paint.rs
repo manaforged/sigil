@@ -112,13 +112,13 @@ impl Grid {
         self.cells.get(row * self.cols + col)
     }
 
-    /// The number of columns.
+    /// Returns the width of the grid, in character cells.
     #[must_use]
     pub const fn cols(&self) -> usize {
         self.cols
     }
 
-    /// The number of rows.
+    /// Returns the height of the grid, in character cells.
     #[must_use]
     pub const fn rows(&self) -> usize {
         self.rows

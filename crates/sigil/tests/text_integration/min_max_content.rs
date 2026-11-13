@@ -9,10 +9,7 @@ use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 
 fn make_measurer() -> TextEngineMeasure {
-    let engine = Rc::new(OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    }));
+    let engine = Rc::new(OwnedTextEngine::new(TextStyle::default().font_size(16.0)));
     TextEngineMeasure::new(engine)
 }
 

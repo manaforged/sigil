@@ -62,7 +62,7 @@ pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub use atom::TextDecoration;
 pub use atom::{
-    Background, ClipShape, Color, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
+    Background, ClipShape, Color, ColorValue, Conic, Elevation, Gradient, GradientAxis, MaskImage,
     MaskSize, Radial, RadialExtent,
 };
 kittest_pub! {
@@ -115,7 +115,7 @@ kittest_pub! {
     pub use resolve::render_style_for;
 }
 pub(crate) use resolve::text_style_for;
-pub use scale::{ColorScale, ScaleRole};
+pub use scale::ColorScale;
 pub use size::ControlSize;
 pub(crate) use state::StyleVariant;
 kittest_pub! {

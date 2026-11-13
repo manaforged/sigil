@@ -6,8 +6,10 @@ use sigil::style::Rgba;
 
 mod draws;
 mod shapes;
+/// Fixed scenes that stress nesting depth, glyph and image counts, and viewport size.
 pub mod stress;
 
+/// The device scales that `generate` picks from.
 pub const SCALES: [f32; 5] = [1.0, 1.25, 1.5, 2.0, 3.0];
 const SEED_BYTES: usize = 16_384;
 const MAX_DEPTH: u32 = 6;
@@ -29,6 +31,7 @@ impl std::fmt::Debug for Entropy<'_> {
 }
 
 impl<'a> Entropy<'a> {
+    /// Reads entropy from `bytes`, starting at the first byte.
     #[must_use]
     pub const fn from_bytes(bytes: &'a [u8]) -> Self {
         Self {
@@ -37,6 +40,7 @@ impl<'a> Entropy<'a> {
         }
     }
 
+    /// Expands `seed` into 16,384 bytes of deterministic entropy.
     #[must_use]
     pub fn from_seed(seed: u64) -> Entropy<'static> {
         let mut state = seed;
@@ -54,34 +58,41 @@ impl<'a> Entropy<'a> {
         }
     }
 
+    /// Takes the next byte, or 0 once the stream is exhausted.
     pub fn byte(&mut self) -> u8 {
         let value = self.bytes.get(self.at).copied().unwrap_or(0);
         self.at += 1;
         value
     }
 
+    /// Reports whether every byte has been taken.
     #[must_use]
     pub fn exhausted(&self) -> bool {
         self.at >= self.bytes.len()
     }
 
+    /// Takes two bytes and returns a value below `bound`, or 0 when `bound` is 0.
     pub fn below(&mut self, bound: u32) -> u32 {
         let raw = u32::from(u16::from_le_bytes([self.byte(), self.byte()]));
         raw % bound.max(1)
     }
 
+    /// Takes one byte and returns true when its value modulo 100 is below `percent`.
     pub fn chance(&mut self, percent: u8) -> bool {
         self.byte() % 100 < percent
     }
 
+    /// Takes two bytes and returns a value from 0 to 1 inclusive.
     pub fn unit(&mut self) -> f32 {
         f32::from(u16::from_le_bytes([self.byte(), self.byte()])) / f32::from(u16::MAX)
     }
 
+    /// Takes two bytes and returns a value from `low` to `high` inclusive.
     pub fn range(&mut self, low: f32, high: f32) -> f32 {
         (high - low).mul_add(self.unit(), low)
     }
 
+    /// Takes two bytes and returns one of `items`, and panics when `items` is empty.
     pub fn pick<T: Copy>(&mut self, items: &[T]) -> T {
         let len = u32::try_from(items.len()).unwrap_or(u32::MAX);
         let index = usize::try_from(self.below(len)).unwrap_or(0);
@@ -127,11 +138,13 @@ impl GeneratedScene {
         self.clear
     }
 
+    /// Generates the scene that `generate` builds from the entropy of `seed`.
     #[must_use]
     pub fn from_seed(seed: u64) -> Self {
         generate(&mut Entropy::from_seed(seed))
     }
 
+    /// Copies the commands into a `CommandScene` for a renderer.
     #[must_use]
     pub fn scene(&self) -> CommandScene {
         CommandScene {
@@ -139,15 +152,14 @@ impl GeneratedScene {
         }
     }
 
+    /// The size of the render target in pixels: the viewport times the scale, rounded.
     #[must_use]
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub fn physical(&self) -> PhysicalSize {
-        PhysicalSize::new(
-            (self.viewport.0 * self.scale).round() as u32,
-            (self.viewport.1 * self.scale).round() as u32,
-        )
+        let [width, height] = crate::physical_extent(self.viewport, self.scale);
+        PhysicalSize::new(width, height)
     }
 
+    /// Returns a copy that holds only the commands at `indices`, in the given order, skipping indices that are out of range.
     #[must_use]
     pub fn keep(&self, indices: &[usize]) -> Self {
         Self {
@@ -159,6 +171,7 @@ impl GeneratedScene {
         }
     }
 
+    /// Parses fixture text with a `seed` line or a hex `bytes` line and an optional `keep` line; `None` means a value did not parse or neither source line was present.
     #[must_use]
     pub fn from_fixture(text: &str) -> Option<Self> {
         let mut base = None;
@@ -185,6 +198,7 @@ impl GeneratedScene {
     }
 }
 
+/// Formats a `seed` line and a `keep` line that `GeneratedScene::from_fixture` reads back.
 #[must_use]
 pub fn fixture_text(seed: u64, keep: &[usize]) -> String {
     let list: Vec<String> = keep.iter().map(ToString::to_string).collect();
@@ -198,6 +212,7 @@ fn unhex(hex: &str) -> Option<Vec<u8>> {
         .collect()
 }
 
+/// Builds a scene from `entropy`: a viewport of 4 to 256 logical pixels per side in steps of 4, a scale from `SCALES`, an opaque clear color, and at most 48 draw or nesting items.
 #[must_use]
 pub fn generate(entropy: &mut Entropy<'_>) -> GeneratedScene {
     let width = f32::from(u16::try_from(entropy.below(64) + 1).unwrap_or(1)) * 4.0;

@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token};
 use crate::widgets::Layout;
 
-use super::super::vector::{PathNode, path};
+use super::super::vector::{PathBuilder, path};
 use super::PERCENT;
 use super::axis::format_tick;
 use super::interact::Interact;
@@ -144,7 +144,7 @@ fn point(turn: f32, radius: f32) -> (f32, f32) {
     clippy::cast_precision_loss,
     reason = "an arc takes a small positive step count"
 )]
-fn arc(shape: PathNode, from: f32, to: f32, radius: f32) -> PathNode {
+fn arc(shape: PathBuilder, from: f32, to: f32, radius: f32) -> PathBuilder {
     let steps = ((to - from).abs() * STEPS_PER_TURN).ceil().max(2.0) as usize;
     (0..=steps).fold(shape, |shape, step| {
         let (x, y) = point(from + (to - from) * step as f32 / steps as f32, radius);
@@ -152,7 +152,7 @@ fn arc(shape: PathNode, from: f32, to: f32, radius: f32) -> PathNode {
     })
 }
 
-fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathNode {
+fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathBuilder {
     let (x, y) = point(start, RADIUS * hole);
     let mut shape = arc(path(VIEW, VIEW).move_to(x, y), start, end, RADIUS);
     shape = if hole > 0.0 {

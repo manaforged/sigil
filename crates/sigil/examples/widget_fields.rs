@@ -25,13 +25,9 @@ pub(crate) fn number_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -
 }
 
 pub(crate) fn date_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
-    date_field(signal(Date {
-        year: 2026,
-        month: 4,
-        day: 1,
-    }))
-    .disabled(disabled)
-    .invalid(invalid)
+    date_field(signal(Date::new(2026, 4, 1).expect("a calendar date")))
+        .disabled(disabled)
+        .invalid(invalid)
 }
 
 pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {

@@ -5,7 +5,7 @@
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
-use sigil::style::{ColorAtom, StyleAtom, StyleBinding, Token};
+use sigil::style::{ColorValue, StyleAtom, StyleBinding, Token};
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
@@ -42,7 +42,7 @@ fn has_warn_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Warning9))
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Warning9))
         )
     })
 }
@@ -51,7 +51,7 @@ fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent8))
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent8))
         )
     })
 }
@@ -102,8 +102,6 @@ fn gauge_fill_tracks_signal() {
     });
 }
 
-const DELTA_PCT: f32 = 0.5;
-
 #[test]
 fn gauge_full() {
     let img = Harness::render(|| {
@@ -115,7 +113,7 @@ fn gauge_full() {
     .size([220, 40])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("gauge_full").delta(DELTA_PCT).assert(img);
+    Golden::new("gauge_full").assert(img);
 }
 
 #[test]
@@ -129,5 +127,5 @@ fn gauge_low_warn() {
     .size([220, 40])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("gauge_low_warn").delta(DELTA_PCT).assert(img);
+    Golden::new("gauge_low_warn").assert(img);
 }

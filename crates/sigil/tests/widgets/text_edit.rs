@@ -148,8 +148,8 @@ fn text_field_redo_reapplies_undone_change() {
 fn text_field_caret_visible_resets_on_keystroke() {
     sigil::reactive::Owner::scope("sigil-widget-text-field-caret-blink", || {
         let value = signal(String::new());
-        let mut builder = text_field(value);
-        let caret_visible = builder.caret_visible();
+        let caret_visible = signal(true);
+        let builder = text_field(value).caret_visible(caret_visible);
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
@@ -181,8 +181,8 @@ fn text_field_scroll_offset_advances_past_visible_window() {
     sigil::reactive::Owner::scope("sigil-widget-text-field-scroll", || {
         text_geometry(Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
-        let mut builder = text_field(value);
-        let scroll_offset = builder.scroll_offset();
+        let scroll_offset = signal(0.0_f32);
+        let builder = text_field(value).scroll_offset(scroll_offset);
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));

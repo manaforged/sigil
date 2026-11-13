@@ -10,10 +10,9 @@ use sigil::style::FocusRing;
 const VIEW: (f32, f32) = (400.0, 200.0);
 
 fn frame(host: &mut Host, input: Option<FrameInputHook<'_>>) {
-    let hooks = FrameHooks {
-        input,
-        ..FrameHooks::default()
-    };
+    let hooks = input.map_or_else(FrameHooks::default, |input| {
+        FrameHooks::default().input(input)
+    });
     let _ = host.frame(VIEW, 1.0 / 60.0, hooks);
 }
 
@@ -34,7 +33,7 @@ fn theme_switch_recolors_text_that_did_not_change() {
         frame(&mut host, None);
         assert_eq!(
             text_color(&mut host, "Unchanged label"),
-            Theme::dark().on_surface
+            Theme::dark().color(Token::OnSurface)
         );
 
         Theme::light().apply();
@@ -42,7 +41,7 @@ fn theme_switch_recolors_text_that_did_not_change() {
 
         assert_eq!(
             text_color(&mut host, "Unchanged label"),
-            Theme::light().on_surface
+            Theme::light().color(Token::OnSurface)
         );
     });
 }
@@ -56,19 +55,17 @@ fn theme_set_during_input_paints_in_the_same_frame() {
         frame(&mut host, None);
         let painted = std::cell::Cell::new(None);
 
-        let hooks = FrameHooks {
-            input: Some(Box::new(|_| {
+        let hooks = FrameHooks::default()
+            .input(|_| {
                 Theme::light().apply();
                 None
-            })),
-            paint: Some(Box::new(|target, _| {
-                painted.set(Some(target.theme().on_surface));
-            })),
-            ..FrameHooks::default()
-        };
+            })
+            .paint(|target, _| {
+                painted.set(Some(target.theme().color(Token::OnSurface)));
+            });
         let _ = host.frame(VIEW, 1.0 / 60.0, hooks);
 
-        assert_eq!(painted.get(), Some(Theme::light().on_surface));
+        assert_eq!(painted.get(), Some(Theme::light().color(Token::OnSurface)));
     });
 }
 

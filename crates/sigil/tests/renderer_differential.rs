@@ -2,9 +2,7 @@
 #![allow(clippy::print_stdout, clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
-use sigil_kittest::parity::{
-    Diff, Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff, gpu_rgba, minimize,
-};
+use sigil_kittest::parity::{Diff, Frame, cpu_rgba, diff, gpu_rgba, minimize};
 use sigil_kittest::scene_gen::{GeneratedScene, fixture_text, stress};
 
 fn env_u64(name: &str, default: u64) -> u64 {
@@ -16,20 +14,14 @@ fn env_u64(name: &str, default: u64) -> u64 {
 
 fn compare(gpu: &mut WgpuRenderer, scene: &GeneratedScene) -> Result<Diff, String> {
     let commands = scene.scene();
-    let frame = Frame {
-        scene: &commands,
-        viewport: scene.viewport(),
-        size: scene.physical(),
-        clear: scene.clear(),
-    };
+    let frame = Frame::new(&commands, scene.viewport(), scene.physical(), scene.clear());
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).map_err(|e| format!("cpu: {e:?}"))?;
     let gpu = gpu_rgba(gpu, &frame).map_err(|e| format!("gpu: {e:?}"))?;
     Ok(diff(&gpu, &cpu))
 }
 
 fn diverges(d: &Result<Diff, String>) -> bool {
-    !d.as_ref()
-        .is_ok_and(|d| d.mean <= MAX_MEAN_DIFF && d.close >= MIN_CLOSE_FRACTION)
+    !d.as_ref().is_ok_and(|d| d.is_close())
 }
 
 #[test]

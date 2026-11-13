@@ -3,7 +3,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::scene::geometry::KAPPA;
 use crate::style::{BORDER_WIDTH, Token, space};
 use crate::widgets::Layout;
-use crate::widgets::vector::{PathNode, path};
+use crate::widgets::vector::{PathBuilder, path};
 
 use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};
 use super::flow_vector::{CELL_H, cells as at, layer};
@@ -61,7 +61,7 @@ pub(super) fn window(root: NodeBuilder, lines: &[String]) -> NodeBuilder {
     root.child(body)
 }
 
-const fn canvas(size: (f32, f32)) -> PathNode {
+const fn canvas(size: (f32, f32)) -> PathBuilder {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -112,7 +112,7 @@ fn cells(grid: &[Vec<char>]) -> impl Iterator<Item = (f32, f32, StrokeMark)> + '
     })
 }
 
-fn strokes(grid: &[Vec<char>], size: (f32, f32)) -> PathNode {
+fn strokes(grid: &[Vec<char>], size: (f32, f32)) -> PathBuilder {
     let mut node = canvas(size);
     for (y, row) in grid.iter().enumerate() {
         let spans = row.iter().map(|ch| mark(*ch).and_then(h_span));
@@ -135,11 +135,11 @@ fn strokes(grid: &[Vec<char>], size: (f32, f32)) -> PathNode {
 type Segment = ((f32, f32), (f32, f32));
 
 fn runs(
-    mut node: PathNode,
+    mut node: PathBuilder,
     spans: impl Iterator<Item = Option<(f32, f32)>>,
     cell: f32,
     place: impl Fn(f32, f32) -> Segment,
-) -> PathNode {
+) -> PathBuilder {
     let mut merged: Vec<(f32, f32)> = Vec::new();
     for (index, span) in spans.enumerate() {
         let Some((from, to)) = span else { continue };
@@ -190,7 +190,7 @@ fn v_span(found: StrokeMark) -> Option<(f32, f32)> {
     }
 }
 
-fn detail(node: PathNode, x0: f32, y0: f32, found: StrokeMark) -> PathNode {
+fn detail(node: PathBuilder, x0: f32, y0: f32, found: StrokeMark) -> PathBuilder {
     let (cx, cy) = (x0 + CELL_W / 2.0, y0 + CELL_H / 2.0);
     match found {
         StrokeMark::Round(bits) => {
@@ -208,7 +208,7 @@ fn detail(node: PathNode, x0: f32, y0: f32, found: StrokeMark) -> PathNode {
     }
 }
 
-fn fills(grid: &[Vec<char>], size: (f32, f32)) -> PathNode {
+fn fills(grid: &[Vec<char>], size: (f32, f32)) -> PathBuilder {
     let mut node = canvas(size);
     for (x0, y0, found) in cells(grid) {
         node = match found {
@@ -220,7 +220,7 @@ fn fills(grid: &[Vec<char>], size: (f32, f32)) -> PathNode {
     node.fill(Token::OnSurfaceMuted)
 }
 
-fn arrow(node: PathNode, x0: f32, y0: f32, dir: u8) -> PathNode {
+fn arrow(node: PathBuilder, x0: f32, y0: f32, dir: u8) -> PathBuilder {
     let (cx, cy, half) = (x0 + CELL_W / 2.0, y0 + CELL_H / 2.0, CELL_W / 2.0);
     let (tip, left, right) = match dir {
         DOWN => (
@@ -238,7 +238,7 @@ fn arrow(node: PathNode, x0: f32, y0: f32, dir: u8) -> PathNode {
         .close()
 }
 
-fn dot(node: PathNode, cx: f32, cy: f32, radius: f32) -> PathNode {
+fn dot(node: PathBuilder, cx: f32, cy: f32, radius: f32) -> PathBuilder {
     let k = radius * KAPPA;
     node.move_to(cx + radius, cy)
         .cubic_to(cx + radius, cy + k, cx + k, cy + radius, cx, cy + radius)

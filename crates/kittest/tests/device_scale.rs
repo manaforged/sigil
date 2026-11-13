@@ -16,7 +16,7 @@ use sigil::scene::{
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 const WIDTH: u32 = 120;
 const HEIGHT: u32 = 60;
@@ -129,21 +129,12 @@ fn split_blocks(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usize {
         .count()
 }
 
-#[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 #[test]
 fn a_pixel_render_at_scale_two_resolves_hairlines_and_text_at_device_pixels() {
     let mut ui = Harness::new(hairline_and_text)
         .pixels(WIDTH, HEIGHT)
         .scale(SCALE);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     assert_eq!(
         frame.dimensions(),
         DEVICE,
@@ -164,8 +155,10 @@ fn a_pixel_render_at_scale_two_resolves_hairlines_and_text_at_device_pixels() {
 
 #[test]
 fn the_gpu_surface_returns_an_image_of_its_frame() {
-    let mut ui = Harness::new(hairline_and_text).gpu(WIDTH, HEIGHT, SCALE);
-    let frame = frame_of(&mut ui);
+    let mut ui = Harness::new(hairline_and_text)
+        .gpu(WIDTH, HEIGHT)
+        .scale(SCALE);
+    let frame = ui.expect_image();
     assert_eq!(
         frame.dimensions(),
         DEVICE,
@@ -180,16 +173,16 @@ fn the_gpu_surface_returns_an_image_of_its_frame() {
 
 #[test]
 fn one_scene_agrees_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(fixed_scene).gpu(WIDTH, HEIGHT, SCALE);
-    let gpu = frame_of(&mut ui);
+    let mut ui = Harness::new(fixed_scene).gpu(WIDTH, HEIGHT).scale(SCALE);
+    let gpu = ui.expect_image();
     let viewport = (WIDTH as f32, HEIGHT as f32);
     let scene = ui.host().emit(viewport);
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(DEVICE.0, DEVICE.1),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(DEVICE.0, DEVICE.1),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let drawn = gpu.pixels().filter(|px| px.0[..3] != [0, 0, 0]).count();
     assert!(
@@ -199,11 +192,8 @@ fn one_scene_agrees_on_the_cpu_and_the_gpu() {
     let measured = diff(gpu.as_raw(), &cpu);
     println!(
         "cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }

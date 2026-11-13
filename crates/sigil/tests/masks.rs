@@ -11,11 +11,10 @@
     reason = "a test fails loudly on a missing value"
 )]
 
-use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit, container};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawImage, DrawRect, GradientStop, LayerEffect,
     LayerScope, LinearGradient, Mask, MaskMode, SceneBuilder,
@@ -23,7 +22,9 @@ use sigil::scene::{
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "masks/perf.rs"]
 mod perf;
@@ -151,34 +152,17 @@ fn group() -> impl IntoNode {
     sized(paint, SIDE as f32)
 }
 
-#[track_caller]
-fn gpu_frame(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
-    let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
-    let frame = Frame {
-        scene,
-        viewport: (width as f32, SIDE as f32),
-        size: PhysicalSize::new(device_w, device_h),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (width, SIDE), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn frames<N: IntoNode + 'static>(app: fn() -> N) -> Vec<(&'static str, image::RgbaImage)> {
     let mut pixels = Harness::new(app).pixels(SIDE, SIDE).scale(SCALE);
-    let mut surface = Harness::new(app).gpu(SIDE, SIDE, SCALE);
+    let mut surface = Harness::new(app).gpu(SIDE, SIDE).scale(SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene, SIDE)),
     ]
 }
@@ -359,18 +343,15 @@ fn gallery() -> impl IntoNode {
 #[test]
 fn masked_scenes_agree_on_the_cpu_and_the_gpu() {
     let (width, height) = (SIDE * 4, SIDE);
-    let mut ui = Harness::new(gallery).gpu(width, height, SCALE);
-    let gpu = gpu_frame(&mut ui);
+    let mut ui = Harness::new(gallery).gpu(width, height).scale(SCALE);
+    let gpu = ui.expect_image();
     let scene = ui.host().emit((width as f32, height as f32));
     let cpu = cpu_frame(&scene, width);
     let measured = diff(gpu.as_raw(), cpu.as_raw());
     println!(
         "masks cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }

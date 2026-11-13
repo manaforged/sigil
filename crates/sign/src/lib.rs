@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 use std::fs::{File, read_to_string};
 use std::io;
 use std::path::Path;

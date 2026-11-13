@@ -33,7 +33,6 @@ mod state_parse;
 mod strokes;
 
 /// A rendered mermaid diagram.
-#[must_use]
 pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
     let view = View::new();
     fragment().children_reactive(move || [view.figure(&source.read())])

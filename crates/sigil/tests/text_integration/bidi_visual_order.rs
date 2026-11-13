@@ -7,10 +7,7 @@ const WORD_A: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 const WORD_B: &str = "\u{05E2}\u{05D5}\u{05DC}\u{05DD}";
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    })
+    OwnedTextEngine::new(TextStyle::default().font_size(16.0))
 }
 
 fn caret_x(

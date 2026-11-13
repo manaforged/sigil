@@ -2,8 +2,6 @@ use crate::kernel::{Cx, HostMode, Node, NodeId, NodeType};
 use crate::layout::{Display, FlexDirection, FlexWrap, LayoutEngine, LayoutStyle};
 use crate::style::Theme;
 
-pub use crate::layout::builder_ext::Asymmetric;
-
 mod align;
 mod contrast;
 mod flaw;
@@ -59,10 +57,8 @@ pub fn flaws(
 ) -> Vec<Issue> {
     let mut out = Vec::new();
     cx.visit_preorder(root, |id, node| {
-        if node.extension::<Asymmetric>().is_none() {
-            align::columns(cx, layout, (id, node), tolerance, &mut out);
-            align::insets(cx, layout, (id, node), tolerance, &mut out);
-        }
+        align::columns(cx, layout, (id, node), tolerance, &mut out);
+        align::insets(cx, layout, (id, node), tolerance, &mut out);
         rules::clipped_text(cx, layout, (id, node), &mut out);
         rules::uneven_controls(cx, layout, (id, node), tolerance, &mut out);
         rules::overlap(cx, layout, node, &mut out);

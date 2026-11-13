@@ -303,14 +303,35 @@ named!(
 /// The renderer backend of a frame and why it fell back, if it did.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BackendStatus {
-    /// The backend in use.
-    pub kind: Backend,
-    /// The reason for a fallback, if any.
-    pub fallback: FallbackCause,
+    /// The backend that rendered the frame.
+    pub(crate) kind: Backend,
+    /// Why the renderer fell back to this backend; `FallbackCause::None` when it did not.
+    pub(crate) fallback: FallbackCause,
 }
 
 impl BackendStatus {
-    /// The status of the terminal host.
+    /// Creates the status of `backend` after `fallback`.
+    #[must_use]
+    pub const fn new(backend: Backend, fallback: FallbackCause) -> Self {
+        Self {
+            kind: backend,
+            fallback,
+        }
+    }
+
+    /// The backend that rendered the frame.
+    #[must_use]
+    pub const fn backend(&self) -> Backend {
+        self.kind
+    }
+
+    /// Why the renderer fell back to this backend; `FallbackCause::None` when it did not.
+    #[must_use]
+    pub const fn fallback(&self) -> FallbackCause {
+        self.fallback
+    }
+
+    /// The status of the terminal host: the `Terminal` backend with no fallback.
     pub const TERMINAL: Self = Self {
         kind: Backend::Terminal,
         fallback: FallbackCause::None,

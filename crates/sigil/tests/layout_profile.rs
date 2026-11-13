@@ -8,7 +8,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
-use sigil::profile::{disable, enable, frames, reset, tick_frame};
+use sigil::profile::{disable, enable, end_frame, frames, reset};
 use sigil::reactive::{Owner, memo, signal};
 use sigil::style::Paint;
 use sigil::widgets::Layout;
@@ -27,7 +27,7 @@ fn compute_records_layout_miss() {
     engine
         .compute(&mut cx, root, Constraint::fixed(200.0, 40.0))
         .expect("compute");
-    tick_frame();
+    end_frame();
     let recorded = frames();
     let last = recorded.last().expect("frame");
     assert!(
@@ -267,13 +267,13 @@ fn derived_text_increment_records_layout_path() {
         let mut engine = stub_engine();
         let avail = Constraint::fixed(480.0, 800.0);
         engine.compute(&mut cx, root, avail).expect("first");
-        tick_frame();
+        end_frame();
         reset();
         let started = std::time::Instant::now();
         count.set(1);
         engine.compute(&mut cx, root, avail).expect("increment");
         let elapsed_us = started.elapsed().as_micros();
-        tick_frame();
+        end_frame();
         let recorded = frames();
         let last = recorded.last().expect("frame");
         let full = last.counter(sigil::profile::Counter::LayoutFull);

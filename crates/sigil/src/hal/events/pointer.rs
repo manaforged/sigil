@@ -5,12 +5,12 @@ use crate::geometry::{Point, Size};
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum PointerType {
-    /// The mouse pointer kind.
+    /// A mouse; the default of a new pointer event.
     #[default]
     Mouse,
-    /// The touch pointer kind.
+    /// A finger on a touch screen.
     Touch,
-    /// The pen pointer kind.
+    /// A pen or stylus.
     Pen,
 }
 
@@ -18,17 +18,17 @@ pub enum PointerType {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum MouseButton {
-    /// The left mouse button.
+    /// The left button, which is `MouseButtons::LEFT` in the held set.
     Left,
-    /// The right mouse button.
+    /// The right button, which is `MouseButtons::RIGHT` in the held set.
     Right,
-    /// The middle mouse button.
+    /// The middle button, which is `MouseButtons::MIDDLE` in the held set.
     Middle,
-    /// The back mouse button.
+    /// The back side button, which is `MouseButtons::BACK` in the held set.
     Back,
-    /// The forward mouse button.
+    /// The forward side button, which is `MouseButtons::FORWARD` in the held set.
     Forward,
-    /// The other mouse button.
+    /// A button with no bit in `MouseButtons`, by the number that the host gives it.
     Other(u16),
 }
 
@@ -37,23 +37,21 @@ pub enum MouseButton {
 pub struct MouseButtons(u8);
 
 impl MouseButtons {
-    /// No buttons.
-    pub const EMPTY: Self = Self(0);
-    /// The left button.
+    /// Set while the left button is held.
     pub const LEFT: Self = Self(1 << 0);
-    /// The right button.
+    /// Set while the right button is held.
     pub const RIGHT: Self = Self(1 << 1);
-    /// The middle button.
+    /// Set while the middle button is held.
     pub const MIDDLE: Self = Self(1 << 2);
-    /// The back button.
+    /// Set while the back side button is held.
     pub const BACK: Self = Self(1 << 3);
-    /// The forward button.
+    /// Set while the forward side button is held.
     pub const FORWARD: Self = Self(1 << 4);
 
     /// A set with no mouse buttons.
     #[must_use]
     pub const fn empty() -> Self {
-        Self::EMPTY
+        Self(0)
     }
 
     /// Returns whether `button` is in this set.
@@ -77,26 +75,27 @@ impl MouseButtons {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum PointerPhase {
-    /// The down pointer phase.
+    /// A button was pressed or a touch started.
     Down,
-    /// The move pointer phase.
+    /// The pointer moved.
     Move,
-    /// The up pointer phase.
+    /// A button was released or a touch ended.
     Up,
-    /// The enter pointer phase.
+    /// The pointer came onto the node or the window.
     Enter,
-    /// The leave pointer phase.
+    /// The pointer left the node or the window.
     Leave,
-    /// The cancel pointer phase.
+    /// The system cancelled the touch; pointer-up handlers run for it.
     Cancel,
 }
 
 /// Pen tilt in degrees.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub struct PointerTilt {
-    /// The x.
+    /// The tilt along the x axis, in degrees.
     pub x: f32,
-    /// The y.
+    /// The tilt along the y axis, in degrees.
     pub y: f32,
 }
 
@@ -104,29 +103,29 @@ pub struct PointerTilt {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct PointerEvent {
-    /// The position.
+    /// The pointer position from the top left corner of the handling node, in logical pixels.
     pub position: Point,
-    /// The window position.
+    /// The pointer position in the window, in logical pixels.
     pub window_position: Point,
-    /// The delta.
+    /// The movement since the last pointer position, in logical pixels.
     pub delta: Point,
-    /// The kind.
+    /// The device: mouse, touch, or pen.
     pub kind: PointerType,
-    /// The button, if any.
+    /// The button that was pressed or released; `None` when no button changed.
     pub button: Option<MouseButton>,
-    /// The buttons.
+    /// The buttons held during the event.
     pub buttons: MouseButtons,
-    /// The modifiers.
+    /// The modifiers held during the event.
     pub modifiers: Modifiers,
-    /// The phase.
+    /// What the pointer did: press, move, release, enter, leave, or cancel.
     pub phase: PointerPhase,
-    /// The target size.
+    /// The size of the node that handles the event, in logical pixels.
     pub target_size: Size,
-    /// The pointer id.
+    /// The id of the touch point, which tells fingers apart; 0 for a mouse.
     pub pointer_id: u64,
-    /// The pressure, if any.
+    /// The touch force from 0.0 to 1.0; `None` when the device reports none.
     pub pressure: Option<f32>,
-    /// The tilt, if any.
+    /// The pen tilt; `None` when the device reports none.
     pub tilt: Option<PointerTilt>,
     capture_requested: bool,
     captured: bool,

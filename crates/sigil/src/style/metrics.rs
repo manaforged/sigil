@@ -1,6 +1,6 @@
 use crate::style::{ControlSize, Elevation, SPACING_STEP, StyleAtom, Token};
 
-/// The default border width.
+/// The default border width: 1 px.
 pub const BORDER_WIDTH: i16 = 1;
 pub(crate) const DISABLED_OPACITY: u16 = 5_000;
 pub(crate) static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
@@ -21,17 +21,17 @@ pub const fn space(steps: u8) -> f32 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Radius {
-    /// The none radius.
+    /// Square corners: 0 px.
     None,
-    /// The sm radius.
+    /// A 2 px corner radius.
     Sm,
-    /// The base radius.
+    /// A 4 px corner radius.
     Base,
-    /// The md radius.
+    /// A 6 px corner radius.
     Md,
-    /// The lg radius.
+    /// An 8 px corner radius.
     Lg,
-    /// The full radius.
+    /// A 9999 px corner radius, which rounds the box into a pill or a circle.
     Full,
 }
 
@@ -144,7 +144,7 @@ impl Metrics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Layer {
-    /// The window background.
+    /// The window background, under every other layer.
     Page,
     /// A recessed well, such as a code block or a sidebar.
     Sunken,

@@ -52,7 +52,7 @@ fn bench_table_ops(c: &mut Criterion) {
         Owner::scope("bench-table-sort", || {
             let state = TableState::new(rows(100_000), columns());
             b.iter(|| {
-                state.toggle_sort("value");
+                state.cycle_sort("value");
                 black_box(state.visible().get().len());
             });
         });
@@ -84,7 +84,7 @@ fn bench_replace(c: &mut Criterion) {
                 let rows = rows(10_000);
                 let state = TableState::identified(rows.clone(), columns());
                 if selected {
-                    state.select_only(0);
+                    state.select(0);
                 }
                 b.iter_batched(
                     || rows.clone(),
@@ -113,7 +113,7 @@ fn bench_shared_replace(c: &mut Criterion) {
                 let second = Arc::new(second);
                 let state = TableState::identified((*first).clone(), columns());
                 if selected > 0 {
-                    state.select_only(0);
+                    state.select(0);
                     state.selection().set(Rc::new((0..selected).collect()));
                 }
                 let mut flip = false;
@@ -168,7 +168,7 @@ fn bench_sorted_replace(c: &mut Criterion) {
                 Owner::scope("bench-table-sorted", || {
                     let (first, second) = replacement_rows(count, case);
                     let state = TableState::new((*first).clone(), columns());
-                    state.toggle_sort("label");
+                    state.cycle_sort("label");
                     if case == "filtered" {
                         state.quick_filter().set("row-4".into());
                     }

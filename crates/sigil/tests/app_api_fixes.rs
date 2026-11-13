@@ -30,15 +30,12 @@ fn send(host: &mut Host, keys: Vec<Event>) {
     let _ = host.frame(
         VIEW,
         1.0 / 60.0,
-        FrameHooks {
-            input: Some(Box::new(move |target| {
-                for event in queue.borrow_mut().take().unwrap_or_default() {
-                    target.route(event);
-                }
-                None
-            })),
-            ..FrameHooks::default()
-        },
+        FrameHooks::default().input(move |target| {
+            for event in queue.borrow_mut().take().unwrap_or_default() {
+                target.route(event);
+            }
+            None
+        }),
     );
     settle(host);
 }
@@ -122,7 +119,7 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
                 virtual_list(rows, |_, row: &String| text(row.clone()))
                     .row_height(20.0)
                     .viewport_height(100.0)
-                    .scroll_bind(scroll)
+                    .scroll_y(scroll)
                     .cursor(cursor),
             ),
         );
@@ -203,9 +200,6 @@ fn the_prelude_names_what_its_functions_return() {
         let open = signal(false);
         let _: ModalBuilder = modal(open);
         let _: DiffBuilder = diff("--- a\n+++ b\n").view(DiffView::Unified);
-        let _: Option<SortKey> = Some(SortKey {
-            column: "name",
-            dir: SortDirection::Ascending,
-        });
+        let _: Option<SortKey> = Some(SortKey::new("name", SortDirection::Ascending));
     });
 }

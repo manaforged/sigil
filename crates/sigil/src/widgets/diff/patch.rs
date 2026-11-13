@@ -2,6 +2,7 @@ use std::ops::Range;
 
 /// Whether a diff line was added, removed, or kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum LineKind {
     /// A line that is the same in the old and the new text.
     Context,
@@ -24,52 +25,146 @@ impl LineKind {
 /// Identifies a line of a patch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LineId {
-    /// The hunk.
-    pub hunk: usize,
-    /// The line.
-    pub line: usize,
+    pub(crate) hunk: usize,
+    pub(crate) line: usize,
+}
+
+impl LineId {
+    /// Creates a line identifier from 0-based `hunk` and `line` indexes.
+    #[must_use]
+    pub const fn new(hunk: usize, line: usize) -> Self {
+        Self { hunk, line }
+    }
+
+    /// Returns the 0-based index of the hunk in the patch.
+    #[must_use]
+    pub const fn hunk(self) -> usize {
+        self.hunk
+    }
+
+    /// Returns the 0-based index of the line in the hunk.
+    #[must_use]
+    pub const fn line(self) -> usize {
+        self.line
+    }
 }
 
 /// One line of a patch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Line {
-    /// The kind.
-    pub kind: LineKind,
-    /// The text.
-    pub text: String,
-    /// The old, if any.
-    pub old: Option<usize>,
-    /// The new, if any.
-    pub new: Option<usize>,
+    /// Whether the line was added, removed or kept.
+    pub(crate) kind: LineKind,
+    /// The text of the line without its marker; a note line keeps its backslash.
+    pub(crate) text: String,
+    /// The line number in the old text; `None` for an added line.
+    pub(crate) old: Option<usize>,
+    /// The line number in the new text; `None` for a removed line.
+    pub(crate) new: Option<usize>,
 }
 
 /// One group of changes in a patch.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Hunk {
-    /// The meta.
-    pub meta: Vec<String>,
-    /// The path, if any.
-    pub path: Option<String>,
-    /// The header.
-    pub header: String,
-    /// The old start.
-    pub old_start: usize,
-    /// The new start.
-    pub new_start: usize,
-    /// The lines.
-    pub lines: Vec<Line>,
+    /// The file header lines before the hunk.
+    pub(crate) meta: Vec<String>,
+    /// The path of the changed file; `None` when the patch names none.
+    pub(crate) path: Option<String>,
+    /// The `@@` header line; empty when the patch has none.
+    pub(crate) header: String,
+    /// The first line number in the old text.
+    pub(crate) old_start: usize,
+    /// The first line number in the new text.
+    pub(crate) new_start: usize,
+    /// The lines of the hunk, in patch order.
+    pub(crate) lines: Vec<Line>,
+}
+
+impl Line {
+    /// Whether the line was added, removed or kept.
+    #[must_use]
+    pub const fn kind(&self) -> LineKind {
+        self.kind
+    }
+
+    /// The text of the line without its marker; a note line keeps its backslash.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// The line number in the old text, if the old text has the line.
+    #[must_use]
+    pub const fn old_line(&self) -> Option<usize> {
+        self.old
+    }
+
+    /// The line number in the new text, if the new text has the line.
+    #[must_use]
+    pub const fn new_line(&self) -> Option<usize> {
+        self.new
+    }
+}
+
+impl Hunk {
+    /// The file header lines before the hunk.
+    #[must_use]
+    pub fn meta(&self) -> &[String] {
+        &self.meta
+    }
+
+    /// The path of the changed file, if the patch names one.
+    #[must_use]
+    pub fn path(&self) -> Option<&str> {
+        self.path.as_deref()
+    }
+
+    /// The `@@` header line.
+    #[must_use]
+    pub fn header(&self) -> &str {
+        &self.header
+    }
+
+    /// The first line number in the old text.
+    #[must_use]
+    pub const fn old_start(&self) -> usize {
+        self.old_start
+    }
+
+    /// The first line number in the new text.
+    #[must_use]
+    pub const fn new_start(&self) -> usize {
+        self.new_start
+    }
+
+    /// Returns the lines of the hunk, in patch order.
+    #[must_use]
+    pub fn lines(&self) -> &[Line] {
+        &self.lines
+    }
 }
 
 /// A parsed unified diff.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Patch {
-    /// The hunks.
-    pub hunks: Vec<Hunk>,
-    /// The trailer.
-    pub trailer: Vec<String>,
+    /// The hunks, in patch order.
+    pub(crate) hunks: Vec<Hunk>,
+    /// The lines after the last hunk that belong to no hunk.
+    pub(crate) trailer: Vec<String>,
 }
 
 impl Patch {
+    /// The hunks, in patch order.
+    #[must_use]
+    pub fn hunks(&self) -> &[Hunk] {
+        &self.hunks
+    }
+
+    /// Returns the lines after the last hunk that belong to no hunk.
+    #[must_use]
+    pub fn trailer(&self) -> &[String] {
+        &self.trailer
+    }
+
     /// Parses unified diff text.
     #[must_use]
     pub fn parse(text: &str) -> Self {

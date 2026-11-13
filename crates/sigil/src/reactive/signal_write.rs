@@ -68,7 +68,6 @@ fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
     if slot.subscribers.is_empty() {
         return false;
     }
-    rt.frame_dirty = true;
     let (effects, running) = (&rt.effects, &rt.running);
     let live: SmallVec<[EffectKey; 4]> = slot
         .subscribers
@@ -76,6 +75,7 @@ fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
         .copied()
         .filter(|&e| !is_stale_running_subscription(effects, running, e, signal))
         .collect();
+    rt.frame.ask_frame();
     let queued = !live.is_empty();
     for effect in live {
         rt.enqueue(effect, level);

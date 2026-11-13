@@ -3,7 +3,7 @@
 use sigil::kernel::{Cx, container};
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
-use sigil::style::{ColorAtom, Paint, PaintAtom, StyleAtom, StyleBinding, Token};
+use sigil::style::{ColorValue, Paint, PaintAtom, StyleAtom, StyleBinding, Token};
 
 #[test]
 fn paint_when_toggles_on_signal_change() {
@@ -23,7 +23,7 @@ fn paint_when_toggles_on_signal_change() {
         assert_eq!(
             live,
             &[
-                StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+                StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
                 StyleAtom::Paint(PaintAtom::NoGradient),
             ],
             "paint_when must install the accent background when signal flips true, got {live:?}",

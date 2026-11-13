@@ -95,7 +95,7 @@ pub fn toggle(on: Signal<bool>) -> ToggleBuilder {
 
 impl ToggleBuilder {
     /// Creates a switch that reads and writes `on`.
-    pub fn new(on: Signal<bool>) -> Self {
+    pub(crate) fn new(on: Signal<bool>) -> Self {
         Self {
             on,
             label: None,

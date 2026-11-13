@@ -6,7 +6,7 @@ use crate::terminal::graphics::write_mux;
 use crate::terminal::term::{applied, current_caps, live};
 
 /// Sends a desktop notification through the terminal.
-pub fn notify(title: &str, body: &str) -> Result<(), crate::Error> {
+pub(crate) fn notify(title: &str, body: &str) -> Result<(), crate::Error> {
     if !applied() {
         return Ok(());
     }
@@ -15,7 +15,7 @@ pub fn notify(title: &str, body: &str) -> Result<(), crate::Error> {
 }
 
 /// Reports task progress to the terminal.
-pub fn progress(value: Option<u8>) -> Result<(), crate::Error> {
+pub(crate) fn progress(value: Option<u8>) -> Result<(), crate::Error> {
     let caps = current_caps();
     if !applied() || !caps.notices.progress {
         return Ok(());
@@ -54,7 +54,7 @@ const CLEAR_ACTIVITY: &str = "\x1b]7501;state=clear\x1b\\";
 static ACTIVITY: Mutex<String> = Mutex::new(String::new());
 
 /// Reports `app`'s activity to the host over OSC 7501; `None` clears it.
-pub fn activity(app: &str, value: Option<Activity>) -> Result<(), crate::Error> {
+pub(crate) fn activity(app: &str, value: Option<Activity>) -> Result<(), crate::Error> {
     let caps = current_caps();
     if !live() || !caps.notices.activity {
         return Ok(());
@@ -97,7 +97,7 @@ pub(crate) fn held_activity(shown: bool) -> Option<String> {
 }
 
 /// Rings the terminal bell.
-pub fn bell(note: Option<&str>) -> Result<(), crate::Error> {
+pub(crate) fn bell(note: Option<&str>) -> Result<(), crate::Error> {
     if !applied() {
         return Ok(());
     }

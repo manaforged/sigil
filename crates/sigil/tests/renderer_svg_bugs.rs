@@ -38,12 +38,12 @@ const WHITE: Color = Color {
 const TOLERANCE: u8 = 4;
 
 const fn frame(scene: &CommandScene, side: u32) -> Frame<'_> {
-    Frame {
+    Frame::new(
         scene,
-        viewport: (side as f32, side as f32),
-        size: PhysicalSize::new(side, side),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    }
+        (side as f32, side as f32),
+        PhysicalSize::new(side, side),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    )
 }
 
 pub(crate) fn frames(scene: &CommandScene, side: u32) -> Vec<(&'static str, Vec<u8>)> {

@@ -72,7 +72,7 @@ pub fn install(clip: impl Clipboard + 'static) {
 
 /// The installed clipboard; before `install` runs, it rejects writes and reads `None`.
 #[must_use]
-pub fn clipboard() -> Rc<dyn Clipboard> {
+pub(crate) fn clipboard() -> Rc<dyn Clipboard> {
     CURRENT.with(|slot| Rc::clone(&*slot.borrow()))
 }
 

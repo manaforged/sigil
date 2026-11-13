@@ -92,7 +92,7 @@ impl Cx {
         };
         match builder.patch_box(self, id) {
             NodePatch::Patched => {
-                crate::profile::count_add(Counter::KernelPatched, 1);
+                crate::profile::count(Counter::KernelPatched, 1);
                 Some(Fate::Patched(id))
             }
             NodePatch::Mismatch(builder) | NodePatch::Unsupported(builder) => {
@@ -104,7 +104,7 @@ impl Cx {
 
     pub(crate) fn remove_counted(&mut self, id: NodeId) {
         if self.remove(id) {
-            crate::profile::count_add(Counter::KernelRemoved, 1);
+            crate::profile::count(Counter::KernelRemoved, 1);
         }
     }
 
@@ -122,7 +122,7 @@ impl Cx {
     }
 
     fn mount_child(&mut self, parent: NodeId, builder: Box<dyn ErasedComponent>) -> Fate {
-        crate::profile::count_add(Counter::KernelMounted, 1);
+        crate::profile::count(Counter::KernelMounted, 1);
         Fate::Mounted(self.add_owned_child(parent, builder))
     }
 }

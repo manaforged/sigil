@@ -108,7 +108,7 @@ container()
 | `line_height(px)`, `letter_spacing(em)`, `tabular_nums` | Text metrics: line height in pixels, letter spacing in ems |
 | `underline`, `line_through` | Text decoration |
 | `transition(Transition)` | Style transitions, as in Tailwind; `Transition::new()`, `all()`, `colors()`, `opacity()`, and `transform()` choose the properties, and `duration`, `ease`, and `delay` set the timing |
-| `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
+| `animation(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
 
 `class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 
@@ -128,7 +128,7 @@ Padding, margin, and gap take a `Space` step such as `Space::Md`; width and heig
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
 | Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warning1`.., `Error1`.., `Info1`.. |
 
-`Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
+`Token::color` returns a `ColorValue`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
 
 Shared metrics:
 
@@ -165,7 +165,7 @@ container()
 # };
 ```
 
-The node owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
+The node owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_paint()`.
 
 ## Where to go next
 

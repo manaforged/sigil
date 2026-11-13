@@ -4,10 +4,7 @@ use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    })
+    OwnedTextEngine::new(TextStyle::default().font_size(16.0))
 }
 
 #[test]
@@ -40,14 +37,8 @@ fn different_width_is_cache_miss() {
 
 #[test]
 fn clear_cache_forces_rebuild_with_new_config() {
-    let config_a = TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    };
-    let config_b = TextStyle {
-        font_size: 32.0,
-        ..TextStyle::default()
-    };
+    let config_a = TextStyle::default().font_size(16.0);
+    let config_b = TextStyle::default().font_size(32.0);
 
     let ea = OwnedTextEngine::new(config_a);
     let first = ea.layout_paragraph("Hello", None).unwrap();

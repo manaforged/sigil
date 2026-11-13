@@ -26,6 +26,9 @@ impl<'t> EmitWalk<'_, 't> {
 
 fn find_top_layer<'t>(cx: &'t Cx, node: &Node) -> Vec<(NodeId, Path<'t>)> {
     let reach = cx.top_layers();
+    if reach.is_empty() {
+        return Vec::new();
+    }
     let mut found = Vec::new();
     collect(cx, &reach, node, &mut Path::new(), &mut found);
     found.sort_by_key(|(id, _)| *id);

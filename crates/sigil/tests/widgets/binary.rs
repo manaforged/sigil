@@ -100,11 +100,11 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
 
         let theme = Theme::default();
         let unchecked_colors = rect_colors(&cx, root);
-        assert!(unchecked_colors.contains(&theme.gray.step(1)));
+        assert!(unchecked_colors.contains(&theme.scale(Tone::Neutral).step(1)));
 
         checked.set(true);
         let checked_colors = rect_colors(&cx, root);
-        assert!(checked_colors.contains(&theme.accent));
+        assert!(checked_colors.contains(&theme.color(Token::Accent)));
         assert!(
             emit_scene(&cx, root, None)
                 .commands
@@ -266,8 +266,8 @@ fn toggle_scene_emits_on_and_off_variants() {
             sigil::animation::tick(1.0 / 60.0);
         }
         let on_colors = rect_colors(&cx, root);
-        let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
-        assert!(on_colors.contains(&theme.accent));
+        let on_thumb_x = first_rect_x_for_color(&cx, root, theme.color(Token::OnAccent));
+        assert!(on_colors.contains(&theme.color(Token::Accent)));
         assert!(on_thumb_x > off_thumb_x);
     });
 }

@@ -80,7 +80,7 @@ impl LayerCompositePipeline {
 
     fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let _span = span(crate::profile::Phase::RenderCompositePipeline);
-        count(crate::profile::Counter::GpuCompositePipelines);
+        count(crate::profile::Counter::GpuCompositePipelines, 1);
         let uniform_layout = uniform_layout(device, "sigil-renderer layer uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer layer texture layout");
         let quad = QuadPipeline::new(
@@ -225,7 +225,7 @@ impl LayerCompositePipeline {
             .iter()
             .position(|(cached, _)| cached == view)
             .unwrap_or_else(|| {
-                count(crate::profile::Counter::AllocCompositeTextureBindGroups);
+                count(crate::profile::Counter::AllocCompositeTextureBindGroups, 1);
                 let group = texture_group(
                     device,
                     "sigil-renderer layer texture bind group",
@@ -329,7 +329,7 @@ pub(crate) fn viewport_uniform(
         _pad: [0.0, 0.0],
     });
     if cache.as_ref().is_none_or(|(cached, _)| *cached != buffer) {
-        count(crate::profile::Counter::AllocCompositeUniformBindGroups);
+        count(crate::profile::Counter::AllocCompositeUniformBindGroups, 1);
         let binding = wgpu::BufferBinding {
             buffer: &buffer,
             offset: 0,

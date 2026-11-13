@@ -41,7 +41,7 @@ pub(crate) fn job_state(console: Console) -> TableState<JobRow> {
         let service = console.service.get();
         untrack(|| {
             sync.replace_rows(rows_for(service));
-            sync.select_only(0);
+            sync.select(0);
         });
     });
     let selection = state.selection();

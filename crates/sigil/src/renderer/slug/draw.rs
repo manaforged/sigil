@@ -220,7 +220,7 @@ impl SlugTextPipeline {
         if missing.is_empty() {
             return;
         }
-        crate::profile::count_add(
+        crate::profile::count(
             crate::profile::Counter::TextOutlineMisses,
             missing.values().map(|indices| indices.len() as u64).sum(),
         );

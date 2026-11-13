@@ -1,21 +1,25 @@
-use std::error::Error;
-
 /// State of a task.
 #[derive(Debug, Clone)]
-pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
-    /// The idle status.
+pub enum Status<T, E = crate::Error> {
+    /// The task is not running: it has not started, or it was cancelled.
     Idle,
-    /// The pending status.
+    /// The task is running and has no result yet.
     Pending,
-    /// The ok status.
+    /// The task finished and returned this value.
     Ok(T),
-    /// The err status.
+    /// The task finished and returned this error.
     Err(E),
-    /// The panicked status.
+    /// The task panicked; the string is the panic message.
     Panicked(String),
 }
 
 impl<T, E> Status<T, E> {
+    /// Returns whether this status is idle.
+    #[must_use]
+    pub const fn is_idle(&self) -> bool {
+        matches!(self, Self::Idle)
+    }
+
     /// Returns whether this status is pending.
     #[must_use]
     pub const fn is_pending(&self) -> bool {

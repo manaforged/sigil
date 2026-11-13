@@ -355,7 +355,7 @@ fn a_keyed_survivor_keeps_its_node_untouched() {
         profile::begin_frame(BackendStatus::TERMINAL);
         items.set(vec![1, 2, 3]);
         cx.flush_reactive_children();
-        profile::tick_frame();
+        profile::end_frame();
         let patched = profile::frames()
             .last()
             .map_or(u64::MAX, |frame| frame.counter(Counter::KernelPatched));

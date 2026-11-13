@@ -83,7 +83,6 @@ impl StatBuilder {
         self
     }
 
-    #[must_use]
     fn root(self) -> NodeBuilder {
         let name = accessible_name(&self.label);
         let value = text(self.value)

@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 use sigil::layout::TextMeasure;
 
 mod bounds;
@@ -9,13 +10,16 @@ mod error;
 mod explore;
 pub use error::{Error, ErrorKind};
 pub use explore::Step;
+/// The headless GPU device, render targets and pixel readback.
 pub mod gpu;
 mod harness;
 mod render;
 pub use harness::{Harness, Node, Query, Target};
 pub use render::Render;
 mod interaction;
+/// CPU and GPU renders of one frame and the measure of how far they differ.
 pub mod parity;
+/// Scenes generated from a seed for renderer tests.
 pub mod scene_gen;
 mod settle;
 pub use sigil::layout::FakeMeasure;
@@ -31,6 +35,18 @@ pub(crate) const fn extent_f32(value: u32) -> f32 {
     value as f32
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a rounded, clamped texture extent fits u32"
+)]
+pub(crate) fn physical_extent(viewport: (f32, f32), scale: f32) -> [u32; 2] {
+    [
+        (viewport.0 * scale).round().clamp(1.0, f32::from(u16::MAX)) as u32,
+        (viewport.1 * scale).round().clamp(1.0, f32::from(u16::MAX)) as u32,
+    ]
+}
+
 /// A rendered image, or `None` when no GPU adapter exists and skipping is allowed.
 pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 
@@ -38,19 +54,50 @@ pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
+    /// No interaction.
     Default,
+    /// The pointer is over the widget.
     Hover,
+    /// The pointer button is held down on the widget.
     Pressed,
+    /// The widget was clicked: pressed and released.
     Clicked,
+    /// The widget has keyboard focus.
     Focused,
+    /// The widget is disabled.
     Disabled,
-    HoverAfterFrames { frames: u32, dt: f32 },
-    PressedAfterFrames { frames: u32, dt: f32 },
-    FocusedAfterFrames { frames: u32, dt: f32 },
-    Dragged { dx: f32, dy: f32 },
+    /// Hovered, then `frames` frames run `dt` seconds apart.
+    HoverAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
+    /// Pressed, then `frames` frames run `dt` seconds apart.
+    PressedAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
+    /// Focused, then `frames` frames run `dt` seconds apart.
+    FocusedAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
+    /// Dragged from the pointer position by `dx` and `dy` logical pixels.
+    Dragged {
+        /// The horizontal move in logical pixels.
+        dx: f32,
+        /// The vertical move in logical pixels.
+        dy: f32,
+    },
 }
 
 impl InteractionMode {
+    /// The name of the state in golden file names, such as `hover`.
     #[must_use]
     pub const fn tag(self) -> &'static str {
         match self {
@@ -65,11 +112,13 @@ impl InteractionMode {
     }
 }
 
+/// A text measure that reports every text node as a 40 by 16 box.
 #[must_use]
 pub fn stub_text_measure() -> Box<dyn TextMeasure> {
     Box::new(FakeMeasure::fixed(40.0, 16.0))
 }
 
+/// The text measure of the app: the real text engine with the bundled fonts.
 #[must_use]
 pub fn real_text_measure() -> Box<dyn TextMeasure> {
     Box::new(sigil::layout::TextEngineMeasure::default())

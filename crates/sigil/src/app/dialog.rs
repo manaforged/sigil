@@ -1,5 +1,6 @@
 mod entries;
 pub(crate) mod layer;
+/// Queued answers that stand in for the native dialogs in a test.
 #[cfg(feature = "kittest")]
 pub mod mock;
 #[cfg(feature = "native-dialog")]
@@ -77,19 +78,14 @@ impl FileDialog {
     /// Starts a dialog that picks several files to open.
     #[must_use]
     pub fn open_files(self) -> Picked<Vec<PathBuf>> {
-        #[cfg(feature = "kittest")]
-        if let Some(response) = mock::take_paths() {
-            return signal(Status::Ok(response));
-        }
-        #[cfg(feature = "native-dialog")]
-        if !layer::in_app() {
-            return native::open_files(self);
-        }
-        let out = signal(Status::Pending);
-        layer::push_files(self, PickKind::Files, move |paths| {
-            out.update(|status| *status = Status::Ok(paths));
-        });
-        out
+        self.dispatch_pick(
+            PickKind::Files,
+            #[cfg(feature = "kittest")]
+            mock::take_paths,
+            #[cfg(feature = "native-dialog")]
+            |dialog, _| native::open_files(dialog),
+            |paths| paths,
+        )
     }
 
     /// Starts a dialog that picks a folder.
@@ -105,19 +101,34 @@ impl FileDialog {
     }
 
     fn pick_one(self, kind: PickKind) -> Picked<PathBuf> {
+        self.dispatch_pick(
+            kind,
+            #[cfg(feature = "kittest")]
+            mock::take_path,
+            #[cfg(feature = "native-dialog")]
+            native::pick_one,
+            |paths| paths.and_then(|paths| paths.into_iter().next()),
+        )
+    }
+
+    fn dispatch_pick<T: Send + 'static>(
+        self,
+        kind: PickKind,
+        #[cfg(feature = "kittest")] mock_take: fn() -> Option<Option<T>>,
+        #[cfg(feature = "native-dialog")] native_pick: fn(Self, PickKind) -> Picked<T>,
+        map: impl FnOnce(Option<Vec<PathBuf>>) -> Option<T> + 'static,
+    ) -> Picked<T> {
         #[cfg(feature = "kittest")]
-        if let Some(response) = mock::take_path() {
+        if let Some(response) = mock_take() {
             return signal(Status::Ok(response));
         }
         #[cfg(feature = "native-dialog")]
         if !layer::in_app() {
-            return native::pick_one(self, kind);
+            return native_pick(self, kind);
         }
         let out = signal(Status::Pending);
         layer::push_files(self, kind, move |paths| {
-            out.update(|status| {
-                *status = Status::Ok(paths.and_then(|paths| paths.into_iter().next()));
-            });
+            out.update(|status| *status = Status::Ok(map(paths)));
         });
         out
     }

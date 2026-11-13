@@ -17,11 +17,11 @@ kittest_pub! {
     /// The counts per subject of one hotspot.
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Attribution {
-        /// The hotspot.
+        /// The kind of work that was counted, such as a layout pass or a GPU layer.
         pub hotspot: Hotspot,
-        /// The subject.
+        /// The name of what the work was done for; `(other)` holds every subject after the first 63 of a frame.
         pub subject: String,
-        /// The count.
+        /// The amount counted for this subject in the frame, in the hotspot's unit.
         pub count: u64,
     }
 }

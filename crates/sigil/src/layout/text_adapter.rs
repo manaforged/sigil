@@ -32,7 +32,7 @@ impl TextMeasure for TextEngineMeasure {
     }
 
     fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Constraint) -> Size {
-        crate::profile::count(crate::profile::Counter::TextMeasure);
+        crate::profile::count(crate::profile::Counter::TextMeasure, 1);
         let max_width = match space.width {
             Dim::Fixed(w) => Some(w),
             Dim::MinContent | Dim::MaxContent => None,

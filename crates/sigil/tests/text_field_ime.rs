@@ -167,8 +167,8 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal("a".repeat(20));
         let mut cx = Cx::new_root();
-        let mut builder = text_field(value);
-        let scroll = builder.scroll_offset();
+        let scroll = signal(0.0_f32);
+        let builder = text_field(value).scroll_offset(scroll);
         let root = cx.add(builder);
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 

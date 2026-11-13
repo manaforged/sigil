@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
-use crate::profile::{Counter, count_add};
+use crate::profile::{Counter, count};
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache;
 use crate::style::Color;
@@ -187,7 +187,7 @@ impl<'t> EmitWalk<'_, 't> {
         };
         let start = self.scene.command_len();
         self.scene.extend_commands(commands.iter().cloned());
-        count_add(Counter::EmitCopied, span.nodes);
+        count(Counter::EmitCopied, span.nodes);
         self.track.nodes += span.nodes;
         #[cfg(terminal_host)]
         if self.track.want_diff {

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use web_time::Instant;
 
 use crate::app::embed::Host;
-use crate::app::{FrameHooks, FrameInfo};
+use crate::app::{Frame, FrameHooks};
 use crate::error::{AppResult, Error};
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
@@ -69,23 +69,22 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
     if forced {
         env.view.painted = false;
     }
-    crate::profile::tick_frame();
+    crate::profile::end_frame();
     Ok(())
 }
 
 fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
-    FrameHooks {
-        input: Some(Box::new(|host| input_phase(&mut env.borrow_mut(), host))),
-        after_layout: Some(Box::new(|host| {
+    FrameHooks::default()
+        .input(|host| input_phase(&mut env.borrow_mut(), host))
+        .after_layout(|host| {
             let env = &mut *env.borrow_mut();
             if let Some((cx, layout, router, _)) = host.tree() {
                 sync_ime(env.shell, env.view.handle, cx, layout, router);
             }
-        })),
-        paint: Some(Box::new(|host, info| {
+        })
+        .paint(|host, info| {
             paint_phase(&mut env.borrow_mut(), host, info);
-        })),
-    }
+        })
 }
 
 fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
@@ -168,7 +167,7 @@ fn pump_shell_features() {
     crate::app::media::pump();
 }
 
-fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &FrameInfo) {
+fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &Frame) {
     let _paint = crate::profile::span(crate::profile::Phase::Paint);
     let force_paint = env.shell.take_force_paint();
     let paint_needed = !env.view.hidden && (force_paint || info.dirty);

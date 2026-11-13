@@ -1,10 +1,10 @@
 use crate::style::{BORDER_WIDTH, Token};
-use crate::widgets::vector::PathNode;
+use crate::widgets::vector::PathBuilder;
 
 use super::super::flow::{Graph, NodeShape};
 use super::{Area, CELL_W, CIRCLE_K, CORNER, DOT, canvas, rounded};
 
-pub(super) fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
+pub(super) fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathBuilder {
     let mut node = canvas(size);
     for (entry, area) in graph.nodes.iter().zip(areas) {
         if !entry.dummy && entry.shape != NodeShape::Terminal {
@@ -15,7 +15,7 @@ pub(super) fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNod
         .stroke(Token::Border, f32::from(BORDER_WIDTH))
 }
 
-pub(super) fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
+pub(super) fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathBuilder {
     let mut node = canvas(size);
     for (entry, area) in graph.nodes.iter().zip(areas) {
         if entry.shape == NodeShape::Terminal {
@@ -29,7 +29,7 @@ pub(super) fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode 
     node.fill(Token::OnSurface)
 }
 
-fn shape(node: PathNode, shape: NodeShape, area: Area) -> PathNode {
+fn shape(node: PathBuilder, shape: NodeShape, area: Area) -> PathBuilder {
     match shape {
         NodeShape::Round => rounded(node, area, CORNER * 1.5),
         NodeShape::Stadium | NodeShape::Terminal => rounded(node, area, area.h / 2.0),
@@ -42,7 +42,7 @@ fn shape(node: PathNode, shape: NodeShape, area: Area) -> PathNode {
     }
 }
 
-fn ellipse(node: PathNode, cx: f32, cy: f32, rx: f32, ry: f32) -> PathNode {
+fn ellipse(node: PathBuilder, cx: f32, cy: f32, rx: f32, ry: f32) -> PathBuilder {
     let (kx, ky) = (rx * CIRCLE_K, ry * CIRCLE_K);
     node.move_to(cx + rx, cy)
         .cubic_to(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry)
@@ -52,7 +52,7 @@ fn ellipse(node: PathNode, cx: f32, cy: f32, rx: f32, ry: f32) -> PathNode {
         .close()
 }
 
-fn hexagon(node: PathNode, area: Area) -> PathNode {
+fn hexagon(node: PathBuilder, area: Area) -> PathBuilder {
     let inset = (area.h / 2.0).min(area.w / 4.0);
     node.move_to(area.x + inset, area.y)
         .line_to(area.right() - inset, area.y)
@@ -63,7 +63,7 @@ fn hexagon(node: PathNode, area: Area) -> PathNode {
         .close()
 }
 
-fn cylinder(node: PathNode, area: Area) -> PathNode {
+fn cylinder(node: PathBuilder, area: Area) -> PathBuilder {
     let lip = (area.h / 6.0).min(6.0);
     let (x0, x1, top, bottom) = (area.x, area.right(), area.y + lip, area.bottom() - lip);
     let k = CIRCLE_K * area.w / 2.0;
@@ -87,7 +87,7 @@ fn cylinder(node: PathNode, area: Area) -> PathNode {
         .cubic_to(area.cx() + k, belly, x1, top + lip, x1, top)
 }
 
-fn subroutine(node: PathNode, area: Area) -> PathNode {
+fn subroutine(node: PathBuilder, area: Area) -> PathBuilder {
     let side = CELL_W;
     rounded(node, area, CORNER / 2.0)
         .move_to(area.x + side, area.y)
@@ -96,7 +96,7 @@ fn subroutine(node: PathNode, area: Area) -> PathNode {
         .line_to(area.right() - side, area.bottom())
 }
 
-fn flag(node: PathNode, area: Area) -> PathNode {
+fn flag(node: PathBuilder, area: Area) -> PathBuilder {
     node.move_to(area.x, area.y)
         .line_to(area.right(), area.y)
         .line_to(area.right(), area.bottom())

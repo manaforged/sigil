@@ -1,5 +1,5 @@
 use super::*;
-use crate::style::ColorAtom;
+use crate::style::ColorValue;
 use crate::style::palette::Palette;
 use crate::style::palette::perceived_brightness_u32;
 use crate::style::variant::{FontFamilyHint, Variant};
@@ -102,15 +102,15 @@ fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
             },
         ),
     ] {
-        assert_eq!(t.color(ColorAtom::parse(name)), expected, "{name}");
+        assert_eq!(t.color(ColorValue::parse(name)), expected, "{name}");
     }
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
-    assert_eq!(t.color(ColorAtom::parse("accent")), t.accent);
-    assert_ne!(t.color(ColorAtom::parse("accent")), Color::rgb(38, 38, 38));
+    assert_eq!(t.color(ColorValue::parse("accent")), t.accent);
+    assert_ne!(t.color(ColorValue::parse("accent")), Color::rgb(38, 38, 38));
 }
 
 #[test]
@@ -118,9 +118,36 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     let gold = Color::rgb(0xE8, 0xC0, 0x60);
     let navy = Color::rgb(0x0D, 0x12, 0x20);
     let t = Theme::dark().token("accent", gold).token("on-accent", navy);
-    assert_eq!(t.color(ColorAtom::parse("accent")), gold);
+    assert_eq!(t.color(ColorValue::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
-    assert_ne!(t.color(ColorAtom::parse("accent")), Theme::dark().accent);
+    assert_ne!(t.color(ColorValue::parse("accent")), Theme::dark().accent);
+}
+
+#[test]
+fn a_theme_file_sets_direction_locale_and_labels() {
+    let theme = <Theme as core::str::FromStr>::from_str(
+        r#"
+base = "light"
+direction = "rtl"
+
+[tokens]
+
+[locale]
+preset = "de"
+date_order = "ymd"
+
+[strings]
+close = "Schließen"
+"#,
+    )
+    .expect("theme parses");
+    assert_eq!(theme.direction, crate::style::Direction::Rtl);
+    assert_eq!(theme.locale.decimal, ',');
+    assert_eq!(theme.locale.date_order, crate::style::DateOrder::Ymd);
+    assert_eq!(
+        theme.strings.get(crate::style::StringKey::Close),
+        "Schließen"
+    );
 }

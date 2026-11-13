@@ -75,7 +75,7 @@ pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilde
 
 impl DropdownBuilder {
     /// Creates a select box that reads and writes the index `selected` into `options`.
-    pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
+    pub(crate) fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
             selected,
             options,
@@ -108,6 +108,8 @@ impl DropdownBuilder {
     fn root(mut self) -> NodeBuilder {
         let interaction = InteractionState::new(true).disabled(self.disabled);
         let open = signal(false);
+        super::super::popup::PopupLayer::new(open, super::super::popup::PopupAnchor::Inline)
+            .register_escape();
         let cursor = signal(self.selected.peek());
         let on_change = self
             .on_change

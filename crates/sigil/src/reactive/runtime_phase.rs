@@ -29,7 +29,7 @@ impl Runtime {
                 dispose_owner(run_owner);
             }
             let deferred_cleanups = with_rt(|rt| {
-                rt.phase = DrawPhase::Idle;
+                rt.frame.recover_from_panic();
                 rt.running.clear();
                 rt.panic_origin = None;
                 clear_dead_current(rt);
@@ -59,34 +59,35 @@ impl Runtime {
     kittest_pub! {
         /// Enters the effect phase.
         pub fn begin_effect() {
-            advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
-            with_rt(|rt| rt.frame_dirty = false);
+            with_rt(|rt| rt.frame.begin_effect());
         }
     }
 
     kittest_pub! {
         /// Enters the layout phase.
         pub fn begin_layout() {
-            advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
+            with_rt(|rt| rt.frame.begin_layout());
         }
     }
 
     kittest_pub! {
         /// Enters the paint phase.
         pub fn begin_paint() {
-            advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
-            with_rt(|rt| rt.paints += 1);
+            with_rt(|rt| {
+                rt.frame.begin_paint();
+                rt.paints += 1;
+            });
         }
     }
 
     pub(crate) fn layout_paints() -> Option<u64> {
-        with_rt(|rt| (rt.phase == DrawPhase::Layout).then_some(rt.paints))
+        with_rt(|rt| (rt.frame.phase() == DrawPhase::Layout).then_some(rt.paints))
     }
 
     kittest_pub! {
         /// Ends the current frame.
         pub fn end_frame() {
-            advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
+            with_rt(|rt| rt.frame.end_frame());
         }
     }
 
@@ -94,27 +95,16 @@ impl Runtime {
         /// Returns whether something asked for another frame.
         #[must_use]
         pub fn frame_dirty() -> bool {
-            with_rt(|rt| rt.frame_dirty)
+            with_rt(|rt| rt.frame.dirty())
         }
     }
 
     kittest_pub! {
         /// Asks for another frame.
         pub fn mark_frame_dirty() {
-            with_rt(|rt| rt.frame_dirty = true);
+            with_rt(|rt| rt.frame.ask_frame());
         }
     }
-}
-
-fn advance(api: &'static str, from: DrawPhase, to: DrawPhase) {
-    with_rt(|rt| {
-        debug_assert_eq!(
-            rt.phase, from,
-            "Runtime::{api} called from phase {:?}, expected {from:?}",
-            rt.phase,
-        );
-        rt.phase = to;
-    });
 }
 
 fn clear_dead_current(rt: &mut RuntimeState) {

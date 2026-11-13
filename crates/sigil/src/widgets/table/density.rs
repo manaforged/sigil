@@ -5,11 +5,11 @@ use crate::style::space;
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Density {
-    /// The grid density.
+    /// The tightest rows: 6 spacing steps high, with a header of 7.
     Grid,
-    /// The compact density.
+    /// Tighter rows: 7 spacing steps high, with a header of 8.
     Compact,
-    /// The default density.
+    /// Rows and header 9 spacing steps high, with wider cell padding in a window.
     #[default]
     Default,
 }

@@ -3,6 +3,75 @@
 #[cfg(test)]
 use criterion as _;
 
+macro_rules! shared_node_methods {
+    (@mutate $(, $field:ident)*) => {
+        /// Runs `apply` on the node when it is built, before its children are added.
+        pub fn mutate(mut self, apply: impl FnOnce(&mut $crate::kernel::Node) + 'static) -> Self {
+            self$(.$field)*.pre_extensions.push(Box::new(apply));
+            self
+        }
+    };
+    ($($field:ident),*) => {
+        /// Sets the accessibility role of the node.
+        pub const fn role(mut self, role: $crate::kernel::Role) -> Self {
+            self$(.$field)*.a11y.role = role;
+            self
+        }
+
+        /// Sets the accessible name of the node.
+        pub fn label(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
+            self$(.$field)*.a11y.name = name.into();
+            self
+        }
+
+        /// Sets the accessible description of the node.
+        pub fn description(mut self, description: impl Into<String>) -> Self {
+            self$(.$field)*.a11y.description =
+                Some($crate::kernel::AccessibleName::Static(description.into()));
+            self
+        }
+
+        /// Sets whether the node can take keyboard focus; a fragment cannot.
+        pub fn focusable(mut self, yes: bool) -> Self {
+            debug_assert!(
+                !(yes && matches!(self$(.$field)*.kind, $crate::kernel::NodeType::Fragment)),
+                "focusable(true) on a Fragment: fragments have no geometry"
+            );
+            self$(.$field)*.a11y.focusable = yes;
+            self
+        }
+
+        /// Sets the tab order: lower indexes come first, and a negative index skips the node.
+        pub fn tab_index(mut self, index: i32) -> Self {
+            self$(.$field)*.a11y.tab_index = Some(index);
+            self
+        }
+
+        /// Sets the shortcut that the node reports to assistive technology.
+        pub fn keyboard_shortcut(mut self, shortcut: impl Into<$crate::events::Shortcut>) -> Self {
+            self$(.$field)*.a11y.keyboard_shortcut = Some(shortcut.into());
+            self
+        }
+
+        /// Sets whether pointer hit tests and focus moves can land on the node.
+        pub const fn hittable(mut self, yes: bool) -> Self {
+            self$(.$field)*.a11y.hittable = yes;
+            self
+        }
+
+        shared_node_methods!(@mutate $(, $field)*);
+
+        /// Adds this node to the tree and returns its id.
+        #[allow(
+            clippy::should_implement_trait,
+            reason = "intentional, reviewed trade-off"
+        )]
+        pub fn add(self, cx: &mut $crate::kernel::Cx) -> $crate::kernel::NodeId {
+            cx.add(self)
+        }
+    };
+}
+
 mod access;
 mod announce;
 mod builder;
@@ -53,5 +122,6 @@ kittest_pub! {
 #[cfg(feature = "kittest")]
 pub use reactive_children::schedule_keyed_rebuild;
 pub(crate) use reactive_children::schedule_keyed_rebuild_at;
-pub use semantics::{A11yDetail, A11yProps, AccessibleName, FocusScopeKind, TextCursor};
+pub(crate) use semantics::TextCursor;
+pub use semantics::{A11yDetail, A11yProps, AccessibleName, FocusScopeKind};
 pub use text::{TextBuilder, TextContent, text};

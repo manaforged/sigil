@@ -20,5 +20,7 @@ pub use draw::{DrawParams, SlugTextPipeline};
 #[cfg(host)]
 pub(crate) use draw::{QueuedRun, RunFrame, SLUG_INSTANCE_BYTES};
 pub use tuning::TextTuning;
+#[cfg(all(host, any(test, feature = "kittest")))]
+pub use tuning::set_text_tuning;
 #[cfg(host)]
-pub use tuning::{set_text_tuning, text_tuning};
+pub use tuning::text_tuning;

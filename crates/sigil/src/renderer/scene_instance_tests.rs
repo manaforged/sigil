@@ -53,7 +53,7 @@ fn emit_scene_skips_surface_hole_and_its_children() {
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
-                    .with(Surface { key: 1 })
+                    .with(Surface::new(1))
                     .class("bg-accent")
                     .child(accent(40.0, 24.0)),
             ),

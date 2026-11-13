@@ -24,7 +24,7 @@ fn modal_open() {
     .size([286, 164])
     .hit((143.0, 82.0))
     .image();
-    Golden::new("modal_open").delta(DELTA_PCT).assert(img);
+    Golden::new("modal_open").assert(img);
 }
 
 #[test]
@@ -54,9 +54,7 @@ fn modal_dimmed_backdrop() {
     .size([412, 292])
     .hit((200.0, 140.0))
     .image();
-    Golden::new("modal_dimmed_backdrop")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("modal_dimmed_backdrop").assert(img);
 }
 
 #[test]
@@ -81,7 +79,7 @@ fn modal_focused() {
     .size([286, 164])
     .hit((143.0, 82.0))
     .image();
-    Golden::new("modal_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("modal_focused").assert(img);
 }
 
 #[test]
@@ -111,7 +109,7 @@ fn modal_dismissing() {
     .size([286, 164])
     .hit((143.0, 82.0))
     .image();
-    Golden::new("modal_dismissing").delta(DELTA_PCT).assert(img);
+    Golden::new("modal_dismissing").assert(img);
 }
 
 #[test]
@@ -135,7 +133,7 @@ fn menu_open() {
     .size([140, 112])
     .hit((70.0, 56.0))
     .image();
-    Golden::new("menu_open").delta(DELTA_PCT).assert(img);
+    Golden::new("menu_open").assert(img);
 }
 
 #[test]
@@ -159,7 +157,7 @@ fn menu_hover_item2() {
     .size([140, 112])
     .hit((70.0, 56.0))
     .image();
-    Golden::new("menu_hover_item2").delta(DELTA_PCT).assert(img);
+    Golden::new("menu_hover_item2").assert(img);
 }
 
 #[test]
@@ -183,9 +181,7 @@ fn menu_disabled_item() {
     .size([140, 112])
     .hit((70.0, 56.0))
     .image();
-    Golden::new("menu_disabled_item")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("menu_disabled_item").assert(img);
 }
 
 #[test]
@@ -210,9 +206,7 @@ fn menu_with_separators() {
     .size([140, 124])
     .hit((70.0, 62.0))
     .image();
-    Golden::new("menu_with_separators")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("menu_with_separators").assert(img);
 }
 
 #[test]
@@ -236,9 +230,7 @@ fn menu_submenu_open() {
     .size([140, 112])
     .hit((70.0, 56.0))
     .image();
-    Golden::new("menu_submenu_open")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("menu_submenu_open").assert(img);
 }
 
 #[test]
@@ -253,7 +245,7 @@ fn tooltip_visible() {
     .size([150, 74])
     .hit((74.0, 50.0))
     .image();
-    Golden::new("tooltip_visible").delta(DELTA_PCT).assert(img);
+    Golden::new("tooltip_visible").assert(img);
 }
 
 #[test]
@@ -264,9 +256,7 @@ fn tooltip_offscreen_clamp() {
         .size([150, 44])
         .hit((74.0, 22.0))
         .image();
-    Golden::new("tooltip_offscreen_clamp")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("tooltip_offscreen_clamp").assert(img);
 }
 
 #[test]
@@ -285,7 +275,5 @@ fn tooltip_with_keyboard_shortcut() {
     .size([180, 74])
     .hit((90.0, 50.0))
     .image();
-    Golden::new("tooltip_with_keyboard_shortcut")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("tooltip_with_keyboard_shortcut").assert(img);
 }

@@ -32,7 +32,7 @@ pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
 
 impl GaugeBuilder {
     /// Creates a gauge of `value` against a maximum of 1.0.
-    pub fn new(value: Signal<f32>) -> Self {
+    pub(crate) fn new(value: Signal<f32>) -> Self {
         Self {
             value,
             max: 1.0,

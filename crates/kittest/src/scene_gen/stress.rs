@@ -31,6 +31,7 @@ const fn fill(area: Rect) -> SceneCommand {
     SceneCommand::Rect(DrawRect::new(area, INK))
 }
 
+/// Builds a 128 by 128 scene with one filled rectangle inside `depth` nested pairs of a clip and a transform.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn clip_depth(depth: usize) -> GeneratedScene {
@@ -53,6 +54,7 @@ pub fn clip_depth(depth: usize) -> GeneratedScene {
     scene(commands, (128.0, 128.0), 1.0)
 }
 
+/// Builds a 128 by 128 scene with one filled rectangle inside `depth` nested pairs of a layer and a saved layer, where each layer has a blur filter of 1.0 when `blur` is true.
 #[must_use]
 pub fn layer_depth(depth: usize, blur: bool) -> GeneratedScene {
     let mut commands = Vec::with_capacity(depth * 2 + 1);
@@ -79,6 +81,7 @@ pub fn layer_depth(depth: usize, blur: bool) -> GeneratedScene {
     scene(commands, (128.0, 128.0), 1.0)
 }
 
+/// Builds a 1024 by 512 scene of text rows of 64 consecutive characters from U+4E00, with enough rows to cover `count` characters.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn unique_glyphs(count: u32) -> GeneratedScene {
@@ -89,11 +92,9 @@ pub fn unique_glyphs(count: u32) -> GeneratedScene {
             .filter_map(|col| char::from_u32(0x4E00 + row * per_row + col))
             .collect();
         let size = ((row % 5) as f32).mul_add(3.0, 8.0);
-        let style = TextStyle {
-            font_family: String::from("system-ui"),
-            font_size: size,
-            ..TextStyle::default()
-        };
+        let style = TextStyle::default()
+            .font_family("system-ui")
+            .font_size(size);
         let area = rect(0.0, (row % 64) as f32 * 8.0, 1024.0, size * 1.5);
         commands.push(SceneCommand::GlyphRun(shape_glyph_run(
             area, text, INK, style, 10_000,
@@ -102,6 +103,7 @@ pub fn unique_glyphs(count: u32) -> GeneratedScene {
     scene(commands, (1024.0, 512.0), 1.0)
 }
 
+/// Builds a 512 by 512 scene of `count` images, each `side` pixels square in a solid color taken from its index and drawn 8 by 8.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn unique_images(count: u32, side: u32) -> GeneratedScene {
@@ -132,6 +134,7 @@ pub fn unique_images(count: u32, side: u32) -> GeneratedScene {
     scene(commands, (512.0, 512.0), 1.0)
 }
 
+/// Builds a scene of one rectangle that fills a `width` by `height` viewport at device scale `scale`.
 #[must_use]
 pub fn viewport(width: f32, height: f32, scale: f32) -> GeneratedScene {
     scene(

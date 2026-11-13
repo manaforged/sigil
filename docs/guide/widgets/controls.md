@@ -1,6 +1,6 @@
 # Controls
 
-Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()` in their own state styling.
+Action and value controls. Each constructs from a lowercase function and chains a builder. `button`, `checkbox`, `toggle`, and `slider` and `radio_group` take the `Paint` methods and `.theme()` on the builder. `button`, `checkbox`, `toggle`, `slider`, and `radio_group` take the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`. `button`, `checkbox`, and `slider` draw the `Widget` state closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_paint()` in their own state styling.
 
 ## button
 
@@ -23,8 +23,7 @@ Key options:
 - `.size(Size)`: Compact, Default, Wide change height and padding. Add `.fill_width()` to make the button fill its width.
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
-- `.enabled(bool)`: static disable; the node is not focusable.
-- `.disabled(impl Reactive<bool>)`: reactive disable.
+- `.disabled(impl Reactive<bool>)`: disables the button from a `bool` or a signal; the node is not focusable while it is true.
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 

@@ -1,12 +1,12 @@
 use crate::reactive::Signal;
 
-use crate::style::{ColorAtom, Metrics, Token};
+use crate::style::{ColorValue, Metrics, Token};
 
 /// The focus ring of a node: when it shows, and its color, width, offset and opacity.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FocusRing {
     visible: Option<Signal<bool>>,
-    color: Option<ColorAtom>,
+    color: Option<ColorValue>,
     width: Option<f32>,
     offset: Option<f32>,
     opacity: Option<u16>,
@@ -24,7 +24,7 @@ impl From<Signal<bool>> for FocusRing {
 impl FocusRing {
     /// Sets the color of the focus ring.
     #[must_use]
-    pub fn color(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn color(mut self, color: impl Into<ColorValue>) -> Self {
         self.color = Some(color.into());
         self
     }
@@ -67,7 +67,7 @@ impl FocusRing {
         }
     }
 
-    pub(crate) fn color_atom(&self) -> ColorAtom {
+    pub(crate) fn color_atom(&self) -> ColorValue {
         self.color.unwrap_or_else(|| Token::Ring.color())
     }
 

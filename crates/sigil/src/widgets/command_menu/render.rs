@@ -135,7 +135,7 @@ fn query_field(chrome: &PanelChrome, depth: usize) -> TextFieldBuilder {
         .placeholder(chrome.placeholder.clone())
         .autofocus()
         .map_node(move |node| node.focus_in(move || active.focused.set(true)))
-        .blur(move || {
+        .focus_out(move || {
             active.focused.set(false);
             if !active.pointed.peek() && palette.stack.peek().len() == depth + 1 {
                 palette.reset();
@@ -216,7 +216,7 @@ fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
     reveal_row(offset, cursor, rows_height(1), viewport);
     scroll(list)
         .height(viewport)
-        .scroll_bind(offset)
+        .scroll_y(offset)
         .into_node_builder()
         .focusable(false)
 }

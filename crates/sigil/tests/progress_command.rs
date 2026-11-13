@@ -61,7 +61,7 @@ fn progress_track_emits_border_strong_color() {
         let theme = Theme::default();
         let colors = rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.gray.step(4)),
+            colors.contains(&theme.scale(Tone::Neutral).step(4)),
             "track should emit the muted gray-4 color"
         );
     });
@@ -81,7 +81,7 @@ fn progress_fill_emits_accent_color() {
         let theme = Theme::default();
         let colors = rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent),
+            colors.contains(&theme.color(Token::Accent)),
             "fill should emit the solid accent color"
         );
     });
@@ -101,7 +101,7 @@ fn progress_indeterminate_emits_accent_fill() {
         let theme = Theme::default();
         let colors = rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent),
+            colors.contains(&theme.color(Token::Accent)),
             "indeterminate fill should emit the solid accent color"
         );
     });

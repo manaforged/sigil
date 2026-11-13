@@ -3,8 +3,6 @@ use sigil::scene::SceneBuilder;
 use sigil::widgets::{canvas, path};
 use sigil_kittest::Harness;
 
-use super::frame_of;
-
 const SIDE: u32 = 40;
 const WHITE: Color = Color {
     r: 255,
@@ -76,11 +74,11 @@ fn assert_linear_edge(frame: &image::RgbaImage, what: &str) {
 #[test]
 fn a_half_covered_path_edge_blends_in_linear_light_on_pixels() {
     let mut ui = Harness::new(half_covered_square).pixels(SIDE, SIDE);
-    assert_linear_edge(&frame_of(&mut ui), "pixels");
+    assert_linear_edge(&ui.expect_image(), "pixels");
 }
 
 #[test]
 fn a_half_covered_path_edge_blends_in_linear_light_on_the_gpu() {
-    let mut ui = Harness::new(half_covered_square).gpu(SIDE, SIDE, 1.0);
-    assert_linear_edge(&frame_of(&mut ui), "gpu");
+    let mut ui = Harness::new(half_covered_square).gpu(SIDE, SIDE).scale(1.0);
+    assert_linear_edge(&ui.expect_image(), "gpu");
 }

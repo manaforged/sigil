@@ -1,9 +1,9 @@
 /// Orientation of a slider, splitter, or divider.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Orientation {
-    /// The horizontal orientation.
+    /// The control runs from left to right; the default.
     #[default]
     Horizontal,
-    /// The vertical orientation.
+    /// The control runs from top to bottom.
     Vertical,
 }

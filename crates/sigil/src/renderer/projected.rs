@@ -67,7 +67,7 @@ impl ProjectedPipeline {
     }
 
     fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        count(crate::profile::Counter::GpuCompositePipelines);
+        count(crate::profile::Counter::GpuCompositePipelines, 1);
         let uniform_layout = uniform_layout(device, "sigil-renderer projected uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer projected texture layout");
         let quad = QuadPipeline::new(
@@ -108,7 +108,7 @@ impl ProjectedPipeline {
         };
         let offset = self.uniform(&mut ctx);
         let instances = ctx.encoder.upload(from_ref(&instance));
-        count(crate::profile::Counter::AllocCompositeTextureBindGroups);
+        count(crate::profile::Counter::AllocCompositeTextureBindGroups, 1);
         let texture = texture_group(
             ctx.device,
             "sigil-renderer projected texture bind group",

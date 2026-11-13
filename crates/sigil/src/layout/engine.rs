@@ -370,7 +370,7 @@ mod viewport;
 pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
 
 fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
-    crate::profile::count(crate::profile::Counter::LayoutFull);
+    crate::profile::count(crate::profile::Counter::LayoutFull, 1);
     let reason = if !mirrored {
         crate::profile::Counter::LayoutFullUnmirrored
     } else if dirty.is_empty() {
@@ -378,7 +378,7 @@ fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
     } else {
         crate::profile::Counter::LayoutFullMajority
     };
-    crate::profile::count(reason);
+    crate::profile::count(reason, 1);
     attribution::note_full_root(cx, root, reason);
 }
 

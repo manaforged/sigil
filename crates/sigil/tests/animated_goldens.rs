@@ -7,7 +7,6 @@ use sigil::prelude::*;
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
-const DELTA_PCT: f32 = 0.5;
 const DT: f32 = 1.0 / 60.0;
 
 #[test]
@@ -21,9 +20,7 @@ fn button_hover_settled() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("button_hover_settled").assert(img);
 }
 
 #[test]
@@ -34,9 +31,7 @@ fn button_hover_midflight() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("button_hover_midflight").assert(img);
 }
 
 #[test]
@@ -46,9 +41,7 @@ fn button_hover_filmstrip() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .filmstrip(6, DT);
-    Golden::new("button_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("button_hover_filmstrip").assert(img);
 }
 
 fn checkbox_widget() -> impl IntoNode {
@@ -69,9 +62,7 @@ fn checkbox_hover_settled() {
         .size([36, 36])
         .hit((16.0, 16.0))
         .image();
-    Golden::new("checkbox_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("checkbox_hover_settled").assert(img);
 }
 
 #[test]
@@ -82,9 +73,7 @@ fn checkbox_hover_midflight() {
         .size([36, 36])
         .hit((16.0, 16.0))
         .image();
-    Golden::new("checkbox_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("checkbox_hover_midflight").assert(img);
 }
 
 #[test]
@@ -94,9 +83,7 @@ fn checkbox_hover_filmstrip() {
         .size([36, 36])
         .hit((16.0, 16.0))
         .filmstrip(6, DT);
-    Golden::new("checkbox_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("checkbox_hover_filmstrip").assert(img);
 }
 
 fn slider_widget() -> impl IntoNode {
@@ -115,9 +102,7 @@ fn slider_hover_settled() {
         .size([192, 36])
         .hit((90.0, 14.0))
         .image();
-    Golden::new("slider_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("slider_hover_settled").assert(img);
 }
 
 #[test]
@@ -128,9 +113,7 @@ fn slider_hover_midflight() {
         .size([192, 36])
         .hit((90.0, 14.0))
         .image();
-    Golden::new("slider_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("slider_hover_midflight").assert(img);
 }
 
 #[test]
@@ -140,9 +123,7 @@ fn slider_hover_filmstrip() {
         .size([192, 36])
         .hit((90.0, 14.0))
         .filmstrip(6, DT);
-    Golden::new("slider_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("slider_hover_filmstrip").assert(img);
 }
 
 fn dropdown_widget_options() -> Vec<String> {
@@ -165,9 +146,7 @@ fn dropdown_hover_settled() {
         .size([212, 52])
         .hit((90.0, 22.0))
         .image();
-    Golden::new("dropdown_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("dropdown_hover_settled").assert(img);
 }
 
 #[test]
@@ -178,9 +157,7 @@ fn dropdown_hover_midflight() {
         .size([212, 52])
         .hit((90.0, 22.0))
         .image();
-    Golden::new("dropdown_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("dropdown_hover_midflight").assert(img);
 }
 
 #[test]
@@ -190,9 +167,7 @@ fn dropdown_hover_filmstrip() {
         .size([212, 52])
         .hit((90.0, 22.0))
         .filmstrip(6, DT);
-    Golden::new("dropdown_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("dropdown_hover_filmstrip").assert(img);
 }
 
 fn text_field_widget() -> impl IntoNode {
@@ -211,9 +186,7 @@ fn text_field_hover_settled() {
         .size([192, 44])
         .hit((40.0, 22.0))
         .image();
-    Golden::new("text_field_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_hover_settled").assert(img);
 }
 
 #[test]
@@ -224,9 +197,7 @@ fn text_field_hover_midflight() {
         .size([192, 44])
         .hit((40.0, 22.0))
         .image();
-    Golden::new("text_field_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_hover_midflight").assert(img);
 }
 
 #[test]
@@ -236,9 +207,7 @@ fn text_field_hover_filmstrip() {
         .size([192, 44])
         .hit((40.0, 22.0))
         .filmstrip(6, DT);
-    Golden::new("text_field_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_hover_filmstrip").assert(img);
 }
 
 fn toggle_widget() -> impl IntoNode {
@@ -257,9 +226,7 @@ fn toggle_hover_settled() {
         .size([50, 32])
         .hit((35.0, 22.4))
         .image();
-    Golden::new("toggle_hover_settled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("toggle_hover_settled").assert(img);
 }
 
 #[test]
@@ -270,9 +237,7 @@ fn toggle_hover_midflight() {
         .size([50, 32])
         .hit((35.0, 22.4))
         .image();
-    Golden::new("toggle_hover_midflight")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("toggle_hover_midflight").assert(img);
 }
 
 #[test]
@@ -282,7 +247,5 @@ fn toggle_hover_filmstrip() {
         .size([50, 32])
         .hit((35.0, 22.4))
         .filmstrip(6, DT);
-    Golden::new("toggle_hover_filmstrip")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("toggle_hover_filmstrip").assert(img);
 }

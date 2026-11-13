@@ -3,7 +3,7 @@ use smallvec::{SmallVec, smallvec};
 #[cfg(feature = "kittest")]
 use super::BgGradient;
 use super::gradient::percent as percent_of;
-use super::{Color, ColorAtom, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot};
+use super::{Color, ColorValue, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot};
 use crate::style::{StyleAtom, Token};
 
 type Atoms = SmallVec<[StyleAtom; 8]>;
@@ -17,7 +17,7 @@ pub struct Background(Fill);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Fill {
-    Color(ColorAtom),
+    Color(ColorValue),
     #[cfg(feature = "kittest")]
     Stops(BgGradient),
     Gradient(Gradient),
@@ -28,7 +28,7 @@ enum Fill {
 #[must_use]
 pub struct Gradient {
     shape: GradientShape,
-    over: Option<ColorAtom>,
+    over: Option<ColorValue>,
     start: Stop,
     middle: Stop,
     end: Stop,
@@ -36,7 +36,7 @@ pub struct Gradient {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Stop {
-    color: Option<ColorAtom>,
+    color: Option<ColorValue>,
     at: Option<u8>,
 }
 
@@ -70,19 +70,19 @@ impl Background {
 
 impl Gradient {
     /// Sets the first gradient color, like Tailwind `from-*`.
-    pub fn start(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn start(mut self, color: impl Into<ColorValue>) -> Self {
         self.start.color = Some(color.into());
         self
     }
 
     /// Sets the middle gradient color, like Tailwind `via-*`.
-    pub fn middle(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn middle(mut self, color: impl Into<ColorValue>) -> Self {
         self.middle.color = Some(color.into());
         self
     }
 
     /// Sets the last gradient color, like Tailwind `to-*`.
-    pub fn end(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn end(mut self, color: impl Into<ColorValue>) -> Self {
         self.end.color = Some(color.into());
         self
     }
@@ -106,7 +106,7 @@ impl Gradient {
     }
 
     /// Sets the color painted under the gradient, like CSS `background-color`; default none.
-    pub fn over(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn over(mut self, color: impl Into<ColorValue>) -> Self {
         self.over = Some(color.into());
         self
     }
@@ -150,8 +150,8 @@ impl Gradient {
     }
 }
 
-impl From<ColorAtom> for Background {
-    fn from(color: ColorAtom) -> Self {
+impl From<ColorValue> for Background {
+    fn from(color: ColorValue) -> Self {
         Self(Fill::Color(color))
     }
 }
