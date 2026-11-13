@@ -61,7 +61,7 @@ Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with 
 
 `chart(values: impl IntoIterator<Item = f32>) -> ChartBuilder`. A framed 280×180 bar chart by default.
 
-- `.bar()` / `.line()`: mark type (`ChartMark::Bar` is the default).
+- `.bar()` / `.line()`: mark type (bars are the default).
 - `.tone(Tone)`: recolors the first series.
 - `.labels(iter)`: x-axis category labels.
 - `.series(name, values, tone)`: appends another series; all series share the label axis.

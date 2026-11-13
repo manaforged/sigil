@@ -108,7 +108,7 @@ container()
 | `line_height(px)`, `letter_spacing(em)`, `tabular_nums` | Text metrics: line height in pixels, letter spacing in ems |
 | `underline`, `line_through` | Text decoration |
 | `transition(Transition)` | Style transitions, as in Tailwind; `Transition::new()`, `all()`, `colors()`, `opacity()`, and `transform()` choose the properties, and `duration`, `ease`, and `delay` set the timing |
-| `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
+| `animation(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
 
 `class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 

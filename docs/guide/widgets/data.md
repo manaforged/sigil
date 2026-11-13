@@ -114,7 +114,7 @@ A selected row keeps the `accent-5` wash. Hover and pressed rows show `surface-h
 
 ## Terminal notes
 
-- `.row_height()` and `.viewport_height()` take pixels, not a `TextLength`. The terminal host rounds a row height to whole cells, and a row height below one cell still takes one cell. Prefer `.fill()` in terminal layouts so the list takes the height that its parent gives it.
+- `.row_height()` and `.viewport_height()` take pixels, not a count of text rows. The terminal host rounds a row height to whole cells, and a row height below one cell still takes one cell. Prefer `.fill()` in terminal layouts so the list takes the height that its parent gives it.
 - `.follow_row(Signal<usize>)` and `.fill()` use the measured viewport, so they follow the terminal size.
 - The wheel scrolls three lines per notch.
 - A heatmap cell of 8 px is smaller than a cell, so a heatmap paints one colored cell per data cell at best. Keep terminal heatmaps small.

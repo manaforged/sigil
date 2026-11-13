@@ -19,9 +19,9 @@ text_field(name)
 Key options:
 
 - `.placeholder(impl Into<TextContent>)`: ghost text while empty.
-- `.change(Fn(&str))`: runs after each committed edit. Each call to `.change`, `.submit` or `.blur` adds a callback.
+- `.change(Fn(&str))`: runs after each committed edit. Each call to `.change` or `.submit` adds a callback.
 - `.submit(Fn(&str))`: runs on Enter.
-- `.blur(Fn())`: runs when the field loses focus.
+- `.focus_out(Fn())`: runs when the field loses focus, as on every widget.
 - `.disabled(impl Reactive<bool>)`: blocks input and paints disabled.
 - `.invalid(Signal<bool>)`: paints the error frame; a failed clipboard write also raises it.
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).

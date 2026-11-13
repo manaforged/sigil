@@ -23,8 +23,7 @@ Key options:
 - `.size(Size)`: Compact, Default, Wide change height and padding. Add `.fill_width()` to make the button fill its width.
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
-- `.enabled(bool)`: static disable; the node is not focusable.
-- `.disabled(impl Reactive<bool>)`: reactive disable.
+- `.disabled(impl Reactive<bool>)`: disables the button from a `bool` or a signal; the node is not focusable while it is true.
 - `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
