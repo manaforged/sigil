@@ -304,7 +304,9 @@ impl GlyphRun {
     }
 
     #[cfg(feature = "scene")]
-    pub(crate) fn fill(&self) -> Option<&super::DrawPath> {
+    /// The path that paints the glyphs in place of `color`, if the run has one.
+    #[must_use]
+    pub fn fill(&self) -> Option<&super::DrawPath> {
         self.shared.fill.as_ref()
     }
 

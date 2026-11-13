@@ -95,6 +95,24 @@ macro_rules! node_and_cell {
                 self.outline = cell.outline;
                 self
             }
+
+            /// Returns the theme tone the terminal host fills with when the color is fully transparent.
+            #[must_use]
+            pub const fn tone(&self) -> Option<Tone> {
+                self.tone
+            }
+
+            /// Returns true when the owning node has no laid-out child.
+            #[must_use]
+            pub const fn is_leaf(&self) -> bool {
+                self.leaf
+            }
+
+            /// Returns true when this command is a focus ring or border strip, which the terminal host does not fill.
+            #[must_use]
+            pub const fn is_outline(&self) -> bool {
+                self.outline
+            }
         }
     )+};
 }
@@ -209,35 +227,11 @@ impl DrawRect {
     }
 
     #[cfg(feature = "kittest")]
-    /// Returns the theme tone for terminal fills, if any.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn tone(&self) -> Option<Tone> {
-        self.tone
-    }
-
-    #[cfg(feature = "kittest")]
-    /// Returns true when the owning node has no laid-out child.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn is_leaf(&self) -> bool {
-        self.leaf
-    }
-
-    #[cfg(feature = "kittest")]
     /// Returns the terminal box-drawing border, if any.
     #[doc(hidden)]
     #[must_use]
     pub const fn cell_border(&self) -> Option<CellBorder> {
         self.border
-    }
-
-    #[cfg(feature = "kittest")]
-    /// Returns true when this command is a focus ring or border strip.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn is_outline(&self) -> bool {
-        self.outline
     }
 }
 
