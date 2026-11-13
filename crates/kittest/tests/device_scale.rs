@@ -129,7 +129,6 @@ fn split_blocks(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usize {
         .count()
 }
 
-#[track_caller]
 #[test]
 fn a_pixel_render_at_scale_two_resolves_hairlines_and_text_at_device_pixels() {
     let mut ui = Harness::new(hairline_and_text)

@@ -26,7 +26,6 @@ fn a_translated_subtree_paints_at_its_moved_place() {
             },
             30,
             4,
-            &[],
         )
     };
     let still = column_of(&place(0.0), "moved");

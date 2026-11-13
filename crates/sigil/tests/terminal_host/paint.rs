@@ -56,7 +56,6 @@ fn mermaid_fence_paints_boxes() {
         },
         40,
         16,
-        &[],
     );
     assert!(grid.contains("Go"), "expected Go in:\n{grid}");
     assert!(grid.contains("Stop"), "expected Stop in:\n{grid}");
@@ -118,7 +117,6 @@ fn a_chip_cell_paints_on_its_own_row() {
         },
         60,
         14,
-        &[],
     );
     for name in ["aaa", "bbb"] {
         let line = grid
@@ -160,7 +158,6 @@ fn a_wide_cell_clips_at_the_column_edge() {
         },
         60,
         10,
-        &[],
     );
     let row = grid
         .lines()
@@ -178,7 +175,7 @@ fn a_wide_cell_clips_at_the_column_edge() {
 
 #[test]
 fn a_button_surface_is_not_a_block_slab() {
-    let grid = present(|| button("Go"), 30, 8, &[]);
+    let grid = present(|| button("Go"), 30, 8);
     assert!(grid.contains("Go"), "expected the label in:\n{grid}");
     assert!(
         !grid.contains('\u{2588}'),
@@ -197,7 +194,6 @@ fn a_control_stands_one_line_tall() {
         },
         30,
         10,
-        &[],
     );
     let lines: Vec<&str> = grid.lines().collect();
     let first = lines
@@ -241,7 +237,6 @@ fn a_filled_table_keeps_its_header_off_row_one() {
         },
         40,
         12,
-        &[],
     );
     let header = grid
         .lines()
@@ -324,7 +319,6 @@ fn a_wide_glyph_keeps_the_next_column() {
         },
         40,
         10,
-        &[],
     );
     let column = |mark: char| -> Option<usize> {
         grid.lines()
@@ -350,8 +344,8 @@ fn a_wide_glyph_keeps_the_next_column() {
 
 #[test]
 fn a_combining_mark_keeps_its_base() {
-    let marked = present(|| text("cafe\u{301}|"), 20, 3, &[]);
-    let plain = present(|| text("cafe|"), 20, 3, &[]);
+    let marked = present(|| text("cafe\u{301}|"), 20, 3);
+    let plain = present(|| text("cafe|"), 20, 3);
     let bar = |grid: &str| -> Option<usize> {
         grid.lines().next().and_then(|line| {
             let mut col = 0;

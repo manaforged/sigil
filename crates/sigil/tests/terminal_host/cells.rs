@@ -76,10 +76,21 @@ fn a_table_updated_while_its_tab_is_hidden_lays_out_when_shown() {
 fn the_tab_strip_keeps_its_row_when_the_content_overflows() {
     sigil::reactive::Owner::scope("tab-strip", || {
         let state = job_table();
-        let grid = sigil_kittest::Harness::new(move || jobs_screen(signal(0), &state))
-            .unaudited()
-            .size(80, 24)
-            .text();
+        let grid = present(
+            move || {
+                jobs_screen(signal(0), &state)
+                    .allow_flaw(
+                        Flaw::Overflow,
+                        "the table is taller than the screen on purpose",
+                    )
+                    .allow_flaw(
+                        Flaw::Overlap,
+                        "the overflowing table covers the row below it",
+                    )
+            },
+            80,
+            24,
+        );
         assert!(grid.contains("Jobs") && grid.contains("Other"), "{grid}");
     });
 }
@@ -100,7 +111,6 @@ fn splitter_panes_without_a_size_share_the_width() {
         },
         60,
         8,
-        &[],
     );
     assert!(
         grid.contains("left pane") && grid.contains("right pane"),
@@ -110,7 +120,7 @@ fn splitter_panes_without_a_size_share_the_width() {
 
 #[test]
 fn a_toggle_is_one_row_with_its_label() {
-    let grid = present(|| toggle(signal(true)).label("Wi-Fi"), 40, 3, &[]);
+    let grid = present(|| toggle(signal(true)).label("Wi-Fi"), 40, 3);
     let line = line_with(&grid, "Wi-Fi");
     assert!(line.contains('['), "track not on the label row:\n{grid}");
     assert!(!grid.contains('█'), "toggle drew block glyphs:\n{grid}");
@@ -118,13 +128,13 @@ fn a_toggle_is_one_row_with_its_label() {
 
 #[test]
 fn a_slider_thumb_is_one_cell_not_a_box() {
-    let grid = present(|| slider(signal(0.4), 0.0..=1.0), 40, 3, &[]);
+    let grid = present(|| slider(signal(0.4), 0.0..=1.0), 40, 3);
     assert!(!grid.contains('╭') && !grid.contains('╰'), "{grid}");
 }
 
 #[test]
 fn a_slider_track_fills_whole_cells() {
-    let grid = present(|| slider(signal(0.4), 0.0..=1.0), 40, 3, &[]);
+    let grid = present(|| slider(signal(0.4), 0.0..=1.0), 40, 3);
     assert!(
         !grid.contains(['▁', '▂', '▃', '▄', '▅', '▆', '▇']),
         "{grid}"
@@ -168,7 +178,6 @@ fn a_tree_chevron_sits_on_the_folder_row() {
         },
         40,
         6,
-        &[],
     );
     assert!(line_with(&grid, "src").contains(['▸', '▾']), "{grid}");
     assert!(
@@ -205,7 +214,6 @@ fn a_status_bar_puts_its_text_on_the_row_under_its_rule() {
         },
         40,
         8,
-        &[],
     );
     assert!(row_of(&grid, "ready") <= 1, "{grid}");
 }
@@ -229,14 +237,13 @@ fn fixed_width_table_headers_show_their_whole_title() {
         },
         124,
         6,
-        &[],
     );
     assert!(grid.contains("PID") && grid.contains("CPU%"), "{grid}");
 }
 
 #[test]
 fn a_one_row_button_has_no_open_corners() {
-    let grid = present(|| button("Deploy"), 20, 3, &[]);
+    let grid = present(|| button("Deploy"), 20, 3);
     assert!(!grid.contains('┌') && !grid.contains('┐'), "{grid}");
 }
 
@@ -251,7 +258,6 @@ fn modal_actions_do_not_fuse_with_the_dialog_border() {
         },
         60,
         10,
-        &[],
     );
     assert!(!grid.contains('┴') && !grid.contains('┬'), "{grid}");
 }
@@ -266,7 +272,6 @@ fn slider_and_progress_show_their_labels() {
         },
         40,
         8,
-        &[],
     );
     assert!(grid.contains("Volume") && grid.contains("Upload"), "{grid}");
 }
@@ -288,7 +293,6 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
         },
         40,
         4,
-        &[],
     );
     let range = row_of(&grid, "range");
     assert!(line_with(&grid, "range").contains("24h"), "{grid}");
@@ -334,7 +338,6 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
         },
         8,
         2,
-        &[],
     );
     assert!(
         grid.lines().next().is_some_and(|line| line.contains('▄')),
@@ -370,7 +373,6 @@ fn tabs_built_from_a_label_list_print_every_label() {
             },
             60,
             3,
-            &[],
         );
         let first = grid.lines().next().unwrap_or_default();
         for label in &labels {

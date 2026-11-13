@@ -87,7 +87,6 @@ fn gallery() -> impl IntoNode {
         .child(row(HALF))
 }
 
-#[track_caller]
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
     let (device_w, device_h) = (
         (WIDTH as f32 * SCALE) as u32,

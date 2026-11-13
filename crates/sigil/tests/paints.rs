@@ -85,7 +85,6 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
     Shot { image, surface }
 }
 
-#[track_caller]
 fn cpu_frame(ui: &mut Harness, (width, height): (u32, u32)) -> image::RgbaImage {
     let viewport = (width as f32, height as f32);
     let scene = ui.host().emit(viewport);

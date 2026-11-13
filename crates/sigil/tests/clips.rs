@@ -86,7 +86,6 @@ fn avatar() -> impl IntoNode {
         .child(parent)
 }
 
-#[track_caller]
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
     let device = (SIDE as f32 * SCALE) as u32;
     let frame = Frame {

@@ -39,7 +39,6 @@ const INK: Color = Color {
     a: 255,
 };
 
-#[track_caller]
 fn distance(a: image::Rgba<u8>, b: image::Rgba<u8>) -> u32 {
     a.0.iter()
         .zip(b.0)

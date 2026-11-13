@@ -106,7 +106,7 @@ impl Harness {
         self
     }
 
-    /// Uses a pixel surface of `width` by `height` logical pixels that the CPU renders.
+    /// Uses a pixel surface of `width` by `height` logical pixels; `image` renders it and needs a GPU adapter.
     #[must_use]
     pub fn pixels(mut self, width: u32, height: u32) -> Self {
         self.host = Host::new(sigil::kernel::HostMode::Pixel);
@@ -124,7 +124,12 @@ impl Harness {
     pub fn scale(mut self, device_scale: f32) -> Self {
         match &mut self.surface {
             HarnessSurface::Pixels { scale, .. } => *scale = device_scale,
-            HarnessSurface::Gpu(gpu) => gpu.rescale(device_scale),
+            HarnessSurface::Gpu(gpu) => {
+                gpu.rescale(device_scale);
+                if self.pending.is_none() {
+                    gpu.paint(&mut self.host);
+                }
+            }
             HarnessSurface::Cells { .. } => {
                 fail("scale needs a pixel surface: call pixels or gpu first")
             }
@@ -219,7 +224,7 @@ impl Harness {
         self
     }
 
-    /// Runs frames until no task, animation, or layout change is pending.
+    /// Runs frames until no signal write and no animation asks for another frame.
     #[track_caller]
     pub fn settle(&mut self) -> &mut Self {
         self.send([])

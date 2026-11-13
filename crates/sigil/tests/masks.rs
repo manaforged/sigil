@@ -151,7 +151,6 @@ fn group() -> impl IntoNode {
     sized(paint, SIDE as f32)
 }
 
-#[track_caller]
 fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
     let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
     let frame = Frame {

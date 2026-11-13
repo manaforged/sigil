@@ -370,7 +370,6 @@ fn a_one_row_editor_shows_its_text_inside_its_padding() {
             },
             30,
             4,
-            &[],
         )
     };
     assert!(shown("").contains("type to filter"), "{}", shown(""));
