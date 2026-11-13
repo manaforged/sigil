@@ -38,6 +38,39 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 - `.closeable(true)` + `.close(Fn(usize))`: per-tab close buttons; the handler owns removing the label.
 - `.into_container()`: build as a container node.
 
+## segmented
+
+`segmented(active: Signal<usize>, labels: impl IntoIterator<Item = impl Into<String>>) -> SegmentedBuilder`. A framed row of mutually exclusive options where one is active; `.label(name)` sets the accessible name of the group.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+let active = signal(0_usize);
+segmented(active, ["Code", "Diff", "Docs"]).label("View");
+# };
+```
+
+## tree
+
+`tree(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K>` where `K: Clone + Eq + Hash + 'static`. A virtualized hierarchical list for explorers and outlines. Build nodes with `TreeNode::new(id, label)`:
+
+- `TreeNode::new(id, label)` chains `.leading(glyph)`, `.status(text, tone)`, `.detail(text)`, `.tone(RowTone)`, `.child(node)`, and `.children(iter)`.
+- `TreeBuilder` chains `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(Fn(&K))`, `.label(name)`, and `.indent(px)`.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+let nodes = vec![
+    TreeNode::new("src", "src").children([TreeNode::new("lib", "lib.rs")]),
+];
+tree(nodes).label("Files");
+# };
+```
+
+## context_menu
+
+`context_menu(target: impl IntoNode + 'static, items: impl Fn() -> Vec<MenuItem> + 'static) -> NodeBuilder`. Wraps `target` and opens a menu of `items()` at the pointer on right-click.
+
 ## splitter
 
 `splitter(Orientation::Horizontal | Vertical)`. Horizontal splits left/right (draggable vertical handles), Vertical splits top/bottom. Each handle is a 6 px hit area that draws a 1 px `border` rule in its center. The area fills with `surface-hover` on hover and `surface-pressed` while dragged.
@@ -85,21 +118,21 @@ Small composites in `sigil::widgets`:
 - `field(label, control)`: label stacked over a control with a 4 px gap. `.error(reactive)` shows the error text under a text, number, or color field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)`: a row at least 28 px tall. The key is a muted 16-column cell that ellipsizes. The value starts 12 px after it and fills the rest, so values in a stack align.
 - `kv_grid([(key, value)])`: a stack of `kv_row`s with a 1 px divider between rows; values render monospace.
-- `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
-- The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
+- `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. `.selected(impl Reactive<bool>)` accepts a `bool`, signal, or closure; a selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
+- The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` (`impl Reactive<Disclosure>`) is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
 - `section_label(title)`: a small muted heading for groups.
-- `empty_state(title, body)`: centered `Role::Status` placeholder.
-- `notice_band(body, tone)`: a full-width tinted status strip.
+- `empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>)`: centered `Role::Status` placeholder.
+- `notice_band(body: impl Into<TextContent>, tone: Tone)`: a full-width tinted status strip.
 - `hint_bar(keys, right)`: left key hints and a right accent label.
 - `avatar(initials)`: a 28 px accent circle; the initials become the accessible name.
 - `hint_overlay(hints)`: a popup-surface list of shortcut rows with 8 px gaps.
 - `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
-- `badge(count, tone)`: a small count pill that hides at zero and reads `99+` past 99.
-- `skeleton(lines)`: muted placeholder bars with `Role::Status` named "Loading".
+- `badge(count: impl Reactive<usize>, tone: Tone)`: a small count pill that hides at zero and reads `99+` past 99.
+- `skeleton(lines: usize)`: muted placeholder bars with `Role::Status` named "Loading".
 - `pagination(page, pages)`: previous, page, and next buttons over a zero-based `Signal<usize>`. More than seven pages collapse around the current page, and the page moves into range when `pages` shrinks.
 - `breadcrumbs(segments, activate)`: a path whose segments before the last are links that run `activate(index)`.
-- `stepper(steps, current)`: numbered steps; the ones before `current` show a check mark.
+- `stepper(steps: impl IntoIterator<Item = impl Into<String>>, current: impl Reactive<usize>)`: numbered steps; the ones before `current` show a check mark.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.
 

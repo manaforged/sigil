@@ -1,20 +1,29 @@
 #![allow(clippy::indexing_slicing, clippy::cast_precision_loss)]
 
 use crate::layout::forest::SpaceConstraint;
-use crate::layout::resolve::resolve_lp;
+use crate::layout::resolve::{clamp, dim_to_border_box, resolve_lp};
 use crate::layout::style_data::{Length, StyleData, TrackSize};
 
-pub(super) fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
-    match style.size.height {
-        Length::Px(px) => px,
-        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => {
-            style.size.height.text_px().unwrap_or(0.0)
-        }
-        Length::Fill => avail_h,
-        Length::Percent(pct) => avail_h * pct,
-        Length::Auto if avail_h > 0.0 => avail_h,
-        Length::Auto => content_h + chrome,
-    }
+pub(super) fn definite_box_h(
+    style: &StyleData,
+    cb_h: f32,
+    chrome: f32,
+    assigned_h: Option<f32>,
+) -> Option<f32> {
+    assigned_h.or_else(|| dim_to_border_box(style.size.height, cb_h, chrome, style.box_sizing))
+}
+
+pub(super) fn grid_box_h(
+    style: &StyleData,
+    cb_h: f32,
+    content_h: f32,
+    chrome: f32,
+    assigned_h: Option<f32>,
+) -> f32 {
+    let min = dim_to_border_box(style.min_size.height, cb_h, chrome, style.box_sizing);
+    let max = dim_to_border_box(style.max_size.height, cb_h, chrome, style.box_sizing);
+    let raw = definite_box_h(style, cb_h, chrome, assigned_h).unwrap_or(content_h + chrome);
+    clamp(raw, min, max).max(0.0)
 }
 
 pub(super) fn spanned_height(row_h: &[f32], row: usize, span: usize, gap: f32) -> f32 {

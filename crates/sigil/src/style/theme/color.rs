@@ -10,6 +10,18 @@ impl From<Color> for ThemeValue {
     }
 }
 
+impl From<f32> for ThemeValue {
+    fn from(px: f32) -> Self {
+        Self::Px(px)
+    }
+}
+
+impl From<u16> for ThemeValue {
+    fn from(ms: u16) -> Self {
+        Self::Ms(ms)
+    }
+}
+
 const SCRIM: Color = Color {
     r: 0,
     g: 0,

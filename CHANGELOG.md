@@ -10,6 +10,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 First public release.
 
+### Added
+
+- `NodeBuilder::children(iter)` for adding children from any `IntoIterator<Item = impl IntoNode>`.
+- `vega(source)` widget constructor in `sigil::widgets` and `sigil::prelude::*` for rendering reactive Vega and Vega-Lite specifications.
+- `ColorScale::from_steps`, `ColorScale::on_solid`, `ColorScale::step`, `ColorScale::steps`, and `ColorScale::solid_ink`, plus `Theme::current`, `Theme::with`, `Token::ALL`, `Color::{TRANSPARENT, BLACK, WHITE, alpha}`, `From<&'static str> for ColorValue`, and `From<f32>` / `From<u16>` for `ThemeValue`.
+- `Host::apply_scale`, `Host::scale`, `Host::apply_theme`, and `Host::node_bounds`, plus automatic `WindowEvent::ScaleFactorChanged` handling in `Host::route`.
+- `Signal::try_peek`, `Signal::is_alive`, `EventChannel::new`, `EventChannel::emit`, `Status::{ok, err, as_ref, map}`, `AsyncRuntime::has_pending`, and `CanvasBuilder::themed`.
+- `sigil::prelude::*` exports `Background`, `Change`, `ColumnAlign`, `DateTime`, `Diagnostic`, `DiffSelection`, `Easing`, `FuzzyMatch`, `Gradient`, `Highlight`, `Keyframes`, `NumericKind`, `Patch`, `Property`, `Rect`, `RowTone`, `SceneBuilder`, `ScrollAnchor`, `Selection`, `Severity`, `SparkFill`, `SparkMark`, `TimeValue`, `Transition`, `TreeNode`, `canvas`, `disclosure`, and `vega`.
+- Universal `From<*Builder> for NodeBuilder` (including `ImageLoadBuilder` and generic `SliderBuilder<T>`), along with `Paint` and `States` coverage across widget builders.
+- `Key` implements `From<&str>`, `From<char>`, `PartialEq<&str>`, and `PartialEq<char>` so `Shortcut::primary('k')`, `Shortcut::ctrl("s")`, and `event.key() == '?'` work directly.
+- `Selection` implements `Default` and `From<SelectionMode>`.
+- `sigil_kittest::Target` and `Query` accept `String`, `&String`, `Role`, `(Role, &str)`, and `(Role, String)`.
+
+### Changed
+
+- `text(closure)` accepts closures returning any `S: Into<String>` (including `&str`), and `TextContent` implements `From<&String>` and `From<Cow<'_, str>>`.
+- `Reactive<T>` supports scalar primitives, `Tone`, `Color`, `ControlSize`, `Layer`, `Token`, `Density`, `DiffView`, `Disclosure`, `&'static [T]`, and `Option<T>`.
+- `markdown`, `html`, `toast`, `progress`, and `gauge` accept `impl Reactive<...>` inputs, `scroll` and `axis_drag` accept `impl Into<NodeBuilder>`, `Widget::grid_columns` / `grid_rows` accept `impl Into<Vec<TrackSize>>`, and `Menu::{item, check}` accept `impl Into<Option<Shortcut>>`.
+- `segmented`, `dropdown`, and `Combobox::new` accept `impl IntoIterator<Item = impl Into<String>>`, and `tag_input` accepts `impl IntoIterator<Item = impl Into<T>>`.
+- `ListRowBuilder::selected`, `ListRowBuilder::disclosure`, `DiffBuilder::view`, and `TableBuilder::density` accept reactive values (`impl Reactive<...>`).
+
+### Fixed
+
+- `children_reactive` and `children_keyed` restore the owning host's cell metrics when reactive updates run outside `Host::enter()`, preventing pixel-sized node rebuilds on terminal/cell hosts.
+- `segmented` terminal cell-height calculation to prevent cell-height overflow.
+- `app_shell` marks its modal wrapper `.hittable(false)` so closed modals do not swallow clicks, and uses `min_size` on top/status chrome bands so `menu_bar()` and `status_bar()` fit on cell hosts without overflowing.
+- `Role::PasswordInput` exposes `Action::SetValue` for screen readers and `Harness`.
+- `field` resolves `labelled_by` recursively through nested `GenericContainer` wrappers (such as `color_field` and `markdown_edit`) to the inner control.
+- Interactive `chip(...).activate(...)` sets its accessible `Role::Button` name from the chip label.
+- `tabs` panels set `min_size(0.0, 0.0)` so scrollable tab bodies shrink inside flex containers without overflowing.
+- `Host::frame` refreshes `frame.animating` after `paint` so style transitions started during scene emission schedule the next animation tick and do not trigger false frame-0 contrast audit warnings.
+- `GridSolver` sizes `Length::Auto` grids to their content height (clamped by `min_size`/`max_size`) and honors Flex `assigned_h` instead of expanding nested grids to the viewport height.
+- `divider`, `splitter`, and `sidebar` snap hairline rules and resize handles to cell units on terminal/cell hosts so flex panes and sibling controls do not accumulate sub-cell drift.
+- `section_label` and `hint_bar` set `.shrink(0.0)` so 1-row chrome bars do not clip text inside flex columns.
+
 ### Migration
 
 | Before | After |

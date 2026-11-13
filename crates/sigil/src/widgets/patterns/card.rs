@@ -4,10 +4,10 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token, Tone};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, Tone};
 use crate::widgets::Layout;
 
-use super::super::shared::Activate;
+use super::super::shared::{Activate, caller_style};
 use super::ROW_SELECTED;
 
 static CARD_SELECTED: &[StyleAtom] = &[
@@ -27,6 +27,7 @@ pub struct CardBuilder {
     content: Box<dyn IntoNode>,
     selected: Option<Signal<bool>>,
     activate: Option<Activate>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -56,6 +57,7 @@ pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
         content: Box::new(child),
         selected: None,
         activate: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -102,10 +104,11 @@ impl CardBuilder {
                 .style_reactive(move || if selected.get() { CARD_SELECTED } else { rest }),
             None => titled.class(rest),
         };
-        match self.activate {
+        let node = match self.activate {
             Some(activate) => node.role(Role::Button).activate_with(activate),
             None => node,
-        }
+        };
+        caller_style(node, self.style_accumulator)
     }
 }
 
@@ -115,4 +118,4 @@ impl From<CardBuilder> for NodeBuilder {
     }
 }
 
-builder_impls!([] CardBuilder: widget, node(pub));
+builder_impls!([] CardBuilder: paint(style_accumulator), states(style_accumulator), widget, node(pub));

@@ -11,10 +11,6 @@ use super::live::Console;
 use super::pane;
 
 pub(crate) fn panel(console: Console) -> NodeBuilder {
-    let filters = ENV_FILTER_LABELS
-        .iter()
-        .map(|label| (*label).to_owned())
-        .collect();
     pane()
         .width(GROUP_WIDTH)
         .fill_height()
@@ -24,7 +20,7 @@ pub(crate) fn panel(console: Console) -> NodeBuilder {
         .padding(Space::Md)
         .gap(Space::Md)
         .child(header(console))
-        .child(dropdown(console.env_filter, filters).label("Environment"))
+        .child(dropdown(console.env_filter, ENV_FILTER_LABELS.iter().copied()).label("Environment"))
         .child(cards(console))
 }
 

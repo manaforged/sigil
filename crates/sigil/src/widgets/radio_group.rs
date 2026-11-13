@@ -218,7 +218,7 @@ static CELL_MARK: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
 static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
-builder_impls!([] RadioGroupBuilder: paint(style_accumulator), widget, node);
+builder_impls!([] RadioGroupBuilder: paint(style_accumulator), states(style_accumulator), widget, node);
 
 #[cfg(test)]
 #[path = "radio_group_tests.rs"]

@@ -4,7 +4,7 @@ Text, icons, images, vector paths, and charts: the leaf nodes that paint content
 
 ## text
 
-`text(source) -> TextBuilder` is the one text node. `source` is `impl Into<TextContent>`: a `&str` or `String` (static), a `Signal<T: Display>` (live), or a closure `Fn() -> String` that re-runs when the signals it reads change. `.nowrap()` keeps it on one line.
+`text(source) -> TextBuilder` is the one text node. `source` is `impl Into<TextContent>`: a `&str`, `&String`, `String`, or `Cow<'_, str>` (static), a `Signal<T: Display>` (live), or a closure `Fn() -> S` where `S: Into<String>` (such as `String` or `&str`) that re-runs when the signals it reads change. `.nowrap()` keeps it on one line.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -21,7 +21,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 `icon(glyph) -> IconBuilder`. A glyph centered in a fixed box; `Role::Image` when labeled, `Role::GenericContainer` otherwise.
 
 - `.tone(Tone)`: glyph color.
-- `.size(Size)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
+- `.size(ControlSize)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
 - `.label(name)`: assistive name; always set it when the icon stands alone.
 
 `icon(Glyph::svg(source))` draws an SVG image instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
@@ -68,6 +68,30 @@ Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with 
 - `.height(px)` (min 48) / `.width(px)` (min 80).
 
 Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure. A signal or closure source draws the chart again when it changes. The node is `Role::Figure` labeled "Chart".
+
+## stat
+
+`stat(label, value) -> StatBuilder`. A KPI tile in card chrome showing a label and a large value, with optional:
+
+- `.delta(change, tone)`: change line below the value in `Tone`.
+- `.caption(text)`: muted caption below the value and delta.
+- `.trend(values)`: `impl Reactive<Vec<f32>>` sparkline at the bottom of the tile.
+- `.range(low, high)`: fixes the bottom and top of the trend sparkline.
+- `.tone(Tone)`: sets the color of the value text and trend sparkline.
+
+## sparkline
+
+`sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder`. A compact inline trend graph.
+
+- `.mark(SparkMark)`: `SparkMark::Block` (default, one value per cell) or `SparkMark::Braille` (two values per cell).
+- `.fill(SparkFill)`: `SparkFill::Solid` (default) or `SparkFill::Shade` (shaded cells below the top edge).
+- `.range(low, high)`: sets the value bounds; defaults to the data bounds and 0.
+- `.tone(Tone)` / `.tones(iter)`: base tone (default `Tone::Primary`) or per-value `Option<Tone>`.
+- `.rows(usize)`: height in rows (default 1).
+
+## canvas
+
+`canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `SceneBuilder` inside the laid-out `Rect`. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal increments.
 
 ## Small content helpers
 

@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, TextContent, text};
-use crate::style::{StateStyle, StyleAtom, StyleVariant, TextDecoration, Tone};
+use crate::style::{StateStyle, Style, StyleAtom, StyleVariant, TextDecoration, Tone};
 
-use super::shared::{Activate, DIMMED, accessible_name, noop_activate};
+use super::shared::{Activate, DIMMED, accessible_name, caller_style, noop_activate};
 
 const UNDERLINE: StyleAtom = StyleAtom::TextDecoration(TextDecoration::Underline);
 
@@ -19,6 +19,7 @@ pub struct LinkBuilder {
     label: TextContent,
     href: Option<String>,
     activate: Option<Activate>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -55,6 +56,7 @@ pub fn link(label: impl Into<TextContent>) -> LinkBuilder {
         label: label.into(),
         href: None,
         activate: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -84,7 +86,10 @@ impl LinkBuilder {
             Some(href) => node.description(href),
             None => node,
         };
-        node.node.variant(LINK).activate_with(activate)
+        caller_style(
+            node.node.variant(LINK).activate_with(activate),
+            self.style_accumulator,
+        )
     }
 }
 
@@ -102,4 +107,4 @@ fn open_href(_href: String) -> Activate {
     noop_activate()
 }
 
-builder_impls!([] LinkBuilder: widget, node(pub));
+builder_impls!([] LinkBuilder: paint(style_accumulator), states(style_accumulator), widget, node(pub));

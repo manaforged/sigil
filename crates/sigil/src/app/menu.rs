@@ -96,13 +96,13 @@ impl Menu {
         mut self,
         id: impl Into<String>,
         label: impl Into<String>,
-        shortcut: Option<Shortcut>,
+        shortcut: impl Into<Option<Shortcut>>,
     ) -> Self {
         self.entries.push(MenuEntry::Item {
             id: id.into(),
             label: label.into(),
             enabled: true,
-            shortcut,
+            shortcut: shortcut.into(),
         });
         self
     }
@@ -124,13 +124,13 @@ impl Menu {
         id: impl Into<String>,
         label: impl Into<String>,
         checked: bool,
-        shortcut: Option<Shortcut>,
+        shortcut: impl Into<Option<Shortcut>>,
     ) -> Self {
         self.entries.push(MenuEntry::Check {
             id: id.into(),
             label: label.into(),
             checked,
-            shortcut,
+            shortcut: shortcut.into(),
         });
         self
     }

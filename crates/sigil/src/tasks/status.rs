@@ -43,4 +43,48 @@ impl<T, E> Status<T, E> {
     pub const fn is_panicked(&self) -> bool {
         matches!(self, Self::Panicked(_))
     }
+
+    /// Converts `Status<T, E>` to `Option<T>`, discarding any non-`Ok` state.
+    #[must_use]
+    pub fn ok(self) -> Option<T> {
+        if let Self::Ok(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Converts `Status<T, E>` to `Option<E>`, discarding any non-`Err` state.
+    #[must_use]
+    pub fn err(self) -> Option<E> {
+        if let Self::Err(e) = self {
+            Some(e)
+        } else {
+            None
+        }
+    }
+
+    /// Converts from `&Status<T, E>` to `Status<&T, &E>`.
+    #[must_use]
+    pub fn as_ref(&self) -> Status<&T, &E> {
+        match self {
+            Self::Idle => Status::Idle,
+            Self::Pending => Status::Pending,
+            Self::Ok(v) => Status::Ok(v),
+            Self::Err(e) => Status::Err(e),
+            Self::Panicked(msg) => Status::Panicked(msg.clone()),
+        }
+    }
+
+    /// Maps a `Status<T, E>` to `Status<U, E>` by applying `f` to an `Ok` value.
+    #[must_use]
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Status<U, E> {
+        match self {
+            Self::Idle => Status::Idle,
+            Self::Pending => Status::Pending,
+            Self::Ok(v) => Status::Ok(f(v)),
+            Self::Err(e) => Status::Err(e),
+            Self::Panicked(msg) => Status::Panicked(msg),
+        }
+    }
 }

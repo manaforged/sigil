@@ -8,12 +8,12 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, TextContent};
 use crate::reactive::{Reactive, Signal, signal};
-use crate::style::{Tone, space};
+use crate::style::{Style, Tone, space};
 
 use super::icon::Glyph;
 use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
-use super::shared::accessible_name;
+use super::shared::{accessible_name, caller_style};
 use super::virtual_list::{SelectionMode, virtual_list};
 
 pub(crate) use flatten::TreeRow;
@@ -109,6 +109,7 @@ pub struct TreeBuilder<K: Clone + Eq + Hash + 'static> {
     activate: Option<ActivateKey<K>>,
     label: Option<TextContent>,
     indent: Option<f32>,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -135,6 +136,7 @@ pub fn tree<K: Clone + Eq + Hash + 'static>(
         activate: None,
         label: None,
         indent: None,
+        style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -186,7 +188,8 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
         let list = virtual_list(state.rows, move |index, item: &TreeRow<K>| {
             row::render(&render_state, index, item)
         });
-        list.selection(SelectionMode::None)
+        let node = list
+            .selection(SelectionMode::None)
             .cursor(state.cursor)
             .measured()
             .estimate(ROW_ESTIMATE)
@@ -198,11 +201,12 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
                     None => node,
                 }
             })
-            .into_node_builder()
+            .into_node_builder();
+        caller_style(node, self.style_accumulator)
     }
 }
 
-builder_impls!([K: Clone + Eq + Hash + 'static] TreeBuilder<K>: widget, node);
+builder_impls!([K: Clone + Eq + Hash + 'static] TreeBuilder<K>: paint(style_accumulator), widget, node);
 
 #[derive(Clone)]
 struct TreeState<K: Clone + Eq + Hash + 'static> {

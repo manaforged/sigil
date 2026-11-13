@@ -36,18 +36,19 @@ pub(crate) mod palette;
 pub(crate) mod parser;
 pub(crate) mod reactive;
 pub(crate) mod resolve;
-mod text_scale;
-kittest_pub! {
-    /// The color scales of the default themes.
-    #[doc(hidden)]
-    pub mod scale;
-}
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub mod scale;
+#[cfg(not(feature = "kittest"))]
+#[allow(unused_imports, reason = "public only under kittest")]
+pub(crate) mod scale;
 pub(crate) mod size;
 pub(crate) mod state;
 pub(crate) mod strings;
 pub(crate) mod struct_api;
 pub(crate) mod styled;
 pub(crate) mod text_identity;
+mod text_scale;
 pub(crate) mod text_style;
 pub(crate) mod theme;
 pub(crate) mod token;

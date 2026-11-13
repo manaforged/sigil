@@ -62,7 +62,8 @@ fn app() -> impl IntoNode {
 - `sigil::run` takes an `AppConfig` and a component. `AppConfig::new(title).terminal()` runs the same tree in the terminal.
 - State lives in signals. `signal(value)` creates one. `get` inside a closure subscribes that closure, `peek` reads without subscribing, and `set` and `update` write.
 - Text that changes takes a closure: `text(move || ...)`. A plain string never updates.
-- `show(cond, then, otherwise)` switches between subtrees. `for_each(items, key, render)` renders a keyed list.
+- `show(cond, then, otherwise)` switches between subtrees. `switch(key).case(v, || ...).otherwise(|| ...)` picks among keyed branches. `for_each(items, key, render)` renders a keyed list.
+- Add children with `.child(node)` or `.children(iter)`; every widget builder implements `Into<NodeBuilder>`.
 - Colors come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `background`, `text_color`, or `border_color`. Do not hard-code colors.
 - Async work uses `task` (reruns and cancels) or `spawn` (runs once). Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
 - Write signals on the UI thread. From another thread, use `Signal::writer`, or `tasks::listen` for a channel.
@@ -100,7 +101,7 @@ fn counter() -> impl IntoNode {
 Harness::new(counter).click("+").expect_text("Count: 1");
 ```
 
-The harness finds controls through the accessibility tree, runs frames until the UI settles, and runs on the terminal host by default. It needs no GPU.
+The harness finds controls through the accessibility tree, runs frames until the UI settles, and runs on the terminal host by default. It needs no GPU. `Harness::expect_text` matches a node's accessible name or value; use `.get(query).value()` or `.text()` for substring assertions inside editors.
 
 ## Run the examples
 

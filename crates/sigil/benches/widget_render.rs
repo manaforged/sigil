@@ -207,7 +207,7 @@ fn build_slider() -> impl IntoNode {
 
 fn build_dropdown() -> impl IntoNode {
     let sel = signal(0_usize);
-    dropdown(sel, vec!["Easy".into(), "Normal".into(), "Hard".into()])
+    dropdown(sel, ["Easy", "Normal", "Hard"])
 }
 
 fn build_progress() -> impl IntoNode {

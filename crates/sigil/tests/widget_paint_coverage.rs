@@ -98,21 +98,11 @@ fn pickers() -> Vec<Case> {
     vec![
         (
             "dropdown",
-            Box::new(|| {
-                dropdown(
-                    signal(1_usize),
-                    vec!["Small".into(), "Medium".into(), "Large".into()],
-                )
-            }),
+            Box::new(|| dropdown(signal(1_usize), ["Small", "Medium", "Large"])),
         ),
         (
             "combobox",
-            Box::new(|| {
-                combobox(
-                    Combobox::new(vec![String::from("Rust"), String::from("Go")])
-                        .placeholder("Language"),
-                )
-            }),
+            Box::new(|| combobox(Combobox::new(["Rust", "Go"]).placeholder("Language"))),
         ),
     ]
 }

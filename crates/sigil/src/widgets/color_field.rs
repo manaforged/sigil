@@ -67,6 +67,12 @@ impl Sealed for ColorFieldBuilder {
     }
 }
 
+impl crate::style::PaintTarget for ColorFieldBuilder {
+    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+        self.field.style_slot()
+    }
+}
+
 impl StateTarget for ColorFieldBuilder {
     fn set_state(mut self, state: StatePaint) -> Self {
         self.field = self.field.map(move |field| field.set_state(state));

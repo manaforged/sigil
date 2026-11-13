@@ -154,11 +154,7 @@ fn bold_at(grid: &sigil::terminal::Grid, needle: &str) -> bool {
 
 #[test]
 fn the_active_segment_is_marked() {
-    let grid = painted(
-        || segmented(signal(1), vec!["Day".into(), "Week".into(), "Month".into()]),
-        40,
-        4,
-    );
+    let grid = painted(|| segmented(signal(1), ["Day", "Week", "Month"]), 40, 4);
     assert!(
         bold_at(&grid, "Week") && !bold_at(&grid, "Day"),
         "{}",

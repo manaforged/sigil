@@ -24,19 +24,19 @@ macro_rules! space_setters {
             )
         }
 
-        /// Turns the node around the x axis by `degrees`, like Tailwind `rotate-x-*`.
+        /// Turns the node around the x axis by `degrees` (in degrees), like Tailwind `rotate-x-*`.
         #[must_use]
         fn rotate_x(self, degrees: f32) -> Self {
             space::space(self, SpaceAtom::RotateX(degrees.to_radians()))
         }
 
-        /// Turns the node around the y axis by `degrees`, like Tailwind `rotate-y-*`.
+        /// Turns the node around the y axis by `degrees` (in degrees), like Tailwind `rotate-y-*`.
         #[must_use]
         fn rotate_y(self, degrees: f32) -> Self {
             space::space(self, SpaceAtom::RotateY(degrees.to_radians()))
         }
 
-        /// Turns the node around the z axis by `degrees`, like Tailwind `rotate-z-*`.
+        /// Turns the node around the z axis by `degrees` (in degrees), like Tailwind `rotate-z-*`.
         #[must_use]
         fn rotate_z(self, degrees: f32) -> Self {
             space::space(self, SpaceAtom::RotateZ(degrees.to_radians()))

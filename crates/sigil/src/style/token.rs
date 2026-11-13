@@ -77,13 +77,12 @@ macro_rules! tokens {
 
         const SEMANTIC_COUNT: usize = 22;
 
-        const ALL_TOKENS: [Token; 94] = all_tokens!($($variant,)*);
-
         impl Token {
             /// The number of built-in tokens, the length of `ALL`.
             pub const COUNT: usize = 94;
 
-            pub(crate) const ALL: &'static [Self; 94] = &ALL_TOKENS;
+            /// Every built-in semantic token in declaration order.
+            pub const ALL: [Self; Self::COUNT] = all_tokens!($($variant,)*);
 
             /// Returns the position of this token in `Token::ALL`.
             #[must_use]

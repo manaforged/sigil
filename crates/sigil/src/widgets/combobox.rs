@@ -30,9 +30,9 @@ pub struct Combobox {
 impl Combobox {
     /// Creates the state of a combobox with `options`, an empty query, and no selection.
     #[must_use]
-    pub fn new(options: Vec<String>) -> Self {
+    pub fn new(options: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            options: signal(options),
+            options: signal(options.into_iter().map(Into::into).collect()),
             query: signal(String::new()),
             selected: signal(None),
             open: signal(false),

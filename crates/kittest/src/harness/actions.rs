@@ -1,8 +1,9 @@
 use sigil::events::Event;
 use sigil::events::Shortcut;
 use sigil::geometry::Point;
+use sigil::kernel::Role;
 
-use super::{Harness, Node};
+use super::{Harness, Node, Query};
 
 const DRAG_STEPS: u16 = 4;
 
@@ -22,6 +23,12 @@ impl sealed::Sealed for Point {}
 impl sealed::Sealed for Node {}
 
 impl sealed::Sealed for str {}
+
+impl sealed::Sealed for String {}
+
+impl sealed::Sealed for (Role, &str) {}
+
+impl sealed::Sealed for (Role, String) {}
 
 impl Target for Point {
     fn point(&self, _: &mut Harness) -> Point {
@@ -49,6 +56,35 @@ impl Target for str {
         let node = ui.wait_for(&what, |ui| ui.labelled(self));
         node.point(ui)
     }
+}
+
+impl Target for String {
+    #[track_caller]
+    fn point(&self, ui: &mut Harness) -> Point {
+        self.as_str().point(ui)
+    }
+}
+
+impl Target for (Role, &str) {
+    #[track_caller]
+    fn point(&self, ui: &mut Harness) -> Point {
+        role_name_point(self.0, self.1, ui)
+    }
+}
+
+impl Target for (Role, String) {
+    #[track_caller]
+    fn point(&self, ui: &mut Harness) -> Point {
+        role_name_point(self.0, &self.1, ui)
+    }
+}
+
+#[track_caller]
+fn role_name_point(role: Role, name: &str, ui: &mut Harness) -> Point {
+    let query = Query::role(role).name(name);
+    let what = format!("{query}");
+    let node = ui.wait_for(&what, |ui| ui.query(&query));
+    node.point(ui)
 }
 
 impl Harness {

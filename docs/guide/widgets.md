@@ -1,6 +1,6 @@
 # Widgets
 
-The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and the `Widget` state methods for hover, focus, press, and disabled paint. Every builder takes the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`; `virtual_list` and `table` also take `.viewport_height()` and `.row_height()`. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
+The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: `Paint` methods for color, border, radius, shadow, and font, and `States` methods (`.rest()`, `.hover()`, `.focus()`, `.pressed()`, `.disabled_paint()`) for interaction states on builders that support them. Every builder takes the `Widget` layout, event, and accessibility setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`; `virtual_list` and `table` also take `.viewport_height()` and `.row_height()`. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
 
 The family pages carry signatures, options, and behavior notes:
 
@@ -8,9 +8,9 @@ The family pages carry signatures, options, and behavior notes:
 - [Indicators](widgets/indicators.md): chip, dot, spinner, gauge, progress.
 - [Fields](widgets/fields.md): text_field, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
 - [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
-- [Content](widgets/content.md): text, label, icon, image, load_image, path, chart.
+- [Content](widgets/content.md): text, label, icon, image, load_image, path, chart, stat, sparkline, canvas.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
-- [Chrome](widgets/chrome.md): app_shell, card, sidebar, tabs, splitter, scroll, dividers, surface, status_bar, and the `patterns` helpers, including badge, skeleton, pagination, breadcrumbs, and stepper.
+- [Chrome](widgets/chrome.md): app_shell, card, sidebar, tabs, segmented, tree, splitter, scroll, dividers, surface, status_bar, context_menu, and helpers including badge, skeleton, pagination, breadcrumbs, and stepper.
 - [Overlays](widgets/overlays.md): modal, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
 - [Plumbing](widgets/plumbing.md): interactive, axis_drag, drag/drop, clipboard, terminal.
 
@@ -27,7 +27,8 @@ The family pages carry signatures, options, and behavior notes:
 - **number_field(Signal\<T\>, Range)**: a numeric text field.
 - **date_field(Signal\<Date\>)**: ISO `YYYY-MM-DD`.
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
-- **dropdown(Signal\<usize\>, Vec\<String\>)**: chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
+- **dropdown(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings (such as `["Small", "Large"]`). Chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
+- **segmented(Signal\<usize\>, labels)**: a framed row of mutually exclusive options where one is active; `labels` is any `IntoIterator` of strings. Chain `.label(name)`.
 - **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
 - **command_menu()**: a nested action tree: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
@@ -36,6 +37,9 @@ The family pages carry signatures, options, and behavior notes:
 - **table(TableState\<Row\>)**: the data tier: sticky sortable header, virtualized body (100k rows), selection styling, hover, keyboard navigation, and AccessKit grid roles. Build columns with `TableColumn::new(id, title)` plus `.sort_by(|row| row.name.clone())`, or `.sortable` for a custom `Ordering`. `TableState::sort(id, dir)` applies a sort; `sort_key()` is the signal; `cycle_sort` cycles the header. Chain `.filterable()`, `.cell(|row| text(...))` (any `IntoNode`), `.width(ColumnWidth)`, and `.min_width(px)`. Implement `Identifiable` on the row and construct with `TableState::identified(rows, cols)` so `replace_rows` keeps the clicked row. `TableState::new` is index-only. `selected_row()` and `selected_index()` subscribe with `get`. `.density(Density::Compact)` gives 28 px rows. An empty filter shows "No rows"; override it with `.empty(|| ...)`.
 - **diff(patch)**: a unified-diff viewer. Pass the patch text; the widget parses hunks itself. `.view(DiffView::Split)` shows before and after side by side with per-line numbers and intraline highlighting of the changed range; `DiffView::Unified` stacks the removed rows above the added rows. Chain `.path(name)` for the header, `.status(text)` for the footer, and `.max_rows(n)` to cap a long patch.
 - **chart(values)**: a bar chart by default; `.line()` draws a polyline. Chain `.tone(Tone)`, `.labels(["Mon", ...])`, and `.series(name, values, Tone)` for more marks. The color is theme scale step 9. `.width` and `.height` pin the plot.
+- **stat(label, value)**: a KPI tile in card chrome with optional `.delta(change, tone)`, `.caption(text)`, `.trend(values)`, `.range(low, high)`, and `.tone(Tone)`.
+- **sparkline(values)**: a compact inline trend graph. Chain `.mark(SparkMark::Block | SparkMark::Braille)`, `.fill(SparkFill::Solid | SparkFill::Shade)`, `.range(low, high)`, `.tone(Tone)`, `.tones(iter)`, and `.rows(n)`.
+- **canvas(record)**: a custom drawing surface whose closure receives `(&mut SceneBuilder, Rect)`. Chain `.redraw_on(Signal<u64>)`.
 - **virtual_list(items, render)**: a windowed list. `items` is a `Vec` (snapshot) or a `Signal` (live). Default keys are list indices. `.identified()` keys by `Identifiable::id`. `.key_by` takes any other domain key. `.follow_end(true)` keeps a live list on the last row when it grows.
 - **progress(Signal\<f32\>, max)** and **gauge(Signal\<f32\>)**.
 - **chip(label, Tone)**: the same `Tone` as buttons. `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a button; without `.activate` it stays a label.
@@ -45,15 +49,16 @@ The family pages carry signatures, options, and behavior notes:
 - **markdown(Signal\<String\>)**: a read-only document: headings, paragraphs, lists, fenced code, pipe tables, plus `**bold**`, `` `code` ``, and `[label](url)`. Not an in-place editor.
 - **html(Signal\<String\>)**: the same nodes as `markdown`, from an HTML subset (`h1`-`h3`, `p`, `ul`/`ol`/`li`, `pre`/`code`, `a`, `strong`/`em`, `table`). Scripts and styles are dropped. Not a browser.
 - **markdown_edit(Signal\<String\>)**: a source `text_field(..).multiline()` plus a live `markdown` preview. The caret stays in the source string.
-- **terminal(lines, on_input)**: a mono `virtual_list` of PTY rows, pinned to the bottom. Bind a prelude `Session` (feature `pty`). Paint is `Session.lines`. `Session::write` needs `Session::spawn` or `Session::spawn_in`. A focused terminal receives every key except command-key shortcuts.
+- **terminal(lines, on_input)**: a mono `virtual_list` of PTY rows, pinned to the bottom. Bind a `sigil::app::Session` (feature `pty`). Paint is `Session.lines`. `Session::write` needs `Session::spawn` or `Session::spawn_in`. A focused terminal receives every key except command-key shortcuts.
 - **surface(key)**: a layout hole for a native view. After layout, `Host::surfaces` returns the rect. The GPU does not paint it.
 
 ## Containers and overlays
 
-- **card(child)**: a padded surface.
+- **card(child)**: a padded surface. Chain `.title()` and `.layer(Layer)`.
 - **avatar(initials)**: an initials disc.
 - **sidebar(child)**: a fixed-width nav column. Chain `.width(len)` and `.resizable(min, max)`.
-- **card(child)**: chain `.title()` and `.layer(Layer)`.
+- **tree(nodes)**: a hierarchical list of `TreeNode`s with `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, and `.activate(Fn(&K))`.
+- **context_menu(target, items_fn)**: wraps `target` and opens a menu of `items_fn()` at the pointer on right-click.
 - **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).width(px).min_width(px)` on a horizontal splitter, or `.height(px).min_height(px)` on a vertical one, and `.grow(1.0)` for the pane that takes the leftover space; the sash moves the fixed neighbour. Every setter after `.pane(node)` sets that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
 - **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
@@ -73,7 +78,7 @@ The family pages carry signatures, options, and behavior notes:
 - **menu(Signal\<bool\>)**: a GPU popup panel (`.item`, `.separator()`). Use it for context menus, not the app bar.
 - **tooltip(label)**: chain `.hint()`; it wraps a target child.
 
-`field(label, control)` lives with the widgets. `patterns::` still has `app_shell`, `kv_grid`, and `hint_overlay`.
+`field(label, control)`, `app_shell`, `kv_grid`, and `hint_overlay` are exported from `sigil::prelude` and `sigil::widgets`.
 
 ## Searchable palette (Cmd-K)
 

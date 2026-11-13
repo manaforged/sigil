@@ -94,14 +94,36 @@ fn dispose_if_live(owner: Owner) {
     }
 }
 
+struct DetachedCellGuard(Option<f32>);
+
+impl DetachedCellGuard {
+    fn enter(host_cell: f32) -> Self {
+        if host_cell > 0.0 && !crate::app::is_entered() {
+            Self(Some(crate::style::swap_cell(host_cell)))
+        } else {
+            Self(None)
+        }
+    }
+}
+
+impl Drop for DetachedCellGuard {
+    fn drop(&mut self) {
+        if let Some(prev) = self.0.take() {
+            crate::style::swap_cell(prev);
+        }
+    }
+}
+
 pub(crate) fn install<F, I, N>(parent: NodeId, location: &'static Location<'static>, mut f: F)
 where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = N>,
     N: IntoNode + 'static,
 {
+    let host_cell = crate::style::cell_size().unwrap_or(0.0);
     let prior: Rc<RefCell<PriorNodes>> = Rc::new(RefCell::new(take_seed(parent)));
     crate::reactive::effect_at("sigil-kernel::children_reactive", location, move || {
+        let _cell = DetachedCellGuard::enter(host_cell);
         let generation = generation_owner();
         let builders: Vec<Box<dyn ErasedComponent>> = generation.with(|| {
             f().into_iter()
@@ -137,8 +159,10 @@ pub(crate) fn install_keyed<F, I, K, N>(
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
+    let host_cell = crate::style::cell_size().unwrap_or(0.0);
     let prior = Rc::new(RefCell::new(Vec::<(K, NodeId)>::new()));
     crate::reactive::effect_at("sigil-kernel::children_keyed", location, move || {
+        let _cell = DetachedCellGuard::enter(host_cell);
         let generation = generation_owner();
         let incoming: KeyedIncoming<K> = generation.with(|| {
             let mounted = prior.borrow();

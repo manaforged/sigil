@@ -79,9 +79,56 @@ impl<T: Clone + 'static, const N: usize> sealed::Sealed<Vec<T>> for [T; N] {
     }
 }
 
-impl sealed::Sealed<Self> for bool {
+macro_rules! copy_reactive {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl sealed::Sealed<Self> for $ty {
+                fn read(&self) -> Self {
+                    *self
+                }
+
+                fn into_signal(self) -> Signal<Self> {
+                    signal(self)
+                }
+            }
+        )+
+    };
+}
+
+copy_reactive!(
+    bool,
+    f32,
+    f64,
+    usize,
+    isize,
+    u8,
+    u16,
+    u32,
+    u64,
+    i8,
+    i16,
+    i32,
+    i64,
+    char,
+    crate::style::Tone,
+    crate::style::Color,
+    crate::style::ControlSize,
+    crate::style::Layer,
+    crate::style::Token,
+    crate::widgets::Density,
+    crate::widgets::DiffView,
+    crate::widgets::Disclosure,
+);
+
+impl<T: Clone + 'static> sealed::Sealed<Vec<T>> for &'static [T] {
+    fn read(&self) -> Vec<T> {
+        self.to_vec()
+    }
+}
+
+impl<T: Clone + PartialEq + 'static> sealed::Sealed<Self> for Option<T> {
     fn read(&self) -> Self {
-        *self
+        self.clone()
     }
 
     fn into_signal(self) -> Signal<Self> {
@@ -89,12 +136,12 @@ impl sealed::Sealed<Self> for bool {
     }
 }
 
-impl sealed::Sealed<Self> for f32 {
-    fn read(&self) -> Self {
-        *self
+impl sealed::Sealed<Option<String>> for Option<&'static str> {
+    fn read(&self) -> Option<String> {
+        self.map(str::to_owned)
     }
 
-    fn into_signal(self) -> Signal<Self> {
-        signal(self)
+    fn into_signal(self) -> Signal<Option<String>> {
+        signal(self.map(str::to_owned))
     }
 }

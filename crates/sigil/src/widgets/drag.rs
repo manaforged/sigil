@@ -6,7 +6,7 @@ use crate::widgets::interaction::{DragEnd, axis_of, pointer_drag};
 
 /// Drag along one axis.
 pub fn axis_drag<S>(
-    node: NodeBuilder,
+    node: impl Into<NodeBuilder>,
     axis: Orientation,
     snapshot: impl Fn() -> S + 'static,
     on_delta: impl Fn(S, f32) + 'static,
@@ -18,7 +18,7 @@ where
     let on_delta = Rc::new(on_delta);
     let restore = Rc::clone(&on_delta);
     pointer_drag(
-        node,
+        node.into(),
         move |event| {
             event.stop_propagation();
             Some((

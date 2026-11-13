@@ -71,7 +71,7 @@ table(state).striped().fill_height();
 - `.cell(Fn(&Row) -> impl IntoNode)`: the cell content; a column without it renders an empty `Role::GridCell`.
 - `.editable(text, commit)`: edits the cell in place. `text(&Row) -> String` fills the editor and `commit(&mut Row, String)` writes the result into the table's rows. Double-click or Enter on a row starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. With `TableState::identified`, an open edit follows its row when the app calls `replace_rows`.
 
-`TableState<Row>` is the live model:
+`TableState<Row>` is the live model (it is `Clone`, whereas `Signal`, `TextState`, and `Combobox` are `Copy`):
 
 - `TableState::new(rows, columns)`: index-based selection.
 - `TableState::identified(rows, columns)`: selection tracks `Identifiable::id` (`Clone + Eq + Hash`; implemented for `Arc<Row>` too), so `replace_rows` keeps the same logical rows selected.
@@ -80,7 +80,7 @@ table(state).striped().fill_height();
 - `sort_key() -> Signal<Option<SortKey>>`, `cycle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
 - Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 
-`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_y(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column), `.end_reached(rows, Fn())` (as on `virtual_list`).
+`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(impl Reactive<Density>)` (accepts `Density` or `Signal<Density>`; sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_y(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column), `.end_reached(rows, Fn())` (as on `virtual_list`).
 
 The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
 

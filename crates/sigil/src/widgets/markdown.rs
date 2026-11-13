@@ -21,8 +21,10 @@ use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, memo};
-use crate::style::{Radius, Token, Tone as ChartTone, space};
+use crate::style::{Radius, Style, Token, Tone as ChartTone, space};
 use crate::widgets::{Layout, Widget};
+
+use super::shared::caller_style;
 use std::rc::Rc;
 
 use parse::Block;
@@ -31,7 +33,8 @@ use render::TokenTone;
 const MAX_MATH_BYTES: usize = 512;
 
 /// Rendered markdown.
-pub fn markdown(source: Signal<String>) -> NodeBuilder {
+pub fn markdown(source: impl Reactive<String>) -> NodeBuilder {
+    let source = source.into_signal();
     let mut stream = stream::Stream::default();
     let blocks = memo(move || source.with(|body| stream.update(body)));
     frame().children_keyed(move || {
@@ -91,14 +94,16 @@ fn frame() -> NodeBuilder {
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
 /// A markdown editor with preview.
-pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
+pub fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
     MarkdownEditBuilder {
         source,
         disabled: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -121,7 +126,7 @@ impl MarkdownEditBuilder {
             None => editor,
         };
         let fit = CellForm::new(0.0, 1.0).pick();
-        container()
+        let node = container()
             .layout(LayoutStyle::flex_row().fill_width().grow(1.0))
             .child(
                 splitter(Orientation::Horizontal)
@@ -131,11 +136,12 @@ impl MarkdownEditBuilder {
                     .grow(fit)
                     .commit()
                     .grow(fit),
-            )
+            );
+        caller_style(node, self.style_accumulator)
     }
 }
 
-builder_impls!([] MarkdownEditBuilder: widget, node);
+builder_impls!([] MarkdownEditBuilder: paint(style_accumulator), widget, node);
 
 fn block_node(block: Block) -> NodeBuilder {
     styled_block(block, TokenTone(Token::OnSurface))

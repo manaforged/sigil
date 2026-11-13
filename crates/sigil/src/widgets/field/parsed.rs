@@ -111,6 +111,12 @@ impl<P: FieldParser> ParsedField<P> {
     }
 }
 
+impl<P: FieldParser> crate::style::PaintTarget for ParsedField<P> {
+    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+        self.inner.style_slot()
+    }
+}
+
 fn shown<P: FieldParser>(parser: &P, raw: P::Value, theme: &Theme) -> String {
     parser.render(&parser.normalize(raw), theme)
 }

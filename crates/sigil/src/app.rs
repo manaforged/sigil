@@ -97,7 +97,7 @@ pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
 pub use frame::{Frame, FrameHooks, FrameInputHook, FrameLayoutHook, FramePaintHook};
-pub(crate) use host_env::HostCaps;
+pub(crate) use host_env::{HostCaps, is_entered};
 pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]
 pub(crate) use launch::launch;

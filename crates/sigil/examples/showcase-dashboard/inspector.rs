@@ -159,17 +159,17 @@ fn log_line(line: LogLine) -> NodeBuilder {
 }
 
 fn form(rollout: Rollout) -> NodeBuilder {
-    let regions = Region::ALL
-        .iter()
-        .map(|region| region.label().to_owned())
-        .collect();
     let canary = rollout.canary;
     column()
         .fill_width()
         .gap(Space::Md)
         .child(field(
             "Target region",
-            dropdown(rollout.region, regions).label("Target region"),
+            dropdown(
+                rollout.region,
+                Region::ALL.iter().map(|region| region.label()),
+            )
+            .label("Target region"),
         ))
         .child(field(
             "Canary percent",

@@ -69,8 +69,11 @@ impl core::fmt::Debug for DropdownBuilder {
 }
 
 /// A select box.
-pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {
-    DropdownBuilder::new(selected, options)
+pub fn dropdown(
+    selected: Signal<usize>,
+    options: impl IntoIterator<Item = impl Into<String>>,
+) -> DropdownBuilder {
+    DropdownBuilder::new(selected, options.into_iter().map(Into::into).collect())
 }
 
 impl DropdownBuilder {

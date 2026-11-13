@@ -99,6 +99,18 @@ impl From<String> for TextContent {
     }
 }
 
+impl From<&String> for TextContent {
+    fn from(value: &String) -> Self {
+        Self::Static(value.clone())
+    }
+}
+
+impl From<std::borrow::Cow<'_, str>> for TextContent {
+    fn from(value: std::borrow::Cow<'_, str>) -> Self {
+        Self::Static(value.into_owned())
+    }
+}
+
 impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
     fn from(value: Signal<T>) -> Self {
         if let Some(text) = (&value as &dyn std::any::Any).downcast_ref::<Signal<String>>() {
@@ -108,9 +120,13 @@ impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
     }
 }
 
-impl<F: Fn() -> String + 'static> From<F> for TextContent {
+impl<F, S> From<F> for TextContent
+where
+    F: Fn() -> S + 'static,
+    S: Into<String>,
+{
     fn from(value: F) -> Self {
-        Self::Compute(Rc::new(value))
+        Self::Compute(Rc::new(move || value().into()))
     }
 }
 

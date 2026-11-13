@@ -132,7 +132,7 @@ fn checkbox_styled_hover_populates_state_slot() {
 fn dropdown_styled_emits_on_trigger_accumulator() {
     Owner::scope("widget-styled-dropdown-bg", || {
         let build = |px: f32| {
-            dropdown(signal(0_usize), vec!["a".into(), "b".into()])
+            dropdown(signal(0_usize), ["a", "b"])
                 .background(A)
                 .layout(LayoutStyle::default().width(px))
         };
@@ -149,7 +149,7 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
 #[test]
 fn dropdown_styled_pressed_populates_state_slot() {
     Owner::scope("widget-styled-dropdown-pressed", || {
-        let build = dropdown(signal(0_usize), vec!["a".into()]).pressed(|s| s.background(A));
+        let build = dropdown(signal(0_usize), ["a"]).pressed(|s| s.background(A));
         assert_paints(&painted(build, Drive::Press), A, "dropdown pressed");
     });
 }

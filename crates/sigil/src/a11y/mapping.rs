@@ -254,7 +254,10 @@ fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     if a11y.focusable {
         ak.add_action(Action::Focus);
     }
-    if a11y.text_value.is_some() || a11y.value_now.is_some() {
+    if a11y.text_value.is_some()
+        || a11y.value_now.is_some()
+        || a11y.role == crate::kernel::Role::PasswordInput
+    {
         ak.add_action(Action::SetValue);
     }
     if let Some(sig) = a11y.expanded {

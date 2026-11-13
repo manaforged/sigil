@@ -120,9 +120,9 @@ macro_rules! layout_methods {
             /// Sets how the node is placed across its parent's main axis.
             align_self(align_self: $crate::layout::AlignItems);
             /// Sets the node's grid column tracks.
-            grid_columns(columns: Vec<$crate::layout::TrackSize>);
+            grid_columns(columns: impl Into<Vec<$crate::layout::TrackSize>>);
             /// Sets the node's grid row tracks.
-            grid_rows(rows: Vec<$crate::layout::TrackSize>);
+            grid_rows(rows: impl Into<Vec<$crate::layout::TrackSize>>);
             /// Sets how many grid columns the node spans.
             grid_column_span(span: u16);
             /// Sets how many grid rows the node spans.

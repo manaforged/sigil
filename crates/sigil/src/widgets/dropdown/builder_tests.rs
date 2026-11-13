@@ -17,8 +17,7 @@ fn dropdown_selection_wins_over_controls_beneath_the_popup() {
             container()
                 .layout(LayoutStyle::flex_column().fill())
                 .child(
-                    dropdown(selected, vec!["First".into(), "Second".into()])
-                        .change(move |value| changed.set(value)),
+                    dropdown(selected, ["First", "Second"]).change(move |value| changed.set(value)),
                 )
                 .child(button("Underneath").height(160.0).activate(move || {
                     underneath.set(underneath.peek() + 1);
@@ -92,7 +91,7 @@ fn escape_closes_the_menu_then_reaches_the_surrounding_dialog() {
         host.mount(move || {
             container()
                 .key(NamedKey::Escape, move |_| dismissed.set(true))
-                .child(dropdown(signal(0), vec!["First".into(), "Second".into()]))
+                .child(dropdown(signal(0), ["First", "Second"]))
         });
         host.layout((400.0, 300.0)).unwrap();
         click(&mut host, Point::new(20.0, 16.0));

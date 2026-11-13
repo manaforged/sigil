@@ -16,6 +16,7 @@ pub(super) fn wrap_with_content(
         .layout(
             LayoutStyle::flex_column()
                 .grow(1.0)
+                .min_size(0.0, 0.0)
                 .align_items(AlignItems::Stretch)
                 .gap(Space::Sm),
         )
@@ -27,7 +28,7 @@ pub(super) fn wrap_with_content(
             root.child(
                 container()
                     .role(Role::GenericContainer)
-                    .layout(LayoutStyle::flex_column().grow(1.0))
+                    .layout(LayoutStyle::flex_column().grow(1.0).min_size(0.0, 0.0))
                     .style_reactive(move || -> &'static [StyleAtom] {
                         if active.get() == index {
                             &[]

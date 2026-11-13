@@ -22,10 +22,10 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 
 `code_edit(lines, caret)` where `lines` is `Signal<Vec<String>>` and `caret` is `Signal<(usize, usize)>` as `(row, column)`. A column is a grapheme cluster index, the same unit `text_field` uses, so the caret and selection never split a grapheme. `Highlight` and `Diagnostic` columns use the same unit. A line-oriented code editor that renders only the rows inside the scroll viewport. `first_row` derives the visible window from `scroll_y`, and an effect follows the caret so typing scrolls.
 
-- `.highlights(Signal<Vec<Vec<Highlight>>>)`: per-line syntax spans; `Highlight::new(start, end, token)` maps a column range to a token class.
+- `.highlights(Signal<Vec<Vec<Highlight>>>)`: per-line syntax spans; `Highlight::new(start, end, token)` maps a column range to a `Token`.
 - `.selection(Signal<Option<(usize, usize)>>)`: selection anchor; the range from anchor to caret paints selected.
 - `.gutter(Signal<Vec<Option<Change>>>)`: per-line `Added` / `Modified` / `Deleted` bars in the line-number gutter (sized to the line count: `18 + digits × 7` px).
-- `.diagnostics(Signal<Vec<Diagnostic>>)`: `Diagnostic::new(line, start, end, severity)` tints a line range by `Severity` (Hint/Info → info, Warning → warn, Error → error).
+- `.diagnostics(Signal<Vec<Diagnostic>>)`: `Diagnostic::new(line, start, end, severity)` tints a line range by `Severity` (`Hint`/`Info` → info, `Warning` → warn, `Error` → error).
 - `.key_handler(Fn(&mut KeyEvent))`: a key handler that runs before the built-in editing keys. Call `event.stop_propagation()` to replace a built-in binding. Installing one traps Tab for the handler instead of moving focus.
 - `.row_height(px)`: defaults to 18 px, or one cell on a terminal.
 - `.disabled(impl Reactive<bool>)`: ignores keys, removes the editor from the focus order, and paints it at the disabled opacity.
@@ -48,11 +48,12 @@ Input is bounded to 256 lines of 512 chars and output to 512 lines of 1024 chars
 
 ## diff
 
-`diff(patch: impl Reactive<String>) -> DiffBuilder`. Parses a unified diff and renders it as split (side-by-side) or unified rows with a header showing the path and `+added`/`−removed` counts.
+`diff(patch: impl Reactive<String>) -> DiffBuilder`. Parses a unified diff (via `Patch::parse`) and renders it as split (side-by-side) or unified rows with a header showing the path and `+added`/`−removed` counts.
 
 - `.path(text)`: header label; falls back to the patch's own paths.
 - `.status(text)`: extra header label (e.g. "modified").
-- `.view(DiffView::Split | DiffView::Unified)`: default Split.
+- `.view(impl Reactive<DiffView>)`: `DiffView::Split` (default) or `DiffView::Unified`, static or reactive (`Signal<DiffView>`).
+- `.selected(Signal<DiffSelection>)`: binds line and hunk selection (`DiffSelection::hunks()`, `lines()`, `select_hunk(&patch, hunk)`, `select_line(id)`, `extend_line(&patch, id)`, `clear()`).
 - `.max_rows(n)`: truncates rendered rows.
 
 ## States, keys, and accessibility

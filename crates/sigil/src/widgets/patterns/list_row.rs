@@ -3,15 +3,14 @@ use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols, rows};
-use crate::reactive::{Signal, signal};
-use crate::style::States;
-use crate::style::{Paint, Radius, Token, Tone, space};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols};
+use crate::reactive::{Reactive, Signal, memo};
+use crate::style::{Paint, Radius, States, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 
 use super::super::chip::chip;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::shared::Activate;
+use super::super::shared::{Activate, caller_style};
 use super::super::table::ColumnAlign;
 
 const INDENT_COLS: f32 = 2.0;
@@ -50,6 +49,10 @@ pub enum RowTone {
     Header,
 }
 
+static SELECTED_INK: &[StyleAtom] = &[Token::OnSurface.text()];
+static NORMAL_DETAIL_INK: &[StyleAtom] = &[Tone::Neutral.step(11).text()];
+static MUTED_DETAIL_INK: &[StyleAtom] = &[Tone::Neutral.step(9).text()];
+
 impl RowTone {
     const fn title(self) -> Token {
         match self {
@@ -58,10 +61,10 @@ impl RowTone {
         }
     }
 
-    const fn detail(self) -> Token {
+    const fn detail_atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Normal | Self::Header => Tone::Neutral.step(11),
-            Self::Muted => Tone::Neutral.step(9),
+            Self::Normal | Self::Header => NORMAL_DETAIL_INK,
+            Self::Muted => MUTED_DETAIL_INK,
         }
     }
 }
@@ -76,9 +79,9 @@ struct Column {
 #[must_use]
 pub struct ListRowBuilder {
     title: TextContent,
-    selected: bool,
+    selected: Option<Signal<bool>>,
     depth: u16,
-    disclosure: Disclosure,
+    disclosure: Option<Signal<Disclosure>>,
     leading: Option<Box<dyn IntoNode>>,
     marker: Option<TextContent>,
     marker_tone: Option<Tone>,
@@ -92,6 +95,7 @@ pub struct ListRowBuilder {
     indent: f32,
     tone: RowTone,
     activate: Option<Activate>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -111,9 +115,9 @@ impl core::fmt::Debug for ListRowBuilder {
 pub fn list_row(title: impl Into<TextContent>) -> ListRowBuilder {
     ListRowBuilder {
         title: title.into(),
-        selected: false,
+        selected: None,
         depth: 0,
-        disclosure: Disclosure::None,
+        disclosure: None,
         leading: None,
         marker: None,
         marker_tone: None,
@@ -127,14 +131,15 @@ pub fn list_row(title: impl Into<TextContent>) -> ListRowBuilder {
         indent: INDENT_COLS,
         tone: RowTone::Normal,
         activate: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl ListRowBuilder {
     /// Draws the row with the selected fill.
-    pub const fn selected(mut self, selected: bool) -> Self {
-        self.selected = selected;
+    pub fn selected(mut self, selected: impl Reactive<bool>) -> Self {
+        self.selected = Some(selected.into_signal());
         self
     }
 
@@ -151,8 +156,8 @@ impl ListRowBuilder {
     }
 
     /// Shows the tree chevron before the title.
-    pub const fn disclosure(mut self, disclosure: Disclosure) -> Self {
-        self.disclosure = disclosure;
+    pub fn disclosure(mut self, disclosure: impl Reactive<Disclosure>) -> Self {
+        self.disclosure = Some(disclosure.into_signal());
         self
     }
 
@@ -241,23 +246,19 @@ impl ListRowBuilder {
             row = row.child(leading_slot(leading));
         }
         let tone = self.tone;
-        let secondary = if self.selected {
-            Token::OnSurface
-        } else {
-            tone.detail()
-        };
         if let TextContent::Static(name) = &self.title {
             row = row.label(name.clone());
         }
         row = row.child(title_text(&self));
         if let Some(detail) = self.detail.take() {
-            row = row.child(detail_text(detail, secondary));
+            row = row.child(detail_text(detail, tone, self.selected));
         }
         if let Some(status) = self.status.take() {
             row = row.child(status_text(
                 status,
                 self.shrink,
-                secondary,
+                tone,
+                self.selected,
                 self.status_tone,
             ));
         }
@@ -265,21 +266,21 @@ impl ListRowBuilder {
             row = row.child(chip(label, badge_tone));
         }
         for entry in std::mem::take(&mut self.columns) {
-            row = row.child(column(entry, self.shrink, secondary));
+            row = row.child(column(entry, self.shrink, tone, self.selected));
         }
         if tone == RowTone::Header {
-            return row;
+            return caller_style(row, self.style_accumulator);
         }
-        let row = if self.selected {
-            row.selected(signal(true))
-                .class([Radius::Md.atom(), ROW_SELECTED.background()])
-        } else {
-            row_states(row, None)
+        let row = match self.selected {
+            Some(sel) => row_states(row.selected(sel), None)
+                .style_reactive(move || if sel.get() { ROW_SELECTED_BG } else { &[] }),
+            None => row_states(row, None),
         };
-        match self.activate {
+        let row = match self.activate {
             Some(activate) => row.role(Role::ListItem).activate_with(activate),
             None => row,
-        }
+        };
+        caller_style(row, self.style_accumulator)
     }
 }
 
@@ -289,10 +290,16 @@ impl From<ListRowBuilder> for NodeBuilder {
     }
 }
 
-crate::widgets::builder_impls!([] ListRowBuilder: widget, node(pub));
+crate::widgets::builder_impls!(
+    [] ListRowBuilder: paint(style_accumulator),
+    states(style_accumulator),
+    widget,
+    node(pub)
+);
 
 pub(crate) const ROW_SELECTED: Token = Tone::Primary.step(5);
 pub(crate) const ROW_SELECTED_HOVER: Token = Tone::Primary.step(6);
+static ROW_SELECTED_BG: &[StyleAtom] = &[Radius::Md.atom(), ROW_SELECTED.background()];
 
 pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     let row = row
@@ -305,7 +312,7 @@ pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> No
     }
 }
 
-fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilder {
+fn row_frame(depth: u16, indent_cols: f32, disclosure: Option<Signal<Disclosure>>) -> NodeBuilder {
     let pad = space(2);
     let mut row = container().role(Role::GenericContainer).layout(
         LayoutStyle::flex_row()
@@ -324,11 +331,14 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
             ),
         );
     }
-    if matches!(disclosure, Disclosure::Collapsed | Disclosure::Expanded) {
-        row = row.expanded(signal(disclosure == Disclosure::Expanded));
-    }
-    if disclosure != Disclosure::None {
-        row = row.child(disclosure_slot(disclosure));
+    if let Some(disc) = disclosure {
+        let current = disc.peek();
+        if matches!(current, Disclosure::Collapsed | Disclosure::Expanded) {
+            row = row.expanded(memo(move || disc.get() == Disclosure::Expanded));
+        }
+        if current != Disclosure::None {
+            row = row.child(disclosure_slot_reactive(disc));
+        }
     }
     row
 }
@@ -354,37 +364,66 @@ fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
         .child(content)
 }
 
-pub(super) fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
-    let slot = container().layout(
+fn slot_container() -> NodeBuilder {
+    container().layout(
         LayoutStyle::flex_row()
             .width(cols(INDENT_COLS))
             .shrink(0.0)
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::Center),
-    );
-    let mark = CellForm::<fn(ChevronDirection) -> Box<dyn IntoNode>>::new(
-        |direction| Box::new(chevron(direction, space(3))),
+    )
+}
+
+fn disclosure_mark(direction: ChevronDirection) -> NodeBuilder {
+    CellForm::<fn(ChevronDirection) -> NodeBuilder>::new(
+        |dir| NodeBuilder::wrapping(chevron(dir, space(3))),
         cell_mark,
     )
-    .pick();
+    .pick()(direction)
+}
+
+pub(super) fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
+    let slot = slot_container();
     match disclosure {
-        Disclosure::Collapsed => slot.child(mark(ChevronDirection::Right)),
-        Disclosure::Expanded => slot.child(mark(ChevronDirection::Down)),
+        Disclosure::Collapsed => slot.child(disclosure_mark(ChevronDirection::Right)),
+        Disclosure::Expanded => slot.child(disclosure_mark(ChevronDirection::Down)),
         Disclosure::None | Disclosure::Leaf => slot,
     }
 }
 
-fn cell_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
+fn disclosure_slot_reactive(disclosure: Signal<Disclosure>) -> NodeBuilder {
+    if crate::layout::snap::cell().is_some() {
+        return slot_container().child(cell_mark_frame(move || match disclosure.get() {
+            Disclosure::Collapsed => CELL_COLLAPSED,
+            Disclosure::Expanded => CELL_EXPANDED,
+            Disclosure::None | Disclosure::Leaf => "",
+        }));
+    }
+    let size = space(3);
+    slot_container().children_reactive(move || match disclosure.get() {
+        Disclosure::Collapsed => vec![NodeBuilder::wrapping(chevron(
+            ChevronDirection::Right,
+            size,
+        ))],
+        Disclosure::Expanded => vec![NodeBuilder::wrapping(chevron(ChevronDirection::Down, size))],
+        Disclosure::None | Disclosure::Leaf => Vec::new(),
+    })
+}
+
+fn cell_mark(direction: ChevronDirection) -> NodeBuilder {
     let glyph = match direction {
         ChevronDirection::Right => CELL_COLLAPSED,
         ChevronDirection::Down => CELL_EXPANDED,
     };
-    Box::new(
-        container()
-            .layout(LayoutStyle::block().width(cols(1.0)).height(rows(1.0)))
-            .class(Token::OnSurfaceMuted.text())
-            .child(text(glyph)),
-    )
+    cell_mark_frame(glyph)
+}
+
+fn cell_mark_frame(glyph: impl Into<TextContent>) -> NodeBuilder {
+    let extent = row_height();
+    container()
+        .layout(LayoutStyle::block().width(extent).height(extent))
+        .class(Token::OnSurfaceMuted.text())
+        .child(text(glyph))
 }
 
 fn title_text(slots: &ListRowBuilder) -> TextBuilder {
@@ -412,29 +451,39 @@ fn title_text(slots: &ListRowBuilder) -> TextBuilder {
         .class(slots.tone.title().text())
 }
 
-fn detail_text(detail: TextContent, color: Token) -> TextBuilder {
-    text(detail)
-        .ellipsize()
-        .class("text-xs")
-        .class(color.text())
-        .layout(
-            LayoutStyle::block()
-                .grow(1.0)
-                .shrink(1.0)
-                .min_size(0.0, 0.0),
-        )
+fn apply_secondary_ink(
+    node: TextBuilder,
+    tone: RowTone,
+    selected: Option<Signal<bool>>,
+) -> TextBuilder {
+    let rest = tone.detail_atoms();
+    match selected {
+        Some(sel) => node.style_reactive(move || if sel.get() { SELECTED_INK } else { rest }),
+        None => node.class(rest),
+    }
+}
+
+fn detail_text(detail: TextContent, tone: RowTone, selected: Option<Signal<bool>>) -> TextBuilder {
+    apply_secondary_ink(text(detail).ellipsize().class("text-xs"), tone, selected).layout(
+        LayoutStyle::block()
+            .grow(1.0)
+            .shrink(1.0)
+            .min_size(0.0, 0.0),
+    )
 }
 
 fn status_text(
     status: TextContent,
     shrink: bool,
-    color: Token,
+    tone: RowTone,
+    selected: Option<Signal<bool>>,
     status_tone: Option<Tone>,
 ) -> TextBuilder {
-    let node = text(status)
-        .ellipsize()
-        .class("text-xs")
-        .class(status_tone.map_or(color, |shade| shade.step(12)).text());
+    let node = text(status).ellipsize().class("text-xs");
+    let node = match status_tone {
+        Some(shade) => node.class(shade.step(12).text()),
+        None => apply_secondary_ink(node, tone, selected),
+    };
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {
@@ -442,7 +491,12 @@ fn status_text(
     }
 }
 
-fn column(entry: Column, shrink: bool, color: Token) -> NodeBuilder {
+fn column(
+    entry: Column,
+    shrink: bool,
+    tone: RowTone,
+    selected: Option<Signal<bool>>,
+) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -454,10 +508,9 @@ fn column(entry: Column, shrink: bool, color: Token) -> NodeBuilder {
                     ColumnAlign::End => JustifyContent::End,
                 }),
         )
-        .child(
-            text(entry.text)
-                .ellipsize()
-                .class("text-xs")
-                .class(color.text()),
-        )
+        .child(apply_secondary_ink(
+            text(entry.text).ellipsize().class("text-xs"),
+            tone,
+            selected,
+        ))
 }

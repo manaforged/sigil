@@ -66,6 +66,18 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Borrows the active theme of the current host, subscribing reactive callers.
+    #[must_use]
+    pub fn with<R>(read: impl FnOnce(&Self) -> R) -> R {
+        ambient::ActiveTheme::capture().with(read)
+    }
+
+    /// Returns a clone of the active theme of the current host, subscribing reactive callers.
+    #[must_use]
+    pub fn current() -> Self {
+        Self::with(Clone::clone)
+    }
+
     /// The 12-step color scale of `tone`.
     #[must_use]
     pub const fn scale(&self, tone: Tone) -> &ColorScale {
@@ -93,9 +105,11 @@ impl Theme {
                 self.on_surface = scale.step(12);
             }
             Tone::Primary => {
+                let ink = scale.solid_ink();
                 self.accent_scale = scale;
                 self.accent = scale.step(9);
-                self.accent_hover = readable_hover(scale, self.on_solid);
+                self.on_accent = ink;
+                self.accent_hover = readable_hover(scale, ink);
             }
             Tone::Success => self.success = scale,
             Tone::Warning => self.warn = scale,

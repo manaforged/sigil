@@ -4,7 +4,7 @@ use super::layout_ext::LayoutOverrides;
 use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, accessible_name_or, caller_style};
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
@@ -26,8 +26,8 @@ pub struct GaugeBuilder {
 }
 
 /// A labelled meter bar that shows a value against a maximum.
-pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
-    GaugeBuilder::new(value)
+pub fn gauge(value: impl Reactive<f32>) -> GaugeBuilder {
+    GaugeBuilder::new(value.into_signal())
 }
 
 impl GaugeBuilder {

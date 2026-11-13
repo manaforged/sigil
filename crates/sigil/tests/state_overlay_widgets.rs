@@ -68,8 +68,7 @@ fn dropdown_user_hover_overlay_paints_trigger() {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx
-            .add(dropdown(selected, vec!["a".into(), "b".into()]).hover(|s| s.background(ruby_9)));
+        let root = cx.add(dropdown(selected, ["a", "b"]).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (100.0, 20.0), ruby_9);
     });

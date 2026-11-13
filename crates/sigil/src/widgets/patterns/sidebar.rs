@@ -12,7 +12,7 @@ use crate::widgets::Layout;
 use super::super::drag::axis_drag;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::caller_style;
-use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
+use super::super::splitter::{KEY_STEP, cached_width_atom, handle_px, resize_keys, to_i16};
 use crate::layout::Orientation;
 
 const SIDEBAR_DEFAULT: f32 = space(55);
@@ -107,7 +107,7 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
         .value_step(KEY_STEP)
         .layout(
             LayoutStyle::block()
-                .width(HANDLE_PX)
+                .width(handle_px())
                 .fill_height()
                 .shrink(0.0),
         );

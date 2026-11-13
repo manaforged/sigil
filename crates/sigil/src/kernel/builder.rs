@@ -199,6 +199,18 @@ impl NodeBuilder {
         self
     }
 
+    /// Appends every child in `children`.
+    pub fn children<I, N>(mut self, children: I) -> Self
+    where
+        I: IntoIterator<Item = N>,
+        N: IntoNode + 'static,
+    {
+        for child in children {
+            self.children.push(Box::new(child));
+        }
+        self
+    }
+
     /// Runs `hook` with the tree and the node id after the node and its children are in the tree.
     pub fn added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
         self.added.push(Box::new(hook));

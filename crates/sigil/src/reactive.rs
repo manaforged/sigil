@@ -5,7 +5,6 @@ use criterion as _;
 
 mod arena;
 mod batch;
-#[cfg(event_channel)]
 mod channel;
 kittest_pub! {
     /// Diagnostics for the reactive graph.
@@ -31,7 +30,6 @@ mod source;
 mod trace;
 
 pub use batch::batch;
-#[cfg(event_channel)]
 pub use channel::{EventChannel, Subscription};
 pub(crate) use effect::effect_at;
 #[cfg(not(feature = "kittest"))]
@@ -63,7 +61,6 @@ kittest_pub! {
 pub(crate) use signal::SendableSignal;
 pub use signal::{Signal, signal};
 pub use source::Reactive;
-pub(crate) use source::sealed;
 
 #[cfg(feature = "kittest")]
 pub use trace::test_hook as __trace_test_hook;

@@ -152,9 +152,45 @@ impl From<&str> for Query {
     }
 }
 
+impl From<String> for Query {
+    fn from(text: String) -> Self {
+        Self::text(text)
+    }
+}
+
+impl From<&String> for Query {
+    fn from(text: &String) -> Self {
+        Self::text(text)
+    }
+}
+
+impl From<Role> for Query {
+    fn from(role: Role) -> Self {
+        Self::role(role)
+    }
+}
+
 impl From<(Role, &str)> for Query {
     fn from((role, name): (Role, &str)) -> Self {
         Self::role(role).name(name)
+    }
+}
+
+impl From<(Role, String)> for Query {
+    fn from((role, name): (Role, String)) -> Self {
+        Self::role(role).name(name)
+    }
+}
+
+impl From<&(Role, &str)> for Query {
+    fn from((role, name): &(Role, &str)) -> Self {
+        Self::role(*role).name(*name)
+    }
+}
+
+impl From<&(Role, String)> for Query {
+    fn from((role, name): &(Role, String)) -> Self {
+        Self::role(*role).name(name)
     }
 }
 

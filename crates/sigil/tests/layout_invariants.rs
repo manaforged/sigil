@@ -173,7 +173,7 @@ fn form_row_of_widgets_is_sound_at_every_width() {
         assert_sound("form row", width, || {
             columns(vec![
                 labeled_field("text_field", text_field(signal(String::from("hello")))),
-                labeled_field("dropdown", dropdown(signal(0_usize), vec!["Banana".into()])),
+                labeled_field("dropdown", dropdown(signal(0_usize), ["Banana"])),
                 labeled_field("slider", slider(signal(0.5_f32), 0.0..=1.0)),
             ])
         });
@@ -236,7 +236,7 @@ fn long_content_stays_inside_its_widget() {
                     "menu",
                     dropdown(
                         signal(0_usize),
-                        vec!["an option label considerably wider than the control".into()],
+                        ["an option label considerably wider than the control"],
                     ),
                 ),
             ])

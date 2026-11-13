@@ -48,10 +48,7 @@ fn dropdown_paints_its_selected_option() {
         assert_paints(width, "Banana", || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
-                .child(dropdown(
-                    signal(0_usize),
-                    vec!["Banana".into(), "Cherry".into()],
-                ))
+                .child(dropdown(signal(0_usize), ["Banana", "Cherry"]))
         });
     }
 }
@@ -100,7 +97,7 @@ fn text_survives_the_equal_columns_idiom() {
             }
             container()
                 .layout(LayoutStyle::flex_row().fill_width().gap(Space::Sm))
-                .child(cell(dropdown(signal(0_usize), vec!["Banana".into()])))
+                .child(cell(dropdown(signal(0_usize), ["Banana"])))
                 .child(cell(button("Save")))
         });
         for needle in ["Banana", "Save"] {

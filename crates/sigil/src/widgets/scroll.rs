@@ -41,9 +41,9 @@ pub struct ScrollBuilder {
 }
 
 /// A vertical scroll area around `content`, with a scrollbar.
-pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
+pub fn scroll(content: impl Into<NodeBuilder>) -> ScrollBuilder {
     ScrollBuilder {
-        content,
+        content: content.into(),
         extent: None,
         fit: false,
         scroll_y: None,

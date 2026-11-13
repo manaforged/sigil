@@ -4,9 +4,11 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
-use crate::style::Tone;
+use crate::style::{Style, Tone};
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Layout, markdown, notice_band};
+
+use super::shared::caller_style;
 
 mod document;
 mod glyph;
@@ -30,6 +32,7 @@ pub const A2UI_CATALOG: &str = include_str!("a2ui/catalog.json");
 pub struct A2uiBuilder {
     source: Signal<String>,
     handler: Option<Handler>,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -37,6 +40,7 @@ impl core::fmt::Debug for A2uiBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("A2uiBuilder")
             .field("source", &self.source)
+            .field("style_accumulator", &self.style_accumulator)
             .field("layout_overrides", &self.layout_overrides)
             .finish_non_exhaustive()
     }
@@ -47,6 +51,7 @@ pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {
     A2uiBuilder {
         source: json.into_signal(),
         handler: None,
+        style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::default(),
     }
 }
@@ -85,9 +90,10 @@ impl A2uiBuilder {
 
     fn root(self) -> NodeBuilder {
         let (source, handler) = (self.source, self.handler);
-        container()
+        let node = container()
             .layout(LayoutStyle::flex_column().fill_width())
-            .children_reactive(move || [source.with(|json| surface(json, handler.clone()))])
+            .children_reactive(move || [source.with(|json| surface(json, handler.clone()))]);
+        caller_style(node, self.style_accumulator)
     }
 }
 
@@ -97,4 +103,4 @@ impl From<A2uiBuilder> for NodeBuilder {
     }
 }
 
-crate::widgets::builder_impls!([] A2uiBuilder: widget, node(pub));
+crate::widgets::builder_impls!([] A2uiBuilder: paint(style_accumulator), widget, node(pub));

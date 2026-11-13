@@ -64,7 +64,12 @@ pub(crate) fn layout_item_subtree(
             let nested =
                 crate::layout::forest::MeasureScope::new(forest, scope.text(), scope.available());
             let pre = block_origin(style, origin, w);
-            crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)?;
+            crate::layout::grid::GridSolver::new(nested).solve_at_assigned(
+                node,
+                (w, h),
+                pre,
+                assigned_h,
+            )?;
         }
         Display::Block | Display::None => {
             dispatch_block_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))?;

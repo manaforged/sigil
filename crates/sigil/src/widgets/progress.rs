@@ -5,7 +5,7 @@ use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, caller_style};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, memo};
+use crate::reactive::{Reactive, Signal, memo};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
@@ -33,8 +33,8 @@ pub struct ProgressBuilder {
 }
 
 /// A progress bar.
-pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
-    ProgressBuilder::new(value, max)
+pub fn progress(value: impl Reactive<f32>, max: f32) -> ProgressBuilder {
+    ProgressBuilder::new(value.into_signal(), max)
 }
 
 impl ProgressBuilder {

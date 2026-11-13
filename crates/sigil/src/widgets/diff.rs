@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutStyle, Overflow};
-use crate::reactive::{Signal, memo};
+use crate::reactive::{Reactive, Signal, memo, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{BORDER_WIDTH, Paint, Style, Token, Tone};
@@ -90,7 +90,7 @@ type PatchThunk = Box<dyn FnOnce() -> Signal<Rc<Patch>>>;
 struct DiffShape {
     path: Option<String>,
     status: Option<String>,
-    view: DiffView,
+    view: Signal<DiffView>,
     max_rows: usize,
     wrap: bool,
     selection: Option<Signal<DiffSelection>>,
@@ -121,7 +121,7 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
         shape: DiffShape {
             path: None,
             status: None,
-            view: DiffView::Split,
+            view: signal(DiffView::Split),
             max_rows: usize::MAX,
             wrap: false,
             selection: None,
@@ -145,8 +145,8 @@ impl DiffBuilder {
     }
 
     /// Shows the rows side by side or unified; the default is `DiffView::Split`.
-    pub const fn view(mut self, view: DiffView) -> Self {
-        self.shape.view = view;
+    pub fn view(mut self, view: impl Reactive<DiffView>) -> Self {
+        self.shape.view = view.into_signal();
         self
     }
 
@@ -173,7 +173,7 @@ impl DiffBuilder {
         let shape = self.shape;
         let (view, max_rows) = (shape.view, shape.max_rows);
         let fallback = shape.path.as_deref().and_then(language_for_path);
-        let built = memo(move || patch.with(|patch| model(patch, view, fallback, max_rows)));
+        let built = memo(move || patch.with(|patch| model(patch, view.get(), fallback, max_rows)));
         let rows = memo(move || built.with(|built| Rc::clone(&built.rows)));
         let summary = memo(move || {
             built.with(|built| format!("{} added, {} removed", built.added, built.removed))

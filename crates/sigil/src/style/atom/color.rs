@@ -14,6 +14,13 @@ pub struct Color {
 }
 
 impl Color {
+    /// Transparent black (`rgba(0, 0, 0, 0)`).
+    pub const TRANSPARENT: Self = Self::rgba(0, 0, 0, 0);
+    /// Opaque black (`rgb(0, 0, 0)`).
+    pub const BLACK: Self = Self::rgb(0, 0, 0);
+    /// Opaque white (`rgb(255, 255, 255)`).
+    pub const WHITE: Self = Self::rgb(255, 255, 255);
+
     /// Creates an opaque color from 8-bit channels.
     #[must_use]
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
@@ -29,6 +36,13 @@ impl Color {
     #[must_use]
     pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
+    }
+
+    /// Returns a copy of this color with its alpha channel set to `a`.
+    #[must_use]
+    pub const fn alpha(mut self, a: u8) -> Self {
+        self.a = a;
+        self
     }
 
     /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.
@@ -88,6 +102,12 @@ impl From<Color> for ColorValue {
 impl From<Token> for ColorValue {
     fn from(value: Token) -> Self {
         Self::Token(value)
+    }
+}
+
+impl From<&'static str> for ColorValue {
+    fn from(name: &'static str) -> Self {
+        Self::parse(name)
     }
 }
 

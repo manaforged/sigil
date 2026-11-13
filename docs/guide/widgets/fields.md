@@ -27,6 +27,7 @@ Key options:
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).
 - `.password()`: masks the glyphs with `*`; the signal stays plaintext.
 - `.reveal(Signal<bool>)`: shows the plaintext while true.
+- `.clearable()`: adds a clear button while the field is non-empty.
 - `.autofocus()`: focus this field when it mounts.
 - `.focus_when(Signal<u64>)`: bump the signal to focus this field after it mounts.
 - `.caret_visible(Signal<bool>)` / `.scroll_offset(Signal<f32>)`: bind the caret visibility and scroll offset signals.
@@ -77,16 +78,16 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## tag_input
 
-`tag_input(options, Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options`; Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
+`tag_input(options: impl IntoIterator<Item = impl Into<T>>, selected: Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
 
 ## combobox
 
-`combobox(Combobox) -> NodeBuilder`. An editable text field with a filterable popup list. Unlike the other builders, the state is a standalone object you construct first:
+`combobox(Combobox) -> NodeBuilder`. An editable text field with a filterable popup list. Unlike the other builders, the state is a standalone object you construct first with `Combobox::new(impl IntoIterator<Item = impl Into<String>>)`:
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-let state = Combobox::new(vec!["Rust".into(), "Go".into(), "Zig".into()])
+let state = Combobox::new(["Rust", "Go", "Zig"])
     .placeholder("Language");
 combobox(state);
 # };
@@ -98,13 +99,13 @@ Typing opens the popup and clears the selection unless the text equals the commi
 
 ## dropdown
 
-`dropdown(Signal<usize>, Vec<String>)`. A trigger button plus a popup list. Pick by index, not free text.
+`dropdown(Signal<usize>, impl IntoIterator<Item = impl Into<String>>)`. A trigger button plus a popup list. Pick by index, not free text.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 let choice = signal(0_usize);
-dropdown(choice, vec!["Small".into(), "Large".into()])
+dropdown(choice, ["Small", "Large"])
     .change(|i| tracing::info!(i, "picked"));
 # };
 ```

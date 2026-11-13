@@ -35,14 +35,14 @@ Queries read the accessibility tree, so a test finds a control by what a user or
 
 | Call | Matches |
 | --- | --- |
-| `expect_text("Saved")` | waits for a node whose name or value is the text |
+| `expect_text("Saved")` | waits for a node whose accessible name or value is the text |
 | `get((Role::Button, "Save"))` | role and accessible name |
-| `get("Hello")` | a node whose name or value is the text |
+| `get("Hello")` | a node whose accessible name or value is the text |
 | `get(&Query::role(Role::CheckBox))` | any `Query` |
 | `find_all(&query)`, `query(&query)` | every match, or the first |
 | `focused()` | the focused node |
 
-`get*` fails the test and prints the accessibility tree unless exactly one node matches. A field inside `field("Name", ..)` takes its name from the label.
+`expect_text` and `get("...")` match a node's accessible name or value; for substring assertions inside text editors or rendered output, use `ui.get(query).value()` or `ui.text().contains(...)`. `Target` and `Query` also accept `String`, `&String`, `Role`, `(Role, &str)`, and `(Role, String)`. `get*` fails the test and prints the accessibility tree unless exactly one node matches. A field inside `field("Name", ..)` takes its name from the label.
 
 A `Node` is a snapshot. Read `value()`, `is_checked()`, `is_focused()` and the other accessors on it, and query again, or call `ui.refresh(&node)`, after an action.
 

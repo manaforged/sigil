@@ -195,6 +195,7 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
+    pub use crate::animation::{Easing, Keyframes, Property, Transition};
     #[cfg(app_host)]
     pub use crate::app::open_url;
     #[cfg(app_host)]
@@ -203,7 +204,7 @@ pub mod prelude {
         Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PointerEvent,
         PointerPhase, PointerType, Shortcut,
     };
-    pub use crate::geometry::{Constraint, Point, Size};
+    pub use crate::geometry::{Constraint, Point, Rect, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
     #[doc(hidden)]
@@ -231,27 +232,31 @@ pub mod prelude {
     pub use crate::reactive::{Reactive, Signal, Timer, effect, interval, memo, signal};
     #[cfg(app_host)]
     pub use crate::run;
+    pub use crate::scene::SceneBuilder;
     pub use crate::style::{
-        Color, ControlSize, Elevation, FocusRing, FontFamily, Layer, Paint, Radius, States,
-        TextRole, Theme, Token, Tone,
+        Background, Color, ControlSize, Elevation, FocusRing, FontFamily, Gradient, Layer, Paint,
+        Radius, States, TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, spawn, task};
     pub use crate::view::View;
     #[cfg(feature = "a2ui")]
     pub use crate::widgets::a2ui;
     pub use crate::widgets::{
-        ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Glyph, Identifiable,
-        ListRowBuilder, Log, MenuItem, ModalBuilder, Orientation, PathBuilder, SelectionMode, Side,
-        SortDirection, SortKey, SubmitKey, TableColumn, TableState, TextFieldBuilder, TextState,
-        Time, ToastQueue, Widget, app_shell, avatar, axis_drag, badge, breadcrumbs, button, card,
-        chart, checkbox, chip, code_edit, color_field, combobox, command_menu, context_menu,
-        date_field, diff, divider, dot, drag_ghost, dropdown, empty_state, field, fuzzy_score,
-        gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html, icon, kv_grid, kv_row,
-        link, list_row, log_view, markdown, markdown_edit, markdown_inline, math, menu, menu_bar,
-        mermaid, modal, notice_band, number_field, pagination, path, progress, radio_group,
-        range_slider, scroll, section_label, segmented, sidebar, skeleton, slider, spacer,
-        sparkline, spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input,
-        terminal, text_field, time_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
+        Change, ColumnAlign, ColumnWidth, Combobox, Date, DateTime, Density, Diagnostic,
+        DiffSelection, DiffView, Disclosure, DragState, FuzzyMatch, Glyph, Highlight, Identifiable,
+        ListRowBuilder, Log, MenuItem, ModalBuilder, NumericKind, Orientation, Patch, PathBuilder,
+        RowTone, ScrollAnchor, Selection, SelectionMode, Severity, Side, SortDirection, SortKey,
+        SparkFill, SparkMark, SubmitKey, TableColumn, TableState, TextFieldBuilder, TextState,
+        Time, TimeValue, ToastQueue, TreeNode, Widget, app_shell, avatar, axis_drag, badge,
+        breadcrumbs, button, canvas, card, chart, checkbox, chip, code_edit, color_field, combobox,
+        command_menu, context_menu, date_field, diff, disclosure, divider, dot, drag_ghost,
+        dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
+        hint_overlay, html, icon, kv_grid, kv_row, link, list_row, log_view, markdown,
+        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
+        number_field, pagination, path, progress, radio_group, range_slider, scroll, section_label,
+        segmented, sidebar, skeleton, slider, spacer, sparkline, spinner, splitter, stat,
+        status_bar, stepper, surface, table, tabs, tag_input, terminal, text_field, time_field,
+        toast, toast_queue, toggle, tooltip, tree, vega, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

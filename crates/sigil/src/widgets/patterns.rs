@@ -3,12 +3,12 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone, space};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
-use super::shared::accessible_name;
+use super::shared::{accessible_name, caller_style};
 
 const TOP_BAR_HEIGHT: f32 = space(12);
 const AVATAR_PX: f32 = space(7);
@@ -52,6 +52,7 @@ pub fn app_shell(
         root = root.child(
             container()
                 .role(Role::GenericContainer)
+                .hittable(false)
                 .layout(
                     LayoutStyle::flex_column()
                         .position(Position::Absolute)
@@ -73,7 +74,7 @@ fn chrome_section(
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(height)
+                .min_size(0.0, height)
                 .shrink(0.0)
                 .padding_x(Space::Sm)
                 .gap(Space::Sm)
@@ -117,6 +118,7 @@ static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 #[must_use]
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -129,6 +131,7 @@ impl HintOverlayBuilder {
             .collect();
         Self {
             entries,
+            style_accumulator: Style::new(),
             layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
         }
     }
@@ -167,11 +170,11 @@ impl HintOverlayBuilder {
                     .child(text(desc)),
             );
         }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 
-builder_impls!([] HintOverlayBuilder: widget, node);
+builder_impls!([] HintOverlayBuilder: paint(style_accumulator), widget, node);
 
 /// An overlay that lists key bindings.
 pub fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder {
@@ -218,6 +221,7 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
+                .shrink(0.0)
                 .padding_x(Space::Sm),
         )
         .child(
@@ -234,6 +238,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
+                .shrink(0.0)
                 .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )

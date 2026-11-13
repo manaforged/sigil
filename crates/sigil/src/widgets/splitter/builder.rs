@@ -246,7 +246,7 @@ fn fit_to_bounds(
         clippy::cast_precision_loss,
         reason = "a splitter has a handful of panes"
     )]
-    let handles = HANDLE_PX * count.saturating_sub(1) as f32;
+    let handles = handle_px() * count.saturating_sub(1) as f32;
     crate::reactive::effect(move || {
         let (_, _, width, height) = bounds.get();
         let along = match orientation {
@@ -274,10 +274,15 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
     )
 }
 
+pub(in crate::widgets) fn handle_px() -> f32 {
+    crate::layout::snap::track(HANDLE_PX)
+}
+
 fn handle_layout(orientation: Orientation) -> LayoutStyle {
+    let extent = handle_px();
     let style = match orientation {
-        Orientation::Horizontal => LayoutStyle::flex_row().width(HANDLE_PX),
-        Orientation::Vertical => LayoutStyle::flex_column().height(HANDLE_PX),
+        Orientation::Horizontal => LayoutStyle::flex_row().width(extent),
+        Orientation::Vertical => LayoutStyle::flex_column().height(extent),
     };
     style
         .shrink(0.0)

@@ -108,6 +108,18 @@ impl From<String> for Key {
     }
 }
 
+impl From<&str> for Key {
+    fn from(value: &str) -> Self {
+        Self::Character(value.to_owned())
+    }
+}
+
+impl From<char> for Key {
+    fn from(value: char) -> Self {
+        Self::Character(value.to_string())
+    }
+}
+
 impl PartialEq<Key> for &Key {
     fn eq(&self, other: &Key) -> bool {
         **self == *other
@@ -129,6 +141,32 @@ impl PartialEq<NamedKey> for Key {
 impl PartialEq<NamedKey> for &Key {
     fn eq(&self, other: &NamedKey) -> bool {
         matches!(*self, Key::Named(named) if named == other)
+    }
+}
+
+impl PartialEq<&str> for Key {
+    fn eq(&self, other: &&str) -> bool {
+        matches!(self, Self::Character(text) if text == other)
+    }
+}
+
+impl PartialEq<&str> for &Key {
+    fn eq(&self, other: &&str) -> bool {
+        **self == *other
+    }
+}
+
+impl PartialEq<char> for Key {
+    fn eq(&self, other: &char) -> bool {
+        let mut buf = [0_u8; 4];
+        let other = other.encode_utf8(&mut buf);
+        matches!(self, Self::Character(text) if text == other)
+    }
+}
+
+impl PartialEq<char> for &Key {
+    fn eq(&self, other: &char) -> bool {
+        **self == *other
     }
 }
 

@@ -71,6 +71,25 @@ pub(crate) fn lines_extent(lines: &[String]) -> f32 {
     f32::from(u16::try_from(width).unwrap_or(u16::MAX)) * crate::style::space(2)
 }
 
+pub(crate) fn framed_figure(
+    source: &str,
+    label: impl Into<String>,
+    lines: &[String],
+) -> crate::kernel::NodeBuilder {
+    let extent = lines_extent(lines);
+    let mut col = crate::kernel::container()
+        .layout(crate::layout::LayoutStyle::flex_column().fill_width())
+        .class("font-mono text-sm");
+    for line in lines {
+        col = col.child(crate::kernel::text(line.clone()).nowrap());
+    }
+    scroll::Horizontal::new(crate::reactive::signal(extent), None)
+        .wrap(col)
+        .role(crate::kernel::Role::Figure)
+        .label(label.into())
+        .description(bound_source(source).trim_end().to_string())
+}
+
 macro_rules! builder_impls {
     ($gen:tt $ty:ty: $($part:ident $(($($arg:tt)*))?),+ $(,)?) => {
         $($crate::widgets::builder_impls!(@$part $gen $ty $(, $($arg)*)?);)+
@@ -162,6 +181,12 @@ macro_rules! builder_impls {
             ) -> Self {
                 self.$field = self.$field.map(move |inner| crate::widgets::Sealed::map_target(inner, f));
                 self
+            }
+        }
+
+        impl<$($g)*> crate::style::PaintTarget for $ty {
+            fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+                self.$field.style_slot()
             }
         }
 
@@ -369,6 +394,7 @@ pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
 pub use tree::{TreeBuilder, TreeNode, tree};
 pub use vector::{PathBuilder, path};
+pub use vega::vega;
 pub use virtual_list::{
     IntoList, RowRender, ScrollAnchor, Selection, SelectionMode, VirtualListBuilder, virtual_list,
 };
@@ -381,8 +407,10 @@ pub(crate) use widget::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTar
 
 crate::kernel::into_node_builder!(
     ButtonBuilder,
+    CanvasBuilder,
     ChartBuilder,
     CheckboxBuilder,
+    ChipBuilder,
     CodeEditBuilder,
     ColorFieldBuilder,
     CommandMenuBuilder,
@@ -391,7 +419,9 @@ crate::kernel::into_node_builder!(
     DotBuilder,
     DropdownBuilder,
     GaugeBuilder,
+    HintOverlayBuilder,
     IconBuilder,
+    LinkBuilder,
     MarkdownEditBuilder,
     MenuBarBuilder,
     MenuBuilder,
@@ -400,10 +430,40 @@ crate::kernel::into_node_builder!(
     ProgressBuilder,
     RadioGroupBuilder,
     SegmentedBuilder,
-    SliderBuilder,
+    SidebarBuilder,
     SparklineBuilder,
     TabsBuilder,
     TextFieldBuilder,
     ToggleBuilder,
     TooltipBuilder,
+);
+
+#[cfg(feature = "image-decode")]
+impl From<ImageLoadBuilder> for crate::kernel::NodeBuilder {
+    fn from(builder: ImageLoadBuilder) -> Self {
+        Self::wrapping(builder)
+    }
+}
+
+macro_rules! generic_into_node_builder {
+    ($([$($g:tt)*] $ty:ty),+ $(,)?) => {
+        $(
+            impl<$($g)*> From<$ty> for crate::kernel::NodeBuilder {
+                fn from(builder: $ty) -> Self {
+                    Self::wrapping(builder)
+                }
+            }
+        )+
+    };
+}
+
+generic_into_node_builder!(
+    [C: crate::kernel::IntoNode + 'static] FieldBuilder<C>,
+    [T: NumericKind] NumberFieldBuilder<T>,
+    [T: 'static] SliderBuilder<T>,
+    [Row: 'static] TableBuilder<Row>,
+    [T: Clone + PartialEq + std::fmt::Display + 'static] TagInputBuilder<T>,
+    [T: TimeValue] TimeFieldBuilder<T>,
+    [K: Clone + Eq + std::hash::Hash + 'static] TreeBuilder<K>,
+    [T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>,
 );

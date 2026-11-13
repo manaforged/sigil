@@ -44,23 +44,14 @@ pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) ->
 }
 
 pub(crate) fn combobox_demo(disabled: Signal<bool>) -> NodeBuilder {
-    let language = Combobox::new(vec![
-        String::from("Rust"),
-        String::from("Go"),
-        String::from("Zig"),
-        String::from("C++"),
-    ])
-    .placeholder("Language")
-    .disabled(disabled);
+    let language = Combobox::new(["Rust", "Go", "Zig", "C++"])
+        .placeholder("Language")
+        .disabled(disabled);
     combobox(language)
 }
 
 pub(crate) fn dropdown_demo(disabled: Signal<bool>) -> impl IntoNode {
-    dropdown(
-        signal(1_usize),
-        vec!["Small".into(), "Medium".into(), "Large".into()],
-    )
-    .disabled(disabled)
+    dropdown(signal(1_usize), ["Small", "Medium", "Large"]).disabled(disabled)
 }
 
 pub(crate) fn field_demo() -> impl IntoNode {

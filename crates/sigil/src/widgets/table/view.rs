@@ -30,7 +30,6 @@ static FRAMED: &[StyleAtom] = &[
     Token::Surface.background(),
 ];
 static UNFRAMED: &[StyleAtom] = &[Token::Surface.background()];
-const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
 struct BodySpec {
     viewport: Option<f32>,
@@ -42,15 +41,15 @@ struct BodySpec {
 #[must_use]
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
-    row_height: f32,
-    header_height: f32,
+    row_height: Option<f32>,
+    header_height: Option<f32>,
     viewport_height: f32,
     viewport_width: Option<f32>,
     row_menu: Option<RowMenu<Row>>,
     row_activate: Option<RowActivate<Row>>,
     empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
     select: bool,
-    density: Density,
+    density: Option<Signal<Density>>,
     striped: bool,
     frame: &'static [StyleAtom],
     scroll_y: Option<Signal<f32>>,
@@ -78,15 +77,15 @@ impl<Row: 'static> core::fmt::Debug for TableBuilder<Row> {
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
         state,
-        row_height: space(9),
-        header_height: DEFAULT_HEADER_HEIGHT,
+        row_height: None,
+        header_height: None,
         viewport_height: space(120),
         viewport_width: None,
         row_menu: None,
         row_activate: None,
         empty: None,
         select: false,
-        density: Density::Default,
+        density: None,
         striped: false,
         frame: FRAMED,
         scroll_y: None,
@@ -100,13 +99,13 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 impl<Row: 'static> TableBuilder<Row> {
     /// Sets the height of each body row in px.
     pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.row_height = length.into_px();
+        self.row_height = Some(length.into_px());
         self
     }
 
     /// Sets the height of the header row in px.
     pub const fn header_height(mut self, px: f32) -> Self {
-        self.header_height = px;
+        self.header_height = Some(px);
         self
     }
 
@@ -135,10 +134,8 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     /// Sets the row height, header height, cell padding, and text size from `density`.
-    pub const fn density(mut self, density: Density) -> Self {
-        self.row_height = density.row();
-        self.header_height = density.header();
-        self.density = density;
+    pub fn density(mut self, density: impl Reactive<Density>) -> Self {
+        self.density = Some(density.into_signal());
         self
     }
 
@@ -184,65 +181,129 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    fn row_spec(&self) -> RowSpec {
-        RowSpec {
-            row_height: snap::line(self.row_height),
-            select: self.select,
-            pad_x: self.density.pad_x(),
-            striped: self.striped,
-            disabled: self.disabled,
-        }
-    }
-
     fn root(self) -> NodeBuilder {
-        let row = self.row_spec();
-        let state = self.state;
-        let chrome = TableChrome::new(self.row_menu, self.row_activate);
-        let pad_x = self.density.pad_x();
-        let prefix = if self.select { select::WIDTH } else { 0.0 };
-        let hscroll = hscroll::bind(&state, self.viewport_width, prefix);
         let fill = self.layout_overrides.fills_height();
-        let viewport = (!fill).then_some(self.viewport_height);
-        let body = body_view(
-            state.clone(),
-            chrome.clone(),
-            row,
-            hscroll,
-            BodySpec {
-                viewport,
-                scroll_y: self.scroll_y,
-                end_reached: self.end_reached,
-            },
-        );
-        let header = HeaderSpec {
-            height: snap::line(self.header_height),
+        let layout = self
+            .layout_overrides
+            .apply(root_layout(fill, self.viewport_width));
+        let density = self.density;
+        let style = self.style_accumulator;
+        let config = TableConfig {
+            state: self.state,
+            row_height: self.row_height,
+            header_height: self.header_height,
+            viewport_height: self.viewport_height,
+            viewport_width: self.viewport_width,
+            row_menu: self.row_menu,
+            row_activate: self.row_activate,
+            empty: self.empty,
             select: self.select,
-            pad_x,
+            striped: self.striped,
+            frame: self.frame,
+            scroll_y: self.scroll_y,
+            end_reached: self.end_reached,
             disabled: self.disabled,
         };
-        let root_state = state.clone();
-        let root = container()
-            .bounds_reactive(chrome.bounds)
-            .role(Role::Grid)
-            .row_count(memo(move || root_state.visible().get().len() + 1))
-            .column_count(state.columns().len() + usize::from(self.select))
-            .class(self.frame)
-            .class(self.density.text())
-            .with(
-                self.layout_overrides
-                    .apply(root_layout(fill, self.viewport_width)),
-            )
-            .child(header_row(&state, header, &chrome, hscroll))
-            .child(body)
-            .child(empty_overlay(
-                state.clone(),
-                self.empty,
-                snap::ruled(self.header_height),
-            ))
-            .child(hscroll.scrollbar())
-            .child(context_overlay(state, chrome));
-        finish(root, self.disabled, self.style_accumulator, hscroll)
+        let node = match density {
+            Some(density_sig) => container().with(layout).children_reactive(move || {
+                let d = density_sig.get();
+                vec![build_table_node(
+                    &config,
+                    d,
+                    fill,
+                    root_layout(fill, config.viewport_width),
+                )]
+            }),
+            None => build_table_node(&config, Density::Default, fill, layout),
+        };
+        caller_style(node, style)
     }
+}
+
+struct TableConfig<Row: 'static> {
+    state: TableState<Row>,
+    row_height: Option<f32>,
+    header_height: Option<f32>,
+    viewport_height: f32,
+    viewport_width: Option<f32>,
+    row_menu: Option<RowMenu<Row>>,
+    row_activate: Option<RowActivate<Row>>,
+    empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
+    select: bool,
+    striped: bool,
+    frame: &'static [StyleAtom],
+    scroll_y: Option<Signal<f32>>,
+    end_reached: Option<EndReached>,
+    disabled: Option<Signal<bool>>,
+}
+
+fn table_specs<Row: 'static>(
+    config: &TableConfig<Row>,
+    density: Density,
+) -> (RowSpec, HeaderSpec, f32) {
+    let row_height = config.row_height.unwrap_or_else(|| density.row());
+    let header_height = config.header_height.unwrap_or_else(|| density.header());
+    let pad_x = density.pad_x();
+    let row = RowSpec {
+        row_height: snap::line(row_height),
+        select: config.select,
+        pad_x,
+        striped: config.striped,
+        disabled: config.disabled,
+    };
+    let header = HeaderSpec {
+        height: snap::line(header_height),
+        select: config.select,
+        pad_x,
+        disabled: config.disabled,
+    };
+    (row, header, header_height)
+}
+
+fn build_table_node<Row: 'static>(
+    config: &TableConfig<Row>,
+    density: Density,
+    fill: bool,
+    layout: LayoutStyle,
+) -> NodeBuilder {
+    let (row, header, header_height) = table_specs(config, density);
+    let state = config.state.clone();
+    let chrome = TableChrome::new(config.row_menu.clone(), config.row_activate.clone());
+    let hscroll = hscroll::bind(
+        &state,
+        config.viewport_width,
+        if config.select { select::WIDTH } else { 0.0 },
+    );
+    let body = body_view(
+        state.clone(),
+        chrome.clone(),
+        row,
+        hscroll,
+        BodySpec {
+            viewport: (!fill).then_some(config.viewport_height),
+            scroll_y: config.scroll_y,
+            end_reached: config.end_reached.clone(),
+        },
+    );
+    let root_state = state.clone();
+    let root = container()
+        .bounds_reactive(chrome.bounds)
+        .role(Role::Grid)
+        .row_count(memo(move || root_state.visible().get().len() + 1))
+        .column_count(state.columns().len() + usize::from(config.select))
+        .class(config.frame)
+        .class(density.text())
+        .with(layout)
+        .child(header_row(&state, header, &chrome, hscroll))
+        .child(body)
+        .child(empty_overlay(
+            state.clone(),
+            config.empty.clone(),
+            snap::ruled(header_height),
+        ))
+        .child(hscroll.scrollbar())
+        .child(context_overlay(state, chrome));
+    finish(root, config.disabled, hscroll)
 }
 
 fn empty_overlay<Row: 'static>(
@@ -271,6 +332,7 @@ fn empty_overlay<Row: 'static>(
 fn root_layout(fill: bool, viewport_width: Option<f32>) -> LayoutStyle {
     let layout = LayoutStyle::flex_column()
         .fill_width()
+        .min_size(0.0, 0.0)
         .overflow_x(Overflow::Hidden);
     match viewport_width {
         _ if fill => layout.grow(1.0),
@@ -313,17 +375,11 @@ fn body_view<Row: 'static>(
     }
 }
 
-fn finish(
-    root: NodeBuilder,
-    disabled: Option<Signal<bool>>,
-    style: Style,
-    hs: hscroll::HScroll,
-) -> NodeBuilder {
+fn finish(root: NodeBuilder, disabled: Option<Signal<bool>>, hs: hscroll::HScroll) -> NodeBuilder {
     let root = match disabled {
         Some(disabled) => root.style_reactive(move || if disabled.get() { DIMMED } else { &[] }),
         None => root,
     };
-    let root = caller_style(root, style);
     let root = match hs.probe {
         Some(probe) => root.child(hscroll::probe(probe)),
         None => root,

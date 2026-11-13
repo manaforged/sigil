@@ -16,6 +16,6 @@ fn counter() -> impl IntoNode {
 }
 ```
 
-`signal`, `derived`, and `effect` panic outside an owner scope. `sigil::run` opens one; an embed host calls `sigil::reactive::Owner::scope`.
+`signal`, `memo`, and `effect` panic outside an owner scope. `sigil::run` opens one; an embed host calls `sigil::reactive::Owner::scope`.
 
 See also: [`Host`](crate::Host), [State](https://github.com/manaforged/sigil/blob/main/docs/guide/arch/state.md).

@@ -9,6 +9,7 @@ use super::{BuildAxes, RowRender, VirtualListBuilder};
 
 const EDGE_PX: f32 = 0.5;
 
+#[derive(Clone)]
 pub(crate) struct EndReached {
     rows: usize,
     run: Rc<dyn Fn()>,

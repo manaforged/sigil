@@ -166,13 +166,7 @@ fn controls_page() -> NodeBuilder {
 
 fn inputs_page() -> NodeBuilder {
     let notes = signal(String::from("Multi-line\neditable text."));
-    let combo = Combobox::new(vec![
-        String::from("Rust"),
-        String::from("Go"),
-        String::from("Zig"),
-        String::from("C++"),
-    ])
-    .placeholder("Language");
+    let combo = Combobox::new(["Rust", "Go", "Zig", "C++"]).placeholder("Language");
     page_column()
         .child(field(
             "Text field",
@@ -189,10 +183,7 @@ fn inputs_page() -> NodeBuilder {
         ))
         .child(field(
             "Dropdown",
-            dropdown(
-                signal(1_usize),
-                vec!["Small".into(), "Medium".into(), "Large".into()],
-            ),
+            dropdown(signal(1_usize), ["Small", "Medium", "Large"]),
         ))
         .child(field("Combobox", combobox(combo)))
 }

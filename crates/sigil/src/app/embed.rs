@@ -40,6 +40,7 @@ pub struct Host {
     root: Option<NodeId>,
     fill_root: bool,
     theme: Theme,
+    theme_applied: bool,
     visual_transforms: bool,
     #[cfg(terminal_host)]
     emitted: EmitMemo,
@@ -111,6 +112,7 @@ impl Host {
             root: None,
             fill_root: false,
             theme: Theme::default(),
+            theme_applied: false,
             visual_transforms,
             #[cfg(terminal_host)]
             emitted: EmitMemo::default(),
@@ -187,8 +189,17 @@ impl Host {
             super::tree_root::fill_root(&mut self.cx, root);
         }
         self.root = Some(root);
-        if let Some(theme) = theme {
-            self.attach_theme(theme);
+        let root_themed = self
+            .cx
+            .get(root)
+            .and_then(Node::extension::<Theme>)
+            .is_some();
+        if !root_themed {
+            if let Some(theme) = theme {
+                self.attach_theme(theme);
+            } else if self.theme_applied {
+                self.attach_theme(self.theme.clone());
+            }
         }
         self.apply_pending_theme();
         Runtime::mark_frame_dirty();
@@ -200,10 +211,12 @@ impl Host {
     }
 
     pub(crate) fn attach_theme(&mut self, theme: Theme) {
+        self.theme = theme.clone();
+        self.theme_applied = true;
+        self.env.theme.set(theme.clone());
         if let Some(root) = self.root
             && let Some(node) = self.cx.get_mut(root)
         {
-            self.env.theme.set(theme.clone());
             node.attach(theme);
             crate::scene::emit_cache::theme_changed();
         }
@@ -268,10 +281,45 @@ impl Host {
     /// Sends an input event through the tree and returns whether a key press was consumed.
     pub fn route(&mut self, event: Event) -> bool {
         let _env = self.enter();
+        #[cfg(window_host)]
+        if let Event::Window(crate::events::WindowEvent::ScaleFactorChanged(scale)) = &event {
+            self.cx.set_scale(scale.factor());
+            Runtime::mark_frame_dirty();
+        }
         self.router.set_visual_transforms(self.visual_transforms);
         let handled = self.root.is_some() && self.router.route(&mut self.cx, &self.layout, event);
         crate::reactive::run_dispatch_deferred();
         handled
+    }
+
+    /// Sets the device scale factor of the tree and schedules a frame.
+    #[cfg(window_host)]
+    pub fn apply_scale(&mut self, scale: f32) {
+        let _env = self.enter();
+        self.cx.set_scale(scale);
+        Runtime::mark_frame_dirty();
+    }
+
+    /// The device scale factor of the tree.
+    #[must_use]
+    pub const fn scale(&self) -> f32 {
+        self.cx.scale()
+    }
+
+    /// Replaces the host theme and attaches it to the mounted root.
+    pub fn apply_theme(&mut self, theme: Theme) {
+        let _env = self.enter();
+        self.attach_theme(theme);
+        Runtime::mark_frame_dirty();
+    }
+
+    /// The laid-out bounding rectangle of `id`, or `None` if missing or unlaid.
+    #[must_use]
+    pub fn node_bounds(&self, id: NodeId) -> Option<Rect> {
+        self.cx
+            .get(id)
+            .and_then(Node::extension::<LayoutResult>)
+            .map(LayoutResult::rect)
     }
 
     fn on_tree<R: Default>(

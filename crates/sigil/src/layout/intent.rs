@@ -72,15 +72,15 @@ impl LayoutStyle {
 
     /// Sets the column tracks of a grid.
     #[must_use]
-    pub fn grid_columns(mut self, columns: Vec<crate::layout::TrackSize>) -> Self {
-        self.0.grid_template_columns = columns;
+    pub fn grid_columns(mut self, columns: impl Into<Vec<crate::layout::TrackSize>>) -> Self {
+        self.0.grid_template_columns = columns.into();
         self.mark(LayoutFields::GRID_COLUMNS)
     }
 
     /// Sets the row tracks of a grid.
     #[must_use]
-    pub fn grid_rows(mut self, rows: Vec<crate::layout::TrackSize>) -> Self {
-        self.0.grid_template_rows = rows;
+    pub fn grid_rows(mut self, rows: impl Into<Vec<crate::layout::TrackSize>>) -> Self {
+        self.0.grid_template_rows = rows.into();
         self.mark(LayoutFields::GRID_ROWS)
     }
 

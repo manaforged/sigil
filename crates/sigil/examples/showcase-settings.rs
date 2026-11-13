@@ -30,10 +30,7 @@ fn profile_section() -> NodeBuilder {
         .child(field("Display name", text_field(name).placeholder("Name")))
         .child(field(
             "Language",
-            dropdown(
-                language,
-                vec!["English".into(), "Deutsch".into(), "Français".into()],
-            ),
+            dropdown(language, ["English", "Deutsch", "Français"]),
         ))
 }
 

@@ -145,9 +145,10 @@ impl Host {
         if let Some(paint) = hooks.paint {
             paint(self, &frame);
         }
+        frame.animating |= crate::animation::runtime::animating();
         #[cfg(debug_assertions)]
         if frame.layout.is_ok()
-            && !animating
+            && !frame.animating
             && (frame.delta.structure || !frame.delta.layout.is_empty())
         {
             self.report_flaws();

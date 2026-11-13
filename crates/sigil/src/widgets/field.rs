@@ -109,7 +109,8 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
                 let Some(label_id) = label_id else {
                     return;
                 };
-                if let Some(target) = tree.get_mut(control_id) {
+                let target_id = resolve_control_target(tree, control_id);
+                if let Some(target) = tree.get_mut(target_id) {
                     target.a11y.labelled_by = Some(label_id);
                     target.a11y.name = AccessibleName::None;
                     target.a11y.described_by = error_id;
@@ -121,6 +122,21 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
         }
         cx.add(self.layout_overrides.finish(root))
     }
+}
+
+fn find_control_descendant(tree: &Cx, id: NodeId) -> Option<NodeId> {
+    let node = tree.get(id)?;
+    if node.a11y.role != Role::GenericContainer {
+        return Some(id);
+    }
+    node.children()
+        .iter()
+        .copied()
+        .find_map(|child| find_control_descendant(tree, child))
+}
+
+fn resolve_control_target(tree: &Cx, control_id: NodeId) -> NodeId {
+    find_control_descendant(tree, control_id).unwrap_or(control_id)
 }
 
 impl<C: Widget> Sealed for FieldBuilder<C> {
@@ -135,6 +151,12 @@ impl<C: Widget> Sealed for FieldBuilder<C> {
     fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
         self.control = self.control.map_target(f);
         self
+    }
+}
+
+impl<C: crate::style::PaintTarget> crate::style::PaintTarget for FieldBuilder<C> {
+    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+        self.control.style_slot()
     }
 }
 

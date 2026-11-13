@@ -18,11 +18,12 @@ A `Shortcut` is a key plus modifiers:
 | Constructor | Matches |
 | --- | --- |
 | `Shortcut::plain(NamedKey::Enter)` | Enter with no modifiers |
-| `Shortcut::plain(Key::character("j"))` | The `j` key with no modifiers |
-| `Shortcut::ctrl(Key::character("s"))` | Ctrl+S |
+| `Shortcut::plain('j')` | The `j` key with no modifiers |
+| `Shortcut::ctrl("s")` | Ctrl+S |
+| `Shortcut::primary('k')` | Cmd+K on macOS, Ctrl+K elsewhere |
 | `Shortcut::new(key, Modifiers::CTRL \| Modifiers::SHIFT)` | Any modifier set |
 
-`NamedKey::Escape` converts into a `Shortcut` directly, so `.key(NamedKey::Escape, f)` also works.
+`NamedKey::Escape`, `&str`, and `char` convert into `Key` and `Shortcut` directly, so `.key(NamedKey::Escape, f)`, `Shortcut::primary('k')`, and `event.key() == '?'` work without `Key::character(...)`. Use `.key_any(|event| ...)` on a focused node to handle any key in the bubble pass.
 
 ### Bind a key on a focused node
 
@@ -316,6 +317,64 @@ fn thread_row(thread: &Thread) -> NodeBuilder {
 ```
 
 `unread.set(false)` runs the count again, then the label that reads the count. It builds no row.
+
+### Heterogeneous children and `switch`
+
+Every widget builder implements `Into<NodeBuilder>`, so `.children(iter)` (and `status_bar([...])`) accepts mixed widgets via `.into()`. Use `switch(key).case(v, || ...).otherwise(|| ...)` to pick one branch from a reactive key:
+
+```rust,no_run
+use sigil::prelude::*;
+
+fn tree() -> impl IntoNode {
+    let tab = signal("code");
+    column()
+        .children([
+            dot(Tone::Success).into(),
+            text("Ready").into(),
+        ])
+        .child(
+            switch(tab)
+                .case("code", || text("Code view"))
+                .case("diff", || text("Diff view"))
+                .otherwise(|| text("Other")),
+        )
+}
+```
+
+### Fuzzy matching
+
+`fuzzy_score(query, text)` returns `Option<FuzzyMatch>`. Call `.score()` (lower is better; `0` is an exact match) to rank hits and `.positions()` (`&[usize]`) for matched character indexes:
+
+```rust
+use sigil::prelude::*;
+
+if let Some(hit) = fuzzy_score("cmd", "command_menu") {
+    assert!(!hit.positions().is_empty());
+    let _rank: usize = hit.score();
+}
+```
+
+## Animation and tone steps
+
+`Transition` configures CSS-style property transitions (`.duration(...)`, `.easing(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, signal)` binds a `Signal<f32>` directly to an animatable `Property`. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
+
+```rust,no_run
+use sigil::prelude::*;
+use std::time::Duration;
+
+fn tree() -> impl IntoNode {
+    let alpha = signal(1.0_f32);
+    container()
+        .background(Tone::Primary.step(3))
+        .transition(
+            Transition::opacity()
+                .duration(Duration::from_millis(150))
+                .easing(Easing::CubicOut),
+        )
+        .drive(Property::Opacity, alpha)
+        .child(text("Fading panel"))
+}
+```
 
 ## Streaming from a backend
 

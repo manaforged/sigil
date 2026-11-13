@@ -87,3 +87,27 @@ fn a_converted_builder_is_the_widget_node_itself() {
         ));
     });
 }
+
+#[test]
+fn children_closures_and_kittest_targets_work_ergonomically() {
+    let borrowed = String::from("borrowed");
+    assert_eq!(TextContent::from(&borrowed).resolve(), "borrowed");
+    let _sel: Selection = SelectionMode::Multi.into();
+    let hits = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+    let count = std::rc::Rc::clone(&hits);
+    let mut ui = Harness::new(move || {
+        let count = std::rc::Rc::clone(&count);
+        column()
+            .children(["alpha", "beta"].map(text))
+            .child(text(move || "live-str"))
+            .child(button("Run").activate(move || count.set(count.get() + 1)))
+    })
+    .size(40, 12);
+    ui.expect_text("alpha")
+        .expect_text("beta")
+        .expect_text("live-str");
+    ui.click(&String::from("Run"));
+    ui.click(&(Role::Button, "Run"));
+    assert!(ui.query(&Query::from(Role::Button)).is_some());
+    assert_eq!(hits.get(), 2);
+}

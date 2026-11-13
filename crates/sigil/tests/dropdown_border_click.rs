@@ -237,10 +237,7 @@ fn trigger_reopens_after_selecting_an_option() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
             selected,
-            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"],
         ));
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
@@ -274,10 +271,7 @@ fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
             selected,
-            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"],
         ));
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);

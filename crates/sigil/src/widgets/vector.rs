@@ -26,6 +26,7 @@ type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 
 /// Builder of a vector path.
 #[derive(Debug)]
+#[must_use]
 pub struct PathBuilder {
     width: u32,
     height: u32,
@@ -42,7 +43,6 @@ pub struct PathBuilder {
 }
 
 /// A vector path.
-#[must_use]
 pub const fn path(width: u32, height: u32) -> PathBuilder {
     PathBuilder {
         width,
@@ -62,21 +62,18 @@ pub const fn path(width: u32, height: u32) -> PathBuilder {
 
 impl PathBuilder {
     /// Starts a new subpath at this point.
-    #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::MoveTo(x, y));
         self
     }
 
     /// Adds a straight line to this point.
-    #[must_use]
     pub fn line_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::LineTo(x, y));
         self
     }
 
     /// Adds a quadratic curve to this point.
-    #[must_use]
     pub fn quad_to(mut self, cx: f32, cy: f32, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::QuadTo(cx, cy, x, y));
         self
@@ -87,28 +84,24 @@ impl PathBuilder {
         clippy::too_many_arguments,
         reason = "the argument list mirrors the upstream API contract"
     )]
-    #[must_use]
     pub fn cubic_to(mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y));
         self
     }
 
     /// Closes the current subpath.
-    #[must_use]
     pub fn close(mut self) -> Self {
         self.cmds.push(PathCmd::Close);
         self
     }
 
     /// Sets a solid fill.
-    #[must_use]
     pub fn fill(mut self, color: impl Into<ColorValue>) -> Self {
         self.fill = Some(PathFill::Solid(color.into()));
         self
     }
 
     /// Sets a linear gradient fill.
-    #[must_use]
     pub fn fill_linear(
         mut self,
         start: (f32, f32),
@@ -120,7 +113,6 @@ impl PathBuilder {
     }
 
     /// Sets a radial gradient fill.
-    #[must_use]
     pub fn fill_radial(
         mut self,
         center: (f32, f32),
@@ -136,49 +128,42 @@ impl PathBuilder {
     }
 
     /// Fills with the even-odd rule instead of nonzero.
-    #[must_use]
     pub const fn even_odd(mut self) -> Self {
         self.rule = FillRule::EvenOdd;
         self
     }
 
     /// Strokes the path in `color` with a line of `width`.
-    #[must_use]
     pub fn stroke(mut self, color: impl Into<ColorValue>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }
 
     /// Sets the shape of the stroke's open ends.
-    #[must_use]
     pub const fn cap(mut self, cap: StrokeCap) -> Self {
         self.cap = Some(cap);
         self
     }
 
     /// Sets the shape where stroke segments meet.
-    #[must_use]
     pub const fn join(mut self, join: StrokeJoin) -> Self {
         self.join = Some(join);
         self
     }
 
     /// Dashes the stroke with alternating on and off lengths.
-    #[must_use]
     pub fn dash(mut self, lengths: &[f32]) -> Self {
         self.dash = lengths.to_vec();
         self
     }
 
     /// Keeps the stroke width when the path scales.
-    #[must_use]
     pub const fn non_scaling_stroke(mut self) -> Self {
         self.non_scaling = true;
         self
     }
 
     /// Scales the path to fill its box.
-    #[must_use]
     pub fn fit(self) -> Self {
         #[allow(
             clippy::cast_precision_loss,
@@ -189,7 +174,6 @@ impl PathBuilder {
     }
 
     /// Scales the path from this view size to its box.
-    #[must_use]
     pub fn fit_size(self, logical: f32) -> Self {
         self.fit_box(logical, logical)
     }
