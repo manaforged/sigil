@@ -120,6 +120,7 @@ pub fn minimize(len: usize, mut fails: impl FnMut(&[usize]) -> bool) -> Vec<usiz
 }
 
 pub fn check_cpu(scene: &crate::scene_gen::GeneratedScene) -> Result<(), String> {
+    let _text = sigil::renderer::lock_global_text_state();
     let commands = scene.scene();
     let size = scene.physical();
     let render = |renderer: &mut CpuRenderer| {
