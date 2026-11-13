@@ -107,12 +107,6 @@ impl ModalBuilder {
         self
     }
 
-    /// Replaces the signal that shows the modal while it is true.
-    pub const fn show(mut self, show: Signal<bool>) -> Self {
-        self.show = show;
-        self
-    }
-
     /// Keeps keyboard focus in the dialog when `enabled` is true; the default is true.
     pub const fn trap(mut self, enabled: bool) -> Self {
         self.trap = enabled;

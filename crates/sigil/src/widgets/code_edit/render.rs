@@ -2,7 +2,7 @@ use crate::grapheme::{col_bytes, col_count};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{ColorAtom, Paint, Token};
+use crate::style::{ColorValue, Paint, Token};
 use crate::widgets::Layout;
 
 use super::super::highlight::Highlight;
@@ -243,7 +243,7 @@ fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .nowrap()
         .class(RUN_CLASS)
-        .text_color(token.map_or(ColorAtom::Token(Token::OnSurface), ColorAtom::parse))
+        .text_color(token.map_or(ColorValue::Token(Token::OnSurface), ColorValue::parse))
         .layout(LayoutStyle::block().shrink(0.0))
 }
 

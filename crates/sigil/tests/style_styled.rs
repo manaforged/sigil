@@ -18,7 +18,7 @@ use sigil::layout::{
 };
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    Color, ColorAtom, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
+    Color, ColorValue, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
     Token,
 };
 use sigil::widgets::Layout;
@@ -202,7 +202,7 @@ fn bg_accepts_theme_token() {
 
 #[test]
 fn bg_accepts_color_atom() {
-    assert_eq!(rest_rect(pane().background(ColorAtom::Color(C))).color, C);
+    assert_eq!(rest_rect(pane().background(ColorValue::Color(C))).color, C);
 }
 
 #[test]
@@ -293,11 +293,11 @@ fn state_builder_implements_styled_within_closure() {
 
 #[test]
 fn color_atom_from_impls_route_correctly() {
-    let from_rgba: ColorAtom = color(1, 2, 3, 4).into();
-    let from_token: ColorAtom = Token::Surface.into();
+    let from_rgba: ColorValue = color(1, 2, 3, 4).into();
+    let from_token: ColorValue = Token::Surface.into();
 
-    assert!(matches!(from_rgba, ColorAtom::Color(_)));
-    assert!(matches!(from_token, ColorAtom::Token(Token::Surface)));
+    assert!(matches!(from_rgba, ColorValue::Color(_)));
+    assert!(matches!(from_token, ColorValue::Token(Token::Surface)));
 }
 
 #[test]

@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::with_text_geometry;
 use crate::layout::{LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, memo};
-use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, Token};
+use crate::style::{ColorValue, SELECTION_FILL, StyleAtom, Token};
 use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::{InteractionState, is_primary};
@@ -15,8 +15,9 @@ use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
 
-static SELECTION_ATOMS: &[StyleAtom] =
-    &[StyleAtom::BackgroundColor(ColorAtom::Color(SELECTION_FILL))];
+static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Color(
+    SELECTION_FILL,
+))];
 
 static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.background()];
 static FIELD_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurface.text()];

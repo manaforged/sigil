@@ -3,7 +3,7 @@
 use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent, Overflow};
 use crate::style::parser::ParseError;
 use crate::style::{
-    ColorAtom, StateSlot, StyleAtom, TextDecoration, Token, parse_class_string,
+    ColorValue, StateSlot, StyleAtom, TextDecoration, Token, parse_class_string,
     parse_stateful_token,
 };
 
@@ -16,7 +16,7 @@ fn parse_minimal() {
         &[
             StyleAtom::PaddingAll(16),
             StyleAtom::BorderRadius(6),
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
         ],
     );
 }
@@ -57,7 +57,7 @@ fn parse_grammar_branches() {
     assert!(parsed.contains(&StyleAtom::FontSize(16)));
     assert!(parsed.contains(&StyleAtom::FontSize(18)));
     assert!(parsed.contains(&StyleAtom::FontSize(20)));
-    assert!(parsed.contains(&StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface))));
+    assert!(parsed.contains(&StyleAtom::TextColor(ColorValue::Token(Token::OnSurface))));
     assert!(parsed.contains(&StyleAtom::FontWeight(400)));
     assert!(parsed.contains(&StyleAtom::FontWeight(500)));
     assert!(parsed.contains(&StyleAtom::FontWeight(700)));
@@ -147,7 +147,7 @@ fn border_tokens_resolve_to_width_and_color_atoms() {
     assert!(
         colored
             .iter()
-            .any(|a| matches!(a, StyleAtom::BorderColor(ColorAtom::Token(Token::Accent)))),
+            .any(|a| matches!(a, StyleAtom::BorderColor(ColorValue::Token(Token::Accent)))),
         "border-<token> must resolve as a theme colour reference"
     );
     let left = parse_class_string("border-l-4").unwrap();
@@ -234,17 +234,19 @@ fn class_routes_state_prefixes_to_overlay_slots() {
 
     assert_eq!(
         slot_atoms(&s, None),
-        [StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))]
+        [StyleAtom::BackgroundColor(ColorValue::Token(
+            Token::Surface
+        ))]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Hovered)),
-        [StyleAtom::BackgroundColor(ColorAtom::Token(
+        [StyleAtom::BackgroundColor(ColorValue::Token(
             Token::SurfaceHover
         ))]
     );
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Pressed)),
-        [StyleAtom::BackgroundColor(ColorAtom::Token(
+        [StyleAtom::BackgroundColor(ColorValue::Token(
             Token::SurfacePressed
         ))]
     );
@@ -265,7 +267,7 @@ fn class_accumulates_slot() {
     assert_eq!(
         slot_atoms(&s, Some(StateSlot::Hovered)),
         [
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
             StyleAtom::BorderRadius(6),
         ]
     );

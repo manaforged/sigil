@@ -6,7 +6,7 @@ use crate::style::atom::{
     height_px, max_height_px, max_width_px, min_height_px, min_width_px, width_px,
 };
 use crate::style::{
-    ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, StyleAtom, TextDecoration,
+    ColorValue, Conic, Elevation, FontFamily, GradientAxis, Radial, StyleAtom, TextDecoration,
 };
 
 #[derive(Clone, Copy)]
@@ -147,7 +147,7 @@ const PREFIXES: [(&str, Value); 28] = [
     ("grid-rows-", Value::Count(StyleAtom::GridRows)),
 ];
 
-type ColorPrefix = (&'static str, fn(ColorAtom) -> StyleAtom);
+type ColorPrefix = (&'static str, fn(ColorValue) -> StyleAtom);
 
 const COLOR_PREFIXES: [ColorPrefix; 3] = [
     ("border-", StyleAtom::BorderColor),

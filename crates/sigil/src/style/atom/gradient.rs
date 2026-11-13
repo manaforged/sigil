@@ -1,4 +1,4 @@
-use super::{Color, ColorAtom, GradientAxis};
+use super::{Color, ColorValue, GradientAxis};
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
@@ -168,7 +168,7 @@ kittest_pub! {
         /// No background gradient.
         NoGradient,
         /// A gradient stop color.
-        Stop(StopSlot, ColorAtom),
+        Stop(StopSlot, ColorValue),
         /// No color at a gradient stop.
         NoStop(StopSlot),
         /// A gradient stop position in percent.

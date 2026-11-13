@@ -138,7 +138,7 @@ impl TextFieldBuilder {
     }
 
     /// Calls `f` when the field loses focus; each call adds a callback.
-    pub fn blur(mut self, f: impl Fn() + 'static) -> Self {
+    pub fn focus_lost(mut self, f: impl Fn() + 'static) -> Self {
         self.blur = Some(match self.blur.take() {
             Some(before) => Rc::new(move || {
                 before();

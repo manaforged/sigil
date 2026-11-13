@@ -11,7 +11,7 @@ use crate::scene::command::{
     DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::geometry::IDENTITY;
-use crate::style::{Color, ColorAtom, Theme};
+use crate::style::{Color, ColorValue, Theme};
 use crate::widgets::Layout;
 use crate::widgets::layout_ext::LayoutOverrides;
 
@@ -31,7 +31,7 @@ pub struct PathBuilder {
     height: u32,
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
-    stroke: Option<(ColorAtom, f32)>,
+    stroke: Option<(ColorValue, f32)>,
     rule: FillRule,
     cap: Option<StrokeCap>,
     join: Option<StrokeJoin>,
@@ -102,7 +102,7 @@ impl PathBuilder {
 
     /// Sets a solid fill.
     #[must_use]
-    pub fn fill(mut self, color: impl Into<ColorAtom>) -> Self {
+    pub fn fill(mut self, color: impl Into<ColorValue>) -> Self {
         self.fill = Some(PathFill::Solid(color.into()));
         self
     }
@@ -144,7 +144,7 @@ impl PathBuilder {
 
     /// Strokes the path in `color` with a line of `width`.
     #[must_use]
-    pub fn stroke(mut self, color: impl Into<ColorAtom>, width: f32) -> Self {
+    pub fn stroke(mut self, color: impl Into<ColorValue>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }

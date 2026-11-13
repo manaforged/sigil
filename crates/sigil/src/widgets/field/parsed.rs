@@ -66,7 +66,7 @@ impl<P: FieldParser> ParsedField<P> {
             }
         });
         let on_blur = Rc::clone(&tidy);
-        inner = inner.submit(move |_| tidy()).blur(move || on_blur());
+        inner = inner.submit(move |_| tidy()).focus_lost(move || on_blur());
         Self {
             inner,
             buffer,

@@ -3,7 +3,7 @@ use crate::kernel::{TextBuilder, TextContent, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, ColorAtom, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
+    BORDER_WIDTH, ColorValue, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
     StyleVariant, Tone,
 };
 use crate::widgets::Widget;
@@ -36,7 +36,7 @@ pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
 ];
 
 const CLEAR_BORDER: StyleAtom =
-    StyleAtom::BorderColor(ColorAtom::Color(crate::scene::command::fills::TRANSPARENT));
+    StyleAtom::BorderColor(ColorValue::Color(crate::scene::command::fills::TRANSPARENT));
 
 pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
 

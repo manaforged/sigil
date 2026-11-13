@@ -1,10 +1,10 @@
-use crate::style::{Color, ColorAtom};
+use crate::style::{Color, ColorValue};
 
 /// Path fill paint.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PathFill {
     /// One color fills the whole path.
-    Solid(ColorAtom),
+    Solid(ColorValue),
     /// A gradient whose colors change along the line from `start` to `end`.
     Linear {
         /// The point where offset 0 lies, as (x, y).

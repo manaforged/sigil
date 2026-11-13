@@ -3,7 +3,7 @@
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
-use sigil::style::{Color, ColorAtom, StyleAtom, StyleBinding};
+use sigil::style::{Color, ColorValue, StyleAtom, StyleBinding};
 
 fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
     let binding = cx
@@ -45,7 +45,9 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
 
         let before = reactive_slice(&cx, id);
         assert!(
-            !before.contains(&StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))),
+            !before.contains(&StyleAtom::BorderColor(ColorValue::Color(
+                FIELD_INVALID_RED
+            ))),
             "field starts without the red-invalid overlay; got {before:?}",
         );
 
@@ -53,14 +55,16 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
         let painted = reactive_slice(&cx, id);
         assert_eq!(
             painted,
-            &[StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))],
+            &[StyleAtom::BorderColor(ColorValue::Color(FIELD_INVALID_RED))],
             "invalid(true) must install the red border overlay, got {painted:?}",
         );
 
         invalid.set(false);
         let cleared = reactive_slice(&cx, id);
         assert!(
-            !cleared.contains(&StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))),
+            !cleared.contains(&StyleAtom::BorderColor(ColorValue::Color(
+                FIELD_INVALID_RED
+            ))),
             "invalid(false) must remove the red border overlay; got {cleared:?}",
         );
     });

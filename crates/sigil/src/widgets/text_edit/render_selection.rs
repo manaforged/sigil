@@ -3,13 +3,14 @@ use crate::hal::HitPosition;
 use crate::kernel::{NodeBuilder, fragment};
 use crate::layout::LayoutStyle;
 use crate::layout::with_text_geometry;
-use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom};
+use crate::style::{ColorValue, SELECTION_FILL, StyleAtom};
 use crate::widgets::Layout;
 
 use super::TextEditRuntime;
 
-static SELECTION_ATOMS: &[StyleAtom] =
-    &[StyleAtom::BackgroundColor(ColorAtom::Color(SELECTION_FILL))];
+static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Color(
+    SELECTION_FILL,
+))];
 
 pub(super) fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
     let runtime = runtime.clone();

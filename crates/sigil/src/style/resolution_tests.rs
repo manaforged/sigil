@@ -7,7 +7,7 @@ use crate::animation::{Easing, Transition};
 use crate::kernel::{Cx, container, text};
 use crate::style::atom::NO_GRADIENT;
 use crate::style::{
-    Background, Color, ColorAtom, Elevation, FontFamily, Gradient, GradientAxis, GradientShape,
+    Background, Color, ColorValue, Elevation, FontFamily, Gradient, GradientAxis, GradientShape,
     MillisU16, Paint, Radial, Radius, RenderStyle, Style, StyleAtom, StyleBinding, StyleEngine,
     TextDecoration, Theme, Token, Transform2D, TransitionId, merge_classes,
 };
@@ -40,8 +40,8 @@ fn theme_ref_resolves() {
     let render = applied(
         &theme,
         &[
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-            StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+            StyleAtom::TextColor(ColorValue::Token(Token::OnAccent)),
         ],
     );
 
@@ -55,7 +55,7 @@ fn unknown_token_panics_dev() {
     let err = std::panic::catch_unwind(|| {
         applied(
             &Theme::default(),
-            &[StyleAtom::BackgroundColor(ColorAtom::Custom("accnet"))],
+            &[StyleAtom::BackgroundColor(ColorValue::Custom("accnet"))],
         )
     })
     .unwrap_err();
@@ -72,7 +72,7 @@ fn unknown_token_falls_back_release() {
     let theme = Theme::default();
     let render = applied(
         &theme,
-        &[StyleAtom::BackgroundColor(ColorAtom::Custom("accnet"))],
+        &[StyleAtom::BackgroundColor(ColorValue::Custom("accnet"))],
     );
 
     assert_eq!(render.background_color, Some(theme.missing_token_fallback));
@@ -102,7 +102,7 @@ fn concrete_color_applies() {
     };
     let render = applied(
         &Theme::default(),
-        &[StyleAtom::BackgroundColor(ColorAtom::Color(color))],
+        &[StyleAtom::BackgroundColor(ColorValue::Color(color))],
     );
 
     assert_eq!(render.background_color, Some(color));
@@ -166,11 +166,11 @@ fn struct_api_covers_every_atom() {
         a: 255,
     };
     let atoms = [
-        StyleAtom::BackgroundColor(ColorAtom::Color(color)),
-        StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-        StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
-        StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
-        StyleAtom::BorderColor(ColorAtom::Token(Token::Border)),
+        StyleAtom::BackgroundColor(ColorValue::Color(color)),
+        StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+        StyleAtom::TextColor(ColorValue::Token(Token::OnAccent)),
+        StyleAtom::TextColor(ColorValue::Token(Token::OnSurface)),
+        StyleAtom::BorderColor(ColorValue::Token(Token::Border)),
         StyleAtom::BorderWidth(1),
         StyleAtom::BorderTop(1),
         StyleAtom::BorderRight(1),
@@ -319,7 +319,7 @@ fn class_string_attaches_to_text_binding() {
 
     assert_eq!(
         binding.static_slice(),
-        &[StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface))]
+        &[StyleAtom::TextColor(ColorValue::Token(Token::OnSurface))]
     );
     assert_eq!(binding.dynamic_slice(), &[]);
 }

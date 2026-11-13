@@ -1,5 +1,5 @@
 use crate::layout::{LayoutStyle, Position};
-use crate::style::{ColorAtom, Tone};
+use crate::style::{ColorValue, Tone};
 use crate::widgets::Layout;
 
 use super::super::vector::{PathBuilder, path};
@@ -101,7 +101,7 @@ pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
     tops
 }
 
-pub(super) fn line(trace: &Trace<'_>, color: ColorAtom) -> PathBuilder {
+pub(super) fn line(trace: &Trace<'_>, color: ColorValue) -> PathBuilder {
     let mut stroke = path(VIEW_W, VIEW_H);
     let mut pen_down = false;
     for (x, value) in trace.points() {
@@ -123,7 +123,7 @@ pub(super) fn line(trace: &Trace<'_>, color: ColorAtom) -> PathBuilder {
         .layout(layer_layout())
 }
 
-pub(super) fn area(trace: &Trace<'_>, color: ColorAtom) -> PathBuilder {
+pub(super) fn area(trace: &Trace<'_>, color: ColorValue) -> PathBuilder {
     let base = y_of(trace.span, 0.0_f32.clamp(trace.span.lo, trace.span.hi));
     let points = trace.points();
     let runs = points

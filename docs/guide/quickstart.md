@@ -128,7 +128,7 @@ Padding, margin, and gap take a `Space` step such as `Space::Md`; width and heig
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
 | Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warning1`.., `Error1`.., `Info1`.. |
 
-`Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
+`Token::color` returns a `ColorValue`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
 
 Shared metrics:
 

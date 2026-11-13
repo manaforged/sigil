@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 use super::{Keyframes, Property};
 use crate::animation::Easing;
 use crate::animation::runtime::binding_animate_color::mix;
-use crate::style::{Color, ColorAtom, ColorAtomKind, NumericAtomKind};
+use crate::style::{Color, ColorAtomKind, ColorValue, NumericAtomKind};
 
 type Stops<V> = SmallVec<[(f32, V); 8]>;
 
@@ -24,7 +24,7 @@ impl Keyframes {
         progress: f32,
         kind: ColorAtomKind,
         underlying: Color,
-        resolve: &dyn Fn(ColorAtom) -> Color,
+        resolve: &dyn Fn(ColorValue) -> Color,
     ) -> Option<Color> {
         let stops = self.stops(|property| property.color(kind).map(resolve), underlying)?;
         let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset))?;

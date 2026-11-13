@@ -15,36 +15,38 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    Color, ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
+    Color, ColorValue, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 use sigil::widgets::Layout;
 
 static APPLY_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-    StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorValue::Token(Token::OnSurface)),
     StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
 static THEME_SWAP_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
-    StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorValue::Token(Token::OnAccent)),
     StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
-static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
-static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
+static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
+    Token::Surface,
+))];
+static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
     Token::SurfaceHover,
 ))];
-static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
+static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Token(
     Token::SurfaceHover,
 ))];
 static STATE_PRESS: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(8_800),
 ];
 static STATE_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorValue::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(5_000),
 ];
 

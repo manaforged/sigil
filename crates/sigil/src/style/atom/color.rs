@@ -64,7 +64,7 @@ impl std::str::FromStr for Color {
 /// A literal color, a theme token, or a custom token name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
-pub enum ColorAtom {
+pub enum ColorValue {
     /// A concrete color.
     Color(Color),
     /// A built-in theme token, resolved against the theme.
@@ -73,19 +73,19 @@ pub enum ColorAtom {
     Custom(&'static str),
 }
 
-impl ColorAtom {
+impl ColorValue {
     pub(crate) fn parse(name: &'static str) -> Self {
         Token::from_name(name).map_or(Self::Custom(name), Self::Token)
     }
 }
 
-impl From<Color> for ColorAtom {
+impl From<Color> for ColorValue {
     fn from(value: Color) -> Self {
         Self::Color(value)
     }
 }
 
-impl From<Token> for ColorAtom {
+impl From<Token> for ColorValue {
     fn from(value: Token) -> Self {
         Self::Token(value)
     }
@@ -112,7 +112,7 @@ kittest_pub! {
         /// The position of the stop along the axis in thousandths, from 0 to 1000.
         pub offset: u16,
         /// The color at this offset.
-        pub color: ColorAtom,
+        pub color: ColorValue,
     }
 }
 
@@ -121,7 +121,7 @@ impl GradientStopKey {
         #[doc(hidden)]
         /// Creates a gradient stop with `color` at `offset`.
         #[must_use]
-        pub const fn new(offset: u16, color: ColorAtom) -> Self {
+        pub const fn new(offset: u16, color: ColorValue) -> Self {
             Self { offset, color }
         }
     }

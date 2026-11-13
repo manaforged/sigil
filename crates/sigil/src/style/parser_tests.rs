@@ -36,7 +36,7 @@ fn parse_classes_cache_survives_a_diagnostic_panic() {
 #[test]
 fn tailwind_gradient_and_border_style_classes_parse_to_paint_atoms() {
     use crate::style::atom::{BorderStyle, GradientShape, PaintAtom, StopSlot};
-    use crate::style::{ColorAtom, Conic, GradientAxis, Radial, StyleAtom, Token};
+    use crate::style::{ColorValue, Conic, GradientAxis, Radial, StyleAtom, Token};
     let parsed = parse_class_string(
         "bg-radial bg-linear-to-r -bg-conic-45 from-accent via-40% to-surface bg-clip-text border-dashed border-dotted",
     )
@@ -52,12 +52,12 @@ fn tailwind_gradient_and_border_style_classes_parse_to_paint_atoms() {
             paint(PaintAtom::Gradient(GradientShape::Conic(Conic::new(-45)))),
             paint(PaintAtom::Stop(
                 StopSlot::From,
-                ColorAtom::Token(Token::Accent)
+                ColorValue::Token(Token::Accent)
             )),
             paint(PaintAtom::StopAt(StopSlot::Via, 40)),
             paint(PaintAtom::Stop(
                 StopSlot::To,
-                ColorAtom::Token(Token::Surface)
+                ColorValue::Token(Token::Surface)
             )),
             paint(PaintAtom::ClipText),
             paint(PaintAtom::Border(BorderStyle::Dashed)),

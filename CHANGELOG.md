@@ -27,9 +27,9 @@ First public release.
 | `layout::Rect<T>` (edges), `layout::Size<T>` (per axis) | `Edges<T>`, `Axes<T>`, under `kittest`. `geometry::Rect` stays the box |
 | `style::DisplayKind`, `FlexWrapKind`, `OverflowKind`, `AlignKind`, `JustifyKind` | `Display`, `FlexWrap`, `Overflow`, `AlignItems`, `JustifyContent`. `JustifyKind::Between`, `Around`, `Evenly` are `JustifyContent::SpaceBetween`, `SpaceAround`, `SpaceEvenly`. `AlignKind::Between` and `Around` are gone; the class grammar never produced them |
 | `AlignItems::FlexStart`, `AlignItems::FlexEnd` | `AlignItems::Start`, `AlignItems::End` |
-| `ColorOrToken`, `ColorKey`, `ColorAtom::ThemeRef(ColorKey)` | `ColorAtom::{Color, Token, Custom}`. `ColorOrToken::Token(ColorKey::Custom(name))` is `ColorAtom::Custom(name)` |
+| `ColorOrToken`, `ColorKey`, `ColorValue::ThemeRef(ColorKey)` | `ColorValue::{Color, Token, Custom}`. `ColorOrToken::Token(ColorKey::Custom(name))` is `ColorValue::Custom(name)` |
 | `StyleAtom::BackgroundThemeRef`, `TextThemeRef`, `BorderThemeRef` | `StyleAtom::BackgroundColor`, `TextColor`, `BorderColor` |
-| `Theme::resolve_color(ColorKey)`, `TokenLayer::color(ColorKey)` | take `ColorAtom` |
+| `Theme::resolve_color(ColorKey)`, `TokenLayer::color(ColorKey)` | take `ColorValue` |
 | `.animate(NumericAtomKind::Height, value)` | `.drive(Property::Height, value)`. `ColorAtomKind` is private |
 | `NumericAtomKind::X` in `.drive(NumericAtomKind::X, value)` | `sigil::animation::Property::X`, the enum that `Keyframes` uses: `.drive(Property::Width, value)`. `Rotation`, `RotationX`, `RotationY`, `RotationZ` are `Rotate`, `RotateX`, `RotateY`, `RotateZ`; `StopFrom`, `StopVia`, `StopTo` are `GradientFromPosition`, `GradientViaPosition`, `GradientToPosition`; `TranslateXFraction`, `TranslateYFraction` are `TranslateXPercent`, `TranslateYPercent` and take percent. `NumericAtomKind` is private. `Keyframes` ignores the layout properties (`Width`, `Height`, `Gap`, `PaddingX`, `PaddingY`, `FontSize`, `LineHeight`) with a `sigil::animation` warning |
 | `Rgba8: FromStr` accepted `#` plus 3 or 6 digits | `Color: FromStr` also accepts 8 digits and a `0x` or missing prefix. Theme files use it, so they also accept 3 digits |
@@ -162,6 +162,11 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `ColorAtom` | `ColorValue` |
+| `TextFieldBuilder::blur(f)` | `focus_lost(f)`; `blur(px)` is the filter |
+| `ModalBuilder::show(signal)` | `modal(signal)` |
+| `ButtonBuilder::icon_svg(svg)` | `button(Glyph::svg(svg))`, or `icon(Icon)` |
+| `Token::COUNT`, `Token::index()` | `Token::ALL.len()`, a position in `Token::ALL` |
 | `command_menu().item(label, action)`, `.detail(text)`, `.disabled(label)` | `.item(MenuItem::new(label).hint(text).disabled(true).activate(action))` |
 | `app::FrameInfo`, `app::FrameOutput` | `app::Frame`: `Host::frame` returns it and the paint hook receives it; `info.layout_ok` is `frame.layout.is_ok()` |
 | `Host::ansi(out, prev, next, depth)` | `next.write_ansi(out, prev, depth)` |
@@ -241,7 +246,7 @@ First public release.
 | a `.duration(d)`, `.ease(e)`, or `.delay(d)` that outlived a later `.transition()` | each `transition` call replaces the whole transition; a value without a setter uses the timing of its preset |
 | exhaustive `match` on `PaintAtom` (feature `kittest`) | add arms for `NoGradient`, `NoStop` and `NoColor` |
 | `Paint::background_gradient(BgGradient)` (feature `kittest`) | `.background(gradient)`; a `BgGradient` converts with `From` |
-| `Paint::bg(impl Into<ColorAtom>)` | `Paint::background(impl Into<Background>)`; `Token`, `Color`, and `ColorAtom` convert with `From` |
+| `Paint::bg(impl Into<ColorValue>)` | `Paint::background(impl Into<Background>)`; `Token`, `Color`, and `ColorValue` convert with `From` |
 | `sigil_sign::SignError`, `sigil_sign::PackError` | `sigil_sign::Error`; branch on `error.kind()`, `error.is_password_required()`, `error.path()` |
 | `sigil_sign::pack_cli` returning `Result<(), String>` | `Result<(), sigil_sign::Error>` |
 | `AppBundle { .. }`, `ResourceCopy { .. }`, `CodeSign { .. }`, `Dmg { .. }` struct literals | `AppBundle::new(name, executable)`, `ResourceCopy::new(from, to)`, `CodeSign::default()`, `Dmg::new(app, volume)` plus setters named for the fields |
@@ -254,13 +259,13 @@ First public release.
 | terminal `quit_on_ctrl_c(true)`: Ctrl+C exited before routing | copies a selection or reaches a focused `terminal()` first |
 | `Metrics::padding(size)`, `Metrics::gap(size)` | `Metrics::control_padding(size)`, `Metrics::control_gap(size)` |
 | `Theme::padding(size)`, `Theme::gap(size)` | `Theme::control_padding(size)`, `Theme::control_gap(size)` |
-| exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `Change`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
+| exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorValue`, `MaskImage`, `FontFamily`, `WebFontScript`, `Change`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
 | under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
 | `Dimension` | `Length` |
-| `PathNode::fill` and `stroke` took an unnameable `PathColor` | they take `impl Into<ColorAtom>`: pass a `Color`, a `Token` or a `ColorAtom` |
+| `PathNode::fill` and `stroke` took an unnameable `PathColor` | they take `impl Into<ColorValue>`: pass a `Color`, a `Token` or a `ColorValue` |
 | `Rgba8` | `Color` |
-| `ColorAtom::Rgba8(..)` | `ColorAtom::Color(..)` |
-| `sigil::style::Color` (f32 RGBA) | `sigil::style::Rgba`, public only under `kittest`, `#[doc(hidden)]`; app code uses `Color` or `ColorAtom` |
+| `ColorValue::Rgba8(..)` | `ColorValue::Color(..)` |
+| `sigil::style::Color` (f32 RGBA) | `sigil::style::Rgba`, public only under `kittest`, `#[doc(hidden)]`; app code uses `Color` or `ColorValue` |
 | `StateVariants` | `States` |
 | `FlawKind` (the rule passed to `allow_flaw`) | `Flaw` |
 | `Flaw` (the reported record from `flaws()`) | `Issue` |
@@ -302,7 +307,7 @@ First public release.
 | `divider_horizontal()`, `divider_vertical()` | `divider(Orientation::Horizontal)`, `divider(Orientation::Vertical)` |
 | `Paint::line_height_px(px)`, `Paint::letter_spacing_em(em)` | `Paint::line_height(px)`, `Paint::letter_spacing(em)`; the units are unchanged |
 | `Paint::mix_blend(BlendMode)` | `Paint::blend(BlendMode)` |
-| `ColorAtom` in `sigil::prelude` | `sigil::style::ColorAtom`; setters still take `Token` and `Color` through `Into<ColorAtom>` |
+| `ColorValue` in `sigil::prelude` | `sigil::style::ColorValue`; setters still take `Token` and `Color` through `Into<ColorValue>` |
 | `set_theme(theme)`, `sigil::app::set_theme(theme)` | `theme.apply()` |
 
 ### Changed
@@ -339,7 +344,7 @@ First public release.
 - `Theme::token(name, value)` sets a theme token and takes a `Color`. It replaces `Theme::register_token` and `Theme::with_token`.
 - A table cell edit commits and closes when focus leaves the editor. Before, it stayed open.
 - `Theme` setters are named for their fields: `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale`, `with_direction`, `with_locale` and `with_strings` become `gray`, `accent_scale`, `success`, `warn`, `error`, `info`, `direction`, `locale` and `strings`.
-- `Theme::color` takes a `Token`, a `Color` or a `ColorAtom`, and replaces `Theme::resolve_color`. `Theme::text_muted`, `surface_subtle` and `border_strong` are removed; read `Theme::color(Token::OnSurfaceMuted)`, `Token::SurfaceSubtle` and `Token::BorderStrong`, which also follow token overrides.
+- `Theme::color` takes a `Token`, a `Color` or a `ColorValue`, and replaces `Theme::resolve_color`. `Theme::text_muted`, `surface_subtle` and `border_strong` are removed; read `Theme::color(Token::OnSurfaceMuted)`, `Token::SurfaceSubtle` and `Token::BorderStrong`, which also follow token overrides.
 - A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
 - A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
 - The clear button, the tag remove button, the range slider thumbs and the 12-hour day periods read their text from `StringKey::{Clear, RemoveItem, Minimum, Maximum, Am, Pm}`, so a `Strings` table can translate them. `Locale::format_time` and `parse_time` take the `Strings` table.

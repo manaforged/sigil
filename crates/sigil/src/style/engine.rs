@@ -1,6 +1,6 @@
 use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
 use crate::style::{
-    AnimatorOverlay, Color, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, StyleAtom,
+    AnimatorOverlay, Color, ColorAtomKind, ColorValue, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
@@ -86,7 +86,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Resolves a color atom against the theme.
     #[must_use]
-    pub(crate) fn resolve_color(&self, color: ColorAtom) -> Color {
+    pub(crate) fn resolve_color(&self, color: ColorValue) -> Color {
         self.theme.color(color)
     }
 

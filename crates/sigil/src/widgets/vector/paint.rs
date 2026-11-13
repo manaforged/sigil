@@ -7,13 +7,13 @@ use super::{PathBuilder, PathCmd, PathFill};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint, Transform};
-use crate::style::{Color, ColorAtom, Theme};
+use crate::style::{Color, ColorValue, Theme};
 
 type Resolved = (Option<PathPaint>, Option<(Color, f32)>);
 
 pub(super) fn resolve(
     fill: Option<&PathFill>,
-    stroke: Option<(ColorAtom, f32)>,
+    stroke: Option<(ColorValue, f32)>,
     theme: &Theme,
 ) -> Resolved {
     let point = |(x, y): (f32, f32)| Point::new(x, y);

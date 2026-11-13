@@ -22,7 +22,7 @@ mod mask;
 mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
-pub use color::{Color, ColorAtom, GradientAxis};
+pub use color::{Color, ColorValue, GradientAxis};
 kittest_pub! {
     #[doc(hidden)]
     pub use color::{BgGradient, GradientStopKey};
@@ -245,11 +245,11 @@ kittest_pub! {
         /// Makes the node a grid with this many rows.
         GridRows(u16),
         /// A solid background color, which replaces a background gradient.
-        BackgroundColor(ColorAtom),
+        BackgroundColor(ColorValue),
         /// A linear background gradient, which replaces a solid background color.
         BackgroundGradient(BgGradient),
         /// The color of the text.
-        TextColor(ColorAtom),
+        TextColor(ColorValue),
         /// Fills the background with this step, 1 to 12, of the tone in scope.
         BgToneStep(u8),
         /// Colors the text with this step, 1 to 12, of the tone in scope.
@@ -271,7 +271,7 @@ kittest_pub! {
         /// The width of the left border, in pixels.
         BorderLeft(i16),
         /// The color of the border.
-        BorderColor(ColorAtom),
+        BorderColor(ColorValue),
         /// Colors the border with this step, 1 to 12, of the tone in scope.
         BorderToneStep(u8),
         /// The depth of the shadow that the node casts.
@@ -324,9 +324,9 @@ kittest_pub! {
         /// The filter and text shadow style atom.
         Filter(FilterAtom),
         /// The color of the drop shadow filter.
-        DropShadowColor(ColorAtom),
+        DropShadowColor(ColorValue),
         /// The color of the text shadow.
-        TextShadowColor(ColorAtom),
+        TextShadowColor(ColorValue),
     }
 }
 

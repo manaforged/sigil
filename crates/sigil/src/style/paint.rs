@@ -4,7 +4,7 @@ use crate::scene::{BlendMode, Shadow};
 use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom};
 use crate::style::engine::encode_px;
 use crate::style::{
-    Background, ClipShape, ColorAtom, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
+    Background, ClipShape, ColorValue, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
     StyleAtom, TextDecoration, TextRole,
 };
 
@@ -57,13 +57,13 @@ pub trait Paint: PaintTarget {
 
     /// Sets the color of the text.
     #[must_use]
-    fn text_color(self, color: impl Into<ColorAtom>) -> Self {
+    fn text_color(self, color: impl Into<ColorValue>) -> Self {
         push(self, StyleAtom::TextColor(color.into()))
     }
 
     /// Sets the color of the border.
     #[must_use]
-    fn border_color(self, color: impl Into<ColorAtom>) -> Self {
+    fn border_color(self, color: impl Into<ColorValue>) -> Self {
         push(self, StyleAtom::BorderColor(color.into()))
     }
 

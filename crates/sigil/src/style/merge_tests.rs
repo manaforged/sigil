@@ -1,11 +1,11 @@
 use crate::style::merge::bump_unknown_class_count;
 use crate::style::{
-    ColorAtom, StyleAtom, Token, merge_classes, merge_warning_count_for_component,
+    ColorValue, StyleAtom, Token, merge_classes, merge_warning_count_for_component,
     unknown_class_warning_count,
 };
 
-const SURFACE: StyleAtom = StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface));
-const ACCENT: StyleAtom = StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent));
+const SURFACE: StyleAtom = StyleAtom::BackgroundColor(ColorValue::Token(Token::Surface));
+const ACCENT: StyleAtom = StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent));
 
 #[test]
 fn merge_last_wins() {
@@ -55,7 +55,7 @@ fn merge_is_alloc_free_below_32() {
         StyleAtom::Width(crate::style::atom::ATOM_FULL, 0),
         StyleAtom::Height(crate::style::atom::ATOM_AUTO, 0),
         ACCENT,
-        StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+        StyleAtom::TextColor(ColorValue::Token(Token::OnAccent)),
     ];
 
     let info = allocation_counter::measure(|| {

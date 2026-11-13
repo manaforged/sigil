@@ -2,7 +2,7 @@ use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
 use crate::style::srgb;
-use crate::style::{Color, ColorAtom, Token};
+use crate::style::{Color, ColorValue, Token};
 
 impl From<Color> for ThemeValue {
     fn from(color: Color) -> Self {
@@ -20,12 +20,12 @@ const SCRIM: Color = Color {
 impl Theme {
     /// Returns the color a token, custom token name, or literal color resolves to in this theme.
     #[must_use]
-    pub fn color(&self, color: impl Into<ColorAtom>) -> Color {
+    pub fn color(&self, color: impl Into<ColorValue>) -> Color {
         let color = color.into();
         let name = match color {
-            ColorAtom::Color(rgba) => return rgba,
-            ColorAtom::Token(token) => token.name(),
-            ColorAtom::Custom(name) => name,
+            ColorValue::Color(rgba) => return rgba,
+            ColorValue::Token(token) => token.name(),
+            ColorValue::Custom(name) => name,
         };
         self.tokens
             .overrides
@@ -87,8 +87,8 @@ impl Theme {
         }
     }
 
-    fn built_in_color(&self, key: ColorAtom) -> Option<Color> {
-        let ColorAtom::Token(token) = key else {
+    fn built_in_color(&self, key: ColorValue) -> Option<Color> {
+        let ColorValue::Token(token) = key else {
             return None;
         };
         Some(match token {

@@ -1,4 +1,4 @@
-use crate::style::{ColorAtom, StyleAtom, Tone};
+use crate::style::{ColorValue, StyleAtom, Tone};
 
 macro_rules! tokens {
     ($($variant:ident => $name:literal,)*) => {
@@ -142,7 +142,7 @@ const ROLES: [Tone; 6] = [
 
 impl Token {
     /// The number of built-in tokens, the length of `ALL`.
-    pub const COUNT: usize = Self::ALL.len();
+    pub(crate) const COUNT: usize = Self::ALL.len();
 
     /// The token for step `step` (1 to 12) of `role`; `None` for a step out of range.
     #[must_use]
@@ -157,7 +157,7 @@ impl Token {
 
     /// Returns the position of this token in `Token::ALL`.
     #[must_use]
-    pub const fn index(self) -> usize {
+    pub(crate) const fn index(self) -> usize {
         self as usize
     }
 
@@ -172,22 +172,22 @@ impl Token {
 
     /// Returns this token as a color atom.
     #[must_use]
-    pub const fn color(self) -> ColorAtom {
-        ColorAtom::Token(self)
+    pub const fn color(self) -> ColorValue {
+        ColorValue::Token(self)
     }
 
     #[must_use]
     pub(crate) const fn background(self) -> StyleAtom {
-        StyleAtom::BackgroundColor(ColorAtom::Token(self))
+        StyleAtom::BackgroundColor(ColorValue::Token(self))
     }
 
     #[must_use]
     pub(crate) const fn text(self) -> StyleAtom {
-        StyleAtom::TextColor(ColorAtom::Token(self))
+        StyleAtom::TextColor(ColorValue::Token(self))
     }
 
     #[must_use]
     pub(crate) const fn border(self) -> StyleAtom {
-        StyleAtom::BorderColor(ColorAtom::Token(self))
+        StyleAtom::BorderColor(ColorValue::Token(self))
     }
 }
