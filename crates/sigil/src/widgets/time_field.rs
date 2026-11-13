@@ -9,14 +9,32 @@ use super::field::{FieldParser, ParsedField, parsed_controls};
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Time {
     /// The hour, from 0 to 23.
-    pub hour: u8,
+    pub(crate) hour: u8,
     /// The minute.
-    pub minute: u8,
+    pub(crate) minute: u8,
     /// The second.
-    pub second: u8,
+    pub(crate) second: u8,
 }
 
 impl Time {
+    /// The hour, from 0 to 23.
+    #[must_use]
+    pub const fn hour(self) -> u8 {
+        self.hour
+    }
+
+    /// The minute, from 0 to 59.
+    #[must_use]
+    pub const fn minute(self) -> u8 {
+        self.minute
+    }
+
+    /// The second, from 0 to 59.
+    #[must_use]
+    pub const fn second(self) -> u8 {
+        self.second
+    }
+
     /// Creates a time, or `None` when a part is out of range.
     #[must_use]
     pub const fn new(hour: u8, minute: u8, second: u8) -> Option<Self> {
@@ -62,12 +80,24 @@ impl Time {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct DateTime {
     /// The date.
-    pub date: Date,
+    pub(crate) date: Date,
     /// The time of day.
-    pub time: Time,
+    pub(crate) time: Time,
 }
 
 impl DateTime {
+    /// The calendar date.
+    #[must_use]
+    pub const fn date(self) -> Date {
+        self.date
+    }
+
+    /// The time of day.
+    #[must_use]
+    pub const fn time(self) -> Time {
+        self.time
+    }
+
     /// Creates a date and time.
     #[must_use]
     pub const fn new(date: Date, time: Time) -> Self {

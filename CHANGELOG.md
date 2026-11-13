@@ -164,7 +164,7 @@ First public release.
 | `PathNode` | `PathBuilder` |
 | field reads of `Patch`, `Hunk` and `Line` (`patch.hunks`, `hunk.path`, `line.old`) | getters: `patch.hunks()`, `hunk.path()`, `hunk.lines()`, `line.kind()`, `line.old_line()`, `line.new_line()` |
 | struct literals and field reads of `SortKey`, `Highlight`, `Diagnostic`; field reads of `TreeNode` | `SortKey::new(column, direction)`, `Highlight::new(start, end, token)`, `Diagnostic::new(line, start, end, severity)` and a getter per field; `TreeNode` is built with `new` and its setters |
-| public fields of `Date`, `MenuItem` and `WebFont` | `Date::year()`, `month()`, `day()`; `WebFont::url()`; `MenuItem` and `WebFont` are built with `new` and their setters |
+| public fields of `Date`, `Time`, `DateTime`, `MenuItem` and `WebFont` | `Date::year()`, `month()`, `day()`; `Time::hour()`, `minute()`, `second()`; `DateTime::date()`, `time()`; `WebFont::url()`; `MenuItem` and `WebFont` are built with `new` and their setters |
 | `app::set_web_fallbacks(fonts)` | `AppConfig::web_fonts(fonts)` |
 | `AppConfig::font_sans`, `font_mono`, `font_icon`, `font_display` | `AppConfig::font(FontFamily::Sans, bytes, face)` and the other families |
 | `clipboard::clipboard()` | `clipboard::copy`, `paste`, `copy_image`; the handle is crate-private |
