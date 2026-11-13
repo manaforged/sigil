@@ -1,4 +1,6 @@
 use core::cell::RefCell;
+use std::rc::Rc;
+
 use slotmap::{SlotMap, new_key_type};
 use web_time::Instant;
 
@@ -15,6 +17,7 @@ pub(crate) enum FrameSource {
     Deadline(Deadline),
     Animator(AnimatorSource),
     Clock(ClockSource),
+    Callback(Rc<RefCell<dyn FnMut(f32)>>),
 }
 
 pub(crate) struct Sources {

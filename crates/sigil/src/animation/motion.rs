@@ -1,9 +1,9 @@
 use std::num::NonZeroU16;
 
-use super::{Easing, Spring, SpringPreset, Tween};
+use super::{Easing, Spring, SpringState, Tween};
 
 pub(crate) enum Motion {
-    Spring(Spring),
+    Spring(SpringState),
     Tween {
         current: f32,
         secs: f32,
@@ -19,8 +19,8 @@ pub(crate) enum Motion {
 }
 
 impl Motion {
-    pub(crate) fn spring(initial: f32, preset: SpringPreset) -> Self {
-        Self::Spring(Spring::from_preset(initial, preset))
+    pub(crate) fn spring(initial: f32, spring: Spring) -> Self {
+        Self::Spring(SpringState::new(initial, spring))
     }
 
     pub(crate) const fn tween(initial: f32, ms: u16, easing: Easing, delay_ms: u16) -> Self {
@@ -64,14 +64,13 @@ impl Motion {
                 easing,
                 tween,
             } => {
-                *tween = if *secs <= 0.0 && *delay <= 0.0 {
-                    *current = value;
-                    None
-                } else if (*current - value).abs() < f32::EPSILON {
-                    None
-                } else {
-                    Some(timed(*current, value, [*secs, *delay], *easing))
-                };
+                *tween =
+                    if (*secs <= 0.0 && *delay <= 0.0) || (*current - value).abs() < f32::EPSILON {
+                        *current = value;
+                        None
+                    } else {
+                        Some(timed(*current, value, [*secs, *delay], *easing))
+                    };
             }
             Self::Playback { .. } => {}
         }

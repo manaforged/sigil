@@ -5,7 +5,7 @@ use crate::reactive::Owner;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use crate::animation::runtime::{Animator, MotionPrefs, active_count, config, presets};
+use crate::animation::runtime::{MotionPrefs, SignalAnimator, active_count, config, presets};
 use crate::events::Event;
 use crate::geometry::{PhysicalSize, Size};
 use crate::hal::Shell;
@@ -212,7 +212,7 @@ fn animation_clock_advances_until_idle_and_rearms() {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
         let config = config(presets::DEFAULT).expect("default animation preset");
-        let mut animator = Animator::new(value, config);
+        let mut animator = SignalAnimator::new(value, config);
         let mut clock = AnimationClock::default();
         let mut now = Instant::now();
 

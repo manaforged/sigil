@@ -64,13 +64,31 @@ impl Transition {
         self
     }
 
-    pub(crate) fn atoms(self) -> [StyleAtom; 4] {
+    pub(crate) const fn timing(self) -> (u16, Easing, u16) {
         let (ms, easing, delay_ms) = timing(self.id);
+        (
+            match self.duration {
+                Some(duration) => duration.0,
+                None => ms,
+            },
+            match self.easing {
+                Some(override_easing) => override_easing,
+                None => easing,
+            },
+            match self.delay {
+                Some(delay) => delay.0,
+                None => delay_ms,
+            },
+        )
+    }
+
+    pub(crate) const fn atoms(self) -> [StyleAtom; 4] {
+        let (ms, easing, delay_ms) = self.timing();
         [
             StyleAtom::Transition(self.id),
-            StyleAtom::TransitionDuration(self.duration.unwrap_or(MillisU16(ms))),
-            StyleAtom::TransitionEase(self.easing.unwrap_or(easing)),
-            StyleAtom::TransitionDelay(self.delay.unwrap_or(MillisU16(delay_ms))),
+            StyleAtom::TransitionDuration(MillisU16(ms)),
+            StyleAtom::TransitionEase(easing),
+            StyleAtom::TransitionDelay(MillisU16(delay_ms)),
         ]
     }
 

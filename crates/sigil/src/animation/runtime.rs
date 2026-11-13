@@ -15,10 +15,8 @@ pub(crate) mod state;
 pub(crate) mod style;
 pub(crate) mod targets;
 
-kittest_pub! {
-    #[doc(hidden)]
-    pub use animator::Animator;
-}
+pub use animator::Animator;
+pub(crate) use animator::SignalAnimator;
 pub(crate) use binding_animate_color::linear_channel_to_srgb;
 kittest_pub! {
     #[doc(hidden)]

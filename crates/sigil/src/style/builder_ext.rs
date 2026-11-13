@@ -136,8 +136,9 @@ pub(crate) fn presence(
 pub(crate) fn drive(
     node: NodeBuilder,
     property: fn(f32) -> Property,
-    value: Signal<f32>,
+    value: impl Reactive<f32>,
 ) -> NodeBuilder {
+    let value = value.into_signal();
     node.mutate(move |node| install_animation(node, property, value))
 }
 

@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Public `TextState` editing methods, `Reactive::{read, into_signal}`, `Token::Selection` (`Token::COUNT` is now 95), `Transition::smooth`, `Theme::label`, `Metrics::track_size`, `clipboard::current`, `IconBuilder::on_solid`, and `From<&TextContent> for AccessibleName`.
 - Public `sigil::scene` drawing primitives: `SceneCommand`, `Clip`, `Transform`, `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawImage`, `DrawPath`, `DrawDecoration`, `LayerScope`, `CommandScene::{commands, iter, len, is_empty}` + `IntoIterator for &CommandScene`, `SceneBuilder::{new, draw_rect, draw_gradient, draw_path, stroke_line, draw_image, draw_shadow, draw_text, measure_text, clip, transform, finish}`, and `PathBuilder::build_path`.
 - `KeyEvent::{prevent_default, default_prevented}`, `Widget::{offset, track_bounds, track_position, track_size, accessible_shortcut, drop_hover}`, and `sigil::events::DropEvent<T>` (`into_value`, `value`, `position`, `local_position`, `bounds`).
+- Public `sigil::animation::{Animator, Spring, every_frame}` (`Spring::{GENTLE, SMOOTH, SNAPPY, BOUNCY, STIFF, new, mass}`, `Animator::{tween, spring, target, snap, cancel, get, value, active}` with `Reactive<f32> for Animator`, and `Owner`-scoped `every_frame`).
 
 ### Changed
 
@@ -26,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `sigil::widgets::canvas` now passes `(scene, rect, theme)` directly and `CanvasBuilder::themed` is removed; `CanvasBuilder` implements `Framed` (`Paint`, `States`, `Widget`); `SceneCommand::DrawShadow` and `Clip::Rounded` take `[f32; 4]` corner radii.
 - `KeyEvent::stop_propagation()` no longer cancels host `Tab` focus movement, `Escape` selection clear, or `Copy` (use `KeyEvent::prevent_default()`); `Widget::shortcut` registers both global shortcut routing and accessibility shortcut metadata.
 - Replaced raw geometry tuples with `Point`, `Size`, and `Rect` across `Widget::drop_target` (`DropEvent<T>`), `DragState::position -> Point`, `MenuBuilder::anchor(impl Into<Point>)`, `Host::{layout, frame, scene}(impl Into<Size>, ...)`, and `FrameInputHook -> Option<Size>`.
+- `Widget::drive` now accepts `impl Reactive<f32>` so `Animator` and closures plug directly into `.drive(Property::..., value)`.
+- Merged `kittest_pub! enum SpringPreset` and crate-private `Spring` into `pub struct sigil::animation::Spring`.
 
 ### Migration
 
@@ -50,6 +53,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 | `MenuBuilder::anchor(x, y)` | `MenuBuilder::anchor(impl Into<Point>)` |
 | `Host::{layout, frame, scene}((w, h), ...)` | `Host::{layout, frame, scene}(impl Into<Size>, ...)` (`(w, h)` still works via `From<(f32, f32)>`) |
 | `FrameInputHook` returning `Option<(f32, f32)>` | `FrameInputHook` returning `Option<Size>` |
+| `SpringPreset::{Gentle, Smooth, Snappy, Bouncy, Stiff}` (feature `kittest`) | `Spring::{GENTLE, SMOOTH, SNAPPY, BOUNCY, STIFF}` in `sigil::animation` |
+| `Animator::spring(signal, preset)` / `Animator::tween(signal, ms, easing)` | `Animator::spring(initial, spring)` / `Animator::tween(initial, transition)` (read with `.get()` or `.value().peek()`) |
+| `Animator::settled()` / `Animator::finish()` | `!anim.active().peek()` / `anim.snap(value)` |
 
 ## [0.2.0] - 2026-11-12
 

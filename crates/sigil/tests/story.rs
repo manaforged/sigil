@@ -25,6 +25,9 @@ mod story_11;
 #[path = "../examples/story-12-events-dnd.rs"]
 #[allow(dead_code, unreachable_pub)]
 mod story_12;
+#[path = "../examples/story-13-animation.rs"]
+#[allow(dead_code, unreachable_pub)]
+mod story_13;
 #[path = "../examples/story-08-test.rs"]
 #[allow(dead_code)]
 mod testing;
@@ -715,6 +718,32 @@ fn prevent_default_cancels_copy_and_escape_without_affecting_stop_propagation() 
         assert!(
             copied.borrow().is_empty(),
             "Escape without prevent_default clears the selection"
+        );
+    });
+}
+
+#[test]
+fn animation_story_app_works_on_both_hosts() {
+    for mut ui in hosts(|| Harness::new(story_13::app)) {
+        ui.expect_text("Animation & Springs")
+            .expect_text("Ticker: on")
+            .click("Toggle")
+            .expect_text("Drawer: 1.00 | Active: false")
+            .click("Ticker")
+            .expect_text("Ticker: off");
+    }
+
+    Owner::scope("story-13-pixel-host", || {
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(story_13::app);
+        for _ in 0..3 {
+            let frame = host.frame((480.0, 320.0), 0.016, FrameHooks::default());
+            assert!(frame.layout().is_ok());
+        }
+        assert!(
+            host.accessibility_text().contains("Frames: 3 (0.048s)"),
+            "{}",
+            host.accessibility_text()
         );
     });
 }

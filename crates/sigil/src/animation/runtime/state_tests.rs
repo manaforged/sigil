@@ -1,15 +1,15 @@
-use crate::animation::SpringPreset;
+use crate::animation::Spring;
 use crate::reactive::{Owner, signal};
 
 use super::{active_count, tick};
-use crate::animation::runtime::animator::Animator;
+use crate::animation::runtime::animator::SignalAnimator;
 use crate::animation::runtime::clock::clock;
 use crate::animation::runtime::config::AnimationConfig;
 use crate::animation::runtime::motion_prefs::MotionPrefs;
 use crate::animation::runtime::{running_clocks, tick_clocks};
 
-fn spring(preset: SpringPreset) -> AnimationConfig {
-    AnimationConfig::Spring { preset }
+const fn spring(spring: Spring) -> AnimationConfig {
+    AnimationConfig::Spring(spring)
 }
 
 #[test]
@@ -17,7 +17,7 @@ fn dropping_animator_deregisters_from_runtime() {
     Owner::scope("dropping_animator_deregisters_from_runtime", || {
         MotionPrefs::set(false);
         let baseline = active_count();
-        let mut animator = Animator::new(signal(0.0_f32), spring(SpringPreset::Smooth));
+        let mut animator = SignalAnimator::new(signal(0.0_f32), spring(Spring::SMOOTH));
         animator.target(1.0);
         assert_eq!(active_count(), baseline + 1);
         drop(animator);
@@ -32,7 +32,7 @@ fn reduced_motion_skips_animator_registration() {
         assert!(MotionPrefs::reduced());
         let value = signal(0.0_f32);
         let baseline = active_count();
-        let mut animator = Animator::new(value, spring(SpringPreset::Smooth));
+        let mut animator = SignalAnimator::new(value, spring(Spring::SMOOTH));
         assert_eq!(active_count(), baseline);
         assert!(animator.settled());
         animator.target(1.0);
@@ -47,7 +47,7 @@ fn settled_animator_becomes_idle_and_can_retarget() {
     Owner::scope("settled_animator_becomes_idle_and_can_retarget", || {
         MotionPrefs::set(false);
         let baseline = active_count();
-        let mut animator = Animator::new(signal(0.0_f32), spring(SpringPreset::Stiff));
+        let mut animator = SignalAnimator::new(signal(0.0_f32), spring(Spring::STIFF));
         animator.target(1.0);
         assert_eq!(active_count(), baseline + 1);
         for _ in 0..60 {

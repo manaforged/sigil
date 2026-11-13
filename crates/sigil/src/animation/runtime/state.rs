@@ -1,5 +1,5 @@
 use crate::animation::Motion;
-use crate::reactive::frame::{FrameSource, SourceId, Sources, with_sources};
+use crate::reactive::frame::{FrameSource, SourceId, Sources, try_with_sources, with_sources};
 use crate::reactive::{Runtime, Signal, batch};
 
 use crate::animation::runtime::{AnimationConfig, MotionPrefs};
@@ -9,13 +9,18 @@ pub(crate) struct AnimatorId(SourceId);
 
 pub(crate) struct AnimatorSource {
     signal: Signal<f32>,
+    active: Option<Signal<bool>>,
     motion: Motion,
 }
 
-pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> AnimatorId {
+pub(crate) fn register_config(
+    signal: Signal<f32>,
+    active: Option<Signal<bool>>,
+    config: AnimationConfig,
+) -> AnimatorId {
     let initial = signal.try_peek().unwrap_or_default();
     let motion = match config {
-        AnimationConfig::Spring { preset } => Motion::spring(initial, preset),
+        AnimationConfig::Spring(spring) => Motion::spring(initial, spring),
         AnimationConfig::Tween {
             ms,
             easing,
@@ -23,15 +28,23 @@ pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> A
         } => Motion::tween(initial, ms, easing, delay_ms),
         AnimationConfig::Playback { end, cycle } => Motion::playback(end, cycle),
     };
-    register(signal, motion)
+    register(signal, active, motion)
 }
 
-pub(crate) fn register(signal: Signal<f32>, motion: Motion) -> AnimatorId {
+pub(crate) fn register(
+    signal: Signal<f32>,
+    active: Option<Signal<bool>>,
+    motion: Motion,
+) -> AnimatorId {
     assert!(
         signal.try_peek().is_none_or(f32::is_finite),
         "animation value must be finite"
     );
-    let source = FrameSource::Animator(AnimatorSource { signal, motion });
+    let source = FrameSource::Animator(AnimatorSource {
+        signal,
+        active,
+        motion,
+    });
     AnimatorId(with_sources(|sources| sources.map.insert(source)))
 }
 
@@ -73,6 +86,9 @@ impl AnimatorId {
                 if MotionPrefs::reduced() && !entry.motion.is_settled() {
                     entry.motion.finish();
                 }
+                if let Some(active) = entry.active {
+                    active.try_set(!entry.motion.is_settled());
+                }
                 if !entry.signal.try_set(entry.motion.value()) {
                     sources.map.remove(self.0);
                 }
@@ -82,7 +98,7 @@ impl AnimatorId {
     }
 
     pub(crate) fn deregister(self) {
-        with_sources(|sources| {
+        let _ = try_with_sources(|sources| {
             sources.map.remove(self.0);
         });
     }
@@ -93,7 +109,14 @@ impl AnimatorId {
                 if let Some(entry) = animator_mut(sources, self.0) {
                     entry.motion.retarget(value);
                     Runtime::mark_frame_dirty();
-                    if entry.motion.is_settled() && !entry.signal.try_set(entry.motion.value()) {
+                    let settled = entry.motion.is_settled();
+                    if settled {
+                        entry.motion.finish();
+                    }
+                    if let Some(active) = entry.active {
+                        active.try_set(!settled);
+                    }
+                    if settled && !entry.signal.try_set(entry.motion.value()) {
                         sources.map.remove(self.0);
                     }
                 }
@@ -107,7 +130,7 @@ impl AnimatorId {
         })
     }
 
-    #[cfg(feature = "kittest")]
+    #[cfg(test)]
     pub(crate) fn peek_value(self) -> Option<f32> {
         with_sources(|sources| animator_mut(sources, self.0).map(|entry| entry.motion.value()))
     }
@@ -118,6 +141,9 @@ pub(crate) fn finish_all() {
     batch(|| {
         retain_animators(|entry| {
             entry.motion.finish();
+            if let Some(active) = entry.active {
+                active.try_set(false);
+            }
             entry.signal.try_set(entry.motion.value())
         });
         Runtime::mark_frame_dirty();
@@ -137,6 +163,11 @@ kittest_pub! {
                 }
                 entry.motion.tick(dt);
                 Runtime::mark_frame_dirty();
+                if entry.motion.is_settled()
+                    && let Some(active) = entry.active
+                {
+                    active.try_set(false);
+                }
                 entry.signal.try_set(entry.motion.value())
             });
         });

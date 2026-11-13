@@ -17,16 +17,13 @@ kittest_pub! {
 }
 pub use keyframes::{Keyframes, Property};
 pub(crate) use motion::Motion;
-pub use runtime::clock::clock;
-pub use runtime::reduced_motion;
+pub use runtime::clock::{clock, every_frame};
+pub use runtime::{Animator, reduced_motion};
 kittest_pub! {
     #[doc(hidden)]
-    pub use runtime::{Animator, MotionPrefs, active_count, presets, running_clocks, tick};
+    pub use runtime::{MotionPrefs, active_count, presets, running_clocks, tick};
 }
-pub(crate) use spring::Spring;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use spring::SpringPreset;
-}
+pub use spring::Spring;
+pub(crate) use spring::SpringState;
 pub use transition::Transition;
 pub(crate) use tween::Tween;

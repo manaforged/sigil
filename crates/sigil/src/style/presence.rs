@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::animation::runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, SignalAnimator};
 use crate::kernel::Node;
 use crate::reactive::{Signal, batch, effect_named, signal};
 
@@ -23,7 +23,7 @@ impl Presence {
 
 pub(super) fn install_presence(node: &mut Node, shown: Signal<bool>, config: AnimationConfig) {
     let opacity = signal(0.0);
-    let animator = Rc::new(RefCell::new(Animator::new(opacity, config)));
+    let animator = Rc::new(RefCell::new(SignalAnimator::new(opacity, config)));
     let target = Rc::clone(&animator);
     effect_named("sigil-style::presence", move || {
         batch(|| {

@@ -11,7 +11,7 @@ use crate::animation::runtime::binding_animate_color::{
 use crate::animation::runtime::playback::{Player, animation};
 use crate::animation::runtime::registry::{Transitioned, transition_config};
 use crate::animation::runtime::targets::{Change, Targets, targets};
-use crate::animation::runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, SignalAnimator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Runtime, Signal, effect_named, owner_by_id, signal};
 use crate::style::{
@@ -279,7 +279,7 @@ fn update_numeric(
         } else {
             let value = signal(from);
             record_on(tag, &[value], DeltaKind::layout_if(kind.affects_layout()));
-            let mut animator = Animator::new(value, config);
+            let mut animator = SignalAnimator::new(value, config);
             animator.target(to);
             entries.push(AttachedAnimator {
                 kind,

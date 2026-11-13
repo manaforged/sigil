@@ -1,17 +1,17 @@
-use crate::animation::runtime::Animator;
+use crate::animation::runtime::SignalAnimator;
 use crate::reactive::Signal;
 use crate::style::{Color, ColorAtomKind, NumericAtomKind, StyleAtom};
 
 pub(crate) struct AttachedAnimator {
     pub(crate) kind: NumericAtomKind,
     pub(crate) signal: Signal<f32>,
-    pub(crate) animator: Animator,
+    pub(crate) animator: SignalAnimator,
 }
 
 pub(crate) struct AttachedColorAnimator {
     pub(crate) kind: ColorAtomKind,
     pub(crate) channels: [Signal<f32>; 4],
-    pub(crate) animators: [Animator; 4],
+    pub(crate) animators: [SignalAnimator; 4],
     pub(crate) last_target: Color,
 }
 

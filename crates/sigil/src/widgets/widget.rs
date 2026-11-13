@@ -74,7 +74,7 @@ pub trait Widget: Sized {
 
     /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.
     #[must_use]
-    fn drive(self, property: fn(f32) -> Property, value: Signal<f32>) -> Self {
+    fn drive(self, property: fn(f32) -> Property, value: impl Reactive<f32>) -> Self {
         self.map_node(move |node| look::drive(node, property, value))
     }
 

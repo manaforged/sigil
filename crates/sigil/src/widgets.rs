@@ -211,7 +211,7 @@ macro_rules! forward_control_methods {
         fn drive(
             mut self,
             property: fn(f32) -> $crate::animation::Property,
-            value: $crate::reactive::Signal<f32>,
+            value: impl $crate::reactive::Reactive<f32>,
         ) -> Self {
             $crate::widgets::forward_control_methods!(@call $mode self.$field, drive(property, value));
             self

@@ -54,6 +54,17 @@ impl<T: Clone + 'static> sealed::Sealed<T> for Signal<T> {
     }
 }
 
+impl sealed::Sealed<f32> for crate::animation::Animator {
+    #[track_caller]
+    fn read_value(&self) -> f32 {
+        self.get()
+    }
+
+    fn to_signal(self) -> Signal<f32> {
+        self.value()
+    }
+}
+
 impl<T, F> sealed::Sealed<T> for F
 where
     F: Fn() -> T + 'static,

@@ -1,39 +1,67 @@
-kittest_pub! {
-    /// Spring constants.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    pub enum SpringPreset {
-        /// Stiffness 80, damping 14, mass 1: the slowest preset, with a small overshoot.
-        Gentle,
-        /// Stiffness 180, damping 20, mass 1: a medium speed with a small overshoot.
-        Smooth,
-        /// Stiffness 260, damping 26, mass 1: a quick move with a small overshoot.
-        Snappy,
-        /// Stiffness 300, damping 12, mass 1: a quick move that swings past the target several times.
-        Bouncy,
-        /// Stiffness 500, damping 40, mass 1: the fastest preset, with almost no overshoot.
-        Stiff,
+/// Spring constants for damped spring motion.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[must_use]
+pub struct Spring {
+    stiffness: f32,
+    damping: f32,
+    mass: f32,
+}
+
+impl Default for Spring {
+    fn default() -> Self {
+        Self::SMOOTH
     }
 }
 
-impl SpringPreset {
-    kittest_pub! {
-        /// The stiffness, damping, and mass of this preset, in that order.
-        #[must_use]
-        pub const fn parameters(self) -> (f32, f32, f32) {
-            match self {
-                Self::Gentle => (80.0, 14.0, 1.0),
-                Self::Smooth => (180.0, 20.0, 1.0),
-                Self::Snappy => (260.0, 26.0, 1.0),
-                Self::Bouncy => (300.0, 12.0, 1.0),
-                Self::Stiff => (500.0, 40.0, 1.0),
-            }
+impl Spring {
+    /// Stiffness 80, damping 14, mass 1: the slowest preset, with a small overshoot.
+    pub const GENTLE: Self = Self::new(80.0, 14.0);
+    /// Stiffness 180, damping 20, mass 1: a medium speed with a small overshoot.
+    pub const SMOOTH: Self = Self::new(180.0, 20.0);
+    /// Stiffness 260, damping 26, mass 1: a quick move with a small overshoot.
+    pub const SNAPPY: Self = Self::new(260.0, 26.0);
+    /// Stiffness 300, damping 12, mass 1: a quick move that swings past the target several times.
+    pub const BOUNCY: Self = Self::new(300.0, 12.0);
+    /// Stiffness 500, damping 40, mass 1: the fastest preset, with almost no overshoot.
+    pub const STIFF: Self = Self::new(500.0, 40.0);
+
+    /// Creates a spring with finite positive `stiffness`, finite non-negative `damping`, and mass `1.0`.
+    #[track_caller]
+    pub const fn new(stiffness: f32, damping: f32) -> Self {
+        assert!(
+            stiffness.is_finite() && stiffness > 0.0,
+            "Spring stiffness must be finite and positive"
+        );
+        assert!(
+            damping.is_finite() && damping >= 0.0,
+            "Spring damping must be finite and non-negative"
+        );
+        Self {
+            stiffness,
+            damping,
+            mass: 1.0,
         }
+    }
+
+    /// Sets the spring mass; panics when `mass` is not finite and positive.
+    #[track_caller]
+    pub const fn mass(mut self, mass: f32) -> Self {
+        assert!(
+            mass.is_finite() && mass > 0.0,
+            "Spring mass must be finite and positive"
+        );
+        self.mass = mass;
+        self
+    }
+
+    pub(crate) const fn parameters(self) -> (f32, f32, f32) {
+        (self.stiffness, self.damping, self.mass)
     }
 }
 
 /// A damped spring that steps a value toward its target.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Spring {
+pub(crate) struct SpringState {
     stiffness: f32,
     damping: f32,
     mass: f32,
@@ -44,20 +72,21 @@ pub(crate) struct Spring {
     target: f32,
 }
 
-impl Spring {
+impl SpringState {
     /// The default distance from the target at which the spring settles.
     pub(crate) const DEFAULT_VALUE_EPSILON: f32 = 0.001;
 
     /// The default speed below which the spring settles.
     pub(crate) const DEFAULT_VELOCITY_EPSILON: f32 = 0.001;
 
-    /// Creates a spring.
+    /// Creates a spring state.
     #[must_use]
     #[track_caller]
-    pub(crate) fn new(initial: f32, stiffness: f32, damping: f32, mass: f32) -> Self {
+    pub(crate) fn new(initial: f32, spring: Spring) -> Self {
+        let (stiffness, damping, mass) = spring.parameters();
         assert!(
-            mass > 0.0,
-            "Spring mass must be positive (got {mass}). Use 1.0 for the default."
+            mass.is_finite() && mass > 0.0,
+            "Spring mass must be finite and positive (got {mass}). Use 1.0 for the default."
         );
         Self {
             stiffness,
@@ -83,13 +112,6 @@ impl Spring {
         self.value_epsilon = value;
         self.velocity_epsilon = velocity;
         self
-    }
-
-    /// Creates a spring from preset.
-    #[must_use]
-    pub(crate) fn from_preset(initial: f32, preset: SpringPreset) -> Self {
-        let (stiffness, damping, mass) = preset.parameters();
-        Self::new(initial, stiffness, damping, mass)
     }
 
     /// Sets the target.
