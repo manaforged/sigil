@@ -88,6 +88,7 @@ impl SharedGlyph {
 
 /// Shaped glyphs with one style and origin.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct GlyphRun {
     /// The node, if any.
     pub node: Option<NodeId>,

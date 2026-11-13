@@ -162,6 +162,9 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `terminal::Access { focus_cursor, status }` | `Access::default().focus_cursor(..).status(..)` |
+| struct literals of `TextFace`, `TextRun`, `Locale`, `terminal::Cell`, `terminal::Lines`, `scene::GlyphRun`, `ListState` | these are `#[non_exhaustive]`; read the fields, build with the constructor |
+| `ProgressBuilder.indeterminate` field | `.indeterminate()` |
 | `Theme` public fields (`theme.accent`, `theme.gray.step(n)`) | `theme.color(Token::Accent)`, `theme.scale(Tone::Neutral).step(n)`; write with `.gray(scale)`, `.accent_scale(scale)`, `.success(scale)`, `.warn(scale)`, `.error(scale)`, `.info(scale)` and `.token(name, value)` |
 | `style::ScaleRole`, `Tone::scale_role` | `Tone` (`Gray` is `Tone::Neutral`, `Accent` is `Tone::Primary`) |
 | `SelectionState` with `click`, `ctrl_click`, `shift_click`, `selected_indices` | `Selection` with `select`, `toggle`, `extend`, `indices`, `clear` |

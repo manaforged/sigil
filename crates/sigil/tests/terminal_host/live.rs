@@ -131,18 +131,15 @@ pub(super) struct Side {
 }
 
 impl Side {
-    fn new(state: State, size: (u16, u16), status: Duration) -> Self {
+    fn new(state: State, size: (u16, u16), access: Access) -> Self {
         let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
-        Self::mounted(host, size, status)
+        Self::mounted(host, size, access)
     }
 
-    pub(super) fn mounted(host: Host, size: (u16, u16), status: Duration) -> Self {
+    pub(super) fn mounted(host: Host, size: (u16, u16), access: Access) -> Self {
         let mut screen = Screen::new(size.0, size.1);
-        screen.access(Access {
-            status,
-            ..Access::default()
-        });
+        screen.access(access);
         Self {
             host,
             screen,
@@ -213,7 +210,7 @@ fn frames(steps: &[Step], full: bool) -> Vec<String> {
     Owner::scope("live-oracle", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
-        let mut host = Side::new(shared, size, Access::default().status);
+        let mut host = Side::new(shared, size, Access::default());
         for _ in 0..2 {
             host.frame(Vec::new(), size, full);
         }
@@ -260,7 +257,7 @@ fn expiring(full: bool) -> Vec<String> {
         let shared = state();
         let mut size = (48_u16, 16_u16);
         let status = Duration::from_millis(20);
-        let mut host = Side::new(shared, size, status);
+        let mut host = Side::new(shared, size, Access::default().status(status));
         let steps = [
             Step::Status(String::from("ready")),
             Step::Modal,
@@ -302,7 +299,7 @@ fn edit() -> impl Strategy<Value = Step> {
 }
 
 fn settled(state: State, size: (u16, u16)) -> String {
-    let mut host = Side::new(state, size, Duration::ZERO);
+    let mut host = Side::new(state, size, Access::default().status(Duration::ZERO));
     for _ in 0..SETTLE {
         host.frame(Vec::new(), size, false);
     }
@@ -313,7 +310,7 @@ fn edited(steps: &[Step]) -> (String, String) {
     let incremental = Owner::scope("live-edited", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
-        let mut host = Side::new(shared, size, Duration::ZERO);
+        let mut host = Side::new(shared, size, Access::default().status(Duration::ZERO));
         for _ in 0..2 {
             host.frame(Vec::new(), size, false);
         }

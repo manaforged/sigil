@@ -7,20 +7,34 @@ use crate::terminal::transcript::{Reading, Spot};
 /// `Follow` moves the hidden terminal cursor to the focused node's label when no text caret is visible, so screen readers read it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum FocusCursor {
-    /// The follow focus cursor.
+    /// The cursor moves to the label of the focused node.
     #[default]
     Follow,
-    /// The off focus cursor.
+    /// The cursor stays where the last frame left it.
     Off,
 }
 
 /// Where the terminal cursor goes when no caret shows, and how long an announcement stays on the full-screen status row.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Access {
-    /// The focus cursor.
-    pub focus_cursor: FocusCursor,
-    /// The status.
-    pub status: Duration,
+    pub(crate) focus_cursor: FocusCursor,
+    pub(crate) status: Duration,
+}
+
+impl Access {
+    /// Sets whether the hidden terminal cursor follows the focused node; the default is `Follow`.
+    #[must_use]
+    pub const fn focus_cursor(mut self, focus_cursor: FocusCursor) -> Self {
+        self.focus_cursor = focus_cursor;
+        self
+    }
+
+    /// Sets how long an announcement stays on the status row; the default is 5 seconds.
+    #[must_use]
+    pub const fn status(mut self, status: Duration) -> Self {
+        self.status = status;
+        self
+    }
 }
 
 impl Default for Access {

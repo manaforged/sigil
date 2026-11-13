@@ -44,6 +44,7 @@ pub enum Underline {
 
 /// The text decoration lines of a cell.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Lines {
     /// The underline.
     pub underline: Underline,
@@ -53,6 +54,7 @@ pub struct Lines {
 
 /// One character cell with its colors and attributes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Cell {
     pub(crate) text: Glyph,
     /// The fg.

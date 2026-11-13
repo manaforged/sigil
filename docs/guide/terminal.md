@@ -69,10 +69,9 @@ use sigil::terminal::Access;
 use sigil::terminal::FocusCursor;
 
 fn main() -> sigil::AppResult<()> {
-    let access = Access {
-        focus_cursor: FocusCursor::Off,
-        status: Duration::from_secs(3),
-    };
+    let access = Access::default()
+        .focus_cursor(FocusCursor::Off)
+        .status(Duration::from_secs(3));
     sigil::run(
         AppConfig::new("quiet").terminal().terminal_access(access),
         app_tree,

@@ -13,16 +13,17 @@ pub enum CursorEdge {
 }
 
 /// The cursor, selection, expansion, and query of a list.
+#[non_exhaustive]
 pub struct ListState<K: Clone + Eq + Hash + 'static = String> {
-    /// The cursor.
+    /// The index of the row under the cursor.
     pub cursor: Signal<usize>,
-    /// The scroll.
+    /// The scroll offset in pixels.
     pub scroll: Signal<f32>,
-    /// The expanded.
+    /// The keys of the expanded rows.
     pub expanded: Signal<Vec<K>>,
-    /// The query.
+    /// The type-ahead or filter text.
     pub query: Signal<String>,
-    /// The caret.
+    /// The caret position in the query, in bytes.
     pub caret: Signal<usize>,
 }
 

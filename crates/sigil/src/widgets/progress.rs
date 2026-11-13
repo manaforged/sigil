@@ -24,8 +24,7 @@ static EMPTY: &[StyleAtom] = &[];
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
-    /// True when the bar shows a moving segment and not a filled fraction.
-    pub indeterminate: bool,
+    indeterminate: bool,
     tone: Tone,
     name: Option<AccessibleName>,
     caption: Option<TextContent>,

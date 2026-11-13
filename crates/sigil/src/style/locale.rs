@@ -82,6 +82,7 @@ impl DateOrder {
 
 /// The number and date formats of a language.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub struct Locale {
     /// The decimal.
     pub decimal: char,

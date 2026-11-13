@@ -42,6 +42,7 @@ pub struct TextStyle {
     clippy::struct_excessive_bools,
     reason = "each flag is an independent text attribute that combines freely with the others"
 )]
+#[non_exhaustive]
 pub struct TextFace {
     /// Whether bold.
     pub bold: bool,
@@ -71,6 +72,7 @@ pub struct TextFace {
 
 /// A byte range of text with a face.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub struct TextRun {
     /// The start.
     pub start: usize,
