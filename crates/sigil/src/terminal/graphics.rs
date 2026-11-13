@@ -25,25 +25,25 @@ const CACHE: usize = 16;
 /// An image placed on the cell grid.
 #[derive(Clone, Debug)]
 pub(crate) struct Placement {
-    /// The col.
+    /// The grid column of the leftmost visible cell of the image, 0-based.
     pub(crate) col: u16,
-    /// The row.
+    /// The grid row of the topmost visible cell of the image, 0-based.
     pub(crate) row: u16,
-    /// The cols.
+    /// The width of the visible part of the image, in character cells.
     pub(crate) cols: u16,
-    /// The rows.
+    /// The height of the visible part of the image, in character cells.
     pub(crate) rows: u16,
-    /// The mark col.
+    /// The column of the whole image that the first visible cell shows; 0 unless the left edge is off the grid.
     pub(crate) mark_col: u16,
-    /// The mark row.
+    /// The row of the whole image that the first visible cell shows; 0 unless the top edge is off the grid.
     pub(crate) mark_row: u16,
-    /// The span cols.
+    /// The width of the whole image, in character cells, including the part off the grid.
     pub(crate) span_cols: u16,
-    /// The span rows.
+    /// The height of the whole image, in character cells, including the part off the grid.
     pub(crate) span_rows: u16,
-    /// The source.
+    /// The image to show; two placements compare it by its content id.
     pub(crate) source: ImageSource,
-    /// The crop, if any.
+    /// The first pixel row and the number of pixel rows of the source to show; `None` shows every row.
     pub(crate) crop: Option<(u32, u32)>,
 }
 

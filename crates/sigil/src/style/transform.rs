@@ -55,7 +55,7 @@ impl Default for Transform2D {
 impl Transform2D {
     kittest_pub! {
         #[doc(hidden)]
-        /// The transform that changes nothing.
+        /// The transform that leaves a node unchanged: no move, a scale of 1, and no turn.
         pub const IDENTITY: Self = Self {
             translation: [0.0, 0.0],
             shift: [0, 0],

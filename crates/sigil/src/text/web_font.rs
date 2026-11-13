@@ -4,30 +4,30 @@ use std::sync::{PoisonError, RwLock};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum WebFontScript {
-    /// The cjk web font script.
+    /// Chinese, Japanese, and Korean text; the default font is Noto Sans CJK SC.
     Cjk,
-    /// The arabic web font script.
+    /// Arabic script; the default font is Noto Sans Arabic.
     Arabic,
-    /// The hebrew web font script.
+    /// Hebrew script; the default font is Noto Sans Hebrew.
     Hebrew,
-    /// The devanagari web font script.
+    /// Devanagari script; the default font is Noto Sans Devanagari.
     Devanagari,
-    /// The khmer web font script.
+    /// Khmer script; the default font is Noto Sans Khmer.
     Khmer,
-    /// The thai web font script.
+    /// Thai script; the default font is Noto Sans Thai.
     Thai,
-    /// The lao web font script.
+    /// Lao script; the default font is Noto Sans Lao.
     Lao,
 }
 
 /// A fallback font that the web build downloads.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WebFont {
-    /// The script.
+    /// The script whose first use in shaped text starts the download.
     pub(crate) script: WebFontScript,
-    /// The url.
+    /// The address the font file is fetched from.
     pub(crate) url: String,
-    /// The face index.
+    /// The 0-based index of the face to load from the font file.
     pub(crate) face_index: u32,
 }
 

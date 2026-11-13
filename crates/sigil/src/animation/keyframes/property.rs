@@ -56,11 +56,11 @@ pub enum Property {
     DropShadow(Shadow),
     /// The text shadow offset, blur, and color; a node with several text shadows keeps them.
     TextShadow(Shadow),
-    /// The first gradient color.
+    /// The color of the first stop of the node's gradient.
     GradientFrom(ColorAtom),
     /// The middle gradient color; the node's gradient must have a middle stop.
     GradientVia(ColorAtom),
-    /// The last gradient color.
+    /// The color of the last stop of the node's gradient.
     GradientTo(ColorAtom),
     /// Where the first gradient color sits, in percent.
     GradientFromPosition(f32),

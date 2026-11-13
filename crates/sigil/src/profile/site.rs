@@ -11,13 +11,13 @@ kittest_pub! {
     pub struct Site {
         /// The line that created the effect or child list.
         pub location: &'static Location<'static>,
-        /// The kind.
+        /// Whether the line ran as an effect, a mount, or a message.
         pub kind: SiteKind,
         /// The time spent in this site, minus nested sites.
         pub self_ns: u64,
         /// The time spent in this site, with nested sites.
         pub total_ns: u64,
-        /// The runs.
+        /// How many times this site ran in the frame.
         pub runs: u32,
     }
 }

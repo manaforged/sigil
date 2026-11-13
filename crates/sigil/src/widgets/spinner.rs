@@ -33,7 +33,7 @@ fn cycle(frames: &[&'static str], step: u64) -> &'static str {
         .unwrap_or_default()
 }
 
-/// The spinner glyph for a tick count.
+/// Returns the braille spinner frame for `tick`; the 10 frames repeat.
 #[must_use]
 pub fn spinner_frame(tick: u64) -> &'static str {
     cycle(&FRAMES, tick)

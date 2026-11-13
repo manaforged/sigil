@@ -24,39 +24,39 @@ impl LineKind {
 /// Identifies a line of a patch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LineId {
-    /// The hunk.
+    /// The 0-based index of the hunk in the patch.
     pub hunk: usize,
-    /// The line.
+    /// The 0-based index of the line in the hunk.
     pub line: usize,
 }
 
 /// One line of a patch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Line {
-    /// The kind.
+    /// Whether the line was added, removed or kept.
     pub(crate) kind: LineKind,
-    /// The text.
+    /// The text of the line without its marker.
     pub(crate) text: String,
-    /// The old, if any.
+    /// The line number in the old text; `None` for an added line.
     pub(crate) old: Option<usize>,
-    /// The new, if any.
+    /// The line number in the new text; `None` for a removed line.
     pub(crate) new: Option<usize>,
 }
 
 /// One group of changes in a patch.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Hunk {
-    /// The meta.
+    /// The file header lines before the hunk.
     pub(crate) meta: Vec<String>,
-    /// The path, if any.
+    /// The path of the changed file; `None` when the patch names none.
     pub(crate) path: Option<String>,
-    /// The header.
+    /// The `@@` header line; empty when the patch has none.
     pub(crate) header: String,
-    /// The old start.
+    /// The first line number in the old text.
     pub(crate) old_start: usize,
-    /// The new start.
+    /// The first line number in the new text.
     pub(crate) new_start: usize,
-    /// The lines.
+    /// The lines of the hunk, in patch order.
     pub(crate) lines: Vec<Line>,
 }
 
@@ -117,7 +117,7 @@ impl Hunk {
         self.new_start
     }
 
-    /// The lines of the hunk.
+    /// Returns the lines of the hunk, in patch order.
     #[must_use]
     pub fn lines(&self) -> &[Line] {
         &self.lines
@@ -127,9 +127,9 @@ impl Hunk {
 /// A parsed unified diff.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Patch {
-    /// The hunks.
+    /// The hunks, in patch order.
     pub(crate) hunks: Vec<Hunk>,
-    /// The trailer.
+    /// The lines after the last hunk that belong to no hunk.
     pub(crate) trailer: Vec<String>,
 }
 
@@ -140,7 +140,7 @@ impl Patch {
         &self.hunks
     }
 
-    /// The lines after the last hunk.
+    /// Returns the lines after the last hunk that belong to no hunk.
     #[must_use]
     pub fn trailer(&self) -> &[String] {
         &self.trailer

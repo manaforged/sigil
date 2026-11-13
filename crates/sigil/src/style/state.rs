@@ -8,13 +8,13 @@ kittest_pub! {
         reason = "intentional, reviewed trade-off"
     )]
     pub struct StyleState {
-        /// Whether disabled.
+        /// Whether the node is disabled; this wins over every other state.
         pub disabled: bool,
-        /// Whether hovered.
+        /// Whether the pointer is over the node.
         pub hovered: bool,
-        /// Whether pressed.
+        /// Whether the node is being pressed.
         pub pressed: bool,
-        /// Whether focused.
+        /// Whether the node has focus.
         pub focused: bool,
     }
 }
@@ -24,16 +24,16 @@ kittest_pub! {
     /// Names the interaction state that selects state style atoms.
     #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     pub enum StateSlot {
-        /// The rest state slot.
+        /// No interaction: not disabled, pressed, hovered, or focused.
         #[default]
         Rest,
-        /// The focused state slot.
+        /// The node has focus and is not hovered, pressed, or disabled.
         Focused,
-        /// The hovered state slot.
+        /// The pointer is over the node, and the node is not pressed or disabled.
         Hovered,
-        /// The pressed state slot.
+        /// The node is being pressed and is not disabled.
         Pressed,
-        /// The disabled state slot.
+        /// The node is disabled; this slot wins over the others.
         Disabled,
     }
 }

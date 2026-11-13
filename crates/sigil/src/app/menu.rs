@@ -18,39 +18,39 @@ thread_local! {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum StandardItem {
-    /// The about standard item.
+    /// Shows the platform's About panel for the app.
     About,
-    /// The services standard item.
+    /// Opens the platform's Services submenu.
     Services,
-    /// The hide standard item.
+    /// Hides the windows of this app.
     Hide,
-    /// The hide others standard item.
+    /// Hides the windows of every other app.
     HideOthers,
-    /// The show all standard item.
+    /// Shows the windows of every hidden app again.
     ShowAll,
-    /// The quit standard item.
+    /// Quits the app.
     Quit,
-    /// The undo standard item.
+    /// Undoes the last edit in the focused control.
     Undo,
-    /// The redo standard item.
+    /// Redoes the edit that the last undo removed.
     Redo,
-    /// The cut standard item.
+    /// Moves the selection to the clipboard.
     Cut,
-    /// The copy standard item.
+    /// Copies the selection to the clipboard.
     Copy,
-    /// The paste standard item.
+    /// Inserts the clipboard at the caret.
     Paste,
-    /// The select all standard item.
+    /// Selects everything in the focused control.
     SelectAll,
-    /// The minimize standard item.
+    /// Minimizes the focused window.
     Minimize,
-    /// The maximize standard item.
+    /// Maximizes the focused window.
     Maximize,
-    /// The fullscreen standard item.
+    /// Switches the focused window in or out of full screen.
     Fullscreen,
-    /// The bring all to front standard item.
+    /// Brings every window of this app in front of other apps' windows.
     BringAllToFront,
-    /// The close window standard item.
+    /// Closes the focused window.
     CloseWindow,
 }
 

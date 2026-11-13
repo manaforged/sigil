@@ -22,7 +22,7 @@ impl DiffSelection {
         &self.hunks
     }
 
-    /// The selected lines.
+    /// Returns the ids of the selected lines, in patch order.
     #[must_use]
     pub const fn lines(&self) -> &BTreeSet<LineId> {
         &self.lines

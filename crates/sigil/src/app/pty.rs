@@ -46,9 +46,9 @@ pub(crate) struct Modes {
 
 /// Child process in a pseudo-terminal (feature `pty`).
 pub struct Session {
-    /// The lines.
+    /// The text of the screen, one string per row from the top.
     pub lines: Signal<Vec<String>>,
-    /// The title the program set.
+    /// The window title that the program last set.
     pub title: Signal<String>,
     /// How many times the program rang the bell.
     pub bell: Signal<u64>,

@@ -29,11 +29,11 @@ pub(crate) use table::TokenTable;
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum ThemeValue {
-    /// The color theme value.
+    /// A color.
     Color(Color),
-    /// The px theme value.
+    /// A length in pixels.
     Px(f32),
-    /// The ms theme value.
+    /// A duration in milliseconds.
     Ms(u16),
 }
 

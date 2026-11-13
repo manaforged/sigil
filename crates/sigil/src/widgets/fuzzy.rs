@@ -9,9 +9,9 @@ const MAX_SPREAD: usize = 3;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FuzzyMatch {
-    /// The score.
+    /// The rank of the match; lower is better, and 0 is an exact match.
     pub score: usize,
-    /// The positions.
+    /// The 0-based character indexes of the matched characters in the lowercased text.
     pub positions: Vec<usize>,
 }
 

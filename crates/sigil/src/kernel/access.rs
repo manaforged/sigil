@@ -4,251 +4,251 @@ mod role_map;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum Role {
-    /// The unknown role.
+    /// A node with no known role.
     Unknown,
-    /// The text run role.
+    /// A run of text on one line, the child of a text node.
     TextRun,
-    /// The cell role.
+    /// A cell of a table.
     Cell,
-    /// The label role.
+    /// A text label for another control.
     Label,
-    /// The image role.
+    /// An image.
     Image,
-    /// The link role.
+    /// A link to another place.
     Link,
-    /// The row role.
+    /// A row of a table, a grid or a tree grid.
     Row,
-    /// The list item role.
+    /// An item of a list.
     ListItem,
-    /// The list marker role.
+    /// The bullet or number in front of a list item.
     ListMarker,
-    /// The tree item role.
+    /// An item of a tree.
     TreeItem,
-    /// The list box option role.
+    /// An option of a list box.
     ListBoxOption,
-    /// The menu item role.
+    /// A command in a menu.
     MenuItem,
-    /// The menu list option role.
+    /// An option in the popup of a drop-down list.
     MenuListOption,
-    /// The paragraph role.
+    /// A paragraph of text.
     Paragraph,
-    /// The generic container role.
+    /// A container with no meaning of its own, the default role of a node.
     GenericContainer,
-    /// The check box role.
+    /// A check box.
     CheckBox,
-    /// The radio button role.
+    /// A radio button, one choice of a group.
     RadioButton,
-    /// The text input role.
+    /// A single-line text field.
     TextInput,
-    /// The button role.
+    /// A push button.
     Button,
-    /// The default button role.
+    /// A push button that is the default action of its dialog.
     DefaultButton,
-    /// The pane role.
+    /// A pane of a window.
     Pane,
-    /// The row header role.
+    /// A cell that is the header of a table row.
     RowHeader,
-    /// The column header role.
+    /// A cell that is the header of a table column.
     ColumnHeader,
-    /// The row group role.
+    /// A group of rows in a table, such as its head or its body.
     RowGroup,
-    /// The list role.
+    /// A list of items.
     List,
-    /// The table role.
+    /// A table of rows and columns.
     Table,
-    /// The switch role.
+    /// An on/off switch.
     Switch,
-    /// The menu role.
+    /// A menu of commands.
     Menu,
-    /// The multiline text input role.
+    /// A text field with more than one line.
     MultilineTextInput,
-    /// The search input role.
+    /// A text field for a search query.
     SearchInput,
-    /// The date input role.
+    /// A field for a date.
     DateInput,
-    /// The date time input role.
+    /// A field for a date and a time.
     DateTimeInput,
-    /// The week input role.
+    /// A field for a week of a year.
     WeekInput,
-    /// The month input role.
+    /// A field for a month of a year.
     MonthInput,
-    /// The time input role.
+    /// A field for a time of day.
     TimeInput,
-    /// The email input role.
+    /// A text field for an email address.
     EmailInput,
-    /// The number input role.
+    /// A text field for a number.
     NumberInput,
-    /// The password input role.
+    /// A text field that hides what is typed.
     PasswordInput,
-    /// The phone number input role.
+    /// A text field for a phone number.
     PhoneNumberInput,
-    /// The url input role.
+    /// A text field for a web address.
     UrlInput,
-    /// The abbr role.
+    /// An abbreviation or acronym.
     Abbr,
-    /// The alert role.
+    /// An urgent message, announced at once unless `live` says otherwise.
     Alert,
-    /// The alert dialog role.
+    /// A dialog with an urgent message that needs an answer.
     AlertDialog,
-    /// The application role.
+    /// A region that handles its own keyboard input as an application.
     Application,
-    /// The article role.
+    /// A self-contained piece of content, such as a post.
     Article,
-    /// The audio role.
+    /// An audio player.
     Audio,
-    /// The banner role.
+    /// The header of the whole page, with content that is the same on each screen.
     Banner,
-    /// The blockquote role.
+    /// A quotation from another source.
     Blockquote,
-    /// The canvas role.
+    /// A surface that the app draws on.
     Canvas,
-    /// The caption role.
+    /// The caption of a table or a figure.
     Caption,
-    /// The code role.
+    /// A fragment of computer code.
     Code,
-    /// The color well role.
+    /// A control that picks a color.
     ColorWell,
-    /// The combo box role.
+    /// A drop-down list of options.
     ComboBox,
-    /// The editable combo box role.
+    /// A drop-down list with a text field for typing.
     EditableComboBox,
-    /// The complementary role.
+    /// Content that supports the main content, such as a sidebar.
     Complementary,
-    /// The comment role.
+    /// A comment on a part of the content.
     Comment,
-    /// The content deletion role.
+    /// Content marked as deleted.
     ContentDeletion,
-    /// The content insertion role.
+    /// Content marked as inserted.
     ContentInsertion,
-    /// The content info role.
+    /// Information about the whole page, such as a copyright footer.
     ContentInfo,
-    /// The definition role.
+    /// The definition of a term.
     Definition,
-    /// The description list role.
+    /// A list of terms and their descriptions.
     DescriptionList,
-    /// The details role.
+    /// A section that the user expands to show more.
     Details,
-    /// The dialog role.
+    /// A dialog box.
     Dialog,
-    /// The disclosure triangle role.
+    /// A control that expands and collapses a section.
     DisclosureTriangle,
-    /// The document role.
+    /// Content that the user reads as a document.
     Document,
-    /// The emphasis role.
+    /// Text with stress emphasis.
     Emphasis,
-    /// The feed role.
+    /// A scrolling list of articles that grows as the user reads.
     Feed,
-    /// The figure caption role.
+    /// The caption of a figure.
     FigureCaption,
-    /// The figure role.
+    /// A figure, such as an image or a chart, with an optional caption.
     Figure,
-    /// The footer role.
+    /// The footer of a page or a section.
     Footer,
-    /// The form role.
+    /// A group of controls that make up one form.
     Form,
-    /// The grid role.
+    /// A table whose cells take keyboard focus.
     Grid,
-    /// The grid cell role.
+    /// A cell of a grid.
     GridCell,
-    /// The group role.
+    /// A set of related controls.
     Group,
-    /// The header role.
+    /// The header of a page or a section.
     Header,
-    /// The heading role.
+    /// A section heading; `level` holds its rank.
     Heading,
-    /// The keyboard role.
+    /// An on-screen keyboard.
     Keyboard,
-    /// The legend role.
+    /// The caption of a group of form controls.
     Legend,
-    /// The line break role.
+    /// A forced line break in text.
     LineBreak,
-    /// The list box role.
+    /// A list of options to select from.
     ListBox,
-    /// The log role.
+    /// A region where new entries are added in order, such as a chat history.
     Log,
-    /// The main role.
+    /// The main content of the window.
     Main,
-    /// The mark role.
+    /// Text highlighted for reference.
     Mark,
-    /// The marquee role.
+    /// A region of text that scrolls or changes on its own.
     Marquee,
-    /// The math role.
+    /// A mathematical expression.
     Math,
-    /// The menu bar role.
+    /// A bar of menus.
     MenuBar,
-    /// The menu item check box role.
+    /// A menu item that can be checked.
     MenuItemCheckBox,
-    /// The menu item radio role.
+    /// A menu item that is one choice of a group.
     MenuItemRadio,
-    /// The menu list popup role.
+    /// The popup that lists the options of a drop-down list.
     MenuListPopup,
-    /// The meter role.
+    /// A gauge that shows a value in a known range.
     Meter,
-    /// The navigation role.
+    /// A group of links for moving around the app.
     Navigation,
-    /// The note role.
+    /// A note that adds to the main content.
     Note,
-    /// The progress indicator role.
+    /// A progress bar.
     ProgressIndicator,
-    /// The radio group role.
+    /// A group of radio buttons.
     RadioGroup,
-    /// The region role.
+    /// A named section of the content.
     Region,
-    /// The ruby role.
+    /// Text with a pronunciation annotation.
     Ruby,
-    /// The ruby annotation role.
+    /// The pronunciation annotation of ruby text.
     RubyAnnotation,
-    /// The scroll bar role.
+    /// A scroll bar.
     ScrollBar,
-    /// The scroll view role.
+    /// A container that scrolls its content.
     ScrollView,
-    /// The search role.
+    /// A region that holds search controls.
     Search,
-    /// The section role.
+    /// A section of the content with no name.
     Section,
-    /// The section footer role.
+    /// The footer of a section.
     SectionFooter,
-    /// The section header role.
+    /// The header of a section.
     SectionHeader,
-    /// The slider role.
+    /// A slider that picks a value in a range.
     Slider,
-    /// The spin button role.
+    /// A number field with buttons that step the value.
     SpinButton,
-    /// The splitter role.
+    /// A bar that the user drags to resize two panes.
     Splitter,
-    /// The status role.
+    /// A status message, announced when the screen reader is idle unless `live` says otherwise.
     Status,
-    /// The strong role.
+    /// Text with strong importance.
     Strong,
-    /// The suggestion role.
+    /// A suggested change to the content.
     Suggestion,
-    /// The tab role.
+    /// A tab that selects a tab panel.
     Tab,
-    /// The tab list role.
+    /// A row of tabs.
     TabList,
-    /// The tab panel role.
+    /// The content that a tab shows.
     TabPanel,
-    /// The term role.
+    /// A term that has a definition.
     Term,
-    /// The time role.
+    /// A date or a time in text.
     Time,
-    /// The timer role.
+    /// A counter of elapsed or remaining time.
     Timer,
-    /// The title bar role.
+    /// The title bar of a window.
     TitleBar,
-    /// The toolbar role.
+    /// A bar of buttons and controls.
     Toolbar,
-    /// The tooltip role.
+    /// A popup that describes a control.
     Tooltip,
-    /// The tree role.
+    /// A tree of items that expand and collapse.
     Tree,
-    /// The tree grid role.
+    /// A grid whose rows expand and collapse.
     TreeGrid,
-    /// The video role.
+    /// A video player.
     Video,
-    /// The window role.
+    /// A window.
     Window,
-    /// The terminal role.
+    /// A terminal emulator.
     Terminal,
 }
 
@@ -256,27 +256,27 @@ pub enum Role {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum Action {
-    /// The click action.
+    /// Activates the node, as a click does.
     Click,
-    /// The focus action.
+    /// Moves keyboard focus to the node.
     Focus,
-    /// The blur action.
+    /// Removes keyboard focus from the node.
     Blur,
-    /// The collapse action.
+    /// Collapses the node.
     Collapse,
-    /// The expand action.
+    /// Expands the node.
     Expand,
-    /// The decrement action.
+    /// Lowers the value by one step.
     Decrement,
-    /// The increment action.
+    /// Raises the value by one step.
     Increment,
-    /// The scroll into view action.
+    /// Scrolls the node into view.
     ScrollIntoView,
-    /// The set text selection action.
+    /// Sets the caret and the selection of the text.
     SetTextSelection,
-    /// The set value action.
+    /// Sets the text or the numeric value of the node.
     SetValue,
-    /// The show context menu action.
+    /// Opens the context menu of the node.
     ShowContextMenu,
 }
 
@@ -302,11 +302,11 @@ impl Action {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum Live {
-    /// The off live.
+    /// Changes are not announced.
     Off,
-    /// The polite live.
+    /// Changes are announced when the screen reader is idle.
     Polite,
-    /// The assertive live.
+    /// Changes are announced at once and interrupt speech.
     Assertive,
 }
 
@@ -324,9 +324,9 @@ impl Live {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum SortDirection {
-    /// The ascending sort direction.
+    /// Sorted from the smallest value to the largest.
     Ascending,
-    /// The descending sort direction.
+    /// Sorted from the largest value to the smallest.
     Descending,
 }
 

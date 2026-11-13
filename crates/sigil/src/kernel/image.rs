@@ -84,9 +84,9 @@ impl ImageSource {
 /// Vertical crop of an image: rows `top..top + height`, clamped to the image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ImageCrop {
-    /// The top.
+    /// The first pixel row of the image to show, counted from 0.
     pub top: u32,
-    /// The height.
+    /// The number of pixel rows to show.
     pub height: u32,
 }
 
@@ -206,16 +206,16 @@ impl ThemedImage {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ObjectFit {
-    /// The fill object fit.
+    /// Stretches the image to the box and ignores its aspect ratio.
     #[default]
     Fill,
-    /// The contain object fit.
+    /// Scales the whole image to fit inside the box, centred, and keeps its aspect ratio.
     Contain,
-    /// The cover object fit.
+    /// Scales the image to cover the box, keeps its aspect ratio, and crops around the centre.
     Cover,
 }
 
-/// The one image builder.
+/// Builds an image node; `image` creates one.
 #[derive(Debug)]
 pub struct ImageBuilder {
     pub(crate) node: NodeBuilder,

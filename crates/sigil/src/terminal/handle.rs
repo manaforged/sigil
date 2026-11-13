@@ -8,7 +8,7 @@ use crate::reactive::Signal;
 pub struct Terminal(());
 
 impl Terminal {
-    /// The terminal of the current thread.
+    /// Returns the handle of the terminal that the current thread drives.
     #[must_use]
     pub const fn current() -> Self {
         Self(())
@@ -74,7 +74,7 @@ impl Terminal {
         super::term::suspend(run)
     }
 
-    /// Whether the terminal has focus.
+    /// Returns whether the terminal window has input focus, as the terminal last reported it.
     #[must_use]
     pub fn is_focused(self) -> bool {
         super::term::focused()

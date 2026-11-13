@@ -14,11 +14,11 @@ use crate::style::{PaintTarget, StyleSlot};
 /// Static, signal, or computed text.
 #[derive(Clone)]
 pub enum TextContent {
-    /// The static text content.
+    /// Text that does not change.
     Static(String),
-    /// The reactive text content.
+    /// Text read from a signal.
     Reactive(Signal<String>),
-    /// The compute text content.
+    /// Text that a closure returns.
     Compute(Rc<dyn Fn() -> String>),
 }
 
@@ -122,7 +122,7 @@ pub struct TextBuilder {
     pub(crate) hooks: NodeHooks,
 }
 
-/// The one text node.
+/// Creates a text node that wraps and shows no ellipsis.
 #[must_use]
 pub fn text(source: impl Into<TextContent>) -> TextBuilder {
     let kind = NodeType::Text {

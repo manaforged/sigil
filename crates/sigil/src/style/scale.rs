@@ -3,9 +3,9 @@ use crate::style::Color;
 /// A 12-step color scale.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorScale {
-    /// The steps.
+    /// The 12 colors of the scale, with step 1 at index 0.
     pub steps: [Color; 12],
-    /// The on solid.
+    /// The color for content drawn on step 9, the solid fill.
     pub on_solid: Color,
 }
 
@@ -47,7 +47,7 @@ const fn heuristic_on_solid(step9: Color) -> Color {
 }
 
 kittest_pub! {
-    /// The light slate scale.
+    /// The 12-step slate gray scale of the light theme.
     #[must_use]
     pub const fn slate_light() -> ColorScale {
         ColorScale::from_steps([
@@ -68,7 +68,7 @@ kittest_pub! {
     }
 }
 
-/// The light iris scale.
+/// The 12-step iris scale for a light background; no built-in theme uses it.
 #[must_use]
 #[cfg(feature = "kittest")]
 pub const fn iris_light() -> ColorScale {
@@ -90,7 +90,7 @@ pub const fn iris_light() -> ColorScale {
 }
 
 kittest_pub! {
-    /// The light green scale.
+    /// The 12-step green scale of the light theme.
     #[must_use]
     pub const fn green_light() -> ColorScale {
         ColorScale::from_steps([
@@ -112,7 +112,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    /// The light amber scale.
+    /// The 12-step amber scale of the light theme.
     #[must_use]
     pub const fn amber_light() -> ColorScale {
         ColorScale::from_steps([
@@ -134,7 +134,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    /// The light ruby scale.
+    /// The 12-step ruby red scale of the light theme.
     #[must_use]
     pub const fn ruby_light() -> ColorScale {
         ColorScale::from_steps([
@@ -156,7 +156,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    /// The light cyan scale.
+    /// The 12-step cyan scale of the light theme.
     #[must_use]
     pub const fn cyan_light() -> ColorScale {
         ColorScale::from_steps([
@@ -178,7 +178,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    /// The dark slate scale.
+    /// The 12-step slate gray scale of the dark theme.
     #[must_use]
     pub const fn slate_dark() -> ColorScale {
         ColorScale::from_steps([
@@ -199,7 +199,7 @@ kittest_pub! {
     }
 }
 
-/// The dark iris scale.
+/// The 12-step iris scale for a dark background; no built-in theme uses it.
 #[must_use]
 #[cfg(feature = "kittest")]
 pub const fn iris_dark() -> ColorScale {
@@ -221,7 +221,7 @@ pub const fn iris_dark() -> ColorScale {
 }
 
 kittest_pub! {
-    /// The light blue scale.
+    /// The 12-step blue scale of the light theme.
     #[must_use]
     pub const fn blue_light() -> ColorScale {
         ColorScale::from_steps([
@@ -243,7 +243,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
-    /// The dark blue scale.
+    /// The 12-step blue scale of the dark theme.
     #[must_use]
     pub const fn blue_dark() -> ColorScale {
         ColorScale::from_steps([
@@ -264,7 +264,7 @@ kittest_pub! {
     }
 }
 
-/// The dark green scale.
+/// The 12-step green scale of the dark theme.
 #[must_use]
 pub(crate) const fn green_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -284,7 +284,7 @@ pub(crate) const fn green_dark() -> ColorScale {
     .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// The dark amber scale.
+/// The 12-step amber scale of the dark theme.
 #[must_use]
 pub(crate) const fn amber_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -304,7 +304,7 @@ pub(crate) const fn amber_dark() -> ColorScale {
     .on_solid(Color::rgb(0x4F, 0x34, 0x22))
 }
 
-/// The dark ruby scale.
+/// The 12-step ruby red scale of the dark theme.
 #[must_use]
 pub(crate) const fn ruby_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -324,7 +324,7 @@ pub(crate) const fn ruby_dark() -> ColorScale {
     .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// The dark cyan scale.
+/// The 12-step cyan scale of the dark theme.
 #[must_use]
 pub(crate) const fn cyan_dark() -> ColorScale {
     ColorScale::from_steps([

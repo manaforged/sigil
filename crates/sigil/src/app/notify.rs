@@ -4,11 +4,11 @@ use crate::error::{AppResult, Error};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Notification {
-    /// The title.
+    /// The summary line of the notification.
     pub title: String,
-    /// The body.
+    /// The text shown under the summary line.
     pub body: String,
-    /// The app name, if any.
+    /// The app name sent with the notification; `None` sends no name.
     pub app_name: Option<String>,
 }
 

@@ -1,9 +1,9 @@
 /// Gives line height as a multiple of font size or in pixels.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TextLineHeight {
-    /// The font size relative text line height.
+    /// A multiple of the font size; the default is 1.2.
     FontSizeRelative(f32),
-    /// The absolute text line height.
+    /// A fixed line height in pixels.
     Absolute(f32),
 }
 
@@ -16,23 +16,23 @@ impl Default for TextLineHeight {
 /// Holds the resolved typography of a text node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
-    /// The font family.
+    /// The font family name, such as `sans` or `mono`; the default is `system-ui`.
     pub font_family: String,
-    /// The font size.
+    /// The font size in pixels; the default is 14.
     pub font_size: f32,
-    /// The font weight.
+    /// The font weight from 1 to 1000; the default is 400.
     pub font_weight: u16,
-    /// Whether italic.
+    /// Whether the text is italic.
     pub italic: bool,
-    /// The line height.
+    /// The line height, as a multiple of the font size or in pixels.
     pub line_height: TextLineHeight,
-    /// The letter spacing em.
+    /// The extra space between letters, in ems.
     pub letter_spacing_em: f32,
-    /// Whether tabular nums.
+    /// Whether digits all take the same width.
     pub tabular_nums: bool,
-    /// The decoration.
+    /// The line drawn with the text: none, underline, or line-through.
     pub decoration: crate::style::TextDecoration,
-    /// The runs, if any.
+    /// The styled runs that override this style over byte ranges; `None` for plain text.
     pub runs: Option<TextRuns>,
 }
 
@@ -44,29 +44,29 @@ pub struct TextStyle {
 )]
 #[non_exhaustive]
 pub struct TextFace {
-    /// Whether bold.
+    /// Whether the run is bold: weight 700 unless the base weight is already 700 or more.
     pub bold: bool,
-    /// Whether italic.
+    /// Whether the run is italic.
     pub italic: bool,
-    /// Whether mono.
+    /// Whether the run uses the `mono` font family.
     pub mono: bool,
-    /// Whether struck through.
+    /// Whether a line is drawn through the run.
     pub strike: bool,
-    /// The color, if any.
+    /// The theme token for the text color of the run, when it sets one.
     pub color: Option<crate::style::Token>,
-    /// The background, if any.
+    /// The theme token for the background behind the run, when it sets one.
     pub background: Option<crate::style::Token>,
     /// The exact color, if any; it wins over `color`.
     pub ink: Option<crate::style::Color>,
     /// The exact background, if any; it wins over `background`.
     pub fill: Option<crate::style::Color>,
-    /// Whether underlined.
+    /// Whether a line is drawn under the run.
     pub underline: bool,
-    /// Whether drawn fainter.
+    /// Whether the run is drawn fainter than the text around it.
     pub dim: bool,
     /// Whether this is a terminal cell: a square background on a fixed character grid.
     pub square: bool,
-    /// The link, if any.
+    /// The link target that the run carries; `None` when the run is not a link.
     pub link: Option<std::sync::Arc<str>>,
 }
 
@@ -74,18 +74,18 @@ pub struct TextFace {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct TextRun {
-    /// The start.
+    /// The byte offset where the run starts, inclusive.
     pub start: usize,
-    /// The end.
+    /// The byte offset where the run ends, exclusive.
     pub end: usize,
-    /// The face.
+    /// The overrides that apply to this byte range.
     pub face: TextFace,
 }
 
 /// The styled runs of a text, sorted by byte offset.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextRuns(
-    /// The runs.
+    /// The runs in order of their start byte offset.
     pub std::sync::Arc<[TextRun]>,
 );
 

@@ -81,22 +81,22 @@ pub(crate) const fn ask_cell() -> Result<Option<[u16; 2]>, Busy> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ColorDepth {
-    /// The truecolor color depth.
+    /// The terminal shows 24-bit RGB colors.
     Truecolor,
-    /// The ansi256 color depth.
+    /// The terminal shows the 256-color palette; an RGB color maps to its nearest palette entry.
     Ansi256,
-    /// The ansi16 color depth.
+    /// The terminal shows the 16 ANSI colors; an RGB color maps to the nearest of them.
     Ansi16,
-    /// The monochrome color depth.
+    /// The terminal shows no color; every cell uses the default foreground and background.
     Monochrome,
 }
 
 /// Terminal background brightness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backdrop {
-    /// The dark backdrop.
+    /// The terminal background is dark, so the dark theme is the default.
     Dark,
-    /// The light backdrop.
+    /// The terminal background is light, so the light theme is the default.
     Light,
 }
 
@@ -104,9 +104,9 @@ pub enum Backdrop {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Keyboard {
-    /// The legacy keyboard.
+    /// The terminal sends legacy key codes; the host does not turn on the kitty keyboard protocol.
     Legacy,
-    /// The kitty keyboard.
+    /// The terminal speaks the kitty keyboard protocol, which the host turns on at start.
     Kitty,
 }
 
@@ -114,9 +114,9 @@ pub enum Keyboard {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ClipRoute {
-    /// The pbcopy clip route.
+    /// The host runs `pbcopy` and `pbpaste`; the default on macOS outside an SSH session.
     Pbcopy,
-    /// The osc52 clip route.
+    /// The host asks the terminal to set and read the clipboard with OSC 52.
     Osc52,
 }
 
@@ -124,11 +124,11 @@ pub enum ClipRoute {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Borders {
-    /// The rounded borders.
+    /// The terminal draws rounded box corners; a border 2 or more wide uses heavy lines.
     Rounded,
-    /// The light borders.
+    /// The terminal draws light box lines with square corners, as on the Linux console.
     Light,
-    /// The ascii borders.
+    /// The terminal draws only ASCII, so borders use `+`, `-` and `|`.
     Ascii,
 }
 
@@ -136,9 +136,9 @@ pub enum Borders {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Fills {
-    /// The partial fills.
+    /// The terminal draws half-block and eighth-block characters, so an opaque fill can end inside a cell.
     Partial,
-    /// The whole fills.
+    /// The terminal fills whole cells only; the default for Apple Terminal.
     Whole,
 }
 
@@ -146,18 +146,18 @@ pub enum Fills {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Cursor {
-    /// The bar cursor.
+    /// The host sets a steady bar cursor at the caret; the default on a known modern terminal.
     Bar,
-    /// The block cursor.
+    /// The host leaves the cursor shape of the terminal unchanged.
     Block,
 }
 
 /// How clearing to the end of a line fills the cleared cells.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Erase {
-    /// The background erase.
+    /// The terminal fills cleared cells with the current background color.
     Background,
-    /// The default erase.
+    /// The terminal fills cleared cells with its default background, so the host writes colored cells one by one.
     Default,
 }
 

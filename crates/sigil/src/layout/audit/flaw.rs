@@ -32,86 +32,86 @@ pub enum Flaw {
 pub enum Issue {
     /// Rows of a table whose columns do not line up.
     Column {
-        /// The stack that holds the rows.
+        /// The stack whose child rows hold the cells.
         parent: NodeLabel,
-        /// The column index.
+        /// The 0-based index of the column that is out of line.
         column: usize,
-        /// The top of each row.
+        /// The y position of each row, in pixels.
         tops: Vec<f32>,
-        /// The start of the cell in each row.
+        /// The x position where the cell of each row starts, in pixels.
         starts: Vec<f32>,
-        /// The end of the cell in each row.
+        /// The x position where the cell of each row ends, in pixels.
         ends: Vec<f32>,
     },
     /// A lone child with nearly, but not exactly, even space around it.
     Inset {
-        /// The child.
+        /// The lone child with uneven space around it.
         node: NodeLabel,
         /// The child's box.
         rect: Rect,
-        /// The axis of the uneven space.
+        /// The axis along which the space is uneven.
         axis: Orientation,
-        /// The space before the child.
+        /// The space between the start edge of the parent and the child, in pixels.
         start: f32,
-        /// The space after the child.
+        /// The space between the child and the end edge of the parent, in pixels.
         end: f32,
     },
     /// Text taller than the box that clips it.
     ClippedText {
-        /// The text.
+        /// The text node that is clipped.
         node: NodeLabel,
-        /// The height that the text needs.
+        /// The height that the text needs, in pixels.
         needed: f32,
-        /// The height of the clip.
+        /// The height of the box that clips the text, in pixels.
         shown: f32,
     },
     /// Controls in one row with different heights.
     UnevenControls {
-        /// The row.
+        /// The row that holds the controls.
         parent: NodeLabel,
-        /// The height of each control.
+        /// The height of each control in the row, in pixels.
         heights: Vec<f32>,
     },
     /// Siblings in normal flow that cover each other.
     Overlap {
-        /// The earlier sibling.
+        /// The earlier of the two siblings in child order.
         first: NodeLabel,
-        /// The later sibling.
+        /// The later of the two siblings in child order.
         second: NodeLabel,
     },
     /// A child that leaves a parent that does not clip or scroll.
     Overflow {
-        /// The child.
+        /// The child that leaves its parent.
         node: NodeLabel,
-        /// The parent.
+        /// The parent that the child leaves.
         parent: NodeLabel,
-        /// The distance outside the parent.
+        /// The largest distance that the child extends past an edge of the parent, in pixels.
         by: f32,
     },
     /// Text below the WCAG 2.2 AA contrast ratio.
     Contrast {
-        /// The text.
+        /// The text node with too little contrast.
         node: NodeLabel,
-        /// The ratio found.
+        /// The contrast ratio between the text and the color behind it.
         ratio: f32,
-        /// The ratio needed.
+        /// The lowest contrast ratio that passes for this text.
         needed: f32,
     },
     /// A control under the WCAG 2.2 AA pointer target size.
     SmallTarget {
-        /// The control.
+        /// The control that is too small.
         node: NodeLabel,
-        /// The width found.
+        /// The width of the control, in pixels.
         width: f32,
-        /// The height found.
+        /// The height of the control, in pixels.
         height: f32,
-        /// The size needed on each side.
+        /// The smallest width and height that pass, in pixels.
         needed: f32,
     },
 }
 
 impl Issue {
-    /// The rule that this issue breaks.
+    /// Returns the rule that this issue breaks.
     #[must_use]
     pub const fn kind(&self) -> Flaw {
         match self {

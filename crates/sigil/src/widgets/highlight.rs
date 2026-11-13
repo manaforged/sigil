@@ -17,7 +17,7 @@ pub struct Highlight {
     pub(crate) start: usize,
     /// The column past the last grapheme.
     pub(crate) end: usize,
-    /// The token.
+    /// The theme token that colors the columns.
     pub(crate) token: Token,
 }
 
@@ -28,19 +28,19 @@ impl Highlight {
         Self { start, end, token }
     }
 
-    /// The first column.
+    /// Returns the first grapheme column of the mark, 0-based.
     #[must_use]
     pub const fn start(&self) -> usize {
         self.start
     }
 
-    /// The column after the last.
+    /// Returns the grapheme column after the last one of the mark.
     #[must_use]
     pub const fn end(&self) -> usize {
         self.end
     }
 
-    /// The color token.
+    /// Returns the theme token that colors the mark.
     #[must_use]
     pub const fn token(&self) -> Token {
         self.token

@@ -18,13 +18,13 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 /// One menu entry.
 #[derive(Clone)]
 pub struct MenuItem {
-    /// The label.
+    /// The text that the entry shows.
     pub(crate) label: String,
-    /// The hint text, if any.
+    /// The shortcut text shown in the entry; `None` shows none.
     pub(crate) hint: Option<String>,
-    /// Whether disabled.
+    /// Whether the entry is disabled.
     pub(crate) disabled: bool,
-    /// Whether submenu indicator.
+    /// Whether the entry shows a chevron to mark that it opens a submenu; false by default.
     pub(crate) submenu_indicator: bool,
     pub(super) on_activate: Option<Rc<dyn Fn()>>,
 }

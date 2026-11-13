@@ -30,9 +30,9 @@ use selection::HunkPicker;
 /// Diff view: side-by-side or unified rows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffView {
-    /// The split diff view.
+    /// The old text is on the left and the new text is on the right, side by side.
     Split,
-    /// The unified diff view.
+    /// The removed and the added lines share one column, in patch order.
     Unified,
 }
 

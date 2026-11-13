@@ -56,7 +56,7 @@ kittest_pub! {
     /// Identifies a transition preset.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct TransitionId(
-        /// The preset number.
+        /// The number that names the preset, such as 0 for the smooth preset.
         pub u16,
     );
 }
@@ -66,7 +66,7 @@ kittest_pub! {
     /// A duration in whole milliseconds.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct MillisU16(
-        /// The milliseconds.
+        /// The duration in milliseconds, from 0 to 65535.
         pub u16,
     );
 }
@@ -75,15 +75,15 @@ kittest_pub! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Elevation {
-    /// The sm elevation.
+    /// The shallowest shadow: 1 px down with a 2 px blur.
     Sm,
-    /// The base elevation.
+    /// A shadow 2 px down with a 4 px blur.
     Base,
-    /// The md elevation.
+    /// A shadow 4 px down with an 8 px blur, the depth that overlays use.
     Md,
-    /// The lg elevation.
+    /// A shadow 8 px down with a 16 px blur.
     Lg,
-    /// The xl elevation.
+    /// The deepest shadow: 16 px down with a 28 px blur.
     Xl,
 }
 
@@ -91,35 +91,35 @@ kittest_pub! {
     /// Holds the resolved paint properties of one node.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RenderStyle {
-        /// The background color, if any.
+        /// The solid background color; `None` when a gradient or nothing fills the box.
         pub background_color: Option<Color>,
-        /// The background gradient, if any.
+        /// The linear background gradient; `None` when a solid color or nothing fills the box.
         pub background_gradient: Option<BgGradient>,
-        /// The text color, if any.
+        /// The text color, when a style atom sets one.
         pub text_color: Option<Color>,
-        /// The border radius, if any.
+        /// The corner radius in pixels, when a style atom sets one.
         pub border_radius: Option<i16>,
-        /// The border width, if any.
+        /// The border width on all four sides in pixels, when a style atom sets one.
         pub border_width: Option<i16>,
-        /// The border top, if any.
+        /// The width of the top border in pixels, when set for that side.
         pub border_top: Option<i16>,
-        /// The border right, if any.
+        /// The width of the right border in pixels, when set for that side.
         pub border_right: Option<i16>,
-        /// The border bottom, if any.
+        /// The width of the bottom border in pixels, when set for that side.
         pub border_bottom: Option<i16>,
-        /// The border left, if any.
+        /// The width of the left border in pixels, when set for that side.
         pub border_left: Option<i16>,
-        /// The border color, if any.
+        /// The border color, when a style atom sets one.
         pub border_color: Option<Color>,
-        /// The shadow, if any.
+        /// The shadow depth, when a style atom sets one.
         pub shadow: Option<Elevation>,
-        /// The opacity.
+        /// The opacity in ten-thousandths, where 10000 is opaque and the default.
         pub opacity: u16,
-        /// The transform.
+        /// The 2D move, scale, and turn applied when the node paints; the default is the identity.
         pub transform: Transform2D,
         /// The gradient, image, clip, and border style paint.
         pub paint: PaintStyle,
-        /// The clip path, if any.
+        /// The shape that clips the paint of the node, when a style atom sets one.
         pub clip_path: Option<ClipShape>,
         /// The 3D turn, depth, perspective, and backface.
         pub space: SpaceStyle,
@@ -166,12 +166,12 @@ impl Default for RenderStyle {
 /// Selects the line drawn with text.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextDecoration {
-    /// The none text decoration.
+    /// No line is drawn with the text.
     #[default]
     None,
-    /// The underline text decoration.
+    /// A line under the text.
     Underline,
-    /// The line through text decoration.
+    /// A line through the middle of the text.
     LineThrough,
 }
 
@@ -180,152 +180,152 @@ kittest_pub! {
     /// One style property with its value.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub enum StyleAtom {
-        /// The padding all style atom.
+        /// Padding on all four sides, in pixels.
         PaddingAll(i16),
-        /// The padding x style atom.
+        /// Padding on the left and right, in pixels.
         PaddingX(i16),
-        /// The padding y style atom.
+        /// Padding on the top and bottom, in pixels.
         PaddingY(i16),
-        /// The padding top style atom.
+        /// Padding on the top, in pixels.
         PaddingTop(i16),
-        /// The padding right style atom.
+        /// Padding on the right, in pixels.
         PaddingRight(i16),
-        /// The padding bottom style atom.
+        /// Padding on the bottom, in pixels.
         PaddingBottom(i16),
-        /// The padding left style atom.
+        /// Padding on the left, in pixels.
         PaddingLeft(i16),
-        /// The margin all style atom.
+        /// Margin on all four sides, in pixels.
         MarginAll(i16),
-        /// The margin x style atom.
+        /// Margin on the left and right, in pixels.
         MarginX(i16),
-        /// The margin y style atom.
+        /// Margin on the top and bottom, in pixels.
         MarginY(i16),
-        /// The margin top style atom.
+        /// Margin on the top, in pixels.
         MarginTop(i16),
-        /// The margin right style atom.
+        /// Margin on the right, in pixels.
         MarginRight(i16),
-        /// The margin bottom style atom.
+        /// Margin on the bottom, in pixels.
         MarginBottom(i16),
-        /// The margin left style atom.
+        /// Margin on the left, in pixels.
         MarginLeft(i16),
-        /// The gap style atom.
+        /// The gap between children on both axes, in pixels.
         Gap(i16),
-        /// The gap x style atom.
+        /// The horizontal gap between children, in pixels.
         GapX(i16),
-        /// The gap y style atom.
+        /// The vertical gap between children, in pixels.
         GapY(i16),
-        /// The width style atom.
+        /// The width as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         Width(u8, i16),
-        /// The height style atom.
+        /// The height as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         Height(u8, i16),
-        /// The min width style atom.
+        /// The minimum width as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         MinWidth(u8, i16),
-        /// The max width style atom.
+        /// The maximum width as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         MaxWidth(u8, i16),
-        /// The min height style atom.
+        /// The minimum height as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         MinHeight(u8, i16),
-        /// The max height style atom.
+        /// The maximum height as a kind and a value: pixels, the full container, a fraction in ten-thousandths, or auto.
         MaxHeight(u8, i16),
-        /// The display style atom.
+        /// The layout mode of the node: block, flex, grid, or none.
         Display(Display),
-        /// The flex direction style atom.
+        /// The main axis of a flex box and the direction children run along it.
         FlexDirection(crate::layout::FlexDirection),
-        /// The flex wrap style atom.
+        /// Whether the children of a flex box wrap onto more lines.
         FlexWrap(FlexWrap),
-        /// The align items style atom.
+        /// The alignment of children on the cross axis.
         AlignItems(AlignItems),
-        /// The justify content style atom.
+        /// The distribution of children along the main axis.
         JustifyContent(JustifyContent),
-        /// The flex grow style atom.
+        /// The flex grow factor in thousandths, so 1000 is a factor of 1.
         FlexGrow(u16),
-        /// The flex shrink style atom.
+        /// The flex shrink factor in thousandths, so 1000 is a factor of 1.
         FlexShrink(u16),
-        /// The grid columns style atom.
+        /// Makes the node a grid with this many columns of equal width.
         GridColumns(u16),
-        /// The grid rows style atom.
+        /// Makes the node a grid with this many rows.
         GridRows(u16),
-        /// The background color style atom.
+        /// A solid background color, which replaces a background gradient.
         BackgroundColor(ColorAtom),
-        /// The background gradient style atom.
+        /// A linear background gradient, which replaces a solid background color.
         BackgroundGradient(BgGradient),
-        /// The text color style atom.
+        /// The color of the text.
         TextColor(ColorAtom),
-        /// The bg tone step style atom.
+        /// Fills the background with this step, 1 to 12, of the tone in scope.
         BgToneStep(u8),
-        /// The fg tone step style atom.
+        /// Colors the text with this step, 1 to 12, of the tone in scope.
         FgToneStep(u8),
-        /// The fg on solid style atom.
+        /// Colors the text with the `on_solid` color of the tone in scope.
         FgOnSolid,
-        /// The border radius style atom.
+        /// The corner radius in pixels.
         BorderRadius(i16),
-        /// The radius style atom.
+        /// The corner radius as a step of the radius scale.
         Radius(super::Radius),
-        /// The border width style atom.
+        /// The border width on all four sides, in pixels.
         BorderWidth(i16),
-        /// The border top style atom.
+        /// The width of the top border, in pixels.
         BorderTop(i16),
-        /// The border right style atom.
+        /// The width of the right border, in pixels.
         BorderRight(i16),
-        /// The border bottom style atom.
+        /// The width of the bottom border, in pixels.
         BorderBottom(i16),
-        /// The border left style atom.
+        /// The width of the left border, in pixels.
         BorderLeft(i16),
-        /// The border color style atom.
+        /// The color of the border.
         BorderColor(ColorAtom),
-        /// The border tone step style atom.
+        /// Colors the border with this step, 1 to 12, of the tone in scope.
         BorderToneStep(u8),
-        /// The shadow style atom.
+        /// The depth of the shadow that the node casts.
         Shadow(Elevation),
-        /// The opacity style atom.
+        /// The opacity in ten-thousandths, where 10000 is opaque.
         Opacity(u16),
-        /// The transform style atom.
+        /// A 2D move, scale, and turn applied when the node paints.
         #[cfg(feature = "kittest")]
         Transform(Transform2D),
-        /// The font size style atom.
+        /// The font size in pixels, at least 1.
         FontSize(i16),
-        /// The font weight style atom.
+        /// The font weight, clamped to the range 1 to 1000.
         FontWeight(u16),
-        /// The font italic style atom.
+        /// Whether the text is italic.
         FontItalic(bool),
-        /// The font family style atom.
+        /// The name of the font family, such as `sans` or `mono`.
         FontFamily(&'static str),
-        /// The line height style atom.
+        /// The line height in pixels, at least 1.
         LineHeight(i16),
-        /// The letter spacing style atom.
+        /// The letter spacing in thousandths of an em.
         LetterSpacing(i16),
-        /// The tabular nums style atom.
+        /// Whether digits all take the same width.
         TabularNums(bool),
-        /// The text decoration style atom.
+        /// The line drawn with the text: none, underline, or line-through.
         TextDecoration(TextDecoration),
-        /// The overflow x style atom.
+        /// What happens to content that is wider than the node.
         OverflowX(Overflow),
-        /// The overflow y style atom.
+        /// What happens to content that is taller than the node.
         OverflowY(Overflow),
-        /// The transition style atom.
+        /// The transition preset of the node, by id.
         Transition(TransitionId),
-        /// The transition duration style atom.
+        /// The duration of the transition, in milliseconds.
         TransitionDuration(MillisU16),
-        /// The transition easing style atom.
+        /// The easing curve of the transition.
         TransitionEase(crate::animation::Easing),
-        /// The transition delay style atom.
+        /// The delay before the transition starts, in milliseconds.
         TransitionDelay(MillisU16),
-        /// The keyframe animation style atom.
+        /// A keyframe animation, by the id of its keyframes.
         Animation(crate::animation::KeyframesId),
         /// The gradient, image, clip, and border style atom.
         Paint(PaintAtom),
-        /// The clip path style atom.
+        /// The shape that clips the paint of the node.
         ClipPath(ClipShape),
         /// The 3D transform style atom.
         Space(SpaceAtom),
-        /// The mask style atom.
+        /// One part of the mask of the node.
         Mask(MaskAtom),
         /// The mix-blend-mode style atom.
         MixBlend(crate::scene::BlendMode),
         /// The filter and text shadow style atom.
         Filter(FilterAtom),
-        /// The drop shadow color style atom.
+        /// The color of the drop shadow filter.
         DropShadowColor(ColorAtom),
-        /// The text shadow color style atom.
+        /// The color of the text shadow.
         TextShadowColor(ColorAtom),
     }
 }

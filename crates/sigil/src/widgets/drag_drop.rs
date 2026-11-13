@@ -209,7 +209,7 @@ pub(crate) fn target<T: Clone + 'static>(
         })
 }
 
-/// The node that follows the pointer.
+/// Returns a node that shows `render` of the dragged payload beside the pointer, and nothing when no drag is active.
 #[must_use]
 pub fn drag_ghost<T, N>(state: DragState<T>, render: impl Fn(&T) -> N + 'static) -> NodeBuilder
 where

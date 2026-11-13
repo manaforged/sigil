@@ -7,7 +7,7 @@ pub enum Tone {
     /// Gray.
     #[default]
     Neutral,
-    /// The accent color.
+    /// The accent color of the theme.
     Primary,
     /// Information, cyan by default.
     Info,
@@ -49,7 +49,7 @@ kittest_pub! {
     /// Carries the tone that descendants resolve tone colors against.
     #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
     pub struct ToneContext {
-        /// The tone.
+        /// The tone that descendants resolve tone steps against.
         pub tone: Tone,
     }
 }

@@ -24,13 +24,13 @@ pub(crate) use reveal::{ScrollReveal, reveal_focus};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FocusDirection {
-    /// The up focus intent.
+    /// Focus moves to the nearest focusable node above, or to the previous node when none is above.
     Up,
-    /// The down focus intent.
+    /// Focus moves to the nearest focusable node below, or to the next node when none is below.
     Down,
-    /// The left focus intent.
+    /// Focus moves to the nearest focusable node to the left, or to the previous node when none is there.
     Left,
-    /// The right focus intent.
+    /// Focus moves to the nearest focusable node to the right, or to the next node when none is there.
     Right,
 }
 

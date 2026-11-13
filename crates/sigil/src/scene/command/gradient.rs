@@ -26,7 +26,7 @@ kittest_pub! {
         },
         /// Colors change clockwise around `center`, starting `angle` degrees clockwise from up.
         Conic {
-            /// The center.
+            /// The point that the colors turn around.
             center: Point,
             /// The start angle in degrees, clockwise from up, as in CSS `conic-gradient(from ..)`.
             angle: f32,
@@ -39,7 +39,7 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct Gradient {
-        /// The geometry.
+        /// Whether the gradient is linear, radial, or conic, with its points.
         pub kind: GradientKind,
         /// The stops, at offsets from 0 to 1.
         pub stops: SmallVec<[GradientStop; 4]>,

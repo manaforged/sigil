@@ -6,25 +6,25 @@ kittest_pub! {
     /// Holds the recorded timings, counters, attributions, and GPU pass times of one frame.
     #[derive(Clone, Debug, Default)]
     pub struct Frame {
-        /// The index.
+        /// The 0-based position of the frame among the frames closed since profiling began.
         pub index: u32,
-        /// The cause.
+        /// The highest-ranked input that arrived while the frame was open; `Idle` when none did.
         pub cause: Cause,
-        /// The wall ns.
+        /// The wall-clock time from the start of the frame to its close, in nanoseconds; 0 when the start was not recorded.
         pub wall_ns: u64,
-        /// The phases.
+        /// The time spent in each phase, in nanoseconds, with one entry per phase that ran.
         pub phases: Vec<PhaseTime>,
-        /// The counts.
+        /// The value of each counter that was touched in the frame.
         pub counts: Vec<CounterValue>,
-        /// The backend, if any.
+        /// The renderer backend the frame began with; `None` when no frame was begun.
         pub backend: Option<BackendStatus>,
-        /// The hot.
+        /// The per-subject counts of each hotspot in the frame.
         pub hot: Vec<Attribution>,
-        /// The gpu passes.
+        /// The label and total time, in nanoseconds, of each timed GPU pass.
         pub gpu_passes: Vec<(&'static str, u64)>,
         /// The time each effect and child list line took, slowest first once the frame closes.
         pub sites: Vec<Site>,
-        /// The end us.
+        /// When the frame closed, in microseconds since the profiler's origin.
         pub end_us: u64,
     }
 }

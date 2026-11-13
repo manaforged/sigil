@@ -129,52 +129,52 @@ kittest_pub! {
     pub enum SceneCommand {
         /// Clips the commands up to the matching `PopClip`.
         PushClip(Clip),
-        /// The pop clip scene command.
+        /// Ends the clip that the matching `PushClip` opened.
         PopClip,
         #[cfg(scene_paint)]
-        /// The push transform scene command.
+        /// Applies a 2D affine transform to the commands up to the matching `PopTransform`.
         PushTransform(Transform),
         #[cfg(scene_paint)]
-        /// The pop transform scene command.
+        /// Ends the transform that the matching `PushTransform` opened.
         PopTransform,
         #[cfg(host)]
-        /// The save layer scene command.
+        /// Draws the commands up to the matching `RestoreLayer` into a layer composited at `opacity`.
         SaveLayer {
-            /// The opacity.
+            /// The opacity the layer is composited at, from 0 to 1.
             opacity: f32,
         },
         #[cfg(terminal_host)]
-        /// The restore layer scene command.
+        /// Ends the layer that the matching `SaveLayer` opened.
         RestoreLayer,
-        /// The push layer scene command.
+        /// Draws the commands up to the matching `PopLayer` into a layer with its own clip, effect, opacity, and blend mode.
         PushLayer(LayerScope),
-        /// The pop layer scene command.
+        /// Ends the layer that the matching `PushLayer` opened.
         PopLayer,
-        /// The rect scene command.
+        /// Fills or strokes a rounded rectangle with one color.
         Rect(DrawRect),
-        /// The gradient scene command.
+        /// Fills a rounded rectangle with a gradient.
         Gradient(DrawGradient),
-        /// The pattern scene command.
+        /// Fills a rounded rectangle with a repeating pattern.
         Pattern(DrawPattern),
-        /// The draw shadow scene command.
+        /// Draws the shadow of a rounded rectangle.
         DrawShadow {
-            /// The rect.
+            /// The rectangle that casts the shadow, as x, y, width, and height.
             rect: [f32; 4],
-            /// The radii.
+            /// The corner radii of the rectangle that casts the shadow.
             radii: CornerRadii,
-            /// The shadow.
+            /// The offset, blur, spread, color, and kind of the shadow.
             shadow: Shadow,
         },
-        /// The glyph run scene command.
+        /// Draws one run of text.
         GlyphRun(GlyphRun),
         #[cfg(feature = "kittest")]
-        /// The sprite scene command.
+        /// Draws a region of an atlas texture into a rectangle.
         Sprite(DrawSprite),
-        /// The image scene command.
+        /// Draws an image fitted into a rectangle.
         Image(DrawImage),
-        /// The vector path scene command.
+        /// Fills and strokes a vector path.
         Path(DrawPath),
-        /// The decoration scene command.
+        /// Draws an underline or a strikethrough.
         Decoration(DrawDecoration),
     }
 }

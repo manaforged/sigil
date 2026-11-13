@@ -8,11 +8,11 @@ use smallvec::SmallVec;
 /// The fill of a painted area: solid color, gradient, or pattern.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PaintFill {
-    /// The solid paint fill.
+    /// One color.
     Solid(Color),
-    /// The linear gradient paint fill.
+    /// A gradient along a straight axis.
     LinearGradient(LinearGradient),
-    /// The pattern paint fill.
+    /// A repeating pattern.
     Pattern(PatternKind),
 }
 
@@ -22,26 +22,26 @@ kittest_pub! {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum PatternKind {
         #[cfg(feature = "kittest")]
-        /// The slash pattern kind.
+        /// Diagonal lines of one color.
         Slash {
-            /// The color.
+            /// The color of the lines; the space between them stays unpainted.
             color: Color,
-            /// The period.
+            /// The length after which the lines repeat, clamped to 1 through 1024.
             period: f32,
-            /// The line width.
+            /// The width of each line, clamped to 0 through `period`.
             line_width: f32,
         },
         #[cfg(feature = "kittest")]
-        /// The checker pattern kind.
+        /// Squares that alternate between two colors.
         Checker {
-            /// The color a.
+            /// The color of the square at the origin of the filled rectangle.
             color_a: Color,
-            /// The color b.
+            /// The color of the squares next to the `color_a` squares.
             color_b: Color,
-            /// The cell.
+            /// The side of one square, clamped to 1 through 1024.
             cell: f32,
         },
-        /// The watercolour wash pattern kind.
+        /// A watercolour wash that does not repeat.
         Wash(super::wash::Wash),
     }
 }
@@ -131,11 +131,11 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct LinearGradient {
-        /// The start.
+        /// The point where offset 0 lies, in the logical pixels of the filled shape.
         pub start: Point,
-        /// The end.
+        /// The point where offset 1 lies, in the logical pixels of the filled shape.
         pub end: Point,
-        /// The stops.
+        /// The color stops along the axis, at offsets from 0 to 1.
         pub stops: SmallVec<[GradientStop; 4]>,
     }
 }
@@ -219,9 +219,9 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct GradientStop {
-        /// The offset.
+        /// The position along the gradient, from 0 at its start to 1 at its end.
         pub offset: f32,
-        /// The color.
+        /// The color at `offset`.
         pub color: Color,
     }
 }
@@ -241,10 +241,10 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum StrokeStyle {
-        /// The solid stroke style.
+        /// One unbroken line.
         Solid,
         #[cfg(feature = "kittest")]
-        /// The dashed stroke style.
+        /// Dashes with a gap of this length between them.
         Dashed(f32),
     }
 }
@@ -255,11 +255,11 @@ kittest_pub! {
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum StrokeAlign {
         #[cfg(feature = "kittest")]
-        /// The centered stroke align.
+        /// Half of the width lies on each side of the shape's edge.
         Centered,
-        /// The inside stroke align.
+        /// The whole width lies inside the shape's edge.
         Inside,
-        /// The outside stroke align.
+        /// The whole width lies outside the shape's edge.
         Outside,
     }
 }
@@ -269,13 +269,13 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct Stroke {
-        /// The color.
+        /// The color that the line is painted with.
         pub color: Color,
-        /// The width.
+        /// The width of the line, in logical pixels; 0 or less draws nothing.
         pub width: f32,
-        /// The style.
+        /// Solid, or dashed with a gap length.
         pub style: StrokeStyle,
-        /// The align.
+        /// Which side of the shape's edge the line lies on.
         pub align: StrokeAlign,
     }
 }

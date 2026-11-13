@@ -118,9 +118,9 @@ enum ListSizing {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ScrollAnchor {
-    /// The first row.
+    /// The list starts at the first row, at scroll offset 0.
     Top,
-    /// The end of the content.
+    /// The list starts scrolled to the end of the content.
     Bottom,
     /// The row at this index, at the top of the viewport when the content allows.
     Index(usize),

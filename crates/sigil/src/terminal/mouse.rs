@@ -12,14 +12,14 @@ pub(crate) const MOUSE_OFF: &str = "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum MouseTracking {
-    /// The off mouse tracking.
+    /// The terminal sends no mouse reports.
     Off,
-    /// The clicks mouse tracking.
+    /// The terminal reports button presses and releases (mode 1000).
     Clicks,
-    /// The drags mouse tracking.
+    /// The terminal also reports motion while a button is held (mode 1002).
     #[default]
     Drags,
-    /// The motion mouse tracking.
+    /// The terminal also reports motion with no button held (mode 1003).
     Motion,
 }
 

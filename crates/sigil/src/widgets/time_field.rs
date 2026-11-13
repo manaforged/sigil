@@ -10,9 +10,9 @@ use super::field::{FieldParser, ParsedField, parsed_controls};
 pub struct Time {
     /// The hour, from 0 to 23.
     pub(crate) hour: u8,
-    /// The minute.
+    /// The minute, from 0 to 59.
     pub(crate) minute: u8,
-    /// The second.
+    /// The second, from 0 to 59.
     pub(crate) second: u8,
 }
 
@@ -79,7 +79,7 @@ impl Time {
 /// A calendar date and a time of day.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct DateTime {
-    /// The date.
+    /// The calendar date.
     pub(crate) date: Date,
     /// The time of day.
     pub(crate) time: Time,

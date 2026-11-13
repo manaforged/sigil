@@ -29,11 +29,11 @@ impl TextStyleCapture {
 /// Holds the position and height of a text caret.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CaretGeometry {
-    /// The x.
+    /// The horizontal position of the caret within the text, in pixels.
     pub x: f32,
-    /// The top.
+    /// The top of the caret within the text, in pixels.
     pub top: f32,
-    /// The height.
+    /// The height of the caret, in pixels.
     pub height: f32,
 }
 

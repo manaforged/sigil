@@ -12,17 +12,17 @@ kittest_pub! {
     #[cfg(scene_paint)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct DrawSprite {
-        /// The node, if any.
+        /// The node this sprite paints, or `None` when no node owns it.
         pub node: Option<NodeId>,
-        /// The source.
+        /// The atlas and the region of it to draw.
         pub source: SpriteSource,
-        /// The kind.
+        /// Whether the atlas region is coverage to tint or full color.
         pub kind: SpriteKind,
-        /// The destination.
+        /// The rectangle the region is stretched into, in logical pixels.
         pub destination: Rect,
-        /// The color.
+        /// The tint of a `Mono` or `Subpixel` sprite; a `Poly` sprite ignores it.
         pub color: Color,
-        /// The opacity.
+        /// The opacity in basis points; 10000 is opaque.
         pub opacity: u16,
     }
 }
@@ -66,19 +66,19 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct DrawDecoration {
-        /// The node, if any.
+        /// The node this decoration paints, or `None` when no node owns it.
         pub node: Option<NodeId>,
-        /// The kind.
+        /// Whether the line is an underline or a strikethrough.
         pub kind: DecorationKind,
-        /// The band.
+        /// The rectangle the line is drawn in, centred on its height.
         pub band: Rect,
-        /// The color.
+        /// The color that the line is painted with.
         pub color: Color,
-        /// The opacity.
+        /// The opacity in basis points; 10000 is opaque.
         pub opacity: u16,
-        /// The period.
+        /// The horizontal length of one wave of a wavy underline; `new` sets 0, which a straight line ignores.
         pub period: f32,
-        /// The line width.
+        /// The thickness of the line, at most the height of `band`; `new` sets 1.
         pub line_width: f32,
     }
 }

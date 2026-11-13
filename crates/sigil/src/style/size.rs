@@ -2,10 +2,10 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ControlSize {
-    /// The compact control size.
+    /// The small step: a control 24 px high in a window.
     Compact,
-    /// The default control size.
+    /// The standard step: a control 28 px high in a window.
     Default,
-    /// The wide control size.
+    /// The large step: a control 36 px high in a window.
     Wide,
 }

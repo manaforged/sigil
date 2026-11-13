@@ -55,20 +55,20 @@ impl From<f32> for LengthPercentageAuto {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub enum Length {
-    /// The px dimension.
+    /// A fixed length in pixels.
     Px(f32),
-    /// The percent dimension.
+    /// A fraction of the containing box, where 1.0 is all of it.
     Percent(f32),
-    /// The auto dimension.
+    /// No set length, so the layout derives one; the default.
     #[default]
     Auto,
-    /// The fill dimension.
+    /// The full length of the containing box.
     Fill,
-    /// The rows dimension.
+    /// The height of this many text lines.
     Rows(f32),
-    /// The cols dimension.
+    /// The width of this many character cells.
     Cols(f32),
-    /// The em dimension.
+    /// This many times the font size.
     Em(f32),
 }
 
@@ -170,28 +170,28 @@ impl<T: Copy> Edges<T> {
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Display {
-    /// The block display.
+    /// The node lays out its children in block flow; the default.
     #[default]
     Block,
-    /// The flex display.
+    /// The node lays out its children as a flex box.
     Flex,
-    /// The grid display.
+    /// The node lays out its children on a grid.
     Grid,
-    /// The none display.
+    /// The node is left out of layout.
     None,
 }
 
 /// Overflow mode.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum Overflow {
-    /// The visible overflow.
+    /// Content can extend past the box and is not clipped; the default.
     #[default]
     Visible,
-    /// The hidden overflow.
+    /// Content outside the box is clipped.
     Hidden,
-    /// The scroll overflow.
+    /// Content outside the box is clipped; the CSS `scroll` value.
     Scroll,
-    /// The auto overflow.
+    /// Content outside the box is clipped; the CSS `auto` value.
     Auto,
 }
 
@@ -199,94 +199,94 @@ pub enum Overflow {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Position {
-    /// The relative position.
+    /// The node keeps its place in the flow of its parent; the default.
     #[default]
     Relative,
-    /// The absolute position.
+    /// The node leaves the flow and is placed by its insets.
     Absolute,
 }
 
 /// Main axis of a flex box.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum FlexDirection {
-    /// The row flex direction.
+    /// Children run in a row from the start edge; the default.
     #[default]
     Row,
-    /// The column flex direction.
+    /// Children run in a column from the top.
     Column,
-    /// The row reverse flex direction.
+    /// Children run in a row from the end edge.
     RowReverse,
-    /// The column reverse flex direction.
+    /// Children run in a column from the bottom.
     ColumnReverse,
 }
 
 /// Wrap mode of a flex box.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum FlexWrap {
-    /// The no wrap flex wrap.
+    /// All children stay on one line; the default.
     #[default]
     NoWrap,
-    /// The wrap flex wrap.
+    /// Children that do not fit move to a new line.
     Wrap,
-    /// The wrap reverse flex wrap.
+    /// Children wrap, and new lines stack toward the start of the cross axis.
     WrapReverse,
 }
 
 /// Main-axis distribution of children.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum JustifyContent {
-    /// The start justify content.
+    /// Children pack at the start of the main axis.
     Start,
-    /// The end justify content.
+    /// Children pack at the end of the main axis.
     End,
-    /// The center justify content.
+    /// Children pack in the middle of the main axis.
     Center,
-    /// The stretch justify content.
+    /// Children pack at the start of the main axis, the same as `Start`.
     Stretch,
-    /// The space between justify content.
+    /// Free space goes between children, with none at the two ends.
     SpaceBetween,
-    /// The space around justify content.
+    /// Each child gets equal free space on both sides, so each end gets half a gap.
     SpaceAround,
-    /// The space evenly justify content.
+    /// Free space is equal between children and at the two ends.
     SpaceEvenly,
 }
 
 /// Cross-axis alignment of children.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AlignItems {
-    /// The start align items.
+    /// Children sit at the start of the cross axis.
     Start,
-    /// The end align items.
+    /// Children sit at the end of the cross axis.
     End,
-    /// The center align items.
+    /// Children sit in the middle of the cross axis.
     Center,
-    /// The baseline align items.
+    /// Children sit at the start of the cross axis, the same as `Start`.
     Baseline,
-    /// The stretch align items.
+    /// Children grow to the cross size of their line; used when no alignment is set.
     Stretch,
 }
 
 /// How lines or tracks spread across the cross axis.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlignContent {
-    /// The start align content.
+    /// Lines pack at the start of the cross axis.
     #[cfg(feature = "kittest")]
     Start,
-    /// The end align content.
+    /// Lines pack at the end of the cross axis.
     #[cfg(feature = "kittest")]
     End,
-    /// The center align content.
+    /// Lines pack in the middle of the cross axis.
     #[cfg(feature = "kittest")]
     Center,
-    /// The stretch align content.
+    /// Each line grows by an equal share of the free space on the cross axis.
     Stretch,
-    /// The space between align content.
+    /// Free space goes between lines, with none at the two ends.
     #[cfg(feature = "kittest")]
     SpaceBetween,
-    /// The space around align content.
+    /// Each line gets equal free space on both sides, so each end gets half a gap.
     #[cfg(feature = "kittest")]
     SpaceAround,
-    /// The space evenly align content.
+    /// Free space is equal between lines and at the two ends.
     #[cfg(feature = "kittest")]
     SpaceEvenly,
 }
@@ -294,10 +294,10 @@ pub enum AlignContent {
 /// Whether a set size includes padding and border.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BoxSizing {
-    /// The content box box sizing.
+    /// A set size covers the content only, and padding and border add to it; the default.
     #[default]
     ContentBox,
-    /// The border box box sizing.
+    /// A set size covers the content, padding, and border.
     BorderBox,
 }
 
@@ -305,13 +305,13 @@ pub enum BoxSizing {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum TrackSize {
-    /// The px track size.
+    /// A fixed track size in pixels.
     Px(f32),
-    /// The fr track size.
+    /// A share of the free space, in proportion to this weight.
     Fr(f32),
-    /// The auto track size.
+    /// One share of the free space, the same weight as `Fr(1.0)`.
     Auto,
-    /// The min max track size.
+    /// A minimum size in pixels, then a share weight for the free space.
     MinMax(f32, f32),
 }
 

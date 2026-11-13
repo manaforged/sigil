@@ -70,8 +70,8 @@ impl TokenLayer {
 /// The runtime override and theme layers of `Theme::tokens`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct TokenTable {
-    /// The overrides.
+    /// The values set at run time on top of the theme.
     pub(crate) overrides: TokenLayer,
-    /// The theme.
+    /// The values that the theme defines.
     pub(crate) theme: TokenLayer,
 }

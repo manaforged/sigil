@@ -10,15 +10,15 @@ use super::{NodesFn, TreeNode, TreeState};
 /// One visible row of a flattened tree.
 #[derive(Clone)]
 pub(crate) struct TreeRow<K: Clone + Eq + Hash + 'static> {
-    /// The id.
+    /// The key of the node that this row shows.
     pub id: K,
-    /// The depth.
+    /// The nesting level of the row; a root is 0.
     pub depth: u16,
-    /// The disclosure.
+    /// Whether the node is a leaf, collapsed or expanded.
     pub disclosure: Disclosure,
-    /// Whether selected.
+    /// Whether the node of this row is the selected node of the tree.
     pub selected: bool,
-    /// The parent, if any.
+    /// The index of the parent row in the flattened rows; `None` for a root.
     pub parent: Option<usize>,
     pub(super) node: Rc<TreeNode<K>>,
 }

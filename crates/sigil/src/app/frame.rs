@@ -11,11 +11,11 @@ const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct FrameInfo {
-    /// Whether dirty.
+    /// True when a signal write or another change asked for a frame, so this frame must repaint.
     pub dirty: bool,
-    /// Whether animating.
+    /// True when an animation or a clock is still running, so another frame is due.
     pub animating: bool,
-    /// Whether layout ok.
+    /// True when layout finished without an error.
     pub layout_ok: bool,
     #[cfg(any(host, debug_assertions))]
     pub(crate) delta: FrameDelta,
@@ -25,13 +25,13 @@ pub struct FrameInfo {
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct FrameOutput {
-    /// Whether exit.
+    /// True when the app asked to exit since the last frame.
     pub exit: bool,
-    /// The intervals.
+    /// How many interval timers fired in this frame.
     pub intervals: usize,
-    /// Whether animating.
+    /// True when an animation or a clock is still running, so another frame is due.
     pub animating: bool,
-    /// The layout.
+    /// `Ok` when layout finished, or the error that stopped it.
     pub layout: Result<(), Error>,
 }
 

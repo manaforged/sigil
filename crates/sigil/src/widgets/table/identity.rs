@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 /// Stable row identity.
 pub trait Identifiable {
-    /// The type of the id.
+    /// The id type; ids are cloned, compared and hashed to tell rows apart.
     type Id: Clone + Eq + Hash;
 
     /// Returns the stable id of this value.

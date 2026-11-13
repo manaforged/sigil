@@ -4,9 +4,9 @@ use crate::terminal::graphics::Mux;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Notify {
-    /// The osc9 notify.
+    /// The terminal shows a notification sent as `OSC 9 ; text`.
     Osc9,
-    /// The osc777 notify.
+    /// The terminal shows a notification sent as `OSC 777 ; notify ; title ; body`.
     Osc777,
 }
 

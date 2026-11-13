@@ -7,11 +7,11 @@ use super::field::{FieldParser, ParsedField, parsed_controls};
 /// A calendar date.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Date {
-    /// The year.
+    /// The year in the proleptic Gregorian calendar.
     pub(crate) year: i32,
-    /// The month.
+    /// The month, from 1 to 12.
     pub(crate) month: u8,
-    /// The day.
+    /// The day of the month, from 1.
     pub(crate) day: u8,
 }
 
@@ -40,7 +40,7 @@ impl Date {
             .then_some(Self { year, month, day })
     }
 
-    /// The year.
+    /// Returns the year in the proleptic Gregorian calendar.
     #[must_use]
     pub const fn year(self) -> i32 {
         self.year

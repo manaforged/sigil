@@ -199,23 +199,23 @@ impl Tray {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum TrayEvent {
-    /// The click tray event.
+    /// A mouse button was released over the tray icon.
     Click {
-        /// The button.
+        /// Which mouse button was released.
         button: MouseButton,
-        /// The position.
+        /// Where the pointer was, in screen coordinates.
         position: Point,
     },
-    /// The double click tray event.
+    /// A mouse button was clicked twice over the tray icon.
     DoubleClick {
-        /// The button.
+        /// Which mouse button was clicked twice.
         button: MouseButton,
-        /// The position.
+        /// Where the pointer was, in screen coordinates.
         position: Point,
     },
-    /// The enter tray event.
+    /// The pointer moved onto the tray icon.
     Enter,
-    /// The leave tray event.
+    /// The pointer moved off the tray icon.
     Leave,
 }
 

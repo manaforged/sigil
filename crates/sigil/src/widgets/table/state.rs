@@ -16,7 +16,7 @@ use super::identity::{self, Identifiable};
 pub struct SortKey {
     /// The id of the sorted column.
     pub(crate) column: &'static str,
-    /// The sort direction.
+    /// Whether the rows sort ascending or descending.
     pub(crate) dir: SortDirection,
 }
 
@@ -36,7 +36,7 @@ impl SortKey {
         self.column
     }
 
-    /// The direction of the sort.
+    /// Returns whether the rows sort ascending or descending.
     #[must_use]
     pub const fn direction(&self) -> SortDirection {
         self.dir

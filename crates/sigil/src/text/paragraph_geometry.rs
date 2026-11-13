@@ -5,7 +5,7 @@ use crate::style::Rgba;
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
 
 impl Paragraph {
-    /// The width of the widest line.
+    /// The width of the widest line, or 0 when there are no lines.
     #[must_use]
     pub fn width(&self) -> f32 {
         self.inner
@@ -21,7 +21,7 @@ impl Paragraph {
         self.inner.lines.iter().map(|l| l.height).sum()
     }
 
-    /// The number of lines.
+    /// The number of lines the text was laid out on.
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn line_count(&self) -> usize {

@@ -3,13 +3,13 @@ use crate::style::Token;
 /// An 8-bit RGBA color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
-    /// The r.
+    /// The red channel, from 0 to 255.
     pub r: u8,
-    /// The g.
+    /// The green channel, from 0 to 255.
     pub g: u8,
-    /// The b.
+    /// The blue channel, from 0 to 255.
     pub b: u8,
-    /// The a.
+    /// The alpha channel, from 0 for transparent to 255 for opaque.
     pub a: u8,
 }
 
@@ -67,9 +67,9 @@ impl std::str::FromStr for Color {
 pub enum ColorAtom {
     /// A concrete color.
     Color(Color),
-    /// The token color atom.
+    /// A built-in theme token, resolved against the theme.
     Token(Token),
-    /// The custom color atom.
+    /// A custom theme color, looked up by name.
     Custom(&'static str),
 }
 
@@ -94,13 +94,13 @@ impl From<Token> for ColorAtom {
 /// The direction of a background gradient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GradientAxis {
-    /// The top to bottom gradient axis.
+    /// The first stop is at the top edge and the last at the bottom edge.
     TopToBottom,
-    /// The bottom to top gradient axis.
+    /// The first stop is at the bottom edge and the last at the top edge.
     BottomToTop,
-    /// The left to right gradient axis.
+    /// The first stop is at the left edge and the last at the right edge.
     LeftToRight,
-    /// The right to left gradient axis.
+    /// The first stop is at the right edge and the last at the left edge.
     RightToLeft,
 }
 
@@ -109,9 +109,9 @@ kittest_pub! {
     /// A color and offset of a background gradient.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct GradientStopKey {
-        /// The offset.
+        /// The position of the stop along the axis in thousandths, from 0 to 1000.
         pub offset: u16,
-        /// The color.
+        /// The color at this offset.
         pub color: ColorAtom,
     }
 }
@@ -132,9 +132,9 @@ kittest_pub! {
     /// A background gradient in a style.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct BgGradient {
-        /// The axis.
+        /// The direction that the stops run in.
         pub axis: GradientAxis,
-        /// The stops.
+        /// The stops in order along the axis.
         pub stops: &'static [GradientStopKey],
     }
 }

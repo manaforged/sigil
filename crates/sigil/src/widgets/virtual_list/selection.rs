@@ -42,7 +42,7 @@ impl Selection {
         }
     }
 
-    /// The selection mode.
+    /// Returns the mode that decides how many rows a click can select.
     #[must_use]
     pub const fn mode(&self) -> SelectionMode {
         self.mode

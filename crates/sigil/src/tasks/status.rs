@@ -3,15 +3,15 @@ use std::error::Error;
 /// State of a task.
 #[derive(Debug, Clone)]
 pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
-    /// The idle status.
+    /// The task is not running: it has not started, or it was cancelled.
     Idle,
-    /// The pending status.
+    /// The task is running and has no result yet.
     Pending,
-    /// The ok status.
+    /// The task finished and returned this value.
     Ok(T),
-    /// The err status.
+    /// The task finished and returned this error.
     Err(E),
-    /// The panicked status.
+    /// The task panicked; the string is the panic message.
     Panicked(String),
 }
 

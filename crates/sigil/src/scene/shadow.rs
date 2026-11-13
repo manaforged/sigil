@@ -6,12 +6,12 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     pub enum ShadowKind {
-        /// The outer shadow kind.
+        /// Falls outside the shape, moved by the offset and grown by the spread.
         #[default]
         Outer,
-        /// The inner shadow kind.
+        /// Falls inside the shape's edge, where a positive spread makes it reach further in.
         Inner,
-        /// The glow shadow kind.
+        /// A halo around the shape, painted like `Outer`; `Shadow::glow` makes one with no offset.
         Glow,
     }
 }
@@ -19,13 +19,13 @@ kittest_pub! {
 /// The offset, blur, spread, and color of a shadow.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shadow {
-    /// The color.
+    /// Red, green, and blue in linear light, then alpha, each from 0 to 1 and not premultiplied.
     pub color: [f32; 4],
-    /// The offset.
+    /// How far the shadow moves right and down from the shape, in logical pixels.
     pub offset: [f32; 2],
-    /// The blur.
+    /// The standard deviation of the blur, in logical pixels; a negative value counts as 0.
     pub blur: f32,
-    /// The spread.
+    /// How far the shadow grows past the shape's edge before the blur, in logical pixels; a negative value shrinks it.
     pub spread: f32,
     #[cfg(feature = "kittest")]
     #[doc(hidden)]

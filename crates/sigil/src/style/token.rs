@@ -141,7 +141,7 @@ const ROLES: [Tone; 6] = [
 ];
 
 impl Token {
-    /// The number of tokens.
+    /// The number of built-in tokens, the length of `ALL`.
     pub const COUNT: usize = Self::ALL.len();
 
     /// The token for step `step` (1 to 12) of `role`; `None` for a step out of range.

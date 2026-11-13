@@ -32,34 +32,34 @@ use super::gradient::Gradient;
 /// A command that fills or strokes a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DrawRect {
-    /// The node, if any.
+    /// The node this rectangle paints, or `None` when no node owns it.
     pub node: Option<NodeId>,
-    /// The rect.
+    /// The bounds of the rectangle, in logical pixels.
     pub rect: Rect,
-    /// The color.
+    /// The fill color; a transparent color leaves only the stroke.
     pub color: Color,
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     pub border_radius: CornerRadii,
     #[cfg(not(feature = "kittest"))]
     pub(crate) border_radius: CornerRadii,
-    /// The opacity.
+    /// The opacity in basis points; 10000 is opaque.
     pub opacity: u16,
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     pub stroke: Option<Stroke>,
     #[cfg(not(feature = "kittest"))]
     pub(crate) stroke: Option<Stroke>,
-    /// The tone, if any.
+    /// The theme tone the terminal host fills with when `color` is fully transparent.
     pub tone: Option<Tone>,
-    /// Whether leaf.
+    /// True when the node has no laid-out child, so the terminal host may fill a partly covered cell with a half block.
     pub leaf: bool,
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     pub border: Option<CellBorder>,
     #[cfg(not(feature = "kittest"))]
     pub(crate) border: Option<CellBorder>,
-    /// Whether outline.
+    /// True for a focus ring or a border strip, which the terminal host does not fill.
     pub outline: bool,
 }
 
@@ -68,13 +68,13 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct CellBorder {
-        /// The rect.
+        /// The outer bounds of the bordered box, in logical pixels.
         pub(crate) rect: Rect,
-        /// The widths.
+        /// The widths of the top, right, bottom, and left edges; an edge of 0 or less is not drawn.
         pub(crate) widths: [f32; 4],
-        /// The color.
+        /// The color of the box-drawing characters; a fully transparent color draws no border.
         pub(crate) color: Color,
-        /// Whether rounded.
+        /// True when the box has a corner radius, so the terminal host draws rounded corner characters.
         pub(crate) rounded: bool,
     }
 }
@@ -82,13 +82,13 @@ kittest_pub! {
 /// A rectangle aligned to terminal cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct CellRect {
-    /// The tone, if any.
+    /// The theme tone the terminal host fills with when the command's color is fully transparent.
     pub tone: Option<Tone>,
-    /// Whether leaf.
+    /// True when the node has no laid-out child, so the terminal host may fill a partly covered cell with a half block.
     pub leaf: bool,
-    /// The border, if any.
+    /// The box-drawing border the terminal host draws around the node, if it has one.
     pub border: Option<CellBorder>,
-    /// Whether outline.
+    /// True for a focus ring or a border strip, which the terminal host does not fill.
     pub outline: bool,
 }
 
@@ -164,25 +164,25 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct DrawGradient {
-        /// The node, if any.
+        /// The node this gradient paints, or `None` when no node owns it.
         pub node: Option<NodeId>,
-        /// The rect.
+        /// The bounds of the filled rectangle, in logical pixels.
         pub rect: Rect,
-        /// The gradient.
+        /// The geometry and color stops of the fill.
         pub gradient: Gradient,
-        /// The border radius.
+        /// The radius of each corner of the filled rectangle.
         pub border_radius: CornerRadii,
-        /// The opacity.
+        /// The opacity in basis points; 10000 is opaque.
         pub opacity: u16,
-        /// The stroke, if any.
+        /// The line drawn along the edge of the rectangle, if it has one.
         pub stroke: Option<Stroke>,
-        /// The tone, if any.
+        /// The theme tone the terminal host fills with when the gradient flattens to a fully transparent color.
         pub tone: Option<Tone>,
-        /// Whether leaf.
+        /// True when the node has no laid-out child, so the terminal host may fill a partly covered cell with a half block.
         pub leaf: bool,
-        /// The border, if any.
+        /// The box-drawing border the terminal host draws around the node, if it has one.
         pub border: Option<CellBorder>,
-        /// Whether outline.
+        /// True for a focus ring or a border strip, which the terminal host does not fill.
         pub outline: bool,
     }
 }
@@ -240,17 +240,17 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct DrawPattern {
-        /// The node, if any.
+        /// The node this pattern paints, or `None` when no node owns it.
         pub node: Option<NodeId>,
-        /// The rect.
+        /// The bounds of the filled rectangle, in logical pixels; the pattern repeats from its origin.
         pub rect: Rect,
-        /// The pattern.
+        /// The shape and colors of the repeating fill.
         pub pattern: PatternKind,
-        /// The border radius.
+        /// The radius of each corner of the filled rectangle.
         pub border_radius: CornerRadii,
-        /// The opacity.
+        /// The opacity in basis points; 10000 is opaque.
         pub opacity: u16,
-        /// The stroke, if any.
+        /// The line drawn along the edge of the rectangle, if it has one.
         pub stroke: Option<Stroke>,
     }
 }
@@ -307,19 +307,19 @@ kittest_pub! {
     #[doc(hidden)]
     #[derive(Clone, Debug, PartialEq)]
     pub struct DrawImage {
-        /// The node, if any.
+        /// The node this image paints, or `None` when no node owns it.
         pub node: Option<NodeId>,
-        /// The source.
+        /// The decoded image whose pixels are drawn.
         pub source: crate::kernel::ImageSource,
-        /// The fit.
+        /// How the image is scaled to fill `destination`.
         pub fit: crate::kernel::ObjectFit,
-        /// The destination.
+        /// The rectangle the image is fitted into, in logical pixels.
         pub destination: Rect,
-        /// The opacity.
+        /// The opacity in basis points; 10000 is opaque.
         pub opacity: u16,
-        /// The crop, if any.
+        /// The band of image rows to draw; `None` draws the whole image.
         pub crop: Option<crate::kernel::ImageCrop>,
-        /// The raster, if any.
+        /// A source that `source_at` asks for pixels at the exact device size, used only when `crop` is `None`.
         pub raster: Option<crate::kernel::ImageRaster>,
     }
 }

@@ -154,7 +154,7 @@ impl PartialEq<&str> for Glyph {
     }
 }
 
-/// The hyperlink of one cell.
+/// A hyperlink URL, interned as a 16-bit id so a cell stays `Copy`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Link(NonZeroU16);
 

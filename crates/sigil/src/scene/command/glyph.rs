@@ -9,16 +9,16 @@ use crate::style::{Color, TextStyle, Tone};
 use crate::text::Paragraph;
 
 kittest_pub! {
-    /// The direction of a run of text.
+    /// How a run of text fits the width of its rectangle.
     #[doc(hidden)]
     #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     pub enum TextFlow {
-        /// The line text flow.
+        /// One line that is laid out without a width limit.
         #[default]
         Line,
-        /// The wrap text flow.
+        /// Lines break at the width of the rectangle.
         Wrap,
-        /// The ellipsis text flow.
+        /// One line, cut with an ellipsis at the width of the rectangle.
         Ellipsis,
     }
 }
@@ -90,9 +90,9 @@ impl SharedGlyph {
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct GlyphRun {
-    /// The node, if any.
+    /// The node this text belongs to, or `None` when no node owns it.
     pub node: Option<NodeId>,
-    /// The rect.
+    /// The box the text is laid out in, in logical pixels; glyph positions are relative to its origin.
     pub rect: Rect,
     shared: Arc<SharedGlyph>,
 }
@@ -126,31 +126,31 @@ impl GlyphRun {
         }
     }
 
-    /// The text.
+    /// The string that this run draws, before shaping.
     #[must_use]
     pub fn text(&self) -> &str {
         &self.shared.text
     }
 
-    /// The color.
+    /// The color the glyphs are painted with.
     #[must_use]
     pub fn color(&self) -> Color {
         self.shared.color
     }
 
-    /// The text style.
+    /// The font, size, weight, and decoration the run is shaped with.
     #[must_use]
     pub fn style(&self) -> &TextStyle {
         &self.shared.style
     }
 
-    /// The opacity.
+    /// The opacity in basis points; 10000 is opaque.
     #[must_use]
     pub fn opacity(&self) -> u16 {
         self.shared.opacity
     }
 
-    /// The tone, if any.
+    /// The theme tone the terminal host inks the text with when the color is fully transparent.
     #[must_use]
     pub fn tone(&self) -> Option<Tone> {
         self.shared.tone

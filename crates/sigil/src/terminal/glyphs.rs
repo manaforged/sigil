@@ -6,12 +6,12 @@ use crate::terminal::caps::Capabilities;
 /// The character set the terminal can show.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Glyphs {
-    /// The unicode glyphs.
+    /// The terminal shows every Unicode character the widgets use; no character is replaced.
     #[default]
     Unicode,
-    /// The console glyphs.
+    /// The terminal shows the Linux console font; rounded and heavy box characters become light ones.
     Console,
-    /// The ascii glyphs.
+    /// The terminal shows ASCII only; set by `SIGIL_ASCII`, a locale that is not UTF-8, or a `dumb` or `vt` terminal.
     Ascii,
 }
 
