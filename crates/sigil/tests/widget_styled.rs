@@ -165,7 +165,7 @@ fn text_field_styled_composes_with_state_variant() {
                 .hover(|s| s.background(B))
                 .focus(|s| s.background(C))
                 .pressed(|s| s.background(D));
-            States::disabled_style(field, |s| s.background(E))
+            States::disabled_paint(field, |s| s.background(E))
         };
         assert_paints(&painted(build(), Drive::Rest), A, "text_field bg");
         assert_paints(&painted(build(), Drive::Hover), B, "text_field hover");

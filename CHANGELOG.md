@@ -162,6 +162,9 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `States::disabled_style` | `States::disabled_paint` |
+| `widgets::close_top_escape` | `widgets::close_popup` |
+| `MouseButtons::EMPTY` | `MouseButtons::empty()` |
 | `list_row(selected, title, ListRowSlots { .. })` | `list_row(title).selected(selected)` with one setter per slot; `ListRowSlots` and `ListColumn` removed, `.column(text, width, ColumnAlign)` adds a column |
 | `profile::BackendStatus { kind, fallback }` and its fields | `BackendStatus::new(backend, fallback)`, `backend()`, `fallback()` |
 | `terminal::title`, `mouse_tracking`, `print_above`, `notify`, `progress`, `bell`, `activity`, `calibrate`, `suspend`, `caps`, `backdrop`, `pixels` free functions | the same names as methods of `terminal::Terminal::current()` |

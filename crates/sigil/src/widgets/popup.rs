@@ -9,7 +9,7 @@ use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, 
 use crate::widgets::Layout;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
-pub use layer::close_top_escape;
+pub use layer::close_popup;
 pub(crate) use layer::{
     PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when,
 };

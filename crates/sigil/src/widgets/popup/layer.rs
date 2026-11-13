@@ -93,7 +93,7 @@ impl PopupLayer {
 
 pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
     node.key(NamedKey::Escape, |event| {
-        if close_top_escape() {
+        if close_popup() {
             event.stop_propagation();
         }
     })
@@ -177,7 +177,7 @@ fn register_escape(show: Signal<bool>) {
     clippy::must_use_candidate,
     reason = "closes the top popup; the result is optional"
 )]
-pub fn close_top_escape() -> bool {
+pub fn close_popup() -> bool {
     ESCAPE_LAYERS.with(|stack| {
         let top = stack
             .borrow()

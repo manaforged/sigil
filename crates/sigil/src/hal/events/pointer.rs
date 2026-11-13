@@ -37,8 +37,6 @@ pub enum MouseButton {
 pub struct MouseButtons(u8);
 
 impl MouseButtons {
-    /// No buttons.
-    pub const EMPTY: Self = Self(0);
     /// The left button.
     pub const LEFT: Self = Self(1 << 0);
     /// The right button.
@@ -53,7 +51,7 @@ impl MouseButtons {
     /// A set with no mouse buttons.
     #[must_use]
     pub const fn empty() -> Self {
-        Self::EMPTY
+        Self(0)
     }
 
     /// Returns whether `button` is in this set.

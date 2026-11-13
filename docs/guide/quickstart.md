@@ -165,7 +165,7 @@ container()
 # };
 ```
 
-The node owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
+The node owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_paint()`.
 
 ## Where to go next
 

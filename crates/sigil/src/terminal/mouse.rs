@@ -96,6 +96,6 @@ const fn bit(button: MouseButton) -> MouseButtons {
         MouseButton::Middle => MouseButtons::MIDDLE,
         MouseButton::Back => MouseButtons::BACK,
         MouseButton::Forward => MouseButtons::FORWARD,
-        MouseButton::Other(_) => MouseButtons::EMPTY,
+        MouseButton::Other(_) => MouseButtons::empty(),
     }
 }

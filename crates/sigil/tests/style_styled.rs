@@ -182,7 +182,7 @@ fn pressed_slot_records_atoms() {
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let node = || pane().background(REST).disabled_style(|s| s.background(A));
+    let node = || pane().background(REST).disabled_paint(|s| s.background(A));
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(!colors(node(), Drive::Hover).contains(&A));
 }
@@ -267,7 +267,7 @@ fn all_four_state_slots_populate_independently() {
             .hover(|s| s.background(A))
             .focus(|s| s.background(B))
             .pressed(|s| s.background(C))
-            .disabled_style(|s| s.background(D))
+            .disabled_paint(|s| s.background(D))
     };
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(colors(node(), Drive::Hover).contains(&A));
