@@ -20,10 +20,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Ascending,
-            }),
+            Some(SortKey::new("name", SortDirection::Ascending)),
             "first click sorts ascending",
         );
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
@@ -31,10 +28,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Descending,
-            })
+            Some(SortKey::new("name", SortDirection::Descending))
         );
         assert_eq!(visible_names(&state), ["gamma", "delta", "beta", "alpha"]);
 
@@ -45,10 +39,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         click(&mut router, &mut cx, &layout, 150.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "count",
-                dir: SortDirection::Ascending,
-            })
+            Some(SortKey::new("count", SortDirection::Ascending))
         );
     });
 }

@@ -121,9 +121,9 @@ fn highlighting_a_700_kb_line_finishes_within_budget() {
     println!("highlight: 700 KB line took {took:?}");
     let last = marks[0].last().expect("marks");
     assert!(
-        last.end <= width && width - last.end < 40,
+        last.end() <= width && width - last.end() < 40,
         "last mark ends at column {} of {width}",
-        last.end
+        last.end()
     );
     assert!(took <= BUDGET, "highlight took {took:?}, over {BUDGET:?}");
 }

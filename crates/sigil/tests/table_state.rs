@@ -75,10 +75,7 @@ fn toggle_sort_cycles_asc_desc_none() {
         state.toggle_sort("name");
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Ascending,
-            })
+            Some(SortKey::new("name", SortDirection::Ascending))
         );
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
         state.toggle_sort("name");

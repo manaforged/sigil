@@ -88,13 +88,50 @@ impl Severity {
 #[derive(Clone, Copy, Debug)]
 pub struct Diagnostic {
     /// The line.
-    pub line: usize,
+    pub(crate) line: usize,
     /// The start.
-    pub start: usize,
+    pub(crate) start: usize,
     /// The end.
-    pub end: usize,
+    pub(crate) end: usize,
     /// The severity.
-    pub severity: Severity,
+    pub(crate) severity: Severity,
+}
+
+impl Diagnostic {
+    /// Creates a diagnostic on `line` over the columns `start..end`.
+    #[must_use]
+    pub const fn new(line: usize, start: usize, end: usize, severity: Severity) -> Self {
+        Self {
+            line,
+            start,
+            end,
+            severity,
+        }
+    }
+
+    /// The line.
+    #[must_use]
+    pub const fn line(&self) -> usize {
+        self.line
+    }
+
+    /// The first column.
+    #[must_use]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    /// The column after the last.
+    #[must_use]
+    pub const fn end(&self) -> usize {
+        self.end
+    }
+
+    /// The severity.
+    #[must_use]
+    pub const fn severity(&self) -> Severity {
+        self.severity
+    }
 }
 
 type Diagnostics = Signal<Vec<Diagnostic>>;

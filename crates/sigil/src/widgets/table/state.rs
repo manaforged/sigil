@@ -15,9 +15,32 @@ use super::identity::{self, Identifiable};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SortKey {
     /// The id of the sorted column.
-    pub column: &'static str,
+    pub(crate) column: &'static str,
     /// The sort direction.
-    pub dir: SortDirection,
+    pub(crate) dir: SortDirection,
+}
+
+impl SortKey {
+    /// Creates a sort of `column` in `direction`.
+    #[must_use]
+    pub const fn new(column: &'static str, direction: SortDirection) -> Self {
+        Self {
+            column,
+            dir: direction,
+        }
+    }
+
+    /// The id of the sorted column.
+    #[must_use]
+    pub const fn column(&self) -> &'static str {
+        self.column
+    }
+
+    /// The direction of the sort.
+    #[must_use]
+    pub const fn direction(&self) -> SortDirection {
+        self.dir
+    }
 }
 
 #[derive(Clone, Debug, Default)]

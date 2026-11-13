@@ -175,29 +175,20 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
         state.cycle_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "name",
-                dir: SortDirection::Ascending
-            })
+            Some(SortKey::new("name", SortDirection::Ascending))
         );
         state.cycle_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "cpu",
-                dir: SortDirection::Ascending
-            })
+            Some(SortKey::new("cpu", SortDirection::Ascending))
         );
         state.reverse_sort();
         assert_eq!(
             state.sort_key().get(),
-            Some(SortKey {
-                column: "cpu",
-                dir: SortDirection::Descending
-            })
+            Some(SortKey::new("cpu", SortDirection::Descending))
         );
         state.cycle_sort();
-        assert_eq!(state.sort_key().get().map(|key| key.column), Some("name"));
+        assert_eq!(state.sort_key().get().map(|key| key.column()), Some("name"));
 
         state.select_by(1);
         let first = state.selected_index();

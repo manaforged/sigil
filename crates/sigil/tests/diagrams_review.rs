@@ -80,7 +80,7 @@ fn marks(language: &str, source: &str) -> Vec<Vec<Highlight>> {
 }
 
 fn has_token(line: &[Highlight], token: Token) -> bool {
-    line.iter().any(|mark| mark.token == token)
+    line.iter().any(|mark| mark.token() == token)
 }
 
 #[test]
@@ -88,9 +88,9 @@ fn a_lua_block_comment_wins_over_the_line_comment() {
     let lines = marks("lua", "--[[ start\nstill comment\n]]\nlocal x = 1");
     let inner = &lines[1];
     assert!(
-        inner
-            .iter()
-            .any(|mark| mark.start == 0 && mark.end == 13 && mark.token == Token::OnSurfaceMuted),
+        inner.iter().any(|mark| mark.start() == 0
+            && mark.end() == 13
+            && mark.token() == Token::OnSurfaceMuted),
         "line 2 is not a comment: {inner:?}"
     );
     assert!(
@@ -147,7 +147,11 @@ fn a_julia_transpose_does_not_open_a_string() {
 fn an_fsharp_type_variable_does_not_open_a_string() {
     let lines = marks("fsharp", "let id (x: 'a) = x");
     assert!(!has_token(&lines[0], Token::Success11), "{:?}", lines[0]);
-    assert!(lines[0].iter().any(|mark| mark.start == 0 && mark.end == 3));
+    assert!(
+        lines[0]
+            .iter()
+            .any(|mark| mark.start() == 0 && mark.end() == 3)
+    );
 }
 
 const NEW_KINDS: [(&str, &str); 4] = [

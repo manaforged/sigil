@@ -80,12 +80,7 @@ fn diag_spans(file: FileId) -> Vec<Diagnostic> {
     DIAGNOSTICS
         .iter()
         .filter(|diag| diag.file == file)
-        .map(|diag| Diagnostic {
-            line: diag.line,
-            start: diag.start,
-            end: diag.end,
-            severity: diag.severity,
-        })
+        .map(|diag| Diagnostic::new(diag.line, diag.start, diag.end, diag.severity))
         .collect()
 }
 

@@ -203,9 +203,6 @@ fn the_prelude_names_what_its_functions_return() {
         let open = signal(false);
         let _: ModalBuilder = modal(open);
         let _: DiffBuilder = diff("--- a\n+++ b\n").view(DiffView::Unified);
-        let _: Option<SortKey> = Some(SortKey {
-            column: "name",
-            dir: SortDirection::Ascending,
-        });
+        let _: Option<SortKey> = Some(SortKey::new("name", SortDirection::Ascending));
     });
 }
