@@ -96,7 +96,7 @@ let hits = memo(move || {
 modal(open).title("Command").child(
     container()
         .child(text_field(query).placeholder("Filter…"))
-        .child(virtual_list(hits, |_i, row| list_row(false, *row, ListRowSlots::default()))),
+        .child(virtual_list(hits, |_i, row| list_row(*row))),
 );
 # };
 ```

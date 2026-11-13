@@ -117,8 +117,8 @@ pub mod text;
 #[cfg(scene_internal)]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod text;
-/// The widget catalog.
 mod view;
+/// The widget catalog.
 pub mod widgets;
 
 pub use crate::app::config::AppConfig;
@@ -238,7 +238,7 @@ pub mod prelude {
     pub use crate::widgets::a2ui;
     pub use crate::widgets::{
         ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Glyph, Identifiable,
-        ListRowSlots, Log, MenuItem, ModalBuilder, Orientation, PathBuilder, SelectionMode, Side,
+        ListRowBuilder, Log, MenuItem, ModalBuilder, Orientation, PathBuilder, SelectionMode, Side,
         SortDirection, SortKey, TableColumn, TableState, Time, ToastQueue, Widget, app_shell,
         avatar, axis_drag, badge, breadcrumbs, button, card, chart, checkbox, chip, code_edit,
         color_field, combobox, command_menu, context_menu, date_field, diff, divider, dot,

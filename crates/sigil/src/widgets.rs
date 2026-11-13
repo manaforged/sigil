@@ -333,7 +333,7 @@ pub use modal::{ModalBuilder, Side, modal};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use patterns::{
-    CardBuilder, Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
+    CardBuilder, Disclosure, HintOverlayBuilder, ListRowBuilder, RowTone, SidebarBuilder,
     app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
     kv_grid, list_row, notice_band, pagination, section_label, sidebar, skeleton, spacer, stepper,
 };

@@ -39,7 +39,7 @@ fn map_node_reports_the_root_id_of_a_list_and_an_image() {
         let list = cx.add(
             virtual_list(
                 vec![String::from("a"), String::from("b")],
-                |_, row: &String| list_row(false, row.clone(), ListRowSlots::default()),
+                |_, row: &String| list_row(row.clone()),
             )
             .map_node({
                 let list_id = Rc::clone(&list_id);

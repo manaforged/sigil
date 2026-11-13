@@ -12,7 +12,7 @@ Lists and grids that present collections. `virtual_list` is the virtualized prim
 # let rows = vec![Row { name: "a.txt".into(), detail: "4 KB".into() }];
 # let _ = {
 virtual_list(rows, |index, row| {
-    list_row(index == 3, row.name.clone(), ListRowSlots { status: Some(row.detail.clone().into()), ..ListRowSlots::default() })
+    list_row(row.name.clone()).selected(index == 3).status(row.detail.clone())
 })
 .selection(SelectionMode::Single)
 .viewport_height(400.0);
@@ -96,7 +96,7 @@ The header uses `surface-inset`, a strong bottom border, and extra-small medium-
 
 The row helpers live in [Chrome](chrome.md#small-composites) and fill a data view:
 
-- `list_row(selected, title, ListRowSlots)` is the usual `virtual_list` row.
+- `list_row(title)` is the usual `virtual_list` row.
 - `kv_row(label, value)` and `kv_grid([(key, value)])` show fixed key-value facts.
 
 ## States, keys, and accessibility

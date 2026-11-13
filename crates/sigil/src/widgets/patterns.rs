@@ -274,7 +274,7 @@ mod status;
 pub use card::{CardBuilder, card};
 pub use disclosure::disclosure;
 use list_row::row_height;
-pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
+pub use list_row::{Disclosure, ListRowBuilder, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
 pub use navigation::{breadcrumbs, pagination};
 pub use sidebar::{SidebarBuilder, sidebar};

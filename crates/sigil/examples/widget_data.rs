@@ -53,14 +53,9 @@ pub(crate) fn table_demo(selected: bool, disabled: Signal<bool>) -> impl IntoNod
 pub(crate) fn virtual_list_demo(selected: bool) -> impl IntoNode + 'static {
     let items: Vec<String> = (1..=20).map(|i| format!("Item {i}")).collect();
     virtual_list(items, move |index, item| {
-        list_row(
-            selected && index == 1,
-            item.clone(),
-            ListRowSlots {
-                status: Some(format!("{index}").into()),
-                ..ListRowSlots::default()
-            },
-        )
+        list_row(item.clone())
+            .selected(selected && index == 1)
+            .status(format!("{index}"))
     })
     .selection(SelectionMode::Single)
     .viewport_height(140.0)
@@ -76,14 +71,7 @@ pub(crate) fn virtual_list_fill_demo() -> NodeBuilder {
         .child(
             column().fill_width().grow(1.0).gap(Space::None).child(
                 virtual_list(items, |index, item| {
-                    list_row(
-                        false,
-                        item.clone(),
-                        ListRowSlots {
-                            status: Some(format!("{index}").into()),
-                            ..ListRowSlots::default()
-                        },
-                    )
+                    list_row(item.clone()).status(format!("{index}"))
                 })
                 .fill(),
             ),
@@ -105,27 +93,18 @@ pub(crate) fn heatmap_demo() -> NodeBuilder {
 }
 
 pub(crate) fn list_row_demo(selected: bool) -> NodeBuilder {
-    list_row(
-        selected,
-        "Build finished",
-        ListRowSlots {
-            status: Some("now".into()),
-            ..ListRowSlots::default()
-        },
-    )
+    list_row("Build finished")
+        .selected(selected)
+        .status("now")
+        .into()
 }
 
 pub(crate) fn list_row_tree_demo(selected: bool) -> NodeBuilder {
     let entry = |depth, disclosure, title: &'static str, on: bool| {
-        list_row(
-            on,
-            title,
-            ListRowSlots {
-                depth,
-                disclosure,
-                ..ListRowSlots::default()
-            },
-        )
+        list_row(title)
+            .selected(on)
+            .depth(depth)
+            .disclosure(disclosure)
     };
     column()
         .fill_width()

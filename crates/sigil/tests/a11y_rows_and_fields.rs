@@ -6,7 +6,7 @@ use std::rc::Rc;
 use accesskit::Role as AkRole;
 use sigil::events::{Key, NamedKey};
 use sigil::prelude::*;
-use sigil::widgets::{ListRowSlots, list_row, virtual_list};
+use sigil::widgets::{list_row, virtual_list};
 use sigil_kittest::Harness;
 
 #[test]
@@ -33,14 +33,7 @@ fn an_activatable_list_row_takes_focus_and_runs_on_enter() {
     let count = Rc::clone(&opened);
     let mut ui = Harness::new(move || {
         let count = Rc::clone(&count);
-        list_row(
-            false,
-            "# design",
-            ListRowSlots {
-                activate: Some(Rc::new(move || count.set(count.get() + 1))),
-                ..ListRowSlots::default()
-            },
-        )
+        list_row("# design").activate(move || count.set(count.get() + 1))
     })
     .size(40, 4);
     ui.focus_next();

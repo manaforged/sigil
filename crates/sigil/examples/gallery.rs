@@ -238,14 +238,7 @@ fn data_page() -> NodeBuilder {
         .child(section_label("Virtual list"))
         .child(
             virtual_list(items, |index, item| {
-                list_row(
-                    false,
-                    item.clone(),
-                    ListRowSlots {
-                        status: Some(format!("{index}").into()),
-                        ..ListRowSlots::default()
-                    },
-                )
+                list_row(item.clone()).status(format!("{index}"))
             })
             .selection(SelectionMode::Single)
             .viewport_height(140.0),
@@ -348,14 +341,7 @@ fn chrome_page() -> NodeBuilder {
         .child(notice_band("Deployment finished", Tone::Success))
         .child(row2(
             avatar("TG"),
-            list_row(
-                true,
-                "Selected row",
-                ListRowSlots {
-                    status: Some("now".into()),
-                    ..ListRowSlots::default()
-                },
-            ),
+            list_row("Selected row").selected(true).status("now"),
         ))
         .child(hint_bar("↑↓ navigate", "Enter select"))
 }

@@ -294,12 +294,11 @@ fn channels(chat: Chat) -> NodeBuilder {
                 .enumerate();
             entries
                 .map(|(index, (name, unread))| {
-                    let slots = ListRowSlots {
-                        status: (unread > 0).then(|| TextContent::from(unread.to_string())),
-                        ..ListRowSlots::default()
-                    };
-                    list_row(index == current, format!("# {name}"), slots)
-                        .pointer_up(move |_| chat.active.set(index))
+                    let mut entry = list_row(format!("# {name}")).selected(index == current);
+                    if unread > 0 {
+                        entry = entry.status(unread.to_string());
+                    }
+                    entry.pointer_up(move |_| chat.active.set(index))
                 })
                 .collect::<Vec<_>>()
         })

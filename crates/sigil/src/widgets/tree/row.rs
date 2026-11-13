@@ -3,7 +3,7 @@ use crate::kernel::{Action, NodeBuilder, Role};
 use crate::reactive::signal;
 use crate::widgets::Widget;
 
-use super::super::patterns::{ListRowSlots, list_row};
+use super::super::patterns::list_row;
 use super::super::shared::accessible_name;
 use super::keys::{activate, select, toggle};
 use core::hash::Hash;
@@ -16,23 +16,27 @@ pub(super) fn render<K: Clone + Eq + Hash + 'static>(
     row: &TreeRow<K>,
 ) -> NodeBuilder {
     let node = &row.node;
-    let slots = ListRowSlots {
-        depth: row.depth,
-        disclosure: row.disclosure,
-        leading: node.leading.clone().map(|source| {
-            Box::new(super::super::icon::icon(source)) as Box<dyn crate::kernel::IntoNode>
-        }),
-        status: node.status.as_ref().map(|(status, _)| status.clone()),
-        status_tone: node.status.as_ref().map(|(_, tone)| *tone),
-        detail: node.detail.clone(),
-        tone: node.tone,
-        indent: state.indent,
-        ..ListRowSlots::default()
-    };
+    let mut item = list_row(node.label.clone())
+        .selected(row.selected)
+        .depth(row.depth)
+        .disclosure(row.disclosure)
+        .tone(node.tone);
+    if let Some(indent) = state.indent {
+        item = item.indent(indent);
+    }
+    if let Some(source) = node.leading.clone() {
+        item = item.leading(super::super::icon::icon(source));
+    }
+    if let Some((status, tone)) = node.status.clone() {
+        item = item.status(status).status_tone(tone);
+    }
+    if let Some(detail) = node.detail.clone() {
+        item = item.detail(detail);
+    }
     let level = usize::from(row.depth).saturating_add(1);
     let click_state = state.clone();
     let click_row = row.clone();
-    list_row(row.selected, node.label.clone(), slots)
+    item.into_node_builder()
         .role(Role::TreeItem)
         .label(accessible_name(&node.label))
         .selected(signal(row.selected))

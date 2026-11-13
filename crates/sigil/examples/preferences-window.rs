@@ -92,7 +92,9 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
                 .iter()
                 .enumerate()
                 .map(|(index, name)| {
-                    list_row(index == current, *name, ListRowSlots::default())
+                    list_row(*name)
+                        .selected(index == current)
+                        .into_node_builder()
                         .focusable(true)
                         .pointer_up(move |_| page.set(index))
                         .key(NamedKey::Enter, move |_| page.set(index))

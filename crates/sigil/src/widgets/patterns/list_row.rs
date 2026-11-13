@@ -11,6 +11,7 @@ use crate::widgets::Layout;
 
 use super::super::chip::chip;
 use super::super::popup::{ChevronDirection, chevron};
+use super::super::shared::Activate;
 use super::super::table::ColumnAlign;
 
 const INDENT_COLS: f32 = 2.0;
@@ -24,14 +25,14 @@ pub(super) fn row_height() -> f32 {
 /// The tree chevron slot of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Disclosure {
-    /// The none disclosure.
+    /// No chevron and no slot for one.
     #[default]
     None,
-    /// The leaf disclosure.
+    /// An empty slot, so a leaf lines up with its siblings.
     Leaf,
-    /// The collapsed disclosure.
+    /// A chevron that points right.
     Collapsed,
-    /// The expanded disclosure.
+    /// A chevron that points down.
     Expanded,
 }
 
@@ -39,12 +40,12 @@ pub enum Disclosure {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RowTone {
-    /// The normal row tone.
+    /// Body text.
     #[default]
     Normal,
-    /// The muted row tone.
+    /// Dimmed text, for an inactive row.
     Muted,
-    /// The header row tone.
+    /// A small dimmed heading above a group of rows.
     Header,
 }
 
@@ -64,147 +65,221 @@ impl RowTone {
     }
 }
 
-/// One fixed-width column of a list row.
-#[derive(Debug)]
-pub struct ListColumn {
-    /// The text.
-    pub text: TextContent,
-    /// The width.
-    pub width: f32,
-    /// The align.
-    pub align: ColumnAlign,
+struct Column {
+    text: TextContent,
+    width: f32,
+    align: ColumnAlign,
 }
 
-impl ListColumn {
-    /// Creates a list column.
-    #[must_use]
-    pub fn new(text: impl Into<TextContent>, width: f32) -> Self {
-        Self {
-            text: text.into(),
-            width,
-            align: ColumnAlign::End,
-        }
-    }
-
-    /// Aligns the column to the start.
-    #[must_use]
-    pub const fn start(mut self) -> Self {
-        self.align = ColumnAlign::Start;
-        self
-    }
+/// Builds a list row.
+#[must_use]
+pub struct ListRowBuilder {
+    title: TextContent,
+    selected: bool,
+    depth: u16,
+    disclosure: Disclosure,
+    leading: Option<Box<dyn IntoNode>>,
+    marker: Option<TextContent>,
+    marker_tone: Option<Tone>,
+    status: Option<TextContent>,
+    status_tone: Option<Tone>,
+    badge: Option<(TextContent, Tone)>,
+    detail: Option<TextContent>,
+    columns: Vec<Column>,
+    shrink: bool,
+    title_width: Option<f32>,
+    indent: f32,
+    tone: RowTone,
+    activate: Option<Activate>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
-impl From<(TextContent, f32)> for ListColumn {
-    fn from((text, width): (TextContent, f32)) -> Self {
-        Self::new(text, width)
-    }
-}
-
-/// Optional parts of a list row.
-#[derive(Default)]
-pub struct ListRowSlots {
-    /// The depth.
-    pub depth: u16,
-    /// The disclosure.
-    pub disclosure: Disclosure,
-    /// The leading, if any.
-    pub leading: Option<Box<dyn IntoNode>>,
-    /// The marker, if any.
-    pub marker: Option<TextContent>,
-    /// The marker tone, if any.
-    pub marker_tone: Option<Tone>,
-    /// The status, if any.
-    pub status: Option<TextContent>,
-    /// The status tone, if any.
-    pub status_tone: Option<Tone>,
-    /// The badge, if any.
-    pub badge: Option<(TextContent, Tone)>,
-    /// The detail, if any.
-    pub detail: Option<TextContent>,
-    /// The columns.
-    pub columns: Vec<ListColumn>,
-    /// Whether shrink.
-    pub shrink: bool,
-    /// The title width, if any.
-    pub title_width: Option<f32>,
-    /// The indent, if any.
-    pub indent: Option<f32>,
-    /// The tone.
-    pub tone: RowTone,
-    /// The activate, if any.
-    pub activate: Option<Rc<dyn Fn()>>,
-}
-
-impl core::fmt::Debug for ListRowSlots {
+impl core::fmt::Debug for ListRowBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ListRowSlots")
+        f.debug_struct("ListRowBuilder")
+            .field("title", &self.title)
+            .field("selected", &self.selected)
             .field("depth", &self.depth)
             .field("disclosure", &self.disclosure)
-            .field("marker", &self.marker)
-            .field("marker_tone", &self.marker_tone)
-            .field("status", &self.status)
-            .field("status_tone", &self.status_tone)
-            .field("badge", &self.badge)
-            .field("detail", &self.detail)
-            .field("columns", &self.columns)
-            .field("shrink", &self.shrink)
-            .field("title_width", &self.title_width)
-            .field("indent", &self.indent)
             .field("tone", &self.tone)
             .finish_non_exhaustive()
     }
 }
 
-/// Builds one list row from its slots.
-#[must_use]
-pub fn list_row(
-    selected: bool,
-    title: impl Into<TextContent>,
-    mut slots: ListRowSlots,
-) -> NodeBuilder {
-    let mut row = row_frame(
-        slots.depth,
-        slots.indent.unwrap_or(INDENT_COLS),
-        slots.disclosure,
-    );
-    if let Some(marker) = slots.marker.take() {
-        row = row.child(marker_slot(marker, slots.marker_tone));
-    }
-    if let Some(leading) = slots.leading.take() {
-        row = row.child(leading_slot(leading));
-    }
-    let tone = slots.tone;
-    let title = title.into();
-    if let TextContent::Static(name) = &title {
-        row = row.label(name.clone());
-    }
-    row = row.child(title_text(title, &slots));
-    if let Some(detail) = slots.detail.take() {
-        row = row.child(detail_text(detail, tone));
-    }
-    if let Some(status) = slots.status.take() {
-        row = row.child(status_text(status, slots.shrink, tone, slots.status_tone));
-    }
-    if let Some((label, badge_tone)) = slots.badge.take() {
-        row = row.child(chip(label, badge_tone));
-    }
-    for entry in std::mem::take(&mut slots.columns) {
-        row = row.child(column(entry, slots.shrink, tone));
-    }
-    if tone == RowTone::Header {
-        return row;
-    }
-    let row = if selected {
-        row.selected(signal(true))
-            .class([Radius::Md.atom(), ROW_SELECTED.background()])
-    } else {
-        row_states(row, None)
-    };
-    match slots.activate {
-        Some(activate) => row.role(Role::ListItem).activate_with(activate),
-        None => row,
+/// One row of a list: a title, with optional marker, icon, detail, status, badge, and columns.
+pub fn list_row(title: impl Into<TextContent>) -> ListRowBuilder {
+    ListRowBuilder {
+        title: title.into(),
+        selected: false,
+        depth: 0,
+        disclosure: Disclosure::None,
+        leading: None,
+        marker: None,
+        marker_tone: None,
+        status: None,
+        status_tone: None,
+        badge: None,
+        detail: None,
+        columns: Vec::new(),
+        shrink: false,
+        title_width: None,
+        indent: INDENT_COLS,
+        tone: RowTone::Normal,
+        activate: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
+
+impl ListRowBuilder {
+    /// Draws the row with the selected fill.
+    pub const fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    /// Indents the row by `depth` levels of a tree.
+    pub const fn depth(mut self, depth: u16) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    /// Sets the width of one level of indent, in character cells; the default is 2.
+    pub const fn indent(mut self, cells: f32) -> Self {
+        self.indent = cells;
+        self
+    }
+
+    /// Shows the tree chevron before the title.
+    pub const fn disclosure(mut self, disclosure: Disclosure) -> Self {
+        self.disclosure = disclosure;
+        self
+    }
+
+    /// Shows a short mark, such as a bullet, in a two-cell slot before the title.
+    pub fn marker(mut self, marker: impl Into<TextContent>) -> Self {
+        self.marker = Some(marker.into());
+        self
+    }
+
+    /// Colors the marker; the default is the accent.
+    pub const fn marker_tone(mut self, tone: Tone) -> Self {
+        self.marker_tone = Some(tone);
+        self
+    }
+
+    /// Shows a node, such as an icon, before the title.
+    pub fn leading(mut self, leading: impl IntoNode + 'static) -> Self {
+        self.leading = Some(Box::new(leading));
+        self
+    }
+
+    /// Shows secondary text after the title; it takes the free width.
+    pub fn detail(mut self, detail: impl Into<TextContent>) -> Self {
+        self.detail = Some(detail.into());
+        self
+    }
+
+    /// Shows short text at the end of the row.
+    pub fn status(mut self, status: impl Into<TextContent>) -> Self {
+        self.status = Some(status.into());
+        self
+    }
+
+    /// Colors the status text.
+    pub const fn status_tone(mut self, tone: Tone) -> Self {
+        self.status_tone = Some(tone);
+        self
+    }
+
+    /// Shows a chip at the end of the row.
+    pub fn badge(mut self, label: impl Into<TextContent>, tone: Tone) -> Self {
+        self.badge = Some((label.into(), tone));
+        self
+    }
+
+    /// Adds a column of `width` pixels at the end of the row.
+    pub fn column(mut self, text: impl Into<TextContent>, width: f32, align: ColumnAlign) -> Self {
+        self.columns.push(Column {
+            text: text.into(),
+            width,
+            align,
+        });
+        self
+    }
+
+    /// Lets the status and the columns shrink when the row is narrow.
+    pub const fn shrink(mut self) -> Self {
+        self.shrink = true;
+        self
+    }
+
+    /// Sets the width of the title in pixels; without it the title takes the free width.
+    pub const fn title_width(mut self, width: f32) -> Self {
+        self.title_width = Some(width);
+        self
+    }
+
+    /// Sets the text tone; a `Header` row has no hover, selection, or activation.
+    pub const fn tone(mut self, tone: RowTone) -> Self {
+        self.tone = tone;
+        self
+    }
+
+    /// Makes the row a list item that runs `activate` when the user activates it.
+    pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
+        self.activate = Some(Rc::new(activate));
+        self
+    }
+
+    #[must_use]
+    fn root(mut self) -> NodeBuilder {
+        let mut row = row_frame(self.depth, self.indent, self.disclosure);
+        if let Some(marker) = self.marker.take() {
+            row = row.child(marker_slot(marker, self.marker_tone));
+        }
+        if let Some(leading) = self.leading.take() {
+            row = row.child(leading_slot(leading));
+        }
+        let tone = self.tone;
+        if let TextContent::Static(name) = &self.title {
+            row = row.label(name.clone());
+        }
+        row = row.child(title_text(&self));
+        if let Some(detail) = self.detail.take() {
+            row = row.child(detail_text(detail, tone));
+        }
+        if let Some(status) = self.status.take() {
+            row = row.child(status_text(status, self.shrink, tone, self.status_tone));
+        }
+        if let Some((label, badge_tone)) = self.badge.take() {
+            row = row.child(chip(label, badge_tone));
+        }
+        for entry in std::mem::take(&mut self.columns) {
+            row = row.child(column(entry, self.shrink, tone));
+        }
+        if tone == RowTone::Header {
+            return row;
+        }
+        let row = if self.selected {
+            row.selected(signal(true))
+                .class([Radius::Md.atom(), ROW_SELECTED.background()])
+        } else {
+            row_states(row, None)
+        };
+        match self.activate {
+            Some(activate) => row.role(Role::ListItem).activate_with(activate),
+            None => row,
+        }
+    }
+}
+
+impl From<ListRowBuilder> for NodeBuilder {
+    fn from(row: ListRowBuilder) -> Self {
+        row.into_node_builder()
+    }
+}
+
+crate::widgets::builder_impls!([] ListRowBuilder: widget, node(pub));
 
 pub(crate) const ROW_SELECTED: Token = Token::Accent5;
 pub(crate) const ROW_SELECTED_HOVER: Token = Token::Accent6;
@@ -301,7 +376,7 @@ fn cell_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
     )
 }
 
-fn title_text(title: TextContent, slots: &ListRowSlots) -> TextBuilder {
+fn title_text(slots: &ListRowBuilder) -> TextBuilder {
     let layout = match slots.title_width {
         Some(width) => LayoutStyle::block()
             .width(width)
@@ -315,7 +390,7 @@ fn title_text(title: TextContent, slots: &ListRowSlots) -> TextBuilder {
             .max_size(Length::Percent(1.0), Length::Auto),
         None => LayoutStyle::block().grow(1.0).min_size(0.0, 0.0),
     };
-    text(title)
+    text(slots.title.clone())
         .ellipsize()
         .layout(layout)
         .class(if slots.tone == RowTone::Header {
@@ -357,7 +432,7 @@ fn status_text(
     }
 }
 
-fn column(entry: ListColumn, shrink: bool, tone: RowTone) -> NodeBuilder {
+fn column(entry: Column, shrink: bool, tone: RowTone) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()

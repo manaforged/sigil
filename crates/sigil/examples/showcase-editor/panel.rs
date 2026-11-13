@@ -5,20 +5,15 @@ use super::state::{BottomTab, Workspace};
 
 fn problem_row(ws: Workspace, diag: Problem) -> NodeBuilder {
     let location = format!("{}:{}:{}", diag.file.path(), diag.line + 1, diag.start + 1);
-    list_row(
-        false,
-        diag.message,
-        ListRowSlots {
-            leading: Some(Box::new(
-                icon(severity_icon(diag.severity))
-                    .tone(severity_tone(diag.severity))
-                    .size(ControlSize::Compact),
-            )),
-            detail: Some(format!("{location} [{}]", diag.code).into()),
-            ..ListRowSlots::default()
-        },
-    )
-    .pointer_down(move |_| ws.goto(diag.file, diag.line, diag.start))
+    list_row(diag.message)
+        .leading(
+            icon(severity_icon(diag.severity))
+                .tone(severity_tone(diag.severity))
+                .size(ControlSize::Compact),
+        )
+        .detail(format!("{location} [{}]", diag.code))
+        .pointer_down(move |_| ws.goto(diag.file, diag.line, diag.start))
+        .into()
 }
 
 fn fill_scroll(list: NodeBuilder) -> NodeBuilder {
