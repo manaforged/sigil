@@ -101,7 +101,7 @@ First public release.
 | `sigil_kittest::input::{pointer_move, pointer_drag, pointer_down, pointer_up, click}(x, y)` | `Event::pointer_move`, `pointer_drag`, `pointer_down`, `pointer_up`, `click` with `Point::new(x, y)` |
 | `input::key_event(key, physical, phase)`, `key_down(key, physical)`, `chord(key, physical, modifiers)` | `Event::key(key, phase).physical(physical)`, `Event::key_down(key).physical(physical)`, adding `.modifiers(modifiers)` for a chord |
 | `input::press`, `type_char(text, physical)`, `type_text`, `tab`, `scroll_lines(x, y, dy)`, `window_blur`, `ime_event(event)` | `Event::press`, `Event::typed(text).physical(physical)`, `Event::type_text`, `Event::tab`, `Event::wheel(Point::new(x, y), dy)`, `Event::blur`, `Event::Ime(event)` |
-| `app::TextTuning`, `set_text_tuning`, `text_tuning` | `AppConfig::text_enhance`, `text_snap`, `text_raster`, `text_dilation`, `text_sharpen`, `text_gamma` |
+| `app::TextTuning`, `set_text_tuning`, `text_tuning` | removed from the app API; no caller tuned glyphs. Tests keep `set_text_tuning` under feature `kittest` |
 | `app::DefaultFonts`, `set_default_fonts` | `AppConfig::font_sans`, `font_sans_weight`, `font_mono`, `font_icon`, `font_display`, `font_fallback` |
 | `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation::reduced_motion()`, `AppConfig::reduced_motion` |
 | `sigil::animation_runtime::{MotionPrefs, active_count, presets, running_clocks, tick}` (feature `kittest`) | `sigil::animation::*`, under `kittest`, `#[doc(hidden)]`. The `sigil::animation_runtime` module is removed |
@@ -162,6 +162,7 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `clipboard::clipboard()` | `clipboard::copy`, `paste`, `copy_image`; the handle is crate-private |
 | `profile::tick_frame`, `profile::count_add(counter, n)` | `profile::end_frame`, `profile::count(counter, n)` |
 | `ButtonBuilder::new` and the `new` of 15 other widget builders | the widget function: `button(label)`, `checkbox(checked)`, `slider(value, range)` |
 | `animation::{Keyframe, Keyframes, AnimationDirection, AnimationFill, Playback, AnimatorStatus}`, `terminal::CellGrid`, `style::ThemeBuilder`, `widgets::FocusCaret`, `TextFieldBuilder::focus_caret`, `Widget::presence_spring`, `Widget::ime_caret` | removed; no caller used them |

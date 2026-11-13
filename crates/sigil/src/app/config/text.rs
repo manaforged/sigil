@@ -2,13 +2,12 @@ use super::AppConfig;
 #[cfg(feature = "scene")]
 use std::sync::Arc;
 
-/// The fonts and glyph tuning that an app config carries.
+/// The fonts that an app config carries.
 #[cfg(feature = "scene")]
 #[derive(Debug, Clone, Default)]
 pub(crate) struct TextSetup {
     pub(crate) fonts: Option<crate::text::fonts::DefaultFonts>,
     pub(crate) font_fallbacks: Vec<crate::text::fonts::FallbackFace>,
-    pub(crate) text_tuning: Option<crate::renderer::slug::TextTuning>,
 }
 
 impl AppConfig {
@@ -63,56 +62,6 @@ impl AppConfig {
     pub fn font_fallback(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
         let entry = (Arc::new(bytes.into()), face);
         self.text.font_fallbacks.push(entry);
-        self
-    }
-
-    /// Turns glyph dilation and sharpening on or off.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_enhance(mut self, yes: bool) -> Self {
-        self.text.text_tuning.get_or_insert_default().enabled = yes;
-        self
-    }
-
-    /// Turns pixel snapping of glyphs on or off.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_snap(mut self, yes: bool) -> Self {
-        self.text.text_tuning.get_or_insert_default().snap = yes;
-        self
-    }
-
-    /// Selects atlas rasterization for small text instead of the vector path.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_raster(mut self, yes: bool) -> Self {
-        self.text.text_tuning.get_or_insert_default().raster = yes;
-        self
-    }
-
-    /// Sets the amount of glyph dilation.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_dilation(mut self, dilation: f32) -> Self {
-        self.text.text_tuning.get_or_insert_default().dilation = dilation;
-        self
-    }
-
-    /// Sets the amount of glyph sharpening.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_sharpen(mut self, sharpen: f32) -> Self {
-        self.text.text_tuning.get_or_insert_default().sharpen = sharpen;
-        self
-    }
-
-    /// Sets the text gamma for light text on dark and dark text on light.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn text_gamma(mut self, light_on_dark: f32, dark_on_light: f32) -> Self {
-        let tuning = self.text.text_tuning.get_or_insert_default();
-        tuning.gamma_light_on_dark = light_on_dark;
-        tuning.gamma_dark_on_light = dark_on_light;
         self
     }
 }
