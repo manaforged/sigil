@@ -162,6 +162,7 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `AppConfig::font_sans`, `font_mono`, `font_icon`, `font_display` | `AppConfig::font(FontFamily::Sans, bytes, face)` and the other families |
 | `clipboard::clipboard()` | `clipboard::copy`, `paste`, `copy_image`; the handle is crate-private |
 | `profile::tick_frame`, `profile::count_add(counter, n)` | `profile::end_frame`, `profile::count(counter, n)` |
 | `ButtonBuilder::new` and the `new` of 15 other widget builders | the widget function: `button(label)`, `checkbox(checked)`, `slider(value, range)` |

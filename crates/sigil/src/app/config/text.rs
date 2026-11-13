@@ -1,5 +1,7 @@
 use super::AppConfig;
 #[cfg(feature = "scene")]
+use crate::style::FontFamily;
+#[cfg(feature = "scene")]
 use std::sync::Arc;
 
 /// The fonts that an app config carries.
@@ -11,11 +13,22 @@ pub(crate) struct TextSetup {
 }
 
 impl AppConfig {
-    /// Replaces the bundled sans face.
+    /// Replaces the bundled face of `family` with face `face` of the font file `bytes`.
     #[cfg(feature = "scene")]
     #[must_use]
-    pub fn font_sans(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
-        self.text.fonts.get_or_insert_default().sans = Some((Arc::new(bytes.into()), face));
+    pub fn font(mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
+        let fonts = self.text.fonts.get_or_insert_default();
+        let slot = match family {
+            FontFamily::Sans => &mut fonts.sans,
+            FontFamily::Mono => &mut fonts.mono,
+            FontFamily::Icon => &mut fonts.icon,
+            FontFamily::Display => &mut fonts.display,
+            FontFamily::Serif => {
+                tracing::warn!(target: "sigil::text", "the serif family has no bundled face to replace");
+                return self;
+            }
+        };
+        *slot = Some((Arc::new(bytes.into()), face));
         self
     }
 
@@ -29,30 +42,6 @@ impl AppConfig {
             .get_or_insert_default()
             .sans_weights
             .push(entry);
-        self
-    }
-
-    /// Replaces the bundled monospace face.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn font_mono(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
-        self.text.fonts.get_or_insert_default().mono = Some((Arc::new(bytes.into()), face));
-        self
-    }
-
-    /// Replaces the bundled icon face.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn font_icon(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
-        self.text.fonts.get_or_insert_default().icon = Some((Arc::new(bytes.into()), face));
-        self
-    }
-
-    /// Replaces the bundled display face.
-    #[cfg(feature = "scene")]
-    #[must_use]
-    pub fn font_display(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
-        self.text.fonts.get_or_insert_default().display = Some((Arc::new(bytes.into()), face));
         self
     }
 
