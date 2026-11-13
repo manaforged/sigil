@@ -36,12 +36,18 @@ pub(crate) struct RuntimeState {
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
     pub(crate) frame_dirty: bool,
+    pub(crate) frame_asked_idle: bool,
     pub(crate) write_clock: u64,
     pub(crate) paints: u64,
     pub(crate) runtime_id: u64,
 }
 
 impl RuntimeState {
+    pub(crate) fn ask_frame(&mut self) {
+        self.frame_dirty = true;
+        self.frame_asked_idle |= self.phase == DrawPhase::Idle;
+    }
+
     const fn new() -> Self {
         Self {
             owners: Arena::new(),
@@ -64,6 +70,7 @@ impl RuntimeState {
             panic_origin: None,
             phase: DrawPhase::Idle,
             frame_dirty: true,
+            frame_asked_idle: false,
             write_clock: 0,
             paints: 0,
             runtime_id: 0,

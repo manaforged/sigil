@@ -60,7 +60,7 @@ impl Runtime {
         /// Enters the effect phase.
         pub fn begin_effect() {
             advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
-            with_rt(|rt| rt.frame_dirty = false);
+            with_rt(|rt| rt.frame_dirty = std::mem::take(&mut rt.frame_asked_idle));
         }
     }
 
@@ -101,7 +101,7 @@ impl Runtime {
     kittest_pub! {
         /// Asks for another frame.
         pub fn mark_frame_dirty() {
-            with_rt(|rt| rt.frame_dirty = true);
+            with_rt(RuntimeState::ask_frame);
         }
     }
 }
