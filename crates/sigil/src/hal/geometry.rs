@@ -16,7 +16,7 @@ impl PhysicalSize {
 }
 
 /// A position in logical px.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Point {
     /// The horizontal coordinate, in logical pixels.
     pub x: f32,
@@ -25,6 +25,9 @@ pub struct Point {
 }
 
 impl Point {
+    /// The origin at `(0.0, 0.0)`.
+    pub const ZERO: Self = Self::new(0.0, 0.0);
+
     /// Creates a point at `x`, `y`.
     #[must_use]
     pub const fn new(x: f32, y: f32) -> Self {
@@ -32,8 +35,20 @@ impl Point {
     }
 }
 
+impl From<(f32, f32)> for Point {
+    fn from((x, y): (f32, f32)) -> Self {
+        Self::new(x, y)
+    }
+}
+
+impl From<Point> for (f32, f32) {
+    fn from(point: Point) -> Self {
+        (point.x, point.y)
+    }
+}
+
 /// A rectangle in logical units.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Rect {
     /// The corner with the smallest x and y.
     pub origin: Point,

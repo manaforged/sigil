@@ -2,7 +2,7 @@ use accesskit::ActionRequest;
 
 use crate::events::Event;
 use crate::events::{EventRouter, FocusDirection};
-use crate::geometry::{Constraint, Point, Rect};
+use crate::geometry::{Constraint, Point, Rect, Size};
 use crate::reactive::Runtime;
 use std::rc::Rc;
 
@@ -375,7 +375,8 @@ impl Host {
     }
 
     /// Lays out the tree for `viewport` and returns the root.
-    pub fn layout(&mut self, viewport: (f32, f32)) -> Result<Option<NodeId>, Error> {
+    pub fn layout(&mut self, viewport: impl Into<Size>) -> Result<Option<NodeId>, Error> {
+        let viewport = viewport.into();
         let _env = self.enter();
         let Some(root) = self.root else {
             return Ok(None);
@@ -383,7 +384,7 @@ impl Host {
         self.layout.compute(
             &mut self.cx,
             root,
-            Constraint::fixed(viewport.0, viewport.1),
+            Constraint::fixed(viewport.width, viewport.height),
         )?;
         Ok(Some(root))
     }
@@ -437,14 +438,15 @@ impl Host {
     }
 
     /// Lays out the tree for `viewport` and paints it into a new scene.
-    pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, Error> {
+    pub fn scene(&mut self, viewport: impl Into<Size>) -> Result<CommandScene, Error> {
+        let viewport = viewport.into();
         let _env = self.enter();
         if self.layout(viewport)?.is_none() {
             #[cfg(host)]
             self.reset_emit();
             return Ok(CommandScene::default());
         }
-        Ok(self.emit(viewport))
+        Ok(self.emit((viewport.width, viewport.height)))
     }
 }
 

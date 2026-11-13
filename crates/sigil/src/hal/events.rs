@@ -327,6 +327,7 @@ pub struct KeyEvent {
     pub(crate) phase: KeyPhase,
     pub(crate) text: Option<String>,
     propagation_stopped: bool,
+    default_prevented: bool,
 }
 
 impl KeyEvent {
@@ -339,7 +340,19 @@ impl KeyEvent {
             phase,
             text: None,
             propagation_stopped: false,
+            default_prevented: false,
         }
+    }
+
+    /// Marks the event so built-in host defaults are skipped.
+    pub const fn prevent_default(&mut self) {
+        self.default_prevented = true;
+    }
+
+    /// Returns whether default handling was prevented on this event.
+    #[must_use]
+    pub const fn default_prevented(&self) -> bool {
+        self.default_prevented
     }
 
     /// The key by its meaning: a named key or the text that it types.

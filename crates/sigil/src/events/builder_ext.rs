@@ -58,8 +58,6 @@ macro_rules! handler_methods {
             @keyed
             /// Runs `h` when a key event matching `shortcut` reaches the node.
             key => Key, Bubble,
-            /// Runs `h` when the key combination `shortcut` reaches the node.
-            shortcut => Shortcut, Bubble,
             /// Runs `h` for a key event matching `shortcut` before the node's children see it.
             key_capture => Key, Capture,
         }
@@ -124,6 +122,27 @@ pub(crate) use event_methods;
 
 handler_methods!(implement);
 
+pub(crate) fn shortcut<H>(node: NodeBuilder, shortcut: Shortcut, h: H) -> NodeBuilder
+where
+    H: Fn(&mut KeyEvent) + 'static,
+{
+    let a11y_shortcut = shortcut.clone();
+    with_handlers(
+        node.mutate(move |node| node.a11y.keyboard_shortcut = Some(a11y_shortcut)),
+        move |handlers| {
+            handlers.push(
+                EventKind::Shortcut,
+                Phase::Bubble,
+                Handler::Key(Some(shortcut), Box::new(h)),
+            );
+        },
+    )
+}
+
+pub(crate) fn accessible_shortcut(node: NodeBuilder, shortcut: Shortcut) -> NodeBuilder {
+    node.mutate(move |node| node.a11y.keyboard_shortcut = Some(shortcut))
+}
+
 pub(crate) fn pointer_up<H>(node: NodeBuilder, h: H) -> NodeBuilder
 where
     H: Fn(&mut PointerEvent) + 'static,
@@ -167,32 +186,36 @@ pub(crate) fn ime_caret_signal(
     })
 }
 
-fn set_if_changed(out: Signal<bool>, next: bool) {
-    if out.peek() != next {
-        out.set(next);
-    }
-}
-
 pub(crate) fn track_hovered(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
-    let node = pointer_enter(node, move |_| set_if_changed(out, true));
-    pointer_leave(node, move |_| set_if_changed(out, false))
+    let node = pointer_enter(node, move |_| {
+        let _ = out.try_set(true);
+    });
+    pointer_leave(node, move |_| {
+        let _ = out.try_set(false);
+    })
 }
 
 pub(crate) fn track_focused(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
-    let node = focus_in(node, move || set_if_changed(out, true));
-    focus_out(node, move || set_if_changed(out, false))
+    let node = focus_in(node, move || {
+        let _ = out.try_set(true);
+    });
+    focus_out(node, move || {
+        let _ = out.try_set(false);
+    })
 }
 
 pub(crate) fn track_pressed(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
     let node = pointer_down(node, move |event| {
         if is_primary(event) {
-            set_if_changed(out, true);
+            let _ = out.try_set(true);
         }
     });
-    let node = pointer_leave(node, move |_| set_if_changed(out, false));
+    let node = pointer_leave(node, move |_| {
+        let _ = out.try_set(false);
+    });
     track_release(node, move |event| {
         if is_primary(event) || is_cancel(event) {
-            set_if_changed(out, false);
+            let _ = out.try_set(false);
         }
     })
 }

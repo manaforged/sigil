@@ -142,7 +142,7 @@ impl CustomSliderBuilder {
             AccessibleName::from,
         );
         let row = slider_row_layout(self.length);
-        let extent = signal((0.0_f32, 0.0_f32));
+        let extent = signal(Size::new(0.0, 0.0));
         let (filled, rest) = slider_track_parts(rt, extent, Metrics::current().track_size(6.0));
         let mut node = container()
             .role(Role::Slider)
@@ -152,7 +152,7 @@ impl CustomSliderBuilder {
             .value(rt.value, rt.min, rt.max)
             .value_step(rt.step)
             .layout(row)
-            .size_reactive(extent)
+            .track_size(extent)
             .radius(Radius::Md)
             .hover(|s| s.background(Token::SurfaceHover))
             .pressed(|s| s.background(Token::SurfacePressed))
@@ -195,10 +195,10 @@ fn slider_row_layout(length: Option<f32>) -> LayoutStyle {
 
 fn slider_track_parts(
     rt: SliderRuntime,
-    extent: Signal<(f32, f32)>,
+    extent: Signal<Size>,
     thickness: f32,
 ) -> (NodeBuilder, NodeBuilder) {
-    let filled_px = memo(move || rt.ratio() * extent.get().0);
+    let filled_px = memo(move || rt.ratio() * extent.get().width);
     let filled = container()
         .hittable(false)
         .radius(Radius::Full)

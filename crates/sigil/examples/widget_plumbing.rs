@@ -50,7 +50,9 @@ pub(crate) fn drag_ghost_demo() -> NodeBuilder {
         .child(NodeBuilder::from(card(text(dropped).nowrap())).drop_target(
             drag.clone(),
             |_| true,
-            move |item| dropped.set(format!("Dropped {item}")),
+            move |event: sigil::events::DropEvent<String>| {
+                dropped.set(format!("Dropped {}", event.into_value()));
+            },
         ))
         .child(drag_ghost(drag, |item: &String| {
             card(text(item.clone()).nowrap())

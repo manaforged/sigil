@@ -478,6 +478,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         return;
     }
     if let Some(text) = runtime.state.selected_text() {
+        event.prevent_default();
         event.stop_propagation();
         runtime.clip_fail.set(runtime.clipboard.set(&text).is_err());
     }

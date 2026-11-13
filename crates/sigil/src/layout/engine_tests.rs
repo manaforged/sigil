@@ -52,10 +52,10 @@ fn first_child(cx: &Cx, root: NodeId) -> NodeId {
 #[test]
 fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
     Owner::scope("layout-bounds-feedback", || {
-        let measured = signal((0.0, 0.0));
+        let measured = signal(crate::geometry::Size::ZERO);
         let shifted = signal(false);
         effect(move || {
-            if measured.get().1 > 0.0 {
+            if measured.get().height > 0.0 {
                 shifted.set(true);
             }
         });
@@ -63,7 +63,7 @@ fn bounds_callbacks_invalidate_geometry_for_the_next_frame() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(80.0, 40.0))
-                .size_reactive(measured)
+                .track_size(measured)
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(20.0, 10.0))
@@ -163,7 +163,7 @@ fn reactive_layout_style_change_invalidates_cache() {
 #[test]
 fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
     Owner::scope("layout-resting-seed", || {
-        let pos = signal((0.0_f32, 0.0_f32));
+        let pos = signal(crate::geometry::Point::ZERO);
         let mut page = container().layout(LayoutStyle::flex_column().fixed_size(400.0, 800.0));
         for index in 0..20 {
             page = page.child(crate::widgets::button(format!("button {index}")));
@@ -171,7 +171,7 @@ fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
         page = page.child(
             container()
                 .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                .position_reactive(pos),
+                .offset(pos),
         );
         let mut cx = Cx::new_root();
         let root = cx.add(page);
@@ -181,7 +181,7 @@ fn resting_interactive_nodes_are_not_reseeded_when_another_node_moves() {
                 .compute(&mut cx, root, Constraint::fixed(400.0, 800.0))
                 .expect("settled frame");
         }
-        pos.set((0.0, 40.0));
+        pos.set(crate::geometry::Point::new(0.0, 40.0));
         let mut dirty = Vec::new();
         engine.seed_reactive_dirty(&cx, &mut dirty, true, false);
         let buttons = dirty

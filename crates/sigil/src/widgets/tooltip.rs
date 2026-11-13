@@ -227,6 +227,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, reveal: Reveal) {
             NamedKey::Escape.into(),
             Box::new(move |event| {
                 if reveal.hide() {
+                    event.prevent_default();
                     event.stop_propagation();
                 }
             }),

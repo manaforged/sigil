@@ -47,12 +47,6 @@ macro_rules! shared_node_methods {
             self
         }
 
-        /// Sets the shortcut that the node reports to assistive technology.
-        pub fn keyboard_shortcut(mut self, shortcut: impl Into<$crate::events::Shortcut>) -> Self {
-            self$(.$field)*.a11y.keyboard_shortcut = Some(shortcut.into());
-            self
-        }
-
         /// Sets whether pointer hit tests and focus moves can land on the node.
         pub const fn hittable(mut self, yes: bool) -> Self {
             self$(.$field)*.a11y.hittable = yes;

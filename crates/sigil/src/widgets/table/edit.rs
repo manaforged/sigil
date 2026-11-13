@@ -249,6 +249,7 @@ fn edit_key<Row: 'static>(
         NamedKey::Tab => editor.step(state, cell, !event.modifiers.shift()),
         _ => return,
     }
+    event.prevent_default();
     event.stop_propagation();
 }
 

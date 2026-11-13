@@ -74,7 +74,7 @@ fn input_hook_viewport_sizes_the_same_frame() {
     Owner::scope("host_frame_updates::input_viewport", || {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(column().layout(LayoutStyle::flex_column().fill_width().fill_height()));
-        frame(&mut host, Some(Box::new(|_| Some((640.0, 90.0)))));
+        frame(&mut host, Some(Box::new(|_| Some(Size::new(640.0, 90.0)))));
 
         let root = host.root().expect("mounted");
         let rect = host

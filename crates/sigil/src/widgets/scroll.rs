@@ -1,5 +1,6 @@
 #![allow(clippy::missing_const_for_fn)]
 
+use crate::geometry::{Point, Size};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, Length, Overflow};
 use crate::reactive::{Reactive, Signal, effect_named, memo, signal};
@@ -122,7 +123,7 @@ impl ScrollBuilder {
             },
         );
         if measured {
-            root = root.size_reactive(viewport);
+            root = root.track_size(viewport);
         }
         caller_style(root, self.style_accumulator)
     }
@@ -136,10 +137,10 @@ fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBui
     if let Some(extent) = extent {
         (content, extent)
     } else {
-        let measured = signal((0.0_f32, 0.0_f32));
+        let measured = signal(Size::ZERO);
         (
-            content.size_reactive(measured),
-            memo(move || measured.get().1.max(0.0)),
+            content.track_size(measured),
+            memo(move || measured.get().height.max(0.0)),
         )
     }
 }
@@ -165,14 +166,10 @@ pub(crate) fn nearest((top, height): (f32, f32), current: f32, viewport: f32) ->
     }
 }
 
-fn viewport_signals(
-    width: Option<f32>,
-    height: f32,
-    fill: bool,
-) -> (Signal<(f32, f32)>, Signal<f32>) {
-    let viewport = signal((width.unwrap_or(0.0), height));
+fn viewport_signals(width: Option<f32>, height: f32, fill: bool) -> (Signal<Size>, Signal<f32>) {
+    let viewport = signal(Size::new(width.unwrap_or(0.0), height));
     let viewport_height = memo(move || {
-        let measured = viewport.get().1;
+        let measured = viewport.get().height;
         if fill && measured > 0.0 {
             measured
         } else {
@@ -210,10 +207,11 @@ fn wrap_content(
     viewport_height: Signal<f32>,
 ) -> NodeBuilder {
     let height = memo(move || to_i16(extent.get().max(viewport_height.get())));
-    let position = memo(move || (0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
+    let position =
+        memo(move || Point::new(0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
     let layer = container()
         .layout(LayoutStyle::block().width(Length::Percent(1.0)))
-        .position_reactive(position)
+        .offset(position)
         .child(content);
     container()
         .layout(

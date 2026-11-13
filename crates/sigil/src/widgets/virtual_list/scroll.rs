@@ -37,7 +37,7 @@ pub(super) fn content_px(tops: Option<Tops>, row_height: f32, rows: usize) -> f3
 }
 
 pub(super) fn extent(
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     viewport_height: f32,
     content: impl Fn() -> f32 + 'static,
 ) -> (Signal<f32>, Signal<f32>) {
@@ -62,9 +62,9 @@ fn row_span(axes: BuildAxes, index: usize) -> (f32, f32) {
     )
 }
 
-pub(super) fn viewport_px(measured: (f32, f32), fallback: f32) -> f32 {
-    if measured.1 > 0.0 {
-        measured.1
+pub(super) fn viewport_px(measured: crate::geometry::Size, fallback: f32) -> f32 {
+    if measured.height > 0.0 {
+        measured.height
     } else {
         fallback
     }

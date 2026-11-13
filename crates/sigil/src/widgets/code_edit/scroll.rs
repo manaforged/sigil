@@ -31,7 +31,7 @@ pub(super) fn scroll_body(s: EditSurface, row_h: f32) -> NodeBuilder {
             let diagnostics = s.diagnostics.map(|d| d.get()).unwrap_or_default();
             let win = LineWindow {
                 start: s.start.get(),
-                budget: visible_rows(s.viewport.get().1, row_h) + ROW_BUFFER,
+                budget: visible_rows(s.viewport.get().height, row_h) + ROW_BUFFER,
                 row_h,
             };
             rows(
@@ -66,10 +66,10 @@ pub(super) fn wheel(
     ev: &mut ScrollEvent,
     scroll_y: Signal<f32>,
     lines: Signal<Vec<String>>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     row_h: f32,
 ) {
-    let height = viewport.peek().1;
+    let height = viewport.peek().height;
     let y = crate::widgets::scroll::WheelAxis {
         offset: scroll_y,
         viewport: height,
@@ -104,7 +104,7 @@ pub(super) fn follow_caret(
     scroll_y: Signal<f32>,
     caret: Signal<(usize, usize)>,
     lines: Signal<Vec<String>>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     row_h: f32,
 ) {
     let (caret_line, _) = caret.get();
@@ -112,7 +112,7 @@ pub(super) fn follow_caret(
     if total == 0 {
         return;
     }
-    let viewport_h = viewport.get().1;
+    let viewport_h = viewport.get().height;
     let band = visible_rows(viewport_h, row_h).saturating_sub(1).max(1);
     let top = first_row(scroll_y.peek(), total, row_h);
     let target_row = if caret_line < top {

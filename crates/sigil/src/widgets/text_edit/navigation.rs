@@ -94,7 +94,7 @@ pub(super) fn move_vertical(
             clippy::cast_precision_loss,
             reason = "vertical movement counts are small relative to layout coordinates"
         )]
-        let rows = step.rows(runtime.viewport_size.peek().1, height) as f32;
+        let rows = step.rows(runtime.viewport_size.peek().height, height) as f32;
         let target = engine.hit(
             &buffer,
             &style,
@@ -162,7 +162,7 @@ impl TextEditRuntime {
     }
 
     pub(in crate::widgets::text_edit) fn geometry_width(&self) -> Option<f32> {
-        let width = self.content_size.get().0;
+        let width = self.content_size.get().width;
         (width > 0.0).then_some(width)
     }
 }

@@ -54,14 +54,14 @@ fn line_box() -> TextBuilder {
 
 fn track(runtime: TextFieldRuntime, displayed: Signal<String>) -> NodeBuilder {
     let scroll = runtime.scroll_x;
-    let track_pos = memo(move || (-scroll.get(), 0.0));
+    let track_pos = memo(move || crate::geometry::Point::new(-scroll.get(), 0.0));
     let (val_sig, preedit_sig) = (runtime.state.value(), runtime.preedit);
     let placeholder_visible =
         memo(move || val_sig.get().is_empty() && preedit_sig.get().is_empty());
     container()
         .hittable(false)
         .layout(LayoutStyle::block())
-        .position_reactive(track_pos)
+        .offset(track_pos)
         .child({
             let runtime = runtime.clone();
             overlay_layer().children_reactive(move || selection_rects(&runtime))

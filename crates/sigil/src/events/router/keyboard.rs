@@ -20,30 +20,21 @@ impl EventRouter {
             return false;
         }
         let focused = self.focused_kind(cx);
-        if focused != Focused::Text
-            && {
-                let mods = event.normalized_modifiers();
-                mods.meta() || (mods.ctrl() && focused != Focused::Terminal)
-            }
-            && event.is_letter_c()
-            && crate::events::selection::copy_selection(cx)
-        {
-            event.stop_propagation();
-            return true;
-        }
         self.shortcuts.refresh(cx);
-        if self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped() {
-            return true;
+        let mut handled =
+            self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped();
+        if !handled {
+            crate::events::note_focus_source(true);
+            if event.is_tab_navigation() && focused != Focused::Terminal {
+                return self.route_tab(cx, layout, &mut event);
+            }
+            self.focus.focus_active_scope(cx, layout);
+            handled = self.dispatch_focused_key(cx, &mut event);
         }
-        if event.is_escape() && event.modifiers.is_empty() && crate::events::selection::escape() {
-            return true;
+        if !event.default_prevented() {
+            handled |= host_default_key(cx, focused, &mut event);
         }
-        crate::events::note_focus_source(true);
-        if event.is_tab_navigation() && focused != Focused::Terminal {
-            return self.route_tab(cx, layout, &mut event);
-        }
-        self.focus.focus_active_scope(cx, layout);
-        self.dispatch_focused_key(cx, &mut event)
+        handled || event.default_prevented()
     }
 
     fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) -> bool {
@@ -71,9 +62,14 @@ impl EventRouter {
             .filter(|id| visible(cx, *id))
             .map(|focused| path_to_node(cx, focused))
             .unwrap_or_default();
-        run_phase(cx, path.iter().copied(), event, true)
-            || route_tab_key(&mut self.focus, cx, layout, event)
-            || run_phase(cx, path.iter().rev().copied(), event, false)
+        let mut handled = run_phase(cx, path.iter().copied(), event, true);
+        if !event.propagation_stopped() {
+            handled |= run_phase(cx, path.iter().rev().copied(), event, false);
+        }
+        if !event.default_prevented() {
+            handled |= route_tab_key(&mut self.focus, cx, layout, event);
+        }
+        handled || event.default_prevented()
     }
 
     fn focused_kind(&self, cx: &Cx) -> Focused {
@@ -196,13 +192,26 @@ impl Shortcut {
     }
 }
 
+fn host_default_key(cx: &Cx, focused: Focused, event: &mut KeyEvent) -> bool {
+    if focused != Focused::Text
+        && copy_modifiers(event.normalized_modifiers(), focused)
+        && event.is_letter_c()
+        && crate::events::selection::copy_selection(cx)
+    {
+        event.stop_propagation();
+        return true;
+    }
+    event.is_escape() && event.modifiers.is_empty() && crate::events::selection::escape()
+}
+
+const fn copy_modifiers(mods: Modifiers, focused: Focused) -> bool {
+    mods.meta() || (mods.ctrl() && !matches!(focused, Focused::Terminal))
+}
+
 fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, NodeId); 8]>) {
     let Some(node) = cx.get(id) else {
         return;
     };
-    if let Some(shortcut) = node.a11y.keyboard_shortcut.as_ref() {
-        entries.push((shortcut.clone(), id));
-    }
     if let Some(handlers) = node.extension::<EventHandlers>() {
         entries.extend(handlers.shortcuts().map(|shortcut| (shortcut.clone(), id)));
     }

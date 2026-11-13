@@ -156,11 +156,10 @@ impl LayoutEngine {
                 .get_mut_untracked(id)
                 .ok_or_else(|| Error::node_missing(id))?;
             if let Some(size) = node.extension::<crate::layout::SizeReactive>() {
-                self.republished |= size.publish((rect.width, rect.height));
+                self.republished |=
+                    size.publish(crate::geometry::Size::new(rect.width, rect.height));
             }
-            if let Some(bounds) = node.extension::<crate::layout::BoundsReactive>() {
-                self.republished |= bounds.publish(rect);
-            }
+            self.republished |= publish_bounds_and_position(node, rect);
             if unchanged {
                 continue;
             }
@@ -177,14 +176,10 @@ impl LayoutEngine {
                 let Some(node) = cx.get(NodeId::from_key(*key)) else {
                     continue;
                 };
-                let (Some(bounds), Some(result)) = (
-                    node.extension::<crate::layout::BoundsReactive>(),
-                    node.extension::<LayoutResult>(),
-                ) else {
+                let Some(result) = node.extension::<LayoutResult>() else {
                     continue;
                 };
-                let rect = result.rect();
-                self.republished |= bounds.publish(rect);
+                self.republished |= publish_bounds_and_position(node, result.rect());
             }
         });
     }
@@ -210,6 +205,17 @@ impl LayoutEngine {
             }
         }
     }
+}
+
+fn publish_bounds_and_position(node: &crate::kernel::Node, rect: crate::geometry::Rect) -> bool {
+    let mut republished = false;
+    if let Some(bounds) = node.extension::<crate::layout::BoundsReactive>() {
+        republished |= bounds.publish(rect);
+    }
+    if let Some(position) = node.extension::<crate::layout::PositionReactive>() {
+        republished |= position.publish(rect);
+    }
+    republished
 }
 
 pub(super) const fn to_available_space(size: Constraint) -> AvailableSpace {

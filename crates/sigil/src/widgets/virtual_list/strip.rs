@@ -48,9 +48,7 @@ where
     let pos = strip_position(anchor, scroll_y, &spec);
     let first = keyed_rows(signal, mounted, &spec, 0, None);
     let seed: Vec<u64> = first.iter().map(|(key, _)| *key).collect();
-    let mut strip = container()
-        .layout(strip_layout(&spec))
-        .position_reactive(pos);
+    let mut strip = container().layout(strip_layout(&spec)).offset(pos);
     for row in first.into_iter().filter_map(|(_, row)| row) {
         strip = strip.child(row);
     }
@@ -98,7 +96,7 @@ fn strip_position<T, R>(
     anchor: Signal<usize>,
     scroll_y: Signal<f32>,
     spec: &BoundStrip<T, R>,
-) -> Signal<(f32, f32)> {
+) -> Signal<crate::geometry::Point> {
     let rh = spec.row_height;
     let tops = spec.tops;
     memo(move || {
@@ -107,7 +105,7 @@ fn strip_position<T, R>(
             || RowHeights::fixed(first, rh).total(),
             |tops| RowHeights::Tops(&tops.get()).top(first),
         );
-        (0.0, top - scroll_y.get())
+        crate::geometry::Point::new(0.0, top - scroll_y.get())
     })
 }
 

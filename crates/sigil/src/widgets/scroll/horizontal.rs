@@ -1,4 +1,5 @@
 use crate::events::{KeyEvent, NamedKey, PointerEvent};
+use crate::geometry::Size;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, memo, signal};
@@ -15,15 +16,15 @@ pub(crate) struct Horizontal {
     pub(crate) max: Signal<f32>,
     pub(crate) extent: Signal<f32>,
     pub(crate) viewport: Signal<f32>,
-    pub(crate) probe: Option<Signal<(f32, f32)>>,
+    pub(crate) probe: Option<Signal<Size>>,
 }
 
 impl Horizontal {
     pub(crate) fn new(extent: Signal<f32>, explicit: Option<f32>) -> Self {
         let (viewport, probe) = explicit.map_or_else(
             || {
-                let probe = signal((0.0_f32, 0.0_f32));
-                (memo(move || probe.get().0), Some(probe))
+                let probe = signal(Size::ZERO);
+                (memo(move || probe.get().width), Some(probe))
             },
             |px| (signal(px), None),
         );
@@ -104,10 +105,10 @@ fn step(hs: Horizontal, event: &mut KeyEvent, delta: f32) {
     }
 }
 
-pub(crate) fn probe(probe: Signal<(f32, f32)>) -> NodeBuilder {
+pub(crate) fn probe(probe: Signal<Size>) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fill_width().height(0.0))
-        .size_reactive(probe)
+        .track_size(probe)
 }
 
 fn track(hs: Horizontal) -> NodeBuilder {

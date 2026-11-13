@@ -33,7 +33,9 @@ fn drag_rows(first: f32, release_below: bool) -> (Option<(u32, u32)>, bool) {
                     .drop_target(
                         drag.clone(),
                         move |from: &u32| *from != id,
-                        move |from| dropped.set(Some((from, id))),
+                        move |event: sigil::events::DropEvent<u32>| {
+                            dropped.set(Some((event.into_value(), id)));
+                        },
                     ),
             )
         })

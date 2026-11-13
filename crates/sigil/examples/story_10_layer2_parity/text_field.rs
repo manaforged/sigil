@@ -392,7 +392,7 @@ fn abs_box(x: f32, top: f32, size: Option<(f32, f32)>) -> NodeBuilder {
 
 fn field_text_region(rt: FieldRuntime, displayed: Signal<String>) -> NodeBuilder {
     let scroll = rt.scroll_x;
-    let track_pos = memo(move || (-scroll.get(), 0.0));
+    let track_pos = memo(move || Point::new(-scroll.get(), 0.0));
     let value = rt.state.value();
     let preedit = rt.preedit;
     let placeholder_visible = memo(move || value.get().is_empty() && preedit.get().is_empty());
@@ -400,7 +400,7 @@ fn field_text_region(rt: FieldRuntime, displayed: Signal<String>) -> NodeBuilder
     let track = container()
         .hittable(false)
         .layout(LayoutStyle::block())
-        .position_reactive(track_pos)
+        .offset(track_pos)
         .child(abs_box(0.0, 0.0, None).children_reactive(move || field_selection_rects(&sel_rt)))
         .child(abs_box(0.0, 0.0, None).children_reactive(move || field_caret_rects(&caret_rt)))
         .child(

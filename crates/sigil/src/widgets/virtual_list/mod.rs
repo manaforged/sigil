@@ -55,7 +55,7 @@ struct BuildAxes {
     scroll_x: Option<ScrollAxis>,
     focused_row: Signal<usize>,
     selection_state: Signal<Selection>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     tops: Option<measure::Tops>,
     keys: Option<measure::Keys>,
     content: Signal<f32>,

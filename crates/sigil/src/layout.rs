@@ -73,13 +73,13 @@ pub use measure::TextMeasure;
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) use measure::TextMeasure;
 pub use orientation::Orientation;
-pub(crate) use reactive_position::SizeReactive;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use reactive_position::{BoundsReactive, ReactivePosition};
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) use reactive_position::{BoundsReactive, ReactivePosition};
+pub(crate) use reactive_position::{PositionReactive, SizeReactive};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use result::LayoutResult;

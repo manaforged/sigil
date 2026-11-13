@@ -96,17 +96,17 @@ fn edit_inner(
     let moved = runtime.clone();
     let scroll_y = runtime.scroll_into_view();
     let (padding_x, padding_y) = runtime.content_padding;
-    let offset = memo(move || (0.0, padding_y - scroll_y.get()));
+    let offset = memo(move || crate::geometry::Point::new(0.0, padding_y - scroll_y.get()));
     let text_box = container()
         .hittable(false)
         .layout(LayoutStyle::block().min_size(0.0, 0.0))
-        .size_reactive(runtime.content_size)
-        .position_reactive(offset)
+        .track_size(runtime.content_size)
+        .offset(offset)
         .child(selection_layer(runtime))
         .child(caret_layer(runtime, interaction))
         .child(lines);
     let content_size = runtime.content_size;
-    let extent = memo(move || padding_y.mul_add(2.0, content_size.get().1));
+    let extent = memo(move || padding_y.mul_add(2.0, content_size.get().height));
     let body = container()
         .layout(
             LayoutStyle::block()
@@ -124,7 +124,7 @@ fn edit_inner(
                 .min_size(0.0, 0.0)
                 .overflow_y(Overflow::Hidden),
         )
-        .size_reactive(runtime.viewport_size)
+        .track_size(runtime.viewport_size)
         .class(Radius::Sm.atom());
     if chrome {
         viewport.class(Token::Surface.background())
@@ -318,13 +318,13 @@ impl TextEditRuntime {
             let buffer = runtime.value.get();
             let byte = runtime.caret.get().min(buffer.len());
             let pos = runtime.caret_geometry(&buffer, byte).unwrap_or_default();
-            let window = viewport_size.get().1;
+            let window = viewport_size.get().height;
             if window <= 0.0 {
                 return;
             }
             let visible = padding_y.mul_add(-2.0, window);
             let max_scroll =
-                (padding_y.mul_add(2.0, runtime.content_size.get().1) - window).max(0.0);
+                (padding_y.mul_add(2.0, runtime.content_size.get().height) - window).max(0.0);
             let cur = scroll_y.peek();
             let span = if pos.height > visible {
                 ((pos.top + padding_y, pos.height), window)

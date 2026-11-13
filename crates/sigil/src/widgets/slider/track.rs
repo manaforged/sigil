@@ -16,7 +16,7 @@ const CELL_THUMB: &str = "●";
 
 pub(super) fn track(
     runtime: SliderRuntime,
-    extent: Signal<(f32, f32)>,
+    extent: Signal<crate::geometry::Size>,
     filled: bool,
 ) -> NodeBuilder {
     if filled {
@@ -33,7 +33,7 @@ pub(super) fn track(
 
 pub(super) fn segment(
     runtime: SliderRuntime,
-    extent: Signal<(f32, f32)>,
+    extent: Signal<crate::geometry::Size>,
     filled: bool,
     ratio: Option<Box<dyn Fn() -> f32>>,
 ) -> NodeBuilder {
@@ -48,13 +48,13 @@ pub(super) fn segment(
         },
         |ratio| match runtime.orientation {
             Orientation::Horizontal => {
-                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().0);
+                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().width);
                 styled_segment(runtime.glass, filled)
                     .layout(LayoutStyle::block().height(thickness))
                     .drive(Property::Width, px)
             }
             Orientation::Vertical => {
-                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().1);
+                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().height);
                 styled_segment(runtime.glass, filled)
                     .layout(LayoutStyle::block().width(thickness))
                     .drive(Property::Height, px)

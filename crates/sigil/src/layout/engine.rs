@@ -312,6 +312,9 @@ impl LayoutEngine {
         }
         if node.extension::<crate::layout::SizeReactive>().is_some()
             || node.extension::<crate::layout::BoundsReactive>().is_some()
+            || node
+                .extension::<crate::layout::PositionReactive>()
+                .is_some()
         {
             self.geometry_reactive.insert(id.key());
         } else {

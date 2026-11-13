@@ -287,7 +287,7 @@ fn build_table_node<Row: 'static>(
     );
     let root_state = state.clone();
     let root = container()
-        .bounds_reactive(chrome.bounds)
+        .track_bounds(chrome.bounds)
         .role(Role::Grid)
         .row_count(memo(move || root_state.visible().get().len() + 1))
         .column_count(state.columns().len() + usize::from(config.select))

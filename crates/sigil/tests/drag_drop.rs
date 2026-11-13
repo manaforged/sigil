@@ -68,7 +68,7 @@ fn demo_tree(
 ) -> impl IntoNode {
     let on_drop = {
         let drops = Rc::clone(drops);
-        move |payload: String| drops.borrow_mut().push(payload)
+        move |event: sigil::events::DropEvent<String>| drops.borrow_mut().push(event.into_value())
     };
     let count_down = {
         let downs = Rc::clone(downs);

@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Widget::{track_hovered, track_focused, track_pressed, pointer_drag, a11y_edit, capture_text_style, ime_caret}` and `NodeBuilder::{busy, invalid}`.
 - Public `TextState` editing methods, `Reactive::{read, into_signal}`, `Token::Selection` (`Token::COUNT` is now 95), `Transition::smooth`, `Theme::label`, `Metrics::track_size`, `clipboard::current`, `IconBuilder::on_solid`, and `From<&TextContent> for AccessibleName`.
 - Public `sigil::scene` drawing primitives: `SceneCommand`, `Clip`, `Transform`, `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawImage`, `DrawPath`, `DrawDecoration`, `LayerScope`, `CommandScene::{commands, iter, len, is_empty}` + `IntoIterator for &CommandScene`, `SceneBuilder::{new, draw_rect, draw_gradient, draw_path, stroke_line, draw_image, draw_shadow, draw_text, measure_text, clip, transform, finish}`, and `PathBuilder::build_path`.
+- `KeyEvent::{prevent_default, default_prevented}`, `Widget::{offset, track_bounds, track_position, track_size, accessible_shortcut, drop_hover}`, and `sigil::events::DropEvent<T>` (`into_value`, `value`, `position`, `local_position`, `bounds`).
 
 ### Changed
 
@@ -23,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Replaced `crate::layout::IntoPx` with `impl Into<sigil::layout::Length>` on `VirtualListBuilder::{row_height, estimate, viewport_height}` and `TableBuilder::{row_height, viewport_height}`.
 - Trimmed 63 Layer-2 / specialist items (plus the leaked `prelude::math` submodule) from `sigil::prelude` to 157 items; the removed items remain public in their owning modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`).
 - `sigil::widgets::canvas` now passes `(scene, rect, theme)` directly and `CanvasBuilder::themed` is removed; `CanvasBuilder` implements `Framed` (`Paint`, `States`, `Widget`); `SceneCommand::DrawShadow` and `Clip::Rounded` take `[f32; 4]` corner radii.
+- `KeyEvent::stop_propagation()` no longer cancels host `Tab` focus movement, `Escape` selection clear, or `Copy` (use `KeyEvent::prevent_default()`); `Widget::shortcut` registers both global shortcut routing and accessibility shortcut metadata.
+- Replaced raw geometry tuples with `Point`, `Size`, and `Rect` across `Widget::drop_target` (`DropEvent<T>`), `DragState::position -> Point`, `MenuBuilder::anchor(impl Into<Point>)`, `Host::{layout, frame, scene}(impl Into<Size>, ...)`, and `FrameInputHook -> Option<Size>`.
 
 ### Migration
 
@@ -38,6 +41,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 | `scene.commands` (field) | `scene.commands()` |
 | `Clip::Rounded(rect, CornerRadii)` / `SceneBuilder::draw_shadow(rect, CornerRadii, shadow)` | `[f32; 4]` corner radii |
 | Layer-2 and specialist items removed from `sigil::prelude::*` | import from their canonical modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`) |
+| `event.stop_propagation()` to cancel `Tab` focus movement / `Escape` clear / `Copy` | `event.prevent_default()` |
+| `NodeBuilder::keyboard_shortcut(s)` + `.key(s, f)` | `Widget::shortcut(s, f)` (or `Widget::accessible_shortcut(s)` for passive screen-reader hint only) |
+| `Widget::position_reactive(sig)` | `Widget::offset(sig)` with `Point` (`impl Reactive<Point>`) |
+| `Widget::{bounds_reactive, size_reactive}(sig)` | `Widget::{track_bounds, track_size}(sig)` with `Signal<Rect>` / `Signal<Size>` (plus `Widget::track_position` with `Signal<Point>`) |
+| `Widget::drop_target(state, accepts, \|value\| ...)` | `Widget::drop_target(state, accepts, \|event: DropEvent<T>\| ...)` (use `event.into_value()`, `event.local_position()`, `event.bounds()`) and `Widget::drop_hover` |
+| `DragState::position() -> (f32, f32)` | `DragState::position() -> Point` |
+| `MenuBuilder::anchor(x, y)` | `MenuBuilder::anchor(impl Into<Point>)` |
+| `Host::{layout, frame, scene}((w, h), ...)` | `Host::{layout, frame, scene}(impl Into<Size>, ...)` (`(w, h)` still works via `From<(f32, f32)>`) |
+| `FrameInputHook` returning `Option<(f32, f32)>` | `FrameInputHook` returning `Option<Size>` |
 
 ## [0.2.0] - 2026-11-12
 

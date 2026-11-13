@@ -241,21 +241,21 @@ fn fit_to_bounds(
     orientation: Orientation,
     count: usize,
 ) -> NodeBuilder {
-    let bounds = crate::reactive::signal((0.0, 0.0, 0.0, 0.0));
+    let bounds = crate::reactive::signal(crate::geometry::Rect::default());
     #[allow(
         clippy::cast_precision_loss,
         reason = "a splitter has a handful of panes"
     )]
     let handles = handle_px() * count.saturating_sub(1) as f32;
     crate::reactive::effect(move || {
-        let (_, _, width, height) = bounds.get();
+        let rect = bounds.get();
         let along = match orientation {
-            Orientation::Horizontal => width,
-            Orientation::Vertical => height,
+            Orientation::Horizontal => rect.width,
+            Orientation::Vertical => rect.height,
         };
         state.fit(along - handles);
     });
-    root.bounds_reactive(bounds)
+    root.track_bounds(bounds)
 }
 
 fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterState) -> NodeBuilder {

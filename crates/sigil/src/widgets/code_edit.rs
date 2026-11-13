@@ -240,7 +240,10 @@ impl CodeEditBuilder {
         let row_h = self.row_h.unwrap_or_else(|| line(18.0));
         let traps_tab = self.on_key.is_some();
         let on_key = self.on_key.unwrap_or_else(|| Rc::new(|_| {}));
-        let (scroll_y, viewport) = (signal(0.0_f32), signal((0.0_f32, DEFAULT_VIEWPORT_H)));
+        let (scroll_y, viewport) = (
+            signal(0.0_f32),
+            signal(crate::geometry::Size::new(0.0_f32, DEFAULT_VIEWPORT_H)),
+        );
         let (interaction, disabled) = (InteractionState::new(true), self.disabled);
         let start = memo(move || first_row(scroll_y.get(), lines.get().len(), row_h));
         effect(move || follow_caret(scroll_y, self.caret, lines, viewport, row_h));
@@ -258,7 +261,7 @@ impl CodeEditBuilder {
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
-            .size_reactive(viewport)
+            .track_size(viewport)
             .scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
             .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
@@ -315,7 +318,7 @@ struct EditSurface {
     gutter: Option<GutterMarks>,
     diagnostics: Option<Diagnostics>,
     start: Signal<usize>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     caret_shown: Signal<bool>,
 }
 

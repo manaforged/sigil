@@ -83,6 +83,7 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     })
     .key(NamedKey::Escape, move |event| {
         if escape.is_open() {
+            event.prevent_default();
             event.stop_propagation();
             escape.close();
         }

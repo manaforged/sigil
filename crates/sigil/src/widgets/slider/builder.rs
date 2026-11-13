@@ -228,10 +228,10 @@ fn single_root<T>(
         pressed: signal(false),
         dragging: signal(false),
     };
-    let extent = signal((0.0_f32, 0.0_f32));
+    let extent = signal(crate::geometry::Size::ZERO);
     let root = control_frame(slider_node(builder), runtime.disabled)
         .focusable(true)
-        .size_reactive(extent)
+        .track_size(extent)
         .track_hovered(signals.hovered)
         .track_focused(signals.focused)
         .track_pressed(signals.pressed);
@@ -333,7 +333,7 @@ pub(super) fn slider_semantics(runtime: SliderRuntime, name: AccessibleName) -> 
 fn slider_parts(
     root: NodeBuilder,
     runtime: SliderRuntime,
-    extent: Signal<(f32, f32)>,
+    extent: Signal<crate::geometry::Size>,
     signals: ThumbSignals,
 ) -> NodeBuilder {
     let thumb = slider_thumb(signals, runtime.disabled, runtime.glass);

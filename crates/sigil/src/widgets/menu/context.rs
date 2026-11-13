@@ -83,10 +83,10 @@ fn anchored_menu(
     };
     let mut panel = menu(open)
         .label(theme_string(StringKey::ContextMenu))
-        .anchor(
+        .anchor((
             fit(x, viewport.width, PANEL_WIDTH),
             fit(y, viewport.height, height),
-        );
+        ));
     if let Some(host) = host {
         panel = panel.host(host);
     }

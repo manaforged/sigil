@@ -24,8 +24,7 @@ fn shortcut_dispatch_invokes_action() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .keyboard_shortcut(shortcut.clone())
-            .key(shortcut, {
+            .shortcut(shortcut, {
                 let saves = Rc::clone(&saves);
                 move |_| saves.set(saves.get() + 1)
             }),
@@ -126,8 +125,7 @@ fn slash_fixture() -> SlashFixture {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .keyboard_shortcut(slash.clone())
-            .key(slash, {
+            .shortcut(slash, {
                 let fires = Rc::clone(&fires);
                 move |_| fires.set(fires.get() + 1)
             }),
@@ -208,8 +206,7 @@ fn modifier_chord_still_fires_while_text_input_focused() {
     let page = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .keyboard_shortcut(chord.clone())
-            .key(chord, {
+            .shortcut(chord, {
                 let fires = Rc::clone(&fires);
                 move |_| fires.set(fires.get() + 1)
             }),

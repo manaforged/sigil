@@ -50,7 +50,7 @@ fn a_tab_capture_handler_runs_before_focus_moves() {
             column()
                 .key_capture(NamedKey::Tab, move |event| {
                     count.set(count.get() + 1);
-                    event.stop_propagation();
+                    event.prevent_default();
                 })
                 .child(button("First").autofocus())
                 .child(button("Second").focus_in(move || moved.set(true))),

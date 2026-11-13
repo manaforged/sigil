@@ -90,6 +90,7 @@ impl PopupLayer {
 pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
     node.key(NamedKey::Escape, |event| {
         if close_popup() {
+            event.prevent_default();
             event.stop_propagation();
         }
     })

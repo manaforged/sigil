@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::events::PointerEvent;
+use crate::geometry::Point;
 use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::PopupSide;
 use crate::layout::{LayoutStyle, Position};
@@ -91,7 +92,7 @@ pub struct MenuBuilder {
     host: Option<Owner>,
     rows: Vec<Row>,
     label: Option<String>,
-    anchor: Option<(f32, f32)>,
+    anchor: Option<Point>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -127,9 +128,9 @@ impl MenuBuilder {
         self
     }
 
-    /// Places the top-left corner of the panel at `(x, y)` px in a layer that fills the parent.
-    pub const fn anchor(mut self, x: f32, y: f32) -> Self {
-        self.anchor = Some((x, y));
+    /// Places the top-left corner of the panel at `point` in a layer that fills the parent.
+    pub fn anchor(mut self, point: impl Into<Point>) -> Self {
+        self.anchor = Some(point.into());
         self
     }
 
@@ -149,21 +150,25 @@ impl MenuBuilder {
         let open = self.open;
         let height = panel_height(&self.rows);
         let width = self.layout_overrides.width_hint().unwrap_or(PANEL_WIDTH);
-        let (layout, placement) = match self.anchor {
-            Some((x, y)) => (
-                LayoutStyle::block()
-                    .position(Position::Absolute)
-                    .inset_top(0.0)
-                    .inset_left(0.0)
-                    .fill_width()
-                    .fill_height(),
-                panel_layout(y, x, width, height),
-            ),
-            None => (
-                LayoutStyle::block().width(width).height(height),
-                panel_layout(0.0, 0.0, width, height),
-            ),
-        };
+        let (layout, placement) = self.anchor.map_or_else(
+            || {
+                (
+                    LayoutStyle::block().width(width).height(height),
+                    panel_layout(0.0, 0.0, width, height),
+                )
+            },
+            |point| {
+                (
+                    LayoutStyle::block()
+                        .position(Position::Absolute)
+                        .inset_top(0.0)
+                        .inset_left(0.0)
+                        .fill_width()
+                        .fill_height(),
+                    panel_layout(point.y, point.x, width, height),
+                )
+            },
+        );
         let overrides = std::mem::take(&mut self.layout_overrides);
         let menu_label = self
             .label

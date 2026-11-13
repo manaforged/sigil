@@ -79,7 +79,7 @@ fn scrollbar_thumb(
         memo(move || to_i16(geometry::thumb_metrics(extent.get(), viewport_height.get()).0));
     let position = memo(move || {
         let (_, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
-        (
+        crate::geometry::Point::new(
             0.0,
             thumb_offset(scroll_y.get(), max_scroll.get(), max_travel).round(),
         )
@@ -96,7 +96,7 @@ fn scrollbar_thumb(
                 .inset_top(0.0),
         )
         .class(THUMB_ATOMS)
-        .position_reactive(position)
+        .offset(position)
         .style_reactive(move || geometry::thumb_atoms(height.get(), thick.get()));
     pointer_drag(
         thumb,

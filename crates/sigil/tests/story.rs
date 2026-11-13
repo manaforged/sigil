@@ -22,6 +22,9 @@ mod story_10;
 #[path = "../examples/story-11-canvas-chart.rs"]
 #[allow(dead_code, unreachable_pub)]
 mod story_11;
+#[path = "../examples/story-12-events-dnd.rs"]
+#[allow(dead_code, unreachable_pub)]
+mod story_12;
 #[path = "../examples/story-08-test.rs"]
 #[allow(dead_code)]
 mod testing;
@@ -36,12 +39,13 @@ use std::time::{Duration, Instant};
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
 use sigil::app::{FrameHooks, HostMode};
-use sigil::events::Event;
+use sigil::events::{Event, Shortcut};
 use sigil::kernel::{NodeId, container};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{Clip, DrawRect, SceneBuilder, SceneCommand};
 use sigil::tasks::AsyncRuntime;
+use sigil::terminal::cell_point;
 use sigil::widgets::{Framed, WidgetFrame};
 use sigil_kittest::{Harness, Query};
 
@@ -594,4 +598,123 @@ fn scene_builder_records_commands_and_iterates() {
             .iter()
             .any(|cmd| matches!(cmd, SceneCommand::Rect(_)))
     );
+}
+
+#[test]
+fn events_dnd_story_app_works_on_both_hosts() {
+    for mut ui in hosts(|| Harness::new(story_12::app)) {
+        ui.expect_text("Events & Drag-Drop")
+            .press(NamedKey::Tab)
+            .expect_text("Buffer: \"  \"")
+            .expect_text("Parent tabs: 1");
+        assert!(ui.get((Role::TextInput, "Code buffer")).is_focused());
+
+        ui.click("Stop-only")
+            .press(NamedKey::Tab)
+            .expect_text("Parent tabs: 1");
+        assert!(ui.get((Role::Button, "After stop")).is_focused());
+
+        ui.click("Anchor menu")
+            .click("Insert snippet")
+            .expect_text("Menu: Inserted snippet");
+    }
+
+    let mut pixel = Harness::new(story_12::app).pixels(480, 400);
+    let alpha = pixel
+        .get((Role::ListItem, "Alpha"))
+        .bounds()
+        .expect("Alpha bounds");
+    let gamma = pixel
+        .get((Role::ListItem, "Gamma"))
+        .bounds()
+        .expect("Gamma bounds");
+    let start = Point::new(
+        alpha.origin.x + 12.0,
+        alpha.height.mul_add(0.5, alpha.origin.y),
+    );
+    let end = Point::new(
+        gamma.origin.x + 12.0,
+        gamma.height.mul_add(0.8, gamma.origin.y),
+    );
+    pixel
+        .send([
+            Event::pointer_move(start),
+            Event::pointer_down(start),
+            Event::pointer_drag(Point::new(end.x, end.y - 2.0)),
+            Event::pointer_drag(end),
+        ])
+        .expect_text("▼ after")
+        .send([Event::pointer_up(end)])
+        .expect_text("Order: Beta -> Gamma -> Alpha");
+}
+
+fn mount_selectable_copy_harness(
+    prevent_copy: Signal<bool>,
+    prevent_escape: Signal<bool>,
+    copied: &std::rc::Rc<std::cell::RefCell<Vec<String>>>,
+) -> Harness {
+    let copied_w = std::rc::Rc::clone(copied);
+    let mut ui = Harness::new(move || {
+        let copied_w = std::rc::Rc::clone(&copied_w);
+        container()
+            .selectable(true)
+            .focusable(true)
+            .autofocus()
+            .key_capture(Shortcut::ctrl(Key::character("c")), move |event| {
+                if prevent_copy.peek() {
+                    event.prevent_default();
+                }
+            })
+            .key_capture(NamedKey::Escape, move |event| {
+                if prevent_escape.peek() {
+                    event.prevent_default();
+                }
+            })
+            .selection_copy(move |value, _| copied_w.borrow_mut().push(value.to_owned()))
+            .child(text("Hello world"))
+    });
+    ui.send([
+        Event::pointer_move(cell_point(0, 0)),
+        Event::pointer_down(cell_point(0, 0)),
+        Event::pointer_move(cell_point(2, 0)),
+        Event::pointer_move(cell_point(4, 0)),
+        Event::pointer_up(cell_point(4, 0)),
+    ]);
+    copied.borrow_mut().clear();
+    ui
+}
+
+#[test]
+fn prevent_default_cancels_copy_and_escape_without_affecting_stop_propagation() {
+    Owner::scope("story-prevent-default-copy-escape", || {
+        let prevent_copy = signal(true);
+        let prevent_escape = signal(true);
+        let copied = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
+        let mut ui = mount_selectable_copy_harness(prevent_copy, prevent_escape, &copied);
+
+        ui.press(Shortcut::ctrl(Key::character("c")));
+        assert!(copied.borrow().is_empty(), "prevent_default blocks Copy");
+
+        prevent_copy.set(false);
+        ui.press(Shortcut::ctrl(Key::character("c")));
+        assert_eq!(copied.borrow().as_slice(), ["Hello"]);
+        copied.borrow_mut().clear();
+
+        ui.press(NamedKey::Escape);
+        ui.press(Shortcut::ctrl(Key::character("c")));
+        assert_eq!(
+            copied.borrow().as_slice(),
+            ["Hello"],
+            "prevent_default keeps the selection alive on Escape"
+        );
+        copied.borrow_mut().clear();
+
+        prevent_escape.set(false);
+        ui.press(NamedKey::Escape);
+        ui.press(Shortcut::ctrl(Key::character("c")));
+        assert!(
+            copied.borrow().is_empty(),
+            "Escape without prevent_default clears the selection"
+        );
+    });
 }

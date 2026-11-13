@@ -130,6 +130,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let state = runtime.edit_mut();
     if let Some(text) = state.selected_text() {
+        event.prevent_default();
         event.stop_propagation();
         runtime
             .clip_fail

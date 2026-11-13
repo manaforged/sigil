@@ -1,5 +1,6 @@
 use super::{TreeScope, tree, tree_scoped};
 use crate::kernel::{Cx, announce, container, text};
+use crate::widgets::Widget;
 
 fn spoken(update: &accesskit::TreeUpdate) -> Vec<Option<String>> {
     update
@@ -16,7 +17,7 @@ fn a_keyboard_shortcut_is_exposed_as_its_display_text() {
         let mut cx = Cx::new_root();
         let save = crate::events::Shortcut::primary(crate::events::Key::character("s"));
         let label = save.label();
-        let _ = cx.add(container().keyboard_shortcut(save));
+        let _ = cx.add(container().accessible_shortcut(save));
         let update = tree(&cx, None, &|_| None);
         assert!(
             update

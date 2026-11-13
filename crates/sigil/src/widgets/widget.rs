@@ -1,9 +1,10 @@
 use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
-    A11yEdit, DragPhase, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
+    A11yEdit, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
     ScrollEvent, Shortcut, event_methods, handler_methods,
 };
+use crate::geometry::{Point, Rect, Size};
 use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, Flaw};
 use crate::layout::builder_ext::{install_layout, layout_methods};
@@ -130,22 +131,29 @@ pub trait Widget: Sized {
 
     layout_methods!();
 
-    /// Writes the node's laid-out position into `pos` after each layout.
+    /// Shifts the node's laid-out position by `offset` without re-laying out its siblings.
     #[must_use]
-    fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self {
-        self.map_node(move |node| reactive_position::position(node, pos))
+    fn offset(self, offset: impl Reactive<Point>) -> Self {
+        let pos = offset.into_signal();
+        self.map_node(move |node| reactive_position::offset(node, pos))
     }
 
-    /// Writes the node's laid-out size into `size` after each layout.
+    /// Writes the node's laid-out bounding rectangle into `out` after each layout pass.
     #[must_use]
-    fn size_reactive(self, size: Signal<(f32, f32)>) -> Self {
-        self.map_node(move |node| reactive_position::size(node, size))
+    fn track_bounds(self, out: Signal<Rect>) -> Self {
+        self.map_node(move |node| reactive_position::bounds(node, out))
     }
 
-    /// Writes the node's laid-out bounds into `bounds` after each layout.
+    /// Writes the node's laid-out origin into `out` after each layout pass.
     #[must_use]
-    fn bounds_reactive(self, bounds: Signal<(f32, f32, f32, f32)>) -> Self {
-        self.map_node(move |node| reactive_position::bounds(node, bounds))
+    fn track_position(self, out: Signal<Point>) -> Self {
+        self.map_node(move |node| reactive_position::position(node, out))
+    }
+
+    /// Writes the node's laid-out size into `out` after each layout pass.
+    #[must_use]
+    fn track_size(self, out: Signal<Size>) -> Self {
+        self.map_node(move |node| reactive_position::size(node, out))
     }
 
     /// Makes the node a drag source that carries `payload`.
@@ -154,18 +162,46 @@ pub trait Widget: Sized {
         self.map_node(move |node| drag_drop::source(node, state, payload))
     }
 
-    /// Makes the node a drop target that calls `on_drop` for payloads that `accepts` allows.
+    /// Makes the node a drop target that calls `drop` for payloads that `accepts` allows.
     #[must_use]
     fn drop_target<T: Clone + 'static>(
         self,
         state: DragState<T>,
         accepts: impl Fn(&T) -> bool + 'static,
-        on_drop: impl Fn(T) + 'static,
+        drop: impl Fn(DropEvent<T>) + 'static,
     ) -> Self {
-        self.map_node(move |node| drag_drop::target(node, state, accepts, on_drop))
+        self.map_node(move |node| drag_drop::target(node, state, accepts, drop))
+    }
+
+    /// Writes the target-local pointer position into `local_cursor` while an accepted drag hovers this node.
+    #[must_use]
+    fn drop_hover<T: Clone + 'static>(
+        self,
+        state: DragState<T>,
+        local_cursor: Signal<Option<Point>>,
+    ) -> Self {
+        self.map_node(move |node| drag_drop::hover(node, &state, local_cursor))
     }
 
     handler_methods!(event_methods);
+
+    /// Runs `handler` when `shortcut` is pressed anywhere in the window, and exposes it to assistive technology.
+    #[must_use]
+    fn shortcut(
+        self,
+        shortcut: impl Into<Shortcut>,
+        handler: impl Fn(&mut KeyEvent) + 'static,
+    ) -> Self {
+        let shortcut = shortcut.into();
+        self.map_node(move |node| on::shortcut(node, shortcut, handler))
+    }
+
+    /// Sets the shortcut that the node reports to assistive technology without registering a key handler.
+    #[must_use]
+    fn accessible_shortcut(self, shortcut: impl Into<Shortcut>) -> Self {
+        let shortcut = shortcut.into();
+        self.map_node(move |node| on::accessible_shortcut(node, shortcut))
+    }
 
     /// Runs `h` when a pointer button goes up on the node, and marks the node clickable.
     #[must_use]

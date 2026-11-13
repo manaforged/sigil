@@ -4,6 +4,7 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 pub(crate) mod builder_ext;
+mod drop;
 pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
@@ -17,6 +18,7 @@ mod selection_walk;
 mod window_command;
 
 pub(crate) use builder_ext::{event_methods, handler_methods, mutate_handlers, with_handlers};
+pub use drop::DropEvent;
 pub use focus::FocusDirection;
 pub(crate) use focus::ScrollReveal;
 pub(crate) use focus::focus_from_keyboard;

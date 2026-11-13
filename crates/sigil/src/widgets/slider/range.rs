@@ -19,7 +19,7 @@ pub(super) fn range_root(
     label: Option<&str>,
     on_change: &ValueChange,
 ) -> NodeBuilder {
-    let extent = signal((0.0_f32, 0.0_f32));
+    let extent = signal(crate::geometry::Size::ZERO);
     let start = runtime.on(Thumb::Start(range));
     let end = runtime.on(Thumb::End(range));
     let (start_node, start_grip) = thumb(start, name(label, Some(StringKey::Minimum)), on_change);
@@ -48,7 +48,7 @@ pub(super) fn range_root(
         container()
             .role(Role::Group)
             .label(name(label, None))
-            .size_reactive(extent)
+            .track_size(extent)
             .layout(slider_layout(
                 runtime.orientation,
                 runtime.length,

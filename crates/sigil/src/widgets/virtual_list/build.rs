@@ -93,7 +93,7 @@ where
         } else {
             root.style(paint)
         };
-        root.size_reactive(axes.viewport)
+        root.track_size(axes.viewport)
     }
 
     fn axes(&mut self) -> (BuildAxes, Option<Measure>) {
@@ -110,7 +110,7 @@ where
         });
         let keys = measure.as_ref().and_then(|measure| measure.keys);
         let live_rows = self.bound.as_ref().map(|bound| bound.live_rows);
-        let viewport = signal((0.0, 0.0));
+        let viewport = signal(crate::geometry::Size::ZERO);
         let (content, max) = scroll::extent(viewport, viewport_height, move || {
             let rows = live_rows.map_or(0, |rows| rows.get());
             scroll::content_px(tops, row_height, rows)
