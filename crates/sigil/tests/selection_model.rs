@@ -78,18 +78,18 @@ fn every_click_sequence_up_to_five_steps_matches_the_selection_rules() {
         for len in 1..=DEPTH {
             for mut index in 0..ops.len().pow(len) {
                 let mut selection = Selection::new(mode);
-                let mut model = Model::default();
+                let mut expected = Model::default();
                 let mut steps = Vec::new();
                 for _ in 0..len {
-                    let op = ops[index % ops.len()];
+                    let op = ops.get(index % ops.len()).copied().unwrap_or(Op::Clear);
                     index /= ops.len();
                     steps.push(op);
                     run(&mut selection, op);
-                    model.apply(mode, op);
+                    expected.apply(mode, op);
                     let shown: BTreeSet<usize> = selection.indices().collect();
-                    assert_eq!(shown, model.rows, "{mode:?} after {steps:?}");
+                    assert_eq!(shown, expected.rows, "{mode:?} after {steps:?}");
                     for row in 0..ROWS {
-                        assert_eq!(selection.contains(row), model.rows.contains(&row));
+                        assert_eq!(selection.contains(row), expected.rows.contains(&row));
                     }
                     if mode == SelectionMode::Single {
                         assert!(shown.len() <= 1, "{mode:?} after {steps:?}");

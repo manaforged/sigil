@@ -20,7 +20,7 @@ fn a_text_field_reports_each_loss_of_focus_once() {
         column()
             .child(field(
                 "Name",
-                text_field(signal(String::new())).focus_lost(move || count.set(count.get() + 1)),
+                text_field(signal(String::new())).focus_out(move || count.set(count.get() + 1)),
             ))
             .child(field("Email", text_field(signal(String::new()))))
     });
@@ -75,15 +75,15 @@ fn a_frame_reports_a_signal_write_and_then_goes_idle() {
         assert_eq!(seen.get(), Some(true), "the paint hook saw another frame");
         assert!(host.emit(VIEW).find_text("second").is_some());
 
-        let hooks = FrameHooks::default().input(|_| {
+        let write = FrameHooks::default().input(|_| {
             label.set(String::from("third"));
             None
         });
         assert!(
-            host.frame(VIEW, DT, hooks).dirty,
+            host.frame(VIEW, DT, write).dirty,
             "a write in the input hook"
         );
-        let _settle = host.frame(VIEW, DT, FrameHooks::default());
+        let _again = host.frame(VIEW, DT, FrameHooks::default());
         assert!(
             !host.frame(VIEW, DT, FrameHooks::default()).dirty,
             "idle again"
@@ -109,19 +109,14 @@ fn a_list_row_shows_each_part_that_is_set() {
     let row = screen
         .lines()
         .find(|line| line.contains("deploy.yml"))
-        .unwrap_or_else(|| panic!("no row for deploy.yml\n{screen}"));
-    for part in ["M", "workflows", "failed"] {
-        assert!(row.contains(part), "{part} is not in the row: {row}");
-    }
-    let marker = row.find('M').unwrap_or(usize::MAX);
-    let title = row.find("deploy.yml").unwrap_or(0);
-    let detail = row.find("workflows").unwrap_or(0);
-    let status = row.find("failed").unwrap_or(0);
-    assert!(marker < title && title < detail && detail < status, "{row}");
+        .unwrap_or_default();
+    let at = ["M", "deploy.yml", "workflows", "failed"].map(|part| row.find(part));
+    assert!(at.is_sorted() && at.iter().all(Option::is_some), "{screen}");
     let plain = screen
         .lines()
         .find(|line| line.contains("README.md"))
-        .unwrap_or_else(|| panic!("no row for README.md\n{screen}"));
+        .unwrap_or_default();
+    assert!(plain.contains("README.md"), "{screen}");
     assert!(
         !plain.contains("failed") && !plain.contains("workflows"),
         "{plain}"
