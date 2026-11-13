@@ -26,7 +26,6 @@ impl LayoutOverrides {
         self.hooks.push(Box::new(hook));
     }
 
-    #[must_use]
     pub(crate) fn finish(self, node: NodeBuilder) -> NodeBuilder {
         let node = if self.edits.is_empty() {
             node

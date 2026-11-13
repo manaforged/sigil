@@ -263,19 +263,19 @@ fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
     let gpu = ui.expect_image();
     let viewport = (120.0, 80.0);
     let scene = ui.host().emit(viewport);
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(240, 160),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(240, 160),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     assert_lit(coverage(&gpu, 60, 60), "the gpu frame's star centre");
     let measured = diff(gpu.as_raw(), &cpu);
     println!(
         "cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
 }

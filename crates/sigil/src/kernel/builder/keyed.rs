@@ -2,7 +2,6 @@ use crate::kernel::component::IntoNode;
 use crate::kernel::{NodeBuilder, reactive_children};
 
 impl NodeBuilder {
-    #[must_use]
     #[track_caller]
     pub(crate) fn keyed_children<F, I, K, N>(self, f: F) -> Self
     where
@@ -16,7 +15,6 @@ impl NodeBuilder {
         })
     }
 
-    #[must_use]
     #[track_caller]
     pub(crate) fn keyed_children_unmounted<F, I, K, N>(mut self, f: F) -> Self
     where

@@ -169,12 +169,12 @@ fn procs() -> TableState<Proc> {
 fn table_sort_cycles_reverses_and_moves_the_selection() {
     Owner::scope("primitives::table", || {
         let state = procs();
-        state.cycle_sort();
+        state.next_sort();
         assert_eq!(
             state.sort_key().get(),
             Some(SortKey::new("name", SortDirection::Ascending))
         );
-        state.cycle_sort();
+        state.next_sort();
         assert_eq!(
             state.sort_key().get(),
             Some(SortKey::new("cpu", SortDirection::Ascending))
@@ -184,7 +184,7 @@ fn table_sort_cycles_reverses_and_moves_the_selection() {
             state.sort_key().get(),
             Some(SortKey::new("cpu", SortDirection::Descending))
         );
-        state.cycle_sort();
+        state.next_sort();
         assert_eq!(state.sort_key().get().map(|key| key.column()), Some("name"));
 
         state.select_by(1);

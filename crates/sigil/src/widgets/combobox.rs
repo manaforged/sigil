@@ -238,7 +238,6 @@ impl ListModel for Combobox {
 }
 
 /// A text input with a filtered list.
-#[must_use]
 pub fn combobox(state: Combobox) -> NodeBuilder {
     let placeholder = state.placeholder.peek();
     let label = if placeholder.is_empty() {

@@ -3,7 +3,6 @@ use crate::layout::LayoutStyle;
 use crate::widgets::Layout;
 
 /// A rectangle that the embed host draws.
-#[must_use]
 pub fn surface(key: u64) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)

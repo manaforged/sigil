@@ -76,9 +76,9 @@ fn scene(cards: Cards) -> CommandScene {
     scene.finish()
 }
 
-fn median(mut samples: Vec<Duration>) -> Duration {
-    samples.sort_unstable();
-    samples.get(samples.len() / 2).copied().unwrap_or_default()
+fn median(samples: Vec<Duration>) -> Duration {
+    let mut ms: Vec<f64> = samples.into_iter().map(|d| d.as_secs_f64() * 1e3).collect();
+    Duration::from_secs_f64(crate::scene_support::median(&mut ms) / 1e3)
 }
 
 fn device_size() -> [u32; 2] {
@@ -87,12 +87,12 @@ fn device_size() -> [u32; 2] {
 
 fn cpu_frame(renderer: &mut CpuRenderer, scene: &CommandScene) -> Duration {
     let [width, height] = device_size();
-    let frame = Frame {
+    let frame = Frame::new(
         scene,
-        viewport: VIEW,
-        size: PhysicalSize::new(width, height),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        VIEW,
+        PhysicalSize::new(width, height),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let start = Instant::now();
     let _ = cpu_rgba(renderer, &frame).expect("cpu render");
     start.elapsed()

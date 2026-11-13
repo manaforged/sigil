@@ -69,7 +69,6 @@ impl InteractionState {
     }
 
     /// Attaches the state's handlers to `node`.
-    #[must_use]
     pub(crate) fn install(self, node: NodeBuilder) -> NodeBuilder {
         let node = match self.disabled.peek() {
             Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),

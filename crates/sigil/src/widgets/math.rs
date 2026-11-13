@@ -14,7 +14,6 @@ mod picture;
 const MAX_FORMULA_BYTES: usize = 8 * 1024;
 
 /// A typeset LaTeX formula in display style.
-#[must_use]
 pub fn math(source: impl Reactive<String>) -> NodeBuilder {
     fragment().children_reactive(move || [block(&source.read())])
 }

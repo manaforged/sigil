@@ -241,7 +241,7 @@ impl<Row: 'static> TableState<Row> {
     }
 
     /// Cycles `column` through ascending, descending, and no sort.
-    pub fn toggle_sort(&self, column: &'static str) {
+    pub fn cycle_sort(&self, column: &'static str) {
         if !self.is_sortable(column) {
             return;
         }

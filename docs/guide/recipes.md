@@ -424,7 +424,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-Page the transcript from outside the list. `.max_scroll_bind` receives the largest scroll offset. Write `scroll_bind` clamped to that value. `.follow` stops at the user's position after a scroll up, and follows again when the view is back at the bottom.
+Page the transcript from outside the list. `.max_scroll` receives the largest scroll offset. Write `scroll_y` clamped to that value. `.follow` stops at the user's position after a scroll up, and follows again when the view is back at the bottom.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -438,8 +438,8 @@ fn tree() -> impl IntoNode {
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
         .fill()
-        .scroll_bind(scroll)
-        .max_scroll_bind(max)
+        .scroll_y(scroll)
+        .max_scroll(max)
         .follow_row(tail);
     let root = container()
         .key(NamedKey::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
@@ -529,7 +529,7 @@ fn edit() {
     let note = if matches!(status, Ok(Ok(code)) if code.success()) { "saved" } else { "editor failed" };
     drop(term.title(note));
     if !term.is_focused() {
-        drop(term.bell(Some(note)));
+        drop(term.bell(note));
     }
 }
 

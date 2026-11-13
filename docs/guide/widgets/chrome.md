@@ -57,7 +57,7 @@ splitter(Orientation::Horizontal)
 - `.child(node, initial_px)`: simple pane.
 - `.pane(node)`: returns a pane builder. Every setter after it sets the pane: on the main axis, `.width(px)` or `.height(px)` is the initial size, `.min_width(px)` and `.max_width(px)` (or `.min_height`, `.max_height`) clamp the drag, and `.grow(factor)` shares the leftover space. Paint and event setters, such as `.background(..)`, also set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component; call splitter setters before the first `.pane(..)` or after `.commit()`.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
-- `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
+- `.sizes(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.
 
 ## scroll
@@ -65,7 +65,7 @@ splitter(Orientation::Horizontal)
 `scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
-- `.scroll_bind(Signal<f32>)`: expose the scroll offset.
+- `.scroll_y(Signal<f32>)`: expose the scroll offset.
 - `.follow_end(bool)`: start at the end and stay pinned there while content grows, until the user scrolls up (logs, chat).
 
 Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and as tall as the viewport. The fully rounded thumb is 4 px wide at rest. It widens to 8 px and the track shows `surface-subtle` while the pointer is over the track or the thumb is dragged. For large homogeneous rows prefer `virtual_list`, which virtualizes row construction too. `scroll` still builds every child.

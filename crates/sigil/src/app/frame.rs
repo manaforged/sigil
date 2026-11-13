@@ -11,18 +11,44 @@ const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct Frame {
-    /// True when the app asked to exit since the last frame.
-    pub exit: bool,
-    /// How many interval timers fired in this frame.
-    pub intervals: usize,
-    /// True when an animation or a clock is still running, so another frame is due.
-    pub animating: bool,
-    /// True when a signal write or another change asked for a frame, so this frame must repaint.
-    pub dirty: bool,
-    /// `Ok` when layout finished, or the error that stopped it.
-    pub layout: Result<(), Error>,
+    pub(crate) exit: bool,
+    pub(crate) intervals: usize,
+    pub(crate) animating: bool,
+    pub(crate) dirty: bool,
+    pub(crate) layout: Result<(), Error>,
     #[cfg(any(host, debug_assertions))]
     pub(crate) delta: FrameDelta,
+}
+
+impl Frame {
+    /// Returns whether the app asked to exit since the last frame.
+    #[must_use]
+    pub const fn exit(&self) -> bool {
+        self.exit
+    }
+
+    /// Returns how many interval timers fired in this frame.
+    #[must_use]
+    pub const fn intervals(&self) -> usize {
+        self.intervals
+    }
+
+    /// Returns whether an animation or a clock is still running, so another frame is due.
+    #[must_use]
+    pub const fn animating(&self) -> bool {
+        self.animating
+    }
+
+    /// Returns whether a signal write or another change asked for a frame.
+    #[must_use]
+    pub const fn dirty(&self) -> bool {
+        self.dirty
+    }
+
+    /// Returns `Ok` when layout finished, or the error that stopped it.
+    pub fn layout(&self) -> Result<(), Error> {
+        self.layout.clone()
+    }
 }
 
 /// Runs before layout and may return a new viewport.
@@ -35,6 +61,7 @@ pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &Frame) + 'a>;
 
 /// The optional hooks that `Host::frame` runs.
+#[must_use]
 #[derive(Default)]
 pub struct FrameHooks<'a> {
     pub(crate) input: Option<FrameInputHook<'a>>,
@@ -44,21 +71,18 @@ pub struct FrameHooks<'a> {
 
 impl<'a> FrameHooks<'a> {
     /// Runs `input` before layout; a returned size replaces the viewport.
-    #[must_use]
     pub fn input(mut self, input: impl FnOnce(&mut Host) -> Option<(f32, f32)> + 'a) -> Self {
         self.input = Some(Box::new(input));
         self
     }
 
     /// Runs `after_layout` after layout and before paint.
-    #[must_use]
     pub fn after_layout(mut self, after_layout: impl FnOnce(&mut Host) + 'a) -> Self {
         self.after_layout = Some(Box::new(after_layout));
         self
     }
 
     /// Runs `paint` when the frame paints.
-    #[must_use]
     pub fn paint(mut self, paint: impl FnOnce(&mut Host, &Frame) + 'a) -> Self {
         self.paint = Some(Box::new(paint));
         self

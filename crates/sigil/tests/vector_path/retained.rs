@@ -32,12 +32,12 @@ fn wedge(tip: (f32, f32)) -> PathBuilder {
 }
 
 const fn frame(scene: &CommandScene) -> Frame<'_> {
-    Frame {
+    Frame::new(
         scene,
-        viewport: (SIDE, SIDE),
-        size: PhysicalSize::new(PIXELS, PIXELS),
-        clear: CLEAR,
-    }
+        (SIDE, SIDE),
+        PhysicalSize::new(PIXELS, PIXELS),
+        CLEAR,
+    )
 }
 
 fn gpu(renderer: &mut WgpuRenderer, scene: &CommandScene) -> Vec<u8> {

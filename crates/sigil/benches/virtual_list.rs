@@ -61,7 +61,7 @@ fn build_widget(cx: &mut Cx, data: Vec<RowData>, scroll_y: sigil::reactive::Sign
             .row_height(ROW_HEIGHT)
             .viewport_height(VIEWPORT_HEIGHT)
             .viewport_width(VIEWPORT_WIDTH)
-            .scroll_bind(scroll_y),
+            .scroll_y(scroll_y),
     )
 }
 

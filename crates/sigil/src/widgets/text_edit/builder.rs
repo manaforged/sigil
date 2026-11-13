@@ -1,9 +1,6 @@
-use crate::reactive::Reactive;
-use std::rc::Rc;
-
 use crate::geometry::Rect;
 use crate::kernel::{NodeBuilder, TextContent};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Reactive, Signal, signal};
 use crate::style::Style;
 
 use crate::widgets::interaction::InteractionState;
@@ -14,8 +11,7 @@ use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, content_padding, edit_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
-pub(super) use crate::widgets::shared::TextChange;
-use crate::widgets::shared::caller_style;
+use crate::widgets::shared::{TextInputProps, caller_style};
 
 /// The key that runs `TextEditBuilder::submit`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -31,14 +27,8 @@ pub enum SubmitKey {
 /// Builder of a text editor.
 #[must_use]
 pub struct TextEditBuilder {
-    pub(super) value: Signal<String>,
-    pub(super) placeholder: TextContent,
-    pub(super) disabled: Option<Signal<bool>>,
-    pub(super) change: Option<TextChange>,
-    pub(super) submit: Option<TextChange>,
+    pub(super) input: TextInputProps,
     submit_key: SubmitKey,
-    pub(super) clipboard: Option<Rc<dyn Clipboard>>,
-    pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
     caret_rect: Option<Signal<Option<Rect>>>,
     pub(super) content_padding: (f32, f32),
@@ -51,11 +41,8 @@ pub struct TextEditBuilder {
 impl core::fmt::Debug for TextEditBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("TextEditBuilder")
-            .field("value", &self.value)
-            .field("placeholder", &self.placeholder)
-            .field("disabled", &self.disabled)
+            .field("input", &self.input)
             .field("submit_key", &self.submit_key)
-            .field("caret_visible", &self.caret_visible)
             .field("caret_position", &self.caret_position)
             .field("caret_rect", &self.caret_rect)
             .field("content_padding", &self.content_padding)
@@ -63,7 +50,7 @@ impl core::fmt::Debug for TextEditBuilder {
             .field("state", &self.state)
             .field("style_accumulator", &self.style_accumulator)
             .field("layout_overrides", &self.layout_overrides)
-            .finish_non_exhaustive()
+            .finish()
     }
 }
 
@@ -76,14 +63,8 @@ impl TextEditBuilder {
     /// Creates an editor that edits `value`, with Ctrl+Enter as the submit key.
     pub(crate) fn new(value: Signal<String>) -> Self {
         Self {
-            value,
-            placeholder: TextContent::Static(String::new()),
-            disabled: None,
-            change: None,
-            submit: None,
+            input: TextInputProps::new(value),
             submit_key: SubmitKey::CtrlEnter,
-            clipboard: None,
-            caret_visible: None,
             caret_position: None,
             caret_rect: None,
             content_padding: content_padding(),
@@ -94,9 +75,10 @@ impl TextEditBuilder {
         }
     }
 
-    /// A signal that controls whether the caret is drawn; it starts true.
-    pub fn caret_visible(&mut self) -> Signal<bool> {
-        *self.caret_visible.get_or_insert_with(|| signal(true))
+    /// Binds whether the caret is drawn to `visible`.
+    pub const fn caret_visible(mut self, visible: Signal<bool>) -> Self {
+        self.input.caret_visible(visible);
+        self
     }
 
     /// Binds the caret position, as a byte offset in the text, to `position`.
@@ -125,7 +107,7 @@ impl TextEditBuilder {
 
     /// Uses the text, caret, selection, and edit history of `state`, so the app can edit the text.
     pub fn state(mut self, state: TextEditState) -> Self {
-        self.value = state.value;
+        self.input.value = state.value;
         self.caret_position = Some(state.caret);
         self.state = Some(state);
         self
@@ -133,19 +115,19 @@ impl TextEditBuilder {
 
     /// Sets the text shown while the editor is empty.
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
-        self.placeholder = text.into();
+        self.input.placeholder(text);
         self
     }
 
     /// Blocks edits while `flag` is true.
     pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
-        self.disabled = Some(flag.into_signal());
+        self.input.disabled(flag);
         self
     }
 
-    /// Calls `f` with the text after each edit.
+    /// Calls `f` with the text after each edit; each call adds a callback.
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.change = Some(Rc::new(f));
+        self.input.add_change(f);
         self
     }
 
@@ -155,32 +137,32 @@ impl TextEditBuilder {
         self
     }
 
-    /// Calls `f` with the text when the user presses the submit key.
+    /// Calls `f` with the text when the user presses the submit key; each call adds a callback.
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.submit = Some(Rc::new(f));
+        self.input.add_submit(f);
         self
     }
 
     /// Replaces the default clipboard that cut, copy, and paste use.
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
-        self.clipboard = Some(Rc::new(clipboard));
+        self.input.clipboard(clipboard);
         self
     }
 
     fn root(mut self) -> NodeBuilder {
-        let value = self.value;
-        let interaction = InteractionState::new(true).disabled(self.disabled);
+        let value = self.input.value;
+        let interaction = InteractionState::new(true).disabled(self.input.disabled);
         let state = self.state.unwrap_or_else(|| {
             let caret = self.caret_position;
             TextEditState::new(value, caret.unwrap_or_else(|| signal(value.peek().len())))
         });
         let runtime = TextEditRuntime::new(
             state,
-            self.disabled,
-            self.change.unwrap_or_else(noop_change),
-            self.submit.unwrap_or_else(noop_change),
-            self.clipboard.unwrap_or_else(clipboard),
-            self.caret_visible.unwrap_or_else(|| signal(true)),
+            self.input.disabled,
+            self.input.change.unwrap_or_else(noop_change),
+            self.input.submit.unwrap_or_else(noop_change),
+            self.input.clipboard.unwrap_or_else(clipboard),
+            self.input.caret_visible.unwrap_or_else(|| signal(true)),
             self.content_padding,
         );
         if let Some(target) = self.caret_rect {
@@ -189,7 +171,7 @@ impl TextEditBuilder {
         let overlay = self.style_accumulator.take_state_overlay();
         let node = build_base_node(
             &runtime,
-            &self.placeholder,
+            &self.input.placeholder,
             interaction,
             overlay,
             self.chrome,

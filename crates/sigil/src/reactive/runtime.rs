@@ -15,6 +15,67 @@ static RUNTIME_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 const MAX_LEVEL: u32 = 1023;
 
+pub(crate) struct FramePhase {
+    phase: DrawPhase,
+    dirty: bool,
+    asked_idle: bool,
+}
+
+impl FramePhase {
+    const fn new() -> Self {
+        Self {
+            phase: DrawPhase::Idle,
+            dirty: true,
+            asked_idle: false,
+        }
+    }
+
+    pub(crate) const fn phase(&self) -> DrawPhase {
+        self.phase
+    }
+
+    pub(crate) const fn dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub(crate) fn ask_frame(&mut self) {
+        self.dirty = true;
+        self.asked_idle |= self.phase == DrawPhase::Idle;
+    }
+
+    pub(crate) fn begin_effect(&mut self) {
+        self.advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
+        self.dirty = std::mem::take(&mut self.asked_idle);
+    }
+
+    pub(crate) fn begin_layout(&mut self) {
+        self.advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
+    }
+
+    pub(crate) fn begin_paint(&mut self) {
+        self.advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
+    }
+
+    pub(crate) fn end_frame(&mut self) {
+        self.advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
+    }
+
+    #[cfg(host)]
+    pub(crate) const fn recover_from_panic(&mut self) {
+        self.phase = DrawPhase::Idle;
+        self.asked_idle = false;
+    }
+
+    fn advance(&mut self, api: &'static str, from: DrawPhase, to: DrawPhase) {
+        debug_assert_eq!(
+            self.phase, from,
+            "Runtime::{api} called from phase {:?}, expected {from:?}",
+            self.phase,
+        );
+        self.phase = to;
+    }
+}
+
 pub(crate) struct RuntimeState {
     pub(crate) owners: Arena<OwnerSlot>,
     pub(crate) signals: Arena<SignalSlot>,
@@ -34,20 +95,13 @@ pub(crate) struct RuntimeState {
     pub(crate) deferred_cleanups: Vec<Box<dyn FnOnce()>>,
     pub(crate) after_run: Vec<AfterRun>,
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
-    pub(crate) phase: DrawPhase,
-    pub(crate) frame_dirty: bool,
-    pub(crate) frame_asked_idle: bool,
+    pub(crate) frame: FramePhase,
     pub(crate) write_clock: u64,
     pub(crate) paints: u64,
     pub(crate) runtime_id: u64,
 }
 
 impl RuntimeState {
-    pub(crate) fn ask_frame(&mut self) {
-        self.frame_dirty = true;
-        self.frame_asked_idle |= self.phase == DrawPhase::Idle;
-    }
-
     const fn new() -> Self {
         Self {
             owners: Arena::new(),
@@ -68,9 +122,7 @@ impl RuntimeState {
             deferred_cleanups: Vec::new(),
             after_run: Vec::new(),
             panic_origin: None,
-            phase: DrawPhase::Idle,
-            frame_dirty: true,
-            frame_asked_idle: false,
+            frame: FramePhase::new(),
             write_clock: 0,
             paints: 0,
             runtime_id: 0,
@@ -196,6 +248,6 @@ impl Runtime {
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn current_phase() -> DrawPhase {
-        with_rt(|rt| rt.phase)
+        with_rt(|rt| rt.frame.phase())
     }
 }

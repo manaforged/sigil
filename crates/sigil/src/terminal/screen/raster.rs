@@ -38,7 +38,7 @@ fn paint(
     (cols, rows): (u16, u16),
 ) {
     let _phase = profile::span(profile::Phase::TuiPaint);
-    if info.layout.is_err() {
+    if info.layout().is_err() {
         screen.projection.quiet = false;
         host.reset_emit();
         return;
@@ -50,7 +50,7 @@ fn paint(
         && host.emit_unchanged(view(cols, rows), &info.delta, &screen.scene)
     {
         screen.dirty = false;
-        screen.projection.quiet &= !info.dirty;
+        screen.projection.quiet &= !info.dirty();
         return;
     }
     screen.projection.quiet = false;

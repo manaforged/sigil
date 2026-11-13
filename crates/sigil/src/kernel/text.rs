@@ -1,14 +1,13 @@
 use std::fmt;
 use std::rc::Rc;
 
-use crate::events::Shortcut;
 use crate::kernel::Role;
 use crate::reactive::{Signal, effect_named, memo};
 
 use crate::kernel::NodeBuilder;
 use crate::kernel::component::NodePatch;
 use crate::kernel::hooks::NodeHooks;
-use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, NodeId, NodeType};
+use crate::kernel::{A11yProps, Cx, DeltaKind, IntoNode, NodeId, NodeType};
 use crate::style::{PaintTarget, StyleSlot};
 
 /// Static, signal, or computed text.
@@ -116,6 +115,7 @@ impl<F: Fn() -> String + 'static> From<F> for TextContent {
 }
 
 /// Builder of a text node.
+#[must_use]
 #[derive(Debug)]
 pub struct TextBuilder {
     pub(crate) node: NodeBuilder,
@@ -123,7 +123,6 @@ pub struct TextBuilder {
 }
 
 /// Creates a text node that wraps and shows no ellipsis.
-#[must_use]
 pub fn text(source: impl Into<TextContent>) -> TextBuilder {
     let kind = NodeType::Text {
         content: source.into(),
@@ -142,7 +141,6 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
 
 impl TextBuilder {
     /// Turns wrapping on and the ellipsis off.
-    #[must_use]
     pub const fn wrap(mut self) -> Self {
         if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
             *wrap = true;
@@ -152,7 +150,6 @@ impl TextBuilder {
     }
 
     /// Turns wrapping off.
-    #[must_use]
     pub const fn nowrap(mut self) -> Self {
         if let NodeType::Text { wrap, .. } = &mut self.node.kind {
             *wrap = false;
@@ -161,7 +158,6 @@ impl TextBuilder {
     }
 
     /// Turns the ellipsis on and wrapping off.
-    #[must_use]
     pub const fn ellipsize(mut self) -> Self {
         if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
             *ellipsis = true;
@@ -170,66 +166,9 @@ impl TextBuilder {
         self
     }
 
-    /// Sets the accessibility role of the text node.
-    #[must_use]
-    pub const fn role(mut self, role: Role) -> Self {
-        self.node.a11y.role = role;
-        self
-    }
-
-    /// Sets the accessible name of the text node.
-    #[must_use]
-    pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
-        self.node = self.node.label(name);
-        self
-    }
-
-    /// Sets the accessible description of the text node.
-    #[must_use]
-    pub fn description(mut self, description: impl Into<String>) -> Self {
-        self.node = self.node.description(description);
-        self
-    }
-
-    /// Sets whether the text node can take keyboard focus.
-    #[must_use]
-    pub const fn focusable(mut self, yes: bool) -> Self {
-        self.node.a11y.focusable = yes;
-        self
-    }
-
-    /// Sets the tab order: lower indexes come first, and a negative index skips the node.
-    #[must_use]
-    pub fn tab_index(mut self, index: i32) -> Self {
-        self.node.a11y.tab_index = Some(index);
-        self
-    }
-
-    /// Sets the shortcut that the text node reports to assistive technology.
-    #[must_use]
-    pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
-        self.node = self.node.keyboard_shortcut(shortcut);
-        self
-    }
-
-    /// Sets whether pointer hit tests and focus moves can land on the text node.
-    #[must_use]
-    pub const fn hittable(mut self, yes: bool) -> Self {
-        self.node.a11y.hittable = yes;
-        self
-    }
-
-    /// Adds this text node to the tree and returns its id.
-    #[allow(
-        clippy::should_implement_trait,
-        reason = "intentional, reviewed trade-off"
-    )]
-    pub fn add(self, cx: &mut Cx) -> NodeId {
-        cx.add(self)
-    }
+    shared_node_methods!(node);
 
     /// Sets the runs.
-    #[must_use]
     pub(crate) fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
         if runs.is_empty() {
             return self;
@@ -238,13 +177,6 @@ impl TextBuilder {
         self.mutate(move |node| {
             node.attach(runs);
         })
-    }
-
-    /// Runs `apply` on the node when it is built.
-    #[must_use]
-    pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
-        self.node = self.node.mutate(apply);
-        self
     }
 }
 

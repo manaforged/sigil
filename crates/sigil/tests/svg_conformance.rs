@@ -161,12 +161,12 @@ fn gpu(
     scene: &CommandScene,
     (width, height): (u32, u32),
 ) -> Option<Picture> {
-    let frame = Frame {
+    let frame = Frame::new(
         scene,
-        viewport: (width as f32, height as f32),
-        size: PhysicalSize::new(width, height),
-        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
-    };
+        (width as f32, height as f32),
+        PhysicalSize::new(width, height),
+        Rgba::new(1.0, 1.0, 1.0, 1.0),
+    );
     let rgba = gpu_rgba(renderer, &frame).ok()?;
     Picture::from_raw(width, height, rgba)
 }

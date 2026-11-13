@@ -97,12 +97,12 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_cpu() {
         let viewport = (VIEW as f32, VIEW as f32);
         let scene = ui.host().emit(viewport);
         let side = (VIEW as f32 * scale) as u32;
-        let frame = Frame {
-            scene: &scene,
+        let frame = Frame::new(
+            &scene,
             viewport,
-            size: PhysicalSize::new(side, side),
-            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-        };
+            PhysicalSize::new(side, side),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
+        );
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let image = image::RgbaImage::from_raw(side, side, rgba).expect("cpu frame size");
         assert_placed(&image, scale, &format!("cpu {scale}x"));

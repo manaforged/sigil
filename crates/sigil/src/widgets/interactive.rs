@@ -35,14 +35,12 @@ impl Wiring {
 
 impl NodeBuilder {
     /// Disables the node: it dims, its press, key, and action handlers stop running, and it reads as disabled.
-    #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.wiring_mut().disabled = Some(disabled.into_signal());
         self
     }
 
     /// Runs `activate` on a primary click, Enter, or Space, and makes the node focusable.
-    #[must_use]
     pub fn activate(self, activate: impl Fn() + 'static) -> Self {
         self.activate_with(Rc::new(activate))
     }

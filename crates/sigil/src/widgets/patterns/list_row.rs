@@ -24,6 +24,7 @@ pub(super) fn row_height() -> f32 {
 
 /// The tree chevron slot of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Disclosure {
     /// No chevron and no slot for one.
     #[default]
@@ -231,7 +232,6 @@ impl ListRowBuilder {
         self
     }
 
-    #[must_use]
     fn root(mut self) -> NodeBuilder {
         let mut row = row_frame(self.depth, self.indent, self.disclosure);
         if let Some(marker) = self.marker.take() {

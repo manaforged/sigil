@@ -7,7 +7,6 @@ const HAIRLINE_PX: f32 = 1.0;
 
 static RULE_FILL: &[StyleAtom] = &[Token::Border.background()];
 
-#[must_use]
 /// A 1 px rule; a horizontal one fills the width and a vertical one fills the height.
 pub fn divider(orientation: Orientation) -> NodeBuilder {
     let layout = match orientation {

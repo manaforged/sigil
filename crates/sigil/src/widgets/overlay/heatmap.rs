@@ -8,7 +8,6 @@ use crate::widgets::Layout;
 mod raster;
 
 /// A grid of colored cells, drawn as one image that fills its box.
-#[must_use]
 pub fn heatmap<F: Fn(usize, usize) -> Color>(
     grid_w: usize,
     grid_h: usize,

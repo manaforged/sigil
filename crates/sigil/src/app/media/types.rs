@@ -30,24 +30,15 @@ pub enum Repeat {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Track {
-    /// The name of the track, which `Track::new` sets.
-    pub title: String,
-    /// The name of the artist, when the track has one.
-    pub artist: Option<String>,
-    /// The name of the album, when the track has one.
-    pub album: Option<String>,
-    /// The URL of the cover image, when the track has one.
-    pub cover_url: Option<String>,
-    /// The length of the track, when it is known.
-    pub duration: Option<Duration>,
-    /// How far into the track playback is, when it is known.
-    pub position: Option<Duration>,
-    /// Whether the track is stopped, paused, or playing; `Stopped` by default.
-    pub state: PlaybackState,
-    /// True when the player picks the next track at random.
-    pub shuffle: bool,
-    /// Whether the player repeats nothing, the current track, or the whole queue.
-    pub repeat: Repeat,
+    pub(crate) title: String,
+    pub(crate) artist: Option<String>,
+    pub(crate) album: Option<String>,
+    pub(crate) cover_url: Option<String>,
+    pub(crate) duration: Option<Duration>,
+    pub(crate) position: Option<Duration>,
+    pub(crate) state: PlaybackState,
+    pub(crate) shuffle: bool,
+    pub(crate) repeat: Repeat,
 }
 
 impl Track {

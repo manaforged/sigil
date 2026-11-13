@@ -31,7 +31,6 @@ use render::TokenTone;
 const MAX_MATH_BYTES: usize = 512;
 
 /// Rendered markdown.
-#[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {
     let mut stream = stream::Stream::default();
     let blocks = memo(move || source.with(|body| stream.update(body)));
@@ -49,7 +48,6 @@ pub fn markdown(source: Signal<String>) -> NodeBuilder {
 }
 
 /// One wrapped paragraph with inline markdown spans.
-#[must_use]
 pub fn markdown_inline(source: &str) -> TextBuilder {
     let body = inline::styled(&parse::parse_inlines(source));
     text(body.text).runs(body.runs)

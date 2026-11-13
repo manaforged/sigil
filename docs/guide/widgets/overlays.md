@@ -62,7 +62,7 @@ modal(open)
 
 ## command_menu
 
-`command_menu()`: a nested, keyboard-driven menu (`Role::Menu`, "Command Menu"), not a search palette. Build a tree of entries:
+`command_menu()`: a nested, keyboard-driven command menu (`Role::Menu`, "Command Menu") that filters and ranks items as you type. Build a tree of entries:
 
 ```rust,no_run
 # use sigil::prelude::*;

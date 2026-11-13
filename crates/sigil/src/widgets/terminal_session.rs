@@ -15,7 +15,6 @@ use super::{key_payload, shell};
 
 impl Session {
     /// Builds a view of this terminal that fills its space, sizes the terminal to it, and takes keys, paste, the mouse and the wheel.
-    #[must_use]
     pub fn view(self: &Rc<Self>) -> NodeBuilder {
         let list = screen(self.rows);
         let size = signal((0.0_f32, 0.0_f32));

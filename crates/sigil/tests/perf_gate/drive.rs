@@ -32,11 +32,11 @@ pub(crate) fn window_frame(host: &mut Host, event: Option<Event>, force_emit: bo
         None => FrameHooks::default(),
     };
     let hooks = hooks.paint(move |target, info| {
-        if info.dirty || force_emit {
+        if info.dirty() || force_emit {
             black_box(target.emit(VIEW).commands.len());
         }
     });
-    black_box(host.frame(VIEW, 1.0 / 60.0, hooks).intervals);
+    black_box(host.frame(VIEW, 1.0 / 60.0, hooks).intervals());
 }
 
 fn sample(mut step: impl FnMut(u32)) -> Sample {

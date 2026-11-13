@@ -130,17 +130,11 @@ fn build_scene(content: &str) -> (CommandScene, usize) {
 }
 
 fn median_us(samples: &[f64]) -> f64 {
-    let mut sorted = samples.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let n = sorted.len();
-    if n == 0 {
+    if samples.is_empty() {
         return 0.0;
     }
-    if n % 2 == 1 {
-        sorted[n / 2]
-    } else {
-        f64::midpoint(sorted[n / 2 - 1], sorted[n / 2])
-    }
+    let mut sorted = samples.to_vec();
+    crate::scene_support::median(&mut sorted)
 }
 
 fn report(label: &str, samples: &[f64]) {

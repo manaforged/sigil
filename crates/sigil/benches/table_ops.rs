@@ -52,7 +52,7 @@ fn bench_table_ops(c: &mut Criterion) {
         Owner::scope("bench-table-sort", || {
             let state = TableState::new(rows(100_000), columns());
             b.iter(|| {
-                state.toggle_sort("value");
+                state.cycle_sort("value");
                 black_box(state.visible().get().len());
             });
         });
@@ -168,7 +168,7 @@ fn bench_sorted_replace(c: &mut Criterion) {
                 Owner::scope("bench-table-sorted", || {
                     let (first, second) = replacement_rows(count, case);
                     let state = TableState::new((*first).clone(), columns());
-                    state.toggle_sort("label");
+                    state.cycle_sort("label");
                     if case == "filtered" {
                         state.quick_filter().set("row-4".into());
                     }

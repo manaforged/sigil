@@ -64,9 +64,7 @@ impl Screen {
         if kitty {
             self.grid.stamp_placeholders();
         }
-        let full = self.fresh
-            || self.prev.cols() != self.grid.cols()
-            || self.prev.rows() != self.grid.rows();
+        let full = self.needs_full_redraw();
         let tracked = if self.caps.graphics.is_some() || profile::enabled() {
             self.grid.rows()
         } else {
@@ -81,9 +79,7 @@ impl Screen {
             rewritten.iter().filter(|row| **row).count() as u64,
         );
         if full {
-            self.fresh = false;
-            self.stale = None;
-            self.prev.fit(&self.grid);
+            self.reset_full_redraw();
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
             crate::terminal::write::dirty(

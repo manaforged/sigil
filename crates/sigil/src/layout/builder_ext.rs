@@ -5,7 +5,6 @@ use crate::layout::{LayoutStyle, Space, TrackSize};
 use crate::style::{Metrics, StyleBinding};
 
 /// A container that places its children left to right, centred across the row, with the theme gap: 8 px in a window, one cell in a terminal.
-#[must_use]
 pub fn row() -> NodeBuilder {
     container().layout(
         LayoutStyle::flex_row()
@@ -16,7 +15,6 @@ pub fn row() -> NodeBuilder {
 }
 
 /// A container that places its children top to bottom with the theme gap.
-#[must_use]
 pub fn column() -> NodeBuilder {
     container().layout(
         LayoutStyle::flex_column()
@@ -26,7 +24,6 @@ pub fn column() -> NodeBuilder {
 }
 
 /// A container that places its children in a grid with these column tracks.
-#[must_use]
 pub fn grid(columns: impl Into<Vec<TrackSize>>) -> NodeBuilder {
     container().layout(LayoutStyle::grid(columns.into()))
 }

@@ -120,7 +120,7 @@ fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
                             .row_height(24.0)
                             .viewport_height(240.0)
                             .viewport_width(280.0)
-                            .scroll_bind(offset),
+                            .scroll_y(offset),
                     ),
                 ),
         );

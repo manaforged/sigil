@@ -154,12 +154,9 @@ impl GeneratedScene {
 
     /// The size of the render target in pixels: the viewport times the scale, rounded.
     #[must_use]
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub fn physical(&self) -> PhysicalSize {
-        PhysicalSize::new(
-            (self.viewport.0 * self.scale).round() as u32,
-            (self.viewport.1 * self.scale).round() as u32,
-        )
+        let [width, height] = crate::physical_extent(self.viewport, self.scale);
+        PhysicalSize::new(width, height)
     }
 
     /// Returns a copy that holds only the commands at `indices`, in the given order, skipping indices that are out of range.

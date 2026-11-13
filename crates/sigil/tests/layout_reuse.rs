@@ -43,7 +43,7 @@ fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(VIEW.0, VIEW.1))
-                .child(scroll(rows).extent(2_000.0).fill().scroll_bind(offset)),
+                .child(scroll(rows).extent(2_000.0).fill().scroll_y(offset)),
         );
         let mut layout = engine();
         compute(&mut cx, &mut layout, root);

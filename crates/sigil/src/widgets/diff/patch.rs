@@ -2,6 +2,7 @@ use std::ops::Range;
 
 /// Whether a diff line was added, removed, or kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum LineKind {
     /// A line that is the same in the old and the new text.
     Context,
@@ -24,10 +25,28 @@ impl LineKind {
 /// Identifies a line of a patch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LineId {
-    /// The 0-based index of the hunk in the patch.
-    pub hunk: usize,
-    /// The 0-based index of the line in the hunk.
-    pub line: usize,
+    pub(crate) hunk: usize,
+    pub(crate) line: usize,
+}
+
+impl LineId {
+    /// Creates a line identifier from 0-based `hunk` and `line` indexes.
+    #[must_use]
+    pub const fn new(hunk: usize, line: usize) -> Self {
+        Self { hunk, line }
+    }
+
+    /// Returns the 0-based index of the hunk in the patch.
+    #[must_use]
+    pub const fn hunk(self) -> usize {
+        self.hunk
+    }
+
+    /// Returns the 0-based index of the line in the hunk.
+    #[must_use]
+    pub const fn line(self) -> usize {
+        self.line
+    }
 }
 
 /// One line of a patch.

@@ -1,13 +1,13 @@
 #![allow(clippy::missing_const_for_fn)]
 
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::{LayoutStyle, Length, Overflow, StyleData};
+use crate::layout::{LayoutStyle, Length, Overflow};
 use crate::reactive::{Reactive, Signal, effect_named, memo, signal};
 use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
-use super::shared::caller_style;
+use super::shared::{ViewportSizing, caller_style};
 
 mod bar;
 pub(crate) mod geometry;
@@ -20,29 +20,6 @@ pub(crate) use input::{ScrollAxis, WheelAxis, contain_scroll, pin_to_bottom, whe
 
 const VIEWPORT_HEIGHT: f32 = space(60);
 pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ScrollSizing {
-    Fixed,
-    Fill,
-    Fit,
-}
-
-impl ScrollSizing {
-    const fn of(fit: bool, fills: bool) -> Self {
-        if fit {
-            Self::Fit
-        } else if fills {
-            Self::Fill
-        } else {
-            Self::Fixed
-        }
-    }
-
-    fn measured(self, set: &StyleData) -> bool {
-        let bounded = set.min_size.height != Length::Auto || set.max_size.height != Length::Auto;
-        self != Self::Fixed || bounded
-    }
-}
 
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
@@ -90,7 +67,7 @@ impl ScrollBuilder {
     }
 
     /// Binds the vertical scroll offset in px to `scroll_y`.
-    pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
+    pub const fn scroll_y(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
@@ -105,12 +82,12 @@ impl ScrollBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
         let (content, extent) = resolve_extent(self.content, self.extent);
         let set = self.layout_overrides.apply(LayoutStyle::default());
-        let sizing = ScrollSizing::of(self.fit, self.layout_overrides.fills_height());
+        let sizing = ViewportSizing::of(self.fit, self.layout_overrides.fills_height());
         let measured = sizing.measured(set.data());
         let width = self.layout_overrides.width_hint();
         let height = self.layout_overrides.height_hint().unwrap_or(match sizing {
-            ScrollSizing::Fit => 0.0,
-            ScrollSizing::Fill | ScrollSizing::Fixed => VIEWPORT_HEIGHT,
+            ViewportSizing::Fit => 0.0,
+            ViewportSizing::Fill | ViewportSizing::Fixed => VIEWPORT_HEIGHT,
         });
         let (viewport, viewport_height) = viewport_signals(width, height, measured);
 
@@ -119,7 +96,7 @@ impl ScrollBuilder {
             scroll_y.set(max_scroll.peek());
             pin_to_bottom(scroll_y, max_scroll, || true);
         }
-        let floor = if sizing == ScrollSizing::Fit {
+        let floor = if sizing == ViewportSizing::Fit {
             extent
         } else {
             viewport_height
@@ -130,7 +107,7 @@ impl ScrollBuilder {
             max_scroll,
             extent,
             viewport_height,
-            sizing != ScrollSizing::Fit,
+            sizing != ViewportSizing::Fit,
         );
 
         let root = viewport_container(height, sizing).child(body).child(track);
@@ -213,11 +190,11 @@ impl From<ScrollBuilder> for NodeBuilder {
     }
 }
 
-fn viewport_container(height: f32, sizing: ScrollSizing) -> NodeBuilder {
+fn viewport_container(height: f32, sizing: ViewportSizing) -> NodeBuilder {
     let base = match sizing {
-        ScrollSizing::Fill => LayoutStyle::flex_row().fill_height(),
-        ScrollSizing::Fit => LayoutStyle::flex_row().max_size(Length::Auto, Length::Percent(1.0)),
-        ScrollSizing::Fixed => LayoutStyle::flex_row().height(height),
+        ViewportSizing::Fill => LayoutStyle::flex_row().fill_height(),
+        ViewportSizing::Fit => LayoutStyle::flex_row().max_size(Length::Auto, Length::Percent(1.0)),
+        ViewportSizing::Fixed => LayoutStyle::flex_row().height(height),
     };
     container()
         .role(Role::ScrollView)

@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
 use crate::app::WindowCommand;
 use crate::app::config::AppConfig;
@@ -37,12 +37,28 @@ pub(crate) struct OpenRequest {
     pub(crate) mount: Mount,
 }
 
+struct WindowRegistry {
+    next_id: u64,
+    current: Option<Window>,
+    opens: Vec<OpenRequest>,
+    commands: Vec<(Option<Window>, WindowCommand)>,
+    signals: Vec<(Window, WindowSignals)>,
+}
+
+impl WindowRegistry {
+    const fn new() -> Self {
+        Self {
+            next_id: 0,
+            current: None,
+            opens: Vec::new(),
+            commands: Vec::new(),
+            signals: Vec::new(),
+        }
+    }
+}
+
 thread_local! {
-    static NEXT_ID: Cell<u64> = const { Cell::new(0) };
-    static CURRENT: Cell<Option<Window>> = const { Cell::new(None) };
-    static OPENS: RefCell<Vec<OpenRequest>> = const { RefCell::new(Vec::new()) };
-    static COMMANDS: RefCell<Vec<(Option<Window>, WindowCommand)>> = const { RefCell::new(Vec::new()) };
-    static SIGNALS: RefCell<Vec<(Window, WindowSignals)>> = const { RefCell::new(Vec::new()) };
+    static REGISTRY: RefCell<WindowRegistry> = const { RefCell::new(WindowRegistry::new()) };
 }
 
 impl Window {
@@ -59,7 +75,7 @@ impl Window {
             config: config.into(),
             mount: Box::new(move |host: &mut Host| host.mount_app(view)),
         };
-        OPENS.with(|cell| cell.borrow_mut().push(request));
+        REGISTRY.with(|cell| cell.borrow_mut().opens.push(request));
         id
     }
 
@@ -94,7 +110,7 @@ impl Window {
 
 #[must_use]
 pub(crate) fn current_window() -> Option<Window> {
-    CURRENT.with(Cell::get)
+    REGISTRY.with(|cell| cell.borrow().current)
 }
 
 fn fresh_signals() -> WindowSignals {
@@ -105,49 +121,63 @@ fn fresh_signals() -> WindowSignals {
 }
 
 fn signals_for(id: Window) -> Option<WindowSignals> {
-    SIGNALS.with(|cell| {
+    REGISTRY.with(|cell| {
         cell.borrow()
+            .signals
             .iter()
             .find_map(|(stored, s)| (*stored == id).then_some(*s))
     })
 }
 
 pub(crate) fn allocate_window_id() -> Window {
-    NEXT_ID.with(|next| {
-        let id = next.get();
-        next.set(id.wrapping_add(1));
+    REGISTRY.with(|cell| {
+        let mut reg = cell.borrow_mut();
+        let id = reg.next_id;
+        reg.next_id = id.wrapping_add(1);
         Window(id)
     })
 }
 
 pub(crate) fn register_window(id: Window) -> WindowSignals {
     let signals = fresh_signals();
-    SIGNALS.with(|cell| cell.borrow_mut().push((id, signals)));
+    REGISTRY.with(|cell| cell.borrow_mut().signals.push((id, signals)));
     signals
 }
 
 pub(crate) fn unregister_window(id: Window) {
-    SIGNALS.with(|cell| cell.borrow_mut().retain(|(stored, _)| *stored != id));
+    REGISTRY.with(|cell| {
+        cell.borrow_mut()
+            .signals
+            .retain(|(stored, _)| *stored != id);
+    });
 }
 
 pub(crate) fn set_current_window(id: Option<Window>) -> Option<Window> {
-    CURRENT.with(|cell| cell.replace(id))
+    REGISTRY.with(|cell| core::mem::replace(&mut cell.borrow_mut().current, id))
 }
 
 pub(crate) fn take_open_requests() -> Vec<OpenRequest> {
-    OPENS.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
+    REGISTRY.with(|cell| core::mem::take(&mut cell.borrow_mut().opens))
 }
 
 pub(crate) fn queue_command(target: Option<Window>, command: WindowCommand) {
-    COMMANDS.with(|cell| cell.borrow_mut().push((target, command)));
+    REGISTRY.with(|cell| cell.borrow_mut().commands.push((target, command)));
 }
 
 pub(crate) fn take_commands() -> Vec<(Option<Window>, WindowCommand)> {
-    COMMANDS.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
+    REGISTRY.with(|cell| core::mem::take(&mut cell.borrow_mut().commands))
 }
 
 pub(crate) fn reset() {
-    CURRENT.with(|cell| cell.set(None));
-    OPENS.with(|cell| cell.borrow_mut().clear());
-    SIGNALS.with(|cell| cell.borrow_mut().clear());
+    REGISTRY.with(|cell| {
+        let mut reg = cell.borrow_mut();
+        reg.current = None;
+        reg.opens.clear();
+        reg.commands.clear();
+        reg.signals.clear();
+    });
 }
+
+#[cfg(test)]
+#[path = "window_tests.rs"]
+mod tests;

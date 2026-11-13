@@ -41,10 +41,17 @@ impl DiffSelection {
         self.anchor = None;
     }
 
-    /// Selects a line and extends the current selection when `extend` is true.
-    pub fn select_line(&mut self, patch: &Patch, id: LineId, extend: bool) {
+    /// Selects a single line.
+    pub fn select_line(&mut self, id: LineId) {
         self.hunks.clear();
-        if let Some(anchor) = self.anchor.filter(|_| extend) {
+        self.lines = BTreeSet::from([id]);
+        self.anchor = Some(id);
+    }
+
+    /// Extends the selection from the anchor to `id`, or selects `id` when no anchor is set.
+    pub fn extend_line(&mut self, patch: &Patch, id: LineId) {
+        self.hunks.clear();
+        if let Some(anchor) = self.anchor {
             let (low, high) = (anchor.min(id), anchor.max(id));
             self.lines = patch
                 .changes()
@@ -54,6 +61,13 @@ impl DiffSelection {
             self.lines = BTreeSet::from([id]);
             self.anchor = Some(id);
         }
+    }
+
+    /// Clears the selection.
+    pub fn clear(&mut self) {
+        self.hunks.clear();
+        self.lines.clear();
+        self.anchor = None;
     }
 }
 
@@ -78,8 +92,11 @@ impl HunkPicker {
     pub(super) fn line(self, row: NodeBuilder, id: LineId) -> NodeBuilder {
         let Self { selection, patch } = self;
         row.pointer_down(move |event| {
-            let extend = event.modifiers.shift();
-            patch.with(|patch| selection.update(|picked| picked.select_line(patch, id, extend)));
+            if event.modifiers.shift() {
+                patch.with(|patch| selection.update(|picked| picked.extend_line(patch, id)));
+            } else {
+                selection.update(|picked| picked.select_line(id));
+            }
         })
         .paint_when(
             move || selection.with(|picked| picked.contains(id)),

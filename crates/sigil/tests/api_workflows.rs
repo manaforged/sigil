@@ -5,7 +5,6 @@ use sigil::Host;
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::widgets::close_popup;
 use sigil_kittest::Harness;
 
 const VIEW: (f32, f32) = (400.0, 200.0);
@@ -49,7 +48,6 @@ fn escape_closes_the_open_dialog_and_nothing_is_left_to_close() {
     ui.press(NamedKey::Escape);
     assert!(!open.peek(), "Escape left the dialog open");
     assert!(!ui.text().contains("Rename"), "{}", ui.text());
-    assert!(!close_popup(), "no popup is open after Escape");
 }
 
 #[test]
@@ -59,17 +57,17 @@ fn a_frame_reports_a_signal_write_and_then_goes_idle() {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || column().child(text(move || label.get())));
         let first = host.frame(VIEW, DT, FrameHooks::default());
-        assert!(first.layout.is_ok() && !first.exit);
+        assert!(first.layout().is_ok() && !first.exit());
         let _settle = host.frame(VIEW, DT, FrameHooks::default());
         let idle = host.frame(VIEW, DT, FrameHooks::default());
-        assert!(!idle.dirty, "an idle frame asked for a repaint");
+        assert!(!idle.dirty(), "an idle frame asked for a repaint");
 
         label.set(String::from("second"));
         let seen = Cell::new(None);
-        let hooks = FrameHooks::default().paint(|_, frame| seen.set(Some(frame.dirty)));
+        let hooks = FrameHooks::default().paint(|_, frame| seen.set(Some(frame.dirty())));
         let between = host.frame(VIEW, DT, hooks);
         assert!(
-            between.dirty,
+            between.dirty(),
             "a write between frames did not mark the frame dirty"
         );
         assert_eq!(seen.get(), Some(true), "the paint hook saw another frame");
@@ -80,12 +78,12 @@ fn a_frame_reports_a_signal_write_and_then_goes_idle() {
             None
         });
         assert!(
-            host.frame(VIEW, DT, write).dirty,
+            host.frame(VIEW, DT, write).dirty(),
             "a write in the input hook"
         );
         let _again = host.frame(VIEW, DT, FrameHooks::default());
         assert!(
-            !host.frame(VIEW, DT, FrameHooks::default()).dirty,
+            !host.frame(VIEW, DT, FrameHooks::default()).dirty(),
             "idle again"
         );
     });

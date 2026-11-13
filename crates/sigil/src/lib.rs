@@ -163,9 +163,11 @@ where
 pub mod clipboard;
 /// Helpers that Sigil's own tests use to reach the kernel.
 #[cfg(feature = "kittest")]
+#[doc(hidden)]
 pub mod testing;
 
 #[cfg(fuzzing)]
+#[doc(hidden)]
 pub mod fuzzing {
     pub fn render_mermaid(input: &str) {
         drop(crate::widgets::mermaid_figure(input));
@@ -209,8 +211,8 @@ pub mod prelude {
     pub use crate::kernel::NodePatch;
     pub use crate::kernel::{
         AccessibleName, Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder,
-        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each,
-        fragment, image, node, show, switch, text,
+        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, container, for_each, fragment,
+        image, node, show, switch, text,
     };
     pub use crate::layout::audit::Flaw;
     #[cfg(feature = "image-decode")]

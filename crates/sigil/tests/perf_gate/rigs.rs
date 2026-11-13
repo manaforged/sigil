@@ -45,7 +45,7 @@ fn rows_tree() -> impl IntoNode {
         .row_height(24.0)
         .viewport_height(VIEW.1)
         .viewport_width(VIEW.0)
-        .scroll_bind(y)
+        .scroll_y(y)
 }
 
 fn editor() -> Box<dyn IntoNode> {

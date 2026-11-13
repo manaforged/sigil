@@ -48,7 +48,7 @@ fn measured_rows_keep_the_view_still_when_a_row_grows() {
                     .key_by(|_, key| *key)
                     .measured()
                     .fill()
-                    .scroll_bind(scroll_y)
+                    .scroll_y(scroll_y)
                     .follow_end(true),
                 )
         });

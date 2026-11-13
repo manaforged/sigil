@@ -16,7 +16,6 @@ pub(crate) struct TextSetup {
 impl AppConfig {
     /// Replaces the bundled face of `family` with face `face` of the font file `bytes`; `Serif` has no bundled face and is ignored.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn font(mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
         let fonts = self.text.fonts.get_or_insert_default();
         let slot = match family {
@@ -35,7 +34,6 @@ impl AppConfig {
 
     /// Adds a sans face for one font weight.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn font_sans_weight(mut self, weight: u16, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
         let entry = (weight, Arc::new(bytes.into()), face);
         self.text
@@ -48,7 +46,6 @@ impl AppConfig {
 
     /// Adds a fallback face and keeps the primary font source.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn font_fallback(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
         let entry = (Arc::new(bytes.into()), face);
         self.text.font_fallbacks.push(entry);
@@ -57,7 +54,6 @@ impl AppConfig {
 
     /// Replaces the fonts that a browser build fetches for scripts the bundled faces lack.
     #[cfg(feature = "scene")]
-    #[must_use]
     pub fn web_fonts(mut self, fonts: impl IntoIterator<Item = crate::text::WebFont>) -> Self {
         self.text.web_fonts = Some(fonts.into_iter().collect());
         self

@@ -85,7 +85,8 @@ impl Inbox {
     fn settle(&mut self) {
         self.host
             .frame(VIEW, 0.0, FrameHooks::default())
-            .layout
+            .layout()
+            .as_ref()
             .expect("layout");
     }
 

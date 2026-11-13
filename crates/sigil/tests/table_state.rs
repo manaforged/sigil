@@ -72,15 +72,15 @@ fn unsorted_unfiltered_shows_source_order() {
 fn toggle_sort_cycles_asc_desc_none() {
     Owner::scope("table-sort-cycle", || {
         let state = TableState::new(items(), columns());
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         assert_eq!(
             state.sort_key().get(),
             Some(SortKey::new("name", SortDirection::Ascending))
         );
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         assert_eq!(visible_names(&state), ["gamma", "delta", "beta", "alpha"]);
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         assert_eq!(state.sort_key().get(), None);
         assert_eq!(visible_names(&state), ["gamma", "alpha", "delta", "beta"]);
     });
@@ -90,7 +90,7 @@ fn toggle_sort_cycles_asc_desc_none() {
 fn sort_is_stable_on_ties() {
     Owner::scope("table-sort-stable", || {
         let state = TableState::new(items(), columns());
-        state.toggle_sort("count");
+        state.cycle_sort("count");
         assert_eq!(visible_names(&state), ["alpha", "beta", "gamma", "delta"]);
     });
 }
@@ -99,7 +99,7 @@ fn sort_is_stable_on_ties() {
 fn toggle_sort_on_unsortable_column_is_ignored() {
     Owner::scope("table-sort-unsortable", || {
         let state = TableState::new(items(), columns());
-        state.toggle_sort("notes");
+        state.cycle_sort("notes");
         assert_eq!(state.sort_key().get(), None);
     });
 }
@@ -109,7 +109,7 @@ fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
     Owner::scope("table-filter", || {
         let state = TableState::new(items(), columns());
         state.quick_filter().set("a".into());
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
         state.quick_filter().set("elt".into());
         assert_eq!(visible_names(&state), ["delta"]);
@@ -122,7 +122,7 @@ fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
 fn selection_ops_follow_click_shapes() {
     Owner::scope("table-selection", || {
         let state = TableState::new(items(), columns());
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         state.select(1);
         assert!(state.selection().get().contains(&1));
         state.extend(2);
@@ -141,7 +141,7 @@ fn set_rows_keeps_in_range_selection_and_recomputes_visible() {
     Owner::scope("table-set-rows", || {
         let state = TableState::new(items(), columns());
         state.select(0);
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         state.replace_rows(vec![
             Item {
                 name: "omega",
@@ -224,7 +224,7 @@ fn source_order_reuses_identity_list_when_len_holds() {
             "source order keeps the 0..n list when the row count is unchanged"
         );
 
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         let sorted = state.visible().peek();
         assert!(
             Rc::ptr_eq(&first, &sorted),
@@ -232,8 +232,8 @@ fn source_order_reuses_identity_list_when_len_holds() {
         );
         assert_eq!(visible_names(&state), ["w", "x", "y", "z"]);
 
-        state.toggle_sort("name");
-        state.toggle_sort("name");
+        state.cycle_sort("name");
+        state.cycle_sort("name");
         let restored = state.visible().peek();
         assert!(
             Rc::ptr_eq(&first, &restored),
@@ -267,7 +267,7 @@ fn hundred_thousand_rows_sort_and_filter_correctly() {
                     .filterable(|row: &Item, query: &str| row.name.contains(query)),
             ],
         );
-        state.toggle_sort("count");
+        state.cycle_sort("count");
         let visible = state.visible().get();
         assert_eq!(visible.len(), 100_000);
         assert_eq!(visible.first(), Some(&99_999));

@@ -95,12 +95,12 @@ impl Shape {
 
     fn bitmap(self, vector: &CommandScene) -> CommandScene {
         let width = (VIEW.0 * SCALE) as u32;
-        let frame = Frame {
-            scene: vector,
-            viewport: VIEW,
-            size: sigil::geometry::PhysicalSize::new(width, (VIEW.1 * SCALE) as u32),
-            clear: NONE,
-        };
+        let frame = Frame::new(
+            vector,
+            VIEW,
+            sigil::geometry::PhysicalSize::new(width, (VIEW.1 * SCALE) as u32),
+            NONE,
+        );
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let mut scene = SceneBuilder::new();
         for index in 0..self.cols * self.rows {

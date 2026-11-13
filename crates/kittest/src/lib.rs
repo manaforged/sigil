@@ -35,6 +35,18 @@ pub(crate) const fn extent_f32(value: u32) -> f32 {
     value as f32
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a rounded, clamped texture extent fits u32"
+)]
+pub(crate) fn physical_extent(viewport: (f32, f32), scale: f32) -> [u32; 2] {
+    [
+        (viewport.0 * scale).round().clamp(1.0, f32::from(u16::MAX)) as u32,
+        (viewport.1 * scale).round().clamp(1.0, f32::from(u16::MAX)) as u32,
+    ]
+}
+
 /// A rendered image, or `None` when no GPU adapter exists and skipping is allowed.
 pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 

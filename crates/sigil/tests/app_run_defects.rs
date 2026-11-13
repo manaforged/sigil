@@ -82,7 +82,7 @@ fn follow_row_keeps_its_row_when_rows_arrive_later() {
                 virtual_list(items, |_, row: &String| text(row.clone()))
                     .row_height(20.0)
                     .viewport_height(100.0)
-                    .scroll_bind(scroll)
+                    .scroll_y(scroll)
                     .follow_row(signal(0)),
             ),
         );

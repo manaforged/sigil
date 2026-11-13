@@ -11,11 +11,10 @@
     reason = "pixel coordinates are small"
 )]
 
-use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder,
     Shadow,
@@ -23,7 +22,9 @@ use sigil::scene::{
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "filters/model.rs"]
 mod model;
@@ -87,15 +88,7 @@ fn solid(scene: &mut SceneBuilder, rect: Rect) {
 }
 
 pub(crate) fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
-    let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
-    let frame = Frame {
-        scene,
-        viewport: (width as f32, SIDE as f32),
-        size: PhysicalSize::new(device_w, device_h),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (width, SIDE), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 pub(crate) fn frames_of<N: IntoNode + 'static>(
@@ -284,8 +277,8 @@ fn filtered_scenes_agree_on_the_cpu_and_the_gpu() {
     let measured = diff(gpu.as_raw(), cpu.as_raw());
     println!(
         "filters cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
 }

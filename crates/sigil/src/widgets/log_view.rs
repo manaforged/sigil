@@ -92,7 +92,7 @@ impl Log {
 /// A scrolling view of a [`Log`] that follows new lines until the user scrolls up.
 ///
 /// Scrolling back to the end resumes following. The result is a [`virtual_list`], so its
-/// setters, such as `viewport_height` and `scroll_bind`, apply.
+/// setters, such as `viewport_height` and `scroll_y`, apply.
 ///
 /// ```
 /// use sigil::prelude::*;

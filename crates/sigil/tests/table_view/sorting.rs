@@ -212,7 +212,7 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
         assert_eq!(body_runs(&cx).len(), 11, "window stays viewport-sized");
         assert_eq!(body_runs(&cx).first().map(String::as_str), Some("r0099999"));
 
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_eq!(body_runs(&cx).len(), 11, "window cost unchanged by sort");
         assert_eq!(body_runs(&cx).first().map(String::as_str), Some("r0000000"));

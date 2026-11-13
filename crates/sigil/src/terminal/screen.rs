@@ -158,18 +158,23 @@ impl Screen {
     ) -> Result<Grid, Error> {
         let out = self.frame_inner(host, events, size)?.clone();
         if self.dirty {
-            if self.fresh
-                || self.prev.cols() != self.grid.cols()
-                || self.prev.rows() != self.grid.rows()
-            {
-                self.fresh = false;
-                self.stale = None;
-                self.prev.fit(&self.grid);
+            if self.needs_full_redraw() {
+                self.reset_full_redraw();
             }
             self.dirty = false;
             core::mem::swap(&mut self.prev, &mut self.grid);
         }
         Ok(out)
+    }
+
+    const fn needs_full_redraw(&self) -> bool {
+        self.fresh || self.prev.cols() != self.grid.cols() || self.prev.rows() != self.grid.rows()
+    }
+
+    fn reset_full_redraw(&mut self) {
+        self.fresh = false;
+        self.stale = None;
+        self.prev.fit(&self.grid);
     }
 
     fn frame_inner(
@@ -193,7 +198,7 @@ impl Screen {
         self.projection.quiet = !crate::reactive::Runtime::frame_dirty();
         let hooks = raster::frame_hooks(self, events, (cols, rows));
         let out = host.frame(view(cols, rows), dt, hooks);
-        self.exited |= out.exit;
+        self.exited |= out.exit();
         if crate::hud::enabled() {
             crate::terminal::hud::draw(&mut self.grid);
             self.damage = None;
@@ -220,7 +225,7 @@ impl Screen {
         }
         profile::count(profile::Counter::TuiDirty, u64::from(self.dirty));
         profile::count(profile::Counter::TuiNodes, self.scene.commands.len() as u64);
-        out.layout?;
+        out.layout()?;
         Ok(if self.dirty { &self.grid } else { &self.prev })
     }
 

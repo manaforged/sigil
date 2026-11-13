@@ -131,12 +131,12 @@ fn moved_frames() -> Vec<(&'static str, image::RgbaImage)> {
         let gpu = ui.expect_image();
         let scene = ui.host().emit((width as f32, SIDE as f32));
         let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
-        let frame = Frame {
-            scene: &scene,
-            viewport: (width as f32, SIDE as f32),
-            size: PhysicalSize::new(device_w, device_h),
-            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-        };
+        let frame = Frame::new(
+            &scene,
+            (width as f32, SIDE as f32),
+            PhysicalSize::new(device_w, device_h),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
+        );
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let cpu = image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame");
         vec![("gpu", gpu), ("cpu", cpu)]

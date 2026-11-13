@@ -171,7 +171,7 @@ First public release.
 | `ModalBuilder::show(signal)` | `modal(signal)` |
 | `Token::COUNT`, `Token::index()` | `Token::ALL.len()`, a position in `Token::ALL` |
 | `command_menu().item(label, action)`, `.detail(text)`, `.disabled(label)`, and the same on `SubmenuBuilder` | `.item(MenuItem::new(label).hint(text).disabled(true).activate(action))` |
-| `app::FrameInfo`, `app::FrameOutput` | `app::Frame`: `Host::frame` returns it and the paint hook receives it; `info.layout_ok` is `frame.layout.is_ok()` |
+| `app::FrameInfo`, `app::FrameOutput` | `app::Frame`: `Host::frame` returns it and the paint hook receives it; `info.layout_ok` is `frame.layout().is_ok()` |
 | `Host::ansi(out, prev, next, depth)` | `next.write_ansi(out, prev, depth)` |
 | `.asymmetric(reason)` | `.allow_flaw(Flaw::Column, reason)` or `.allow_flaw(Flaw::Inset, reason)` |
 | `TextStyle { font_size: 16.0, ..TextStyle::default() }` | `TextStyle::default().font_size(16.0)`; one setter per field |
@@ -188,7 +188,7 @@ First public release.
 | `TableState::select_only`, `toggle_selected`, `select_range_to`, `clear_selection` | `TableState::select`, `toggle`, `extend`, `clear` |
 | diff `Selection` with public `hunks` and `lines` | `DiffSelection` with `hunks()` and `lines()` |
 | `States::disabled_style` | `States::disabled_paint` |
-| `widgets::close_top_escape` | `widgets::close_popup` |
+| `widgets::close_top_escape`, `widgets::close_popup` | removed; Escape and light dismiss close the most recently opened popup |
 | `MouseButtons::EMPTY` | `MouseButtons::empty()` |
 | `list_row(selected, title, ListRowSlots { .. })` | `list_row(title).selected(selected)` with one setter per slot; `ListRowSlots` and `ListColumn` removed, `.column(text, width, ColumnAlign)` adds a column |
 | `profile::BackendStatus { kind, fallback }` and its fields | `BackendStatus::new(backend, fallback)`, `backend()`, `fallback()` |
@@ -311,6 +311,25 @@ First public release.
 | `Paint::mix_blend(BlendMode)` | `Paint::blend(BlendMode)` |
 | `ColorValue` in `sigil::prelude` | `sigil::style::ColorValue`; setters still take `Token` and `Color` through `Into<ColorValue>` |
 | `set_theme(theme)`, `sigil::app::set_theme(theme)` | `theme.apply()` |
+| `NodeBuilder::owns` | removed |
+| `TextCursor` in `sigil::prelude` | crate-private; `NodeBuilder::text_cursor(caret, anchor)` stays |
+| `Status<T, E = Box<dyn Error + Send + Sync>>` | `Status<T, E = sigil::Error>` |
+| `Frame` fields (`exit`, `dirty`, `animating`, `intervals`, `layout`) | getters: `exit()`, `dirty()`, `animating()`, `intervals()`, `layout()` |
+| `Track` and `Notification` public fields | builder setters on `Track::new(title)` and `Notification::new(title, body)` |
+| `WindowCommand::{SetZoom, SetTitle, SetPosition, SetLevel}` | `WindowCommand::{Zoom, Title, Position, Level}` |
+| `Theme::{gray, accent_scale, success, warn, error, info}` | `Theme::tone(Tone, ColorScale)` |
+| `Terminal::{progress, bell, activity}(Option<...>)` | take `impl Into<Option<...>>`; `Some(x)`, bare `x`, or `None` compile |
+| `sigil_kittest::parity::Frame { ... }`, `Diff.mean`, `Diff.close` | `Frame::new(scene, viewport, size, clear)`, `Diff::mean()`, `Diff::close()` |
+| `ScrollBuilder::scroll_bind`, `VirtualListBuilder::scroll_bind`, `TableBuilder::scroll_bind` | `scroll_y` |
+| `VirtualListBuilder::{scroll_x_bind, content_height_bind, max_scroll_bind}` | `scroll_x`, `content_height`, `max_scroll` |
+| `SplitterBuilder::{sizes_bind, settle_bind}` | `sizes`, `settled` |
+| `VirtualListBuilder::shrink_to_content` | `fit` |
+| `TableState::toggle_sort(col)`, `TableState::cycle_sort()` | `TableState::cycle_sort(col)`, `TableState::next_sort()` |
+| `DiffSelection::select_line(patch, id, extend)` | `DiffSelection::select_line(id)` and `DiffSelection::extend_line(patch, id)` |
+| `LineId` fields (`hunk`, `line`) | `LineId::new(hunk, line)`, `hunk()`, `line()` |
+| `FuzzyMatch` fields (`score`, `positions`) | `score()`, `positions()` |
+| `ListState` fields (`cursor`, `scroll`, `expanded`, `query`, `caret`), `select`, `toggle` | getters `cursor()`, `scroll()`, `expanded()`, `query()`, `caret()`; `move_to`; `toggle_expanded` |
+| `TextEditBuilder::caret_visible(&mut self)`, `TextFieldBuilder::{caret_visible(&mut self), scroll_offset(&mut self)}` | chaining setters taking `Signal<_>` and returning `Self` |
 
 ### Changed
 
@@ -345,7 +364,7 @@ First public release.
 - `range_slider` returns `SliderBuilder<RangeInclusive<f32>>`, and its `.change` gets the whole range after either thumb moves. Before, it got one thumb's value.
 - `Theme::token(name, value)` sets a theme token and takes a `Color`. It replaces `Theme::register_token` and `Theme::with_token`.
 - A table cell edit commits and closes when focus leaves the editor. Before, it stayed open.
-- `Theme` setters are named for their fields: `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale`, `with_direction`, `with_locale` and `with_strings` become `gray`, `accent_scale`, `success`, `warn`, `error`, `info`, `direction`, `locale` and `strings`.
+- `Theme::tone(Tone, ColorScale)` replaces `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, and `with_info_scale`. `with_direction`, `with_locale` and `with_strings` become `direction`, `locale` and `strings`.
 - `Theme::color` takes a `Token`, a `Color` or a `ColorValue`, and replaces `Theme::resolve_color`. `Theme::text_muted`, `surface_subtle` and `border_strong` are removed; read `Theme::color(Token::OnSurfaceMuted)`, `Token::SurfaceSubtle` and `Token::BorderStrong`, which also follow token overrides.
 - A `combobox` keeps focus in its input after the user picks an option. Before, a pick rebuilt the input and focus moved to the next control.
 - A parsed field (`date_field`, `time_field`, `number_field`, `color_field`) and a `text_field` with `invalid_when` report the invalid state to screen readers, not only in paint. `field` no longer clears it when there is no `.error`, and `invalid_when` adds a condition on each call instead of replacing the last one.
@@ -447,7 +466,8 @@ First public release.
 - 3D transforms on `Paint`: `perspective`, `perspective_origin`, `rotate_x`, `rotate_y`, `rotate_z`, `translate_z`, `backface_hidden` and `backface_visible`, with `Property::RotateX`, `RotateY` and `TranslateZ` for keyframes.
 - Keyframes and transitions animate filters, drop and text shadows, gradient stop colors and positions, mask stops and the 3D turns, depth and perspective. `Property` gains `RotateZ`, `Perspective`, `Blur`, `Brightness`, `Contrast`, `Grayscale`, `HueRotate`, `Invert`, `Saturate`, `Sepia`, `DropShadow`, `TextShadow`, `GradientFrom`, `GradientVia`, `GradientTo`, their `*Position` forms, `MaskFrom` and `MaskTo`. Filter lists, gradients and shadows interpolate as CSS does and jump when they do not match.
 - Class strings parse `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `bg-clip-text`, `border-solid`, `border-dashed` and `border-dotted`.
-- `SplitterBuilder::proportional` keeps pane shares when the parent resizes, and `SplitterBuilder::settle_bind` reports the sizes once when a drag or key move ends.
+- `SplitterBuilder::proportional` keeps pane shares when the parent resizes, and `SplitterBuilder::settled` reports the sizes once when a drag or key move ends.
+- `Error` predicates `is_io()`, `is_closed()`, `is_config()`, `is_clipboard()`, `is_layout()`, `is_gpu()`, and `is_no_adapter()`; `Status::is_idle()`; and `DiffSelection::clear()`.
 - One error type for the crate: `sigil::Error` with `sigil::ErrorKind` replaces 13 module error types. `docs/guide/errors.md` maps each old type to its kind.
 - The host traits, the renderer, and the window host are crate-private. The `kittest` feature exposes them to the harness. Text measurement types are `sigil::text`.
 

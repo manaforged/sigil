@@ -126,12 +126,12 @@ impl SigilRig {
                 None
             })
             .paint(move |host: &mut Host, info: &Frame| {
-                if fresh || info.dirty {
+                if fresh || info.dirty() {
                     black_box(host.emit(view));
                 }
             });
         let out = self.host.frame(view, FRAME_SECONDS, hooks);
-        out.layout.expect("layout");
+        out.layout().expect("layout");
     }
 
     fn present(&mut self, event: Option<Event>) {

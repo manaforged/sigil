@@ -74,7 +74,6 @@ impl ChipBuilder {
         self
     }
 
-    #[must_use]
     fn root(self) -> NodeBuilder {
         let activate = self.activate;
         let mut node = crate::kernel::container()

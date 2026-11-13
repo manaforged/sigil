@@ -29,6 +29,7 @@ use selection::HunkPicker;
 
 /// Diff view: side-by-side or unified rows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DiffView {
     /// The old text is on the left and the new text is on the right, side by side.
     Split,
@@ -175,7 +176,7 @@ impl DiffBuilder {
         let list = virtual_list(rows, move |_, row: &DiffRow| rows::render(row, draw))
             .measured()
             .estimate(18.0)
-            .shrink_to_content()
+            .fit()
             .keyboard(false);
         let top = shape.clone();
         let mut root = container()

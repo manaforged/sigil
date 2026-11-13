@@ -185,7 +185,6 @@ macro_rules! builder_impls {
     (@node [$($g:tt)*] $ty:ty $(, $vis:vis)?) => {
         impl<$($g)*> $ty {
             /// Builds the root node, then applies the queued layout edits and node changes.
-            #[must_use]
             $($vis)? fn into_node_builder(self) -> crate::kernel::NodeBuilder {
                 let overrides = self.layout_overrides.clone();
                 overrides.finish(self.root())
@@ -251,7 +250,6 @@ pub(crate) mod overlay;
 pub(crate) mod patterns;
 mod popup;
 pub(crate) use popup::close_light as popup_close_light;
-pub use popup::close_popup;
 pub(crate) use popup::{PopupStacks, swap_layers as popup_swap_layers};
 #[cfg(feature = "a2ui")]
 mod a2ui;

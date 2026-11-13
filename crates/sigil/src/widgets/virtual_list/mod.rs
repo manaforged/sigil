@@ -22,6 +22,7 @@ use std::ops::Deref;
 
 use super::layout_ext::LayoutOverrides;
 use super::scroll::ScrollAxis;
+use super::shared::ViewportSizing;
 use super::table::Identifiable;
 pub(crate) use end::EndReached;
 pub use row::RowRender;
@@ -83,7 +84,7 @@ where
     row_height: f32,
     viewport_height: f32,
     viewport_width: Option<f32>,
-    sizing: ListSizing,
+    sizing: ViewportSizing,
     overscan: usize,
     scroll_y: Option<Signal<f32>>,
     scroll_x: Option<ScrollAxis>,
@@ -97,21 +98,14 @@ where
     initial_scroll: Option<ScrollAnchor>,
     pin_bottom: bool,
     follow: Option<Signal<usize>>,
-    content_height_bind: Option<Signal<f32>>,
-    max_scroll_bind: Option<Signal<f32>>,
+    content_height: Option<Signal<f32>>,
+    max_scroll: Option<Signal<f32>>,
     measured: bool,
     estimate: Option<f32>,
     location: &'static core::panic::Location<'static>,
     scrollbar: bool,
     end_reached: Option<end::EndReached>,
     style_accumulator: crate::style::Style,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ListSizing {
-    Fixed,
-    Fill,
-    ShrinkToContent,
 }
 
 /// Where a virtual list stays scrolled.
@@ -183,7 +177,7 @@ where
         row_height: 0.0,
         viewport_height: DEFAULT_VIEWPORT_HEIGHT,
         viewport_width: None,
-        sizing: ListSizing::Fixed,
+        sizing: ViewportSizing::Fixed,
         overscan: DEFAULT_OVERSCAN,
         scroll_y: None,
         scroll_x: None,
@@ -197,8 +191,8 @@ where
         initial_scroll: None,
         pin_bottom: false,
         follow: None,
-        content_height_bind: None,
-        max_scroll_bind: None,
+        content_height: None,
+        max_scroll: None,
         measured: false,
         estimate: None,
         location: core::panic::Location::caller(),
@@ -271,19 +265,19 @@ where
     }
 
     /// Makes the list as high as its rows, up to the viewport height.
-    pub const fn shrink_to_content(mut self) -> Self {
-        self.sizing = ListSizing::ShrinkToContent;
+    pub const fn fit(mut self) -> Self {
+        self.sizing = ViewportSizing::Fit;
         self
     }
 
     /// Binds the vertical scroll offset in px to `scroll_y`.
-    pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
+    pub const fn scroll_y(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
     /// Binds horizontal wheel scroll to the offset `scroll_x`, its limit `max`, and view `width`.
-    pub const fn scroll_x_bind(
+    pub const fn scroll_x(
         mut self,
         scroll_x: Signal<f32>,
         max: Signal<f32>,
@@ -337,19 +331,13 @@ where
 
     /// Starts at the end and stays there as rows are added, while the view is at the end.
     pub const fn follow_end(mut self, on: bool) -> Self {
-        if on {
-            self.initial_scroll = Some(ScrollAnchor::Bottom);
-        }
         self.pin_bottom = on;
         self
     }
 
     /// Sets where the list is scrolled when it is first built: a `ScrollAnchor` or a row index.
     pub fn initial_scroll(mut self, anchor: impl Into<ScrollAnchor>) -> Self {
-        self.initial_scroll = match anchor.into() {
-            ScrollAnchor::Top => None,
-            anchor => Some(anchor),
-        };
+        self.initial_scroll = Some(anchor.into());
         self
     }
 

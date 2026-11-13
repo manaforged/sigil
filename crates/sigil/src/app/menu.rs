@@ -77,6 +77,7 @@ enum MenuEntry {
 }
 
 /// A native menu: the top level is the menu bar.
+#[must_use]
 #[derive(Clone, Debug, Default)]
 pub struct Menu {
     entries: Vec<MenuEntry>,
@@ -84,7 +85,6 @@ pub struct Menu {
 
 impl Menu {
     /// An empty menu.
-    #[must_use]
     pub const fn new() -> Self {
         Self {
             entries: Vec::new(),
@@ -92,7 +92,6 @@ impl Menu {
     }
 
     /// Adds an item; `events` delivers `id` when the user picks it.
-    #[must_use]
     pub fn item(
         mut self,
         id: impl Into<String>,
@@ -109,7 +108,6 @@ impl Menu {
     }
 
     /// Adds an item the user cannot pick.
-    #[must_use]
     pub fn disabled(mut self, id: impl Into<String>, label: impl Into<String>) -> Self {
         self.entries.push(MenuEntry::Item {
             id: id.into(),
@@ -121,7 +119,6 @@ impl Menu {
     }
 
     /// Adds an item with a check mark.
-    #[must_use]
     pub fn check(
         mut self,
         id: impl Into<String>,
@@ -139,21 +136,18 @@ impl Menu {
     }
 
     /// Adds an item the platform implements.
-    #[must_use]
     pub fn standard(mut self, item: StandardItem) -> Self {
         self.entries.push(MenuEntry::Standard(item));
         self
     }
 
     /// Adds a separator line.
-    #[must_use]
     pub fn separator(mut self) -> Self {
         self.entries.push(MenuEntry::Separator);
         self
     }
 
     /// Adds a nested menu.
-    #[must_use]
     pub fn submenu(mut self, label: impl Into<String>, menu: Self) -> Self {
         self.entries.push(MenuEntry::Submenu {
             label: label.into(),

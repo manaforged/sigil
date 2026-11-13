@@ -29,7 +29,7 @@ Key options:
 - `.reveal(Signal<bool>)`: shows the plaintext while true.
 - `.autofocus()`: focus this field when it mounts.
 - `.focus_when(Signal<u64>)`: bump the signal to focus this field after it mounts.
-- `caret_visible()` / `scroll_offset()`: `&mut self` accessors that return the internal signals so you can observe or drive them.
+- `.caret_visible(Signal<bool>)` / `.scroll_offset(Signal<f32>)`: bind the caret visibility and scroll offset signals.
 
 Editing keys: Arrow Left/Right, Home, End, and Shift variants for selection; Backspace/Delete; Ctrl (or Cmd on macOS) + C/X/V for clipboard, A for select-all, Z for undo, Shift+Z or Ctrl+Y for redo. IME input lands as inline preedit, and the caret rect is published to the accessibility tree for the IME candidate window.
 
@@ -39,7 +39,7 @@ Editing keys: Arrow Left/Right, Home, End, and Shift variants for selection; Bac
 
 - `.placeholder()`, `.disabled()`, `.change(Fn(&str))`, `.clipboard()`, `.autofocus()`, and `.focus_when(Signal<u64>)` work as in `text_field`. `.submit(Fn(&str))` runs on Ctrl+Enter. Plain Enter inserts a newline.
 - `.caret_position(Signal<usize>)`: bind the caret as a byte offset.
-- `.caret_visible()`: accessor for the caret visibility signal.
+- `.caret_visible(Signal<bool>)`: bind the caret visibility signal.
 - `.content_padding(horizontal, vertical)`: inner padding in px.
 - `.chrome(bool)`: `false` drops the field frame/background.
 - `.state(TextEditState)`: hand the widget a shared state object instead of loose signals.

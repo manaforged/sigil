@@ -8,7 +8,6 @@ use crate::widgets::{Layout, Widget};
 use super::virtual_list::virtual_list;
 
 /// An embedded terminal emulator view.
-#[must_use]
 pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static) -> NodeBuilder {
     let list = virtual_list(lines, |_i, line| {
         container().child(text(line.clone()).class("font-mono text-sm"))

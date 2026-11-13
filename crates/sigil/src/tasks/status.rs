@@ -1,8 +1,6 @@
-use std::error::Error;
-
 /// State of a task.
 #[derive(Debug, Clone)]
-pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
+pub enum Status<T, E = crate::Error> {
     /// The task is not running: it has not started, or it was cancelled.
     Idle,
     /// The task is running and has no result yet.
@@ -16,6 +14,12 @@ pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
 }
 
 impl<T, E> Status<T, E> {
+    /// Returns whether this status is idle.
+    #[must_use]
+    pub const fn is_idle(&self) -> bool {
+        matches!(self, Self::Idle)
+    }
+
     /// Returns whether this status is pending.
     #[must_use]
     pub const fn is_pending(&self) -> bool {

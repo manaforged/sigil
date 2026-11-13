@@ -48,12 +48,7 @@ fn shoot<A: IntoNode + 'static>(
             let viewport = (w as f32, h as f32);
             let scene = ui.host().emit(viewport);
             let size = PhysicalSize::new((w as f32 * SCALE) as u32, (h as f32 * SCALE) as u32);
-            let frame = Frame {
-                scene: &scene,
-                viewport,
-                size,
-                clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
-            };
+            let frame = Frame::new(&scene, viewport, size, Rgba::new(1.0, 1.0, 1.0, 1.0));
             let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
             return image::RgbaImage::from_raw(size.width, size.height, rgba)
                 .expect("cpu frame size");

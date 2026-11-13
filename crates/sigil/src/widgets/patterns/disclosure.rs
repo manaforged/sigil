@@ -8,7 +8,6 @@ use crate::widgets::Layout;
 use super::list_row::{Disclosure, disclosure_slot};
 
 /// An expand and collapse section.
-#[must_use]
 pub fn disclosure<H, B>(
     open: Signal<bool>,
     header: impl Fn(bool) -> H + 'static,

@@ -112,7 +112,6 @@ fn stamp_visible(entries: &mut [ToastEntry], now: Instant) {
 }
 
 /// A stack of transient messages.
-#[must_use]
 pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
     interval(SWEEP_PERIOD, move || {
         queue.dismiss_expired(Instant::now());

@@ -177,12 +177,12 @@ fn one_scene_agrees_on_the_cpu_and_the_gpu() {
     let gpu = ui.expect_image();
     let viewport = (WIDTH as f32, HEIGHT as f32);
     let scene = ui.host().emit(viewport);
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(DEVICE.0, DEVICE.1),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(DEVICE.0, DEVICE.1),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let drawn = gpu.pixels().filter(|px| px.0[..3] != [0, 0, 0]).count();
     assert!(
@@ -192,8 +192,8 @@ fn one_scene_agrees_on_the_cpu_and_the_gpu() {
     let measured = diff(gpu.as_raw(), &cpu);
     println!(
         "cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
 }

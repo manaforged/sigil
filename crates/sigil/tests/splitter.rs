@@ -196,14 +196,14 @@ fn sizes_bind_carries_initial_sizes() {
                 .child(container().label("a"), 100.0)
                 .child(container().label("b"), 150.0)
                 .child(container().label("c"), 200.0)
-                .sizes_bind(bound),
+                .sizes(bound),
         );
 
         let snapshot = bound.peek();
         assert_eq!(
             snapshot,
             vec![100.0, 150.0, 200.0],
-            "sizes_bind must reflect initial sizes after build",
+            "sizes must reflect initial sizes after build",
         );
     });
 }
@@ -312,7 +312,7 @@ fn settle_after_drag() {
         splitter(Orientation::Horizontal)
             .child(container(), 200.0)
             .child(container(), 200.0)
-            .settle_bind(settled),
+            .settled(settled),
     )
     .pixels(600, 200);
     assert!(settled.peek().is_empty(), "nothing settles before a drag");

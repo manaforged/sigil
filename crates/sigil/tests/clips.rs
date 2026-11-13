@@ -23,6 +23,8 @@ use sigil_kittest::Harness;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
 use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
+use crate::scene_support;
+
 #[path = "clips/perf.rs"]
 mod perf;
 
@@ -87,15 +89,7 @@ fn avatar() -> impl IntoNode {
 }
 
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
-    let device = (SIDE as f32 * SCALE) as u32;
-    let frame = Frame {
-        scene,
-        viewport: (SIDE as f32, SIDE as f32),
-        size: PhysicalSize::new(device, device),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device, device, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (SIDE, SIDE), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn frames<N: IntoNode + 'static>(app: fn() -> N) -> Vec<(&'static str, image::RgbaImage)> {
@@ -239,12 +233,12 @@ fn layers(clip: Clip) -> (usize, usize, usize) {
     let viewport = (SIDE as f32, SIDE as f32);
     let device = (SIDE as f32 * SCALE) as u32;
     let mut cpu = CpuRenderer::new();
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(device, device),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(device, device),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     cpu_rgba(&mut cpu, &frame).expect("cpu render");
     let mut gpu = headless_renderer().expect("renderer").expect("GPU adapter");
     render_scene_to_image(&mut gpu, &scene, viewport, [device, device]).expect("gpu render");
@@ -295,18 +289,18 @@ fn clipped_scenes_agree_on_the_cpu_and_the_gpu() {
     let gpu = ui.expect_image();
     let viewport = (width as f32, height as f32);
     let scene = ui.host().emit(viewport);
-    let frame = Frame {
-        scene: &scene,
+    let frame = Frame::new(
+        &scene,
         viewport,
-        size: PhysicalSize::new(gpu.width(), gpu.height()),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
+        PhysicalSize::new(gpu.width(), gpu.height()),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    );
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let measured = diff(gpu.as_raw(), &cpu);
     println!(
         "clips cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
 }

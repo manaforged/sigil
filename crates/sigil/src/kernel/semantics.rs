@@ -43,13 +43,10 @@ impl From<Signal<String>> for AccessibleName {
     }
 }
 
-/// Caret and selection anchor of an editable text node, exported to accessibility.
 #[derive(Clone, Copy, Debug)]
-pub struct TextCursor {
-    /// The byte offset of the caret in the text value.
-    pub caret: Signal<usize>,
-    /// The byte offset of the other end of the selection; `None` in the signal means no selection.
-    pub anchor: Signal<Option<usize>>,
+pub(crate) struct TextCursor {
+    pub(crate) caret: Signal<usize>,
+    pub(crate) anchor: Signal<Option<usize>>,
 }
 
 /// Accessibility properties of a node.
@@ -102,12 +99,9 @@ pub struct A11yDetail {
     pub step: Option<f32>,
     /// The signal that holds the text of the node, such as the content of a text field.
     pub text_value: Option<Signal<String>>,
-    /// The caret and the selection anchor of the text; reported only with `text_value`.
-    pub text_cursor: Option<TextCursor>,
+    pub(crate) text_cursor: Option<TextCursor>,
     /// The hint text that the node reports for an empty field.
     pub placeholder: Option<String>,
-    /// The nodes that this node names as owned, in the order they were added.
-    pub owns: SmallVec<[NodeId; 2]>,
     /// The node that labels this node; when set, `name` is not reported.
     pub labelled_by: Option<NodeId>,
     /// The node that describes this node.
@@ -161,7 +155,6 @@ impl A11yDetail {
             text_value: None,
             text_cursor: None,
             placeholder: None,
-            owns: SmallVec::new(),
             labelled_by: None,
             described_by: None,
             invalid: None,

@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+documentation = "https://docs.rs/sigil-ui"
 authors.workspace = true
 description = "GUI and TUI framework in Rust. One widget tree, one entry: sigil::run opens a window or a terminal."
 readme = "README.md"

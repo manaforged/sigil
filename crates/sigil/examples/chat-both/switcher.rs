@@ -17,7 +17,7 @@ fn rank(names: &[String], query: &str) -> Vec<usize> {
     let mut hits: Vec<(usize, usize)> = names
         .iter()
         .enumerate()
-        .filter_map(|(index, name)| fuzzy_score(query, name).map(|hit| (hit.score, index)))
+        .filter_map(|(index, name)| fuzzy_score(query, name).map(|hit| (hit.score(), index)))
         .collect();
     hits.sort_unstable();
     hits.into_iter().map(|(_, index)| index).collect()

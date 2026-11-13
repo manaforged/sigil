@@ -14,12 +14,7 @@ fn env_u64(name: &str, default: u64) -> u64 {
 
 fn compare(gpu: &mut WgpuRenderer, scene: &GeneratedScene) -> Result<Diff, String> {
     let commands = scene.scene();
-    let frame = Frame {
-        scene: &commands,
-        viewport: scene.viewport(),
-        size: scene.physical(),
-        clear: scene.clear(),
-    };
+    let frame = Frame::new(&commands, scene.viewport(), scene.physical(), scene.clear());
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).map_err(|e| format!("cpu: {e:?}"))?;
     let gpu = gpu_rgba(gpu, &frame).map_err(|e| format!("gpu: {e:?}"))?;
     Ok(diff(&gpu, &cpu))

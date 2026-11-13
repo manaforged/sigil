@@ -182,11 +182,11 @@ fn cpu_matches_gpu_on_catalog_scenes() {
         let d = diff(&gpu, &cpu);
         println!(
             "{name}: mean channel diff {:.2}/255, {:.1}% pixels within {CLOSE_TOLERANCE}",
-            d.mean,
-            d.close * 100.0
+            d.mean(),
+            d.close() * 100.0
         );
         let (max_mean, min_close) = limits(name);
-        if d.mean > max_mean || d.close < min_close {
+        if d.mean() > max_mean || d.close() < min_close {
             failures.push(name);
         }
     }

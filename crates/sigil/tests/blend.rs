@@ -11,18 +11,19 @@
     reason = "a test fails loudly on a missing value"
 )]
 
-use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder,
 };
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "blend/model.rs"]
 mod model;
@@ -88,18 +89,7 @@ fn gallery() -> impl IntoNode {
 }
 
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
-    let (device_w, device_h) = (
-        (WIDTH as f32 * SCALE) as u32,
-        (HEIGHT as f32 * SCALE) as u32,
-    );
-    let frame = Frame {
-        scene,
-        viewport: (WIDTH as f32, HEIGHT as f32),
-        size: PhysicalSize::new(device_w, device_h),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+    scene_support::cpu_frame(scene, (WIDTH, HEIGHT), SCALE, Rgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn frames() -> Vec<(&'static str, image::RgbaImage)> {
@@ -169,8 +159,8 @@ fn blended_layers_agree_on_the_cpu_and_the_gpu() {
     let measured = diff(gpu.as_raw(), cpu.as_raw());
     println!(
         "blend cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
     for (row, alpha) in [(0, 255), (1, HALF)] {

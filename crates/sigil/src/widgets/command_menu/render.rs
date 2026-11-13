@@ -216,7 +216,7 @@ fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
     reveal_row(offset, cursor, rows_height(1), viewport);
     scroll(list)
         .height(viewport)
-        .scroll_bind(offset)
+        .scroll_y(offset)
         .into_node_builder()
         .focusable(false)
 }

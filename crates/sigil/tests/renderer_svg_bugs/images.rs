@@ -43,12 +43,12 @@ fn one_renderer_draws_every_new_image_across_many_frames() {
         let source = solid(index);
         let want = source.rgba()[..3].to_vec();
         let scene = scene(source);
-        let frame = Frame {
-            scene: &scene,
-            viewport: (VIEW as f32, VIEW as f32),
-            size: PhysicalSize::new(VIEW, VIEW),
-            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-        };
+        let frame = Frame::new(
+            &scene,
+            (VIEW as f32, VIEW as f32),
+            PhysicalSize::new(VIEW, VIEW),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
+        );
         let rgba = gpu_rgba(&mut renderer, &frame).expect("gpu render");
         let at = ((VIEW / 2 * VIEW + VIEW / 2) * 4) as usize;
         let found = &rgba[at..at + 3];

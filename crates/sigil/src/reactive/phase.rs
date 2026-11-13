@@ -21,7 +21,7 @@ kittest_pub! {
 #[inline]
 pub(crate) fn assert_paint_safe(rt: &RuntimeState, site: &'static str) {
     debug_assert!(
-        rt.phase != DrawPhase::Paint,
+        rt.frame.phase() != DrawPhase::Paint,
         "Signal::{site} called during DrawPhase::Paint — reactive writes are illegal in the paint pass \
          (call site: {})",
         Location::caller(),

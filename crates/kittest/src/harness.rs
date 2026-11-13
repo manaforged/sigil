@@ -192,7 +192,7 @@ impl Harness {
             }
             HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
-                self.host.frame(viewport, dt, hooks(events, None)).layout
+                self.host.frame(viewport, dt, hooks(events, None)).layout()
             }
             HarnessSurface::Gpu(gpu) => {
                 let viewport = gpu.viewport;
@@ -201,7 +201,7 @@ impl Harness {
                 let layout = self
                     .host
                     .frame(viewport, dt, hooks(events, Some(paint)))
-                    .layout;
+                    .layout();
                 gpu.take_error()?;
                 layout
             }

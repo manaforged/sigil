@@ -107,7 +107,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                     .collect::<Vec<_>>()
             }))
             .fill()
-            .scroll_bind(knobs.offset),
+            .scroll_y(knobs.offset),
         )
 }
 

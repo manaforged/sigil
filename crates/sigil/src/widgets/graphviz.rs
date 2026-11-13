@@ -11,7 +11,6 @@ mod bounds;
 mod svg;
 
 /// A rendered Graphviz DOT graph.
-#[must_use]
 pub fn graphviz(source: impl Reactive<String>) -> NodeBuilder {
     fragment().children_reactive(move || [figure(&source.read())])
 }

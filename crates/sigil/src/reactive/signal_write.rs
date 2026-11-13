@@ -75,7 +75,7 @@ fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
         .copied()
         .filter(|&e| !is_stale_running_subscription(effects, running, e, signal))
         .collect();
-    rt.ask_frame();
+    rt.frame.ask_frame();
     let queued = !live.is_empty();
     for effect in live {
         rt.enqueue(effect, level);

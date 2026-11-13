@@ -14,7 +14,6 @@ fn every_core_node_kind_has_accessible_defaults() {
     for id in [container, fragment, text] {
         let a11y = &cx.get(id).expect("node exists").a11y;
         assert_ne!(a11y.role, Role::Unknown);
-        assert!(a11y.owns.is_empty());
         assert_eq!(a11y.labelled_by, None);
     }
 

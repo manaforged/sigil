@@ -13,7 +13,6 @@ use super::super::popup::{PANEL_INSET, PANEL_WIDTH, PopupAnchor, PopupLayer};
 use super::builder::{MenuItem, menu};
 
 /// Wraps `target`; a right click opens a menu of `items()` at the pointer.
-#[must_use]
 pub fn context_menu(
     target: impl IntoNode + 'static,
     items: impl Fn() -> Vec<MenuItem> + 'static,

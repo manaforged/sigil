@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+documentation = "https://docs.rs/sigil-kittest"
 authors.workspace = true
 description = "Headless test harness for Sigil: drive widgets through EventRouter and render them to PNG goldens offscreen."
 readme = "README.md"

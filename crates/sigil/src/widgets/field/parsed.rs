@@ -155,6 +155,8 @@ macro_rules! parsed_controls {
             }
         }
 
+        impl<$($g)*> $crate::widgets::field::field_sealed::Sealed for $ty {}
+
         impl<$($g)*> $crate::widgets::FieldControl for $ty {
             fn invalid(self, invalid: impl $crate::reactive::Reactive<bool>) -> Self {
                 Self::invalid(self, invalid)

@@ -11,12 +11,12 @@
     reason = "pixel coordinates are small"
 )]
 
-use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
-use sigil::renderer::CpuRenderer;
 use sigil::style::{Background, GradientAxis, Radial, RadialExtent, Rgba};
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, cpu_rgba, diff};
+use sigil_kittest::parity::diff;
+
+use crate::scene_support;
 
 #[path = "paints/borders.rs"]
 mod borders;
@@ -86,20 +86,13 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
 }
 
 fn cpu_frame(ui: &mut Harness, (width, height): (u32, u32)) -> image::RgbaImage {
-    let viewport = (width as f32, height as f32);
-    let scene = ui.host().emit(viewport);
-    let size = PhysicalSize::new(
-        (width as f32 * SCALE) as u32,
-        (height as f32 * SCALE) as u32,
-    );
-    let frame = Frame {
-        scene: &scene,
-        viewport,
-        size,
-        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
-    };
-    let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-    image::RgbaImage::from_raw(size.width, size.height, rgba).expect("cpu frame size")
+    let scene = ui.host().emit((width as f32, height as f32));
+    scene_support::cpu_frame(
+        &scene,
+        (width, height),
+        SCALE,
+        Rgba::new(1.0, 1.0, 1.0, 1.0),
+    )
 }
 
 pub(crate) fn distance(a: [u8; 3], b: Color) -> u32 {
@@ -360,8 +353,8 @@ fn paints_agree_on_the_cpu_and_the_gpu() {
     let measured = diff(gpu.image.as_raw(), cpu.image.as_raw());
     println!(
         "cpu/gpu: mean {:.2}/255, {:.1}% close",
-        measured.mean,
-        measured.close * 100.0
+        measured.mean(),
+        measured.close() * 100.0
     );
     measured.assert_close();
 }

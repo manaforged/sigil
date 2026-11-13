@@ -8,7 +8,6 @@ use crate::widgets::Layout;
 use super::popup::{SURFACE, shown_when};
 
 /// One transient message.
-#[must_use]
 pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
     let body = memo(move || message.get().unwrap_or_default());
     container()

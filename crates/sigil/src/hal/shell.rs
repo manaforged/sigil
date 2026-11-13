@@ -80,7 +80,7 @@ pub enum WindowCommand {
     /// Starts a resize of the window from an edge or a corner that follows the pointer.
     DragResize(ResizeDirection),
     /// Sets the zoom of the window in percent, where 100 is no zoom; 0 does nothing.
-    SetZoom(u16),
+    Zoom(u16),
     /// Makes the window visible.
     Show,
     /// Hides the window.
@@ -88,11 +88,11 @@ pub enum WindowCommand {
     /// Makes the window visible and gives it input focus.
     Focus,
     /// Sets the title of the window.
-    SetTitle(alloc::string::String),
+    Title(alloc::string::String),
     /// Moves the outer frame of the window to a position in logical pixels.
-    SetPosition(Point),
+    Position(Point),
     /// Sets the stacking level of the window.
-    SetLevel(WindowLevel),
+    Level(WindowLevel),
 }
 
 pub trait Shell: Sized {

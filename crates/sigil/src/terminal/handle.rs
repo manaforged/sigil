@@ -50,18 +50,22 @@ impl Terminal {
     }
 
     /// Reports task progress to the terminal; `None` clears it.
-    pub fn progress(self, value: Option<u8>) -> Result<(), crate::Error> {
-        super::notify::progress(value)
+    pub fn progress(self, value: impl Into<Option<u8>>) -> Result<(), crate::Error> {
+        super::notify::progress(value.into())
     }
 
     /// Rings the terminal bell.
-    pub fn bell(self, note: Option<&str>) -> Result<(), crate::Error> {
-        super::notify::bell(note)
+    pub fn bell<'a>(self, note: impl Into<Option<&'a str>>) -> Result<(), crate::Error> {
+        super::notify::bell(note.into())
     }
 
     /// Reports the activity of `app` to the host; `None` clears it.
-    pub fn activity(self, app: &str, value: Option<Activity>) -> Result<(), crate::Error> {
-        super::notify::activity(app, value)
+    pub fn activity(
+        self,
+        app: &str,
+        value: impl Into<Option<Activity>>,
+    ) -> Result<(), crate::Error> {
+        super::notify::activity(app, value.into())
     }
 
     /// Measures the width of ambiguous characters in this terminal.

@@ -98,8 +98,7 @@ impl Tray {
 
     /// Queues the tray icon for the next frame; an error means the icon image is invalid.
     pub fn install(self) -> AppResult<()> {
-        self.native_icon()
-            .map_err(|error| Error::message(ErrorKind::Other, error))?;
+        self.native_icon()?;
         NATIVE.with(|native| native.queue(self));
         Ok(())
     }
@@ -111,8 +110,7 @@ impl Tray {
                 let Some(icon) = slot.as_ref() else {
                     return Ok(false);
                 };
-                self.apply(icon)
-                    .map_err(|error| Error::message(ErrorKind::Other, error))?;
+                self.apply(icon)?;
                 Ok(true)
             })
         })
@@ -124,20 +122,22 @@ impl Tray {
         NATIVE.with(Native::events)
     }
 
-    fn apply(&self, native: &TrayIcon) -> Result<(), String> {
+    fn apply(&self, native: &TrayIcon) -> AppResult<()> {
         let icon = self.native_icon()?;
         let menu = self.native_menu()?;
         if icon.is_some() || matches!(self.icon, Change::Clear) {
-            native.set_icon(icon).map_err(|error| error.to_string())?;
+            native
+                .set_icon(icon)
+                .map_err(|err| Error::new(ErrorKind::Other, err))?;
         }
         match &self.tooltip {
             Change::Keep => {}
             Change::Set(tooltip) => native
                 .set_tooltip(Some(tooltip))
-                .map_err(|error| error.to_string())?,
+                .map_err(|err| Error::new(ErrorKind::Other, err))?,
             Change::Clear => native
                 .set_tooltip(None::<&str>)
-                .map_err(|error| error.to_string())?,
+                .map_err(|err| Error::new(ErrorKind::Other, err))?,
         }
         match &self.title {
             Change::Keep => {}
@@ -152,7 +152,7 @@ impl Tray {
         Ok(())
     }
 
-    fn native(self) -> Result<TrayIcon, String> {
+    fn native(self) -> AppResult<TrayIcon> {
         let mut builder = TrayIconBuilder::new();
         if let Some(menu) = self.native_menu()? {
             builder = builder.with_menu(Box::new(menu));
@@ -166,30 +166,38 @@ impl Tray {
         if let Change::Set(title) = self.title {
             builder = builder.with_title(title);
         }
-        builder.build().map_err(|error| error.to_string())
+        builder
+            .build()
+            .map_err(|err| Error::new(ErrorKind::Other, err))
     }
 
-    fn native_icon(&self) -> Result<Option<Icon>, String> {
+    fn native_icon(&self) -> AppResult<Option<Icon>> {
         match &self.icon {
             Change::Set((rgba, width, height)) => {
                 let needed = u64::from(*width) * u64::from(*height) * 4;
                 if u64::try_from(rgba.len()).ok() != Some(needed) {
-                    return Err(format!(
-                        "a {width}x{height} RGBA icon needs {needed} bytes, got {}",
-                        rgba.len()
+                    return Err(Error::message(
+                        ErrorKind::Other,
+                        format!(
+                            "a {width}x{height} RGBA icon needs {needed} bytes, got {}",
+                            rgba.len()
+                        ),
                     ));
                 }
                 Icon::from_rgba(rgba.clone(), *width, *height)
                     .map(Some)
-                    .map_err(|error| error.to_string())
+                    .map_err(|err| Error::new(ErrorKind::Other, err))
             }
             Change::Keep | Change::Clear => Ok(None),
         }
     }
 
-    fn native_menu(&self) -> Result<Option<muda::Menu>, String> {
+    fn native_menu(&self) -> AppResult<Option<muda::Menu>> {
         match &self.menu {
-            Change::Set(menu) => menu.native().map(Some),
+            Change::Set(menu) => menu
+                .native()
+                .map(Some)
+                .map_err(|err| Error::message(ErrorKind::Other, err)),
             Change::Keep | Change::Clear => Ok(None),
         }
     }

@@ -71,12 +71,12 @@ fn scene(color: Color) -> CommandScene {
 }
 
 const fn frame(scene: &CommandScene) -> Frame<'_> {
-    Frame {
+    Frame::new(
         scene,
-        viewport: (SIDE as f32, SIDE as f32),
-        size: PhysicalSize::new(SIDE * SCALE, SIDE * SCALE),
-        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
-    }
+        (SIDE as f32, SIDE as f32),
+        PhysicalSize::new(SIDE * SCALE, SIDE * SCALE),
+        Rgba::new(0.0, 0.0, 0.0, 1.0),
+    )
 }
 
 const fn center(rgba: &[u8]) -> [u8; 3] {

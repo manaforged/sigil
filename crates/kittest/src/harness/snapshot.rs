@@ -1,7 +1,6 @@
 use super::{Harness, HarnessSurface};
 use crate::compare::assert_text_matches_golden;
 use crate::gpu::{headless_renderer, render_scene_to_image};
-use crate::render::physical_extent;
 use crate::{Error, ErrorKind, Golden, Rendered};
 
 impl Harness {
@@ -30,8 +29,8 @@ impl Harness {
                 .map(Some)
                 .map_err(|error| Error::caused(ErrorKind::Render, error));
         }
-        let (size, scale) = match &self.surface {
-            HarnessSurface::Pixels { size, scale, .. } => (*size, *scale),
+        let scale = match &self.surface {
+            HarnessSurface::Pixels { scale, .. } => *scale,
             HarnessSurface::Gpu(gpu) => return gpu.image().map(Some),
             HarnessSurface::Cells { .. } => {
                 return Err(Error::text(
@@ -46,7 +45,7 @@ impl Harness {
         let Some(mut renderer) = headless_renderer()? else {
             return Ok(None);
         };
-        let device = [size.0, size.1].map(|extent| physical_extent(extent, scale));
+        let device = crate::physical_extent(viewport, scale);
         render_scene_to_image(&mut renderer, &scene, viewport, device).map(Some)
     }
 

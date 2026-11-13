@@ -4,12 +4,9 @@ use crate::error::{AppResult, Error};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Notification {
-    /// The summary line of the notification.
-    pub title: String,
-    /// The text shown under the summary line.
-    pub body: String,
-    /// The app name sent with the notification; `None` sends no name.
-    pub app_name: Option<String>,
+    pub(crate) title: String,
+    pub(crate) body: String,
+    pub(crate) app_name: Option<String>,
 }
 
 impl Notification {

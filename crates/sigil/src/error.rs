@@ -192,6 +192,48 @@ impl Error {
             _ => None,
         }
     }
+
+    /// Returns whether this error has kind `ErrorKind::Io`.
+    #[must_use]
+    pub const fn is_io(&self) -> bool {
+        matches!(self.kind, ErrorKind::Io)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::Closed`.
+    #[must_use]
+    pub const fn is_closed(&self) -> bool {
+        matches!(self.kind, ErrorKind::Closed)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::Config`.
+    #[must_use]
+    pub const fn is_config(&self) -> bool {
+        matches!(self.kind, ErrorKind::Config)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::Clipboard`.
+    #[must_use]
+    pub const fn is_clipboard(&self) -> bool {
+        matches!(self.kind, ErrorKind::Clipboard)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::Layout`.
+    #[must_use]
+    pub const fn is_layout(&self) -> bool {
+        matches!(self.kind, ErrorKind::Layout)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::Gpu`.
+    #[must_use]
+    pub const fn is_gpu(&self) -> bool {
+        matches!(self.kind, ErrorKind::Gpu)
+    }
+
+    /// Returns whether this error has kind `ErrorKind::NoAdapter`.
+    #[must_use]
+    pub const fn is_no_adapter(&self) -> bool {
+        matches!(self.kind, ErrorKind::NoAdapter)
+    }
 }
 
 impl fmt::Display for Error {

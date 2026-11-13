@@ -3,9 +3,9 @@ use slotmap::{SlotMap, new_key_type};
 use web_time::Instant;
 
 use super::interval::{Deadline, tick_intervals};
-use crate::animation::runtime::clock::{ClockSource, running_clocks, tick_clocks};
+use crate::animation::runtime::clock::{ClockSource, tick_clocks};
 use crate::animation::runtime::state::AnimatorSource;
-use crate::animation::runtime::{active_count, tick};
+use crate::animation::runtime::{animating, tick};
 
 new_key_type! {
     pub(crate) struct SourceId;
@@ -57,10 +57,9 @@ pub(crate) fn try_with_sources<R>(change: impl FnOnce(&mut Sources) -> R) -> Opt
 #[must_use = "the frame loop reports interval fires and whether motion continues"]
 pub(crate) fn tick_frame(dt: f32) -> (usize, bool) {
     let intervals = tick_intervals();
-    let animating = active_count() > 0;
-    if animating || running_clocks() > 0 {
+    if animating() {
         tick(dt);
     }
     tick_clocks(dt);
-    (intervals, animating || running_clocks() > 0)
+    (intervals, animating())
 }

@@ -17,7 +17,7 @@ use super::strip::{BoundStrip, bound_strip};
 use super::window::{self, strip_height};
 use super::{
     BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT,
-    ListSizing, RowRender, VirtualListBuilder, bound_slice,
+    RowRender, ScrollAnchor, ViewportSizing, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -76,7 +76,7 @@ where
             .bound
             .as_ref()
             .map(|bound| std::rc::Rc::clone(&bound.count));
-        scroll::bind_extent(axes, self.content_height_bind, self.max_scroll_bind);
+        scroll::bind_extent(axes, self.content_height, self.max_scroll);
         scroll::anchor(axes);
         if let (Some(hook), Some(bound)) = (self.end_reached.take(), self.bound.as_ref()) {
             end::watch(axes, bound.live_rows, hook);
@@ -138,7 +138,10 @@ where
             .take()
             .expect("build_bound called without a bound list");
         let sizing = self.effective_sizing();
-        apply_bound_scroll(axes, self.initial_scroll, self.pin_bottom);
+        let initial = self
+            .initial_scroll
+            .or_else(|| self.pin_bottom.then_some(ScrollAnchor::Bottom));
+        apply_bound_scroll(axes, initial, self.pin_bottom);
         let content = (bound.thunk)(
             BoundStrip {
                 render: std::rc::Rc::new(self.render),
@@ -163,9 +166,9 @@ where
             root,
             axes.viewport_height,
             self.viewport_width,
-            sizing == ListSizing::Fill,
+            sizing == ViewportSizing::Fill,
         );
-        let root = shrink_bound(root, axes, sizing == ListSizing::ShrinkToContent);
+        let root = shrink_bound(root, axes, sizing == ViewportSizing::Fit);
         let root = attach_wheel(root, axes);
         if self.keyboard_enabled {
             attach_key_handlers(root, KeyboardRuntime::new(axes, bound.live_rows))
@@ -174,9 +177,9 @@ where
         }
     }
 
-    fn effective_sizing(&self) -> ListSizing {
+    fn effective_sizing(&self) -> ViewportSizing {
         match self.sizing {
-            ListSizing::Fixed if self.layout_overrides.fills_height() => ListSizing::Fill,
+            ViewportSizing::Fixed if self.layout_overrides.fills_height() => ViewportSizing::Fill,
             sizing => sizing,
         }
     }

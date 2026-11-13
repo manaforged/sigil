@@ -40,7 +40,7 @@ fn items_bind_window_advances_in_place_on_scroll() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             virtual_list(items, |index, _| container().label(format!("row {index}")))
-                .scroll_bind(scroll_y)
+                .scroll_y(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
         );
@@ -67,7 +67,7 @@ fn scroll_one_row_keeps_overlapping_node() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             virtual_list(items, |index, _| container().label(format!("row {index}")))
-                .scroll_bind(scroll_y)
+                .scroll_y(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
         );

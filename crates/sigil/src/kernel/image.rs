@@ -216,6 +216,7 @@ pub enum ObjectFit {
 }
 
 /// Builds an image node; `image` creates one.
+#[must_use]
 #[derive(Debug)]
 pub struct ImageBuilder {
     pub(crate) node: NodeBuilder,
@@ -223,7 +224,6 @@ pub struct ImageBuilder {
 }
 
 /// An image node from an `ImageSource`.
-#[must_use]
 pub fn image(source: ImageSource) -> ImageBuilder {
     let kind = NodeType::Image {
         source,
@@ -241,14 +241,12 @@ pub fn image(source: ImageSource) -> ImageBuilder {
 
 impl ImageBuilder {
     /// Sets the accessible name of the image.
-    #[must_use]
     pub fn alt(mut self, text: impl Into<String>) -> Self {
         self.node.a11y.name = AccessibleName::Static(text.into());
         self
     }
 
     /// Sets how the image fits its box: fill, contain, or cover.
-    #[must_use]
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
         if let NodeType::Image { fit: slot, .. } = &mut self.node.kind {
             *slot = fit;
@@ -257,19 +255,13 @@ impl ImageBuilder {
     }
 
     /// Shows only pixel rows `top..top + height` of the image, clamped to the image.
-    #[must_use]
     pub fn crop(self, top: u32, height: u32) -> Self {
         self.mutate(move |node| {
             node.attach(ImageCrop { top, height });
         })
     }
 
-    /// Runs `apply` on the node when it is built.
-    #[must_use]
-    pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
-        self.node = self.node.mutate(apply);
-        self
-    }
+    shared_node_methods!(@mutate, node);
 
     pub(crate) fn into_node_builder(self) -> NodeBuilder {
         self.hooks.finish(self.node)

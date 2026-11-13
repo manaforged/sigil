@@ -10,8 +10,9 @@ use sigil::widgets::ButtonBuilder;
 use sigil_kittest::Harness;
 
 fn field_of(value: &str, font: f32, height: Option<f32>) -> impl IntoNode + use<> {
-    let mut field = text_field(signal(value.to_owned())).font_size(font, "test fixture");
-    field.caret_visible().set(false);
+    let field = text_field(signal(value.to_owned()))
+        .font_size(font, "test fixture")
+        .caret_visible(signal(false));
     let field = match height {
         Some(height) => field.height(height),
         None => field,

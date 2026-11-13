@@ -39,3 +39,30 @@ pub(crate) fn median(values: &mut [f64]) -> f64 {
     values.sort_by(f64::total_cmp);
     values.get(values.len() / 2).copied().unwrap_or(f64::NAN)
 }
+
+/// Renders `scene` on the CPU at `(width, height)` and `scale`, returning an RGBA image.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "test views are small and positive"
+)]
+pub(crate) fn cpu_frame(
+    scene: &sigil::scene::CommandScene,
+    (width, height): (u32, u32),
+    scale: f32,
+    clear: sigil::style::Rgba,
+) -> image::RgbaImage {
+    let viewport = (width as f32, height as f32);
+    let device_w = (viewport.0 * scale).round() as u32;
+    let device_h = (viewport.1 * scale).round() as u32;
+    let frame = sigil_kittest::parity::Frame::new(
+        scene,
+        viewport,
+        sigil::geometry::PhysicalSize::new(device_w, device_h),
+        clear,
+    );
+    let rgba = sigil_kittest::parity::cpu_rgba(&mut sigil::renderer::CpuRenderer::new(), &frame)
+        .expect("cpu render");
+    image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")
+}

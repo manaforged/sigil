@@ -119,7 +119,7 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
                 virtual_list(rows, |_, row: &String| text(row.clone()))
                     .row_height(20.0)
                     .viewport_height(100.0)
-                    .scroll_bind(scroll)
+                    .scroll_y(scroll)
                     .cursor(cursor),
             ),
         );

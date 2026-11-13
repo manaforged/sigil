@@ -70,6 +70,7 @@ impl From<Tone> for ToneContext {
     }
 }
 
+impl crate::reactive::sealed::Sealed for Tone {}
 impl crate::reactive::Reactive<Self> for Tone {
     fn read(&self) -> Self {
         *self

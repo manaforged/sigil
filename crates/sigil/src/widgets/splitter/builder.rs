@@ -45,8 +45,8 @@ impl PaneEntry {
 pub struct SplitterBuilder {
     pub(super) orientation: Orientation,
     pub(super) panes: Vec<PaneEntry>,
-    sizes_bind: Option<crate::reactive::Signal<Vec<f32>>>,
-    settle_bind: Option<crate::reactive::Signal<Vec<f32>>>,
+    sizes: Option<crate::reactive::Signal<Vec<f32>>>,
+    settled: Option<crate::reactive::Signal<Vec<f32>>>,
     proportional: bool,
     snap_points: Vec<(usize, Vec<f32>)>,
     snap_threshold: f32,
@@ -58,7 +58,7 @@ impl core::fmt::Debug for SplitterBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SplitterBuilder")
             .field("orientation", &self.orientation)
-            .field("sizes_bind", &self.sizes_bind)
+            .field("sizes", &self.sizes)
             .field("proportional", &self.proportional)
             .field("snap_threshold", &self.snap_threshold)
             .field("layout_overrides", &self.layout_overrides)
@@ -72,8 +72,8 @@ pub fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
         orientation,
         panes: Vec::new(),
-        sizes_bind: None,
-        settle_bind: None,
+        sizes: None,
+        settled: None,
         proportional: false,
         snap_points: Vec::new(),
         snap_threshold: 8.0,
@@ -125,15 +125,15 @@ impl SplitterBuilder {
         self
     }
 
-    /// Sets the sizes bind.
-    pub const fn sizes_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
-        self.sizes_bind = Some(signal);
+    /// Binds the pane sizes in px to `signal`.
+    pub const fn sizes(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
+        self.sizes = Some(signal);
         self
     }
 
-    /// Sets the signal that gets the pane sizes when a drag or a key move ends.
-    pub const fn settle_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
-        self.settle_bind = Some(signal);
+    /// Binds the pane sizes in px to `signal`, updated when a drag or key move ends.
+    pub const fn settled(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
+        self.settled = Some(signal);
         self
     }
 
@@ -180,8 +180,8 @@ impl SplitterBuilder {
             self.snap_points,
             self.snap_threshold,
             Binds {
-                sizes: self.sizes_bind,
-                settle: self.settle_bind,
+                sizes: self.sizes,
+                settle: self.settled,
             },
         );
         let mut root = container().role(Role::GenericContainer).layout(root_layout);

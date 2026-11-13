@@ -14,7 +14,7 @@ fn rows_built_by_a_strip_rerun_keep_their_signals() {
                 sink.borrow_mut().push((index, signal(index)));
                 container().label(format!("row {index}"))
             })
-            .scroll_bind(scroll_y)
+            .scroll_y(scroll_y)
             .row_height(20.0)
             .viewport_height(100.0),
         );
@@ -54,7 +54,7 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
                 sink.set(sink.get() + 1);
                 container().label(format!("row {index}"))
             })
-            .scroll_bind(scroll_y)
+            .scroll_y(scroll_y)
             .row_height(20.0)
             .viewport_height(400.0),
         );
@@ -101,7 +101,7 @@ fn scrolled_rows_land_at_their_document_position() {
                     }))
             })
             .key_by(|index, _| index as u64)
-            .scroll_bind(scroll_y)
+            .scroll_y(scroll_y)
             .row_height(24.0)
             .viewport_height(1_000.0)
             .viewport_width(800.0),
@@ -147,7 +147,7 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
             .row_height(24.0)
             .viewport_width(800.0)
             .viewport_height(200.0)
-            .content_height_bind(extent),
+            .content_height(extent),
         );
         let mut layout = engine();
         for (heights, expected) in [
@@ -191,7 +191,7 @@ fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
                     .label(format!("row {index}"))
             })
             .key_by(|index, _| index as u64)
-            .scroll_bind(scroll_y)
+            .scroll_y(scroll_y)
             .row_height(64.0)
             .viewport_height(480.0)
             .viewport_width(800.0),

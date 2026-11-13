@@ -8,7 +8,7 @@ fn seeded<T: 'static, R: RowRender<T>>(
     let _ = cx.add(
         list.row_height(30.0)
             .viewport_height(200.0)
-            .scroll_bind(scroll_y),
+            .scroll_y(scroll_y),
     );
     cx
 }
@@ -85,6 +85,31 @@ fn auto_pin_follows_grow_only_while_at_bottom() {
             }
             items.set((0..120).collect());
             assert_eq!(scroll_y.get(), expected);
+        }
+    });
+}
+
+#[test]
+fn initial_scroll_and_follow_end_are_order_independent() {
+    Owner::scope("sigil-vlist-initial-follow-order", || {
+        for (anchor, expected_start) in [(ScrollAnchor::Top, 0.0), (ScrollAnchor::Index(10), 300.0)]
+        {
+            let a = signal(0.0_f32);
+            let _a = seeded(
+                virtual_list(hundred(), |_, _| container())
+                    .initial_scroll(anchor)
+                    .follow_end(true),
+                a,
+            );
+            let b = signal(0.0_f32);
+            let _b = seeded(
+                virtual_list(hundred(), |_, _| container())
+                    .follow_end(true)
+                    .initial_scroll(anchor),
+                b,
+            );
+            assert_eq!(a.get(), expected_start);
+            assert_eq!(b.get(), expected_start);
         }
     });
 }

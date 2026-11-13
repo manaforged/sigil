@@ -79,53 +79,29 @@ impl Theme {
         }
     }
 
-    /// Sets the gray scale and the surface, border and text colors drawn from it.
+    /// Sets the 12-step color scale of `tone`, updating derived surface or accent colors.
     #[must_use]
-    pub const fn gray(mut self, scale: ColorScale) -> Self {
-        self.gray = scale;
-        self.surface = scale.step(2);
-        self.surface_hover = scale.step(4);
-        self.surface_pressed = scale.step(5);
-        self.surface_pressed_strong = scale.step(6);
-        self.border = scale.step(7);
-        self.on_surface = scale.step(12);
-        self
-    }
-
-    /// Sets the accent scale, and the accent and accent hover colors from its steps 9 and 10.
-    #[must_use]
-    pub const fn accent_scale(mut self, scale: ColorScale) -> Self {
-        self.accent_scale = scale;
-        self.accent = scale.step(9);
-        self.accent_hover = scale.step(10);
-        self
-    }
-
-    /// Sets the color scale of the success role.
-    #[must_use]
-    pub const fn success(mut self, scale: ColorScale) -> Self {
-        self.success = scale;
-        self
-    }
-
-    /// Sets the color scale of the warning role.
-    #[must_use]
-    pub const fn warn(mut self, scale: ColorScale) -> Self {
-        self.warn = scale;
-        self
-    }
-
-    /// Sets the color scale of the error role.
-    #[must_use]
-    pub const fn error(mut self, scale: ColorScale) -> Self {
-        self.error = scale;
-        self
-    }
-
-    /// Sets the color scale of the info role.
-    #[must_use]
-    pub const fn info(mut self, scale: ColorScale) -> Self {
-        self.info = scale;
+    pub fn tone(mut self, tone: Tone, scale: ColorScale) -> Self {
+        match tone {
+            Tone::Neutral => {
+                self.gray = scale;
+                self.surface = scale.step(2);
+                self.surface_hover = scale.step(4);
+                self.surface_pressed = scale.step(5);
+                self.surface_pressed_strong = scale.step(6);
+                self.border = scale.step(7);
+                self.on_surface = scale.step(12);
+            }
+            Tone::Primary => {
+                self.accent_scale = scale;
+                self.accent = scale.step(9);
+                self.accent_hover = readable_hover(scale, self.on_solid);
+            }
+            Tone::Success => self.success = scale,
+            Tone::Warning => self.warn = scale,
+            Tone::Error => self.error = scale,
+            Tone::Info => self.info = scale,
+        }
         self
     }
 

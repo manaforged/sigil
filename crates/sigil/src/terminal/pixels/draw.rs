@@ -100,19 +100,19 @@ impl Draw {
                     None
                 })
                 .paint(|host: &mut Host, info: &crate::app::Frame| {
-                    if force || info.dirty || info.animating {
+                    if force || info.dirty() || info.animating() {
                         let _emit = profile::span(Phase::Emit);
                         scene = Some(host.emit(frame.viewport));
                     }
                 }),
         );
-        out.layout?;
+        out.layout()?;
         if let Some(scene) = scene {
             let clear = caps.background.map_or(SURFACE_CLEAR, opaque);
             self.paint(frame, scene, force, (caps.mux, clear))?;
         }
         profile::end_frame();
-        Ok(out.exit)
+        Ok(out.exit())
     }
 
     /// Repaints the damaged part of the canvas and sends the tiles it touched.

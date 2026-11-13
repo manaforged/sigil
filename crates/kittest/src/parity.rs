@@ -14,19 +14,56 @@ pub const MAX_MEAN_DIFF: f32 = 20.0;
 pub const MIN_CLOSE_FRACTION: f32 = 0.85;
 
 /// One scene and the target that both renderers draw it into.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub struct Frame<'a> {
-    /// The scene to draw.
-    pub scene: &'a CommandScene,
-    /// The logical viewport as width and height.
-    pub viewport: (f32, f32),
-    /// The size of the output in pixels; the GPU device scale is its width divided by the viewport width.
-    pub size: PhysicalSize,
-    /// The color the target is cleared to before drawing.
-    pub clear: Rgba,
+    scene: &'a CommandScene,
+    viewport: (f32, f32),
+    size: PhysicalSize,
+    clear: Rgba,
 }
 
-impl Frame<'_> {
+impl<'a> Frame<'a> {
+    /// Creates a frame target for comparing CPU and GPU renders.
+    #[must_use]
+    pub const fn new(
+        scene: &'a CommandScene,
+        viewport: (f32, f32),
+        size: PhysicalSize,
+        clear: Rgba,
+    ) -> Self {
+        Self {
+            scene,
+            viewport,
+            size,
+            clear,
+        }
+    }
+
+    /// The scene to draw.
+    #[must_use]
+    pub const fn scene(&self) -> &'a CommandScene {
+        self.scene
+    }
+
+    /// The logical viewport as width and height.
+    #[must_use]
+    pub const fn viewport(&self) -> (f32, f32) {
+        self.viewport
+    }
+
+    /// The size of the output in pixels.
+    #[must_use]
+    pub const fn size(&self) -> PhysicalSize {
+        self.size
+    }
+
+    /// The color the target is cleared to before drawing.
+    #[must_use]
+    pub const fn clear(&self) -> Rgba {
+        self.clear
+    }
+
     #[allow(clippy::cast_precision_loss)]
     fn scale(&self) -> f32 {
         self.size.width as f32 / self.viewport.0.max(1.0)
@@ -70,15 +107,26 @@ pub fn gpu_rgba(renderer: &mut WgpuRenderer, frame: &Frame<'_>) -> Result<Vec<u8
 }
 
 /// How far two RGBA images differ, as measured by `diff`.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Diff {
-    /// The mean absolute difference of the red, green, and blue channels, out of 255.
-    pub mean: f32,
-    /// The fraction of pixels, from 0 to 1, whose red, green, and blue channels each differ by at most `CLOSE_TOLERANCE`.
-    pub close: f32,
+    mean: f32,
+    close: f32,
 }
 
 impl Diff {
+    /// The mean absolute difference of the red, green, and blue channels, out of 255.
+    #[must_use]
+    pub const fn mean(self) -> f32 {
+        self.mean
+    }
+
+    /// The fraction of pixels, from 0 to 1, whose red, green, and blue channels each differ by at most `CLOSE_TOLERANCE`.
+    #[must_use]
+    pub const fn close(self) -> f32 {
+        self.close
+    }
+
     /// Whether the difference is inside `MAX_MEAN_DIFF` and `MIN_CLOSE_FRACTION`.
     #[must_use]
     pub fn is_close(self) -> bool {

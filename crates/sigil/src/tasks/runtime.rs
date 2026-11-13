@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 #[cfg(feature = "kittest")]
 use std::future::Future;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
@@ -45,8 +46,11 @@ const _: fn() = || {
 
 type TaskRegistry = Mutex<HashMap<Owner, Vec<TaskHandle>>>;
 
+static NEXT_RUNTIME_ID: AtomicU64 = AtomicU64::new(1);
+
 #[derive(Clone)]
 pub(crate) struct SpawnParts {
+    pub(crate) id: u64,
     pub(crate) dispatcher: Dispatcher,
     pub(crate) backend: Backend,
     owner_tasks: Arc<TaskRegistry>,
@@ -71,7 +75,7 @@ impl Drop for AsyncRuntime {
                 handle.abort();
             }
         }
-        crate::tasks::current::uninstall(&self.parts.dispatcher);
+        crate::tasks::current::uninstall(self.parts.id);
         #[cfg(not(target_arch = "wasm32"))]
         self.parts.backend.shutdown();
     }
@@ -94,6 +98,7 @@ impl AsyncRuntime {
         let (tx, rx) = unbounded_channel();
         Self {
             parts: SpawnParts {
+                id: NEXT_RUNTIME_ID.fetch_add(1, Ordering::Relaxed),
                 dispatcher: Dispatcher {
                     tx,
                     waker: Arc::new(|| {}),

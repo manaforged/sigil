@@ -40,7 +40,6 @@ pub fn spinner_frame(tick: u64) -> &'static str {
 }
 
 /// A busy indicator named "Loading".
-#[must_use]
 pub fn spinner() -> NodeBuilder {
     let tick = signal(0_u64);
     interval(PERIOD, move || {

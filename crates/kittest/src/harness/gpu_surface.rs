@@ -65,7 +65,7 @@ impl GpuSurface {
             clear: Some(CLEAR),
         };
         let submitted = {
-            let _render = profile::span(Phase::RenderCpu);
+            let _render = profile::span(Phase::RenderSubmit);
             self.renderer.submit_screen(&target, &scene)
         };
         if let Err(err) = submitted {
@@ -99,24 +99,12 @@ impl GpuSurface {
     }
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a rounded, clamped texture extent fits u32"
-)]
-fn physical(extent: f32) -> u32 {
-    extent.clamp(1.0, f32::from(u16::MAX)) as u32
-}
-
 fn target(
     gpu: &Gpu,
     viewport: (f32, f32),
     scale: f32,
 ) -> ((u32, u32), wgpu::Texture, wgpu::TextureView) {
-    let size = (
-        physical((viewport.0 * scale).round()),
-        physical((viewport.1 * scale).round()),
-    );
+    let size: (u32, u32) = crate::physical_extent(viewport, scale).into();
     let texture = create_capture_texture(&gpu.0, size.0, size.1);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     (size, texture, view)

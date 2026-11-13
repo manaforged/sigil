@@ -102,7 +102,7 @@ fn table_selected() {
 fn table_sorted() {
     let img = Harness::render(|| {
         let state = table_golden_state();
-        state.toggle_sort("name");
+        state.cycle_sort("name");
         container()
             .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
             .background(Token::Surface)
