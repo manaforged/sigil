@@ -12,7 +12,7 @@ use crate::terminal::paint::Grid;
 use crate::terminal::pixels::Pixels;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals::SignalGuard;
-pub use crate::terminal::term::calibrate;
+pub(crate) use crate::terminal::term::calibrate;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
 use crate::terminal::term::{HookGuard, Term};

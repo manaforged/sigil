@@ -507,14 +507,14 @@ fn main() -> AppResult<()> {
 
 ## Host hooks
 
-These functions work in the terminal host. Outside the terminal host, `suspend` runs its function, and the other functions do nothing.
+These are methods of `sigil::terminal::Terminal::current()`, and they work in the terminal host. Outside the terminal host, `suspend` runs its function, and the other methods do nothing.
 
-| Function | Effect |
+| Call | Effect |
 | --- | --- |
-| `sigil::terminal::suspend(f)` | Restore the terminal, run `f`, then take the screen back. |
-| `sigil::terminal::title(title)` | Set the terminal window title. |
-| `sigil::terminal::bell(note)` | Ring the bell, and send a desktop notification if `note` is `Some`. |
-| `sigil::terminal::focused()` | `true` if the terminal window has focus. |
+| `term.suspend(f)` | Restore the terminal, run `f`, then take the screen back. |
+| `term.title(title)` | Set the terminal window title. |
+| `term.bell(note)` | Ring the bell, and send a desktop notification if `note` is `Some`. |
+| `term.is_focused()` | `true` if the terminal window has focus. |
 | `sigil::exit()` | Exit after this frame, on any host. |
 
 ```rust,no_run
@@ -524,11 +524,12 @@ use sigil::prelude::*;
 
 fn edit() {
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".into());
-    let status = sigil::terminal::suspend(|| std::process::Command::new(editor).status());
+    let term = sigil::terminal::Terminal::current();
+    let status = term.suspend(|| std::process::Command::new(editor).status());
     let note = if matches!(status, Ok(Ok(code)) if code.success()) { "saved" } else { "editor failed" };
-    drop(sigil::terminal::title(note));
-    if !sigil::terminal::focused() {
-        drop(sigil::terminal::bell(Some(note)));
+    drop(term.title(note));
+    if !term.is_focused() {
+        drop(term.bell(Some(note)));
     }
 }
 

@@ -17,7 +17,7 @@ const fn unsupported(kind: ErrorKind, message: &'static str) -> crate::Error {
 }
 
 /// Write lines above the inline live region, into scrollback.
-pub fn print_above(text: &str) -> Result<(), crate::Error> {
+pub(crate) fn print_above(text: &str) -> Result<(), crate::Error> {
     if text.is_empty() {
         return Ok(());
     }

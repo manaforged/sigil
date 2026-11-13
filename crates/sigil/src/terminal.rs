@@ -7,6 +7,7 @@ mod clipboard;
 mod colour;
 mod glyphs;
 mod graphics;
+mod handle;
 pub(crate) mod hud;
 mod input;
 mod keys;
@@ -28,7 +29,7 @@ mod transcript;
 mod write;
 
 pub use access::{Access, FocusCursor};
-pub use backdrop::backdrop;
+pub(crate) use backdrop::backdrop;
 pub use caps::{
     Backdrop, Borders, Capabilities, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard,
     Notices, Notify,
@@ -41,6 +42,7 @@ pub use graphics::{Mux, Protocol};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use graphics::{blocks, png, sextants};
+pub use handle::Terminal;
 kittest_pub! {
     #[doc(hidden)]
     pub use keys::map_key;
@@ -53,14 +55,13 @@ kittest_pub! {
     #[doc(hidden)]
     pub use mouse::map_mouse;
 }
-pub use notify::{Activity, activity, bell, notify, progress};
+pub use notify::Activity;
 pub use paint::{Cell, Grid, Ink, Lines, Underline};
-pub use pixels::{pixels, set_pixels};
+pub use run::Hooks;
 #[cfg(test)]
 pub(crate) use run::present;
 pub(crate) use run::run;
 #[cfg(all(test, any(feature = "dialog", hot_patch)))]
 pub(crate) use run::step;
-pub use run::{Hooks, calibrate};
 pub use screen::Screen;
-pub use term::{caps, focused, mouse_tracking, print_above, suspend, title};
+pub(crate) use term::{mouse_tracking, print_above};

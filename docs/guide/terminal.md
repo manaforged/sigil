@@ -30,8 +30,7 @@ By default the terminal host draws on the alternate screen and restores the prev
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::terminal::Hooks;
-use sigil::terminal::print_above;
+use sigil::terminal::{Hooks, Terminal};
 
 fn main() -> sigil::AppResult<()> {
     let hooks = Hooks {
@@ -46,14 +45,14 @@ fn main() -> sigil::AppResult<()> {
 }
 
 fn app_tree() -> impl IntoNode {
-    let _ = print_above("build started");
+    let _ = Terminal::current().print_above("build started");
     text("working")
 }
 ```
 
 `Hooks::region_rows` returns the height of the live region for each frame, clamped between one row and the terminal height. Without it the region fills the terminal. The hook applies only in inline mode.
 
-`sigil::terminal::print_above(text)` writes each line of `text` above the live region, where it scrolls into scrollback, and the next frame redraws the region below it. Each line loses control and escape sequences and is clipped to the terminal width. It returns an `io::Error` that wraps a `sigil::Error` with kind `ErrorKind::NotLive` when no host runs on this thread, and `ErrorKind::NotInline` when the host is not inline. `suspend` keeps inline mode across the child process.
+`sigil::terminal::Terminal::current().print_above(text)` writes each line of `text` above the live region, where it scrolls into scrollback, and the next frame redraws the region below it. Each line loses control and escape sequences and is clipped to the terminal width. It returns an `io::Error` that wraps a `sigil::Error` with kind `ErrorKind::NotLive` when no host runs on this thread, and `ErrorKind::NotInline` when the host is not inline. `suspend` keeps inline mode across the child process.
 
 ## Accessibility
 
@@ -154,7 +153,7 @@ The writer compares cells after it maps their colors to the detected color depth
 - Focus in and out become `WindowEvent::Focused`, and a resize becomes `WindowEvent::Resized` in cell-pixel units. Both reach `EventRouter` like the window host events. File drops from the desktop are window-only.
 - `run` installs an OSC 52 clipboard: copy and cut emit `ESC ] 52 ; c ; <base64> BEL`, wrapped in DCS passthrough under tmux or screen. A clipboard read sends the OSC 52 query and waits up to one second for the reply; a terminal that does not answer is not asked again in the session. A bracketed paste arrives as one `Event::Paste`, which the router delivers to the `paste` handlers of the focused node and its ancestors; text fields insert it as one edit. The `clipboard` feature of `sigil-ui` and an OS clipboard are not needed.
 - Ctrl+Z suspends the app like any job-control program: the host restores the terminal and stops, and `fg` resumes it and redraws. `AppConfig::suspend_on` changes the key; `None` hands Ctrl+Z to the app.
-- `terminal::notify`, `terminal::progress`, `terminal::title`, and `terminal::bell` write the terminal's notification (OSC 9 or OSC 777), tab progress (OSC 9;4), and title sequences. The host sends only the sequences `Capabilities::notices` lists for the terminal it identified.
+- `Terminal::notify`, `Terminal::progress`, `Terminal::title`, and `Terminal::bell` write the terminal's notification (OSC 9 or OSC 777), tab progress (OSC 9;4), and title sequences. The host sends only the sequences `Capabilities::notices` lists for the terminal it identified.
 - `SIGIL_TUI_TRANSCRIPT=1` turns on a transcript stream on stderr: each flushed frame writes the `Host::accessibility_text` of the accessibility tree when the tree changed, else the text rows that changed. This is the screen-reader and automation transcript surface.
 - The cell grid changes the paint, not the tree. The widgets, events, and signals are the same as on the window host.
 - Transforms move and scale what they hold, as in a window: a panned or zoomed subtree paints at its transformed place and size, snapped to cells. Text keeps one cell per character at its transformed position.

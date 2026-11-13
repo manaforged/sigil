@@ -16,7 +16,7 @@ thread_local! {
 
 /// The terminal background brightness, updated when the OS light or dark setting changes.
 #[must_use]
-pub fn backdrop() -> Signal<Option<Backdrop>> {
+pub(crate) fn backdrop() -> Signal<Option<Backdrop>> {
     BACKDROP.with(|slot| {
         slot.get().unwrap_or_else(|| {
             let value = Owner::new("sigil::backdrop", None).with(|| signal(None));

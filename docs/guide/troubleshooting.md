@@ -44,7 +44,7 @@ To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `
 
 ## Draw the window layout in the terminal
 
-An app switches at run time with `sigil::terminal::set_pixels(true)` and back with `set_pixels(false)`; the call returns whether pixel mode is on. Both layouts stay mounted, so state carries across a switch. `SIGIL_TERMINAL=pixels` turns it on at start.
+An app switches at run time with `sigil::terminal::Terminal::current().draw_pixels(true)` and back with `draw_pixels(false)`; the call returns whether pixel mode is on. Both layouts stay mounted, so state carries across a switch. `SIGIL_TERMINAL=pixels` turns it on at start.
 
 In pixel mode the terminal host lays out the app as the window host does, draws it with the CPU renderer, and shows each frame as one Kitty image. It needs a build with the `desktop` feature and the Kitty protocol. Without them, the host draws cells. Inline mode always draws cells.
 
