@@ -99,17 +99,18 @@ The first time text uses CJK, Arabic, Hebrew, Devanagari, Khmer, Thai, or Lao, S
 
 The default list is Noto Sans from jsDelivr. Each URL pins an exact commit of `notofonts/notofonts.github.io` or `notofonts/noto-cjk`, so the files do not change when those repositories change.
 
-Call `set_web_fallbacks` before `sigil::run` to serve faces from your own origin, for example when the page is offline or its content security policy blocks the CDN. Pass an empty list to fetch nothing:
+Pass your own list to `AppConfig::web_fonts` to serve faces from your own origin, for example when the page is offline or its content security policy blocks the CDN. Pass an empty list to fetch nothing:
 
 ```rust,ignore
-use sigil::app::{WebFont, WebFontScript, set_web_fallbacks};
+use sigil::app::{WebFont, WebFontScript};
+use sigil::prelude::*;
 
-set_web_fallbacks([WebFont::new(
+let config = AppConfig::new("App").web_fonts([WebFont::new(
     WebFontScript::Cjk,
     "fonts/NotoSansJP-Regular.otf",
     0,
 )]);
-set_web_fallbacks([]);
+let offline = AppConfig::new("App").web_fonts([]);
 ```
 
 Native targets ignore this list and use the system fonts.

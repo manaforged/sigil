@@ -10,6 +10,7 @@ use std::sync::Arc;
 pub(crate) struct TextSetup {
     pub(crate) fonts: Option<crate::text::fonts::DefaultFonts>,
     pub(crate) font_fallbacks: Vec<crate::text::fonts::FallbackFace>,
+    pub(crate) web_fonts: Option<Vec<crate::text::WebFont>>,
 }
 
 impl AppConfig {
@@ -51,6 +52,14 @@ impl AppConfig {
     pub fn font_fallback(mut self, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
         let entry = (Arc::new(bytes.into()), face);
         self.text.font_fallbacks.push(entry);
+        self
+    }
+
+    /// Replaces the fonts that a browser build fetches for scripts the bundled faces lack.
+    #[cfg(feature = "scene")]
+    #[must_use]
+    pub fn web_fonts(mut self, fonts: impl IntoIterator<Item = crate::text::WebFont>) -> Self {
+        self.text.web_fonts = Some(fonts.into_iter().collect());
         self
     }
 }

@@ -16,6 +16,9 @@ fn apply_text(config: &AppConfig) {
         crate::text::fonts::default_fonts(fonts.clone());
     }
     crate::text::fonts::set_fallback_fonts(&config.text.font_fallbacks);
+    if let Some(fonts) = &config.text.web_fonts {
+        crate::text::set_web_fallbacks(fonts.iter().cloned());
+    }
 }
 
 pub(crate) fn apply(config: &AppConfig) {
