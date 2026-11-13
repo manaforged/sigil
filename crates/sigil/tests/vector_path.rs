@@ -173,7 +173,7 @@ fn a_one_px_diagonal_at_scale_two_has_device_sharp_edges() {
 
 #[test]
 fn a_one_px_diagonal_on_the_gpu_surface_has_device_sharp_edges() {
-    let mut ui = Harness::new(diagonal_canvas).gpu(SIDE, SIDE, SCALE);
+    let mut ui = Harness::new(diagonal_canvas).gpu(SIDE, SIDE).scale(SCALE);
     assert_sharp(&mut ui, "gpu 2x");
 }
 
@@ -191,7 +191,7 @@ fn a_path_under_a_four_times_transform_stays_sharp() {
 
 #[test]
 fn a_path_under_a_four_times_transform_stays_sharp_on_the_gpu() {
-    let mut ui = Harness::new(zoomed_diagonal).gpu(SIDE, SIDE, SCALE);
+    let mut ui = Harness::new(zoomed_diagonal).gpu(SIDE, SIDE).scale(SCALE);
     assert_sharp(&mut ui, "transform 4x gpu");
 }
 
@@ -260,7 +260,7 @@ fn path_scene() -> impl IntoNode {
 
 #[test]
 fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(path_scene).gpu(120, 80, SCALE);
+    let mut ui = Harness::new(path_scene).gpu(120, 80).scale(SCALE);
     let gpu = ui.expect_image();
     let viewport = (120.0, 80.0);
     let scene = ui.host().emit(viewport);

@@ -73,7 +73,10 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
             .pixels(width, height)
             .scale(SCALE)
             .expect_image(),
-        Surface::Gpu => Harness::new(app).gpu(width, height, SCALE).expect_image(),
+        Surface::Gpu => Harness::new(app)
+            .gpu(width, height)
+            .scale(SCALE)
+            .expect_image(),
         Surface::Cpu => cpu_frame(
             &mut Harness::new(app).pixels(width, height).scale(SCALE),
             size,

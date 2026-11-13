@@ -21,7 +21,7 @@ pub(super) struct GpuSurface {
 }
 
 impl GpuSurface {
-    pub(super) fn open(width: u32, height: u32, scale: f32) -> Result<Option<Self>, Error> {
+    pub(super) fn open(width: u32, height: u32) -> Result<Option<Self>, Error> {
         let opened = headless_renderer().and_then(|renderer| Ok((renderer, shared_device()?)));
         let (renderer, gpu) = match opened {
             Ok((Some(renderer), Some(gpu))) => (renderer, gpu),
@@ -29,20 +29,23 @@ impl GpuSurface {
             Err(err) if err.is_no_adapter() => return Ok(None),
             Err(err) => return Err(err),
         };
-        let size_px = |extent: u32| (crate::extent_f32(extent) * scale).round();
-        let size = (physical(size_px(width)), physical(size_px(height)));
-        let texture = create_capture_texture(&gpu.0, size.0, size.1);
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let viewport = (crate::extent_f32(width), crate::extent_f32(height));
+        let (size_px, texture, view) = target(gpu, viewport, 1.0);
         Ok(Some(Self {
-            viewport: (crate::extent_f32(width), crate::extent_f32(height)),
-            scale,
+            viewport,
+            scale: 1.0,
             gpu,
             renderer,
-            size_px: size,
+            size_px,
             texture,
             view,
             error: None,
         }))
+    }
+
+    pub(super) fn rescale(&mut self, scale: f32) {
+        self.scale = scale;
+        (self.size_px, self.texture, self.view) = target(self.gpu, self.viewport, scale);
     }
 
     pub(super) fn paint(&mut self, host: &mut Host) {
@@ -103,4 +106,18 @@ impl GpuSurface {
 )]
 fn physical(extent: f32) -> u32 {
     extent.clamp(1.0, f32::from(u16::MAX)) as u32
+}
+
+fn target(
+    gpu: &Gpu,
+    viewport: (f32, f32),
+    scale: f32,
+) -> ((u32, u32), wgpu::Texture, wgpu::TextureView) {
+    let size = (
+        physical((viewport.0 * scale).round()),
+        physical((viewport.1 * scale).round()),
+    );
+    let texture = create_capture_texture(&gpu.0, size.0, size.1);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    (size, texture, view)
 }

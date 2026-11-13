@@ -24,31 +24,37 @@ pub struct Node {
 }
 
 impl Node {
+    /// The role of the node.
     #[must_use]
     pub const fn role(&self) -> Role {
         self.role
     }
 
+    /// The accessible name, or `None` when the node has none.
     #[must_use]
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
+    /// The text value, such as the content of a field.
     #[must_use]
     pub fn value(&self) -> Option<&str> {
         self.value.as_deref()
     }
 
+    /// The numeric value, such as the position of a slider.
     #[must_use]
     pub const fn numeric(&self) -> Option<f64> {
         self.numeric
     }
 
+    /// The rectangle of the node in logical pixels, or `None` when it is not laid out.
     #[must_use]
     pub const fn bounds(&self) -> Option<Rect> {
         self.bounds
     }
 
+    /// The middle of `bounds`.
     #[must_use]
     pub fn center(&self) -> Option<Point> {
         self.bounds.map(|rect| {
@@ -163,6 +169,7 @@ impl std::fmt::Display for Query {
 }
 
 impl Harness {
+    /// Returns every visible node that matches `query`, in tree order.
     #[must_use]
     pub fn find_all(&mut self, query: &Query) -> Vec<Node> {
         let scale = f64::from(self.host().cx().scale());
@@ -178,6 +185,7 @@ impl Harness {
             .collect()
     }
 
+    /// Returns the first node that matches `query`, or `None`.
     #[must_use]
     pub fn query(&mut self, query: &Query) -> Option<Node> {
         self.find_all(query).into_iter().next()
@@ -199,6 +207,7 @@ impl Harness {
         ))
     }
 
+    /// Reads `node` again from the current frame; `None` when it is gone.
     #[must_use]
     pub fn refresh(&mut self, node: &Node) -> Option<Node> {
         self.find_all(&Query::default())
@@ -206,6 +215,7 @@ impl Harness {
             .find(|fresh| fresh.id == node.id)
     }
 
+    /// Returns the node that has keyboard focus.
     #[must_use]
     pub fn focused(&mut self) -> Option<Node> {
         self.find_all(&Query::default())
@@ -213,6 +223,7 @@ impl Harness {
             .find(Node::is_focused)
     }
 
+    /// Waits up to `EXPECT_TIMEOUT` for a node whose name or value is `text`, and fails without one.
     #[track_caller]
     pub fn expect_text(&mut self, text: &str) -> &mut Self {
         let query = Query::text(text);

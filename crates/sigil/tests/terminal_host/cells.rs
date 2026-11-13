@@ -76,7 +76,10 @@ fn a_table_updated_while_its_tab_is_hidden_lays_out_when_shown() {
 fn the_tab_strip_keeps_its_row_when_the_content_overflows() {
     sigil::reactive::Owner::scope("tab-strip", || {
         let state = job_table();
-        let grid = present(move || jobs_screen(signal(0), &state), 80, 24, &[]);
+        let grid = sigil_kittest::Harness::new(move || jobs_screen(signal(0), &state))
+            .unaudited()
+            .size(80, 24)
+            .text();
         assert!(grid.contains("Jobs") && grid.contains("Other"), "{grid}");
     });
 }

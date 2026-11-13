@@ -162,6 +162,10 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `Harness::gpu(width, height, scale)` | `gpu(width, height).scale(scale)` |
+| `Harness::press_with(key, modifiers)` | `press(Shortcut::new(key, modifiers))` |
+| `Harness::present(tree, cols, rows, events)` | `Harness::new(tree).size(cols, rows).send(events).text()` |
+| `Harness::snapshot_with(name, pct)` | `Golden::new(name).delta(pct).assert(ui.image())` |
 | `ColorAtom` | `ColorValue` |
 | `TextFieldBuilder::blur(f)` | `focus_lost(f)`; `blur(px)` is the filter |
 | `ModalBuilder::show(signal)` | `modal(signal)` |

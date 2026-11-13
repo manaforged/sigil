@@ -10,16 +10,12 @@ use sigil_kittest::{Harness, Query};
 
 #[test]
 fn widget_builders_collect_into_one_child_list() {
-    let grid = sigil_kittest::Harness::present(
-        || {
-            let items: Vec<NodeBuilder> = vec![text("alpha").into(), button("beta").into()];
-            items.into_iter().fold(column(), NodeBuilder::child)
-        },
-        30,
-        6,
-        &[],
-    )
-    .expect("layout");
+    let grid = sigil_kittest::Harness::new(|| {
+        let items: Vec<NodeBuilder> = vec![text("alpha").into(), button("beta").into()];
+        items.into_iter().fold(column(), NodeBuilder::child)
+    })
+    .size(30, 6)
+    .text();
     assert!(grid.contains("alpha") && grid.contains("beta"), "{grid}");
 }
 

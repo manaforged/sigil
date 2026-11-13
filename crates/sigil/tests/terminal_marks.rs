@@ -12,27 +12,23 @@ fn inked(frame: &str) -> usize {
 
 #[test]
 fn a_thin_stroke_survives_the_sextant_fallback() {
-    let frame = sigil_kittest::Harness::present(
-        || {
-            path(400, 200)
-                .move_to(0.0, 100.0)
-                .line_to(400.0, 100.0)
-                .stroke(
-                    Color {
-                        r: 200,
-                        g: 60,
-                        b: 60,
-                        a: 255,
-                    },
-                    2.0,
-                )
-                .layout(LayoutStyle::block().width(cols(60.0)).height(rows(6.0)))
-        },
-        80,
-        8,
-        &[],
-    )
-    .expect("layout");
+    let frame = sigil_kittest::Harness::new(|| {
+        path(400, 200)
+            .move_to(0.0, 100.0)
+            .line_to(400.0, 100.0)
+            .stroke(
+                Color {
+                    r: 200,
+                    g: 60,
+                    b: 60,
+                    a: 255,
+                },
+                2.0,
+            )
+            .layout(LayoutStyle::block().width(cols(60.0)).height(rows(6.0)))
+    })
+    .size(80, 8)
+    .text();
     assert!(inked(&frame) >= 30, "stroke lost in:\n{frame}");
 }
 

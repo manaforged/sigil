@@ -9,13 +9,16 @@ mod error;
 mod explore;
 pub use error::{Error, ErrorKind};
 pub use explore::Step;
+#[doc(hidden)]
 pub mod gpu;
 mod harness;
 mod render;
 pub use harness::{Harness, Node, Query, Target};
 pub use render::Render;
 mod interaction;
+#[doc(hidden)]
 pub mod parity;
+#[doc(hidden)]
 pub mod scene_gen;
 mod settle;
 pub use sigil::layout::FakeMeasure;
@@ -38,19 +41,30 @@ pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
+    /// No interaction.
     Default,
+    /// The pointer is over the widget.
     Hover,
+    /// The pointer button is held down on the widget.
     Pressed,
+    /// The widget was clicked: pressed and released.
     Clicked,
+    /// The widget has keyboard focus.
     Focused,
+    /// The widget is disabled.
     Disabled,
+    /// Hovered, then `frames` frames run `dt` seconds apart.
     HoverAfterFrames { frames: u32, dt: f32 },
+    /// Pressed, then `frames` frames run `dt` seconds apart.
     PressedAfterFrames { frames: u32, dt: f32 },
+    /// Focused, then `frames` frames run `dt` seconds apart.
     FocusedAfterFrames { frames: u32, dt: f32 },
+    /// Dragged from the pointer position by `dx` and `dy` logical pixels.
     Dragged { dx: f32, dy: f32 },
 }
 
 impl InteractionMode {
+    /// The name of the state in golden file names, such as `hover`.
     #[must_use]
     pub const fn tag(self) -> &'static str {
         match self {
@@ -65,11 +79,13 @@ impl InteractionMode {
     }
 }
 
+/// A text measure that reports every text node as a 40 by 16 box.
 #[must_use]
 pub fn stub_text_measure() -> Box<dyn TextMeasure> {
     Box::new(FakeMeasure::fixed(40.0, 16.0))
 }
 
+/// The text measure of the app: the real text engine with the bundled fonts.
 #[must_use]
 pub fn real_text_measure() -> Box<dyn TextMeasure> {
     Box::new(sigil::layout::TextEngineMeasure::default())

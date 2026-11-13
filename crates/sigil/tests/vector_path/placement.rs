@@ -82,7 +82,8 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_gpu() {
     for scale in [1.0, 2.0] {
         let mut ui = Harness::new(square_in_padded_box)
             .unaudited()
-            .gpu(VIEW, VIEW, scale);
+            .gpu(VIEW, VIEW)
+            .scale(scale);
         assert_placed(&ui.expect_image(), scale, &format!("gpu {scale}x"));
     }
 }

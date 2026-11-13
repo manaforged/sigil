@@ -32,7 +32,7 @@ fn a_node_with_mix_blend_mixes_with_its_parent_by_the_spec_formula() {
     let mut pixels = Harness::new(styled_gallery)
         .pixels(WIDTH, HEIGHT)
         .scale(SCALE);
-    let mut surface = Harness::new(styled_gallery).gpu(WIDTH, HEIGHT, SCALE);
+    let mut surface = Harness::new(styled_gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
     let scene = surface.host().emit((WIDTH as f32, HEIGHT as f32));
     let frames = [
         ("pixels", pixels.expect_image()),

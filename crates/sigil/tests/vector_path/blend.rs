@@ -79,6 +79,6 @@ fn a_half_covered_path_edge_blends_in_linear_light_on_pixels() {
 
 #[test]
 fn a_half_covered_path_edge_blends_in_linear_light_on_the_gpu() {
-    let mut ui = Harness::new(half_covered_square).gpu(SIDE, SIDE, 1.0);
+    let mut ui = Harness::new(half_covered_square).gpu(SIDE, SIDE).scale(1.0);
     assert_linear_edge(&ui.expect_image(), "gpu");
 }

@@ -33,14 +33,14 @@ const STEPS: [Step<Spec>; 5] = [
         }
     }),
     ("undo", |ui, spec| {
-        ui.press_with(Key::character("_"), Modifiers::CTRL);
+        ui.press(Shortcut::new(Key::character("_"), Modifiers::CTRL));
         if let Some(previous) = spec.past.pop() {
             spec.future
                 .push(std::mem::replace(&mut spec.text, previous));
         }
     }),
     ("redo", |ui, spec| {
-        ui.press_with(Key::character("y"), Modifiers::CTRL);
+        ui.press(Shortcut::new(Key::character("y"), Modifiers::CTRL));
         if let Some(next) = spec.future.pop() {
             spec.past.push(std::mem::replace(&mut spec.text, next));
         }

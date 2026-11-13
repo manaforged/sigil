@@ -105,7 +105,7 @@ fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
 
 fn frames() -> Vec<(&'static str, image::RgbaImage)> {
     let mut pixels = Harness::new(gallery).pixels(WIDTH, HEIGHT).scale(SCALE);
-    let mut surface = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
+    let mut surface = Harness::new(gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
     let scene = surface.host().emit((WIDTH as f32, HEIGHT as f32));
     vec![
         ("pixels", pixels.expect_image()),
@@ -163,7 +163,7 @@ fn a_half_transparent_source_composites_its_blend_over_the_backdrop() {
 
 #[test]
 fn blended_layers_agree_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
+    let mut ui = Harness::new(gallery).gpu(WIDTH, HEIGHT).scale(SCALE);
     let gpu = ui.expect_image();
     let scene = ui.host().emit((WIDTH as f32, HEIGHT as f32));
     let cpu = cpu_frame(&scene);

@@ -166,7 +166,7 @@ fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
 
 fn frames<N: IntoNode + 'static>(app: fn() -> N) -> Vec<(&'static str, image::RgbaImage)> {
     let mut pixels = Harness::new(app).pixels(SIDE, SIDE).scale(SCALE);
-    let mut surface = Harness::new(app).gpu(SIDE, SIDE, SCALE);
+    let mut surface = Harness::new(app).gpu(SIDE, SIDE).scale(SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
         ("pixels", pixels.expect_image()),
@@ -351,7 +351,7 @@ fn gallery() -> impl IntoNode {
 #[test]
 fn masked_scenes_agree_on_the_cpu_and_the_gpu() {
     let (width, height) = (SIDE * 4, SIDE);
-    let mut ui = Harness::new(gallery).gpu(width, height, SCALE);
+    let mut ui = Harness::new(gallery).gpu(width, height).scale(SCALE);
     let gpu = ui.expect_image();
     let scene = ui.host().emit((width as f32, height as f32));
     let cpu = cpu_frame(&scene, width);

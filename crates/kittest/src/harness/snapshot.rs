@@ -15,6 +15,7 @@ impl Harness {
         }
     }
 
+    /// Renders the frame as an image, or `None` when a pixel surface has no GPU adapter.
     pub fn image(&mut self) -> Rendered {
         self.live();
         if let HarnessSurface::Cells { screen, size } = &mut self.surface {
@@ -49,15 +50,10 @@ impl Harness {
         render_scene_to_image(&mut renderer, &scene, viewport, device).map(Some)
     }
 
+    /// Compares the screen text or the image of this surface with the golden `name`.
     #[track_caller]
     pub fn snapshot(&mut self, name: &str) {
         self.snapshot_as(name, &Golden::new(name));
-    }
-
-    /// Compares this surface with a golden at a pixel budget.
-    #[track_caller]
-    pub fn snapshot_with(&mut self, name: &str, max_delta_pct: f32) {
-        self.snapshot_as(name, &Golden::new(name).delta(max_delta_pct));
     }
 
     #[track_caller]

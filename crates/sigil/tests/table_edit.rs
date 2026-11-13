@@ -133,7 +133,7 @@ fn enter_starts_an_edit_and_tab_walks_the_editable_cells() {
         assert_eq!((age.name(), age.value()), (Some("Age"), Some("36")));
         ui.press(NamedKey::Tab);
         assert_eq!(editor(&mut ui).value(), Some("Alan"));
-        ui.press_with(NamedKey::Tab, Modifiers::SHIFT);
+        ui.press(Shortcut::new(NamedKey::Tab, Modifiers::SHIFT));
         assert_eq!(editor(&mut ui).value(), Some("36"));
         erase(&mut ui, 2);
         ui.type_text("37").press(NamedKey::Enter).settle();

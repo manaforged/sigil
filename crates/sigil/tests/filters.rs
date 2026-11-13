@@ -106,7 +106,7 @@ pub(crate) fn frames_of<N: IntoNode + 'static>(
         .unaudited()
         .pixels(SIDE, SIDE)
         .scale(SCALE);
-    let mut surface = Harness::new(app).unaudited().gpu(SIDE, SIDE, SCALE);
+    let mut surface = Harness::new(app).unaudited().gpu(SIDE, SIDE).scale(SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
         ("pixels", pixels.expect_image()),
@@ -278,7 +278,7 @@ fn gallery() -> impl IntoNode {
 #[test]
 fn filtered_scenes_agree_on_the_cpu_and_the_gpu() {
     let (width, height) = (SIDE * 5, SIDE);
-    let mut ui = Harness::new(gallery).gpu(width, height, SCALE);
+    let mut ui = Harness::new(gallery).gpu(width, height).scale(SCALE);
     let gpu = ui.expect_image();
     let scene = ui.host().emit((width as f32, height as f32));
     let cpu = cpu_frame(&scene, width);

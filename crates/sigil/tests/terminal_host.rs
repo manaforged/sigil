@@ -23,7 +23,10 @@ fn present<N: IntoNode>(
     rows: u16,
     events: &[Event],
 ) -> String {
-    Harness::present(tree, cols, rows, events).expect("layout")
+    Harness::new(tree)
+        .size(cols, rows)
+        .send(events.iter().cloned())
+        .text()
 }
 
 fn step(

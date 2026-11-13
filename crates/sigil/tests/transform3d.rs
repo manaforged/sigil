@@ -171,7 +171,9 @@ fn a_card_turned_45_degrees_under_perspective_500_lands_on_the_css_corners() {
 
 #[test]
 fn a_card_turned_45_degrees_lands_on_the_css_corners_on_the_gpu() {
-    let mut ui = Harness::new(card_canvas(PI / 4.0, false)).gpu(VIEW, VIEW, SCALE);
+    let mut ui = Harness::new(card_canvas(PI / 4.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
     assert_corners(&ui.expect_image(), "gpu");
 }
 
@@ -192,7 +194,9 @@ fn a_card_turned_to_its_back_with_backface_hidden_draws_nothing() {
 
 #[test]
 fn a_turned_card_agrees_on_the_cpu_and_the_gpu() {
-    let mut ui = Harness::new(card_canvas(PI / 4.0, false)).gpu(VIEW, VIEW, SCALE);
+    let mut ui = Harness::new(card_canvas(PI / 4.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
     let gpu = ui.expect_image();
     let viewport = (VIEW as f32, VIEW as f32);
     let scene = ui.host().emit(viewport);

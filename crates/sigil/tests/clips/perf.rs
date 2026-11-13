@@ -88,7 +88,9 @@ fn two_hundred_clipped_avatars_frame_time() {
         println!("no adapter: skipping");
         return;
     };
-    let mut ui = Harness::new(avatars).gpu(VIEW.0 as u32, VIEW.1 as u32, SCALE);
+    let mut ui = Harness::new(avatars)
+        .gpu(VIEW.0 as u32, VIEW.1 as u32)
+        .scale(SCALE);
     let emitted = ui.host().emit(VIEW);
     let scenes: [(&str, CommandScene); 4] = [
         ("rect scissor", built(Clip::Rect)),

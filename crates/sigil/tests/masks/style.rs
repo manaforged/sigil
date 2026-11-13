@@ -123,7 +123,7 @@ fn moved_frames() -> Vec<(&'static str, image::RgbaImage)> {
     Owner::scope("masks-moved-cache", || {
         let flag = signal(false);
         let width = SIDE + SHIFT as u32;
-        let mut ui = Harness::new(shifted(flag)).gpu(width, SIDE, SCALE);
+        let mut ui = Harness::new(shifted(flag)).gpu(width, SIDE).scale(SCALE);
         ui.settle();
         drop(ui.expect_image());
         flag.set(true);

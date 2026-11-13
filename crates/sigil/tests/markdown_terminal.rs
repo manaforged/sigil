@@ -16,8 +16,9 @@ const TABLE: &str = "\
 ";
 
 fn render(cols: u16) -> String {
-    sigil_kittest::Harness::present(|| markdown(signal(TABLE.to_string())), cols, 80, &[])
-        .expect("layout")
+    sigil_kittest::Harness::new(|| markdown(signal(TABLE.to_string())))
+        .size(cols, 80)
+        .text()
 }
 
 fn widths(grid: &str) -> Vec<usize> {
@@ -87,19 +88,15 @@ fn a_wide_table_keeps_words_whole_and_shares_width() {
 const REASONING: &str = "The events are emitted to callback, but `Turn.events` doesn't include Unreported ones. For `turn_with`, `sync_usage` is called and Event type reused.";
 
 fn paragraph(cols: u16, inline: bool) -> Vec<String> {
-    let grid = sigil_kittest::Harness::present(
-        move || {
-            if inline {
-                sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).font_italic(true))
-            } else {
-                sigil::kernel::node(markdown(signal(REASONING.to_string())))
-            }
-        },
-        cols,
-        12,
-        &[],
-    )
-    .expect("layout");
+    let grid = sigil_kittest::Harness::new(move || {
+        if inline {
+            sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).font_italic(true))
+        } else {
+            sigil::kernel::node(markdown(signal(REASONING.to_string())))
+        }
+    })
+    .size(cols, 12)
+    .text();
     let lines: Vec<String> = grid
         .lines()
         .map(|line| line.trim_end().to_string())
@@ -247,9 +244,9 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
 #[test]
 fn a_wrapped_cell_keeps_every_column_border_full_height() {
     let source = "| Seat | NamedKey env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
-    let grid =
-        sigil_kittest::Harness::present(move || markdown(signal(source.to_string())), 22, 14, &[])
-            .expect("layout");
+    let grid = sigil_kittest::Harness::new(move || markdown(signal(source.to_string())))
+        .size(22, 14)
+        .text();
     let body: Vec<&str> = grid
         .lines()
         .skip_while(|line| !line.contains('┌'))

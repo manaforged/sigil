@@ -35,7 +35,9 @@ fn a_card_turned_by_the_rotate_y_setter_lands_on_the_css_corners() {
         .pixels(VIEW, VIEW)
         .scale(SCALE);
     assert_corners(&cpu.expect_image(), "setter pixels");
-    let mut gpu = Harness::new(painted(45.0, false)).gpu(VIEW, VIEW, SCALE);
+    let mut gpu = Harness::new(painted(45.0, false))
+        .gpu(VIEW, VIEW)
+        .scale(SCALE);
     assert_corners(&gpu.expect_image(), "setter gpu");
 }
 

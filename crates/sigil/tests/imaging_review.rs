@@ -42,7 +42,7 @@ fn shoot<A: IntoNode + 'static>(
 ) -> image::RgbaImage {
     let mut ui = match surface {
         Surface::Pixels => Harness::new(app).pixels(w, h).scale(SCALE),
-        Surface::Gpu => Harness::new(app).gpu(w, h, SCALE),
+        Surface::Gpu => Harness::new(app).gpu(w, h).scale(SCALE),
         Surface::Cpu => {
             let mut ui = Harness::new(app).pixels(w, h).scale(SCALE);
             let viewport = (w as f32, h as f32);

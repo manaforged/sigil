@@ -8,7 +8,7 @@ Run `cargo run -p sigil-ui --example headless_driver` for the complete loop: it 
 
 ## Terminal host
 
-The same drive runs without the terminal. `sigil_kittest::Harness::present(tree, cols, rows, events)` mounts, routes, and returns the rendered grid as a string. `Host::grid` advances an existing `Host` by one frame. A driver of a terminal app gets the screen as text on every step.
+The same drive runs without the terminal. `sigil_kittest::Harness::new(tree).size(cols, rows).send(events).text()` mounts, routes, and returns the rendered grid as a string. `Host::grid` advances an existing `Host` by one frame. A driver of a terminal app gets the screen as text on every step.
 
 ## Golden images
 
