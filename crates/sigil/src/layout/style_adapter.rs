@@ -78,7 +78,6 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         StyleAtom::BorderColor(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)

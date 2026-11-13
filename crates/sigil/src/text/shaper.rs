@@ -32,6 +32,7 @@ pub(crate) use classify_mod::{Script, classify_segment_script};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FeatureTag(pub [u8; 4]);
 
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct Font {
     data: Arc<Vec<u8>>,

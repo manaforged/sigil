@@ -59,6 +59,12 @@ impl FocusRing {
         self.opacity = over.opacity.or(self.opacity);
     }
 
+    pub(crate) const fn set_default_visible(&mut self, visible: Signal<bool>) {
+        if self.visible.is_none() {
+            self.visible = Some(visible);
+        }
+    }
+
     kittest_pub! {
         /// Returns whether the ring is shown now.
         #[must_use]

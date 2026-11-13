@@ -121,6 +121,7 @@ impl Theme {
             Token::OnSurfaceMuted | Token::Placeholder => self.gray.step(11),
             Token::OnSolid => self.on_solid,
             Token::Scrim => SCRIM,
+            Token::Selection => crate::style::SELECTION_FILL,
             Token::Step(role, step) => self.scale(role).step(step),
         })
     }

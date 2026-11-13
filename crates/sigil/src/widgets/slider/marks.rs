@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{JustifyContent, LayoutStyle};
-use crate::style::Tone;
+use crate::node::{NodeBuilder, container, text};
+use crate::style::{Paint, Tone};
 use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
@@ -50,7 +50,7 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                     };
                     let change = Rc::clone(&on_change);
                     container()
-                        .child(text(mark.clone()).class("text-xs").class(tone.text()))
+                        .child(text(mark.clone()).class("text-xs").text_color(tone))
                         .pointer_down(move |event| {
                             if !runtime.disabled() {
                                 let thumb = runtime.value.nearest(at);

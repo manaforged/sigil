@@ -75,11 +75,11 @@ macro_rules! tokens {
             $($variant,)*
         }
 
-        const SEMANTIC_COUNT: usize = 22;
+        const SEMANTIC_COUNT: usize = 23;
 
         impl Token {
             /// The number of built-in tokens, the length of `ALL`.
-            pub const COUNT: usize = 94;
+            pub const COUNT: usize = 95;
 
             /// Every built-in semantic token in declaration order.
             pub const ALL: [Self; Self::COUNT] = all_tokens!($($variant,)*);
@@ -172,6 +172,7 @@ tokens! {
     Ring => "ring",
     Overlay => "overlay",
     OverlayBorder => "overlay-border",
+    Selection => "selection",
 }
 
 const STEPS: usize = 12;

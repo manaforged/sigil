@@ -226,6 +226,7 @@ struct ParagraphInner {
     ink: std::sync::OnceLock<Option<Rect>>,
 }
 
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct Paragraph {
     inner: std::sync::Arc<ParagraphInner>,
@@ -293,7 +294,6 @@ impl Paragraph {
         }
     }
 
-    #[must_use]
     pub fn hit_test(&self, x: f32, y: f32) -> HitPosition {
         if self.inner.lines.is_empty() {
             return HitPosition {

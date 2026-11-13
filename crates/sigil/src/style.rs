@@ -54,7 +54,6 @@ pub(crate) mod theme;
 pub(crate) mod token;
 pub(crate) mod tone;
 pub(crate) mod variant;
-pub(crate) mod variant_kit;
 
 pub(crate) use animator_overlay::AnimatorOverlay;
 pub(crate) use animator_overlay::NumericAtomKind;
@@ -69,9 +68,8 @@ pub use atom::{
 kittest_pub! {
     #[doc(hidden)]
     pub use atom::{
-        Backface, BgGradient, BorderStyle, FilterAtom, GradientShape, GradientStopKey, MaskAtom,
-        MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, StopSlot, StyleAtom,
-        TransitionId,
+        Backface, BorderStyle, FilterAtom, GradientShape, MaskAtom, MillisU16, PaintAtom,
+        PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, StopSlot, StyleAtom, TransitionId,
     };
 }
 pub(crate) use binding::ReactiveStateSlot;
@@ -192,7 +190,6 @@ kittest_pub! {
     #[doc(hidden)]
     pub use tone::ToneContext;
 }
-pub(crate) use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
 /// Gives the fill color for selected text.
 pub(crate) const SELECTION_FILL: Color = Color {

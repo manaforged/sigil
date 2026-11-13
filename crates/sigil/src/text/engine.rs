@@ -31,6 +31,7 @@ use shape::{PushRunArgs, push_run, run_has_disallowed_notdef, shape_validated};
 use spans::shape_segments;
 use spans::{shape_spans, style_spans};
 
+#[doc(hidden)]
 pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
     font_gen: Cell<u64>,

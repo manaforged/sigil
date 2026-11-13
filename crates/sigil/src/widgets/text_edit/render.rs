@@ -145,21 +145,21 @@ const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
 
 /// Whether a focused caret is lit: it blinks, and stays lit for a beat after `moved` changes.
 pub(in crate::widgets) fn blink(
-    interaction: InteractionState,
-    moved: impl Fn() + 'static,
+    focused: Signal<bool>,
+    mut moved: impl FnMut() + 'static,
 ) -> Signal<bool> {
     let lit = signal(true);
     let held = std::rc::Rc::new(std::cell::Cell::new(false));
     let mark_held = held.clone();
     effect(move || {
         moved();
-        interaction.focused().with(|_| ());
+        let is_focused = focused.get();
         mark_held.set(true);
-        lit.set(true);
+        lit.set(is_focused);
     });
-    if Owner::current().is_some() {
+    if !crate::animation::reduced_motion() && Owner::current().is_some() {
         interval(BLINK, move || {
-            if interaction.focused().peek() && !held.replace(false) {
+            if focused.peek() && !held.replace(false) {
                 lit.set(!lit.peek());
             }
         });
@@ -171,7 +171,7 @@ fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> Node
     let value = runtime.value;
     let caret = runtime.caret;
     let caret_visible = runtime.caret_visible;
-    let lit = blink(interaction, move || {
+    let lit = blink(interaction.focused(), move || {
         value.with(|_| ());
         caret.with(|_| ());
     });
@@ -197,8 +197,7 @@ pub(in crate::widgets) fn overlay_rect(x: f32, top: f32, width: f32, height: f32
             .position(Position::Absolute)
             .inset_left(x)
             .inset_top(top)
-            .width(width)
-            .height(height),
+            .fixed_size(width, height),
     )
 }
 

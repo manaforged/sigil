@@ -5,7 +5,6 @@ use std::collections::HashSet;
 use sigil::icons::Icon;
 use sigil::kernel::Role;
 use sigil::prelude::*;
-use sigil::style::{BgGradient, Color, ColorValue, GradientAxis, GradientStopKey};
 use sigil_kittest::{Harness, Query};
 
 #[test]
@@ -43,33 +42,22 @@ fn an_icon_button_is_named_by_its_icon() {
 }
 
 #[test]
-fn equal_owned_gradient_stops_share_one_copy() {
-    let stops = || {
-        vec![
-            GradientStopKey::new(
-                0,
-                ColorValue::Color(Color {
-                    r: 255,
-                    g: 0,
-                    b: 0,
-                    a: 255,
-                }),
-            ),
-            GradientStopKey::new(
-                1000,
-                ColorValue::Color(Color {
-                    r: 0,
-                    g: 0,
-                    b: 255,
-                    a: 255,
-                }),
-            ),
-        ]
-    };
-    let first = BgGradient::owned(GradientAxis::LeftToRight, stops());
-    let second = BgGradient::owned(GradientAxis::LeftToRight, stops());
-    assert_eq!(first.stops, stops().as_slice());
-    assert!(std::ptr::eq(first.stops, second.stops));
+fn equal_interned_class_styles_share_one_copy() {
+    sigil::reactive::Owner::scope("style-intern", || {
+        let mut cx = sigil::kernel::Cx::new_root();
+        let a = cx.add(container().class("bg-accent opacity-50"));
+        let b = cx.add(container().class("bg-accent opacity-50"));
+        let first = cx
+            .get(a)
+            .and_then(|n| n.extension::<sigil::style::StyleBinding>())
+            .expect("first binding");
+        let second = cx
+            .get(b)
+            .and_then(|n| n.extension::<sigil::style::StyleBinding>())
+            .expect("second binding");
+        assert!(!first.static_slice().is_empty());
+        assert!(std::ptr::eq(first.static_slice(), second.static_slice()));
+    });
 }
 
 #[test]

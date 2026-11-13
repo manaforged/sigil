@@ -21,6 +21,11 @@ impl Transition {
         Self::preset(presets::TRANSITION)
     }
 
+    /// Transitions colors, opacity, and transform on the smooth spring used by interactive controls.
+    pub const fn smooth() -> Self {
+        Self::preset(presets::SMOOTH)
+    }
+
     /// Transitions every animatable property over 150 ms, like Tailwind `transition-all`.
     pub const fn all() -> Self {
         Self::preset(presets::ALL)

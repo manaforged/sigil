@@ -165,35 +165,4 @@ impl TextEditRuntime {
         let width = self.content_size.get().0;
         (width > 0.0).then_some(width)
     }
-
-    pub(super) fn update_scroll(&self, edit: &TextEdit, column: f32) {
-        let style = self.text_style.peek();
-        let Some(caret_x) = with_text_geometry(|engine| {
-            engine
-                .caret(
-                    edit.as_str(),
-                    &style,
-                    None,
-                    HitPosition {
-                        byte_index: edit.caret(),
-                        affinity: TextAffinity::Downstream,
-                    },
-                )
-                .x
-        }) else {
-            return;
-        };
-        let current = self.scroll_x.peek();
-        let offset = if caret_x < current {
-            caret_x
-        } else if caret_x > current + column {
-            caret_x - column
-        } else {
-            current
-        }
-        .max(0.0);
-        if (offset - current).abs() > f32::EPSILON {
-            self.scroll_x.set(offset);
-        }
-    }
 }

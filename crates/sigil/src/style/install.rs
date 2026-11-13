@@ -94,6 +94,15 @@ pub(super) fn install_focus_ring(node: &mut Node, ring: FocusRing) {
     }
 }
 
+pub(super) fn install_default_focus_ring(node: &mut Node, visible: Signal<bool>) {
+    debug_assert_not_fragment(node, "focus_ring");
+    if let Some(current) = node.extension_mut::<FocusRing>() {
+        current.set_default_visible(visible);
+    } else {
+        let _previous = node.attach(FocusRing::from(visible));
+    }
+}
+
 pub(super) fn install_reactive<F>(node: &mut Node, f: F)
 where
     F: Fn() -> &'static [StyleAtom] + 'static,

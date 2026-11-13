@@ -27,15 +27,40 @@ impl TextStyleCapture {
 }
 
 /// Holds the position and height of a text caret.
-#[doc(hidden)]
+#[must_use]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CaretGeometry {
     /// The horizontal position of the caret within the text, in pixels.
-    pub x: f32,
+    pub(crate) x: f32,
     /// The top of the caret within the text, in pixels.
-    pub top: f32,
+    pub(crate) top: f32,
     /// The height of the caret, in pixels.
-    pub height: f32,
+    pub(crate) height: f32,
+}
+
+impl CaretGeometry {
+    /// Creates caret geometry at `(x, top)` with `height` in pixels.
+    pub const fn new(x: f32, top: f32, height: f32) -> Self {
+        Self { x, top, height }
+    }
+
+    /// Returns the horizontal position of the caret within the text, in pixels.
+    #[must_use]
+    pub const fn x(&self) -> f32 {
+        self.x
+    }
+
+    /// Returns the top of the caret within the text, in pixels.
+    #[must_use]
+    pub const fn top(&self) -> f32 {
+        self.top
+    }
+
+    /// Returns the height of the caret, in pixels.
+    #[must_use]
+    pub const fn height(&self) -> f32 {
+        self.height
+    }
 }
 
 thread_local! {

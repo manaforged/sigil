@@ -92,6 +92,7 @@ const NOTO_DEFAULTS: &[(WebFontScript, &str)] = &[
 static WEB_FALLBACKS: RwLock<Option<Vec<WebFont>>> = RwLock::new(None);
 
 /// Replaces the web fallback fonts.
+#[doc(hidden)]
 pub fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>) {
     let fonts = fonts.into_iter().collect();
     *WEB_FALLBACKS
@@ -100,6 +101,7 @@ pub fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>) {
 }
 
 /// The installed web fallback fonts; the Noto defaults when none are installed.
+#[doc(hidden)]
 #[must_use]
 #[cfg(any(target_arch = "wasm32", feature = "kittest"))]
 pub fn web_fallbacks() -> Vec<WebFont> {

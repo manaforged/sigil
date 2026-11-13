@@ -1,3 +1,8 @@
+#![cfg_attr(
+    not(feature = "kittest"),
+    allow(unreachable_pub, reason = "public only under kittest")
+)]
+
 #[cfg(test)]
 #[path = "layout/lib_tests.rs"]
 mod tests;
@@ -9,10 +14,6 @@ kittest_pub! {
             dead_code,
             reason = "a release build only reads the audit through inspect or kittest"
         )
-    )]
-    #[cfg_attr(
-        not(feature = "kittest"),
-        allow(unreachable_pub, reason = "public only under kittest")
     )]
     #[doc(hidden)]
     pub mod audit;
@@ -33,7 +34,7 @@ mod forest;
 mod grid;
 mod grid_tracks;
 mod intent;
-mod measure;
+pub(crate) mod measure;
 mod orientation;
 pub(crate) mod reactive_position;
 mod resolve;

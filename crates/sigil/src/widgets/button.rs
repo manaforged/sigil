@@ -1,15 +1,11 @@
-use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::kernel::{AccessibleName, TextContent};
-use crate::kernel::{NodeBuilder, Role, container};
-use crate::reactive::Signal;
-use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
-use crate::widgets::Widget;
-
-use super::icon::Glyph;
-use super::layout_ext::LayoutOverrides;
-use super::shared::{Activate, accessible_name, caller_style, noop_activate};
+use crate::node::{
+    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container,
+};
+use crate::reactive::{Reactive, Signal};
+use crate::style::{ControlSize, Metrics, Tone};
+use crate::widgets::{Framed, Glyph, Widget, WidgetFrame};
 
 /// Builder of a button.
 #[must_use]
@@ -21,9 +17,8 @@ pub struct ButtonBuilder {
     height: f32,
     padding_x: f32,
     disabled: Option<Signal<bool>>,
-    activate: Option<Activate>,
-    style_accumulator: Style,
-    layout_overrides: LayoutOverrides,
+    activate: Option<Rc<dyn Fn() + 'static>>,
+    frame: WidgetFrame,
     accessible: Option<AccessibleName>,
     pending: Option<Signal<bool>>,
     square: bool,
@@ -43,8 +38,7 @@ impl core::fmt::Debug for ButtonBuilder {
             .field("height", &self.height)
             .field("padding_x", &self.padding_x)
             .field("disabled", &self.disabled)
-            .field("style_accumulator", &self.style_accumulator)
-            .field("layout_overrides", &self.layout_overrides)
+            .field("frame", &self.frame)
             .field("accessible", &self.accessible)
             .field("pending", &self.pending)
             .field("square", &self.square)
@@ -85,8 +79,7 @@ impl ButtonBuilder {
             padding_x: metrics.control_padding(ControlSize::Default),
             disabled: None,
             activate: None,
-            style_accumulator: Style::new(),
-            layout_overrides: LayoutOverrides::new(),
+            frame: WidgetFrame::new(),
             accessible: None,
             pending: None,
             square: false,
@@ -228,45 +221,51 @@ impl ButtonBuilder {
         if self.square {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
-        } else if self.layout_overrides.fills_width() {
+        } else if self.frame.fills_width() {
             self.width = ButtonWidth::Fill;
         }
-        let activate = self.activate.take().unwrap_or_else(noop_activate);
-        let style = std::mem::take(&mut self.style_accumulator);
-        let variant = self.resolved_fill().variant();
+        let activate = self.activate.take().unwrap_or_else(|| Rc::new(|| {}));
         let name = self
             .accessible
             .clone()
-            .unwrap_or_else(|| accessible_name(&self.label));
-        let node = container()
+            .unwrap_or_else(|| AccessibleName::from(&self.label));
+        let mut node = container()
             .role(Role::Button)
             .label(name)
-            .layout(button_layout(self.width, self.height, self.padding_x))
-            .class(Radius::Lg.atom());
-        let node = self
-            .framed(node)
-            .class(variant.base())
-            .class(BUTTON_TRANSITION_ATOMS)
-            .tone_scope(self.resolved_tone())
-            .variant(variant)
-            .disabled_by(self.disabled)
-            .busy_by(self.pending)
-            .activate_with(activate);
+            .layout(button_layout(self.width, self.height, self.padding_x));
+        node = style_button(node, self.resolved_fill(), self.resolved_tone());
+        if let Some(disabled) = self.disabled {
+            node = node.disabled(disabled);
+        }
+        if let Some(pending) = self.pending {
+            node = node.busy(pending);
+        }
+        node = node.activate(move || activate());
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(self.square_content()),
             None => self.label_content(node),
         };
-        caller_style(node, style)
+        self.frame.finish(node)
     }
 }
 
-builder_impls!([] ButtonBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
+impl Framed for ButtonBuilder {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl IntoNode for ButtonBuilder {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.root().build(cx)
+    }
+}
 
 mod content;
 mod parts;
 
-use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
+use parts::{ButtonFill, ButtonWidth, button_layout, style_button};
 
 #[cfg(test)]
 #[path = "button_tests.rs"]

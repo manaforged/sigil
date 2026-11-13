@@ -139,6 +139,12 @@ impl Theme {
         self.strings = strings;
         self
     }
+
+    /// Subscribes to the active theme's localized string for `key`.
+    #[must_use]
+    pub fn label(key: crate::style::StringKey) -> crate::reactive::Signal<String> {
+        ambient::theme_label(key)
+    }
 }
 
 fn readable_hover(accent: ColorScale, on: Color) -> Color {

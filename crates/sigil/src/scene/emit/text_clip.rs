@@ -6,7 +6,7 @@ use ahash::AHasher;
 use crate::kernel::{Node, NodeType};
 use crate::layout::LayoutResult;
 use crate::scene::command::Gradient;
-use crate::style::{RenderStyle, Theme};
+use crate::style::RenderStyle;
 
 pub(super) struct TextFill {
     pub(super) gradient: Gradient,
@@ -14,12 +14,12 @@ pub(super) struct TextFill {
 }
 
 impl TextFill {
-    pub(super) fn of(node: &Node, style: &RenderStyle, theme: &Theme) -> Option<Rc<Self>> {
+    pub(super) fn of(node: &Node, style: &RenderStyle) -> Option<Rc<Self>> {
         if !style.paint.clip_text || !matches!(node.kind, NodeType::Container) {
             return None;
         }
         let rect = node.extension::<LayoutResult>()?.rect();
-        let gradient = super::background::fill(rect, style, theme)?;
+        let gradient = super::background::fill(rect, style)?;
         let mut hasher = AHasher::default();
         format!("{gradient:?}").hash(&mut hasher);
         Some(Rc::new(Self {

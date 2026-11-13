@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `sigil::widgets::{Framed, WidgetFrame}` and unsealed `Paint`, `States`, and `Widget` traits with blanket implementations for `T: Framed`.
 - Public `sigil::node` module, public `sigil::layout` module with `sigil::layout::LayoutStyle`, and `Widget::layout(self, style: LayoutStyle) -> Self` (replacing the `kittest`-only `Layout` trait).
+- Public `sigil::text` module with `TextMeasure`, `CaretGeometry`, `HitPosition`, `TextAffinity`, `TextStyle`, `measure_text`, `col_count`, `col_at_byte`, and `byte_at_col`.
+- `sigil::events::{DragPhase, A11yEdit}` and `PointerEvent::{prevent_default, default_prevented}`.
+- `Widget::{track_hovered, track_focused, track_pressed, pointer_drag, a11y_edit, capture_text_style, ime_caret}` and `NodeBuilder::{busy, invalid}`.
+- Public `TextState` editing methods, `Reactive::{read, into_signal}`, `Token::Selection` (`Token::COUNT` is now 95), `Transition::smooth`, `Theme::label`, `Metrics::track_size`, `clipboard::current`, `IconBuilder::on_solid`, and `From<&TextContent> for AccessibleName`.
 
 ### Changed
 
@@ -26,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 | `sigil::prelude::HostMode` | `sigil::app::HostMode` |
 | `sigil::widgets::Layout` (feature `kittest`) | `sigil::widgets::Widget` (`Widget::layout`) |
 | `sigil::widgets::Orientation` | `sigil::layout::Orientation` (also in `sigil::prelude::*`) |
+| `HitPosition { byte_index, affinity }` | `HitPosition::new(byte_index, affinity)` / `HitPosition::downstream(byte_index)`, `.byte_index()`, `.affinity()` |
+| `CaretGeometry { x, top, height }` | `CaretGeometry::new(x, top, height)`, `.x()`, `.top()`, `.height()` |
 | Layer-2 and specialist items removed from `sigil::prelude::*` | import from their canonical modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`) |
 
 ## [0.2.0] - 2026-11-12

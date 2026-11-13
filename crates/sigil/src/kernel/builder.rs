@@ -264,7 +264,11 @@ impl NodeBuilder {
         let style = self.style.take().filter(|style| !style.is_empty());
         match style {
             Some(style) => crate::style::attach_style(self, *style),
-            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert()) => self,
+            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert())
+                && !self.is_focusable() =>
+            {
+                self
+            }
             None => crate::style::attach_style(self, Style::new()),
         }
     }

@@ -15,6 +15,7 @@ pub(crate) const CHECK_GLYPH: &str = "\u{2713}";
 mod svg;
 
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
+static ICON_ON_SOLID_COLOR: &[StyleAtom] = &[StyleAtom::FgOnSolid];
 
 #[derive(Clone, Debug)]
 enum Mark {
@@ -32,7 +33,6 @@ pub struct IconBuilder {
     size: ControlSize,
     px: Option<f32>,
     step: u8,
-    #[cfg(feature = "scene")]
     on_solid: bool,
     label: Option<String>,
     style_accumulator: Style,
@@ -100,7 +100,6 @@ impl IconBuilder {
             size: ControlSize::Default,
             px: None,
             step: 11,
-            #[cfg(feature = "scene")]
             on_solid: false,
             label: None,
             style_accumulator: Style::new(),
@@ -132,9 +131,9 @@ impl IconBuilder {
         self
     }
 
-    #[cfg(feature = "scene")]
-    pub(crate) const fn on_solid(mut self, yes: bool) -> Self {
-        self.on_solid = yes;
+    /// Colors the icon for placement on a solid tone background.
+    pub const fn on_solid(mut self, on_solid: bool) -> Self {
+        self.on_solid = on_solid;
         self
     }
 
@@ -168,7 +167,11 @@ impl IconBuilder {
             Mark::Text(glyph) => container_node.child(
                 text(glyph)
                     .class(glyph_class)
-                    .class(ICON_GLYPH_COLOR)
+                    .class(if self.on_solid {
+                        ICON_ON_SOLID_COLOR
+                    } else {
+                        ICON_GLYPH_COLOR
+                    })
                     .tone_scope(self.tone)
                     .hittable(false),
             ),

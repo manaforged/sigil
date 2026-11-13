@@ -118,12 +118,8 @@ pub mod tasks;
 /// The terminal host.
 #[cfg(feature = "terminal")]
 pub mod terminal;
-#[cfg(scene_harness)]
-#[doc(hidden)]
+/// Text styling, measurement, hit testing, and grapheme column helpers.
 pub mod text;
-#[cfg(scene_internal)]
-#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
-pub(crate) mod text;
 mod view;
 /// The widget catalog.
 pub mod widgets;

@@ -25,10 +25,6 @@ pub use clip::ClipShape;
 pub use color::{Color, ColorValue, GradientAxis};
 kittest_pub! {
     #[doc(hidden)]
-    pub use color::{BgGradient, GradientStopKey};
-}
-kittest_pub! {
-    #[doc(hidden)]
     pub use filter::FilterAtom;
 }
 pub(crate) use filter::{
@@ -93,8 +89,6 @@ kittest_pub! {
     pub struct RenderStyle {
         /// The solid background color; `None` when a gradient or nothing fills the box.
         pub background_color: Option<Color>,
-        /// The linear background gradient; `None` when a solid color or nothing fills the box.
-        pub background_gradient: Option<BgGradient>,
         /// The text color, when a style atom sets one.
         pub text_color: Option<Color>,
         /// The corner radius in pixels, when a style atom sets one.
@@ -134,7 +128,6 @@ impl Default for RenderStyle {
     fn default() -> Self {
         Self {
             background_color: None,
-            background_gradient: None,
             text_color: None,
             border_radius: None,
             border_width: None,
@@ -246,8 +239,6 @@ kittest_pub! {
         GridRows(u16),
         /// A solid background color, which replaces a background gradient.
         BackgroundColor(ColorValue),
-        /// A linear background gradient, which replaces a solid background color.
-        BackgroundGradient(BgGradient),
         /// The color of the text.
         TextColor(ColorValue),
         /// Fills the background with this step, 1 to 12, of the tone in scope.

@@ -16,6 +16,9 @@ mod loading;
 #[path = "../examples/story-05-nav.rs"]
 #[allow(dead_code)]
 mod nav;
+#[path = "../examples/story-10-layer2-parity.rs"]
+#[allow(dead_code, unreachable_pub)]
+mod story_10;
 #[path = "../examples/story-08-test.rs"]
 #[allow(dead_code)]
 mod testing;
@@ -302,4 +305,246 @@ fn shown(host: &mut Host, text: &str) -> Vec<(accesskit::NodeId, bool)> {
         .filter(|(_, node)| node.label() == Some(text) || node.value() == Some(text))
         .map(|(id, node)| (*id, node.supports_action(Action::Click)))
         .collect()
+}
+
+#[test]
+fn layer2_parity_example_app_works_on_both_hosts() {
+    let _: fn(&'static str) -> story_10::CustomButtonBuilder = story_10::custom_button;
+    let _: fn(Signal<f32>, std::ops::RangeInclusive<f32>) -> story_10::CustomSliderBuilder =
+        story_10::custom_slider;
+    let _: fn(Signal<String>) -> story_10::CustomTextFieldBuilder = story_10::custom_text_field;
+    for mut ui in hosts(|| Harness::new(story_10::app)) {
+        ui.click("Save")
+            .expect_text("Clicks: 1")
+            .click(&(Role::Slider, "Volume"))
+            .press(NamedKey::ArrowRight)
+            .expect_text("Volume: 55")
+            .type_into("Enter name", "Ada")
+            .press(NamedKey::Enter)
+            .expect_text("Submitted: Ada");
+    }
+}
+
+#[test]
+fn layer2_parity_custom_button_click_disabled_and_pending() {
+    for mut ui in hosts(|| {
+        Harness::new(|| {
+            let clicks = signal(0_u32);
+            let disabled = signal(false);
+            let pending = signal(false);
+            column()
+                .padding(Space::Md)
+                .gap(Space::Sm)
+                .background(Token::Surface)
+                .child(
+                    story_10::custom_button("Submit")
+                        .primary()
+                        .disabled(disabled)
+                        .pending(pending)
+                        .activate(move || clicks.update(|n| *n += 1)),
+                )
+                .child(
+                    story_10::custom_button("Toggle Disabled")
+                        .ghost()
+                        .activate(move || disabled.update(|flag| *flag = !*flag)),
+                )
+                .child(
+                    story_10::custom_button("Toggle Pending")
+                        .activate(move || pending.update(|flag| *flag = !*flag)),
+                )
+                .child(text(move || format!("Clicks: {}", clicks.get())))
+        })
+    }) {
+        ui.click("Submit").expect_text("Clicks: 1");
+
+        ui.click("Toggle Disabled");
+        assert!(ui.get((Role::Button, "Submit")).is_disabled());
+        ui.click("Submit").expect_text("Clicks: 1");
+
+        ui.click("Toggle Disabled").click("Toggle Pending");
+        assert!(ui.get((Role::Button, "Submit")).is_disabled());
+        ui.click("Submit").expect_text("Clicks: 1");
+
+        ui.click("Toggle Pending")
+            .click("Submit")
+            .expect_text("Clicks: 2");
+    }
+}
+
+#[test]
+fn layer2_parity_custom_slider_keys_and_a11y() {
+    for mut ui in hosts(|| {
+        Harness::new(|| {
+            let value = signal(50.0_f32);
+            let committed = signal(50.0_f32);
+            column()
+                .padding(Space::Md)
+                .gap(Space::Sm)
+                .background(Token::Surface)
+                .child(
+                    story_10::custom_slider(value, 0.0..=100.0)
+                        .step(5.0)
+                        .length(200.0)
+                        .label("Level")
+                        .change(move |next| committed.set(next)),
+                )
+                .child(text(move || {
+                    format!("Level: {:.0} ({:.0})", value.get(), committed.get())
+                }))
+        })
+    }) {
+        ui.click(&(Role::Slider, "Level"))
+            .press(NamedKey::ArrowRight)
+            .expect_text("Level: 55 (55)")
+            .press(NamedKey::ArrowLeft)
+            .expect_text("Level: 50 (50)")
+            .press(NamedKey::Home)
+            .expect_text("Level: 0 (0)")
+            .press(NamedKey::End)
+            .expect_text("Level: 100 (100)");
+
+        let slider_id = ui.host().focus().expect("slider focused");
+        for (action, data, expected) in [
+            (
+                Action::SetValue,
+                Some(accesskit::ActionData::NumericValue(40.0)),
+                "Level: 40 (40)",
+            ),
+            (Action::Increment, None, "Level: 45 (45)"),
+        ] {
+            ui.host().perform(
+                slider_id,
+                &ActionRequest {
+                    action,
+                    target_tree: TreeId::ROOT,
+                    target_node: accesskit::NodeId(0),
+                    data,
+                },
+            );
+            ui.settle().expect_text(expected);
+        }
+    }
+}
+
+#[test]
+fn layer2_parity_custom_slider_drag() {
+    let mut pixel = Harness::new(|| {
+        let value = signal(20.0_f32);
+        let committed = signal(20.0_f32);
+        column()
+            .padding(Space::Md)
+            .gap(Space::Sm)
+            .background(Token::Surface)
+            .child(
+                story_10::custom_slider(value, 0.0..=100.0)
+                    .step(5.0)
+                    .length(200.0)
+                    .label("Level")
+                    .change(move |next| committed.set(next)),
+            )
+            .child(text(move || format!("Committed: {:.0}", committed.get())))
+    })
+    .pixels(480, 320);
+
+    let bounds = pixel
+        .get((Role::Slider, "Level"))
+        .bounds()
+        .expect("slider bounds");
+    let mid_y = bounds.height.mul_add(0.5, bounds.origin.y);
+    let start = sigil::geometry::Point::new(bounds.width.mul_add(0.2, bounds.origin.x), mid_y);
+    let end = sigil::geometry::Point::new(bounds.width.mul_add(0.8, bounds.origin.x), mid_y);
+    pixel.drag(&start, &end).expect_text("Committed: 80");
+}
+
+#[test]
+fn layer2_parity_custom_text_field_editing_history_and_submit() {
+    for mut ui in hosts(|| {
+        Harness::new(|| {
+            let value = signal(String::new());
+            let submitted = signal(String::new());
+            column()
+                .padding(Space::Md)
+                .gap(Space::Sm)
+                .background(Token::Surface)
+                .child(
+                    story_10::custom_text_field(value)
+                        .placeholder("Query")
+                        .width(220.0)
+                        .submit(move |text| submitted.set(text.to_owned())),
+                )
+                .child(text(move || format!("Submitted: {}", submitted.get())))
+        })
+    }) {
+        ui.type_into("Query", "hello world");
+        assert_eq!(
+            ui.get((Role::TextInput, "Query")).value(),
+            Some("hello world")
+        );
+
+        ui.press(NamedKey::Backspace);
+        assert_eq!(
+            ui.get((Role::TextInput, "Query")).value(),
+            Some("hello worl")
+        );
+
+        ui.press(sigil::events::Shortcut::new(
+            NamedKey::Backspace,
+            Modifiers::ALT,
+        ));
+        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("hello "));
+
+        ui.press(sigil::events::Shortcut::ctrl(Key::character("a")))
+            .type_text("ada");
+        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
+
+        ui.press(sigil::events::Shortcut::ctrl(Key::character("z")));
+        assert_ne!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
+
+        ui.press(sigil::events::Shortcut::ctrl(Key::character("y")));
+        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
+
+        ui.press(NamedKey::Enter).expect_text("Submitted: ada");
+
+        ui.host().route(
+            sigil::events::Event::key_down(Key::character("s"))
+                .modifiers(Modifiers::ALT)
+                .text(Some("ß".to_owned())),
+        );
+        ui.settle();
+        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("adaß"));
+    }
+}
+
+#[test]
+fn layer2_parity_invalid_border_persists_while_focused() {
+    let red = Color::rgb(211, 47, 47);
+    for custom in [false, true] {
+        let mut ui = Harness::new(move || {
+            let value = signal(String::from("bad"));
+            let invalid = signal(true);
+            let root = column().padding(Space::Md).background(Token::Surface);
+            if custom {
+                root.child(
+                    story_10::custom_text_field(value)
+                        .placeholder("Email")
+                        .invalid(invalid),
+                )
+            } else {
+                root.child(text_field(value).placeholder("Email").invalid(invalid))
+            }
+        })
+        .pixels(480, 120);
+        ui.click(&(Role::TextInput, "Email"));
+        let focused = ui.host().focus().expect("field focused");
+        let scene = ui.host().scene((480.0, 120.0)).expect("scene");
+        let stroke_color = scene.commands.iter().find_map(|cmd| match cmd {
+            SceneCommand::Rect(rect) if rect.node == Some(focused) => rect.stroke.map(|s| s.color),
+            _ => None,
+        });
+        assert_eq!(
+            stroke_color,
+            Some(red),
+            "custom={custom}: focused invalid field must emit red border stroke"
+        );
+    }
 }

@@ -131,7 +131,7 @@ fn push_container(
     if stroke.is_some() {
         cell.border = paint.border(rect);
     }
-    let fill = super::background::fill(rect, style, paint.theme).filter(|_| !style.paint.clip_text);
+    let fill = super::background::fill(rect, style).filter(|_| !style.paint.clip_text);
     if let Some(fill) = fill {
         if let Some(color) = style.background_color {
             scene.draw_rect(
@@ -223,7 +223,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             },
         );
     }
-    let clip = super::background::fill(rect, style, paint.theme)
+    let clip = super::background::fill(rect, style)
         .filter(|_| style.paint.clip_text)
         .or_else(|| paint.text_fill.cloned());
     let color = clip.as_ref().map_or(color, text_color);

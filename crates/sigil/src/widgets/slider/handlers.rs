@@ -1,13 +1,20 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{A11yEdit, with_handlers};
-use crate::events::{KeyEvent, NamedKey, PointerEvent};
-use crate::kernel::{NodeBuilder, NodeId};
-
-use crate::widgets::interaction::{DragEnd, InteractionState, ValueStep, pointer_drag, step_keys};
+use crate::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent};
+use crate::node::{NodeBuilder, NodeId};
+use crate::reactive::Signal;
+use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
+
+#[derive(Clone, Copy)]
+enum ValueStep {
+    Unit(f32),
+    Page(f32),
+    Start,
+    End,
+}
 
 const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
     (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
@@ -22,60 +29,78 @@ const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
 
 const PAGE_STEPS: f32 = 10.0;
 
+#[derive(Clone, Copy)]
+pub(super) struct ThumbSignals {
+    pub(super) hovered: Signal<bool>,
+    pub(super) focused: Signal<bool>,
+    pub(super) pressed: Signal<bool>,
+    pub(super) dragging: Signal<bool>,
+}
+
 pub(super) fn attach_key_handlers(
-    node: NodeBuilder,
-    interaction: InteractionState,
+    mut node: NodeBuilder,
     runtime: SliderRuntime,
     on_change: ValueChange,
 ) -> NodeBuilder {
-    let change = Rc::clone(&on_change);
-    let node = step_keys(node, &SLIDER_KEYS, move |step, event| {
-        change_key(step, event, interaction, runtime, &change);
-    });
-    with_handlers(node, move |handlers| {
-        let edited = Rc::clone(&on_change);
-        handlers.set_value_adjustment(Box::new(move |increase| {
+    for (key, step) in SLIDER_KEYS {
+        let change = Rc::clone(&on_change);
+        node = node.key(key, move |event| change_key(step, event, runtime, &change));
+    }
+    node.a11y_edit(move |edit| handle_a11y_edit(edit, runtime, &on_change))
+}
+
+fn handle_a11y_edit(edit: &A11yEdit, runtime: SliderRuntime, on_change: &ValueChange) -> bool {
+    match edit {
+        A11yEdit::Increment | A11yEdit::Decrement => {
             if !runtime.disabled() {
-                runtime.nudge(if increase { 1.0 } else { -1.0 });
+                let sign = if matches!(edit, A11yEdit::Increment) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                runtime.nudge(sign);
                 on_change(runtime.value.peek());
             }
-        }));
-        handlers.set_a11y_edit(Box::new(move |edit| {
-            let A11yEdit::Number(raw) = edit else {
-                return false;
-            };
+            true
+        }
+        A11yEdit::Number(raw) => {
             if !runtime.disabled() {
                 runtime.value.set(runtime.quantize(*raw));
-                edited(runtime.value.peek());
+                on_change(runtime.value.peek());
             }
             true
-        }));
-    })
+        }
+        _ => false,
+    }
 }
 
 #[derive(Clone)]
 pub(super) struct Grip {
-    interaction: InteractionState,
+    dragging: Signal<bool>,
     focus: Option<Rc<Cell<Option<NodeId>>>>,
 }
 
 impl Grip {
-    pub(super) const fn new(interaction: InteractionState) -> Self {
+    pub(super) const fn new(dragging: Signal<bool>) -> Self {
         Self {
-            interaction,
+            dragging,
             focus: None,
         }
     }
 
-    pub(super) const fn focused(
-        interaction: InteractionState,
-        focus: Rc<Cell<Option<NodeId>>>,
-    ) -> Self {
+    pub(super) const fn focused(dragging: Signal<bool>, focus: Rc<Cell<Option<NodeId>>>) -> Self {
         Self {
-            interaction,
+            dragging,
             focus: Some(focus),
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct DragSession {
+    thumb: SliderRuntime,
+    start: f32,
+    overlapped: bool,
 }
 
 pub(super) fn attach_pointer_drag(
@@ -84,46 +109,52 @@ pub(super) fn attach_pointer_drag(
     grips: [Grip; 2],
     on_change: ValueChange,
 ) -> NodeBuilder {
-    let grips = Rc::new(grips);
-    let (begin, moved, finish) = (Rc::clone(&grips), Rc::clone(&grips), grips);
-    let active = Rc::new(Cell::new(runtime));
-    let (opened, moving, closed) = (Rc::clone(&active), Rc::clone(&active), active);
-    pointer_drag(
-        node,
-        move |event| {
+    let session = Rc::new(Cell::new(None::<DragSession>));
+    node.pointer_drag(move |phase, event| match phase {
+        DragPhase::Start => {
             if runtime.disabled() {
-                return None;
+                event.prevent_default();
+                return;
             }
             let thumb = runtime.on(runtime.value.nearest(runtime.value_at(event)));
-            let grip = begin.get(thumb.value.index())?;
-            if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
-                id.focus();
+            if let Some(grip) = grips.get(thumb.value.index()) {
+                if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
+                    id.focus();
+                }
+                grip.dragging.set(true);
             }
-            opened.set(thumb);
             let start = thumb.value.peek();
-            grip.interaction.drag(true);
             thumb.value.set(thumb.value_at(event));
-            Some((start, thumb.value.overlapped()))
-        },
-        move |&(_, overlapped), event| {
-            if !moving.get().disabled() {
-                moving.set(drag_to(moving.get(), &moved, event, overlapped));
+            session.set(Some(DragSession {
+                thumb,
+                start,
+                overlapped: thumb.value.overlapped(),
+            }));
+        }
+        DragPhase::Move => {
+            let Some(mut active) = session.get() else {
+                return;
+            };
+            if !active.thumb.disabled() {
+                active.thumb = drag_to(active.thumb, &grips, event, active.overlapped);
+                session.set(Some(active));
                 event.stop_propagation();
             }
-        },
-        move |ended, event| {
-            let thumb = closed.get();
-            if let Some(grip) = finish.get(thumb.value.index()) {
-                grip.interaction.drag(false);
-                let _released = grip.interaction.release_pointer(event);
+        }
+        DragPhase::End | DragPhase::Cancel => {
+            let Some(active) = session.take() else {
+                return;
+            };
+            if let Some(grip) = grips.get(active.thumb.value.index()) {
+                grip.dragging.set(false);
             }
-            match ended {
-                DragEnd::Release => on_change(thumb.value.peek()),
-                DragEnd::Cancel((start, _)) => thumb.value.set(start),
-                DragEnd::Idle => {}
+            if phase == DragPhase::Cancel {
+                active.thumb.value.set(active.start);
+            } else {
+                on_change(active.thumb.value.peek());
             }
-        },
-    )
+        }
+    })
 }
 
 fn drag_to(
@@ -140,10 +171,10 @@ fn drag_to(
     };
     if thumb.value.index() != held.value.index() {
         if let Some(grip) = grips.get(held.value.index()) {
-            grip.interaction.drag(false);
+            grip.dragging.set(false);
         }
         if let Some(grip) = grips.get(thumb.value.index()) {
-            grip.interaction.drag(true);
+            grip.dragging.set(true);
             if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
                 id.focus();
             }
@@ -156,13 +187,13 @@ fn drag_to(
 fn change_key(
     step: ValueStep,
     event: &mut KeyEvent,
-    interaction: InteractionState,
     runtime: SliderRuntime,
     on_change: &ValueChange,
 ) {
-    if !interaction.activate_key(event) || runtime.disabled() {
+    if runtime.disabled() {
         return;
     }
+    event.stop_propagation();
     match step {
         ValueStep::Unit(sign) => runtime.nudge(sign),
         ValueStep::Page(sign) => runtime.nudge(sign * PAGE_STEPS),

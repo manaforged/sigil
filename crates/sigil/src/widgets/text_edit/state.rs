@@ -99,6 +99,93 @@ impl TextState {
         self.publish(&edit, true);
     }
 
+    /// Deletes the selection or the grapheme before the caret.
+    pub fn backspace(&self) {
+        self.apply_edit(TextEdit::backspace);
+    }
+
+    /// Deletes the selection or the grapheme after the caret.
+    pub fn delete_forward(&self) {
+        self.apply_edit(TextEdit::delete_forward);
+    }
+
+    /// Moves the caret one grapheme horizontally, extending the selection when `extend` is true.
+    pub fn move_by(&self, right: bool, extend: bool) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        edit.move_by(right, extend);
+        self.publish(&edit, false);
+    }
+
+    /// Moves the caret to the start of the previous word and clears the selection.
+    pub fn move_word_left(&self) {
+        self.apply_move(TextEdit::move_word_left);
+    }
+
+    /// Moves the caret to the end of the next word and clears the selection.
+    pub fn move_word_right(&self) {
+        self.apply_move(TextEdit::move_word_right);
+    }
+
+    /// Deletes the selection or from the previous word start to the caret.
+    pub fn delete_word_backward(&self) {
+        self.apply_edit(TextEdit::delete_word_backward);
+    }
+
+    /// Deletes the selection or from the caret to the next word end.
+    pub fn delete_word_forward(&self) {
+        self.apply_edit(TextEdit::delete_word_forward);
+    }
+
+    /// Selects all text.
+    pub fn select_all(&self) {
+        self.apply_move(TextEdit::select_all);
+    }
+
+    /// Undoes the previous edit and reports whether the text changed.
+    pub fn undo(&self) -> bool {
+        self.apply_history(TextEdit::undo)
+    }
+
+    /// Reapplies an undone edit and reports whether the text changed.
+    pub fn redo(&self) -> bool {
+        self.apply_history(TextEdit::redo)
+    }
+
+    /// Returns the selected text, or `None` when nothing is selected.
+    #[must_use]
+    pub fn selected_text(&self) -> Option<String> {
+        let edit = synced(&self.edit, self.value, self.caret);
+        edit.selected_text().map(str::to_owned)
+    }
+
+    /// Splices `preedit` into `text` at the char boundary at or before `caret`.
+    #[must_use]
+    pub fn splice_preedit(text: &str, caret: usize, preedit: &str) -> String {
+        super::super::splice_preedit(text, caret, preedit)
+    }
+
+    fn apply_edit(&self, op: fn(&mut TextEdit)) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        let before = edit.len();
+        op(&mut edit);
+        self.publish(&edit, edit.len() != before);
+    }
+
+    fn apply_move(&self, op: fn(&mut TextEdit)) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        op(&mut edit);
+        self.publish(&edit, false);
+    }
+
+    fn apply_history(&self, op: fn(&mut TextEdit) -> bool) -> bool {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        let changed = op(&mut edit);
+        if changed {
+            self.publish(&edit, true);
+        }
+        changed
+    }
+
     fn publish(&self, edit: &TextEdit, value: bool) {
         self.preferred_x.set(None);
         batch(|| {

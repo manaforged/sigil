@@ -5,7 +5,6 @@ use crate::layout::CaretGeometry;
 use crate::style::TextStyle;
 
 /// Map between points and text positions for hit testing, carets, and selection.
-#[doc(hidden)]
 pub trait TextMeasure {
     /// Returns the size of `content` in `space`.
     fn measure(&self, content: &TextContent, space: Constraint) -> Size;

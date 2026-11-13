@@ -138,6 +138,14 @@ impl Metrics {
     pub fn overlay_padding(self) -> f32 {
         self.cell.unwrap_or(space(1))
     }
+
+    /// Snaps a track or scrollbar size in pixels to whole terminal cells when on a cell grid.
+    #[must_use]
+    pub fn track_size(self, px: f32) -> f32 {
+        self.cell
+            .filter(|c| *c > 0.0)
+            .map_or(px, |cell| (px / cell).round().max(1.0) * cell)
+    }
 }
 
 /// A place in the visual stack: its fill, border, corners, and shadow, set together.

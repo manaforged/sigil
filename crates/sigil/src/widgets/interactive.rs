@@ -19,7 +19,6 @@ pub(crate) struct Wiring {
     state: Option<InteractionState>,
     variant: Option<StyleVariant>,
     busy: Option<Signal<bool>>,
-    active: bool,
 }
 
 impl Wiring {
@@ -29,7 +28,6 @@ impl Wiring {
             && self.state.is_none()
             && self.variant.is_none()
             && self.busy.is_none()
-            && !self.active
     }
 }
 
@@ -55,14 +53,22 @@ impl NodeBuilder {
         self
     }
 
-    pub(crate) fn active(mut self) -> Self {
-        self.wiring_mut().active = true;
+    /// Marks the node as busy while `busy` is true; it dims, stops handling input, and ignores activation.
+    pub fn busy(mut self, busy: impl Reactive<bool>) -> Self {
+        self.wiring_mut().busy = Some(busy.into_signal());
         self
     }
 
-    pub(crate) fn busy_by(mut self, busy: Option<Signal<bool>>) -> Self {
-        self.wiring_mut().busy = busy;
-        self
+    /// Marks the node as invalid while `invalid` is true, combining prior calls via logical OR.
+    pub fn invalid(self, invalid: impl Reactive<bool>) -> Self {
+        let invalid = invalid.into_signal();
+        self.mutate(move |node| {
+            let combined = match node.a11y.invalid {
+                Some(prior) => crate::reactive::memo(move || prior.get() || invalid.get()),
+                None => invalid,
+            };
+            node.a11y.invalid = Some(combined);
+        })
     }
 
     pub(crate) fn variant(mut self, variant: StyleVariant) -> Self {
@@ -82,7 +88,11 @@ impl NodeBuilder {
 pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder {
     let wiring = node.take_wiring();
     if overlay.is_empty() && wiring.is_inert() {
-        return node;
+        return if node.is_focusable() {
+            install_keyboard_focus_ring(node)
+        } else {
+            node
+        };
     }
     let Wiring {
         disabled,
@@ -90,7 +100,6 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
         state,
         variant,
         busy,
-        active,
     } = wiring;
     let look = disabled;
     let disabled = or_disabled(disabled, busy);
@@ -120,10 +129,25 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
             &activate,
             RELEASE_ENTER_SPACE,
         )),
-        None if active => interaction.install(node),
-        None if node.is_focusable() => {
-            interaction.observe_style(node.focus_ring(interaction.focus_ring()))
-        }
+        None if node.is_focusable() => interaction.observe_style(
+            crate::style::builder_ext::default_focus_ring(node, interaction.focus_ring()),
+        ),
         None => interaction.observe_style(node),
     }
+}
+
+fn install_keyboard_focus_ring(node: NodeBuilder) -> NodeBuilder {
+    let ring = crate::reactive::signal(false);
+    crate::style::builder_ext::default_focus_ring(node, ring)
+        .focus_in(move || {
+            let show = crate::events::focus_from_keyboard();
+            if ring.peek() != show {
+                ring.set(show);
+            }
+        })
+        .focus_out(move || {
+            if ring.peek() {
+                ring.set(false);
+            }
+        })
 }

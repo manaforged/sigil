@@ -9,7 +9,7 @@ use sigil::geometry::{Constraint, Rect};
 use sigil::layout::{TextMeasure, text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{CommandScene, SceneCommand, emit_scene};
-use sigil::text::{HitPosition, TextAffinity};
+use sigil::text::HitPosition;
 
 const VALUE: &str = "Testing this is a complet";
 
@@ -27,12 +27,9 @@ fn caret_uses_the_fields_resolved_typography() {
             VALUE,
             text.style(),
             None,
-            HitPosition {
-                byte_index: VALUE.len(),
-                affinity: TextAffinity::Downstream,
-            },
+            HitPosition::downstream(VALUE.len()),
         );
-        let expected_x = text.rect().origin.x + expected.x;
+        let expected_x = text.rect().origin.x + expected.x();
         let caret = nearest_caret(&scene, expected_x);
 
         assert!(
@@ -41,9 +38,9 @@ fn caret_uses_the_fields_resolved_typography() {
             caret.origin.x,
         );
         assert!(
-            (caret.height - expected.height).abs() <= 0.5,
+            (caret.height - expected.height()).abs() <= 0.5,
             "caret height must use the painted run's resolved typography: expected {}, got {}",
-            expected.height,
+            expected.height(),
             caret.height,
         );
     });

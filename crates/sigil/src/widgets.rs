@@ -239,6 +239,50 @@ macro_rules! forward_control_methods {
             $crate::widgets::forward_control_methods!(@call $mode self.$field, focus_when(trigger));
             self
         }
+
+        fn track_hovered(mut self, out: $crate::reactive::Signal<bool>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, track_hovered(out));
+            self
+        }
+
+        fn track_focused(mut self, out: $crate::reactive::Signal<bool>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, track_focused(out));
+            self
+        }
+
+        fn track_pressed(mut self, out: $crate::reactive::Signal<bool>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, track_pressed(out));
+            self
+        }
+
+        fn pointer_drag(
+            mut self,
+            handler: impl FnMut($crate::events::DragPhase, &mut $crate::events::PointerEvent) + 'static,
+        ) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, pointer_drag(handler));
+            self
+        }
+
+        fn a11y_edit(
+            mut self,
+            handler: impl Fn(&$crate::events::A11yEdit) -> bool + 'static,
+        ) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, a11y_edit(handler));
+            self
+        }
+
+        fn capture_text_style(mut self, out: $crate::reactive::Signal<$crate::style::TextStyle>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, capture_text_style(out));
+            self
+        }
+
+        fn ime_caret(
+            mut self,
+            caret: impl $crate::reactive::Reactive<Option<$crate::text::CaretGeometry>>,
+        ) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, ime_caret(caret));
+            self
+        }
     };
     (@call direct $target:expr, $method:ident($($arg:expr),*)) => {
         $target = $crate::widgets::Widget::$method($target $(, $arg)*);

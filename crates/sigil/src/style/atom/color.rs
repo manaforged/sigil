@@ -124,60 +124,6 @@ pub enum GradientAxis {
     RightToLeft,
 }
 
-kittest_pub! {
-    #[doc(hidden)]
-    /// A color and offset of a background gradient.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct GradientStopKey {
-        /// The position of the stop along the axis in thousandths, from 0 to 1000.
-        pub offset: u16,
-        /// The color at this offset.
-        pub color: ColorValue,
-    }
-}
-
-impl GradientStopKey {
-    kittest_pub! {
-        #[doc(hidden)]
-        /// Creates a gradient stop with `color` at `offset`.
-        #[must_use]
-        pub const fn new(offset: u16, color: ColorValue) -> Self {
-            Self { offset, color }
-        }
-    }
-}
-
-kittest_pub! {
-    #[doc(hidden)]
-    /// A background gradient in a style.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct BgGradient {
-        /// The direction that the stops run in.
-        pub axis: GradientAxis,
-        /// The stops in order along the axis.
-        pub stops: &'static [GradientStopKey],
-    }
-}
-
-impl BgGradient {
-    kittest_pub! {
-        #[doc(hidden)]
-        /// Creates a background gradient along `axis` with `stops`.
-        #[must_use]
-        pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
-            Self { axis, stops }
-        }
-    }
-
-    /// Creates a gradient from owned stops.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    #[must_use]
-    pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
-        Self::new(axis, crate::style::intern::intern(stops))
-    }
-}
-
 fn parse_hex(input: &str) -> Option<Color> {
     let trimmed = input.trim();
     let hex = trimmed

@@ -152,9 +152,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::FlexShrink(_) => ResolvedSlot::FlexShrink,
         StyleAtom::GridColumns(_) => ResolvedSlot::GridColumns,
         StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
-        StyleAtom::BackgroundColor(_)
-        | StyleAtom::BgToneStep(_)
-        | StyleAtom::BackgroundGradient(_) => ResolvedSlot::BackgroundColor,
+        StyleAtom::BackgroundColor(_) | StyleAtom::BgToneStep(_) => ResolvedSlot::BackgroundColor,
         StyleAtom::TextColor(_) | StyleAtom::FgToneStep(_) | StyleAtom::FgOnSolid => {
             ResolvedSlot::TextColor
         }

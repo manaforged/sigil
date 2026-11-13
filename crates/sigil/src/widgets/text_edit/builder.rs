@@ -2,10 +2,9 @@ use crate::clipboard::clipboard;
 use crate::geometry::Rect;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
-use crate::style::Style;
 
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{TextInputProps, caller_style};
+use crate::widgets::shared::TextInputProps;
 
 use super::handlers::{TextEditRuntime, TextState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
@@ -44,7 +43,7 @@ pub(in crate::widgets) fn build_multiline(
     state: TextState,
     caret_rect: Option<Signal<Option<Rect>>>,
     config: MultilineConfig,
-    mut style_accumulator: Style,
+    mut frame: crate::widgets::WidgetFrame,
 ) -> NodeBuilder {
     let interaction = InteractionState::new(true).disabled(input.disabled);
     let runtime = TextEditRuntime::new(
@@ -59,7 +58,7 @@ pub(in crate::widgets) fn build_multiline(
     if let Some(target) = caret_rect {
         runtime.ime.report_caret_rect(target);
     }
-    let overlay = style_accumulator.take_state_overlay();
+    let overlay = frame.style.take_state_overlay();
     let node = build_base_node(
         &runtime,
         &input.placeholder,
@@ -73,7 +72,7 @@ pub(in crate::widgets) fn build_multiline(
         config.submit_key,
     ));
     let node = attach_ime_handlers(node, &runtime);
-    caller_style(node, style_accumulator).with(edit_layout())
+    frame.finish(node.with(edit_layout()))
 }
 
 #[cfg(test)]

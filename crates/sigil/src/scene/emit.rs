@@ -421,8 +421,7 @@ fn child_inherited<'t>(
                     emit_cache::theme_key(theme, u64::from(node.version())),
                 )
             });
-    let text_fill =
-        TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
+    let text_fill = TextFill::of(node, style).map_or_else(|| inherited.text_fill.clone(), Some);
     let text_shadows = if style.filter.inherits_text_shadows() {
         inherited.text_shadows.clone()
     } else {

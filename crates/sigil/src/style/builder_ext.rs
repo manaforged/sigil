@@ -1,6 +1,6 @@
 use super::install::{
-    install_animation, install_class, install_focus_ring, install_reactive, install_state_overlay,
-    install_theme, install_tone,
+    install_animation, install_class, install_default_focus_ring, install_focus_ring,
+    install_reactive, install_state_overlay, install_theme, install_tone,
 };
 use super::presence::install_presence;
 use crate::animation::Property;
@@ -120,6 +120,10 @@ pub(crate) fn focus_ring(node: NodeBuilder, ring: FocusRing) -> NodeBuilder {
     node.mutate(move |node| install_focus_ring(node, ring))
 }
 
+pub(crate) fn default_focus_ring(node: NodeBuilder, visible: Signal<bool>) -> NodeBuilder {
+    node.mutate(move |node| install_default_focus_ring(node, visible))
+}
+
 pub(crate) fn presence(
     node: NodeBuilder,
     shown: Signal<bool>,
@@ -167,7 +171,7 @@ impl NodeBuilder {
     }
 
     pub(crate) fn seal_style(self) -> Self {
-        self.mutate(|node| {
+        self.flush_paint().mutate(|node| {
             if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
                 binding.seal();
             }

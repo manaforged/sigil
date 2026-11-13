@@ -5,6 +5,7 @@ use crate::text::shaper::Font;
 
 pub(crate) type SansWeight = (u16, Arc<Vec<u8>>, u32);
 
+#[doc(hidden)]
 #[derive(Clone, Default)]
 pub struct DefaultFonts {
     pub sans: Option<(Arc<Vec<u8>>, u32)>,
@@ -63,6 +64,7 @@ pub(crate) fn wake_font_listeners() {
 }
 
 #[cfg(host)]
+#[doc(hidden)]
 pub fn default_fonts(fonts: DefaultFonts) {
     if let Ok(mut guard) = DEFAULT_FONTS.write() {
         *guard = DefaultFontSource::Custom(fonts);

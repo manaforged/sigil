@@ -14,16 +14,11 @@ use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{DrawImage, Gradient, GradientKind, GradientStop};
 use crate::style::atom::{GradientShape, PaintStyle};
 use crate::style::image_paint::lookup;
-use crate::style::{
-    BgGradient, Conic, GradientAxis, Radial, RadialExtent, RenderStyle, StyleEngine, Theme,
-};
+use crate::style::{Conic, GradientAxis, Radial, RadialExtent, RenderStyle};
 
 const MAX_TILES: usize = 4096;
 
-pub(super) fn fill(rect: Rect, style: &RenderStyle, theme: &Theme) -> Option<Gradient> {
-    if let Some(spec) = style.background_gradient {
-        return Some(legacy(rect, spec, theme));
-    }
+pub(super) fn fill(rect: Rect, style: &RenderStyle) -> Option<Gradient> {
     let shape = style.paint.gradient?;
     let stops = tailwind_stops(&style.paint);
     let (kind, repeat) = match shape {
@@ -32,21 +27,6 @@ pub(super) fn fill(rect: Rect, style: &RenderStyle, theme: &Theme) -> Option<Gra
         GradientShape::Conic(conic) => (self::conic(rect, conic), conic.repeating),
     };
     Some(Gradient::new(kind, stops).repeat(repeat))
-}
-
-fn legacy(rect: Rect, spec: BgGradient, theme: &Theme) -> Gradient {
-    let engine = StyleEngine::new(theme);
-    let stops: Vec<GradientStop> = spec
-        .stops
-        .iter()
-        .map(|stop| {
-            GradientStop::new(
-                f32::from(stop.offset) / 1000.0,
-                engine.resolve_color(stop.color),
-            )
-        })
-        .collect();
-    Gradient::new(linear(rect, spec.axis), stops)
 }
 
 fn tailwind_stops(paint: &PaintStyle) -> Vec<GradientStop> {

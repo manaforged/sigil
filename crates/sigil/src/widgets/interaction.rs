@@ -16,7 +16,6 @@ pub(crate) struct InteractionState {
     disabled: Signal<Option<Signal<bool>>>,
     hovered: Signal<bool>,
     pressed: Signal<bool>,
-    dragging: Signal<bool>,
     focused: Signal<bool>,
     ring_visible: Signal<bool>,
 }
@@ -29,7 +28,6 @@ impl InteractionState {
             disabled: signal((!enabled).then(|| signal(true))),
             hovered: signal(false),
             pressed: signal(false),
-            dragging: signal(false),
             focused: signal(false),
             ring_visible: signal(false),
         }
@@ -52,14 +50,9 @@ impl InteractionState {
         StyleState {
             disabled: self.disabled.peek().is_some_and(Signal::get),
             hovered: self.hovered.get(),
-            pressed: self.pressed.get() || self.dragging.get(),
+            pressed: self.pressed.get(),
             focused: self.focused.get(),
         }
-    }
-
-    /// Sets whether a drag is active.
-    pub(crate) fn drag(self, next: bool) {
-        set_if_changed(self.dragging, next);
     }
 
     /// Returns the signal that is true while the node has focus.
@@ -74,15 +67,15 @@ impl InteractionState {
             Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
             None => node,
         };
-        let node = node
-            .focusable(true)
-            .hittable(true)
-            .focus_ring(self.focus_ring())
-            .focus_in(move || self.on_focus_in())
-            .focus_out(move || self.on_focus_out())
-            .pointer_enter(move |event| self.pointer_enter(event))
-            .pointer_leave(move |event| self.pointer_leave(event))
-            .pointer_down(move |event| self.pointer_down(event));
+        let node = crate::style::builder_ext::default_focus_ring(
+            node.focusable(true).hittable(true),
+            self.focus_ring(),
+        )
+        .focus_in(move || self.on_focus_in())
+        .focus_out(move || self.on_focus_out())
+        .pointer_enter(move |event| self.pointer_enter(event))
+        .pointer_leave(move |event| self.pointer_leave(event))
+        .pointer_down(move |event| self.pointer_down(event));
         self.track_release(node)
     }
 

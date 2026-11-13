@@ -32,14 +32,41 @@ fn dispatch_gated<T>(
 
 pub(crate) type Callback<E> = Box<dyn Fn(&mut E) + 'static>;
 type FocusCallback = Box<dyn Fn() + 'static>;
-type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
 type A11yEditHandler = Box<dyn Fn(&A11yEdit) -> bool + 'static>;
 
+/// Stage of a pointer drag gesture delivered to [`Widget::pointer_drag`](crate::widgets::Widget::pointer_drag).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum DragPhase {
+    /// Primary pointer press started the drag.
+    Start,
+    /// Pointer moved while captured by the drag.
+    Move,
+    /// Primary pointer release ended the drag.
+    End,
+    /// Pointer cancel or lost capture aborted the drag.
+    Cancel,
+}
+
+/// An accessibility edit request dispatched to a widget handler.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum A11yEdit {
+#[non_exhaustive]
+pub enum A11yEdit {
+    /// Step the numeric value upward.
+    Increment,
+    /// Step the numeric value downward.
+    Decrement,
+    /// Set the value to a specific number.
     Number(f32),
+    /// Replace the text value.
     Text(String),
-    Select { anchor: usize, focus: usize },
+    /// Update the text selection range in UTF-8 byte offsets.
+    Select {
+        /// Byte offset of the stationary end of the selection.
+        anchor: usize,
+        /// Byte offset of the moving end of the selection.
+        focus: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -187,7 +214,6 @@ struct HandlerEntry {
 #[derive(Default)]
 pub(crate) struct EventHandlers {
     entries: Vec<HandlerEntry>,
-    value_adjustment: Option<ValueAdjustment>,
     a11y_edit: Option<A11yEditHandler>,
 }
 
@@ -260,24 +286,12 @@ impl EventHandlers {
             .filter_map(|entry| entry.handler.shortcut())
     }
 
-    pub(crate) fn set_value_adjustment(&mut self, handler: ValueAdjustment) {
-        self.value_adjustment = Some(handler);
-    }
-
     pub(crate) fn set_a11y_edit(&mut self, handler: A11yEditHandler) {
         self.a11y_edit = Some(handler);
     }
 
     pub(crate) fn invoke_a11y_edit(&self, edit: &A11yEdit) -> bool {
         self.a11y_edit.as_ref().is_some_and(|handler| handler(edit))
-    }
-
-    pub(crate) fn invoke_value_adjustment(&self, increase: bool) -> bool {
-        let Some(handler) = &self.value_adjustment else {
-            return false;
-        };
-        handler(increase);
-        true
     }
 
     pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: Callback<KeyEvent>) {

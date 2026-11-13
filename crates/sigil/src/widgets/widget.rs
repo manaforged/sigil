@@ -1,17 +1,17 @@
 use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
-    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut,
-    event_methods, handler_methods,
+    A11yEdit, DragPhase, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
+    ScrollEvent, Shortcut, event_methods, handler_methods,
 };
 use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, Flaw};
 use crate::layout::builder_ext::{install_layout, layout_methods};
 use crate::layout::reactive_position;
-use crate::layout::{LayoutStyle, Length};
+use crate::layout::{CaretGeometry, LayoutStyle, Length, TextStyleCapture};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
-use crate::style::{FocusRing, StateStyleBuilder, Theme, Tone};
+use crate::style::{FocusRing, StateStyleBuilder, TextStyle, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
@@ -201,6 +201,53 @@ pub trait Widget: Sized {
     #[must_use]
     fn focus_when(self, trigger: Signal<u64>) -> Self {
         self.map_node(move |node| on::focus_when(node, trigger))
+    }
+
+    /// Mirrors pointer hover state into `out` when it changes.
+    #[must_use]
+    fn track_hovered(self, out: Signal<bool>) -> Self {
+        self.map_node(move |node| on::track_hovered(node, out))
+    }
+
+    /// Mirrors focus state into `out` when it changes.
+    #[must_use]
+    fn track_focused(self, out: Signal<bool>) -> Self {
+        self.map_node(move |node| on::track_focused(node, out))
+    }
+
+    /// Mirrors primary pointer press state into `out` when it changes, without marking clickable.
+    #[must_use]
+    fn track_pressed(self, out: Signal<bool>) -> Self {
+        self.map_node(move |node| on::track_pressed(node, out))
+    }
+
+    /// Runs `handler` across a captured primary pointer drag lifecycle.
+    #[must_use]
+    fn pointer_drag(self, handler: impl FnMut(DragPhase, &mut PointerEvent) + 'static) -> Self {
+        self.map_node(move |node| on::pointer_drag(node, handler))
+    }
+
+    /// Handles assistive-technology edit and value-adjustment requests on this node.
+    #[must_use]
+    fn a11y_edit(self, handler: impl Fn(&A11yEdit) -> bool + 'static) -> Self {
+        self.map_node(move |node| on::a11y_edit(node, handler))
+    }
+
+    /// Records the node's resolved [`TextStyle`] into `out` after each layout pass.
+    #[must_use]
+    fn capture_text_style(self, out: Signal<TextStyle>) -> Self {
+        self.map_node(move |node| {
+            node.mutate(move |n| {
+                let _ = n.attach(TextStyleCapture::new(out));
+            })
+        })
+    }
+
+    /// Supplies a reactive node-local caret rectangle for IME candidate window placement.
+    #[must_use]
+    fn ime_caret(self, caret: impl Reactive<Option<CaretGeometry>>) -> Self {
+        let signal = caret.into_signal();
+        self.map_node(move |node| on::ime_caret_signal(node, signal))
     }
 }
 

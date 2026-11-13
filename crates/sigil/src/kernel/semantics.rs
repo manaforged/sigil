@@ -43,6 +43,14 @@ impl From<Signal<String>> for AccessibleName {
     }
 }
 
+impl From<&crate::kernel::TextContent> for AccessibleName {
+    fn from(label: &crate::kernel::TextContent) -> Self {
+        label
+            .live()
+            .map_or_else(|| Self::Static(label.resolve()), Self::Derived)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct TextCursor {
     pub(crate) caret: Signal<usize>,

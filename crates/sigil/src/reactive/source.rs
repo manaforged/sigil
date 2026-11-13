@@ -6,31 +6,47 @@ pub(crate) mod sealed {
 
     #[allow(unnameable_types, reason = "sealed")]
     pub trait Sealed<T>: 'static {
-        fn read(&self) -> T;
+        fn read_value(&self) -> T;
 
         #[must_use]
-        fn into_signal(self) -> Signal<T>
+        fn to_signal(self) -> Signal<T>
         where
             Self: Sized,
             T: Clone + PartialEq + 'static,
         {
-            memo(move || self.read())
+            memo(move || self.read_value())
         }
     }
 }
 
-/// A value or a closure that a widget reads inside an effect.
-pub trait Reactive<T>: sealed::Sealed<T> + 'static {}
+/// A value, signal, or closure that a widget reads reactively.
+pub trait Reactive<T>: sealed::Sealed<T> + 'static {
+    /// Reads the current value, subscribing the enclosing reactive scope when backed by a signal.
+    #[track_caller]
+    fn read(&self) -> T {
+        self.read_value()
+    }
+
+    /// Converts this reactive input into a [`Signal<T>`], returning an existing signal unchanged.
+    #[must_use]
+    fn into_signal(self) -> Signal<T>
+    where
+        Self: Sized,
+        T: Clone + PartialEq + 'static,
+    {
+        self.to_signal()
+    }
+}
 
 impl<T, R: sealed::Sealed<T> + 'static> Reactive<T> for R {}
 
 impl<T: Clone + 'static> sealed::Sealed<T> for Signal<T> {
     #[track_caller]
-    fn read(&self) -> T {
+    fn read_value(&self) -> T {
         self.get()
     }
 
-    fn into_signal(self) -> Self
+    fn to_signal(self) -> Self
     where
         T: PartialEq,
     {
@@ -42,39 +58,39 @@ impl<T, F> sealed::Sealed<T> for F
 where
     F: Fn() -> T + 'static,
 {
-    fn read(&self) -> T {
+    fn read_value(&self) -> T {
         self()
     }
 }
 
 impl sealed::Sealed<Self> for String {
-    fn read(&self) -> Self {
+    fn read_value(&self) -> Self {
         self.clone()
     }
 
-    fn into_signal(self) -> Signal<Self> {
+    fn to_signal(self) -> Signal<Self> {
         signal(self)
     }
 }
 
 impl sealed::Sealed<String> for &'static str {
-    fn read(&self) -> String {
+    fn read_value(&self) -> String {
         (*self).to_owned()
     }
 
-    fn into_signal(self) -> Signal<String> {
+    fn to_signal(self) -> Signal<String> {
         signal(self.to_owned())
     }
 }
 
 impl<T: Clone + 'static> sealed::Sealed<Self> for Vec<T> {
-    fn read(&self) -> Self {
+    fn read_value(&self) -> Self {
         self.clone()
     }
 }
 
 impl<T: Clone + 'static, const N: usize> sealed::Sealed<Vec<T>> for [T; N] {
-    fn read(&self) -> Vec<T> {
+    fn read_value(&self) -> Vec<T> {
         self.to_vec()
     }
 }
@@ -83,11 +99,11 @@ macro_rules! copy_reactive {
     ($($ty:ty),+ $(,)?) => {
         $(
             impl sealed::Sealed<Self> for $ty {
-                fn read(&self) -> Self {
+                fn read_value(&self) -> Self {
                     *self
                 }
 
-                fn into_signal(self) -> Signal<Self> {
+                fn to_signal(self) -> Signal<Self> {
                     signal(self)
                 }
             }
@@ -121,27 +137,27 @@ copy_reactive!(
 );
 
 impl<T: Clone + 'static> sealed::Sealed<Vec<T>> for &'static [T] {
-    fn read(&self) -> Vec<T> {
+    fn read_value(&self) -> Vec<T> {
         self.to_vec()
     }
 }
 
 impl<T: Clone + PartialEq + 'static> sealed::Sealed<Self> for Option<T> {
-    fn read(&self) -> Self {
+    fn read_value(&self) -> Self {
         self.clone()
     }
 
-    fn into_signal(self) -> Signal<Self> {
+    fn to_signal(self) -> Signal<Self> {
         signal(self)
     }
 }
 
 impl sealed::Sealed<Option<String>> for Option<&'static str> {
-    fn read(&self) -> Option<String> {
+    fn read_value(&self) -> Option<String> {
         self.map(str::to_owned)
     }
 
-    fn into_signal(self) -> Signal<Option<String>> {
+    fn to_signal(self) -> Signal<Option<String>> {
         signal(self.map(str::to_owned))
     }
 }

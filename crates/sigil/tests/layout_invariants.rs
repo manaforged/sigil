@@ -10,7 +10,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 struct NativeLineGeometry;
 
-impl sigil::layout::TextMeasure for NativeLineGeometry {
+impl sigil::text::TextMeasure for NativeLineGeometry {
     fn measure(
         &self,
         _content: &TextContent,
@@ -26,10 +26,7 @@ impl sigil::layout::TextMeasure for NativeLineGeometry {
         _width: Option<f32>,
         _point: sigil::geometry::Point,
     ) -> sigil::text::HitPosition {
-        sigil::text::HitPosition {
-            byte_index: 0,
-            affinity: sigil::text::TextAffinity::Downstream,
-        }
+        sigil::text::HitPosition::downstream(0)
     }
 
     fn caret(
@@ -38,12 +35,8 @@ impl sigil::layout::TextMeasure for NativeLineGeometry {
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
         _position: sigil::text::HitPosition,
-    ) -> sigil::layout::CaretGeometry {
-        sigil::layout::CaretGeometry {
-            x: 0.0,
-            top: 0.0,
-            height: 19.2,
-        }
+    ) -> sigil::text::CaretGeometry {
+        sigil::text::CaretGeometry::new(0.0, 0.0, 19.2)
     }
 
     fn selection_rects(

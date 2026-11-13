@@ -22,7 +22,8 @@ pub(crate) use focus::ScrollReveal;
 pub(crate) use focus::focus_from_keyboard;
 pub(crate) use focus::note_focus_source;
 pub(crate) use handlers::EventHandlers;
-pub(crate) use handlers::{A11yEdit, dispatch};
+pub(crate) use handlers::dispatch;
+pub use handlers::{A11yEdit, DragPhase};
 #[cfg(not(feature = "kittest"))]
 pub(crate) use router::EventRouter;
 #[cfg(feature = "kittest")]

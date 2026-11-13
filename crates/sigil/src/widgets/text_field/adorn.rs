@@ -1,16 +1,14 @@
-use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::kernel::{IntoNode, NodeBuilder, NodeId, container};
-use crate::style::strings::StringKey;
-use crate::style::theme::ambient::theme_label;
-use crate::widgets::Widget;
-use crate::widgets::button::button;
+use crate::layout::{AlignItems, LayoutStyle, Space};
+use crate::node::{IntoNode, NodeBuilder, NodeId, container};
+use crate::reactive::memo;
+use crate::style::{StringKey, Theme};
 use crate::widgets::icon::DISMISS_GLYPH;
+use crate::widgets::{Widget, button};
 
 use super::handlers::TextFieldRuntime;
-use crate::layout::{AlignItems, LayoutStyle};
 
 #[derive(Default)]
 pub(super) struct Adornments {
@@ -22,53 +20,45 @@ pub(super) struct Adornments {
 pub(super) type FocusSlot = Rc<Cell<Option<NodeId>>>;
 
 pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> NodeBuilder {
-    let value = runtime.input.value;
-    let input = runtime.input.clone();
+    let value = runtime.state.value();
+    let rt = runtime.clone();
     let button = button(DISMISS_GLYPH)
         .ghost()
         .square()
         .activate(move || {
-            if input.disabled() {
-                return;
-            }
-            let mut state = input.edit_mut();
-            state.replace("");
-            input.sync_value(&state);
-            drop(state);
+            rt.clear_text();
             if let Some(id) = target.get() {
                 id.focus();
             }
         })
-        .accessible(theme_label(StringKey::Clear));
+        .accessible(Theme::label(StringKey::Clear));
     container()
         .layout(
             LayoutStyle::flex_row()
                 .shrink(0.0)
                 .align_items(AlignItems::Center),
         )
-        .visible(crate::reactive::memo(move || !value.get().is_empty()))
+        .visible(memo(move || !value.get().is_empty()))
         .child(button)
 }
 
 impl Adornments {
-    pub(super) fn wrap(self, node: NodeBuilder, inner: NodeBuilder) -> NodeBuilder {
-        let node = match self.leading {
-            Some(leading) => node.child(slot(leading, true)),
-            None => node,
-        };
-        let node = node.child(inner);
-        let node = match self.clear {
-            Some(clear) => node.child(clear),
-            None => node,
-        };
-        match self.trailing {
-            Some(trailing) => node.child(slot(trailing, false)),
-            None => node,
+    pub(super) fn wrap(self, mut root: NodeBuilder, inner: NodeBuilder) -> NodeBuilder {
+        if let Some(leading) = self.leading {
+            root = root.child(side_slot(leading, true));
         }
+        root = root.child(inner);
+        if let Some(clear) = self.clear {
+            root = root.child(clear);
+        }
+        if let Some(trailing) = self.trailing {
+            root = root.child(side_slot(trailing, false));
+        }
+        root
     }
 }
 
-fn slot(content: Box<dyn IntoNode>, leading: bool) -> NodeBuilder {
+fn side_slot(child: Box<dyn IntoNode>, leading: bool) -> NodeBuilder {
     let layout = LayoutStyle::flex_row()
         .shrink(0.0)
         .align_items(AlignItems::Center);
@@ -77,5 +67,5 @@ fn slot(content: Box<dyn IntoNode>, leading: bool) -> NodeBuilder {
     } else {
         layout.padding_right(Space::Md)
     };
-    container().layout(layout).child(content)
+    container().layout(layout).child(child)
 }

@@ -1,6 +1,7 @@
+#[cfg(feature = "kittest")]
+use crate::layout::style_data::AlignContent;
 use crate::layout::style_data::{
-    AlignContent, AlignItems, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent,
-    Position, StyleData,
+    AlignItems, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
 };
 use crate::style::merge::SlotSet;
 

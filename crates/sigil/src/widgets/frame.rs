@@ -53,7 +53,8 @@ impl WidgetFrame {
 
     /// Applies the accumulated caller style, layout overrides, and hooks onto `root`.
     pub fn finish(self, root: NodeBuilder) -> NodeBuilder {
-        self.layout.finish(caller_style(root, self.style))
+        self.layout
+            .finish(caller_style(root.seal_style(), self.style))
     }
 }
 

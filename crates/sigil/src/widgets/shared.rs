@@ -20,10 +20,14 @@ pub(crate) use press::{RELEASE, RELEASE_ENTER, RELEASE_ENTER_SPACE, flip, press}
 
 pub(crate) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
-pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
+pub(in crate::widgets) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
 pub(crate) fn noop_activate() -> Activate {
     Rc::new(|| {})
+}
+
+pub(in crate::widgets) fn noop_change() -> TextChange {
+    Rc::new(|_| {})
 }
 
 pub(crate) fn binary_style_state(
@@ -136,10 +140,7 @@ pub(crate) fn accessible_name_or(
 }
 
 pub(crate) fn accessible_name(label: &TextContent) -> AccessibleName {
-    label.live().map_or_else(
-        || AccessibleName::Static(label.resolve()),
-        AccessibleName::Derived,
-    )
+    AccessibleName::from(label)
 }
 
 pub(crate) struct TextInputProps {

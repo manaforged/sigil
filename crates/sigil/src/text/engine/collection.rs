@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 
 const OBLIQUE_SKEW: f32 = 0.2;
 
+#[doc(hidden)]
 pub struct FontCollection {
     sans: FontFaces,
     mono: FontFaces,

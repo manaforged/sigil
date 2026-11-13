@@ -1,4 +1,4 @@
-use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
+use crate::style::atom::{PaintAtom, StopSlot};
 use crate::style::{
     AnimatorOverlay, Color, ColorAtomKind, ColorValue, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Tone,
@@ -93,11 +93,10 @@ impl<'theme> StyleEngine<'theme> {
     fn apply_atom(self, atom: StyleAtom, render: &mut RenderStyle) {
         match atom {
             StyleAtom::BackgroundColor(color) => {
-                fill(render, Some(self.resolve_color(color)), None);
+                render.background_color = Some(self.resolve_color(color));
             }
-            StyleAtom::BackgroundGradient(gradient) => fill(render, None, Some(gradient)),
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
-            StyleAtom::BgToneStep(step) => fill(render, Some(self.tone_step(step)), None),
+            StyleAtom::BgToneStep(step) => render.background_color = Some(self.tone_step(step)),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
                 render.text_color = Some(self.theme.scale(self.tone).on_solid);
@@ -194,17 +193,12 @@ impl<'theme> StyleEngine<'theme> {
             PaintAtom::StopAt(slot, percent) => {
                 set_stop(&mut render.paint.positions, slot, Some(percent));
             }
-            PaintAtom::NoColor => fill(render, None, None),
+            PaintAtom::NoColor => render.background_color = None,
             PaintAtom::ClipText => render.paint.clip_text = true,
             PaintAtom::Image(id) => render.paint.image = Some(id),
             PaintAtom::Border(style) => render.paint.border = style,
         }
     }
-}
-
-const fn fill(render: &mut RenderStyle, color: Option<Color>, gradient: Option<BgGradient>) {
-    render.background_color = color;
-    render.background_gradient = gradient;
 }
 
 fn set_stop<T>(stops: &mut [Option<T>; 3], slot: StopSlot, value: Option<T>) {
@@ -288,7 +282,6 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::GridColumns(_)
         | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)

@@ -1,7 +1,5 @@
-use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::Orientation;
-use crate::layout::Space;
-use crate::layout::{AlignItems, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle, Orientation, Space};
+use crate::node::{NodeBuilder, container, text};
 use crate::style::{ControlSize, Metrics};
 use crate::widgets::Widget;
 

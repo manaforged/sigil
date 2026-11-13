@@ -112,7 +112,6 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
     let style = Style::new();
     match atom {
         StyleAtom::BackgroundColor(color) => style.background(color),
-        StyleAtom::BackgroundGradient(gradient) => style.background(gradient),
         StyleAtom::TextColor(color) => style.text_color(color),
         StyleAtom::BorderColor(color) => style.border_color(color),
         StyleAtom::BorderWidth(px) => style.border_width(px),
@@ -143,7 +142,7 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
 
 fn lowered(atom: StyleAtom) -> Vec<StyleAtom> {
     match atom {
-        StyleAtom::BackgroundColor(_) | StyleAtom::BackgroundGradient(_) => vec![atom, NO_GRADIENT],
+        StyleAtom::BackgroundColor(_) => vec![atom, NO_GRADIENT],
         StyleAtom::Transition(id) => {
             let (ms, easing, delay) = timing(id);
             vec![

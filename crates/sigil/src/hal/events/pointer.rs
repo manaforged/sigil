@@ -117,6 +117,10 @@ impl PointerTilt {
     }
 }
 
+const CAPTURE_REQUESTED: u8 = 1;
+const CAPTURED: u8 = 2;
+const DEFAULT_PREVENTED: u8 = 4;
+
 /// A pointer event.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
@@ -133,8 +137,7 @@ pub struct PointerEvent {
     pub(crate) pointer_id: u64,
     pub(crate) pressure: Option<f32>,
     pub(crate) tilt: Option<PointerTilt>,
-    capture_requested: bool,
-    captured: bool,
+    flags: u8,
     pub(super) propagation_stopped: bool,
 }
 
@@ -153,8 +156,7 @@ impl PointerEvent {
             pointer_id: 0,
             pressure: None,
             tilt: None,
-            capture_requested: false,
-            captured: false,
+            flags: 0,
             propagation_stopped: false,
         }
     }
@@ -247,24 +249,39 @@ impl PointerEvent {
 
     /// Sends later pointer events to this node until release.
     pub const fn capture_pointer(&mut self) {
-        self.capture_requested = true;
+        self.flags |= CAPTURE_REQUESTED;
+    }
+
+    /// Marks the event so built-in default handling (such as drag capture) is skipped.
+    pub const fn prevent_default(&mut self) {
+        self.flags |= DEFAULT_PREVENTED;
+    }
+
+    /// Returns whether default handling was prevented on this event.
+    #[must_use]
+    pub const fn default_prevented(&self) -> bool {
+        self.flags & DEFAULT_PREVENTED != 0
     }
 
     /// Returns whether this pointer event is captured.
     #[must_use]
     pub const fn is_captured(&self) -> bool {
-        self.captured
+        self.flags & CAPTURED != 0
     }
 
     /// Returns whether capture requested is set.
     #[must_use]
     pub(crate) const fn capture_requested(&self) -> bool {
-        self.capture_requested
+        self.flags & CAPTURE_REQUESTED != 0
     }
 
     /// Sets the captured.
     pub(crate) const fn set_captured(&mut self, captured: bool) {
-        self.captured = captured;
+        if captured {
+            self.flags |= CAPTURED;
+        } else {
+            self.flags &= !CAPTURED;
+        }
     }
 }
 
