@@ -92,7 +92,7 @@ fn right_aligned_numbers_are_clean() {
 }
 
 #[test]
-fn asymmetric_container_is_skipped() {
+fn a_waived_ragged_column_is_clean() {
     let tree = stack(ragged()).allow_flaw(Flaw::Column, "titles run ragged on purpose");
     assert_eq!(found("align-waived", tree), Vec::new());
 }

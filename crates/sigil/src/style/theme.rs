@@ -68,8 +68,8 @@ pub struct Theme {
 impl Theme {
     /// The 12-step color scale of `tone`.
     #[must_use]
-    pub const fn scale(&self, role: Tone) -> &ColorScale {
-        match role {
+    pub const fn scale(&self, tone: Tone) -> &ColorScale {
+        match tone {
             Tone::Neutral => &self.gray,
             Tone::Primary => &self.accent_scale,
             Tone::Success => &self.success,

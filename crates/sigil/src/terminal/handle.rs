@@ -5,13 +5,13 @@ use crate::reactive::Signal;
 
 /// The terminal that the current thread drives.
 #[derive(Clone, Copy, Debug)]
-pub struct Terminal(());
+pub struct Terminal(std::marker::PhantomData<*const ()>);
 
 impl Terminal {
     /// Returns the handle of the terminal that the current thread drives.
     #[must_use]
     pub const fn current() -> Self {
-        Self(())
+        Self(std::marker::PhantomData)
     }
 
     /// Sets the terminal title; it is written at once when the terminal host is live.

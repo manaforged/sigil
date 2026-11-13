@@ -161,7 +161,7 @@ impl Token {
         self as usize
     }
 
-    /// The scale role and step (1 to 12) of this token; `None` for a token outside the scales.
+    /// The tone and step (1 to 12) of this token; `None` for a token outside the scales.
     #[must_use]
     pub fn scale_step(self) -> Option<(Tone, u8)> {
         let offset = self.index().checked_sub(SEMANTIC)?;

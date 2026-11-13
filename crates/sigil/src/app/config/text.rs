@@ -14,7 +14,7 @@ pub(crate) struct TextSetup {
 }
 
 impl AppConfig {
-    /// Replaces the bundled face of `family` with face `face` of the font file `bytes`.
+    /// Replaces the bundled face of `family` with face `face` of the font file `bytes`; `Serif` has no bundled face and is ignored.
     #[cfg(feature = "scene")]
     #[must_use]
     pub fn font(mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) -> Self {

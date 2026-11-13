@@ -275,7 +275,7 @@ impl KeyEvent {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ImeEvent {
-    /// A composition started.
+    /// The input method turned on; composed text can follow.
     Enabled,
     /// The text being composed and the caret range in it, in bytes; an empty text clears it.
     Preedit(String, Option<(usize, usize)>),
