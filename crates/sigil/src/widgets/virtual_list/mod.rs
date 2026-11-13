@@ -25,7 +25,7 @@ use super::scroll::ScrollAxis;
 use super::table::Identifiable;
 pub(crate) use end::EndReached;
 pub use row::RowRender;
-pub use selection::{SelectionMode, SelectionState};
+pub use selection::{Selection, SelectionMode};
 
 pub(crate) const DEFAULT_ROW_HEIGHT: f32 = 32.0;
 pub(crate) const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
@@ -53,7 +53,7 @@ struct BuildAxes {
     scroll_y: Signal<f32>,
     scroll_x: Option<ScrollAxis>,
     focused_row: Signal<usize>,
-    selection_state: Signal<SelectionState>,
+    selection_state: Signal<Selection>,
     viewport: Signal<(f32, f32)>,
     tops: Option<measure::Tops>,
     keys: Option<measure::Keys>,
@@ -88,7 +88,7 @@ where
     scroll_y: Option<Signal<f32>>,
     scroll_x: Option<ScrollAxis>,
     focused_row: Option<Signal<usize>>,
-    selection_state: Option<Signal<SelectionState>>,
+    selection_state: Option<Signal<Selection>>,
     selection_mode: SelectionMode,
     keyboard_enabled: bool,
     item_height: Option<Box<ItemHeightFn<T>>>,
@@ -314,7 +314,7 @@ where
 
     /// The signal that holds the selected rows; the first call creates it.
     #[must_use]
-    pub fn selection_state(&mut self) -> Signal<SelectionState> {
+    pub fn selection_state(&mut self) -> Signal<Selection> {
         self.ensure_selection_state()
     }
 
@@ -328,7 +328,7 @@ where
     pub fn change(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
         effect(move || {
-            if let Some(index) = selection.get().selected_indices().next() {
+            if let Some(index) = selection.get().indices().next() {
                 f(index);
             }
         });

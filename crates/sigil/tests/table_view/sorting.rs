@@ -107,14 +107,14 @@ fn selected_row_paints_selection_bg() {
             !rect_colors(&cx, root).contains(&selection_bg),
             "nothing selected at rest",
         );
-        state.select_only(1);
+        state.select(1);
         assert!(
             rect_colors(&cx, root).contains(&selection_bg),
             "selected row paints the accent-5 selection slice; \
              colours: {:?}",
             rect_colors(&cx, root),
         );
-        state.clear_selection();
+        state.clear();
         assert!(
             !rect_colors(&cx, root).contains(&selection_bg),
             "clearing the selection restores the rest paint",

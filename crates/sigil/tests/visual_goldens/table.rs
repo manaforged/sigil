@@ -78,7 +78,7 @@ fn table_default() {
 fn table_selected() {
     let img = Harness::render(|| {
         let state = table_golden_state();
-        state.select_only(1);
+        state.select(1);
         container()
             .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
             .background(Token::Surface)

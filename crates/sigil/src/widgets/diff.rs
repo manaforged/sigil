@@ -21,7 +21,7 @@ mod rows;
 mod selection;
 
 pub use patch::{Hunk, Line, LineId, LineKind, Patch};
-pub use selection::Selection;
+pub use selection::DiffSelection;
 
 use model::{DiffRow, model};
 use rows::ROW_INSET;
@@ -80,7 +80,7 @@ struct DiffShape {
     view: DiffView,
     max_rows: usize,
     wrap: bool,
-    selection: Option<Signal<Selection>>,
+    selection: Option<Signal<DiffSelection>>,
 }
 
 /// Builder of a diff view.
@@ -150,7 +150,7 @@ impl DiffBuilder {
     }
 
     /// Binds the selection; a press on a hunk row or a line row updates it.
-    pub const fn select(mut self, selection: Signal<Selection>) -> Self {
+    pub const fn select(mut self, selection: Signal<DiffSelection>) -> Self {
         self.shape.selection = Some(selection);
         self
     }

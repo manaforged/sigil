@@ -123,15 +123,15 @@ fn selection_ops_follow_click_shapes() {
     Owner::scope("table-selection", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("name");
-        state.select_only(1);
+        state.select(1);
         assert!(state.selection().get().contains(&1));
-        state.select_range_to(2);
+        state.extend(2);
         let selected = state.selection().get();
         assert_eq!(selected.len(), 3);
         assert!(selected.contains(&1) && selected.contains(&3) && selected.contains(&2));
-        state.toggle_selected(3);
+        state.toggle(3);
         assert!(!state.selection().get().contains(&3));
-        state.clear_selection();
+        state.clear();
         assert!(state.selection().get().is_empty());
     });
 }
@@ -140,7 +140,7 @@ fn selection_ops_follow_click_shapes() {
 fn set_rows_keeps_in_range_selection_and_recomputes_visible() {
     Owner::scope("table-set-rows", || {
         let state = TableState::new(items(), columns());
-        state.select_only(0);
+        state.select(0);
         state.toggle_sort("name");
         state.replace_rows(vec![
             Item {
@@ -162,7 +162,7 @@ fn set_rows_keeps_in_range_selection_and_recomputes_visible() {
 fn replace_rows_with_key_keeps_the_named_row() {
     Owner::scope("table-replace-key", || {
         let state = TableState::identified(items(), columns());
-        state.select_only(0);
+        state.select(0);
         assert_eq!(state.selected_row().map(|row| row.name), Some("gamma"));
         state.replace_rows(vec![
             Item {
@@ -183,7 +183,7 @@ fn replace_rows_with_key_keeps_the_named_row() {
 fn set_rows_drops_indices_past_the_new_len() {
     Owner::scope("table-set-rows-prune", || {
         let state = TableState::new(items(), columns());
-        state.select_only(3);
+        state.select(3);
         state.replace_rows(vec![Item {
             name: "only",
             count: 1,

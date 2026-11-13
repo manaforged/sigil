@@ -6,9 +6,9 @@ use super::Matcher;
 /// What a list cursor does at the end of the list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CursorEdge {
-    /// The clamp cursor edge.
+    /// The cursor stops at the first and the last row.
     Clamp,
-    /// The wrap cursor edge.
+    /// The cursor moves from the last row to the first, and back.
     Wrap,
 }
 

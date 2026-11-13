@@ -305,7 +305,7 @@ pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
 pub use diff::{
-    DiffBuilder, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, Selection, diff,
+    DiffBuilder, DiffSelection, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, diff,
 };
 pub use divider::divider;
 pub use dot::{DotBuilder, dot};
@@ -372,8 +372,7 @@ pub use tooltip::{TooltipBuilder, tooltip};
 pub use tree::{TreeBuilder, TreeNode, tree};
 pub use vector::{PathBuilder, path};
 pub use virtual_list::{
-    IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,
-    virtual_list,
+    IntoList, RowRender, ScrollAnchor, Selection, SelectionMode, VirtualListBuilder, virtual_list,
 };
 pub use widget::Widget;
 kittest_pub! {

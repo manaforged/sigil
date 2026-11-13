@@ -84,7 +84,7 @@ fn bench_replace(c: &mut Criterion) {
                 let rows = rows(10_000);
                 let state = TableState::identified(rows.clone(), columns());
                 if selected {
-                    state.select_only(0);
+                    state.select(0);
                 }
                 b.iter_batched(
                     || rows.clone(),
@@ -113,7 +113,7 @@ fn bench_shared_replace(c: &mut Criterion) {
                 let second = Arc::new(second);
                 let state = TableState::identified((*first).clone(), columns());
                 if selected > 0 {
-                    state.select_only(0);
+                    state.select(0);
                     state.selection().set(Rc::new((0..selected).collect()));
                 }
                 let mut flip = false;

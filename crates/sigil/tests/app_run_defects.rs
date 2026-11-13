@@ -112,7 +112,7 @@ fn a_selected_row_the_filter_hides_leaves_the_selection() {
                 TableColumn::new("name", "Name").filterable(|p: &Proc, q: &str| p.name.contains(q)),
             ],
         );
-        state.select_only(0);
+        state.select(0);
         assert_eq!(state.selected_row().map(|p| p.name), Some("postgres"));
 
         state.quick_filter().set(String::from("sh"));

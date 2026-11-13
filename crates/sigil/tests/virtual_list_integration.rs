@@ -96,7 +96,7 @@ fn selection_propagates_to_a11y() {
             .viewport_width(320.0)
             .selection(SelectionMode::Single);
         let selection = builder.selection_state();
-        selection.update(|state| state.click(5));
+        selection.update(|state| state.select(5));
 
         let mut cx = Cx::new_root();
         let root = cx.add(builder);

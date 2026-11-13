@@ -29,7 +29,7 @@ Key options:
 - `.overscan(pages)`: extra viewport-heights rendered above and below.
 - `.key_by(Fn(usize, &T) -> u64)` / `.identified()`: stable row keys (`identified` requires `T: Identifiable`) so focus and selection survive reordering.
 - `.measured()`: each row lays out at the list width and reports its height. The heights go into one cache keyed by the row key (or the index without `key_by`). A row that has not laid out yet uses `.estimate(len)` (default: the row height). The cache clears when the row width changes, and drops the keys of removed rows when the items change. `follow_row` and `follow_end` keep the tail pinned while rows grow and measurements replace estimates. When the list is scrolled up, a height change above the first visible row moves the scroll offset by the same amount, so the visible rows stay still. The host lays out again in the same frame when a measured size changes, so a new height never paints at the old offset.
-- `.selection(SelectionMode)`: `None`, `Single`, `Multi`, `Extend`. `.selection_state(&mut self) -> Signal<SelectionState>` exposes the state object (`contains`, `selected_indices`, `click`, `ctrl_click`, `shift_click`); `.change(Fn(usize))` is a convenience effect over the first selected index.
+- `.selection(SelectionMode)`: `None`, `Single`, `Multi`, `Extend`. `.selection_state(&mut self) -> Signal<Selection>` exposes the state object (`contains`, `indices`, `select`, `toggle`, `extend`, `clear`); `.change(Fn(usize))` is a convenience effect over the first selected index.
 - `.scroll_bind(Signal<f32>)` / `.scroll_x_bind(scroll_x, max, width)`: bind scroll to external signals.
 - `.cursor(Signal<usize>)`: the keyboard-focused row. Arrow keys write it, and the list keeps that row in view unless `.follow_row` names another target.
 - `.content_height_bind(Signal<f32>)` / `.max_scroll_bind(Signal<f32>)`: the list writes its content height and its largest scroll offset (content height minus the viewport) to these signals. Both use the same scroll model as the list: measured tops, variable heights, or fixed rows. To page from outside the list, write `scroll_bind` clamped to `0.0..=max_scroll`. To jump to the tail, write `max_scroll`.
@@ -76,7 +76,7 @@ table(state).striped().fill_height();
 - `TableState::new(rows, columns)`: index-based selection.
 - `TableState::identified(rows, columns)`: selection tracks `Identifiable::id` (`Clone + Eq + Hash`; implemented for `Arc<Row>` too), so `replace_rows` keeps the same logical rows selected.
 - `replace_rows(Into<Arc<Vec<Row>>>)`, `columns()`, `visible() -> Signal<Rc<Vec<u32>>>` (the sorted+filtered index list), `selected_index()`, `selected_row()`, `selection() -> Signal<Rc<HashSet<u32>>>`.
-- Selection writes: `select_only(row)`, `toggle_selected(row)`, `select_range_to(row)`, `clear_selection()`.
+- Selection writes: `select(row)`, `toggle(row)`, `extend(row)`, `clear()`.
 - `sort_key() -> Signal<Option<SortKey>>`, `toggle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
 - Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 

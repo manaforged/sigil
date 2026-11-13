@@ -42,7 +42,7 @@ pub(crate) fn table_demo(selected: bool, disabled: Signal<bool>) -> impl IntoNod
         repo_columns(),
     );
     if selected {
-        rows.select_only(1);
+        rows.select(1);
     }
     table(rows)
         .striped()

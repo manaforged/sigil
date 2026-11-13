@@ -84,7 +84,7 @@ fn select_fires_with_selected_index() {
         let mut cx = Cx::new_root();
         let _ = cx.add(builder);
 
-        selection.update(|state| state.click(7));
+        selection.update(|state| state.select(7));
         assert_eq!(last_index.get(), Some(7));
     });
 }

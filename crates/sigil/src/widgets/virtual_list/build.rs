@@ -12,7 +12,7 @@ use super::keyboard::{KeyboardRuntime, attach_key_handlers};
 use super::measure::Measure;
 use super::render::{content_container, viewport_container, width_spec};
 use super::scroll::{self, apply_bound_scroll, attach_wheel};
-use super::selection::{SelectionRuntime, SelectionState};
+use super::selection::{Selection, SelectionRuntime};
 use super::strip::{BoundStrip, bound_strip};
 use super::window::{self, strip_height};
 use super::{
@@ -198,16 +198,16 @@ where
         }
     }
 
-    pub(super) fn ensure_selection_state(&mut self) -> Signal<SelectionState> {
+    pub(super) fn ensure_selection_state(&mut self) -> Signal<Selection> {
         if let Some(state) = self.selection_state {
             state.update(|state| {
                 if state.mode() != self.selection_mode {
-                    *state = SelectionState::new(self.selection_mode);
+                    *state = Selection::new(self.selection_mode);
                 }
             });
             state
         } else {
-            let state = signal(SelectionState::new(self.selection_mode));
+            let state = signal(Selection::new(self.selection_mode));
             self.selection_state = Some(state);
             state
         }

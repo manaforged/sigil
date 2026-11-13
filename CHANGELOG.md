@@ -162,6 +162,9 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `SelectionState` with `click`, `ctrl_click`, `shift_click`, `selected_indices` | `Selection` with `select`, `toggle`, `extend`, `indices`, `clear` |
+| `TableState::select_only`, `toggle_selected`, `select_range_to`, `clear_selection` | `TableState::select`, `toggle`, `extend`, `clear` |
+| diff `Selection` with public `hunks` and `lines` | `DiffSelection` with `hunks()` and `lines()` |
 | `States::disabled_style` | `States::disabled_paint` |
 | `widgets::close_top_escape` | `widgets::close_popup` |
 | `MouseButtons::EMPTY` | `MouseButtons::empty()` |
