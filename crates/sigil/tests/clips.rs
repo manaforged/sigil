@@ -21,7 +21,7 @@ use sigil::style::{Paint, Radius, Rgba};
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 #[path = "clips/perf.rs"]
 mod perf;
@@ -308,10 +308,7 @@ fn clipped_scenes_agree_on_the_cpu_and_the_gpu() {
         measured.mean,
         measured.close * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }
 
 fn clip_path_disc() -> impl IntoNode {

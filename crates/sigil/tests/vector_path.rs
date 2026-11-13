@@ -18,7 +18,7 @@ use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJo
 use sigil::style::Rgba;
 use sigil::widgets::{PathBuilder, canvas, path};
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 #[path = "vector_path/blend.rs"]
 mod blend;
@@ -277,10 +277,7 @@ fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
         measured.mean,
         measured.close * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }
 
 #[test]

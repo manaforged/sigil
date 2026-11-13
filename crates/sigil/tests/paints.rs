@@ -16,7 +16,7 @@ use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::style::{Background, GradientAxis, Radial, RadialExtent, Rgba};
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 #[path = "paints/borders.rs"]
 mod borders;
@@ -363,8 +363,5 @@ fn paints_agree_on_the_cpu_and_the_gpu() {
         measured.mean,
         measured.close * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
 }

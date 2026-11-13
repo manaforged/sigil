@@ -3,7 +3,7 @@
 
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil_kittest::parity::{
-    Diff, Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff, gpu_rgba, minimize,
+    Diff, Frame, cpu_rgba, diff, gpu_rgba, minimize,
 };
 use sigil_kittest::scene_gen::{GeneratedScene, fixture_text, stress};
 
@@ -29,7 +29,7 @@ fn compare(gpu: &mut WgpuRenderer, scene: &GeneratedScene) -> Result<Diff, Strin
 
 fn diverges(d: &Result<Diff, String>) -> bool {
     !d.as_ref()
-        .is_ok_and(|d| d.mean <= MAX_MEAN_DIFF && d.close >= MIN_CLOSE_FRACTION)
+        .is_ok_and(|d| d.is_close())
 }
 
 #[test]

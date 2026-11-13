@@ -78,6 +78,23 @@ pub struct Diff {
     pub close: f32,
 }
 
+impl Diff {
+    /// Whether the difference is inside `MAX_MEAN_DIFF` and `MIN_CLOSE_FRACTION`.
+    #[must_use]
+    pub fn is_close(self) -> bool {
+        self.mean <= MAX_MEAN_DIFF && self.close >= MIN_CLOSE_FRACTION
+    }
+
+    /// Fails unless the difference is inside `MAX_MEAN_DIFF` and `MIN_CLOSE_FRACTION`.
+    #[track_caller]
+    pub fn assert_close(self) {
+        assert!(
+            self.is_close(),
+            "cpu and gpu differ: {self:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
+        );
+    }
+}
+
 /// Compares two RGBA byte buffers pixel by pixel over their common length, ignoring alpha.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]

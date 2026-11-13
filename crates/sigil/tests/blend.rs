@@ -22,7 +22,7 @@ use sigil::scene::{
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
-use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
+use sigil_kittest::parity::{Frame, cpu_rgba, diff};
 
 #[path = "blend/model.rs"]
 mod model;
@@ -172,10 +172,7 @@ fn blended_layers_agree_on_the_cpu_and_the_gpu() {
         measured.mean,
         measured.close * 100.0
     );
-    assert!(
-        measured.mean <= MAX_MEAN_DIFF && measured.close >= MIN_CLOSE_FRACTION,
-        "cpu and gpu differ: {measured:?}, limits mean {MAX_MEAN_DIFF} close {MIN_CLOSE_FRACTION}"
-    );
+    measured.assert_close();
     for (row, alpha) in [(0, 255), (1, HALF)] {
         for column in (0..COLUMNS).filter(|c| checked(BlendMode::ALL[*c], alpha)) {
             let (a, b) = (probe(&gpu, column, row), probe(&cpu, column, row));
