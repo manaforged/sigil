@@ -9,7 +9,7 @@ pub enum Ink {
     /// No color is set; the terminal uses its default color.
     #[default]
     Bare,
-    /// The ANSI color of a tone, which the palette of the terminal decides.
+    /// The ANSI color of a tone from the palette of the terminal; `Tone::Neutral` is the default color.
     Of(Tone),
     /// This RGB color, mapped to the nearest color the terminal shows.
     Exact(Color),

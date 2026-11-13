@@ -47,7 +47,7 @@ impl core::fmt::Debug for SubmenuBuilder {
 
 macro_rules! level_builder_methods {
     () => {
-        /// Adds an item; its hint shows after the label and search matches it too.
+        /// Adds an item; its hint shows after the label and search matches it, and its submenu mark is not drawn.
         pub fn item(mut self, item: MenuItem) -> Self {
             self.level.item(item);
             self

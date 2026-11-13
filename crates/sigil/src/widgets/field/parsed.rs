@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::reactive::{Reactive, Signal, effect, memo, signal};
 use crate::style::Theme;
 use crate::style::theme::ambient::ActiveTheme;
+use crate::widgets::Widget;
 
 use super::super::text_field::{TextFieldBuilder, text_field};
 
@@ -66,7 +67,7 @@ impl<P: FieldParser> ParsedField<P> {
             }
         });
         let on_blur = Rc::clone(&tidy);
-        inner = inner.submit(move |_| tidy()).focus_lost(move || on_blur());
+        inner = inner.submit(move |_| tidy()).focus_out(move || on_blur());
         Self {
             inner,
             buffer,

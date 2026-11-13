@@ -277,7 +277,7 @@ fn build_field(state: Combobox) -> TextFieldBuilder {
     };
     field
         .placeholder(state.placeholder)
-        .focus_lost(move || ListModel::blur(&state))
+        .focus_out(move || ListModel::blur(&state))
         .height(FIELD_HEIGHT)
         .change(move |text| state.edit(text))
         .submit(move |_| {

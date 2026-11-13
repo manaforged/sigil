@@ -35,7 +35,7 @@ pub struct LineId {
 pub struct Line {
     /// Whether the line was added, removed or kept.
     pub(crate) kind: LineKind,
-    /// The text of the line without its marker.
+    /// The text of the line without its marker; a note line keeps its backslash.
     pub(crate) text: String,
     /// The line number in the old text; `None` for an added line.
     pub(crate) old: Option<usize>,
@@ -67,7 +67,7 @@ impl Line {
         self.kind
     }
 
-    /// The text of the line without its marker.
+    /// The text of the line without its marker; a note line keeps its backslash.
     #[must_use]
     pub fn text(&self) -> &str {
         &self.text

@@ -214,9 +214,9 @@ pub enum FlexDirection {
     Row,
     /// Children run in a column from the top.
     Column,
-    /// Children run in a row from the end edge.
+    /// Children run in a row in reverse order.
     RowReverse,
-    /// Children run in a column from the bottom.
+    /// Children run in a column in reverse order.
     ColumnReverse,
 }
 

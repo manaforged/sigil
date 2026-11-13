@@ -208,12 +208,12 @@ impl ListRowBuilder {
     }
 
     /// Lets the status and the columns shrink when the row is narrow.
-    pub const fn shrink(mut self) -> Self {
+    pub const fn shrink_status(mut self) -> Self {
         self.shrink = true;
         self
     }
 
-    /// Sets the width of the title in pixels; without it the title takes the free width.
+    /// Sets the width of the title in pixels; without it the title takes the free width, or its own width when a detail is set.
     pub const fn title_width(mut self, width: f32) -> Self {
         self.title_width = Some(width);
         self

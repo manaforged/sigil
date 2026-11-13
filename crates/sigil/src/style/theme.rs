@@ -136,19 +136,15 @@ impl Theme {
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the number and date formats of the theme.
     #[must_use]
-    #[doc(hidden)]
     pub const fn locale(mut self, locale: Locale) -> Self {
         self.locale = locale;
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the string table of the theme.
     #[must_use]
-    #[doc(hidden)]
     pub fn strings(mut self, strings: Strings) -> Self {
         self.strings = strings;
         self

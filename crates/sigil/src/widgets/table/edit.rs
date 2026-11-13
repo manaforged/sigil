@@ -226,7 +226,7 @@ fn editor_field<Row: 'static>(
         .child(
             text_field(editor.buffer)
                 .placeholder(title.to_owned())
-                .focus_lost(move || editor.leave(&blurred, cell))
+                .focus_out(move || editor.leave(&blurred, cell))
                 .autofocus(),
         )
 }

@@ -167,9 +167,8 @@ First public release.
 | `Harness::present(tree, cols, rows, events)` | `Harness::new(tree).size(cols, rows).send(events).text()` |
 | `Harness::snapshot_with(name, pct)` | `Golden::new(name).delta(pct).assert(ui.image())` |
 | `ColorAtom` | `ColorValue` |
-| `TextFieldBuilder::blur(f)` | `focus_lost(f)`; `blur(px)` is the filter |
+| `TextFieldBuilder::blur(f)` | `focus_out(f)`, as on every widget; `blur(px)` is the filter |
 | `ModalBuilder::show(signal)` | `modal(signal)` |
-| `ButtonBuilder::icon_svg(svg)` | `button(Glyph::svg(svg))`, or `icon(Icon)` |
 | `Token::COUNT`, `Token::index()` | `Token::ALL.len()`, a position in `Token::ALL` |
 | `command_menu().item(label, action)`, `.detail(text)`, `.disabled(label)` | `.item(MenuItem::new(label).hint(text).disabled(true).activate(action))` |
 | `app::FrameInfo`, `app::FrameOutput` | `app::Frame`: `Host::frame` returns it and the paint hook receives it; `info.layout_ok` is `frame.layout.is_ok()` |

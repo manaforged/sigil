@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::Style;
-use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -27,7 +26,6 @@ pub struct TextFieldBuilder {
     pub(super) invalid: Option<Signal<bool>>,
     pub(super) change: Option<TextChange>,
     pub(super) submit: Option<TextChange>,
-    blur: Option<Rc<dyn Fn() + 'static>>,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
@@ -77,7 +75,6 @@ impl TextFieldBuilder {
             invalid: None,
             change: None,
             submit: None,
-            blur: None,
             clipboard: None,
             caret_visible: None,
             scroll_offset: None,
@@ -134,18 +131,6 @@ impl TextFieldBuilder {
     /// Calls `f` with the text when Enter is pressed; each call adds a callback.
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(chain(self.submit.take(), f));
-        self
-    }
-
-    /// Calls `f` when the field loses focus; each call adds a callback.
-    pub fn focus_lost(mut self, f: impl Fn() + 'static) -> Self {
-        self.blur = Some(match self.blur.take() {
-            Some(before) => Rc::new(move || {
-                before();
-                f();
-            }),
-            None => Rc::new(f),
-        });
         self
     }
 
@@ -230,10 +215,7 @@ impl TextFieldBuilder {
             runtime.clone(),
             adorn,
         );
-        let mut node = interaction.install(attach_key_handlers(node, &runtime));
-        if let Some(blur) = self.blur {
-            node = node.focus_out(move || blur());
-        }
+        let node = interaction.install(attach_key_handlers(node, &runtime));
         let node = caller_style(node, self.style_accumulator);
         let overrides = std::mem::take(&mut self.layout_overrides);
         (overrides.finish(node.with(field_layout(width))), runtime)

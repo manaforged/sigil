@@ -19,7 +19,7 @@ kittest_pub! {
     pub struct Attribution {
         /// The kind of work that was counted, such as a layout pass or a GPU layer.
         pub hotspot: Hotspot,
-        /// The name of what the work was done for; `(other)` holds the subjects past the cap of 64.
+        /// The name of what the work was done for; `(other)` holds every subject after the first 63 of a frame.
         pub subject: String,
         /// The amount counted for this subject in the frame, in the hotspot's unit.
         pub count: u64,

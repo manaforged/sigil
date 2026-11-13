@@ -136,8 +136,9 @@ impl ButtonBuilder {
         self.fill(ButtonFill::Outline)
     }
 
+    /// Shows the SVG source `svg` as an icon before the label.
     #[cfg(feature = "scene")]
-    fn icon_svg(mut self, svg: impl Into<std::sync::Arc<str>>) -> Self {
+    pub fn icon_svg(mut self, svg: impl Into<std::sync::Arc<str>>) -> Self {
         self.leading = Some(svg.into());
         self
     }

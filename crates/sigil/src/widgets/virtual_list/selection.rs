@@ -70,12 +70,12 @@ impl Selection {
         self.apply_click(index, false, false);
     }
 
-    /// Flips the selection of `index`.
+    /// Flips the selection of `index`; in `Single` mode it selects only `index`.
     pub fn toggle(&mut self, index: usize) {
         self.apply_click(index, false, true);
     }
 
-    /// Selects the range from the anchor to `index`.
+    /// Selects the range from the anchor to `index`; outside `Extend` mode it selects only `index`.
     pub fn extend(&mut self, index: usize) {
         self.apply_click(index, true, false);
     }

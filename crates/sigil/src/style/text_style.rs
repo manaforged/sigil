@@ -83,6 +83,14 @@ pub struct TextRun {
     pub face: TextFace,
 }
 
+impl TextRun {
+    /// Creates a run that applies `face` to the bytes from `start` up to `end`.
+    #[must_use]
+    pub const fn new(start: usize, end: usize, face: TextFace) -> Self {
+        Self { start, end, face }
+    }
+}
+
 /// The styled runs of a text, sorted by byte offset.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextRuns(
