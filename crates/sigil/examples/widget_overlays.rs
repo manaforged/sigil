@@ -61,10 +61,13 @@ pub(crate) fn menu_bar_demo() -> impl IntoNode {
 
 pub(crate) fn command_menu_demo() -> impl IntoNode {
     command_menu()
-        .item("Refresh", || {})
-        .item("Open settings", || {})
-        .disabled("Publish")
-        .submenu("Export", |sub| sub.item("PNG", || {}).item("SVG", || {}))
+        .item(MenuItem::new("Refresh").activate(|| {}))
+        .item(MenuItem::new("Open settings").activate(|| {}))
+        .item(MenuItem::new("Publish").disabled(true))
+        .submenu("Export", |sub| {
+            sub.item(MenuItem::new("PNG").activate(|| {}))
+                .item(MenuItem::new("SVG").activate(|| {}))
+        })
 }
 
 pub(crate) fn tooltip_demo() -> NodeBuilder {

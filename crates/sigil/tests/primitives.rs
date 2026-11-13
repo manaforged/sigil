@@ -235,9 +235,9 @@ fn typing_in_the_command_menu_filters_its_items() {
         host.mount(
             column().child(
                 command_menu()
-                    .item("Attack", || {})
-                    .item("Defend", || {})
-                    .item("Wait", || {}),
+                    .item(MenuItem::new("Attack").activate(|| {}))
+                    .item(MenuItem::new("Defend").activate(|| {}))
+                    .item(MenuItem::new("Wait").activate(|| {})),
             ),
         );
         settle(&mut host);

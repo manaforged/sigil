@@ -1,7 +1,7 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, ControlSize, Key, NodeBuilder, Paint, Shortcut, Space, Token, Tone, avatar, button,
-    chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
+    AlignItems, ControlSize, Key, MenuItem, NodeBuilder, Paint, Shortcut, Space, Token, Tone,
+    avatar, button, chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
 };
 use sigil::widgets::ModalBuilder;
 
@@ -88,25 +88,27 @@ pub(crate) fn command_modal(console: Console) -> ModalBuilder {
     let open = console.menu_open;
     let menu = command_menu()
         .placeholder("Type a command")
-        .item("Deploy the selected service", move || {
-            open.set(false);
-            console.deploy();
-        })
-        .item("Pause all deploys", move || {
+        .item(
+            MenuItem::new("Deploy the selected service").activate(move || {
+                open.set(false);
+                console.deploy();
+            }),
+        )
+        .item(MenuItem::new("Pause all deploys").activate(move || {
             open.set(false);
             console.set_paused(true);
-        })
-        .item("Resume all deploys", move || {
+        }))
+        .item(MenuItem::new("Resume all deploys").activate(move || {
             open.set(false);
             console.set_paused(false);
-        })
-        .item("Retry the selected job", move || {
+        }))
+        .item(MenuItem::new("Retry the selected job").activate(move || {
             open.set(false);
             console.retry(console.focus.peek());
-        })
+        }))
         .submenu("Go to", move |nested| {
             Section::ALL.iter().fold(nested, |entries, &section| {
-                entries.item(section.label(), move || console.go(section))
+                entries.item(MenuItem::new(section.label()).activate(move || console.go(section)))
             })
         })
         .cancel(move || open.set(false));

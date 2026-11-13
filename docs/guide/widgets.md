@@ -29,7 +29,7 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, Vec\<String\>)**: chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
-- **command_menu()**: a nested action tree: `.item(label, action)`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
+- **command_menu()**: a nested action tree: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
 

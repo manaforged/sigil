@@ -26,7 +26,7 @@ pub struct MenuItem {
     pub(crate) disabled: bool,
     /// Whether the entry shows a chevron to mark that it opens a submenu; false by default.
     pub(crate) submenu_indicator: bool,
-    pub(super) on_activate: Option<Rc<dyn Fn()>>,
+    pub(crate) on_activate: Option<Rc<dyn Fn()>>,
 }
 
 impl std::fmt::Debug for MenuItem {

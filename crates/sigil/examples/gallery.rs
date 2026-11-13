@@ -368,7 +368,10 @@ fn overlays_page(dialog: Signal<bool>, drawer: Signal<bool>, queue: ToastQueue) 
         .child(section_label("Command menu"))
         .child(
             command_menu()
-                .item("Refresh", || {})
-                .submenu("Export", |sub| sub.item("PNG", || {}).item("SVG", || {})),
+                .item(MenuItem::new("Refresh").activate(|| {}))
+                .submenu("Export", |sub| {
+                    sub.item(MenuItem::new("PNG").activate(|| {}))
+                        .item(MenuItem::new("SVG").activate(|| {}))
+                }),
         )
 }

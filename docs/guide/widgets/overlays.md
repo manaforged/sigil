@@ -68,12 +68,12 @@ modal(open)
 # use sigil::prelude::*;
 # let _ = {
 command_menu()
-    .item("New file", || { /* ... */ })
+    .item(MenuItem::new("New file").activate(|| { /* ... */ }))
     .submenu("Export", |sub| {
-        sub.item("PNG", || { /* ... */ })
-            .item("SVG", || { /* ... */ })
+        sub.item(MenuItem::new("PNG").activate(|| { /* ... */ }))
+            .item(MenuItem::new("SVG").activate(|| { /* ... */ }))
     })
-    .disabled("Print")
+    .item(MenuItem::new("Print").disabled(true))
     .submit(|label| tracing::info!(label, "ran"))
     .cancel(|| tracing::info!("cancelled"));
 # };
