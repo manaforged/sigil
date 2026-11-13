@@ -6,11 +6,11 @@ use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
 use super::super::TextEdit;
-use super::{TextEditRuntime, edit_value, move_caret};
+use super::keymap::Edit;
+use super::{TextEditRuntime, move_caret};
 
 type KeyCommand = fn(&mut KeyEvent, &TextEditRuntime);
 pub(in crate::widgets) type KeyBinding<R> = (&'static str, Modifiers, fn(&mut KeyEvent, &R));
-type Edit = fn(&mut TextEdit);
 
 pub(in crate::widgets) fn clipboard_keys(
     node: NodeBuilder,
@@ -96,20 +96,6 @@ pub(in crate::widgets) fn word_keys(
     for (shortcut, edit) in motions {
         let runtime = runtime.clone();
         node = node.key(shortcut, move |event| move_caret(event, &runtime, edit));
-    }
-    let deletions: [(Shortcut, Edit); 5] = [
-        (
-            alt(NamedKey::Backspace.into()),
-            TextEdit::delete_word_backward,
-        ),
-        (Shortcut::ctrl(ch("w")), TextEdit::delete_word_backward),
-        (alt(ch("d")), TextEdit::delete_word_forward),
-        (Shortcut::ctrl(ch("u")), TextEdit::delete_to_line_start),
-        (Shortcut::ctrl(ch("k")), TextEdit::delete_to_line_end),
-    ];
-    for (shortcut, edit) in deletions {
-        let runtime = runtime.clone();
-        node = node.key(shortcut, move |event| edit_value(event, &runtime, edit));
     }
     node
 }

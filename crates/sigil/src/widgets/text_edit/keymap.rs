@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::{KeyEvent, Modifiers, NamedKey, Shortcut};
+use crate::events::{Key, KeyEvent, Modifiers, NamedKey, Shortcut};
 use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
@@ -9,6 +9,8 @@ use super::navigation::move_horizontal;
 use super::{TextEditRuntime, edit_value, insert_text};
 
 const FALLBACK_PAGE: isize = 10;
+
+pub(in crate::widgets) type Edit = fn(&mut TextEdit);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::widgets) enum EditOp {
@@ -53,10 +55,10 @@ const KEY_ACTIONS: [(NamedKey, KeyAction); 10] = [
 ];
 
 impl EditOp {
-    fn apply(self, edit: &mut TextEdit) {
+    fn edit(self) -> Edit {
         match self {
-            Self::Backspace => edit.backspace(),
-            Self::Delete => edit.delete_forward(),
+            Self::Backspace => TextEdit::backspace,
+            Self::Delete => TextEdit::delete_forward,
         }
     }
 }
@@ -95,6 +97,34 @@ pub(in crate::widgets) struct KeyProfile {
     pub(in crate::widgets) line: Option<LineHandler>,
 }
 
+pub(in crate::widgets) fn delete_keys() -> impl Iterator<Item = (Shortcut, Edit)> {
+    let alt = |key: Key| Shortcut::new(key, Modifiers::ALT);
+    let ch = |key: &str| Key::character(key);
+    let words: [(Shortcut, Edit); 5] = [
+        (
+            alt(NamedKey::Backspace.into()),
+            TextEdit::delete_word_backward,
+        ),
+        (Shortcut::ctrl(ch("w")), TextEdit::delete_word_backward),
+        (alt(ch("d")), TextEdit::delete_word_forward),
+        (Shortcut::ctrl(ch("u")), TextEdit::delete_to_line_start),
+        (Shortcut::ctrl(ch("k")), TextEdit::delete_to_line_end),
+    ];
+    KEY_ACTIONS
+        .into_iter()
+        .filter_map(|(key, action)| match action {
+            KeyAction::Edit(op) => Some((key, op.edit())),
+            KeyAction::Move(_) | KeyAction::Line(_) => None,
+        })
+        .flat_map(|(key, edit)| {
+            [
+                (Shortcut::from(key), edit),
+                (Shortcut::new(key, Modifiers::SHIFT), edit),
+            ]
+        })
+        .chain(words)
+}
+
 pub(in crate::widgets) fn edit_keys(
     mut node: NodeBuilder,
     runtime: &TextEditRuntime,
@@ -102,14 +132,12 @@ pub(in crate::widgets) fn edit_keys(
 ) -> NodeBuilder {
     let any_key = runtime.clone();
     node = node.key_any(move |event| insert_text(event, &any_key));
+    for (shortcut, edit) in delete_keys() {
+        let runtime = runtime.clone();
+        node = node.key(shortcut, move |event| edit_value(event, &runtime, edit));
+    }
     for (key, action) in KEY_ACTIONS {
-        if let KeyAction::Edit(op) = action {
-            for shortcut in [key.into(), Shortcut::new(key, Modifiers::SHIFT)] {
-                let runtime = runtime.clone();
-                node = node.key(shortcut, move |event| {
-                    edit_value(event, &runtime, |edit| op.apply(edit));
-                });
-            }
+        if matches!(action, KeyAction::Edit(_)) {
             continue;
         }
         for extend in [false, true] {

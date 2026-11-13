@@ -27,7 +27,7 @@ pub(in crate::widgets) use commands::{
     attach_a11y_edit, bind_command_keys, bind_history_keys, clipboard_keys, history_keys,
     submit_text, word_keys,
 };
-pub(in crate::widgets) use keymap::{KeyProfile, LineStep, edit_keys};
+pub(in crate::widgets) use keymap::{KeyProfile, LineStep, delete_keys, edit_keys};
 use navigation::{move_vertical, move_visual_edge};
 pub use state::TextState;
 
@@ -113,8 +113,14 @@ impl TextEditRuntime {
 
     pub(in crate::widgets) fn sync_value(&self, state: &TextEdit) {
         batch(|| {
-            write_value(self.value, state.as_str());
-            (self.change)(state.as_str());
+            let changed = self
+                .value
+                .try_peek_with(|current| current.as_str() != state.as_str())
+                .unwrap_or(true);
+            if changed {
+                write_value(self.value, state.as_str());
+                (self.change)(state.as_str());
+            }
             self.commit(state);
         });
     }
@@ -201,6 +207,7 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
     edit.insert_str(&text);
     runtime.sync_value(&edit);
     event.stop_propagation();
+    event.prevent_default();
 }
 
 pub(in crate::widgets) fn edit_value(
@@ -213,13 +220,8 @@ pub(in crate::widgets) fn edit_value(
         return;
     }
     let mut state = runtime.edit_mut();
-    let before = state.len();
     edit(&mut state);
-    if state.len() == before {
-        runtime.commit(&state);
-    } else {
-        runtime.sync_value(&state);
-    }
+    runtime.sync_value(&state);
 }
 
 pub(in crate::widgets) fn move_caret(

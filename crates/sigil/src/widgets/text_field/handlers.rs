@@ -8,11 +8,10 @@ use crate::reactive::{Signal, effect, memo};
 use crate::text::{CaretGeometry, HitPosition, TextStyle, measure_text};
 use crate::widgets::shared::TextChange;
 use crate::widgets::text_edit::{
-    bind_command_keys, bind_history_keys, compose_caret, typed_event_text,
+    bind_command_keys, bind_history_keys, compose_caret, delete_keys, typed_event_text,
 };
 use crate::widgets::{TextState, Widget};
 
-type EditAction = fn(&TextFieldRuntime);
 type KeyCommand = (
     &'static str,
     Modifiers,
@@ -56,18 +55,21 @@ impl TextFieldRuntime {
         if self.disabled() {
             return;
         }
-        self.state.replace("");
-        self.sync_value();
+        self.edit(|state| state.replace(""));
     }
 
     pub(super) fn commit_caret(&self) {
         self.keep_caret_visible();
     }
 
-    pub(super) fn sync_value(&self) {
+    fn edit(&self, op: impl FnOnce(&TextState)) {
+        let before = self.state.value().peek();
+        op(&self.state);
         self.keep_caret_visible();
         let value = self.state.value().peek();
-        (self.change)(value.as_str());
+        if value != before {
+            (self.change)(value.as_str());
+        }
     }
 
     pub(super) fn composing_caret(&self, text: &str, caret: usize) -> (String, usize) {
@@ -127,28 +129,7 @@ impl TextFieldRuntime {
             .chars()
             .filter(|ch| *ch != '\n' && *ch != '\r')
             .collect();
-        self.state.insert(&line);
-        self.sync_value();
-    }
-
-    fn delete_to_edge(&self, to_end: bool) {
-        if self.state.selection().is_some() {
-            self.state.clear_selection();
-        }
-        let caret = self.state.caret().peek();
-        if to_end {
-            let len = self.state.value().peek().len();
-            if caret < len {
-                self.state.select(caret);
-                self.state.extend(len);
-                self.state.backspace();
-            }
-        } else if caret > 0 {
-            self.state.select(0);
-            self.state.extend(caret);
-            self.state.backspace();
-        }
-        self.sync_value();
+        self.edit(|state| state.insert(&line));
     }
 
     fn move_edge(&self, end: bool, extend: bool) {
@@ -195,7 +176,9 @@ impl TextFieldRuntime {
             }
             ImeEvent::Commit(text) => {
                 self.clear_preedit();
-                self.insert_pasted(text);
+                if !text.is_empty() {
+                    self.insert_pasted(text);
+                }
             }
             ImeEvent::Enabled | ImeEvent::Disabled => {}
         }
@@ -208,8 +191,7 @@ impl TextFieldRuntime {
         match edit {
             A11yEdit::Text(text) => {
                 let line: String = text.chars().filter(|ch| !ch.is_control()).collect();
-                self.state.replace(&line);
-                self.sync_value();
+                self.edit(|state| state.replace(&line));
             }
             A11yEdit::Select { anchor, focus } => {
                 self.state.select(*anchor);
@@ -281,45 +263,11 @@ fn attach_navigation_keys(mut node: NodeBuilder, runtime: &TextFieldRuntime) -> 
 }
 
 fn attach_edit_keys(mut node: NodeBuilder, runtime: &TextFieldRuntime) -> NodeBuilder {
-    let delete_shortcuts: [(Shortcut, EditAction); 9] = [
-        (Shortcut::plain(NamedKey::Backspace), |r| {
-            r.state.backspace();
-            r.sync_value();
-        }),
-        (Shortcut::new(NamedKey::Backspace, Modifiers::SHIFT), |r| {
-            r.state.backspace();
-            r.sync_value();
-        }),
-        (Shortcut::plain(NamedKey::Delete), |r| {
-            r.state.delete_forward();
-            r.sync_value();
-        }),
-        (Shortcut::new(NamedKey::Delete, Modifiers::SHIFT), |r| {
-            r.state.delete_forward();
-            r.sync_value();
-        }),
-        (Shortcut::new(NamedKey::Backspace, Modifiers::ALT), |r| {
-            r.state.delete_word_backward();
-            r.sync_value();
-        }),
-        (Shortcut::ctrl(Key::character("w")), |r| {
-            r.state.delete_word_backward();
-            r.sync_value();
-        }),
-        (Shortcut::new(Key::character("d"), Modifiers::ALT), |r| {
-            r.state.delete_word_forward();
-            r.sync_value();
-        }),
-        (Shortcut::ctrl(Key::character("u")), |r| {
-            r.delete_to_edge(false);
-        }),
-        (Shortcut::ctrl(Key::character("k")), |r| {
-            r.delete_to_edge(true);
-        }),
-    ];
-    for (shortcut, op) in delete_shortcuts {
+    for (shortcut, op) in delete_keys() {
         let rt = runtime.clone();
-        node = node.key(shortcut, move |event| run_edit_action(event, &rt, op));
+        node = node.key(shortcut, move |event| {
+            run_edit_action(event, &rt, |r| r.edit(|state| state.apply_edit(op)));
+        });
     }
     attach_submit_key(node, runtime)
 }
@@ -378,8 +326,8 @@ fn attach_text_input(node: NodeBuilder, runtime: &TextFieldRuntime) -> NodeBuild
         }
         if let Some(text) = typed_event_text(event, false) {
             event.stop_propagation();
-            rt.state.insert(&text);
-            rt.sync_value();
+            event.prevent_default();
+            rt.edit(|state| state.insert(&text));
         }
     })
 }
@@ -459,14 +407,13 @@ fn run_history(event: &mut KeyEvent, runtime: &TextFieldRuntime, redo: bool) {
     if runtime.disabled() {
         return;
     }
-    let changed = if redo {
-        runtime.state.redo()
-    } else {
-        runtime.state.undo()
-    };
-    if changed {
-        runtime.sync_value();
-    }
+    runtime.edit(|state| {
+        if redo {
+            state.redo();
+        } else {
+            state.undo();
+        }
+    });
 }
 
 fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
@@ -480,7 +427,9 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if let Some(text) = runtime.state.selected_text() {
         event.prevent_default();
         event.stop_propagation();
-        runtime.clip_fail.set(runtime.clipboard.set(&text).is_err());
+        runtime
+            .clip_fail
+            .set(crate::clipboard::write(&*runtime.clipboard, &text).is_err());
     }
 }
 
@@ -493,13 +442,12 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         return;
     }
     if let Some(text) = runtime.state.selected_text() {
-        let failed = runtime.clipboard.set(&text).is_err();
+        let failed = crate::clipboard::write(&*runtime.clipboard, &text).is_err();
         runtime.clip_fail.set(failed);
         if failed {
             return;
         }
-        runtime.state.backspace();
-        runtime.sync_value();
+        runtime.edit(TextState::backspace);
     }
 }
 

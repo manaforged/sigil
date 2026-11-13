@@ -164,7 +164,7 @@ impl TextState {
         super::super::splice_preedit(text, caret, preedit)
     }
 
-    fn apply_edit(&self, op: fn(&mut TextEdit)) {
+    pub(in crate::widgets) fn apply_edit(&self, op: fn(&mut TextEdit)) {
         let mut edit = synced(&self.edit, self.value, self.caret);
         let before = edit.len();
         op(&mut edit);
