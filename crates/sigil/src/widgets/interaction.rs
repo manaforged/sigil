@@ -7,7 +7,7 @@ use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
 use crate::widgets::Widget;
 
-pub(crate) use drag::{DragEnd, axis_of, pointer_drag};
+pub(crate) use drag::{DragEnd, pointer_drag};
 pub(crate) use steps::{ValueStep, step_keys};
 
 /// Hover, press, and focus signals.
@@ -82,7 +82,7 @@ impl InteractionState {
     fn track_release(self, node: NodeBuilder) -> NodeBuilder {
         crate::events::builder_ext::track_release(node, move |event| {
             if is_primary(event) || is_cancel(event) {
-                set_if_changed(self.pressed, false);
+                self.pressed.set(false);
             }
         })
     }
@@ -94,17 +94,11 @@ impl InteractionState {
     }
 
     pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {
-        let node = node
-            .focus_in(move || self.on_focus_in())
-            .focus_out(move || self.on_focus_out())
-            .pointer_enter(move |_| set_if_changed(self.hovered, true))
-            .pointer_leave(move |_| self.leave())
-            .pointer_down(move |event| {
-                if is_primary(event) {
-                    set_if_changed(self.pressed, true);
-                }
-            });
-        self.track_release(node)
+        node.track_hovered(self.hovered)
+            .track_pressed(self.pressed)
+            .track_focused(self.focused)
+            .focus_in(move || self.ring_visible.set(crate::events::focus_from_keyboard()))
+            .focus_out(move || self.ring_visible.set(false))
     }
 
     /// Handles a pointer release and returns whether it activates.
@@ -114,7 +108,7 @@ impl InteractionState {
             return false;
         }
         let was_pressed = self.pressed.peek();
-        set_if_changed(self.pressed, false);
+        self.pressed.set(false);
         let enabled = self.is_enabled();
         if enabled {
             event.stop_propagation();
@@ -132,7 +126,7 @@ impl InteractionState {
     }
 
     fn pointer_enter(self, event: &mut PointerEvent) {
-        set_if_changed(self.hovered, true);
+        self.hovered.set(true);
         if self.is_enabled() {
             event.stop_propagation();
         }
@@ -146,25 +140,25 @@ impl InteractionState {
     }
 
     fn leave(self) {
-        set_if_changed(self.hovered, false);
-        set_if_changed(self.pressed, false);
+        self.hovered.set(false);
+        self.pressed.set(false);
     }
 
     fn pointer_down(self, event: &mut PointerEvent) {
         if self.is_enabled() && is_primary(event) {
-            set_if_changed(self.pressed, true);
+            self.pressed.set(true);
             event.stop_propagation();
         }
     }
 
     fn on_focus_in(self) {
-        set_if_changed(self.focused, true);
-        set_if_changed(self.ring_visible, crate::events::focus_from_keyboard());
+        self.focused.set(true);
+        self.ring_visible.set(crate::events::focus_from_keyboard());
     }
 
     fn on_focus_out(self) {
-        set_if_changed(self.focused, false);
-        set_if_changed(self.ring_visible, false);
+        self.focused.set(false);
+        self.ring_visible.set(false);
     }
 }
 
@@ -177,10 +171,4 @@ pub(crate) fn is_primary(event: &PointerEvent) -> bool {
 
 pub(crate) fn is_cancel(event: &PointerEvent) -> bool {
     event.phase == PointerPhase::Cancel
-}
-
-fn set_if_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, next: T) {
-    if signal.peek() != next {
-        signal.set(next);
-    }
 }

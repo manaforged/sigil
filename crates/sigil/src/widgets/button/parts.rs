@@ -16,7 +16,7 @@ pub(super) enum ButtonWidth {
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
     let layout = LayoutStyle::flex_row()
         .height(height)
-        .padding_x(Space::px(padding_x))
+        .padding_x(Space::raw(padding_x, "control padding"))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center);
     match width {

@@ -172,17 +172,22 @@ where
 }
 
 pub(crate) fn ime_caret(node: NodeBuilder, anchor: Rc<Cell<Option<CaretGeometry>>>) -> NodeBuilder {
-    node.mutate(move |node| {
-        node.attach(CaretAnchorExt(Box::new(move || anchor.get())));
-    })
+    caret_anchor(node, move || anchor.get())
 }
 
 pub(crate) fn ime_caret_signal(
     node: NodeBuilder,
     caret: Signal<Option<CaretGeometry>>,
 ) -> NodeBuilder {
+    caret_anchor(node, move || caret.get())
+}
+
+fn caret_anchor(
+    node: NodeBuilder,
+    read: impl Fn() -> Option<CaretGeometry> + 'static,
+) -> NodeBuilder {
     node.mutate(move |node| {
-        node.attach(CaretAnchorExt(Box::new(move || caret.get())));
+        node.attach(CaretAnchorExt(Box::new(read)));
     })
 }
 

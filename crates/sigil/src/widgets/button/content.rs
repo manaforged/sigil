@@ -50,8 +50,9 @@ impl ButtonBuilder {
         let mut row = container().hittable(false).layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(Space::px(
+                .gap(Space::raw(
                     Metrics::current().control_gap(ControlSize::Compact),
+                    "control gap",
                 )),
         );
         if let Some(svg) = self.leading.clone() {
@@ -97,8 +98,9 @@ impl ButtonBuilder {
         let row = container().hittable(false).layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(Space::px(
+                .gap(Space::raw(
                     Metrics::current().control_gap(ControlSize::Compact),
+                    "control gap",
                 )),
         );
         apply_label_paint(row, fill, tone).children_reactive(move || {
