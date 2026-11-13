@@ -14,10 +14,12 @@ use crate::{Error, ErrorKind};
 
 pub(crate) const CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 1.0);
 
+/// A `wgpu` device and its queue.
 pub type Gpu = (wgpu::Device, wgpu::Queue);
 
 static SHARED: OnceLock<Result<(wgpu::Adapter, Gpu), Error>> = OnceLock::new();
 
+/// Reports whether the `SIGIL_ALLOW_NO_GPU` environment variable is `1`, `true`, `yes`, or `on`, which turns a missing adapter into `Ok(None)` instead of an error.
 #[must_use]
 pub fn no_gpu_allowed() -> bool {
     matches!(
@@ -34,10 +36,12 @@ fn shared() -> Result<Option<&'static (wgpu::Adapter, Gpu)>, Error> {
     }
 }
 
+/// Returns the process-wide headless device and queue, opened on first use; `Ok(None)` means no adapter exists and `SIGIL_ALLOW_NO_GPU` is set.
 pub fn shared_device() -> Result<Option<&'static Gpu>, Error> {
     Ok(shared()?.map(|(_, gpu)| gpu))
 }
 
+/// Names the shared adapter as its backend and vendor class, such as `metal-apple`; `None` means the shared device is not available.
 #[must_use]
 pub fn adapter_key() -> Option<String> {
     let (adapter, _) = shared().ok()??;
@@ -73,6 +77,7 @@ fn vendor_class(info: &wgpu::AdapterInfo) -> &'static str {
     }
 }
 
+/// Creates a renderer attached to the shared headless device; `Ok(None)` means no adapter exists and `SIGIL_ALLOW_NO_GPU` is set.
 pub fn headless_renderer() -> Result<Option<WgpuRenderer>, Error> {
     let Some((adapter, (device, queue))) = shared()? else {
         return Ok(None);
@@ -132,6 +137,7 @@ impl Capture {
     }
 }
 
+/// Draws `scene` into a new texture of the size, scale, and clear color in `capture`; `Err` has kind `ErrorKind::Render`.
 pub fn render_capture(
     renderer: &mut WgpuRenderer,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
@@ -158,6 +164,7 @@ pub fn render_capture(
     Ok(texture)
 }
 
+/// Draws `scene` on the GPU into a `width` by `height` pixel image cleared to opaque black, with the device scale set to `width` divided by the viewport width.
 pub fn render_scene_to_image(
     renderer: &mut WgpuRenderer,
     scene: &CommandScene,
@@ -176,11 +183,13 @@ pub fn render_scene_to_image(
     .map_err(|err| Error::caused(ErrorKind::Render, err))
 }
 
+/// Creates a `width` by `height` pixel texture in `FORMAT` that can be rendered to and copied from.
 #[must_use]
 pub fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
     capture_texture(device, CaptureExtent { width, height })
 }
 
+/// Returns the four bytes of the pixel at (`x`, `y`) in a tightly packed readback `width` pixels wide, and panics when the pixel is outside `pixels`.
 #[must_use]
 pub fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
     let start =
@@ -191,6 +200,7 @@ pub fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
         .expect("pixel inside the readback")
 }
 
+/// Copies `texture` back from the GPU as tightly packed rows of four bytes per pixel; `Err` has kind `ErrorKind::Readback`.
 pub fn read_pixels(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

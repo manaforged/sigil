@@ -10,16 +10,16 @@ mod error;
 mod explore;
 pub use error::{Error, ErrorKind};
 pub use explore::Step;
-#[doc(hidden)]
+/// The headless GPU device, render targets and pixel readback.
 pub mod gpu;
 mod harness;
 mod render;
 pub use harness::{Harness, Node, Query, Target};
 pub use render::Render;
 mod interaction;
-#[doc(hidden)]
+/// CPU and GPU renders of one frame and the measure of how far they differ.
 pub mod parity;
-#[doc(hidden)]
+/// Scenes generated from a seed for renderer tests.
 pub mod scene_gen;
 mod settle;
 pub use sigil::layout::FakeMeasure;
