@@ -14,7 +14,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 # };
 ```
 
-`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)`, `.text_color(Token::OnSurfaceMuted)`.
+`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.accessible_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)` (`sigil::style::FontFamily`), `.text_color(Token::OnSurfaceMuted)`.
 
 ## icon
 
@@ -91,7 +91,18 @@ Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure.
 
 ## canvas
 
-`canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `SceneBuilder` inside the laid-out `Rect`. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal increments.
+`canvas(paint: impl Fn(&mut SceneBuilder, Rect, &Theme) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `sigil::scene::SceneBuilder` inside the laid-out `Rect`. The `&Theme` is the active theme, so `theme.color(token)` resolves a token to a color. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal increments. `CanvasBuilder` takes the `Paint`, `States`, and `Widget` methods.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+canvas(|scene, rect, theme| {
+    scene.fill_rect(rect, theme.color(Token::Accent));
+})
+.width(120.0)
+.height(48.0);
+# };
+```
 
 ## Small content helpers
 

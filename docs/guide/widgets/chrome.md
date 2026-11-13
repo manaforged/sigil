@@ -95,7 +95,7 @@ splitter(Orientation::Horizontal)
 
 ## scroll
 
-`scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
+`scroll(content: impl Into<NodeBuilder>)` measures the content itself (`Widget::track_size`). `.extent(impl Reactive<f32>)` sets the total content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
 - `.scroll_y(Signal<f32>)`: expose the scroll offset.

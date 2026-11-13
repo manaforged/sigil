@@ -54,7 +54,7 @@ modal(open)
 
 ## menu and menu_bar
 
-`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(x, y)` to pin a position (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
+`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(point)` to pin the top-left corner at a `Point` or an `(x, y)` tuple (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
 
 `MenuItem::new(label)` carries `.hint(text)` (a displayed hint, not a binding), `.disabled(bool)`, `.submenu(bool)` (shows the indicator; you render the submenu yourself), and `.activate(Fn())` which fires and closes the menu.
 

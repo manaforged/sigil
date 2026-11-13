@@ -4,7 +4,7 @@ The low-level pieces the widgets are built from: drag mechanics, clipboard, and 
 
 ## Interactive nodes
 
-Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()`, and `.disabled_paint()` style it per state, and the node tracks its own hover, press, and focus.
+Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()`, and `.disabled_paint()` style it per state, and the node tracks its own hover, press, and focus. `.track_hovered(signal)`, `.track_pressed(signal)`, and `.track_focused(signal)` write that state into a `Signal<bool>` for code that needs it.
 
 - `.activate(f)`: run `f` on a primary click, Enter, or Space. The node takes focus and shows the focus ring.
 - `.disabled(value, signal, or closure)`: dim the node, ignore its pointer and keys, and report it as disabled.
@@ -14,7 +14,7 @@ Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()
 
 ## axis_drag
 
-`axis_drag(node, Orientation::Horizontal | Orientation::Vertical, snapshot, on_delta, on_end) -> NodeBuilder`. On pointer down it captures the pointer and calls `snapshot()` to grab your baseline value; each captured move calls `on_delta(baseline, delta_px)`; release calls `on_end()`. Splitter handles are built on it. Use it for any drag-to-adjust control.
+`axis_drag(node, Orientation::Horizontal | Orientation::Vertical, snapshot, on_delta, on_end) -> NodeBuilder`. On pointer down it captures the pointer and calls `snapshot()` to grab your baseline value; each captured move calls `on_delta(baseline, delta_px)`; release calls `on_end()`. Splitter handles are built on it. Use it for any drag-to-adjust control. For a drag on both axes, `Widget::pointer_drag(|phase, event| ...)` captures the pointer and calls the handler with `DragPhase::Start`, `Move`, `End`, or `Cancel`; `event.prevent_default()` in the `Start` call skips the drag.
 
 ## drag and drop
 
@@ -31,16 +31,20 @@ let drag = DragState::<String>::new();
 // source:
 node.drag_source(drag.clone(), payload_string);
 // target:
-bin.drop_target(drag.clone(), |item| item.starts_with("task:"), |item| { /* ... */ });
+bin.drop_target(drag.clone(), |item| item.starts_with("task:"), |event| {
+    let _at = event.local_position();
+    let _item: String = event.into_value();
+});
 // floating preview, mounted once at the root:
 drag_ghost(drag, |item| text(item.clone()).nowrap());
 # };
 ```
 
 - `node.drag_source(state, payload)` (from `Widget`) arms on left-button press and begins the drag after 4 px of travel.
-- `node.drop_target(state, accepts, on_drop)` registers the node's live bounds; while a payload it accepts hovers, the target gets the class `bg-accent-4`, and release calls `on_drop`.
+- `node.drop_target(state, accepts, on_drop)` registers the node's live bounds; while a payload it accepts hovers, the target gets the class `bg-accent-4`, and release calls `on_drop` with a `sigil::events::DropEvent<T>`. `event.value()` and `event.into_value()` return the payload, `event.position()` is the drop point in window coordinates, `event.local_position()` is the drop point relative to the target, and `event.bounds()` is the target's `Rect`.
+- `node.drop_hover(state, cursor)` on a drop target writes the target-local pointer position into a `Signal<Option<Point>>` while an accepted payload hovers the node, and `None` otherwise. Use it to draw an insertion marker. A target with `drop_hover` does not get the `bg-accent-4` class.
 - `drag_ghost(state, render)` returns a non-hittable node that follows the pointer while a drag is active.
-- `state.is_active()`, `state.position()`, `state.payload()`, and `state.cancel()` expose the session; `cancel` aborts without dropping.
+- `state.is_active()`, `state.position()` (a `Point`), `state.payload()`, and `state.cancel()` expose the session; `cancel` aborts without dropping.
 
 ## clipboard
 
@@ -52,7 +56,7 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 
 `terminal(lines: Signal<Vec<String>>, on_input: Fn(String)) -> NodeBuilder`. A dumb pipe view, not an emulator: it paints `lines` as monospace rows in a `virtual_list` pinned to the bottom, and forwards key-down input as terminal bytes: typed text verbatim, Enter as `\r`, Backspace as `DEL`, Tab as `\t`, Escape, the arrows, Home, End and Delete as their escape sequences, and Ctrl+letter as its control byte. The node is a focusable `Role::Terminal`, and nothing inside it takes focus. While it has focus it receives every key, Tab included, and the window's handlers and shortcuts see only keys held with the command key.
 
-Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY (`Session::spawn_in(program, dir)` starts it in `dir`), parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
+Pair it with `sigil::app::Session` (feature `pty`): `Session::spawn(program)` opens a PTY (`Session::spawn_in(program, dir)` starts it in `dir`), parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
 
 For a full-screen program, use `session.view()` on an `Rc<Session>` instead of `terminal`. The view fills its space and resizes the terminal to the cells that fit, so the program sees the new size. It paints colors from the active theme: the 16 ANSI colors, the 256-color palette and truecolor map to the gray, error, warn, success, info and accent scales. It shows bold, italic, inverse and the cursor, and takes paste (bracketed when the program asks for it) and the wheel (5000 rows of scrollback). `session.resize(cols, rows)`, `session.scroll(rows)` and `session.paste(text)` do the same from code. The child starts with `TERM=xterm-256color`.
 

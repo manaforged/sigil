@@ -9,9 +9,9 @@ A key event goes to the focused node first. Handlers run in two passes along the
 1. Capture handlers (`key_capture`, `key_capture_any`) run from the root down to the focused node.
 2. Bubble handlers (`key`, `key_any`) run from the focused node up to the root.
 
-A handler calls `event.stop_propagation()` to end both passes.
+A handler calls `event.stop_propagation()` to skip the handlers that have not run yet, in both passes. It does not cancel the default action of the key.
 
-Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(NamedKey::Tab, f)` on an ancestor owns Tab for its subtree.
+After both passes, the host runs the default action of the key: Tab and Shift+Tab move focus, Escape clears the text selection, and Cmd+C or Ctrl+C copies the selected text outside a text field. A handler calls `event.prevent_default()` to skip the default action. A `.key_capture(NamedKey::Tab, f)` handler on an ancestor that calls `prevent_default` keeps focus in place, so it owns Tab for its subtree.
 
 A `Shortcut` is a key plus modifiers:
 
@@ -54,7 +54,7 @@ fn main() -> AppResult<()> {
 
 ### Bind a key that fires from anywhere
 
-`.shortcut(s, handler)` registers `s` as a global shortcut. The router runs the handler for the key, wherever the focus is. One node can hold many shortcuts. A plain character shortcut does not fire while a text input has focus, so typing `q` into a field does not quit.
+`.shortcut(s, handler)` registers `s` as a global shortcut and reports it to assistive technology. The router runs the handler for the key, wherever the focus is. One node can hold many shortcuts. `.accessible_shortcut(s)` only reports the shortcut and registers no handler. A plain character shortcut does not fire while a text input has focus, so typing `q` into a field does not quit.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -78,7 +78,7 @@ fn main() -> AppResult<()> {
 
 ### See every key before the focused widget
 
-`key_capture_any` on an ancestor sees each key before the focused descendant. This example turns Tab inside a text editor into two spaces.
+`key_capture_any` on an ancestor sees each key before the focused descendant. This example turns Tab inside a text editor into two spaces. `prevent_default` keeps focus in the editor, and `stop_propagation` keeps the key from the editor's own handlers.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -88,6 +88,7 @@ fn tree() -> impl IntoNode {
     container().child(text_field(body).multiline()).key_capture_any(move |event: &mut KeyEvent| {
         if event.key() == Key::named(NamedKey::Tab) {
             body.update(|text| text.push_str("  "));
+            event.prevent_default();
             event.stop_propagation();
         }
     })
@@ -107,6 +108,67 @@ Every widget builder implements `Widget`, so it takes the event methods. The han
 ### Helper return types
 
 A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained builder methods are not available on the result. Return the concrete builder type (for example `sigil::widgets::ButtonBuilder`) or `NodeBuilder` to keep them. Under Rust 2024, `impl IntoNode` captures every lifetime in the arguments. A helper that takes `&state` and returns `impl IntoNode` then borrows `state` for the life of the node. Write `-> impl IntoNode + use<>` when the result does not use the reference, or return a concrete type.
+
+## Custom widgets
+
+A custom widget is a builder struct that holds a `WidgetFrame`. Implement `Framed` to return the frame, and the builder gets the `Paint`, `States`, and `Widget` methods. Implement `IntoNode` to build the root node, and pass the root through `WidgetFrame::finish` so the caller's style and layout setters reach it.
+
+```rust,no_run
+use sigil::node::{Cx, NodeId};
+use sigil::prelude::*;
+use sigil::widgets::{Framed, WidgetFrame};
+
+#[must_use]
+pub struct RatingBuilder {
+    value: Signal<u8>,
+    max: u8,
+    frame: WidgetFrame,
+}
+
+pub const fn rating(value: Signal<u8>) -> RatingBuilder {
+    RatingBuilder { value, max: 5, frame: WidgetFrame::new() }
+}
+
+impl RatingBuilder {
+    pub const fn max(mut self, max: u8) -> Self {
+        self.max = max;
+        self
+    }
+}
+
+impl Framed for RatingBuilder {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl IntoNode for RatingBuilder {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        let (value, max) = (self.value, self.max.max(1));
+        let stars = (1..=max).map(move |star| {
+            button(move || if value.get() >= star { "★" } else { "☆" })
+                .ghost()
+                .accessible(format!("{star} of {max}"))
+                .activate(move || value.set(star))
+        });
+        let root = row().role(Role::Group).label("Rating").gap(Space::Xxs).children(stars);
+        self.frame.finish(root).build(cx)
+    }
+}
+
+fn tree() -> impl IntoNode {
+    let score = signal(3_u8);
+    column()
+        .child(rating(score).max(4).padding(Space::Md).background(Token::Surface))
+        .child(text(move || format!("Score: {}", score.get())))
+}
+
+fn main() -> AppResult<()> {
+    sigil::run(AppConfig::new("rating"), tree)
+}
+```
+
+`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one.
 
 ## Theme switching
 
@@ -266,7 +328,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`viewport_size()` returns the viewport as a signal, in logical px on every host. On the terminal one cell is `Host::CELL` px, so divide by it to get columns and rows. Read it in a `derived` or a `children_reactive` closure to adapt the tree to the size.
+`viewport_size()` returns the viewport as a signal, in logical px on every host. On the terminal one cell is `Host::CELL` px, so divide by it to get columns and rows. Read it in a `memo` or a `children_reactive` closure to adapt the tree to the size.
 
 ```rust,no_run
 use sigil::app::is_grid;
@@ -358,7 +420,7 @@ if let Some(hit) = fuzzy_score("cmd", "command_menu") {
 
 ## Animation and tone steps
 
-`Transition` configures CSS-style property transitions (`.duration(...)`, `.ease(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, signal)` binds a `Signal<f32>` directly to an animatable `Property`. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
+`Transition` configures CSS-style property transitions (`.duration(...)`, `.ease(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, value)` binds an `impl Reactive<f32>` to an animatable `Property`: a `Signal<f32>`, a closure, or a `sigil::animation::Animator`. `Animator::spring(initial, Spring::SNAPPY)` and `Animator::tween(initial, transition)` move toward the value that `.target(value)` sets. `sigil::animation::every_frame(f)` runs `f` with the elapsed seconds on each frame until its owner is disposed. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
 
 ```rust,no_run
 use sigil::animation::Property;

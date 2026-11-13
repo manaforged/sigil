@@ -39,7 +39,7 @@ The family pages carry signatures, options, and behavior notes:
 - **chart(values)**: a bar chart by default; `.line()` draws a polyline. Chain `.tone(Tone)`, `.labels(["Mon", ...])`, and `.series(name, values, Tone)` for more marks. The color is theme scale step 9. `.width` and `.height` pin the plot.
 - **stat(label, value)**: a KPI tile in card chrome with optional `.delta(change, tone)`, `.caption(text)`, `.trend(values)`, `.range(low, high)`, and `.tone(Tone)`.
 - **sparkline(values)**: a compact inline trend graph. Chain `.mark(SparkMark::Block | SparkMark::Braille)`, `.fill(SparkFill::Solid | SparkFill::Shade)`, `.range(low, high)`, `.tone(Tone)`, `.tones(iter)`, and `.rows(n)`.
-- **canvas(record)**: a custom drawing surface whose closure receives `(&mut SceneBuilder, Rect)`. Chain `.redraw_on(Signal<u64>)`.
+- **canvas(record)**: a custom drawing surface whose closure receives `(&mut SceneBuilder, Rect, &Theme)`. Chain `.redraw_on(Signal<u64>)`. `SceneBuilder` is in `sigil::scene`.
 - **virtual_list(items, render)**: a windowed list. `items` is a `Vec` (snapshot) or a `Signal` (live). Default keys are list indices. `.identified()` keys by `Identifiable::id`. `.key_by` takes any other domain key. `.follow_end(true)` keeps a live list on the last row when it grows.
 - **progress(Signal\<f32\>, max)** and **gauge(Signal\<f32\>)**.
 - **chip(label, Tone)**: the same `Tone` as buttons. `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a button; without `.activate` it stays a label.
@@ -78,7 +78,9 @@ The family pages carry signatures, options, and behavior notes:
 - **menu(Signal\<bool\>)**: a GPU popup panel (`.item`, `.separator()`). Use it for context menus, not the app bar.
 - **tooltip(label)**: chain `.hint()`; it wraps a target child.
 
-`field(label, control)`, `app_shell`, `kv_grid`, and `hint_overlay` are exported from `sigil::prelude` and `sigil::widgets`.
+`field(label, control)`, `app_shell`, `kv_grid`, and `hint_overlay` are exported from `sigil::prelude` and `sigil::widgets`. Builder types and option types, such as `ButtonBuilder`, `ColumnWidth`, `Density`, `DiffView`, and `SparkMark`, are in `sigil::widgets` only.
+
+To write your own widget with the same setters, see [Custom widgets](recipes.md#custom-widgets).
 
 ## Searchable palette (Cmd-K)
 
