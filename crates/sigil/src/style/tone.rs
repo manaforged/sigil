@@ -1,22 +1,21 @@
 use crate::style::Token;
-use crate::style::scale::ScaleRole;
 
 /// Semantic color family.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Tone {
-    /// The neutral tone.
+    /// Gray.
     #[default]
     Neutral,
-    /// The primary tone.
+    /// The accent color.
     Primary,
-    /// The info tone.
+    /// Information, cyan by default.
     Info,
-    /// The success tone.
+    /// Success, green by default.
     Success,
-    /// The warning tone.
+    /// Warning, amber by default.
     Warning,
-    /// The error tone.
+    /// Error, red by default.
     Error,
 }
 
@@ -24,7 +23,7 @@ impl Tone {
     /// Returns the token of this tone at `step`.
     #[must_use]
     pub fn token(self, step: u8) -> Token {
-        Token::scale(self.scale_role(), step).unwrap_or(Token::OnSurface)
+        Token::scale(self, step).unwrap_or(Token::OnSurface)
     }
 
     /// The token for step 4 of the color scale of this tone.
@@ -43,19 +42,6 @@ impl Tone {
     #[must_use]
     pub fn solid(self) -> Token {
         self.token(11)
-    }
-
-    /// The color scale of this tone; `Neutral` maps to gray and `Primary` to accent.
-    #[must_use]
-    pub const fn scale_role(self) -> ScaleRole {
-        match self {
-            Self::Neutral => ScaleRole::Gray,
-            Self::Primary => ScaleRole::Accent,
-            Self::Info => ScaleRole::Info,
-            Self::Success => ScaleRole::Success,
-            Self::Warning => ScaleRole::Warning,
-            Self::Error => ScaleRole::Error,
-        }
     }
 }
 

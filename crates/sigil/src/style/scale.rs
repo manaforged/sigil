@@ -344,23 +344,6 @@ pub(crate) const fn cyan_dark() -> ColorScale {
     .on_solid(Color::rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// The job of a color scale in a theme.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ScaleRole {
-    /// The gray scale role.
-    Gray,
-    /// The accent scale role.
-    Accent,
-    /// The success scale role.
-    Success,
-    /// The warning scale role.
-    Warning,
-    /// The error scale role.
-    Error,
-    /// The info scale role.
-    Info,
-}
-
 #[cfg(test)]
 #[path = "scale_tests.rs"]
 mod tests;

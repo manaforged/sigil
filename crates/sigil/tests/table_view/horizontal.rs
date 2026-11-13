@@ -77,7 +77,7 @@ fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> 
 }
 
 fn thumb_x(cx: &Cx, root: NodeId) -> Option<f32> {
-    let thumb = Theme::default().surface_pressed_strong;
+    let thumb = Theme::default().color(Token::SurfacePressedStrong);
     emit_scene(cx, root, None)
         .commands
         .iter()

@@ -77,7 +77,7 @@ impl<'theme> StyleEngine<'theme> {
 
     #[must_use]
     fn tone_step(&self, step: u8) -> Color {
-        let role = self.tone.scale_role();
+        let role = self.tone;
         Token::scale(role, step).map_or_else(
             || self.theme.scale(role).step(step),
             |token| self.theme.color(token),
@@ -104,7 +104,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BgToneStep(step) => fill(render, Some(self.tone_step(step)), None),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
-                render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
+                render.text_color = Some(self.theme.scale(self.tone).on_solid);
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::Radius(radius) => {

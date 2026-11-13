@@ -35,7 +35,7 @@ pub(super) fn over(under: Ink, ink: Ink, theme: &Theme) -> Ink {
 fn blend(ink: Ink, over: Color, foreground: bool, theme: &Theme) -> Ink {
     let under = match ink {
         Ink::Exact(color) => color,
-        Ink::Of(tone) => theme.scale(tone.scale_role()).step(11),
+        Ink::Of(tone) => theme.scale(tone).step(11),
         Ink::Bare if foreground => theme.on_surface,
         Ink::Bare => theme.surface,
     };

@@ -1,5 +1,4 @@
-use crate::style::scale::ScaleRole;
-use crate::style::{ColorAtom, StyleAtom};
+use crate::style::{ColorAtom, StyleAtom, Tone};
 
 macro_rules! tokens {
     ($($variant:ident => $name:literal,)*) => {
@@ -132,13 +131,13 @@ tokens! {
 
 const SEMANTIC: usize = Token::Gray1 as usize;
 const STEPS: usize = 12;
-const ROLES: [ScaleRole; 6] = [
-    ScaleRole::Gray,
-    ScaleRole::Accent,
-    ScaleRole::Success,
-    ScaleRole::Warning,
-    ScaleRole::Error,
-    ScaleRole::Info,
+const ROLES: [Tone; 6] = [
+    Tone::Neutral,
+    Tone::Primary,
+    Tone::Success,
+    Tone::Warning,
+    Tone::Error,
+    Tone::Info,
 ];
 
 impl Token {
@@ -147,7 +146,7 @@ impl Token {
 
     /// The token for step `step` (1 to 12) of `role`; `None` for a step out of range.
     #[must_use]
-    pub fn scale(role: ScaleRole, step: u8) -> Option<Self> {
+    pub fn scale(role: Tone, step: u8) -> Option<Self> {
         let offset = usize::from(step.checked_sub(1)?);
         if offset >= STEPS {
             return None;
@@ -164,7 +163,7 @@ impl Token {
 
     /// The scale role and step (1 to 12) of this token; `None` for a token outside the scales.
     #[must_use]
-    pub fn scale_step(self) -> Option<(ScaleRole, u8)> {
+    pub fn scale_step(self) -> Option<(Tone, u8)> {
         let offset = self.index().checked_sub(SEMANTIC)?;
         let role = *ROLES.get(offset / STEPS)?;
         let step = u8::try_from(offset % STEPS + 1).ok()?;

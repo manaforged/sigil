@@ -115,7 +115,7 @@ kittest_pub! {
     pub use resolve::render_style_for;
 }
 pub(crate) use resolve::text_style_for;
-pub use scale::{ColorScale, ScaleRole};
+pub use scale::ColorScale;
 pub use size::ControlSize;
 pub(crate) use state::StyleVariant;
 kittest_pub! {

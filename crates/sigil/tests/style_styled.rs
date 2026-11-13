@@ -125,7 +125,7 @@ fn default_impl_chains_correctly() {
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
     let all = rects(node, Drive::Rest);
-    assert_eq!(all[0].color, Theme::default().surface);
+    assert_eq!(all[0].color, Theme::default().color(Token::Surface));
     let child = all.iter().find(|rect| rect.color == A).expect("child rect");
     assert_eq!(child.rect.origin.x, 16.0);
 }
@@ -196,7 +196,7 @@ fn bg_accepts_rgba8() {
 fn bg_accepts_theme_token() {
     assert_eq!(
         rest_rect(pane().background(Token::Surface)).color,
-        Theme::default().surface
+        Theme::default().color(Token::Surface)
     );
 }
 
@@ -283,7 +283,7 @@ fn state_builder_implements_styled_within_closure() {
             .opacity(1.0)
     });
     let hovered = rects(node, Drive::Hover);
-    let color = Theme::default().surface_hover;
+    let color = Theme::default().color(Token::SurfaceHover);
     let rect = hovered
         .iter()
         .find(|rect| rect.color == color)

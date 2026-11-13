@@ -24,7 +24,7 @@ fn relative_track_absolute_child_paints_under_clip() {
 
     let px = img.get_pixel(THUMB_SAMPLE_X, THUMB_SAMPLE_Y);
     let [r, g, b, _a] = px.0;
-    let accent = Theme::default().accent;
+    let accent = Theme::default().color(Token::Accent);
     println!(
         "relative_track_absolute_child_paints_under_clip @ \
          ({THUMB_SAMPLE_X},{THUMB_SAMPLE_Y}) = ({r},{g},{b}), expected accent ~\
@@ -77,7 +77,7 @@ fn rounded_overflow_masks_child_pixels() {
         sigil_kittest::WithCx(build_rounded_overflow_shape),
         [SIZE, SIZE],
     );
-    let accent = Theme::default().accent;
+    let accent = Theme::default().color(Token::Accent);
     let corner = img.get_pixel(9, 9).0;
     let edge = img.get_pixel(40, 9).0;
     let centre = img.get_pixel(40, 40).0;
@@ -125,7 +125,7 @@ fn rectangular_clip_preserves_child_corner_geometry() {
         sigil_kittest::WithCx(build_partially_clipped_round_rect),
         [32, 32],
     );
-    let accent = Theme::default().accent;
+    let accent = Theme::default().color(Token::Accent);
     let visible_top = img.get_pixel(22, 10).0;
 
     assert!(
@@ -178,7 +178,7 @@ fn narrow_text_in_flex_child_renders_ink() {
         w: WIN_W,
         h: WIN_H,
     };
-    let dark = count_ink(&img, window, Theme::default().surface);
+    let dark = count_ink(&img, window, Theme::default().color(Token::Surface));
     println!(
         "narrow_text_in_flex_child_renders_ink: {dark} ink pixels in window \
          ({WIN_X},{WIN_Y})+{WIN_W}x{WIN_H}"
@@ -235,7 +235,7 @@ fn nested_absolute_text_tooltip_shape_renders_ink() {
         w: TOOLTIP_BUBBLE_W - 8,
         h: TOOLTIP_BUBBLE_H - 8,
     };
-    let dark = count_ink(&img, window, Theme::default().surface);
+    let dark = count_ink(&img, window, Theme::default().color(Token::Surface));
     println!(
         "nested_absolute_text_tooltip_shape_renders_ink: {dark} ink pixels in \
          bubble interior"

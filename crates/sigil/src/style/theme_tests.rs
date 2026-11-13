@@ -124,3 +124,30 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     assert_eq!(t.accent_scale.on_solid, navy);
     assert_ne!(t.color(ColorAtom::parse("accent")), Theme::dark().accent);
 }
+
+#[test]
+fn a_theme_file_sets_direction_locale_and_labels() {
+    let theme = <Theme as core::str::FromStr>::from_str(
+        r#"
+base = "light"
+direction = "rtl"
+
+[tokens]
+
+[locale]
+preset = "de"
+date_order = "ymd"
+
+[strings]
+close = "Schließen"
+"#,
+    )
+    .expect("theme parses");
+    assert_eq!(theme.direction, crate::style::Direction::Rtl);
+    assert_eq!(theme.locale.decimal, ',');
+    assert_eq!(theme.locale.date_order, crate::style::DateOrder::Ymd);
+    assert_eq!(
+        theme.strings.get(crate::style::StringKey::Close),
+        "Schließen"
+    );
+}

@@ -3,15 +3,15 @@ use crate::style::locale::{Direction, Locale};
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
 use crate::style::scale::{
-    ColorScale, ScaleRole, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light,
-    green_dark, green_light, ruby_dark, ruby_light, slate_dark, slate_light,
+    ColorScale, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light, green_dark,
+    green_light, ruby_dark, ruby_light, slate_dark, slate_light,
 };
 use crate::style::srgb::{AA_TEXT, contrast};
 use crate::style::strings::Strings;
 #[cfg(test)]
 use crate::style::variant::FontFamilyHint;
 use crate::style::variant::Variant;
-use crate::style::{Color, ControlSize};
+use crate::style::{Color, ControlSize, Tone};
 use mix::{alpha_mix, shift};
 
 const HOVER_DARKEN: i16 = -14;
@@ -40,71 +40,47 @@ pub enum ThemeValue {
 /// Theme values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
-    /// The gray.
-    pub gray: ColorScale,
-    /// The accent scale.
-    pub accent_scale: ColorScale,
-    /// The success.
-    pub success: ColorScale,
-    /// The warn.
-    pub warn: ColorScale,
-    /// The error.
-    pub error: ColorScale,
-    /// The info.
-    pub info: ColorScale,
-    /// The on solid.
-    pub on_solid: Color,
+    pub(crate) gray: ColorScale,
+    pub(crate) accent_scale: ColorScale,
+    pub(crate) success: ColorScale,
+    pub(crate) warn: ColorScale,
+    pub(crate) error: ColorScale,
+    pub(crate) info: ColorScale,
+    pub(crate) on_solid: Color,
 
-    /// The accent.
-    pub accent: Color,
-    /// The accent hover.
-    pub accent_hover: Color,
-    /// The on accent.
-    pub on_accent: Color,
-    /// The surface.
-    pub surface: Color,
-    /// The surface hover.
-    pub surface_hover: Color,
-    /// The surface pressed.
-    pub surface_pressed: Color,
-    /// The surface pressed strong.
-    pub surface_pressed_strong: Color,
-    /// The on surface.
-    pub on_surface: Color,
-    /// The border.
-    pub border: Color,
-    /// The missing token fallback.
-    pub missing_token_fallback: Color,
-    /// The tokens.
+    pub(crate) accent: Color,
+    pub(crate) accent_hover: Color,
+    pub(crate) on_accent: Color,
+    pub(crate) surface: Color,
+    pub(crate) surface_hover: Color,
+    pub(crate) surface_pressed: Color,
+    pub(crate) surface_pressed_strong: Color,
+    pub(crate) on_surface: Color,
+    pub(crate) border: Color,
+    pub(crate) missing_token_fallback: Color,
     pub(crate) tokens: TokenTable,
-    /// The metrics.
-    pub metrics: Metrics,
-    /// The direction.
-    pub direction: Direction,
-    /// The locale.
-    pub locale: Locale,
-    /// The strings.
-    pub strings: Strings,
+    pub(crate) metrics: Metrics,
+    pub(crate) direction: Direction,
+    pub(crate) locale: Locale,
+    pub(crate) strings: Strings,
 }
 
 impl Theme {
-    /// The 12-step color scale of `role`.
+    /// The 12-step color scale of `tone`.
     #[must_use]
-    pub const fn scale(&self, role: ScaleRole) -> &ColorScale {
+    pub const fn scale(&self, role: Tone) -> &ColorScale {
         match role {
-            ScaleRole::Gray => &self.gray,
-            ScaleRole::Accent => &self.accent_scale,
-            ScaleRole::Success => &self.success,
-            ScaleRole::Warning => &self.warn,
-            ScaleRole::Error => &self.error,
-            ScaleRole::Info => &self.info,
+            Tone::Neutral => &self.gray,
+            Tone::Primary => &self.accent_scale,
+            Tone::Success => &self.success,
+            Tone::Warning => &self.warn,
+            Tone::Error => &self.error,
+            Tone::Info => &self.info,
         }
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the gray scale and the surface, border and text colors drawn from it.
     #[must_use]
-    #[doc(hidden)]
     pub const fn gray(mut self, scale: ColorScale) -> Self {
         self.gray = scale;
         self.surface = scale.step(2);
@@ -116,10 +92,8 @@ impl Theme {
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the accent scale, and the accent and accent hover colors from its steps 9 and 10.
     #[must_use]
-    #[doc(hidden)]
     pub const fn accent_scale(mut self, scale: ColorScale) -> Self {
         self.accent_scale = scale;
         self.accent = scale.step(9);
@@ -127,37 +101,29 @@ impl Theme {
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the color scale of the success role.
     #[must_use]
-    #[doc(hidden)]
     pub const fn success(mut self, scale: ColorScale) -> Self {
         self.success = scale;
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the color scale of the warning role.
     #[must_use]
-    #[doc(hidden)]
     pub const fn warn(mut self, scale: ColorScale) -> Self {
         self.warn = scale;
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the color scale of the error role.
     #[must_use]
-    #[doc(hidden)]
     pub const fn error(mut self, scale: ColorScale) -> Self {
         self.error = scale;
         self
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the color scale of the info role.
     #[must_use]
-    #[doc(hidden)]
     pub const fn info(mut self, scale: ColorScale) -> Self {
         self.info = scale;
         self

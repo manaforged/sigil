@@ -9,7 +9,6 @@ use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
-use sigil::style::scale::ScaleRole;
 use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
 const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
@@ -42,7 +41,7 @@ fn button_primary_rest_emits_accent_color() {
         let root = cx.add(button("OK").primary());
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        assert!(rect_colors(&cx, root).contains(&theme.color(Token::Accent)));
     });
 }
 
@@ -82,7 +81,7 @@ fn button_hovered_emits_soft_hover_on_pointer_enter() {
             Event::pointer_move(Point::new(24.0, 16.0)),
         );
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.gray.step(5)));
+        assert!(rect_colors(&cx, root).contains(&theme.scale(Tone::Neutral).step(5)));
     });
 }
 
@@ -94,7 +93,7 @@ fn checkbox_unchecked_rest_emits_surface_inset() {
         let root = cx.add(checkbox(checked));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
+        assert!(rect_colors(&cx, root).contains(&theme.scale(Tone::Neutral).step(1)));
     });
 }
 
@@ -106,7 +105,7 @@ fn checkbox_checked_primary_emits_accent() {
         let root = cx.add(checkbox(checked).tone(Tone::Primary));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        assert!(rect_colors(&cx, root).contains(&theme.color(Token::Accent)));
     });
 }
 
@@ -155,7 +154,7 @@ fn slider_rest_emits_track_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.gray.step(4)));
+        assert!(rect_colors(&cx, root).contains(&theme.scale(Tone::Neutral).step(4)));
     });
 }
 
@@ -167,7 +166,7 @@ fn slider_thumb_emits_accent_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        assert!(rect_colors(&cx, root).contains(&theme.color(Token::Accent)));
     });
 }
 
@@ -233,7 +232,7 @@ fn toggle_on_emits_accent() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        assert!(rect_colors(&cx, root).contains(&theme.color(Token::Accent)));
     });
 }
 
@@ -283,7 +282,7 @@ fn text_field_rest_emits_border_color() {
         let root = cx.add(text_field(value));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        let border = theme.scale(ScaleRole::Gray).step(7);
+        let border = theme.scale(Tone::Neutral).step(7);
         let scene = emit_scene(&cx, root, None);
         let rects = scene
             .commands
@@ -297,7 +296,7 @@ fn text_field_rest_emits_border_color() {
         assert_eq!(rects.len(), 1, "field must paint one rounded surface");
         let rect = rects.first().expect("field surface");
         let stroke = rect.stroke.expect("field border stroke");
-        assert_eq!(rect.color, theme.gray.step(1));
+        assert_eq!(rect.color, theme.scale(Tone::Neutral).step(1));
         assert_eq!(stroke.color, border);
         assert!((stroke.width - 1.0).abs() < f32::EPSILON);
         assert_eq!(stroke.align, StrokeAlign::Inside);

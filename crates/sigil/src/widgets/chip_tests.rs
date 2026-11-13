@@ -55,7 +55,6 @@ fn tone_class_strings_are_distinct() {
 #[test]
 fn every_tone_clears_wcag_aa_contrast() {
     use crate::style::Color;
-    use crate::style::scale::ScaleRole;
     use crate::style::theme::Theme;
 
     #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
@@ -73,12 +72,12 @@ fn every_tone_clears_wcag_aa_contrast() {
 
     let theme = Theme::light();
     let cases = [
-        (Tone::Neutral, ScaleRole::Gray, 12),
-        (Tone::Primary, ScaleRole::Accent, 12),
-        (Tone::Info, ScaleRole::Info, 12),
-        (Tone::Success, ScaleRole::Success, 12),
-        (Tone::Warning, ScaleRole::Warning, 12),
-        (Tone::Error, ScaleRole::Error, 12),
+        (Tone::Neutral, Tone::Neutral, 12),
+        (Tone::Primary, Tone::Primary, 12),
+        (Tone::Info, Tone::Info, 12),
+        (Tone::Success, Tone::Success, 12),
+        (Tone::Warning, Tone::Warning, 12),
+        (Tone::Error, Tone::Error, 12),
     ];
     for (tone, role, text_step) in cases {
         let scale = theme.scale(role);

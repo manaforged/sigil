@@ -36,16 +36,16 @@ fn dark_theme_flips_every_scale_and_semantic_alias() {
     assert_eq!(theme.color(Token::Gray12), slate_dark().step(12));
     assert_eq!(theme.color(Token::Accent9), blue_dark().step(9));
 
-    assert_eq!(theme.surface, slate_dark().step(2));
-    assert_eq!(theme.on_surface, slate_dark().step(12));
-    assert_eq!(theme.accent, blue_dark().step(9));
-    assert_eq!(theme.border, slate_dark().step(7));
+    assert_eq!(theme.color(Token::Surface), slate_dark().step(2));
+    assert_eq!(theme.color(Token::OnSurface), slate_dark().step(12));
+    assert_eq!(theme.color(Token::Accent), blue_dark().step(9));
+    assert_eq!(theme.color(Token::Border), slate_dark().step(7));
 
     assert_eq!(theme.color(Token::SurfaceSubtle), slate_dark().step(3));
     assert_eq!(theme.color(Token::OnSurfaceMuted), slate_dark().step(11));
 
-    assert_ne!(theme.surface, slate_light().step(2));
-    assert_ne!(theme.on_surface, slate_light().step(12));
+    assert_ne!(theme.color(Token::Surface), slate_light().step(2));
+    assert_ne!(theme.color(Token::OnSurface), slate_light().step(12));
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn customizing_accent_scale_propagates_through_role_tokens() {
     let theme = Theme::default().accent_scale(ruby_light());
     assert_eq!(theme.color(Token::Accent9), ruby_light().step(9));
     assert_eq!(theme.color(Token::Accent3), ruby_light().step(3));
-    assert_eq!(theme.accent, ruby_light().step(9));
+    assert_eq!(theme.color(Token::Accent), ruby_light().step(9));
 }
 
 #[test]

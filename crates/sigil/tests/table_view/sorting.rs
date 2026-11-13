@@ -102,7 +102,7 @@ fn selected_row_paints_selection_bg() {
                 .viewport_height(VIEW_H),
         );
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let selection_bg = Theme::default().accent_scale.step(5);
+        let selection_bg = Theme::default().scale(Tone::Primary).step(5);
         assert!(
             !rect_colors(&cx, root).contains(&selection_bg),
             "nothing selected at rest",
@@ -136,7 +136,7 @@ fn hover_row_paints_hover_slice() {
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        let hover = Theme::default().surface_hover;
+        let hover = Theme::default().color(Token::SurfaceHover);
         assert_eq!(
             rect_colors(&cx, root)
                 .iter()

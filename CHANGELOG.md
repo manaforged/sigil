@@ -162,6 +162,8 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `Theme` public fields (`theme.accent`, `theme.gray.step(n)`) | `theme.color(Token::Accent)`, `theme.scale(Tone::Neutral).step(n)`; write with `.gray(scale)`, `.accent_scale(scale)`, `.success(scale)`, `.warn(scale)`, `.error(scale)`, `.info(scale)` and `.token(name, value)` |
+| `style::ScaleRole`, `Tone::scale_role` | `Tone` (`Gray` is `Tone::Neutral`, `Accent` is `Tone::Primary`) |
 | `SelectionState` with `click`, `ctrl_click`, `shift_click`, `selected_indices` | `Selection` with `select`, `toggle`, `extend`, `indices`, `clear` |
 | `TableState::select_only`, `toggle_selected`, `select_range_to`, `clear_selection` | `TableState::select`, `toggle`, `extend`, `clear` |
 | diff `Selection` with public `hunks` and `lines` | `DiffSelection` with `hunks()` and `lines()` |
