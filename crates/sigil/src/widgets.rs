@@ -370,7 +370,7 @@ pub use toast_queue::{ToastQueue, toast_queue};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
 pub use tree::{TreeBuilder, TreeNode, tree};
-pub use vector::{PathNode, path};
+pub use vector::{PathBuilder, path};
 pub use virtual_list::{
     IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,
     virtual_list,
@@ -399,7 +399,7 @@ crate::kernel::into_node_builder!(
     MenuBarBuilder,
     MenuBuilder,
     ModalBuilder,
-    PathNode,
+    PathBuilder,
     ProgressBuilder,
     RadioGroupBuilder,
     SegmentedBuilder,

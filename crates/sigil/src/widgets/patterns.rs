@@ -124,7 +124,7 @@ pub struct HintOverlayBuilder {
 
 impl HintOverlayBuilder {
     /// Creates an overlay with one row for each `(chord, description)` pair in `hints`.
-    pub fn new(hints: &[(&str, &str)]) -> Self {
+    pub(crate) fn new(hints: &[(&str, &str)]) -> Self {
         let entries = hints
             .iter()
             .map(|(chord, desc)| ((*chord).to_owned(), (*desc).to_owned()))

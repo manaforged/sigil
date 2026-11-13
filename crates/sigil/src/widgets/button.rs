@@ -60,7 +60,7 @@ pub fn button(label: impl Into<Glyph>) -> ButtonBuilder {
 
 impl ButtonBuilder {
     /// Creates a button from a text label or an icon; an icon makes a square ghost button.
-    pub fn new(label: impl Into<Glyph>) -> Self {
+    pub(crate) fn new(label: impl Into<Glyph>) -> Self {
         match label.into() {
             Glyph::Text(text) => Self::labelled(text),
             #[cfg(feature = "scene")]

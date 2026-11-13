@@ -79,7 +79,7 @@ pub fn modal(show: Signal<bool>) -> ModalBuilder {
 
 impl ModalBuilder {
     /// Creates a centred dialog that is shown while `show` is true.
-    pub fn new(show: Signal<bool>) -> Self {
+    pub(crate) fn new(show: Signal<bool>) -> Self {
         Self {
             show,
             title: None,

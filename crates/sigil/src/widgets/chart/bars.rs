@@ -4,7 +4,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length};
 use crate::style::{Radius, Token};
 use crate::widgets::{Layout, Widget};
 
-use super::super::vector::{PathNode, path};
+use super::super::vector::{PathBuilder, path};
 use super::axis::format_tick;
 use super::marks::{VIEW_H, VIEW_H_F, VIEW_W, VIEW_W_F, layer_layout};
 use super::palette::Hue;
@@ -121,7 +121,7 @@ pub(super) fn bars(plot: &Bars<'_>) -> NodeBuilder {
     area
 }
 
-fn zero_rule(plot: &Bars<'_>) -> PathNode {
+fn zero_rule(plot: &Bars<'_>) -> PathBuilder {
     let at = plot.span.fraction(0.0);
     let line = if plot.vertical() {
         let y = (1.0 - at) * VIEW_H_F;

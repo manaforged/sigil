@@ -103,7 +103,7 @@ pub fn menu(open: Signal<bool>) -> MenuBuilder {
 
 impl MenuBuilder {
     /// Creates a popup menu that is shown while `open` is true.
-    pub fn new(open: Signal<bool>) -> Self {
+    pub(crate) fn new(open: Signal<bool>) -> Self {
         Self {
             open,
             host: Owner::current(),

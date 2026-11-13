@@ -16,7 +16,7 @@ use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJoin};
 use sigil::style::Rgba;
-use sigil::widgets::{PathNode, canvas, path};
+use sigil::widgets::{PathBuilder, canvas, path};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
 
@@ -88,14 +88,14 @@ fn widest_edge(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usize {
     .unwrap_or(0)
 }
 
-fn diagonal() -> PathNode {
+fn diagonal() -> PathBuilder {
     path(SIDE, SIDE)
         .move_to(10.0, 10.0)
         .line_to(50.0, 50.0)
         .stroke(INK, 1.0)
 }
 
-fn small_diagonal() -> PathNode {
+fn small_diagonal() -> PathBuilder {
     path(15, 15)
         .move_to(2.5, 2.5)
         .line_to(12.5, 12.5)
@@ -203,7 +203,7 @@ fn a_path_under_a_four_times_transform_stays_sharp_on_the_gpu() {
     assert_sharp(&mut ui, "transform 4x gpu");
 }
 
-fn star(node: PathNode) -> PathNode {
+fn star(node: PathBuilder) -> PathBuilder {
     let point = |k: usize| {
         let angle = 144.0f32.mul_add(k as f32, -90.0).to_radians();
         (
@@ -222,7 +222,7 @@ fn star(node: PathNode) -> PathNode {
         .fill(INK)
 }
 
-fn shape_canvas(shape: fn() -> PathNode) -> impl IntoNode {
+fn shape_canvas(shape: fn() -> PathBuilder) -> impl IntoNode {
     canvas(move |scene: &mut SceneBuilder, rect: Rect| {
         shape().draw(scene, rect, &Theme::light());
     })
@@ -230,7 +230,7 @@ fn shape_canvas(shape: fn() -> PathNode) -> impl IntoNode {
     .height(80.0)
 }
 
-fn probes(shape: fn() -> PathNode, points: &[(f32, f32)]) -> Vec<f32> {
+fn probes(shape: fn() -> PathBuilder, points: &[(f32, f32)]) -> Vec<f32> {
     let mut ui = Harness::new(shape_canvas(shape))
         .pixels(80, 80)
         .scale(SCALE);
@@ -317,7 +317,7 @@ fn an_even_odd_star_leaves_its_centre_empty() {
     assert_empty(found[0], "the even-odd star's centre");
 }
 
-fn capped(cap: StrokeCap) -> PathNode {
+fn capped(cap: StrokeCap) -> PathBuilder {
     path(80, 80)
         .move_to(20.0, 20.0)
         .line_to(50.0, 20.0)
@@ -334,7 +334,7 @@ fn a_square_cap_extends_the_stroke_by_half_its_width() {
     assert_empty(butt[0], "3 px past the end of a butt cap");
 }
 
-fn joined(join: StrokeJoin) -> PathNode {
+fn joined(join: StrokeJoin) -> PathBuilder {
     path(80, 80)
         .move_to(10.0, 50.0)
         .line_to(50.0, 50.0)

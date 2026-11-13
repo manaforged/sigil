@@ -69,7 +69,7 @@ pub fn text_field(value: Signal<String>) -> TextFieldBuilder {
 
 impl TextFieldBuilder {
     /// Creates a single-line input that edits `value`.
-    pub fn new(value: Signal<String>) -> Self {
+    pub(crate) fn new(value: Signal<String>) -> Self {
         Self {
             value,
             placeholder: TextContent::Static(String::new()),

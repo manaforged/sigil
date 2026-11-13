@@ -75,7 +75,7 @@ pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilde
 
 impl DropdownBuilder {
     /// Creates a select box that reads and writes the index `selected` into `options`.
-    pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
+    pub(crate) fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
             selected,
             options,

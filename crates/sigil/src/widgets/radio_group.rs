@@ -34,7 +34,7 @@ pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
 
 impl RadioGroupBuilder {
     /// Creates a group with no options that writes the key of the chosen option to `selected`.
-    pub fn new(selected: Signal<String>) -> Self {
+    pub(crate) fn new(selected: Signal<String>) -> Self {
         Self {
             selected,
             options: Vec::new(),

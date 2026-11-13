@@ -74,7 +74,7 @@ pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
 
 impl TextEditBuilder {
     /// Creates an editor that edits `value`, with Ctrl+Enter as the submit key.
-    pub fn new(value: Signal<String>) -> Self {
+    pub(crate) fn new(value: Signal<String>) -> Self {
         Self {
             value,
             placeholder: TextContent::Static(String::new()),

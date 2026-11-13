@@ -53,7 +53,7 @@ fn vector_path_shapes() {
 
 #[test]
 fn vector_gradient_fill() {
-    fn square(a: sigil::style::Color, b: sigil::style::Color, radial: bool) -> PathNode {
+    fn square(a: sigil::style::Color, b: sigil::style::Color, radial: bool) -> PathBuilder {
         let base = path(60, 60)
             .move_to(0.0, 0.0)
             .line_to(60.0, 0.0)

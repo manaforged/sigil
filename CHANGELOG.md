@@ -161,6 +161,8 @@ First public release.
 | bound traits `IntoPx`, `IntoIconSource`, `IntoScrollExtent`, `IntoList`, `DiffSource`, `FieldControl`, `MessageReceiver` as nameable paths | the bounds still apply; pass the same values |
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
+| `PathNode` | `PathBuilder` |
+| `ButtonBuilder::new` and the `new` of 15 other widget builders | the widget function: `button(label)`, `checkbox(checked)`, `slider(value, range)` |
 | `animation::{Keyframe, Keyframes, AnimationDirection, AnimationFill, Playback, AnimatorStatus}`, `terminal::CellGrid`, `style::ThemeBuilder`, `widgets::FocusCaret`, `TextFieldBuilder::focus_caret`, `Widget::presence_spring`, `Widget::ime_caret` | removed; no caller used them |
 | `Paint::{background_gradient, transform, transition, duration}`, `LayoutStyle::{align_content, box_sizing, flex_direction}`, `SceneBuilder::{draw_gradient, draw_pattern, draw_sprite, push_layer, draw_decoration, draw_image, draw_shadow, with_composite_layer}`, `DrawRect::border_radius`, `Theme::{locale, strings, gray, accent_scale, success, warn, error, info}`, `app::{set_ambiguous, set_cell_width}`, `style::render_style_for` | public only under `kittest` |
 | `style::scale`, `style::{Locale, Strings, StyleAtom, StateStyle, StyleState, StyleVariant, StyleEngine, RenderStyle, Transform2D, TransitionId, MillisU16, BgGradient}` and the other style value types | public only under `kittest` or crate-private; `Token::scale` and `Tone::scale_role` still work without naming `ScaleRole` |

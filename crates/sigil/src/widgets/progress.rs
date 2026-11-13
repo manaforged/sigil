@@ -40,7 +40,7 @@ pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
 
 impl ProgressBuilder {
     /// Creates a bar that shows `value` as a fraction of `max`.
-    pub fn new(value: Signal<f32>, max: f32) -> Self {
+    pub(crate) fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
             value,
             max: max.max(f32::EPSILON),

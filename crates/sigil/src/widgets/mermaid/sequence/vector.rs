@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, Position};
 use crate::style::{BORDER_WIDTH, Token};
 use crate::widgets::Layout;
-use crate::widgets::vector::PathNode;
+use crate::widgets::vector::PathBuilder;
 
 use super::super::flow_vector::{
     Area, CELL_H, CELL_W, HEAD, Point, barb, canvas, cells, dashed_line, edge_label, edge_width,
@@ -16,14 +16,14 @@ const BOX_INSET: f32 = 4.0;
 const RADIUS: f32 = 4.0;
 
 struct Pens {
-    lines: PathNode,
-    dashes: PathNode,
-    heads: PathNode,
-    open_heads: PathNode,
-    boxes: PathNode,
-    notes: PathNode,
-    frames: PathNode,
-    frame_dashes: PathNode,
+    lines: PathBuilder,
+    dashes: PathBuilder,
+    heads: PathBuilder,
+    open_heads: PathBuilder,
+    boxes: PathBuilder,
+    notes: PathBuilder,
+    frames: PathBuilder,
+    frame_dashes: PathBuilder,
     labels: Vec<NodeBuilder>,
 }
 
@@ -255,14 +255,14 @@ fn stroke(pens: &mut Pens, points: &[Point], dashed: bool) {
     }
 }
 
-fn filled_head(node: PathNode, base: Point, tip: Point) -> PathNode {
+fn filled_head(node: PathBuilder, base: Point, tip: Point) -> PathBuilder {
     let (dx, dy) = (tip.0 - base.0, tip.1 - base.1);
     let length = dx.hypot(dy).max(f32::EPSILON);
     let (ux, uy) = (dx / length, dy / length);
     barb(node, tip, base, (ux, uy), HEAD * 0.55)
 }
 
-fn open_head(node: PathNode, tip: Point, direction: f32) -> PathNode {
+fn open_head(node: PathBuilder, tip: Point, direction: f32) -> PathBuilder {
     let back = (-direction).mul_add(HEAD, tip.0);
     node.move_to(back, HEAD.mul_add(-0.6, tip.1))
         .line_to(tip.0, tip.1)
@@ -271,7 +271,7 @@ fn open_head(node: PathNode, tip: Point, direction: f32) -> PathNode {
         .line_to(tip.0, tip.1)
 }
 
-fn cross(node: PathNode, tip: Point, direction: f32) -> PathNode {
+fn cross(node: PathBuilder, tip: Point, direction: f32) -> PathBuilder {
     let (cx, half) = (tip.0 - direction * HEAD / 2.0, HEAD / 2.0);
     node.move_to(cx - half, tip.1 - half)
         .line_to(cx + half, tip.1 + half)
@@ -364,7 +364,7 @@ fn tag(label: &str, left: f32, centre_y: f32) -> NodeBuilder {
     edge_label(label, (left + half, centre_y))
 }
 
-fn with(pen: &mut PathNode, draw: impl FnOnce(PathNode) -> PathNode) {
+fn with(pen: &mut PathBuilder, draw: impl FnOnce(PathBuilder) -> PathBuilder) {
     let taken = std::mem::replace(pen, canvas((1.0, 1.0)));
     *pen = draw(taken);
 }

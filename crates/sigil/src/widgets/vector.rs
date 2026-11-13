@@ -26,7 +26,7 @@ type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 
 /// Builder of a vector path.
 #[derive(Debug)]
-pub struct PathNode {
+pub struct PathBuilder {
     width: u32,
     height: u32,
     cmds: Vec<PathCmd>,
@@ -43,8 +43,8 @@ pub struct PathNode {
 
 /// A vector path.
 #[must_use]
-pub const fn path(width: u32, height: u32) -> PathNode {
-    PathNode {
+pub const fn path(width: u32, height: u32) -> PathBuilder {
+    PathBuilder {
         width,
         height,
         cmds: Vec::new(),
@@ -60,7 +60,7 @@ pub const fn path(width: u32, height: u32) -> PathNode {
     }
 }
 
-impl PathNode {
+impl PathBuilder {
     /// Starts a new subpath at this point.
     #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
@@ -295,7 +295,7 @@ fn fixed(width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block().fixed_size(width, height).shrink(0.0)
 }
 
-builder_impls!([] PathNode: widget, node(pub(crate)));
+builder_impls!([] PathBuilder: widget, node(pub(crate)));
 
 #[cfg(test)]
 #[path = "vector_tests.rs"]

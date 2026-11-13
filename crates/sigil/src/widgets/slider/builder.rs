@@ -94,7 +94,7 @@ pub fn range_slider(
 
 impl SliderBuilder {
     /// Creates a slider that edits `value` inside `range` with a step of 1.
-    pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
+    pub(crate) fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
         Self::with_thumb(Thumb::Only(value), range)
     }
 

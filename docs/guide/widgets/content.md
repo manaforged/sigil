@@ -42,7 +42,7 @@ Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contai
 
 ## path
 
-`path(width, height) -> PathNode`: a tiny vector canvas rasterized through tiny-skia into an image. Build with commands:
+`path(width, height) -> PathBuilder`: a tiny vector canvas rasterized through tiny-skia into an image. Build with commands:
 
 ```rust,no_run
 # use sigil::prelude::*;
