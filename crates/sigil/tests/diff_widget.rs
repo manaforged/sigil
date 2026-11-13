@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 use sigil::kernel::Role;
 use sigil::prelude::*;
-use sigil::widgets::{DiffView, Patch, Selection, diff};
+use sigil::widgets::{DiffView, Hunk, Patch, Selection, diff};
 use sigil_kittest::{Harness, Query};
 
 fn long_patch(lines: usize) -> String {
@@ -39,11 +39,8 @@ fn a_click_on_a_hunk_header_selects_its_changed_lines() {
     let export = Rc::clone(&slot);
     let text = "--- a/x.rs\n+++ b/x.rs\n@@ -1,2 +1,2 @@ fn main\n keep\n-old\n+new\n";
     let patch = Patch::parse(text);
-    assert_eq!(patch.hunks.len(), 1);
-    assert_eq!(
-        patch.hunks.first().and_then(|hunk| hunk.path.as_deref()),
-        Some("x.rs")
-    );
+    assert_eq!(patch.hunks().len(), 1);
+    assert_eq!(patch.hunks().first().and_then(Hunk::path), Some("x.rs"));
     let mut ui = Harness::new(move || {
         let selection = signal(Selection::default());
         export.set(Some(selection));
