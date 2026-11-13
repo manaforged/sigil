@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 const INDEX: u32 = (1 << 24) - 1;
 
@@ -25,6 +25,11 @@ thread_local! {
             free: Vec::new(),
         })
     };
+    static LAST: Cell<(Shift, (f32, f32))> = const { Cell::new((Shift(0), (0.0, 0.0))) };
+}
+
+fn forget() {
+    let _ = LAST.try_with(|last| last.set((Shift(0), (0.0, 0.0))));
 }
 
 impl Shift {
@@ -32,7 +37,11 @@ impl Shift {
         if self.0 == 0 {
             return (0.0, 0.0);
         }
-        SLOTS.with_borrow(|slots| {
+        let (seen, cached) = LAST.get();
+        if seen == self {
+            return cached;
+        }
+        let offset = SLOTS.with_borrow(|slots| {
             let (mut x, mut y, mut at) = (0.0, 0.0, self);
             for _ in 0..=slots.entries.len() {
                 let Some(entry) = slots.entry(at) else {
@@ -43,7 +52,9 @@ impl Shift {
                 at = entry.under;
             }
             (x, y)
-        })
+        });
+        LAST.set((self, offset));
+        offset
     }
 }
 
@@ -89,6 +100,7 @@ impl ShiftSlot {
     }
 
     pub(crate) fn move_to(&self, by: (f32, f32)) {
+        forget();
         SLOTS.with_borrow_mut(|slots| {
             if let Some(entry) = slots.entry_mut(self.0) {
                 entry.by = by;
@@ -97,6 +109,7 @@ impl ShiftSlot {
     }
 
     pub(crate) fn nest(&self, under: Shift) -> Shift {
+        forget();
         SLOTS.with_borrow_mut(|slots| {
             if let Some(entry) = slots.entry_mut(self.0)
                 && under != self.0
@@ -110,6 +123,7 @@ impl ShiftSlot {
 
 impl Drop for ShiftSlot {
     fn drop(&mut self) {
+        forget();
         let shift = self.0;
         let _ = SLOTS.try_with(|slots| {
             if let Ok(mut slots) = slots.try_borrow_mut()

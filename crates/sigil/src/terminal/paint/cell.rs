@@ -91,10 +91,25 @@ impl Cell {
     }
 
     pub(crate) fn styled_like(&self, other: &Self) -> bool {
-        Self {
-            text: other.text,
-            ..*self
-        } == *other
+        let Self {
+            text: _,
+            fg,
+            bg,
+            bold,
+            italic,
+            dim,
+            lines,
+            underline_ink,
+            link,
+        } = *self;
+        fg == other.fg
+            && bg == other.bg
+            && bold == other.bold
+            && italic == other.italic
+            && dim == other.dim
+            && lines == other.lines
+            && underline_ink == other.underline_ink
+            && link == other.link
     }
 
     /// A cell that holds one space with no colors and no attributes.
