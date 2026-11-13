@@ -241,21 +241,31 @@ impl ListRowBuilder {
             row = row.child(leading_slot(leading));
         }
         let tone = self.tone;
+        let secondary = if self.selected {
+            Token::OnSurface
+        } else {
+            tone.detail()
+        };
         if let TextContent::Static(name) = &self.title {
             row = row.label(name.clone());
         }
         row = row.child(title_text(&self));
         if let Some(detail) = self.detail.take() {
-            row = row.child(detail_text(detail, tone));
+            row = row.child(detail_text(detail, secondary));
         }
         if let Some(status) = self.status.take() {
-            row = row.child(status_text(status, self.shrink, tone, self.status_tone));
+            row = row.child(status_text(
+                status,
+                self.shrink,
+                secondary,
+                self.status_tone,
+            ));
         }
         if let Some((label, badge_tone)) = self.badge.take() {
             row = row.child(chip(label, badge_tone));
         }
         for entry in std::mem::take(&mut self.columns) {
-            row = row.child(column(entry, self.shrink, tone));
+            row = row.child(column(entry, self.shrink, secondary));
         }
         if tone == RowTone::Header {
             return row;
@@ -401,11 +411,11 @@ fn title_text(slots: &ListRowBuilder) -> TextBuilder {
         .class(slots.tone.title().text())
 }
 
-fn detail_text(detail: TextContent, tone: RowTone) -> TextBuilder {
+fn detail_text(detail: TextContent, color: Token) -> TextBuilder {
     text(detail)
         .ellipsize()
         .class("text-xs")
-        .class(tone.detail().text())
+        .class(color.text())
         .layout(
             LayoutStyle::block()
                 .grow(1.0)
@@ -417,14 +427,13 @@ fn detail_text(detail: TextContent, tone: RowTone) -> TextBuilder {
 fn status_text(
     status: TextContent,
     shrink: bool,
-    tone: RowTone,
+    color: Token,
     status_tone: Option<Tone>,
 ) -> TextBuilder {
-    let node = text(status).ellipsize().class("text-xs").class(
-        status_tone
-            .map_or_else(|| tone.detail(), |shade| shade.token(12))
-            .text(),
-    );
+    let node = text(status)
+        .ellipsize()
+        .class("text-xs")
+        .class(status_tone.map_or(color, |shade| shade.token(12)).text());
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {
@@ -432,7 +441,7 @@ fn status_text(
     }
 }
 
-fn column(entry: Column, shrink: bool, tone: RowTone) -> NodeBuilder {
+fn column(entry: Column, shrink: bool, color: Token) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -448,6 +457,6 @@ fn column(entry: Column, shrink: bool, tone: RowTone) -> NodeBuilder {
             text(entry.text)
                 .ellipsize()
                 .class("text-xs")
-                .class(tone.detail().text()),
+                .class(color.text()),
         )
 }
