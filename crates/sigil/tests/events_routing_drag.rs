@@ -50,7 +50,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
                                 return;
                             }
                             let (x, y) = pos.peek();
-                            pos.set((x + ev.delta.x, y + ev.delta.y));
+                            pos.set((x + ev.delta().x, y + ev.delta().y));
                             ev.stop_propagation();
                         }),
                 ),
@@ -122,7 +122,7 @@ fn window_blur_cancels_a_captured_drag() {
                     container()
                         .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
                         .pointer_down(sigil::events::PointerEvent::capture_pointer)
-                        .pointer_up(move |ev| ended.set(Some(ev.phase))),
+                        .pointer_up(move |ev| ended.set(Some(ev.phase()))),
                 ),
         );
         let layout = routing_helpers::compute_layout(&mut cx, root, 400.0, 300.0);

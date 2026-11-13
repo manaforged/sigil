@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Position};
-use crate::style::{Radius, Token};
+use crate::style::{Radius, Tone};
 use crate::widgets::Layout;
 
 use super::ChartView;
@@ -175,7 +175,7 @@ pub(super) fn title(name: &str, lead: f32, centered: bool) -> NodeBuilder {
                 .nowrap()
                 .class("text-xs")
                 .class("font-bold")
-                .class(Token::Gray12.text()),
+                .class(Tone::Neutral.step(12).text()),
         )
 }
 
@@ -183,7 +183,7 @@ fn tick(value: String) -> impl IntoNode + 'static {
     text(value)
         .nowrap()
         .class("text-xs")
-        .class(Token::Gray11.text())
+        .class(Tone::Neutral.step(11).text())
 }
 
 pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
@@ -211,7 +211,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
                     text(item.legend.clone())
                         .nowrap()
                         .class("text-xs")
-                        .class(Token::Gray12.text()),
+                        .class(Tone::Neutral.step(12).text()),
                 ),
         );
     }

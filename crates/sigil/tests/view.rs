@@ -171,7 +171,7 @@ fn a_view_names_toggles_editors_dividers_and_their_actions() {
         let sent = signal(0_u32);
         let mut ui = Harness::new(move || {
             View::new(
-                "column {\n  toggle \"Sync\" checked=$on change=@changed\n  divider\n  text_field value=$query placeholder=\"Search\" submit=@send\n  text_edit value=$notes placeholder=\"Notes\"\n  button \"Delete\" destructive outline\n}\n",
+                "column {\n  toggle \"Sync\" checked=$on change=@changed\n  divider\n  text_field value=$query placeholder=\"Search\" submit=@send\n  text_field value=$notes multiline placeholder=\"Notes\"\n  button \"Delete\" destructive outline\n}\n",
             )
             .flag("on", on)
             .signal("notes", notes)

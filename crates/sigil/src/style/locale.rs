@@ -84,20 +84,13 @@ impl DateOrder {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub struct Locale {
-    /// The character between the whole part and the fraction of a number.
-    pub decimal: char,
-    /// The character between digit groups; `None` writes no groups.
-    pub group: Option<char>,
-    /// The number of digits in each group; the default is 3.
-    pub group_size: u8,
-    /// The character for the digit zero; the digits 1 to 9 follow it in Unicode order.
-    pub zero: char,
-    /// The order of the day, month, and year in a date.
-    pub date_order: DateOrder,
-    /// The character between the parts of a date; the default is `-`.
-    pub date_separator: char,
-    /// Whether times show a 12-hour clock with AM and PM.
-    pub hour12: bool,
+    pub(crate) decimal: char,
+    pub(crate) group: Option<char>,
+    pub(crate) group_size: u8,
+    pub(crate) zero: char,
+    pub(crate) date_order: DateOrder,
+    pub(crate) date_separator: char,
+    pub(crate) hour12: bool,
 }
 
 impl Default for Locale {
@@ -170,6 +163,13 @@ impl Locale {
     #[must_use]
     pub const fn group_size(mut self, size: u8) -> Self {
         self.group_size = size;
+        self
+    }
+
+    /// Sets whether times show a 12-hour clock with AM and PM.
+    #[must_use]
+    pub const fn hour12(mut self, hour12: bool) -> Self {
+        self.hour12 = hour12;
         self
     }
 

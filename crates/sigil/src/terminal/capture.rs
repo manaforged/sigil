@@ -106,8 +106,8 @@ fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Color) -> Re
         let style = TextStyle {
             font_family: String::from("mono"),
             font_size: rect.height * 0.8,
-            font_weight: if cell.bold { 700 } else { 400 },
-            italic: cell.italic,
+            font_weight: if cell.bold() { 700 } else { 400 },
+            italic: cell.italic(),
             line_height: TextLineHeight::Absolute(rect.height),
             ..TextStyle::default()
         };
@@ -119,7 +119,7 @@ fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Color) -> Re
                     format_args!("software renderer failed: {error}"),
                 )
             })?;
-        let opacity = if cell.dim { 5_000 } else { 10_000 };
+        let opacity = if cell.dim() { 0.5 } else { 1.0 };
         let run = GlyphRun::new(rect, cell.text.to_string(), fg, style, opacity)
             .with_paragraph(paragraph);
         scene.commands.push(SceneCommand::PushClip(rect.into()));
@@ -131,14 +131,14 @@ fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Color) -> Re
 }
 
 fn decorations(scene: &mut CommandScene, cell: &Cell, rect: Rect, fg: Color) {
-    let underline = match cell.lines.underline {
+    let underline = match cell.underline {
         Underline::None => None,
         Underline::Straight => Some(DecorationKind::Underline),
         Underline::Curly => Some(DecorationKind::WavyUnderline),
     };
     for kind in underline
         .into_iter()
-        .chain(cell.lines.strike.then_some(DecorationKind::Strikethrough))
+        .chain(cell.strike().then_some(DecorationKind::Strikethrough))
     {
         let y = if kind == DecorationKind::Strikethrough {
             0.5
@@ -156,7 +156,7 @@ fn decorations(scene: &mut CommandScene, cell: &Cell, rect: Rect, fg: Color) {
                     1.0,
                 ),
                 color: colour::rgba(cell.underline_ink, fg),
-                opacity: if cell.dim { 5_000 } else { 10_000 },
+                opacity: if cell.dim() { 5_000 } else { 10_000 },
                 period: 4.0,
                 line_width: 1.0,
             }));

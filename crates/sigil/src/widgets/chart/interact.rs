@@ -6,7 +6,7 @@ use crate::events::{PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
-use crate::style::Token;
+use crate::style::Tone;
 use crate::widgets::interaction::is_primary;
 use crate::widgets::{Layout, Widget};
 
@@ -211,5 +211,5 @@ fn marks(at: Probe, tips: &Tips, pad: f32, crosshair: bool) -> Vec<NodeBuilder> 
 fn rule(layout: LayoutStyle) -> NodeBuilder {
     container()
         .layout(layout.position(Position::Absolute))
-        .class([Token::Gray8.background()])
+        .class([Tone::Neutral.step(8).background()])
 }

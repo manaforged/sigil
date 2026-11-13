@@ -22,7 +22,7 @@ mod region;
 mod scene;
 
 pub(super) use cell::Face;
-pub use cell::{Cell, Ink, Lines, Underline};
+pub use cell::{Cell, Ink, Underline};
 pub(crate) use glyph::{Glyph, Link};
 pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;

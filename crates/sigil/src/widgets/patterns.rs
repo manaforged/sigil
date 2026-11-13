@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
@@ -204,7 +204,11 @@ pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) 
                 .class("text-lg font-medium")
                 .class(Token::OnSurface.text()),
         )
-        .child(text(body).class("text-sm").class(Token::Gray11.text()))
+        .child(
+            text(body)
+                .class("text-sm")
+                .class(Tone::Neutral.step(11).text()),
+        )
 }
 
 /// A section heading row.
@@ -216,7 +220,11 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
                 .height(row_height())
                 .padding_x(Space::Sm),
         )
-        .child(text(title).class("text-xs").class(Token::Gray11.text()))
+        .child(
+            text(title)
+                .class("text-xs")
+                .class(Tone::Neutral.step(11).text()),
+        )
 }
 
 /// A key hint row.
@@ -229,9 +237,17 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
                 .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
-        .child(text(keys).class("text-xs").class(Token::Gray11.text()))
+        .child(
+            text(keys)
+                .class("text-xs")
+                .class(Tone::Neutral.step(11).text()),
+        )
         .child(spacer())
-        .child(text(right).class("text-xs").class(Token::Accent11.text()))
+        .child(
+            text(right)
+                .class("text-xs")
+                .class(Tone::Primary.step(11).text()),
+        )
 }
 
 /// Initials in a circle.
@@ -248,7 +264,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
                 .justify_content(JustifyContent::Center)
                 .shrink(0.0),
         )
-        .class([Radius::Full.atom(), Token::Accent9.background()])
+        .class([Radius::Full.atom(), Tone::Primary.step(9).background()])
         .child(
             text(content)
                 .class("text-xs font-medium")

@@ -82,7 +82,7 @@ fn focused_key_any_receives_unregistered_text_input() {
             .key_any({
                 let hits = Rc::clone(&hits);
                 move |event| {
-                    if event.text.as_deref() == Some("é") {
+                    if event.text() == Some("é") {
                         hits.set(hits.get() + 1);
                     }
                 }
@@ -140,7 +140,7 @@ fn slash_fixture() -> SlashFixture {
             .key_any({
                 let typed = Rc::clone(&typed);
                 move |event| {
-                    if event.text.is_some() {
+                    if event.text().is_some() {
                         typed.set(typed.get() + 1);
                     }
                 }
@@ -222,7 +222,7 @@ fn modifier_chord_still_fires_while_text_input_focused() {
             .key_any({
                 let typed = Rc::clone(&typed);
                 move |event| {
-                    if event.text.is_some() {
+                    if event.text().is_some() {
                         typed.set(typed.get() + 1);
                     }
                 }

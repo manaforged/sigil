@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{Radius, Token};
+use crate::style::{Radius, Token, Tone};
 use crate::widgets::Layout;
 
 use super::super::vector::{PathBuilder, path};
@@ -205,12 +205,12 @@ fn legend_row(name: &str, value: &str, hue: Hue) -> NodeBuilder {
             text(name.to_owned())
                 .nowrap()
                 .class("text-xs")
-                .class(Token::Gray12.text()),
+                .class(Tone::Neutral.step(12).text()),
         )
         .child(
             text(value.to_owned())
                 .nowrap()
                 .class("text-xs")
-                .class(Token::Gray11.text()),
+                .class(Tone::Neutral.step(11).text()),
         )
 }

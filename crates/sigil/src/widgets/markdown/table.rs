@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::app::cell_width;
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{IntoPx, JustifyContent, LayoutStyle, Length, cols};
+use crate::layout::{IntoPxExt as _, JustifyContent, LayoutStyle, Length, cols};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
 use crate::widgets::Layout;

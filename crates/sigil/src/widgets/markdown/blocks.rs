@@ -7,7 +7,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, cols};
 use crate::reactive::signal;
-use crate::style::{Radius, StyleAtom, Token, space};
+use crate::style::{Radius, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 
 use super::inline::note_mark;
@@ -25,16 +25,36 @@ struct Callout {
 
 const fn callout(kind: BlockQuoteKind) -> Callout {
     let (title, tint, edge, ink) = match kind {
-        BlockQuoteKind::Note => ("Note", Token::Info3, Token::Info8, Token::Info11),
-        BlockQuoteKind::Tip => ("Tip", Token::Success3, Token::Success8, Token::Success11),
-        BlockQuoteKind::Important => ("Important", Token::Accent3, Token::Accent8, Token::Accent11),
+        BlockQuoteKind::Note => (
+            "Note",
+            Tone::Info.step(3),
+            Tone::Info.step(8),
+            Tone::Info.step(11),
+        ),
+        BlockQuoteKind::Tip => (
+            "Tip",
+            Tone::Success.step(3),
+            Tone::Success.step(8),
+            Tone::Success.step(11),
+        ),
+        BlockQuoteKind::Important => (
+            "Important",
+            Tone::Primary.step(3),
+            Tone::Primary.step(8),
+            Tone::Primary.step(11),
+        ),
         BlockQuoteKind::Warning => (
             "Warning",
-            Token::Warning3,
-            Token::Warning8,
-            Token::Warning11,
+            Tone::Warning.step(3),
+            Tone::Warning.step(8),
+            Tone::Warning.step(11),
         ),
-        BlockQuoteKind::Caution => ("Caution", Token::Error3, Token::Error8, Token::Error11),
+        BlockQuoteKind::Caution => (
+            "Caution",
+            Tone::Error.step(3),
+            Tone::Error.step(8),
+            Tone::Error.step(11),
+        ),
     };
     Callout {
         title,
@@ -109,7 +129,7 @@ pub(super) fn footnotes(notes: Vec<Note>, node: BlockNode) -> NodeBuilder {
     for note in notes {
         let mark = tinted(
             text(note_mark(&note.label)).nowrap(),
-            TokenTone(Token::Accent11),
+            TokenTone(Tone::Primary.step(11)),
         )
         .layout(LayoutStyle::block().width(cols(width as f32)).shrink(0.0));
         let row = container()

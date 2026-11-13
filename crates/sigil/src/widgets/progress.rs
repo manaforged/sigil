@@ -154,7 +154,7 @@ fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
         .style_reactive(move || grow_atoms(units.get()))
 }
 
-fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
+const fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
     let paint = match tone {
         Tone::Primary => Token::Accent.background(),
         _ => tone.fill().background(),

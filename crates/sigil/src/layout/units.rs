@@ -71,25 +71,32 @@ impl TextLength {
     }
 }
 
-/// A pixel count or a `Length`, for widget sizes such as `width` and `row_height`.
-pub trait IntoPx {
-    /// Converts this into pixels.
-    fn into_px(self) -> f32;
+pub(crate) mod px_sealed {
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed {
+        fn into_px(self) -> f32;
+    }
 }
 
-impl IntoPx for f32 {
+/// A pixel count or a `Length`, for widget sizes such as `width` and `row_height`.
+#[allow(unnameable_types, reason = "sealed")]
+pub trait IntoPx: px_sealed::Sealed {}
+
+impl<P: px_sealed::Sealed> IntoPx for P {}
+
+impl px_sealed::Sealed for f32 {
     fn into_px(self) -> f32 {
         self
     }
 }
 
-impl IntoPx for TextLength {
+impl px_sealed::Sealed for TextLength {
     fn into_px(self) -> f32 {
         self.px()
     }
 }
 
-impl IntoPx for Length {
+impl px_sealed::Sealed for Length {
     fn into_px(self) -> f32 {
         self.px().unwrap_or(0.0)
     }

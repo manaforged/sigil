@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length};
-use crate::style::{Radius, Token};
+use crate::style::{Radius, Tone};
 use crate::widgets::{Layout, Widget};
 
 use super::super::vector::{PathBuilder, path};
@@ -113,7 +113,7 @@ pub(super) fn bars(plot: &Bars<'_>) -> NodeBuilder {
                 .padding(Space::px(plot.pad)),
         )
         .class("border-b")
-        .class(Token::Gray6.border())
+        .class(Tone::Neutral.step(6).border())
         .child(track);
     if plot.span.lo < 0.0 && plot.span.hi > 0.0 {
         area = area.child(zero_rule(plot));
@@ -130,7 +130,7 @@ fn zero_rule(plot: &Bars<'_>) -> PathBuilder {
         let x = at * VIEW_W_F;
         path(VIEW_W, VIEW_H).move_to(x, 0.0).line_to(x, VIEW_H_F)
     };
-    line.stroke(Token::Gray11, RULE)
+    line.stroke(Tone::Neutral.step(11), RULE)
         .non_scaling_stroke()
         .layout(layer_layout())
 }

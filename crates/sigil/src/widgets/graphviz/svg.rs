@@ -5,7 +5,7 @@ use layout::gv::{DotParser, GraphBuilder};
 
 use super::bounds::Tight;
 use crate::kernel::NodeBuilder;
-use crate::style::{Theme, Token};
+use crate::style::{Theme, Token, Tone};
 use crate::widgets::svg_picture::{FONT_FAMILY, hex, picture};
 
 const TIMES: &str = "font-family: Times, serif;";
@@ -63,7 +63,10 @@ fn defaults(theme: &Theme) -> [Stmt; 2] {
         }
         list
     };
-    let node = attrs(&[("color", Token::Accent8), ("fillcolor", Token::Accent3)]);
+    let node = attrs(&[
+        ("color", Tone::Primary.step(8)),
+        ("fillcolor", Tone::Primary.step(3)),
+    ]);
     let edge = attrs(&[("color", Token::OnSurfaceMuted)]);
     [
         Stmt::Attribute(AttrStmt::new(AttrStmtTarget::Node, node)),

@@ -56,7 +56,7 @@ kittest_pub! {
     pub use mouse::map_mouse;
 }
 pub use notify::Activity;
-pub use paint::{Cell, Grid, Ink, Lines, Underline};
+pub use paint::{Cell, Grid, Ink, Underline};
 pub use run::Hooks;
 #[cfg(test)]
 pub(crate) use run::present;

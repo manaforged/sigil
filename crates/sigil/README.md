@@ -73,7 +73,7 @@ Owner::scope("embed", || {
 });
 ```
 
-`Host::scene` lays out the tree and returns the `CommandScene` that the window renderer and the terminal rasterizer both draw. `Host::emit` returns the scene for the current layout. After layout, `Host::surfaces` lists the `surface(key)` holes. You place a native view in each hole; Sigil does not create an OS window for it.
+`Host::scene` lays out the tree and returns the `CommandScene` that the window renderer and the terminal rasterizer both draw. After layout, `Host::surfaces` lists the `surface(key)` holes. You place a native view in each hole; Sigil does not create an OS window for it.
 
 Clipboard: call `copy("text")` inside `run`, or after `install(OsClipboard)` on an embed host.
 

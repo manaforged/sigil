@@ -7,7 +7,7 @@ use sigil::style::Color;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
     combobox, date_field, divider, dot, dropdown, gauge, markdown, number_field, progress,
-    radio_group, scroll, slider, table, tabs, text_edit, text_field, toggle, virtual_list,
+    radio_group, scroll, slider, table, tabs, text_field, toggle, virtual_list,
 };
 use sigil_kittest::{Harness, InteractionMode};
 
@@ -70,7 +70,7 @@ fn inputs() -> Vec<Case> {
         ),
         (
             "text_edit",
-            Box::new(|| text_edit(signal(String::from("line\nline")))),
+            Box::new(|| text_field(signal(String::from("line\nline"))).multiline()),
         ),
         (
             "number_field",

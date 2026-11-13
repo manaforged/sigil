@@ -22,10 +22,10 @@ fn scroll_and_pointer_handlers_see_the_same_local_position() {
                     container()
                         .layout(LayoutStyle::block().width(300.0).height(200.0))
                         .pointer_down(move |event: &mut PointerEvent| {
-                            seen.update(|s| s.0 = event.position);
+                            seen.update(|s| s.0 = event.position());
                         })
                         .scroll(move |event: &mut ScrollEvent| {
-                            seen.update(|s| s.1 = event.position);
+                            seen.update(|s| s.1 = event.position());
                         }),
                 )
         })

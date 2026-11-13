@@ -7,7 +7,7 @@ use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
-use crate::style::{StyleAtom, Token, space};
+use crate::style::{StyleAtom, Tone, space};
 use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
 use super::text_field::TextFieldBuilder;
@@ -163,7 +163,7 @@ fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn Into
                 .child(
                     text(theme_text(StringKey::RequiredMark))
                         .hittable(false)
-                        .class(Token::Error11.text())
+                        .class(Tone::Error.step(11).text())
                         .style_reactive(move || shown(required.get())),
                 ),
         ),
@@ -175,6 +175,6 @@ fn error_line(error: Signal<Option<String>>) -> crate::kernel::TextBuilder {
     text(move || error.get().unwrap_or_default())
         .role(Role::Label)
         .class("text-xs font-medium")
-        .class(Token::Error12.text())
+        .class(Tone::Error.step(12).text())
         .style_reactive(move || shown(error.get().is_some()))
 }

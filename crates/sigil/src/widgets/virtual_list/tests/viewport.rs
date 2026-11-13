@@ -71,15 +71,15 @@ fn select_fires_with_selected_index() {
         let last_clone = Rc::clone(&last_index);
 
         let items: Vec<usize> = (0..20).collect();
-        let mut builder = virtual_list(items, |_, _| container())
+        let selection = signal(Selection::new(SelectionMode::Single));
+        let builder = virtual_list(items, |_, _| container())
             .row_height(30.0)
             .viewport_height(200.0)
-            .selection(SelectionMode::Single);
-
-        let selection = builder.selection_state();
-        let builder = builder.change(move |i| {
-            last_clone.set(Some(i));
-        });
+            .selection(SelectionMode::Single)
+            .selected(selection)
+            .change(move |i| {
+                last_clone.set(Some(i));
+            });
 
         let mut cx = Cx::new_root();
         let _ = cx.add(builder);

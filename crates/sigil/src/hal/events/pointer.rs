@@ -93,40 +93,46 @@ pub enum PointerPhase {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct PointerTilt {
+    pub(crate) x: f32,
+    pub(crate) y: f32,
+}
+
+impl PointerTilt {
+    /// Creates a pen tilt from x and y angles in degrees.
+    #[must_use]
+    pub const fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+
     /// The tilt along the x axis, in degrees.
-    pub x: f32,
+    #[must_use]
+    pub const fn x(&self) -> f32 {
+        self.x
+    }
+
     /// The tilt along the y axis, in degrees.
-    pub y: f32,
+    #[must_use]
+    pub const fn y(&self) -> f32 {
+        self.y
+    }
 }
 
 /// A pointer event.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct PointerEvent {
-    /// The pointer position from the top left corner of the handling node, in logical pixels.
-    pub position: Point,
-    /// The pointer position in the window, in logical pixels.
-    pub window_position: Point,
-    /// The movement since the last pointer position, in logical pixels.
-    pub delta: Point,
-    /// The device: mouse, touch, or pen.
-    pub kind: PointerType,
-    /// The button that was pressed or released; `None` when no button changed.
-    pub button: Option<MouseButton>,
-    /// The buttons held during the event.
-    pub buttons: MouseButtons,
-    /// The modifiers held during the event.
-    pub modifiers: Modifiers,
-    /// What the pointer did: press, move, release, enter, leave, or cancel.
-    pub phase: PointerPhase,
-    /// The size of the node that handles the event, in logical pixels.
-    pub target_size: Size,
-    /// The id of the touch point, which tells fingers apart; 0 for a mouse.
-    pub pointer_id: u64,
-    /// The touch force from 0.0 to 1.0; `None` when the device reports none.
-    pub pressure: Option<f32>,
-    /// The pen tilt; `None` when the device reports none.
-    pub tilt: Option<PointerTilt>,
+    pub(crate) position: Point,
+    pub(crate) window_position: Point,
+    pub(crate) delta: Point,
+    pub(crate) kind: PointerType,
+    pub(crate) button: Option<MouseButton>,
+    pub(crate) buttons: MouseButtons,
+    pub(crate) modifiers: Modifiers,
+    pub(crate) phase: PointerPhase,
+    pub(crate) target_size: Size,
+    pub(crate) pointer_id: u64,
+    pub(crate) pressure: Option<f32>,
+    pub(crate) tilt: Option<PointerTilt>,
     capture_requested: bool,
     captured: bool,
     pub(super) propagation_stopped: bool,
@@ -165,6 +171,78 @@ impl PointerEvent {
         self.pressure = pressure;
         self.tilt = tilt;
         self
+    }
+
+    /// The pointer position from the top left corner of the handling node, in logical pixels.
+    #[must_use]
+    pub const fn position(&self) -> Point {
+        self.position
+    }
+
+    /// The pointer position in the window, in logical pixels.
+    #[must_use]
+    pub const fn window_position(&self) -> Point {
+        self.window_position
+    }
+
+    /// The movement since the last pointer position, in logical pixels.
+    #[must_use]
+    pub const fn delta(&self) -> Point {
+        self.delta
+    }
+
+    /// The device: mouse, touch, or pen.
+    #[must_use]
+    pub const fn kind(&self) -> PointerType {
+        self.kind
+    }
+
+    /// The button that was pressed or released; `None` when no button changed.
+    #[must_use]
+    pub const fn button(&self) -> Option<MouseButton> {
+        self.button
+    }
+
+    /// The buttons held during the event.
+    #[must_use]
+    pub const fn buttons(&self) -> MouseButtons {
+        self.buttons
+    }
+
+    /// The modifiers held during the event.
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
+        self.modifiers
+    }
+
+    /// What the pointer did: press, move, release, enter, leave, or cancel.
+    #[must_use]
+    pub const fn phase(&self) -> PointerPhase {
+        self.phase
+    }
+
+    /// The size of the node that handles the event, in logical pixels.
+    #[must_use]
+    pub const fn target_size(&self) -> Size {
+        self.target_size
+    }
+
+    /// The id of the touch point, which tells fingers apart; 0 for a mouse.
+    #[must_use]
+    pub const fn pointer_id(&self) -> u64 {
+        self.pointer_id
+    }
+
+    /// The touch force from 0.0 to 1.0; `None` when the device reports none.
+    #[must_use]
+    pub const fn pressure(&self) -> Option<f32> {
+        self.pressure
+    }
+
+    /// The pen tilt; `None` when the device reports none.
+    #[must_use]
+    pub const fn tilt(&self) -> Option<PointerTilt> {
+        self.tilt
     }
 
     /// Sends later pointer events to this node until release.

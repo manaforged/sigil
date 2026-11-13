@@ -11,7 +11,7 @@ use merman::{
 
 use crate::kernel::NodeBuilder;
 use crate::style::palette::is_dark;
-use crate::style::{Theme, Token};
+use crate::style::{Theme, Token, Tone};
 use crate::text::Font;
 use crate::text::shaper::{FaceStyle, Shaper, TextSegment};
 use crate::widgets::chart::series_tokens;
@@ -26,25 +26,25 @@ const FALLBACK_EM: f64 = 0.55;
 
 const ROLES: [(ThemeRole, Token); 20] = [
     (ThemeRole::Canvas, Token::Surface),
-    (ThemeRole::Surface, Token::Accent3),
-    (ThemeRole::SurfaceAlt, Token::Accent2),
-    (ThemeRole::SurfaceMuted, Token::Gray2),
+    (ThemeRole::Surface, Tone::Primary.step(3)),
+    (ThemeRole::SurfaceAlt, Tone::Primary.step(2)),
+    (ThemeRole::SurfaceMuted, Tone::Neutral.step(2)),
     (ThemeRole::Text, Token::OnSurface),
     (ThemeRole::SubtleText, Token::OnSurfaceMuted),
-    (ThemeRole::Border, Token::Accent8),
+    (ThemeRole::Border, Tone::Primary.step(8)),
     (ThemeRole::Line, Token::OnSurfaceMuted),
     (ThemeRole::EdgeLabelBackground, Token::SurfaceSubtle),
-    (ThemeRole::ClusterBackground, Token::Gray2),
+    (ThemeRole::ClusterBackground, Tone::Neutral.step(2)),
     (ThemeRole::ClusterBorder, Token::Border),
-    (ThemeRole::NoteBackground, Token::Warning3),
-    (ThemeRole::NoteBorder, Token::Warning8),
-    (ThemeRole::ActorBackground, Token::Accent3),
-    (ThemeRole::ActorBorder, Token::Accent8),
-    (ThemeRole::ActivationBackground, Token::Accent4),
-    (ThemeRole::ActivationBorder, Token::Accent8),
-    (ThemeRole::Error, Token::Error9),
-    (ThemeRole::Warning, Token::Warning9),
-    (ThemeRole::Success, Token::Success9),
+    (ThemeRole::NoteBackground, Tone::Warning.step(3)),
+    (ThemeRole::NoteBorder, Tone::Warning.step(8)),
+    (ThemeRole::ActorBackground, Tone::Primary.step(3)),
+    (ThemeRole::ActorBorder, Tone::Primary.step(8)),
+    (ThemeRole::ActivationBackground, Tone::Primary.step(4)),
+    (ThemeRole::ActivationBorder, Tone::Primary.step(8)),
+    (ThemeRole::Error, Tone::Error.step(9)),
+    (ThemeRole::Warning, Tone::Warning.step(9)),
+    (ThemeRole::Success, Tone::Success.step(9)),
 ];
 
 static FACES: LazyLock<Vec<(u16, Font)>> = LazyLock::new(|| {

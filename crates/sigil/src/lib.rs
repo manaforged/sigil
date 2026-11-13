@@ -127,7 +127,6 @@ pub use crate::app::embed::Host;
 pub use crate::app::exit::exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
-pub use crate::layout::IntoPx;
 pub use crate::view::View;
 
 /// Run the app component on the host that `config` selects.
@@ -243,16 +242,16 @@ pub mod prelude {
     pub use crate::widgets::{
         ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Glyph, Identifiable,
         ListRowBuilder, Log, MenuItem, ModalBuilder, Orientation, PathBuilder, SelectionMode, Side,
-        SortDirection, SortKey, TableColumn, TableState, Time, ToastQueue, Widget, app_shell,
-        avatar, axis_drag, badge, breadcrumbs, button, card, chart, checkbox, chip, code_edit,
-        color_field, combobox, command_menu, context_menu, date_field, diff, divider, dot,
-        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight,
-        hint_bar, hint_overlay, html, icon, kv_grid, kv_row, link, list_row, log_view, markdown,
-        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
-        number_field, pagination, path, progress, radio_group, range_slider, scroll, section_label,
-        segmented, sidebar, skeleton, slider, spacer, sparkline, spinner, splitter, stat,
-        status_bar, stepper, surface, table, tabs, tag_input, terminal, text_edit, text_field,
-        time_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
+        SortDirection, SortKey, SubmitKey, TableColumn, TableState, TextFieldBuilder, TextState,
+        Time, ToastQueue, Widget, app_shell, avatar, axis_drag, badge, breadcrumbs, button, card,
+        chart, checkbox, chip, code_edit, color_field, combobox, command_menu, context_menu,
+        date_field, diff, divider, dot, drag_ghost, dropdown, empty_state, field, fuzzy_score,
+        gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html, icon, kv_grid, kv_row,
+        link, list_row, log_view, markdown, markdown_edit, markdown_inline, math, menu, menu_bar,
+        mermaid, modal, notice_band, number_field, pagination, path, progress, radio_group,
+        range_slider, scroll, section_label, segmented, sidebar, skeleton, slider, spacer,
+        sparkline, spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input,
+        terminal, text_field, time_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

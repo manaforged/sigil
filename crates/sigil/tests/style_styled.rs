@@ -18,8 +18,8 @@ use sigil::layout::{
 };
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    Color, ColorValue, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
-    Token,
+    Color, ColorValue, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight,
+    TextStyle, Theme, Token,
 };
 use sigil::widgets::Layout;
 use widget_support::compute;
@@ -321,10 +321,12 @@ fn font_methods_emit_typography_atoms() {
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let scene = emit_scene(&cx, root, None);
     let style = scene.find_text("Aa").expect("glyph run").style();
-    assert_eq!(style.font_size, 14.0);
-    assert_eq!(style.font_weight, 600);
-    assert_eq!(style.font_family, "mono");
-    assert_eq!(style.line_height, TextLineHeight::Absolute(20.0));
+    let expected = TextStyle::default()
+        .font_size(14.0)
+        .font_weight(600)
+        .font_family("mono")
+        .line_height(TextLineHeight::Absolute(20.0));
+    assert_eq!(style, &expected);
 }
 
 #[test]

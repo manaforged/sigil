@@ -124,7 +124,7 @@ fn a_selected_row_the_filter_hides_leaves_the_selection() {
 fn text_edit_and_dropdown_default_to_cell_sized_heights_in_a_terminal() {
     Owner::scope("run_defects::cell_heights", || {
         let mut editor = Host::new(HostMode::Cell);
-        editor.mount(|| column().child(text_edit(signal(String::new()))));
+        editor.mount(|| column().child(text_field(signal(String::new())).multiline()));
         settle(&mut editor);
         assert_eq!(first_child_height(&mut editor), 5.0 * Host::CELL);
 
@@ -148,8 +148,8 @@ fn a_closeable_tab_leaves_a_gap_before_its_close_button() {
         );
         settle(&mut host);
         let scene = host.emit(VIEW);
-        let label = scene.find_text("Alpha").expect("label").rect;
-        let close = scene.find_text("\u{00D7}").expect("close").rect;
+        let label = scene.find_text("Alpha").expect("label").rect();
+        let close = scene.find_text("\u{00D7}").expect("close").rect();
 
         assert!(
             close.origin.x >= label.origin.x + label.width + 4.0,

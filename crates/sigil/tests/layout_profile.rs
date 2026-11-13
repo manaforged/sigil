@@ -333,7 +333,7 @@ fn letter_spacing_change_remeasures_text() {
             style: &sigil::style::TextStyle,
             _: Constraint,
         ) -> sigil::geometry::Size {
-            sigil::geometry::Size::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
+            sigil::geometry::Size::new(style.spacing_em().mul_add(100.0, 40.0), 16.0)
         }
     }
 

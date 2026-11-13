@@ -103,8 +103,10 @@ impl Harness {
     /// Presses and releases a key, or a `Shortcut` for a key with modifiers.
     #[track_caller]
     pub fn press(&mut self, key: impl Into<Shortcut>) -> &mut Self {
-        let Shortcut { key, modifiers, .. } = key.into();
-        self.send(Event::press(key, modifiers))
+        let shortcut: Shortcut = key.into();
+        let target = shortcut.key().clone();
+        let modifiers = shortcut.modifiers();
+        self.send(Event::press(target, modifiers))
     }
 
     /// Types `text` into the focused control.

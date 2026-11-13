@@ -203,14 +203,18 @@ where
 
     pub(super) fn ensure_selection_state(&mut self) -> Signal<Selection> {
         if let Some(state) = self.selection_state {
-            state.update(|state| {
-                if state.mode() != self.selection_mode {
-                    *state = Selection::new(self.selection_mode);
-                }
-            });
+            if let Some(mode) = self.selection_mode {
+                state.update(|state| {
+                    if state.mode() != mode {
+                        state.set_mode(mode);
+                    }
+                });
+            }
             state
         } else {
-            let state = signal(Selection::new(self.selection_mode));
+            let state = signal(Selection::new(
+                self.selection_mode.unwrap_or(super::SelectionMode::None),
+            ));
             self.selection_state = Some(state);
             state
         }

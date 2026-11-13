@@ -14,7 +14,7 @@ use std::fmt::Write as _;
 use std::time::Duration;
 
 use sigil::terminal::{Access, ColorDepth, Grid, Screen};
-use sigil::widgets::{Layout, button, modal, text_edit, virtual_list};
+use sigil::widgets::{Layout, button, modal, text_field, virtual_list};
 
 const CELL: f32 = Host::CELL;
 
@@ -73,8 +73,8 @@ fn tree(state: State) -> impl IntoNode {
                         .hover(|style| style.background(Token::Accent)),
                 ),
         )
-        .child(text_edit(signal(String::from("edit"))))
-        .child(text_edit(signal(String::from("note"))))
+        .child(text_field(signal(String::from("edit"))).multiline())
+        .child(text_field(signal(String::from("note"))).multiline())
         .child(
             virtual_list(state.rows, |_, row: &String| {
                 container().child(text(row.clone()))
@@ -363,7 +363,8 @@ fn a_one_row_editor_shows_its_text_inside_its_padding() {
                 container()
                     .layout(LayoutStyle::flex_column().fill_width())
                     .child(
-                        text_edit(signal(String::from(value)))
+                        text_field(signal(String::from(value)))
+                            .multiline()
                             .placeholder("type to filter")
                             .height(CELL),
                     )

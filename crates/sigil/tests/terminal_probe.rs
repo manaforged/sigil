@@ -9,7 +9,7 @@ use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use sigil::kernel::text;
 use sigil::prelude::AppConfig;
 use sigil::reactive::signal;
-use sigil::widgets::{Widget, text_edit};
+use sigil::widgets::{Widget, text_field};
 
 const CHILD: &str = "SIGIL_TERMINAL_PROBE_CHILD";
 const ALTERNATE: &[u8] = b"\x1b[?1049h";
@@ -52,7 +52,7 @@ fn editor_child() {
         return;
     }
     sigil::run(AppConfig::new("probe").size(40, 12).terminal(), || {
-        text_edit(signal(String::new())).autofocus()
+        text_field(signal(String::new())).multiline().autofocus()
     })
     .expect("run");
 }

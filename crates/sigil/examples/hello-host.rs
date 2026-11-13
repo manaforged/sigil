@@ -29,7 +29,7 @@ fn main() {
             }
         };
         for draw in scene.glyph_runs() {
-            let rect = draw.rect;
+            let rect = draw.rect();
             println!(
                 "{} @ ({:.0},{:.0}) {}x{}",
                 draw.text(),

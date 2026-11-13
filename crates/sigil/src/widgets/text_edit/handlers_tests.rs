@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::iter::once;
 use std::rc::Rc;
 
-use super::{TextEditRuntime, TextEditState, noop_change};
+use super::{TextEditRuntime, TextState, noop_change};
 use crate::Error;
 use crate::clipboard::Clipboard;
 use crate::clipboard::clipboard;
@@ -14,7 +14,7 @@ use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, signal};
 use crate::widgets::Widget;
-use crate::widgets::text_edit::{TextEditBuilder, text_edit};
+use crate::widgets::text_field::{TextFieldBuilder, text_field};
 
 #[test]
 fn external_caret_controls_the_next_edit() {
@@ -22,7 +22,7 @@ fn external_caret_controls_the_next_edit() {
         let value = signal(String::new());
         let caret = signal(0);
         let runtime = TextEditRuntime::new(
-            TextEditState::new(value, caret),
+            TextState::new(value, caret),
             None,
             noop_change(),
             noop_change(),
@@ -47,7 +47,7 @@ fn edits_undo_and_redo_after_rebuild() {
             let original = "before 🦀 after ";
             let value = signal("stale".to_string());
             let caret = signal(5);
-            let state = TextEditState::new(value, caret);
+            let state = TextState::new(value, caret);
             value.set(original.to_string());
             caret.set(7);
             edit(&state);
@@ -60,7 +60,7 @@ fn edits_undo_and_redo_after_rebuild() {
                 ("Z", redo, edited, edited_at),
             ];
             for (key, modifiers, expected, position) in steps {
-                press(text_edit(value).state(state.clone()), key, modifiers);
+                press(text_field(state.clone()).multiline(), key, modifiers);
                 assert_eq!(value.peek(), expected);
                 assert_eq!(caret.peek(), position);
                 assert!(state.selection().is_none());
@@ -69,7 +69,7 @@ fn edits_undo_and_redo_after_rebuild() {
     }
 }
 
-type HistoryCase = (fn(&TextEditState), &'static str, usize, usize);
+type HistoryCase = (fn(&TextState), &'static str, usize, usize);
 
 fn history_cases() -> [HistoryCase; 4] {
     let typed = "before café 日本語 ".len();
@@ -82,7 +82,7 @@ fn history_cases() -> [HistoryCase; 4] {
         ),
         (
             |state| {
-                state.select(11, true);
+                state.extend(11);
                 state.insert("café 日本語 ");
             },
             "before café 日本語  after ",
@@ -120,7 +120,7 @@ fn editing_shortcuts_copy_cut_paste_and_restore_unicode() {
         Owner::scope("clipboard-shortcuts", || {
             let original = "café\n日本語";
             let value = signal(original.to_string());
-            let state = TextEditState::new(value, signal(original.len()));
+            let state = TextState::new(value, signal(original.len()));
             let copied = Rc::new(RefCell::new(String::new()));
             let plain = Modifiers::empty();
             for (key, shift, expected, clipboard) in [
@@ -131,8 +131,8 @@ fn editing_shortcuts_copy_cut_paste_and_restore_unicode() {
                 ("z", plain, "", original),
                 ("Z", Modifiers::SHIFT, original, original),
             ] {
-                let editor = text_edit(value)
-                    .state(state.clone())
+                let editor = text_field(state.clone())
+                    .multiline()
                     .clipboard(Memory(copied.clone()));
                 press(editor, key, modifiers | shift);
                 assert_eq!(value.peek(), expected, "{modifiers:?} {key}: editor text");
@@ -170,7 +170,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
                     Shortcut::new(Key::character("v"), Modifiers::CTRL),
                     move |_| reached.set(true),
                 )
-                .child(text_edit(value).clipboard(Unreadable)),
+                .child(text_field(value).multiline().clipboard(Unreadable)),
         );
         let mut layout =
             LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(200.0, 40.0)));
@@ -189,7 +189,7 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
     });
 }
 
-fn press(editor: TextEditBuilder, key: &str, modifiers: Modifiers) {
+fn press(editor: TextFieldBuilder, key: &str, modifiers: Modifiers) {
     let mut cx = Cx::new_root();
     let root = cx.add(editor);
     let mut layout = LayoutEngine::new(Box::new(crate::layout::FakeMeasure::fixed(200.0, 40.0)));

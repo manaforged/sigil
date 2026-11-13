@@ -1,5 +1,64 @@
 use crate::style::{ColorValue, StyleAtom, Tone};
 
+macro_rules! all_tokens {
+    ($($variant:ident,)*) => {
+        all_tokens!(@rows [$(Token::$variant,)*] Neutral, Primary, Success, Warning, Error, Info)
+    };
+    (@rows [$($acc:expr,)*] $tone:ident $(, $rest:ident)*) => {
+        all_tokens!(
+            @rows
+            [
+                $($acc,)*
+                Token::Step(Tone::$tone, 1), Token::Step(Tone::$tone, 2), Token::Step(Tone::$tone, 3),
+                Token::Step(Tone::$tone, 4), Token::Step(Tone::$tone, 5), Token::Step(Tone::$tone, 6),
+                Token::Step(Tone::$tone, 7), Token::Step(Tone::$tone, 8), Token::Step(Tone::$tone, 9),
+                Token::Step(Tone::$tone, 10), Token::Step(Tone::$tone, 11), Token::Step(Tone::$tone, 12),
+            ]
+            $($rest),*
+        )
+    };
+    (@rows [$($acc:expr,)*]) => {
+        [$($acc,)*]
+    };
+}
+
+macro_rules! step_names {
+    ($prefix:literal, $step:expr) => {
+        match $step {
+            1 => concat!($prefix, "-1"),
+            2 => concat!($prefix, "-2"),
+            3 => concat!($prefix, "-3"),
+            4 => concat!($prefix, "-4"),
+            5 => concat!($prefix, "-5"),
+            6 => concat!($prefix, "-6"),
+            7 => concat!($prefix, "-7"),
+            8 => concat!($prefix, "-8"),
+            9 => concat!($prefix, "-9"),
+            10 => concat!($prefix, "-10"),
+            11 => concat!($prefix, "-11"),
+            _ => concat!($prefix, "-12"),
+        }
+    };
+}
+
+const fn step_name(tone: Tone, step: u8) -> &'static str {
+    let step = if step < 1 {
+        1
+    } else if step > 12 {
+        12
+    } else {
+        step
+    };
+    match tone {
+        Tone::Neutral => step_names!("gray", step),
+        Tone::Primary => step_names!("accent", step),
+        Tone::Success => step_names!("success", step),
+        Tone::Warning => step_names!("warn", step),
+        Tone::Error => step_names!("error", step),
+        Tone::Info => step_names!("info", step),
+    }
+}
+
 macro_rules! tokens {
     ($($variant:ident => $name:literal,)*) => {
         /// A named color in the theme.
@@ -7,29 +66,88 @@ macro_rules! tokens {
         #[non_exhaustive]
         pub enum Token {
             $(#[doc = concat!("The `", $name, "` color.")] $variant,)*
+            /// Step `1..=12` of a theme tone scale.
+            Step(Tone, u8),
         }
 
+        #[repr(usize)]
+        enum SemanticIndex {
+            $($variant,)*
+        }
+
+        const SEMANTIC_COUNT: usize = 22;
+
+        const ALL_TOKENS: [Token; 94] = all_tokens!($($variant,)*);
+
         impl Token {
-            /// Every token.
-            pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
+            /// The number of built-in tokens, the length of `ALL`.
+            pub const COUNT: usize = 94;
+
+            pub(crate) const ALL: &'static [Self; 94] = &ALL_TOKENS;
+
+            /// Returns the position of this token in `Token::ALL`.
+            #[must_use]
+            pub const fn index(self) -> usize {
+                match self {
+                    $(Self::$variant => SemanticIndex::$variant as usize,)*
+                    Self::Step(tone, step) => {
+                        let row = match tone {
+                            Tone::Neutral => 0,
+                            Tone::Primary => 1,
+                            Tone::Success => 2,
+                            Tone::Warning => 3,
+                            Tone::Error => 4,
+                            Tone::Info => 5,
+                        };
+                        let clamped = if step < 1 {
+                            0
+                        } else if step > 12 {
+                            11
+                        } else {
+                            (step - 1) as usize
+                        };
+                        SEMANTIC_COUNT + row * STEPS + clamped
+                    }
+                }
+            }
 
             /// The name of this token in a theme file.
             #[must_use]
             pub const fn name(self) -> &'static str {
                 match self {
                     $(Self::$variant => $name,)*
+                    Self::Step(tone, step) => step_name(tone, step),
                 }
             }
 
+            /// Parses a token name from a theme file.
             #[must_use]
-            pub(crate) fn from_name(name: &str) -> Option<Self> {
+            pub fn from_name(name: &str) -> Option<Self> {
                 match name {
                     $($name => Some(Self::$variant),)*
-                    _ => None,
+                    _ => parse_step_name(name),
                 }
             }
         }
     };
+}
+
+fn parse_step_name(name: &str) -> Option<Token> {
+    let (prefix, step) = name.rsplit_once('-')?;
+    let tone = match prefix {
+        "gray" => Tone::Neutral,
+        "accent" => Tone::Primary,
+        "success" => Tone::Success,
+        "warn" => Tone::Warning,
+        "error" => Tone::Error,
+        "info" => Tone::Info,
+        _ => return None,
+    };
+    if step.is_empty() || step.starts_with('0') {
+        return None;
+    }
+    let step = step.parse::<u8>().ok()?;
+    (1..=12).contains(&step).then_some(Token::Step(tone, step))
 }
 
 tokens! {
@@ -55,121 +173,11 @@ tokens! {
     Ring => "ring",
     Overlay => "overlay",
     OverlayBorder => "overlay-border",
-    Gray1 => "gray-1",
-    Gray2 => "gray-2",
-    Gray3 => "gray-3",
-    Gray4 => "gray-4",
-    Gray5 => "gray-5",
-    Gray6 => "gray-6",
-    Gray7 => "gray-7",
-    Gray8 => "gray-8",
-    Gray9 => "gray-9",
-    Gray10 => "gray-10",
-    Gray11 => "gray-11",
-    Gray12 => "gray-12",
-    Accent1 => "accent-1",
-    Accent2 => "accent-2",
-    Accent3 => "accent-3",
-    Accent4 => "accent-4",
-    Accent5 => "accent-5",
-    Accent6 => "accent-6",
-    Accent7 => "accent-7",
-    Accent8 => "accent-8",
-    Accent9 => "accent-9",
-    Accent10 => "accent-10",
-    Accent11 => "accent-11",
-    Accent12 => "accent-12",
-    Success1 => "success-1",
-    Success2 => "success-2",
-    Success3 => "success-3",
-    Success4 => "success-4",
-    Success5 => "success-5",
-    Success6 => "success-6",
-    Success7 => "success-7",
-    Success8 => "success-8",
-    Success9 => "success-9",
-    Success10 => "success-10",
-    Success11 => "success-11",
-    Success12 => "success-12",
-    Warning1 => "warn-1",
-    Warning2 => "warn-2",
-    Warning3 => "warn-3",
-    Warning4 => "warn-4",
-    Warning5 => "warn-5",
-    Warning6 => "warn-6",
-    Warning7 => "warn-7",
-    Warning8 => "warn-8",
-    Warning9 => "warn-9",
-    Warning10 => "warn-10",
-    Warning11 => "warn-11",
-    Warning12 => "warn-12",
-    Error1 => "error-1",
-    Error2 => "error-2",
-    Error3 => "error-3",
-    Error4 => "error-4",
-    Error5 => "error-5",
-    Error6 => "error-6",
-    Error7 => "error-7",
-    Error8 => "error-8",
-    Error9 => "error-9",
-    Error10 => "error-10",
-    Error11 => "error-11",
-    Error12 => "error-12",
-    Info1 => "info-1",
-    Info2 => "info-2",
-    Info3 => "info-3",
-    Info4 => "info-4",
-    Info5 => "info-5",
-    Info6 => "info-6",
-    Info7 => "info-7",
-    Info8 => "info-8",
-    Info9 => "info-9",
-    Info10 => "info-10",
-    Info11 => "info-11",
-    Info12 => "info-12",
 }
 
-const SEMANTIC: usize = Token::Gray1 as usize;
 const STEPS: usize = 12;
-const ROLES: [Tone; 6] = [
-    Tone::Neutral,
-    Tone::Primary,
-    Tone::Success,
-    Tone::Warning,
-    Tone::Error,
-    Tone::Info,
-];
 
 impl Token {
-    /// The number of built-in tokens, the length of `ALL`.
-    pub(crate) const COUNT: usize = Self::ALL.len();
-
-    /// The token for step `step` (1 to 12) of `role`; `None` for a step out of range.
-    #[must_use]
-    pub fn scale(role: Tone, step: u8) -> Option<Self> {
-        let offset = usize::from(step.checked_sub(1)?);
-        if offset >= STEPS {
-            return None;
-        }
-        let row = ROLES.iter().position(|r| *r == role)?;
-        Self::ALL.get(SEMANTIC + row * STEPS + offset).copied()
-    }
-
-    /// Returns the position of this token in `Token::ALL`.
-    #[must_use]
-    pub(crate) const fn index(self) -> usize {
-        self as usize
-    }
-
-    /// The tone and step (1 to 12) of this token; `None` for a token outside the scales.
-    #[must_use]
-    pub fn scale_step(self) -> Option<(Tone, u8)> {
-        let offset = self.index().checked_sub(SEMANTIC)?;
-        let role = *ROLES.get(offset / STEPS)?;
-        let step = u8::try_from(offset % STEPS + 1).ok()?;
-        Some((role, step))
-    }
-
     /// Returns this token as a color atom.
     #[must_use]
     pub const fn color(self) -> ColorValue {

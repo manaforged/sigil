@@ -35,7 +35,7 @@ fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
             .collect::<Vec<_>>()
             .join("\n");
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(signal(buffer)));
+        let root = cx.add(text_field(signal(buffer)).multiline());
         let mut layout = LayoutEngine::new(Box::new(sigil::layout::TextEngineMeasure::default()));
         layout
             .compute(&mut cx, root, Constraint::fixed(400.0, 200.0))

@@ -17,7 +17,9 @@ fn inner_shadow_command_keeps_shadow_kind() {
     let scene = builder.finish();
 
     match scene.commands.as_slice() {
-        [SceneCommand::DrawShadow { shadow, .. }] => assert_eq!(shadow.kind, ShadowKind::Inner),
+        [SceneCommand::DrawShadow { shadow, .. }] => {
+            assert_eq!(shadow.shadow_kind(), ShadowKind::Inner);
+        }
         other => assert_eq!(other.len(), 1),
     }
 }
@@ -38,7 +40,7 @@ fn outer_and_inner_shadows_emit_as_independent_commands() {
             SceneCommand::DrawShadow { shadow: outer, .. },
             SceneCommand::Rect(_),
             SceneCommand::DrawShadow { shadow: inner, .. },
-        ] if outer.kind == ShadowKind::Outer && inner.kind == ShadowKind::Inner
+        ] if outer.shadow_kind() == ShadowKind::Outer && inner.shadow_kind() == ShadowKind::Inner
     ));
 
     let render_path: RenderCommandScene = WgpuRenderer::render_command_scene;

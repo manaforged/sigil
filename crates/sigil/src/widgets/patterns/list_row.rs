@@ -54,14 +54,14 @@ impl RowTone {
     const fn title(self) -> Token {
         match self {
             Self::Normal => Token::OnSurface,
-            Self::Muted | Self::Header => Token::Gray10,
+            Self::Muted | Self::Header => Tone::Neutral.step(10),
         }
     }
 
     const fn detail(self) -> Token {
         match self {
-            Self::Normal | Self::Header => Token::Gray11,
-            Self::Muted => Token::Gray9,
+            Self::Normal | Self::Header => Tone::Neutral.step(11),
+            Self::Muted => Tone::Neutral.step(9),
         }
     }
 }
@@ -291,8 +291,8 @@ impl From<ListRowBuilder> for NodeBuilder {
 
 crate::widgets::builder_impls!([] ListRowBuilder: widget, node(pub));
 
-pub(crate) const ROW_SELECTED: Token = Token::Accent5;
-pub(crate) const ROW_SELECTED_HOVER: Token = Token::Accent6;
+pub(crate) const ROW_SELECTED: Token = Tone::Primary.step(5);
+pub(crate) const ROW_SELECTED_HOVER: Token = Tone::Primary.step(6);
 
 pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     let row = row
@@ -337,9 +337,10 @@ fn marker_slot(marker: TextContent, tone: Option<Tone>) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
         .child(
-            text(marker)
-                .class("text-sm")
-                .class(tone.map_or(Token::Accent11, Tone::solid).text()),
+            text(marker).class("text-sm").class(
+                tone.map_or_else(|| Tone::Primary.step(11), Tone::solid)
+                    .text(),
+            ),
         )
 }
 
@@ -433,7 +434,7 @@ fn status_text(
     let node = text(status)
         .ellipsize()
         .class("text-xs")
-        .class(status_tone.map_or(color, |shade| shade.token(12)).text());
+        .class(status_tone.map_or(color, |shade| shade.step(12)).text());
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {

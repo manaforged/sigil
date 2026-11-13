@@ -1,14 +1,15 @@
 use sigil::layout::Length;
 use sigil::prelude::*;
 use sigil::testing::cx;
-use sigil::widgets::{TextEditBuilder, text_edit};
+use sigil::widgets::{TextFieldBuilder, text_field};
 
 #[test]
 fn tree_builds_without_panic() {
     cx("text-edit-tree", |cx| {
         let value = signal(String::new());
         let _root = cx.add(
-            text_edit(value)
+            text_field(value)
+                .multiline()
                 .placeholder("Notes…")
                 .width(320.0)
                 .height(120.0),
@@ -20,7 +21,7 @@ fn tree_builds_without_panic() {
 fn factory_returns_a_builder_that_carries_supplied_signal() {
     cx("text-edit-factory-binds-signal", |cx| {
         let value = signal(String::from("hello"));
-        let builder: TextEditBuilder = text_edit(value);
+        let builder: TextFieldBuilder = text_field(value).multiline();
         let root = cx.add(builder);
         let bound = cx
             .get(root)
@@ -40,7 +41,7 @@ fn submit_callback_is_registered_without_firing_on_construction() {
         let value = signal(String::from("hello"));
         let fired = Rc::new(Cell::new(false));
         let fired_for_cb = fired.clone();
-        let _root = cx.add(text_edit(value).submit(move |_text: &str| {
+        let _root = cx.add(text_field(value).multiline().submit(move |_text: &str| {
             fired_for_cb.set(true);
         }));
         assert!(!fired.get(), "submit must not fire at construction");
@@ -51,7 +52,7 @@ fn submit_callback_is_registered_without_firing_on_construction() {
 fn widget_layout_ext_overrides_reach_root_node() {
     cx("text-edit-layout-override", |cx| {
         let value = signal(String::new());
-        let root = cx.add(text_edit(value).width(200.0).height(150.0));
+        let root = cx.add(text_field(value).multiline().width(200.0).height(150.0));
         let style = cx
             .get(root)
             .expect("root node exists")
@@ -73,6 +74,6 @@ fn widget_layout_ext_overrides_reach_root_node() {
 fn placeholder_accepts_string_literal() {
     cx("text-edit-placeholder", |cx| {
         let value = signal(String::new());
-        let _root = cx.add(text_edit(value).placeholder("Type here…"));
+        let _root = cx.add(text_field(value).multiline().placeholder("Type here…"));
     });
 }

@@ -31,7 +31,7 @@ fn shadow_extent(elevation: Option<Elevation>) -> Option<f32> {
         .commands
         .iter()
         .find_map(|command| match command {
-            SceneCommand::DrawShadow { shadow, .. } => Some(shadow.blur + shadow.offset[1]),
+            SceneCommand::DrawShadow { shadow, .. } => Some(shadow.blur() + shadow.offset()[1]),
             _ => None,
         })
 }
@@ -55,16 +55,16 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
             _ => None,
         })
         .expect("shadow-lg must emit a DrawShadow command");
-    assert_eq!(shadow.kind, ShadowKind::Outer);
-    assert!(shadow.blur > 0.0, "elevation must carry a blur radius");
+    assert_eq!(shadow.shadow_kind(), ShadowKind::Outer);
+    assert!(shadow.blur() > 0.0, "elevation must carry a blur radius");
     assert!(
-        shadow.offset[1] > 0.0,
+        shadow.offset()[1] > 0.0,
         "a drop shadow sits below its surface"
     );
     assert!(
-        shadow.color[3] > 0.0 && shadow.color[3] < 1.0,
+        shadow.color()[3] > 0.0 && shadow.color()[3] < 1.0,
         "shadow ink is a translucent black, got alpha {}",
-        shadow.color[3],
+        shadow.color()[3],
     );
 }
 

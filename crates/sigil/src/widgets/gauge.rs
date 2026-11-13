@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
-use crate::style::{Radius, Style, StyleAtom, Token, space};
+use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 
 const TRACK_WIDTH: f32 = 160.0;
@@ -113,9 +113,9 @@ fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'st
     let px = (ratio * TRACK_WIDTH).round() as i16;
     let is_warn = warn_threshold.is_some_and(|threshold| ratio < threshold);
     let tone = if is_warn {
-        Token::Warning9
+        Tone::Warning.step(9)
     } else {
-        Token::Accent8
+        Tone::Primary.step(8)
     };
     keyed(&CACHE, KEYED_CAP, (px, is_warn), || {
         vec![

@@ -48,7 +48,7 @@ const STEPS: [Step<Spec>; 5] = [
 ];
 
 fn field() -> impl IntoNode {
-    text_edit(signal(String::new())).autofocus()
+    text_field(signal(String::new())).multiline().autofocus()
 }
 
 fn matches_spec(ui: &mut Harness, spec: &Spec) -> Result<(), String> {

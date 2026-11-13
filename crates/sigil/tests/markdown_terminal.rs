@@ -195,12 +195,15 @@ fn heading_levels_differ_in_the_terminal() {
         first(&grid, "Two"),
         first(&grid, "Three"),
     );
-    assert!(one.bold && two.bold && three.bold, "headings must be bold");
-    assert_ne!(one.lines.underline, Underline::None, "h1 is underlined");
-    assert_eq!(two.lines.underline, Underline::None, "h2 is not underlined");
-    assert_eq!(one.fg, two.fg, "h1 and h2 share the accent");
-    assert_ne!(two.fg, three.fg, "h3 drops the accent");
-    assert!(!first(&grid, "body").bold, "body text is not bold");
+    assert!(
+        one.bold() && two.bold() && three.bold(),
+        "headings must be bold"
+    );
+    assert_ne!(one.underline(), Underline::None, "h1 is underlined");
+    assert_eq!(two.underline(), Underline::None, "h2 is not underlined");
+    assert_eq!(one.fg(), two.fg(), "h1 and h2 share the accent");
+    assert_ne!(two.fg(), three.fg(), "h3 drops the accent");
+    assert!(!first(&grid, "body").bold(), "body text is not bold");
 }
 
 const LINK: &str =
@@ -238,7 +241,7 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
         shown.contains("the docs (https://example.com/a) first."),
         "no fallback url in:\n{shown}"
     );
-    assert_ne!(first(&plain, "https").fg, first(&plain, "Read").fg);
+    assert_ne!(first(&plain, "https").fg(), first(&plain, "Read").fg());
 }
 
 #[test]

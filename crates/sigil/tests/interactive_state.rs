@@ -84,7 +84,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
         let root = cx.add(
             container()
                 .theme(Theme::dark())
-                .child(rest_pane().hover(|s| s.background(Token::Accent9))),
+                .child(rest_pane().hover(|s| s.background(Tone::Primary.step(9)))),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();

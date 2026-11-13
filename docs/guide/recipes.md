@@ -84,8 +84,8 @@ use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     let body = signal(String::new());
-    container().child(text_edit(body)).key_capture_any(move |event: &mut KeyEvent| {
-        if event.key == Key::named(NamedKey::Tab) {
+    container().child(text_field(body).multiline()).key_capture_any(move |event: &mut KeyEvent| {
+        if event.key() == Key::named(NamedKey::Tab) {
             body.update(|text| text.push_str("  "));
             event.stop_propagation();
         }

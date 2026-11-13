@@ -31,7 +31,7 @@ fn zoomed(scale: f32) -> NodeBuilder {
                 .drive(Property::ScaleX, signal(scale))
                 .drive(Property::ScaleY, signal(scale))
                 .child(
-                    container().background(Token::Accent9).layout(
+                    container().background(Tone::Primary.step(9)).layout(
                         LayoutStyle::block()
                             .width(20.0)
                             .height(20.0)

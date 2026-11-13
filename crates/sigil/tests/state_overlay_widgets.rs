@@ -122,7 +122,11 @@ fn text_edit_user_hover_overlay_paints_frame() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(text_edit(value).hover(|s| s.background(ruby_9)));
+        let root = cx.add(
+            text_field(value)
+                .multiline()
+                .hover(|s| s.background(ruby_9)),
+        );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (20.0, 20.0), ruby_9);
     });

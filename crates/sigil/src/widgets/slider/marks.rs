@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{JustifyContent, LayoutStyle};
-use crate::style::Token;
+use crate::style::Tone;
 use crate::widgets::{Layout, Widget};
 
 use super::builder::{SliderRuntime, ValueChange};
@@ -44,9 +44,9 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                             .mul_add(index as f32 / last as f32, runtime.range.min),
                     );
                     let tone = if runtime.value.holds(at) {
-                        Token::Accent11
+                        Tone::Primary.step(11)
                     } else {
-                        Token::Gray10
+                        Tone::Neutral.step(10)
                     };
                     let change = Rc::clone(&on_change);
                     container()

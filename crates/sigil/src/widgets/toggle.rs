@@ -9,7 +9,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, memo};
 use crate::style::{
-    ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, space,
+    ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, Tone, space,
 };
 use crate::widgets::Layout;
 
@@ -67,24 +67,24 @@ static TOGGLE_ON_DOWN: &[StyleAtom] = &[
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF: &[StyleAtom] = &[
-    Token::Gray6.background(),
+    Tone::Neutral.step(6).background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_HOVER: &[StyleAtom] = &[
-    Token::Gray7.background(),
+    Tone::Neutral.step(7).background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_DOWN: &[StyleAtom] = &[
-    Token::Gray7.background(),
+    Tone::Neutral.step(7).background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
-    Token::Gray4.background(),
+    Tone::Neutral.step(4).background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.background()];
-static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.background()];
+static THUMB_OFF: &[StyleAtom] = &[Tone::Neutral.step(11).background()];
 static CELL_ON: &[StyleAtom] = &[Token::Accent.text()];
 static CELL_OFF: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 

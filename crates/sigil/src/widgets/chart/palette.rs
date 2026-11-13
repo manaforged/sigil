@@ -52,8 +52,8 @@ impl Hue {
             .unwrap_or(Self::of(Tone::Primary))
     }
 
-    pub(super) fn token(self) -> Token {
-        self.tone.token(self.step)
+    pub(super) const fn token(self) -> Token {
+        self.tone.step(self.step)
     }
 
     pub(super) fn color(self) -> ColorValue {
@@ -70,7 +70,7 @@ impl Hue {
 
     pub(super) fn soft(self) -> ColorValue {
         self.rgb.map_or_else(
-            || ColorValue::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
+            || ColorValue::Token(self.tone.step(self.step.saturating_sub(SOFT_DROP).max(2))),
             |color| {
                 ColorValue::Color(Color {
                     a: SOFT_ALPHA,

@@ -21,7 +21,7 @@ fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> 
             .commands
             .iter()
             .filter_map(|c| match c {
-                SceneCommand::GlyphRun(g) if g.rect.width > 0.5 && g.rect.height > 0.5 => {
+                SceneCommand::GlyphRun(g) if g.rect().width > 0.5 && g.rect().height > 0.5 => {
                     Some(g.text().to_owned())
                 }
                 _ => None,

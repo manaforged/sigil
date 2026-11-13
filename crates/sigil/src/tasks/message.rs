@@ -1,44 +1,50 @@
 use std::cell::Cell;
-use std::future::Future;
 use std::rc::Rc;
-
-use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 
 use crate::reactive::{Signal, signal};
 use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::tasks::runtime::attach_task;
 
+pub(crate) mod sealed {
+    use std::future::Future;
+
+    use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
+
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed<T>: Send + 'static {
+        fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_;
+
+        fn try_recv(&mut self) -> Option<T> {
+            None
+        }
+    }
+
+    impl<T: Send + 'static> Sealed<T> for UnboundedReceiver<T> {
+        fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_ {
+            Self::recv(self)
+        }
+
+        fn try_recv(&mut self) -> Option<T> {
+            Self::try_recv(self).ok()
+        }
+    }
+
+    impl<T: Send + 'static> Sealed<T> for Receiver<T> {
+        fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_ {
+            Self::recv(self)
+        }
+
+        fn try_recv(&mut self) -> Option<T> {
+            Self::try_recv(self).ok()
+        }
+    }
+}
+
 /// A channel receiver that `tasks::listen` reads.
-pub trait MessageReceiver<T>: Send + 'static {
-    /// Waits for the next message; returns `None` when the channel closes.
-    fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_;
+pub trait MessageReceiver<T>: sealed::Sealed<T> + Send + 'static {}
 
-    /// Takes a message that is already waiting, without waiting for one.
-    fn try_recv(&mut self) -> Option<T> {
-        None
-    }
-}
-
-impl<T: Send + 'static> MessageReceiver<T> for UnboundedReceiver<T> {
-    fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_ {
-        Self::recv(self)
-    }
-
-    fn try_recv(&mut self) -> Option<T> {
-        Self::try_recv(self).ok()
-    }
-}
-
-impl<T: Send + 'static> MessageReceiver<T> for Receiver<T> {
-    fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_ {
-        Self::recv(self)
-    }
-
-    fn try_recv(&mut self) -> Option<T> {
-        Self::try_recv(self).ok()
-    }
-}
+impl<T, R: sealed::Sealed<T> + Send + 'static> MessageReceiver<T> for R {}
 
 /// The most waiting messages handled in one batch, so a flood still yields to frames.
 const BURST: usize = 256;

@@ -33,18 +33,17 @@ Key options:
 
 Editing keys: Arrow Left/Right, Home, End, and Shift variants for selection; Backspace/Delete; Ctrl (or Cmd on macOS) + C/X/V for clipboard, A for select-all, Z for undo, Shift+Z or Ctrl+Y for redo. IME input lands as inline preedit, and the caret rect is published to the accessibility tree for the IME candidate window.
 
-## text_edit
+## Multi-line text_field
 
-`text_edit(Signal<String>) -> TextEditBuilder`. The multi-line editor: the text_field surface plus newlines, vertical caret movement, and word/line editing commands.
+`text_field(input).multiline() -> TextFieldBuilder`. Adding `.multiline()` turns `text_field` into the multi-line editor: the same surface plus newlines, vertical caret movement, and word/line editing commands.
 
-- `.placeholder()`, `.disabled()`, `.change(Fn(&str))`, `.clipboard()`, `.autofocus()`, and `.focus_when(Signal<u64>)` work as in `text_field`. `.submit(Fn(&str))` runs on Ctrl+Enter. Plain Enter inserts a newline.
-- `.caret_position(Signal<usize>)`: bind the caret as a byte offset.
+- `.placeholder()`, `.disabled()`, `.change(Fn(&str))`, `.clipboard()`, `.autofocus()`, and `.focus_when(Signal<u64>)` work as in single-line `text_field`. `.submit(Fn(&str))` runs on Ctrl+Enter. Plain Enter inserts a newline.
+- `.caret(Signal<usize>)`: bind the caret as a byte offset.
 - `.caret_visible(Signal<bool>)`: bind the caret visibility signal.
 - `.content_padding(horizontal, vertical)`: inner padding in px.
 - `.chrome(bool)`: `false` drops the field frame/background.
-- `.state(TextEditState)`: hand the widget a shared state object instead of loose signals.
 
-`TextEditState::new(value, caret)` bundles the value signal, a caret signal, and a selection signal. `state.select(byte, extend)` moves or extends the caret, `state.insert(text)` inserts at the caret, `state.replace(text)` rewrites the buffer, and `state.selection()` returns `Option<Range<usize>>` (`None` when there is no selection anchor). Use it when a second widget or a script must edit the buffer programmatically.
+`TextState::new(value, caret)` bundles the value signal, a caret signal, and a selection signal, and can be passed directly to `text_field(state)` (or `text_field(&state)`). `state.select(byte)` moves the caret, `state.extend(byte)` extends the selection, `state.clear_selection()` clears the selection, `state.insert(text)` inserts at the caret, `state.replace(text)` rewrites the buffer, and `state.selection()` returns `Option<Range<usize>>` (`None` when there is no selection anchor). Use it when a second widget or a script must edit the buffer programmatically.
 
 Editing keys add: Arrow Up/Down, PageUp/PageDown, Alt+Left/Right (or Alt+B/F) for word motion, Alt+Backspace and Ctrl+W to kill a word backwards, Alt+D forwards, Ctrl+U/Ctrl+K to kill to line edges, and Shift on any motion key to extend the selection.
 
@@ -74,7 +73,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## time_field
 
-`time_field(Signal<T>)` where `T` is `Time` or `DateTime`. A text field over the same buffer pattern. It reads and writes `hh:mm`, or `hh:mm:ss` with `.seconds(true)`, on a 24-hour clock, or on a 12-hour clock with the `Am` and `Pm` strings when `Locale::hour12` is set. A `DateTime` field reads the date first, as `date_field` does. `Time::new(hour, minute, second)` validates the parts. `.disabled`, `.invalid`, and `.text_field()` work as in `number_field`.
+`time_field(Signal<T>)` where `T` is `Time` or `DateTime`. A text field over the same buffer pattern. It reads and writes `hh:mm`, or `hh:mm:ss` with `.seconds(true)`, on a 24-hour clock, or on a 12-hour clock with the `Am` and `Pm` strings when `Locale::hour12(true)` is set. A `DateTime` field reads the date first, as `date_field` does. `Time::new(hour, minute, second)` validates the parts. `.disabled`, `.invalid`, and `.text_field()` work as in `number_field`.
 
 ## tag_input
 
@@ -126,7 +125,7 @@ The visual catalog captures each field in the states in the table. Invalid comes
 | --- | --- | --- | --- | --- |
 | `text_field` | default, hover, pressed, focused, disabled, invalid | Editing keys, Enter submits | `TextInput`, or `PasswordInput` with `.password()` | The placeholder, else "Text field" |
 | `field(..).error(..)` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
-| `text_edit` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
+| `text_field(..).multiline()` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
 | `number_field`, `date_field`, `color_field` | default, hover, pressed, focused, disabled, invalid | As `text_field` | `TextInput` | As `text_field` |
 | `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |
 | `combobox` | default, hover, pressed, focused, disabled, open | Typing, Arrow keys, Enter, Escape | `ComboBox`, popup `ListBox` | The placeholder, else "Combobox" |

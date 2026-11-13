@@ -63,8 +63,8 @@ fn filter_transitions_start_missing_functions_at_their_initial_values() {
             "hue-rotate from 0deg",
         );
         let drop = drop_shadow(&list);
-        near(drop.offset[1], 2.0, 0.04, "drop-shadow y from 0px");
-        near(drop.color[3], 0.25, 0.006, "drop-shadow from transparent");
+        near(drop.offset()[1], 2.0, 0.04, "drop-shadow y from 0px");
+        near(drop.color()[3], 0.25, 0.006, "drop-shadow from transparent");
         run(&mut ui, 1.0);
         let done = filters(&mut ui);
         near(

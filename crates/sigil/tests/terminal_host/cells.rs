@@ -149,7 +149,7 @@ fn bold_at(grid: &sigil::terminal::Grid, needle: &str) -> bool {
         .find(|(_, line)| line.contains(needle))
         .unwrap_or_else(|| panic!("{text}"));
     let col = line[..line.find(needle).expect("needle")].chars().count();
-    grid.row(row)[col].bold
+    grid.row(row)[col].bold()
 }
 
 #[test]

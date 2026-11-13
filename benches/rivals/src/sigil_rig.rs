@@ -127,7 +127,7 @@ impl SigilRig {
             })
             .paint(move |host: &mut Host, info: &Frame| {
                 if fresh || info.dirty() {
-                    black_box(host.emit(view));
+                    black_box(host.scene(view).expect("scene"));
                 }
             });
         let out = self.host.frame(view, FRAME_SECONDS, hooks);

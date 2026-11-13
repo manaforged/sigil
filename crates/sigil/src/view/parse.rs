@@ -85,6 +85,7 @@ pub(super) struct Attrs {
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) submit: Option<Action>,
     pub(super) change: Option<Action>,
+    pub(super) multiline: bool,
 }
 
 pub(super) struct Item {
@@ -345,6 +346,15 @@ impl<'a> Parser<'a> {
             attrs.variant = variant;
             return Ok(());
         }
+        if prop == Prop::Multiline {
+            if self.peek().tok == Tok::Equals {
+                self.at += 1;
+                attrs.multiline = self.table(word, vocab::BOOLS)?;
+            } else {
+                attrs.multiline = true;
+            }
+            return Ok(());
+        }
         if self.advance() != Tok::Equals {
             self.at -= 1;
             return Err(self.fail(format!("{word} needs `=` and a value")));
@@ -367,7 +377,7 @@ impl<'a> Parser<'a> {
             Prop::Activate => attrs.activate = Some(self.action()?),
             Prop::Submit => attrs.submit = Some(self.action()?),
             Prop::Change => attrs.change = Some(self.action()?),
-            Prop::Primary | Prop::Outline | Prop::Ghost | Prop::Destructive => {}
+            Prop::Primary | Prop::Outline | Prop::Ghost | Prop::Destructive | Prop::Multiline => {}
         }
         Ok(())
     }

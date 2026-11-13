@@ -48,7 +48,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
         })
 }
 
-static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Token::Gray4.background()];
+static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(4).background()];
 
 /// A loading placeholder of `lines` muted bars, announced to screen readers as a polite "Loading" status.
 ///
@@ -84,16 +84,16 @@ pub fn skeleton(lines: usize) -> NodeBuilder {
 
 static MARK_DONE: &[StyleAtom] = &[
     Radius::Full.atom(),
-    Token::Accent9.background(),
+    Tone::Primary.step(9).background(),
     Token::OnAccent.text(),
 ];
 static MARK_TODO: &[StyleAtom] = &[
     Radius::Full.atom(),
-    Token::Gray4.background(),
-    Token::Gray12.text(),
+    Tone::Neutral.step(4).background(),
+    Tone::Neutral.step(12).text(),
 ];
 static LABEL_CURRENT: &[StyleAtom] = &[Token::OnSurface.text()];
-static LABEL_OTHER: &[StyleAtom] = &[Token::Gray11.text()];
+static LABEL_OTHER: &[StyleAtom] = &[Tone::Neutral.step(11).text()];
 
 /// A row of numbered steps: steps before `current` show a check, and `current` is selected.
 ///

@@ -336,7 +336,7 @@ impl CellWalk<'_> {
             clip: self.clip(),
             content: run.text(),
             flow: run.flow(),
-            ink: Ink::pick(self.fade(run.color(), run.opacity()), run.tone()),
+            ink: Ink::pick(self.fade(run.color(), run.opacity_bp()), run.tone()),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
             theme: self.paint.theme,

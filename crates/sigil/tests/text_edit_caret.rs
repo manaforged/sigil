@@ -15,7 +15,8 @@ fn caret_rect_follows_the_caret() {
     let mut ui = Harness::new(move || {
         let caret = signal(None::<Rect>);
         *slot.borrow_mut() = Some(caret);
-        text_edit(signal(String::new()))
+        text_field(signal(String::new()))
+            .multiline()
             .autofocus()
             .caret_rect(caret)
     })

@@ -6,7 +6,7 @@ use crate::reactive::Signal;
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::{
     BORDER_WIDTH, BgGradient, Color, ColorValue, Elevation, GradientAxis, GradientStopKey,
-    StateStyle, Style, StyleAtom, StyleVariant, Token,
+    StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
 };
 use crate::widgets::Layout;
 
@@ -48,7 +48,7 @@ static THUMB_HOVER: &[StyleAtom] = &[
 static THUMB_DISABLED: &[StyleAtom] = &[
     Token::OnAccent.background(),
     THUMB_BORDER,
-    Token::Gray8.border(),
+    Tone::Neutral.step(8).border(),
 ];
 
 static GLASS_TRACK_STOPS: &[GradientStopKey] = &[

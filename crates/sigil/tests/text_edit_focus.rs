@@ -7,7 +7,7 @@ fn focused_role(ui: &mut Harness) -> Option<Role> {
 
 #[test]
 fn autofocus_focuses_the_editor_when_it_mounts() {
-    let mut ui = Harness::new(|| text_edit(signal(String::new())).autofocus());
+    let mut ui = Harness::new(|| text_field(signal(String::new())).multiline().autofocus());
     assert_eq!(focused_role(&mut ui), Some(Role::TextInput));
 }
 
@@ -17,7 +17,11 @@ fn focus_when_moves_focus_to_the_editor() {
         let trigger = signal(0_u64);
         column()
             .child(button("Edit").activate(move || trigger.update(|n| *n += 1)))
-            .child(text_edit(signal(String::new())).focus_when(trigger))
+            .child(
+                text_field(signal(String::new()))
+                    .multiline()
+                    .focus_when(trigger),
+            )
     });
     assert_ne!(focused_role(&mut ui), Some(Role::TextInput));
     ui.click("Edit");

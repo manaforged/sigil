@@ -13,7 +13,6 @@ pub(super) enum Kind {
     TextField,
     Checkbox,
     Toggle,
-    TextEdit,
     Divider,
     Spacer,
     Slot,
@@ -38,6 +37,7 @@ pub(super) enum Prop {
     Disabled,
     Submit,
     Change,
+    Multiline,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -86,7 +86,13 @@ const BUTTON: &[Prop] = &[
     Prop::Activate,
     Prop::Disabled,
 ];
-const INPUT: &[Prop] = &[Prop::Value, Prop::Placeholder, Prop::Disabled, Prop::Submit];
+const INPUT: &[Prop] = &[
+    Prop::Value,
+    Prop::Placeholder,
+    Prop::Disabled,
+    Prop::Submit,
+    Prop::Multiline,
+];
 const CHECK: &[Prop] = &[Prop::Checked, Prop::Disabled, Prop::Change];
 
 pub(super) const WIDGETS: &[Spec] = &[
@@ -130,11 +136,6 @@ pub(super) const WIDGETS: &[Spec] = &[
         required: Some(Prop::Checked),
         ..spec("toggle", Kind::Toggle, Head::OptionalLabel, Body::Leaf)
     },
-    Spec {
-        props: INPUT,
-        required: Some(Prop::Value),
-        ..spec("text_edit", Kind::TextEdit, Head::Nothing, Body::Leaf)
-    },
     spec("divider", Kind::Divider, Head::Nothing, Body::Leaf),
     spec("spacer", Kind::Spacer, Head::Nothing, Body::Leaf),
     spec("slot", Kind::Slot, Head::Name, Body::Leaf),
@@ -158,7 +159,10 @@ pub(super) const PROPS: &[(&str, Prop)] = &[
     ("disabled", Prop::Disabled),
     ("submit", Prop::Submit),
     ("change", Prop::Change),
+    ("multiline", Prop::Multiline),
 ];
+
+pub(super) const BOOLS: &[(&str, bool)] = &[("true", true), ("false", false)];
 
 pub(super) const SPACES: &[(&str, Space)] = &[
     ("none", Space::None),

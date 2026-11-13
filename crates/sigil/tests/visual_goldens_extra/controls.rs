@@ -5,7 +5,7 @@ use sigil::widgets::Layout;
 fn text_edit_multiline() {
     let img = Harness::render(|| {
         let buffer = signal(String::from("first line\nsecond line\nthird line"));
-        text_edit(buffer).width(360.0).height(160.0)
+        text_field(buffer).multiline().width(360.0).height(160.0)
     })
     .stub()
     .mode(InteractionMode::Default)

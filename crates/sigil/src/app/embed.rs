@@ -369,20 +369,23 @@ impl Host {
             .unwrap_or(&self.theme)
     }
 
-    /// Paints the laid-out tree into a new scene.
-    #[must_use]
-    pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
-        #[cfg(host)]
-        {
-            self.emit_cached(viewport)
-        }
-        #[cfg(not(host))]
-        {
-            let _env = self.enter();
-            self.apply_pending_theme();
-            self.root.map_or_else(CommandScene::default, |root| {
-                emit_viewport_scene(&self.cx, root, viewport)
-            })
+    kittest_pub! {
+        /// Paints the laid-out tree into a new scene.
+        #[doc(hidden)]
+        #[must_use]
+        pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
+            #[cfg(host)]
+            {
+                self.emit_cached(viewport)
+            }
+            #[cfg(not(host))]
+            {
+                let _env = self.enter();
+                self.apply_pending_theme();
+                self.root.map_or_else(CommandScene::default, |root| {
+                    emit_viewport_scene(&self.cx, root, viewport)
+                })
+            }
         }
     }
 

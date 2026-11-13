@@ -18,7 +18,7 @@ use crate::widgets::{Layout, Widget};
 use crate::layout::snap::{CellForm, line};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, effect, memo, signal};
-use crate::style::{StyleOverlay, Token, space};
+use crate::style::{StyleOverlay, Token, Tone, space};
 
 use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_state};
 use crate::widgets::interaction::InteractionState;
@@ -54,9 +54,9 @@ pub enum Change {
 impl Change {
     const fn bar_token(self) -> Token {
         match self {
-            Self::Added => Token::Success9,
-            Self::Modified => Token::Info9,
-            Self::Deleted => Token::Error9,
+            Self::Added => Tone::Success.step(9),
+            Self::Modified => Tone::Info.step(9),
+            Self::Deleted => Tone::Error.step(9),
         }
     }
 }
@@ -77,9 +77,9 @@ pub enum Severity {
 impl Severity {
     const fn tint_token(self) -> Token {
         match self {
-            Self::Error => Token::Error3,
-            Self::Warning => Token::Warning3,
-            Self::Info | Self::Hint => Token::Info3,
+            Self::Error => Tone::Error.step(3),
+            Self::Warning => Tone::Warning.step(3),
+            Self::Info | Self::Hint => Tone::Info.step(3),
         }
     }
 }

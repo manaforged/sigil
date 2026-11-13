@@ -16,19 +16,22 @@ use smallvec::smallvec;
 fn shadow_constructs_with_public_fields() {
     let shadow = key_shadow();
 
-    assert_array_close(shadow.color, [0.0, 0.0, 0.0, 0.28]);
-    assert_pair_close(shadow.offset, [0.0, 4.0]);
-    assert!((shadow.blur - 12.0).abs() < 1e-6);
-    assert!((shadow.spread - 1.0).abs() < 1e-6);
-    assert_eq!(shadow.kind, ShadowKind::Outer);
+    assert_array_close(shadow.color(), [0.0, 0.0, 0.0, 0.28]);
+    assert_pair_close(shadow.offset(), [0.0, 4.0]);
+    assert!((shadow.blur() - 12.0).abs() < 1e-6);
+    assert!((shadow.spread() - 1.0).abs() < 1e-6);
+    assert_eq!(shadow.shadow_kind(), ShadowKind::Outer);
 }
 
 #[test]
 fn shadow_constructor_defaults_to_outer_and_builder_sets_inner() {
     let shadow = Shadow::new([1.0, 2.0], 3.0, 4.0, [0.1, 0.2, 0.3, 0.4]);
 
-    assert_eq!(shadow.kind, ShadowKind::Outer);
-    assert_eq!(shadow.kind(ShadowKind::Inner).kind, ShadowKind::Inner);
+    assert_eq!(shadow.shadow_kind(), ShadowKind::Outer);
+    assert_eq!(
+        shadow.kind(ShadowKind::Inner).shadow_kind(),
+        ShadowKind::Inner
+    );
 }
 
 #[test]

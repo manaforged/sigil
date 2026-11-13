@@ -30,12 +30,12 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
-pub use command::{BlendMode, CommandScene, DrawRect, GlyphRun, StrokeCap, StrokeJoin, Wash};
+pub use command::{BlendMode, CommandScene, GlyphRun, StrokeCap, StrokeJoin, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::{
         Clip, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath,
-        DrawPattern, Filter, Gradient, GradientKind, GradientStop, LayerEffect,
+        DrawPattern, DrawRect, Filter, Gradient, GradientKind, GradientStop, LayerEffect,
         LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SceneCommand,
         Stroke, StrokeAlign, StrokeStyle, Transform, Transform3D,
     };

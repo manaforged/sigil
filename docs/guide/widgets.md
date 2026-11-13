@@ -6,7 +6,7 @@ The family pages carry signatures, options, and behavior notes:
 
 - [Controls](widgets/controls.md): button, checkbox, toggle, radio_group, slider, range_slider, link.
 - [Indicators](widgets/indicators.md): chip, dot, spinner, gauge, progress.
-- [Fields](widgets/fields.md): text_field, text_edit, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
+- [Fields](widgets/fields.md): text_field, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
 - [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
 - [Content](widgets/content.md): text, label, icon, image, load_image, path, chart.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
@@ -23,7 +23,7 @@ The family pages carry signatures, options, and behavior notes:
 - **toggle(Signal\<bool\>)**: chain `.label()` and `.change(Fn(bool))`.
 - **slider(Signal\<f32\>, Range)**: chain `.step(f32)`, `.change(Fn(f32))`, and an orientation. The slider publishes its step for AT Increment/Decrement.
 - **text_field(Signal\<String\>)**: chain `.placeholder()`, `.change(Fn(&str))`, `.submit()`, `.clipboard()`, `.disabled(Signal)`, `.invalid(Signal\<bool\>)`, `.password()`, and `.reveal(Signal<bool>)`. `.change` is a side effect; the signal is already two-way. `.password` masks glyphs with `*`; the value stays plaintext. `.reveal` shows the plaintext while true. IME preedit is inline, and the caret anchor is published. Pass a `Signal<String>` for the field value.
-- **text_edit(Signal\<String\>)**: multi-line: the same surface plus newline entry, a vertical caret (Up/Down), and shift-selection.
+- **text_field(input)**: chain `.multiline()` for newline entry, a vertical caret (Up/Down), and shift-selection; or pass a `TextState` directly.
 - **number_field(Signal\<T\>, Range)**: a numeric text field.
 - **date_field(Signal\<Date\>)**: ISO `YYYY-MM-DD`.
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
@@ -44,7 +44,7 @@ The family pages carry signatures, options, and behavior notes:
 - **code_edit(lines, caret)**: a line-oriented code editor that renders only the visible rows. See [Documents](widgets/documents.md#code_edit).
 - **markdown(Signal\<String\>)**: a read-only document: headings, paragraphs, lists, fenced code, pipe tables, plus `**bold**`, `` `code` ``, and `[label](url)`. Not an in-place editor.
 - **html(Signal\<String\>)**: the same nodes as `markdown`, from an HTML subset (`h1`-`h3`, `p`, `ul`/`ol`/`li`, `pre`/`code`, `a`, `strong`/`em`, `table`). Scripts and styles are dropped. Not a browser.
-- **markdown_edit(Signal\<String\>)**: a source `text_edit` plus a live `markdown` preview. The caret stays in the source string.
+- **markdown_edit(Signal\<String\>)**: a source `text_field(..).multiline()` plus a live `markdown` preview. The caret stays in the source string.
 - **terminal(lines, on_input)**: a mono `virtual_list` of PTY rows, pinned to the bottom. Bind a prelude `Session` (feature `pty`). Paint is `Session.lines`. `Session::write` needs `Session::spawn` or `Session::spawn_in`. A focused terminal receives every key except command-key shortcuts.
 - **surface(key)**: a layout hole for a native view. After layout, `Host::surfaces` returns the rect. The GPU does not paint it.
 
@@ -106,7 +106,7 @@ modal(open).title("Command").child(
 | Surface | State closures paint? |
 |---|---|
 | button | yes (all four slots) |
-| checkbox, dropdown, slider, tabs, text_field, text_edit | yes |
+| checkbox, dropdown, slider, tabs, text_field | yes |
 | Plain containers, avatar | yes |
 | card, sidebar | on `.into_node_builder()` |
 | chip | no style slots; `.activate` is a clickable button |

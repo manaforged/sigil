@@ -227,7 +227,7 @@ pub(crate) fn drop_shadow(list: &[Filter]) -> Shadow {
 }
 
 pub(crate) fn shadow_color(shadow: Shadow) -> Color {
-    let [r, g, b, a] = shadow.color;
+    let [r, g, b, a] = shadow.color();
     rgba(
         srgb_byte(r),
         srgb_byte(g),
@@ -290,8 +290,8 @@ fn filter_keyframes_sample_their_stops() {
             "hue-rotate at 25%",
         );
         let drop = drop_shadow(&list);
-        near(drop.offset[1], 2.0, 0.04, "drop-shadow y at 25%");
-        near(drop.blur, 1.0, 0.04, "drop-shadow blur at 25%");
+        near(drop.offset()[1], 2.0, 0.04, "drop-shadow y at 25%");
+        near(drop.blur(), 1.0, 0.04, "drop-shadow blur at 25%");
         near_color(
             shadow_color(drop),
             rgba(64, 64, 64, 255),

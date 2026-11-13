@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, memo, signal, timeout};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
-use crate::style::{ControlSize, Paint, Radius, Token, space};
+use crate::style::{ControlSize, Paint, Radius, Token, Tone, space};
 use crate::widgets::{ButtonBuilder, button};
 use crate::widgets::{Layout, Widget};
 
@@ -118,7 +118,8 @@ impl Chrome {
         tool(Icon::Code, move || code.update(|on| *on = !*on))
             .accessible(AccessibleName::Derived(name))
             .paint_when(code, |s| {
-                s.background(Token::Accent3).text_color(Token::Accent11)
+                s.background(Tone::Primary.step(3))
+                    .text_color(Tone::Primary.step(11))
             })
     }
 
@@ -140,7 +141,7 @@ impl Chrome {
             }
         })
         .accessible(AccessibleName::Derived(name))
-        .paint_when(copied, |s| s.text_color(Token::Success11))
+        .paint_when(copied, |s| s.text_color(Tone::Success.step(11)))
     }
 }
 

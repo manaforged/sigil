@@ -67,7 +67,10 @@ kittest_pub! {
     #[doc(hidden)]
     pub use payloads::CellBorder;
 }
-pub use payloads::DrawRect;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use payloads::DrawRect;
+}
 kittest_pub! {
     #[doc(hidden)]
     pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern};

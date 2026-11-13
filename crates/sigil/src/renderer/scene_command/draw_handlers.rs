@@ -288,7 +288,7 @@ impl SceneWalk<'_> {
 }
 
 fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Rgba {
-    let opacity = (f32::from(run.opacity()) / 10_000.0) * opacity_scale;
+    let opacity = run.opacity() * opacity_scale;
     let [r, g, b, a] = space.rgba(run.color());
     Rgba::new(r, g, b, a * opacity.clamp(0.0, 1.0))
 }

@@ -5,7 +5,7 @@ use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::signal;
-use sigil::widgets::{button, chart, text_edit, virtual_list};
+use sigil::widgets::{button, chart, text_field, virtual_list};
 
 use crate::budgets::Scenario;
 
@@ -55,7 +55,7 @@ fn editor() -> Box<dyn IntoNode> {
 fn editor_tree() -> impl IntoNode {
     container()
         .layout(LayoutStyle::flex_column().fixed_size(VIEW.0, VIEW.1))
-        .child(text_edit(signal(String::from("hello world\nsecond line"))))
+        .child(text_field(signal(String::from("hello world\nsecond line"))).multiline())
 }
 
 fn plot() -> Box<dyn IntoNode> {

@@ -90,7 +90,7 @@ where
     scroll_x: Option<ScrollAxis>,
     focused_row: Option<Signal<usize>>,
     selection_state: Option<Signal<Selection>>,
-    selection_mode: SelectionMode,
+    selection_mode: Option<SelectionMode>,
     keyboard_enabled: bool,
     item_height: Option<Box<ItemHeightFn<T>>>,
     row_tops: Vec<f32>,
@@ -126,29 +126,41 @@ impl From<usize> for ScrollAnchor {
     }
 }
 
+pub(crate) mod list_sealed {
+    use std::ops::Deref;
+
+    use crate::reactive::Signal;
+
+    use super::{RowRender, VirtualListBuilder, from_vec};
+
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed<T, R: RowRender<T>> {
+        fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
+    }
+
+    impl<T: 'static, R: RowRender<T>> Sealed<T, R> for Vec<T> {
+        fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
+            from_vec(self, render)
+        }
+    }
+
+    impl<S, T, R> Sealed<T, R> for Signal<S>
+    where
+        S: Deref + Clone + 'static,
+        S::Target: AsRef<[T]>,
+        T: 'static,
+        R: RowRender<T>,
+    {
+        fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
+            from_vec(Vec::new(), render).bind_items(self)
+        }
+    }
+}
+
 /// A collection that can become a virtual list.
-pub trait IntoList<T, R: RowRender<T>> {
-    /// Creates a virtual list that renders with `render`.
-    fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
-}
+pub trait IntoList<T, R: RowRender<T>>: list_sealed::Sealed<T, R> {}
 
-impl<T: 'static, R: RowRender<T>> IntoList<T, R> for Vec<T> {
-    fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
-        from_vec(self, render)
-    }
-}
-
-impl<S, T, R> IntoList<T, R> for Signal<S>
-where
-    S: Deref + Clone + 'static,
-    S::Target: AsRef<[T]>,
-    T: 'static,
-    R: RowRender<T>,
-{
-    fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
-        from_vec(Vec::new(), render).bind_items(self)
-    }
-}
+impl<T, R: RowRender<T>, I: list_sealed::Sealed<T, R>> IntoList<T, R> for I {}
 
 /// A list that builds only the visible rows.
 #[track_caller]
@@ -183,7 +195,7 @@ where
         scroll_x: None,
         focused_row: None,
         selection_state: None,
-        selection_mode: SelectionMode::None,
+        selection_mode: None,
         keyboard_enabled: true,
         item_height: None,
         row_tops: Vec::new(),
@@ -302,14 +314,14 @@ where
 
     /// Sets how many rows the user can select; the default is `SelectionMode::None`.
     pub const fn selection(mut self, mode: SelectionMode) -> Self {
-        self.selection_mode = mode;
+        self.selection_mode = Some(mode);
         self
     }
 
-    /// The signal that holds the selected rows; the first call creates it.
-    #[must_use]
-    pub fn selection_state(&mut self) -> Signal<Selection> {
-        self.ensure_selection_state()
+    /// Binds the selected rows to `selection`.
+    pub const fn selected(mut self, selection: Signal<Selection>) -> Self {
+        self.selection_state = Some(selection);
+        self
     }
 
     /// Turns the key handling of the list on or off; the default is on.

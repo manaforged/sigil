@@ -8,7 +8,7 @@ use sigil_kittest::Harness;
 fn a_view_renders_to_an_image() {
     let Some(image) = Harness::new(|| {
         container()
-            .background(Token::Accent9)
+            .background(Tone::Primary.step(9))
             .layout(LayoutStyle::block().width(40.0).height(30.0))
     })
     .pixels(40, 30)

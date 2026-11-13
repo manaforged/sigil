@@ -222,9 +222,9 @@ fn shift_letter_shortcuts_match_the_shifted_character() {
 fn primary_shortcuts_use_the_platform_modifier() {
     let save = Shortcut::primary(Key::character("s"));
     if cfg!(target_os = "macos") {
-        assert_eq!(save.modifiers, Modifiers::META);
+        assert_eq!(save.modifiers(), Modifiers::META);
     } else {
-        assert_eq!(save.modifiers, Modifiers::CTRL);
+        assert_eq!(save.modifiers(), Modifiers::CTRL);
     }
 }
 

@@ -7,7 +7,7 @@ use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
 use crate::widgets::Widget;
 use crate::widgets::text_edit::{
-    KeyProfile, LineStep, TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit,
+    KeyProfile, LineStep, TextEdit, TextEditRuntime, TextState, attach_a11y_edit,
     attach_ime_handlers, clipboard_keys, edit_keys, edit_value, history_keys, move_caret,
     noop_change, word_keys,
 };
@@ -27,7 +27,7 @@ pub(super) fn runtime(model: EditModel, disabled: Option<Signal<bool>>) -> TextE
     let value = signal(lines.join("\n"));
     let caret = signal(byte_at(&lines, model.caret.peek()));
     let runtime = TextEditRuntime::new(
-        TextEditState::new(value, caret),
+        TextState::new(value, caret),
         disabled,
         noop_change(),
         noop_change(),

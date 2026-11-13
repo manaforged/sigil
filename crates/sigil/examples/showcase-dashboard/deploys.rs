@@ -1,6 +1,6 @@
 use sigil::prelude::{
     AlignItems, ColumnWidth, FontFamily, Identifiable, MenuItem, NodeBuilder, Paint, Space,
-    TableColumn, TableState, Token, Tone, chip, effect, row, table, text,
+    TableColumn, TableState, Tone, chip, effect, row, table, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
@@ -122,7 +122,7 @@ fn commit_cell(job: &'static Job) -> NodeBuilder {
             text(job.sha)
                 .nowrap()
                 .font_family(FontFamily::Mono)
-                .text_color(Token::Accent11)
+                .text_color(Tone::Primary.step(11))
                 .width(SHA_WIDTH)
                 .shrink(0.0),
         )

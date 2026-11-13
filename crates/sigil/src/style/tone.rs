@@ -22,26 +22,35 @@ pub enum Tone {
 impl Tone {
     /// Returns the token of this tone at `step`.
     #[must_use]
-    pub fn token(self, step: u8) -> Token {
-        Token::scale(self, step).unwrap_or(Token::OnSurface)
+    pub const fn step(self, step: u8) -> Token {
+        Token::Step(
+            self,
+            if step < 1 {
+                1
+            } else if step > 12 {
+                12
+            } else {
+                step
+            },
+        )
     }
 
     /// The token for step 4 of the color scale of this tone.
     #[must_use]
-    pub fn shade(self) -> Token {
-        self.token(4)
+    pub const fn shade(self) -> Token {
+        self.step(4)
     }
 
     /// The token for step 9 of the color scale of this tone.
     #[must_use]
-    pub fn fill(self) -> Token {
-        self.token(9)
+    pub const fn fill(self) -> Token {
+        self.step(9)
     }
 
     /// The token for step 11 of the color scale of this tone.
     #[must_use]
-    pub fn solid(self) -> Token {
-        self.token(11)
+    pub const fn solid(self) -> Token {
+        self.step(11)
     }
 }
 
@@ -70,8 +79,7 @@ impl From<Tone> for ToneContext {
     }
 }
 
-impl crate::reactive::sealed::Sealed for Tone {}
-impl crate::reactive::Reactive<Self> for Tone {
+impl crate::reactive::sealed::Sealed<Self> for Tone {
     fn read(&self) -> Self {
         *self
     }

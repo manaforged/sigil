@@ -27,7 +27,7 @@ pub(in crate::widgets) use commands::{
 };
 pub(in crate::widgets) use keymap::{KeyProfile, LineStep, edit_keys};
 use navigation::{move_vertical, move_visual_edge};
-pub use state::TextEditState;
+pub use state::TextState;
 
 #[derive(Clone)]
 pub(in crate::widgets) struct TextEditRuntime {
@@ -60,7 +60,7 @@ impl TextEditRuntime {
         reason = "wires retained editor state to widget event handlers"
     )]
     pub(in crate::widgets) fn new(
-        state: TextEditState,
+        state: TextState,
         disabled: Option<Signal<bool>>,
         change: TextChange,
         submit: TextChange,

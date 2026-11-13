@@ -254,9 +254,8 @@ fn toggle_scene_emits_on_and_off_variants() {
 
         let theme = Theme::default();
         let off_colors = rect_colors(&cx, root);
-        let off_thumb_x =
-            first_rect_x_for_color(&cx, root, theme.color(sigil::style::Token::Gray11));
-        assert!(off_colors.contains(&theme.color(sigil::style::Token::Gray6)));
+        let off_thumb_x = first_rect_x_for_color(&cx, root, theme.color(Tone::Neutral.step(11)));
+        assert!(off_colors.contains(&theme.color(Tone::Neutral.step(6))));
 
         on.set(true);
         layout
