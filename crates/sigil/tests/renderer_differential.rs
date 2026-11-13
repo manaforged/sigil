@@ -2,9 +2,7 @@
 #![allow(clippy::print_stdout, clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
-use sigil_kittest::parity::{
-    Diff, Frame, cpu_rgba, diff, gpu_rgba, minimize,
-};
+use sigil_kittest::parity::{Diff, Frame, cpu_rgba, diff, gpu_rgba, minimize};
 use sigil_kittest::scene_gen::{GeneratedScene, fixture_text, stress};
 
 fn env_u64(name: &str, default: u64) -> u64 {
@@ -28,8 +26,7 @@ fn compare(gpu: &mut WgpuRenderer, scene: &GeneratedScene) -> Result<Diff, Strin
 }
 
 fn diverges(d: &Result<Diff, String>) -> bool {
-    !d.as_ref()
-        .is_ok_and(|d| d.is_close())
+    !d.as_ref().is_ok_and(|d| d.is_close())
 }
 
 #[test]
