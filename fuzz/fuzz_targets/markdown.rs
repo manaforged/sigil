@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use sigil::Cx;
+use sigil::node::Cx;
 use sigil::reactive::{Owner, signal};
 use sigil::widgets::markdown;
 
