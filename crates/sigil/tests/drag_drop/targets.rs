@@ -257,3 +257,43 @@ fn drop_event_carries_geometry_and_drop_hover_suppresses_default_highlight() {
         assert_eq!(event.into_value(), "task-9");
     });
 }
+
+#[test]
+fn hover_write_can_rebuild_a_nested_drop_target() {
+    sigil::reactive::Owner::scope("drag-drop-hover-rebuild", || {
+        let state = DragState::<String>::new();
+        let cursor = signal(None::<Point>);
+        let nested = state.clone();
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(WIDTH, HEIGHT))
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(100.0, 40.0))
+                        .drag_source(state.clone(), "task-7".to_owned())
+                        .child(text("task-7")),
+                )
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(200.0, 100.0))
+                        .drop_target(state.clone(), |_| true, |_| {})
+                        .drop_hover(state.clone(), cursor)
+                        .children_reactive(move || {
+                            cursor.get().map(|_| {
+                                container()
+                                    .layout(LayoutStyle::flex_column().fixed_size(20.0, 20.0))
+                                    .drop_target(nested.clone(), |_| true, |_| {})
+                            })
+                        }),
+                ),
+        );
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        let mut router = EventRouter::new();
+        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Down, 10.0, 10.0));
+        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Move, 30.0, 25.0));
+        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Move, 150.0, 20.0));
+        assert!(cursor.peek().is_some(), "hover reached the target");
+        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Up, 150.0, 20.0));
+    });
+}

@@ -52,6 +52,19 @@ struct DropTarget<T: 'static> {
     on_drop: OnDrop<T>,
 }
 
+impl<T: 'static> Clone for DropTarget<T> {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            bounds: self.bounds,
+            highlight: self.highlight,
+            hover_cursor: Rc::clone(&self.hover_cursor),
+            accepts: Rc::clone(&self.accepts),
+            on_drop: Rc::clone(&self.on_drop),
+        }
+    }
+}
+
 struct DropStateEntry<T: 'static> {
     registry: *const RefCell<DropRegistry<T>>,
     hover_cursor: Option<HoverCursorSlot>,
@@ -150,18 +163,25 @@ impl<T: Clone + 'static> DragState<T> {
         self.update_hover(at);
     }
 
+    fn snapshot(&self) -> Vec<DropTarget<T>> {
+        self.targets
+            .borrow()
+            .targets
+            .iter()
+            .rev()
+            .cloned()
+            .collect()
+    }
+
     fn settle(&self, at: Point) {
         let drop = self.payload().and_then(|payload| {
-            self.targets
-                .borrow()
-                .targets
-                .iter()
-                .rev()
+            self.snapshot()
+                .into_iter()
                 .find(|target| contains(target.bounds.peek(), at) && (target.accepts)(&payload))
                 .map(|target| {
                     let bounds = target.bounds.peek();
                     (
-                        Rc::clone(&target.on_drop),
+                        target.on_drop,
                         DropEvent::new(payload, at, local_point(bounds, at), bounds),
                     )
                 })
@@ -179,9 +199,8 @@ impl<T: Clone + 'static> DragState<T> {
 
     fn update_hover(&self, at: Point) {
         let payload = self.payload();
-        let registry = self.targets.borrow();
         let mut claimed = false;
-        for target in registry.targets.iter().rev() {
+        for target in self.snapshot() {
             let bounds = target.bounds.peek();
             let hover = !claimed
                 && payload
