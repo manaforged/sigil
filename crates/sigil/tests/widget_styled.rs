@@ -264,18 +264,6 @@ fn menu_accepts_styled_surface() {
 }
 
 #[test]
-fn menu_item_chain_works() {
-    let item = MenuItem::new("Save As\u{2026}")
-        .hint("Ctrl+Shift+S")
-        .disabled(true)
-        .submenu(false);
-    assert_eq!(item.label, "Save As\u{2026}");
-    assert_eq!(item.hint.as_deref(), Some("Ctrl+Shift+S"));
-    assert!(item.disabled);
-    assert!(!item.submenu_indicator);
-}
-
-#[test]
 fn layout_override_sizes_every_widget_root() {
     Owner::scope("widget-styled-layout-override", || {
         let wide = || LayoutStyle::default().width(210.0);

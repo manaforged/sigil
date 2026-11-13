@@ -24,11 +24,11 @@ pub enum WebFontScript {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WebFont {
     /// The script.
-    pub script: WebFontScript,
+    pub(crate) script: WebFontScript,
     /// The url.
-    pub url: String,
+    pub(crate) url: String,
     /// The face index.
-    pub face_index: u32,
+    pub(crate) face_index: u32,
 }
 
 impl WebFont {
@@ -40,6 +40,12 @@ impl WebFont {
             url: url.into(),
             face_index,
         }
+    }
+
+    /// The address the font file is fetched from.
+    #[must_use]
+    pub fn url(&self) -> &str {
+        &self.url
     }
 
     /// Returns the default Noto fallback fonts.

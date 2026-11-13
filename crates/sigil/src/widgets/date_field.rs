@@ -8,11 +8,11 @@ use super::field::{FieldParser, ParsedField, parsed_controls};
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Date {
     /// The year.
-    pub year: i32,
+    pub(crate) year: i32,
     /// The month.
-    pub month: u8,
+    pub(crate) month: u8,
     /// The day.
-    pub day: u8,
+    pub(crate) day: u8,
 }
 
 impl Date {
@@ -38,6 +38,24 @@ impl Date {
         (1..=days_in_month(year, month))
             .contains(&day)
             .then_some(Self { year, month, day })
+    }
+
+    /// The year.
+    #[must_use]
+    pub const fn year(self) -> i32 {
+        self.year
+    }
+
+    /// The month, from 1 to 12.
+    #[must_use]
+    pub const fn month(self) -> u8 {
+        self.month
+    }
+
+    /// The day of the month, from 1.
+    #[must_use]
+    pub const fn day(self) -> u8 {
+        self.day
     }
 
     /// The date as text in the format of the default `Locale`.

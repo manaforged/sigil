@@ -66,7 +66,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 `date_field(Signal<Date>)`. An ISO `YYYY-MM-DD` text field over the same buffer pattern: valid parses write the signal, invalid text only lives in the buffer, and external sets re-render.
 
-`Date { year: i32, month: u8, day: u8 }`. `Date::new` validates month and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
+`Date::new(year, month, day)` validates month and day including leap years and returns `None` for a date that is not in the calendar; `year()`, `month()` and `day()` read it back, `Date::parse` reads `YYYY-MM-DD`, and `date.render()` formats it. `.disabled(impl Reactive<bool>)` and `.invalid(Signal<bool>)` work as in `number_field`; the error frame also shows while the buffer is not a valid date. `.text_field()` returns the inner builder.
 
 ## color_field
 

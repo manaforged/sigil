@@ -19,13 +19,13 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 #[derive(Clone)]
 pub struct MenuItem {
     /// The label.
-    pub label: String,
+    pub(crate) label: String,
     /// The hint text, if any.
-    pub hint: Option<String>,
+    pub(crate) hint: Option<String>,
     /// Whether disabled.
-    pub disabled: bool,
+    pub(crate) disabled: bool,
     /// Whether submenu indicator.
-    pub submenu_indicator: bool,
+    pub(crate) submenu_indicator: bool,
     pub(super) on_activate: Option<Rc<dyn Fn()>>,
 }
 

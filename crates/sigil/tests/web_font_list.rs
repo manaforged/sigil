@@ -5,7 +5,7 @@ fn the_web_font_list_is_pinned_and_replaceable() {
     let defaults = web_fallbacks();
     assert!(!defaults.is_empty());
     assert!(
-        defaults.iter().all(|font| !font.url.contains("@main")),
+        defaults.iter().all(|font| !font.url().contains("@main")),
         "a default font URL follows a moving branch"
     );
     set_web_fallbacks([WebFont::new(WebFontScript::Cjk, "fonts/cjk.otf", 0)]);

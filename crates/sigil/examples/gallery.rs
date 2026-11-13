@@ -182,11 +182,7 @@ fn inputs_page() -> NodeBuilder {
         .child(field("Number", number_field(signal(4_i32), 1..=99)))
         .child(field(
             "Date",
-            date_field(signal(Date {
-                year: 2026,
-                month: 4,
-                day: 1,
-            })),
+            date_field(signal(Date::new(2026, 4, 1).expect("a calendar date"))),
         ))
         .child(field(
             "Dropdown",
