@@ -66,14 +66,9 @@ pub fn span(phase: Phase) -> Span {
     Span::new(phase)
 }
 
-/// Adds one to `counter`.
-pub(crate) fn count(counter: Counter) {
-    store::count_add(counter, 1);
-}
-
 /// Adds `n` to `counter`.
-pub fn count_add(counter: Counter, n: u64) {
-    store::count_add(counter, n);
+pub fn count(counter: Counter, n: u64) {
+    store::count(counter, n);
 }
 
 pub(crate) use attr::attribute;
@@ -102,8 +97,8 @@ pub fn interact(cause: Cause) {
 }
 
 /// Ends the current profiled frame.
-pub fn tick_frame() {
-    store::tick_frame();
+pub fn end_frame() {
+    store::end_frame();
 }
 
 /// Writes the recorded profile to `path`.

@@ -206,7 +206,7 @@ impl SplitEncoder {
             && let Some(target) = target
             && Some(target) == self.target.as_ref()
         {
-            count(crate::profile::Counter::GpuPassReuses);
+            count(crate::profile::Counter::GpuPassReuses, 1);
             let size = target.texture().size();
             let pass = self.pass.as_mut().expect("active render pass");
             pass.set_scissor_rect(0, 0, size.width, size.height);
@@ -214,7 +214,7 @@ impl SplitEncoder {
         }
         drop(self.pass.take());
         self.passes += 1;
-        count(crate::profile::Counter::GpuRenderPasses);
+        count(crate::profile::Counter::GpuRenderPasses, 1);
         if self.passes > MAX_PASSES_PER_SUBMISSION {
             let fresh = self
                 .device
@@ -224,7 +224,7 @@ impl SplitEncoder {
             let full = replace(&mut self.encoder, fresh);
             self.flush();
             self.queue.submit(core::iter::once(full.finish()));
-            count(crate::profile::Counter::GpuSplitSubmissions);
+            count(crate::profile::Counter::GpuSplitSubmissions, 1);
             self.passes = 1;
         }
         self.target = target.cloned();
@@ -278,7 +278,7 @@ impl SplitEncoder {
         let full = replace(&mut self.encoder, fresh);
         self.flush();
         self.queue.submit(core::iter::once(full.finish()));
-        count(crate::profile::Counter::GpuSplitSubmissions);
+        count(crate::profile::Counter::GpuSplitSubmissions, 1);
         self.passes = 0;
         result
     }

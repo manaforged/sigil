@@ -129,10 +129,10 @@ fn cull_into(source: &[SceneCommand], region: Rect, out: &mut Vec<SceneCommand>)
 
 pub(crate) fn note_plan(plan: &Plan) {
     match plan {
-        Plan::Unchanged => crate::profile::count(crate::profile::Counter::GpuPlanUnchanged),
-        Plan::Regions(_) => crate::profile::count(crate::profile::Counter::GpuPlanRegions),
+        Plan::Unchanged => crate::profile::count(crate::profile::Counter::GpuPlanUnchanged, 1),
+        Plan::Regions(_) => crate::profile::count(crate::profile::Counter::GpuPlanRegions, 1),
         Plan::Full(reason) => {
-            crate::profile::count(crate::profile::Counter::GpuPlanFull);
+            crate::profile::count(crate::profile::Counter::GpuPlanFull, 1);
             let key = reason.name().as_ptr() as usize as u64;
             crate::profile::attribute(crate::profile::Hotspot::GpuFullRepaint, 1, key, || {
                 reason.name().to_owned()

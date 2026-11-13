@@ -8,7 +8,7 @@ use sigil::geometry::Rect;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::profile::{Counter, disable, enable, frames, reset, tick_frame};
+use sigil::profile::{Counter, disable, enable, end_frame, frames, reset};
 use sigil::reactive::Owner;
 use sigil_kittest::FakeMeasure;
 
@@ -61,7 +61,7 @@ fn settle(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
         layout
             .compute(cx, root, Constraint::fixed(VIEW.0, VIEW.1))
             .unwrap();
-        tick_frame();
+        end_frame();
     }
 }
 
@@ -104,7 +104,7 @@ fn frame(host: &mut Host, event: Option<Event>) {
         ..FrameHooks::default()
     };
     host.frame(VIEW, 1.0 / 60.0, hooks);
-    tick_frame();
+    end_frame();
 }
 
 #[test]

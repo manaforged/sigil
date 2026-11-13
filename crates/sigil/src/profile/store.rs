@@ -233,7 +233,7 @@ pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce
     });
 }
 
-pub(crate) fn count_add(counter: Counter, n: u64) {
+pub(crate) fn count(counter: Counter, n: u64) {
     with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
 
@@ -274,7 +274,7 @@ pub(crate) fn interact(cause: Cause) {
     });
 }
 
-pub(crate) fn tick_frame() {
+pub(crate) fn end_frame() {
     with_store(close_frame);
 }
 

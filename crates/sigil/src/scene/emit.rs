@@ -213,7 +213,7 @@ impl<'t> EmitWalk<'_, 't> {
         let Some(node) = self.cx.get(id) else {
             return;
         };
-        crate::profile::count(crate::profile::Counter::EmitNodes);
+        crate::profile::count(crate::profile::Counter::EmitNodes, 1);
         self.track.walked();
         if skips_paint(node) {
             return;

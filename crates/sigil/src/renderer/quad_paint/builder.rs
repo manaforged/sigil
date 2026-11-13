@@ -36,7 +36,7 @@ pub(super) fn uniform_bind_group(
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
-    count(crate::profile::Counter::AllocSpriteBindGroups);
+    count(crate::profile::Counter::AllocSpriteBindGroups, 1);
     crate::renderer::fill_paint::setup::buffer_group(
         device,
         "sigil-renderer sprite uniforms bind group",

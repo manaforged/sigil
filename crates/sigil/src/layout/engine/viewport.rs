@@ -47,7 +47,7 @@ impl LayoutEngine {
             if !self.overlay_stale(cx, id, solved) {
                 continue;
             }
-            crate::profile::count(crate::profile::Counter::LayoutOverlay);
+            crate::profile::count(crate::profile::Counter::LayoutOverlay, 1);
             self.drive
                 .measure_keep_frame(self.handle(id)?, to_available_space(available))?;
             self.attach_subtree_results(cx, id)?;

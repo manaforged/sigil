@@ -41,7 +41,7 @@ fn a_moved_spot_rasters_only_its_window() {
         state.set(model.clone());
         screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         screen.flush(&mut sink).expect("flush");
-        profile::tick_frame();
+        profile::end_frame();
         let counted = profile::frames()
             .last()
             .map_or(u64::MAX, |frame| frame.counter(Counter::TuiCellsRastered));

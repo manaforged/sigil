@@ -69,7 +69,7 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
     if forced {
         env.view.painted = false;
     }
-    crate::profile::tick_frame();
+    crate::profile::end_frame();
     Ok(())
 }
 

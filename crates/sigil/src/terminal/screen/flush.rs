@@ -20,8 +20,8 @@ impl Screen {
         let _phase = profile::span(profile::Phase::TuiWrite);
         let mut measured = CountingWriter::new(out);
         let result = self.emit(&mut measured, inline);
-        profile::count_add(profile::Counter::TuiBytes, measured.bytes);
-        profile::count_add(profile::Counter::TuiWrites, measured.writes);
+        profile::count(profile::Counter::TuiBytes, measured.bytes);
+        profile::count(profile::Counter::TuiWrites, measured.writes);
         result.map_err(Into::into)
     }
 
@@ -76,7 +76,7 @@ impl Screen {
         if kitty {
             self.emit_images(out, &rewritten, full)?;
         }
-        profile::count_add(
+        profile::count(
             profile::Counter::TuiRowsWritten,
             rewritten.iter().filter(|row| **row).count() as u64,
         );

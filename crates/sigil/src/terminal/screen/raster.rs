@@ -21,7 +21,7 @@ pub(super) fn frame_hooks<'s>(
             let _phase = profile::span(profile::Phase::Effect);
             for event in events {
                 profile::interact(profile::Cause::Input);
-                profile::count(profile::Counter::TuiEvents);
+                profile::count(profile::Counter::TuiEvents, 1);
                 host.route(event);
             }
             None

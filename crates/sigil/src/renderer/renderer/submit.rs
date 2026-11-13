@@ -42,7 +42,7 @@ pub(crate) fn record_clear(
     view: &wgpu::TextureView,
     color: Rgba,
 ) {
-    count(crate::profile::Counter::GpuRenderPasses);
+    count(crate::profile::Counter::GpuRenderPasses, 1);
     let _p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer clear pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {

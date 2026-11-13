@@ -123,7 +123,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         engine
             .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("translate compute");
-        sigil::profile::tick_frame();
+        sigil::profile::end_frame();
         let counts = sigil::profile::frames()
             .last()
             .map(|f| f.counts.clone())
@@ -176,7 +176,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         engine
             .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
             .expect("second compute");
-        sigil::profile::tick_frame();
+        sigil::profile::end_frame();
         let counts = sigil::profile::frames()
             .last()
             .map(|f| f.counts.clone())

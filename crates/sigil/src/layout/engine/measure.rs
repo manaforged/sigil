@@ -46,7 +46,7 @@ impl LayoutEngine {
     ) -> Result<SmallVec<[NodeId; 8]>, Error> {
         match pass {
             Pass::Remeasure => {
-                crate::profile::count(crate::profile::Counter::LayoutResize);
+                crate::profile::count(crate::profile::Counter::LayoutResize, 1);
                 self.remeasure_and_publish(cx, root, available)?;
             }
             Pass::Full { mirrored, dirty } => {
@@ -54,7 +54,7 @@ impl LayoutEngine {
                 self.full_sync_and_measure(cx, root, available)?;
             }
             Pass::Incremental { structural, dirty } => {
-                crate::profile::count(crate::profile::Counter::LayoutIncr);
+                crate::profile::count(crate::profile::Counter::LayoutIncr, 1);
                 let roots =
                     self.incremental_sync_and_measure(cx, dirty, root, available, structural)?;
                 return Ok(roots.into_iter().collect());

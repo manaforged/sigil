@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use bytemuck::Pod;
 
-use crate::profile::{count, count_add};
+use crate::profile::count;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_instance::{GpuStop, SceneUniforms};
@@ -188,8 +188,8 @@ impl UploadBuffer {
                 usage: self.usage | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }));
-            count(crate::profile::Counter::AllocUploadBuffers);
-            count_add(crate::profile::Counter::AllocUploadBytes, self.capacity);
+            count(crate::profile::Counter::AllocUploadBuffers, 1);
+            count(crate::profile::Counter::AllocUploadBytes, self.capacity);
             allocated_bytes = self.capacity;
             start = 0;
         }
@@ -210,8 +210,8 @@ impl UploadBuffer {
         }
         let buffer = self.buffer.as_ref().expect("upload buffer initialized");
         queue.write_buffer(buffer, self.pending_offset, &self.pending);
-        count(crate::profile::Counter::GpuSharedUploadWrites);
-        count_add(
+        count(crate::profile::Counter::GpuSharedUploadWrites, 1);
+        count(
             crate::profile::Counter::GpuSharedUploadBytes,
             self.pending.len() as u64,
         );

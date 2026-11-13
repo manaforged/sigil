@@ -1,6 +1,6 @@
 use wgpu::TextureUsages;
 
-use crate::profile::{count, count_add, enabled, gauge};
+use crate::profile::{count, enabled, gauge};
 use crate::{Error, ErrorKind};
 
 const DIM_ALIGN: u32 = 16;
@@ -86,12 +86,12 @@ impl LayerPool {
             .iter()
             .position(|slot| slot.width == w && slot.height == h && slot.format == format)
         {
-            count(crate::profile::Counter::GpuLayerReuses);
+            count(crate::profile::Counter::GpuLayerReuses, 1);
             return Ok(self.free.remove(index));
         }
-        count(crate::profile::Counter::AllocLayerTextures);
+        count(crate::profile::Counter::AllocLayerTextures, 1);
         if let Some(bytes) = format.block_copy_size(None) {
-            count_add(
+            count(
                 crate::profile::Counter::AllocLayerBytes,
                 u64::from(w) * u64::from(h) * u64::from(bytes),
             );

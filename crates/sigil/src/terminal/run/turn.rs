@@ -63,7 +63,7 @@ impl<'a> Turn<'a> {
             let _phase = profile::span(crate::profile::Phase::TuiPresent);
             self.term.paint(self.screen).map_err(Error::io)?;
         }
-        profile::tick_frame();
+        profile::end_frame();
         Ok(self.screen.exited())
     }
 }

@@ -253,7 +253,7 @@ fn a_resized_label_is_named_in_the_profile() {
         engine
             .compute(&mut cx, root, Constraint::fixed(400.0, 800.0))
             .expect("resized frame");
-        crate::profile::tick_frame();
+        crate::profile::end_frame();
         let hot = crate::profile::frames()
             .last()
             .map(|frame| frame.hot.clone())

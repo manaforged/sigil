@@ -191,7 +191,7 @@ impl Harness {
         let owner = self.owner;
         profile::begin_frame(self.surface.backend());
         let painted = owner.with(|| self.paint(events, dt));
-        profile::tick_frame();
+        profile::end_frame();
         painted
     }
 

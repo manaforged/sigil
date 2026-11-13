@@ -15,7 +15,7 @@ fn counted(work: impl FnOnce()) -> (u64, u64) {
     profile::reset();
     profile::begin_frame(BackendStatus::TERMINAL);
     work();
-    profile::tick_frame();
+    profile::end_frame();
     let frame = profile::frames().last().cloned();
     profile::disable();
     frame.map_or((0, 0), |frame| {

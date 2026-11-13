@@ -43,9 +43,9 @@ fn span_records_when_enabled() {
     let _gate = recording(Some(Backend::Cpu));
     {
         let _s = span(Phase::Layout);
-        count(Counter::TextMeasure);
+        count(Counter::TextMeasure, 1);
     }
-    tick_frame();
+    end_frame();
     let last = last_frame();
     assert!(last.phases.iter().any(|(n, _)| *n == Phase::Layout));
     assert_eq!(last.counter(Counter::TextMeasure), 1);
@@ -57,7 +57,7 @@ fn pointer_beats_hover_on_the_same_frame() {
     let _gate = recording(Some(Backend::Cpu));
     interact(Cause::Hover);
     interact(Cause::Pointer);
-    tick_frame();
+    end_frame();
     assert_eq!(last_frame().cause, Cause::Pointer);
     disable();
 }
@@ -65,9 +65,9 @@ fn pointer_beats_hover_on_the_same_frame() {
 #[test]
 fn count_add_sums() {
     let _gate = recording(Some(Backend::Cpu));
-    count_add(Counter::SceneCmds, 12);
-    count_add(Counter::SceneCmds, 3);
-    tick_frame();
+    count(Counter::SceneCmds, 12);
+    count(Counter::SceneCmds, 3);
+    end_frame();
     assert_eq!(last_frame().counter(Counter::SceneCmds), 15);
     disable();
 }
@@ -78,7 +78,7 @@ fn dump_writes_chrome_json() {
     interact(Cause::Pointer);
     {
         let _s = span(Phase::Paint);
-        count(Counter::SceneEmit);
+        count(Counter::SceneEmit, 1);
     }
     let json = dump_to("sigil-profile-dump-test.json");
     for needle in [
@@ -117,10 +117,10 @@ fn app_workload_keys_record_under_their_names() {
     begin_frame(BackendStatus::TERMINAL);
     {
         let _s = span(Phase::AppUpdate);
-        count_add(Counter::WorkloadFps, 60);
-        count_add(Counter::BuildProfile, 2);
+        count(Counter::WorkloadFps, 60);
+        count(Counter::BuildProfile, 2);
     }
-    tick_frame();
+    end_frame();
     let last = last_frame();
     assert!(last.phases.iter().any(|(n, _)| *n == Phase::AppUpdate));
     assert_eq!(Phase::AppUpdate.category(), Category::App);
@@ -142,7 +142,7 @@ fn summary_names_who_caused_the_cost_and_the_gpu_passes() {
         attribute(Hotspot::LayoutDirtySeed, 1, 7, subject);
         attribute(Hotspot::LayoutDirtySeed, 1, 8, subject);
         gpu_pass("scene paint pass", 2_000_000);
-        tick_frame();
+        end_frame();
     }
     let expected = Attribution {
         hotspot: Hotspot::LayoutDirtySeed,

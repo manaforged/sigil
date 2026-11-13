@@ -182,9 +182,9 @@ impl Screen {
         if self.grid.cols() != usize::from(cols) || self.grid.rows() != usize::from(rows) {
             profile::interact(crate::profile::Cause::Resize);
         }
-        profile::count(profile::Counter::TuiFrames);
-        profile::count_add(profile::Counter::WorkloadCols, u64::from(cols));
-        profile::count_add(profile::Counter::WorkloadRows, u64::from(rows));
+        profile::count(profile::Counter::TuiFrames, 1);
+        profile::count(profile::Counter::WorkloadCols, u64::from(cols));
+        profile::count(profile::Counter::WorkloadRows, u64::from(rows));
         if crate::hud::take_state_change() || self.dirty {
             self.fresh = true;
         }
@@ -218,8 +218,8 @@ impl Screen {
         {
             self.transcript.emit(update, &self.grid);
         }
-        profile::count_add(profile::Counter::TuiDirty, u64::from(self.dirty));
-        profile::count_add(profile::Counter::TuiNodes, self.scene.commands.len() as u64);
+        profile::count(profile::Counter::TuiDirty, u64::from(self.dirty));
+        profile::count(profile::Counter::TuiNodes, self.scene.commands.len() as u64);
         out.layout?;
         Ok(if self.dirty { &self.grid } else { &self.prev })
     }

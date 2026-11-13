@@ -113,7 +113,7 @@ impl Draw {
             let clear = caps.background.map_or(SURFACE_CLEAR, opaque);
             self.paint(frame, scene, force, (caps.mux, clear))?;
         }
-        profile::tick_frame();
+        profile::end_frame();
         Ok(out.exit)
     }
 

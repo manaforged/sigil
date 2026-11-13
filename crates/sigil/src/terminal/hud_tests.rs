@@ -18,7 +18,7 @@ fn hud_paints_sparkline_and_last_frame() {
     {
         let _span = profile::span(crate::profile::Phase::Effect);
     }
-    profile::tick_frame();
+    profile::end_frame();
     let mut grid = Grid::new(80, 24);
     draw(&mut grid);
     let text = grid.text();
@@ -47,7 +47,7 @@ fn hud_names_the_backend_fallback() {
         kind: Backend::Cpu,
         fallback: FallbackCause::NoAdapter,
     });
-    profile::tick_frame();
+    profile::end_frame();
     let mut grid = Grid::new(160, 24);
     draw(&mut grid);
     set(false);
