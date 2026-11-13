@@ -2,7 +2,7 @@ use crate::kernel::Role;
 
 use crate::kernel::hooks::NodeHooks;
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
-use crate::style::{PaintTarget, StyleSlot};
+use crate::style::{Paint, StateStyleBuilder};
 
 /// Decoded RGBA pixels.
 #[derive(Clone)]
@@ -268,9 +268,9 @@ impl ImageBuilder {
     }
 }
 
-impl PaintTarget for ImageBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        self.node.style_slot()
+impl Paint for ImageBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.node.paint_mut()
     }
 }
 

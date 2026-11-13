@@ -29,16 +29,60 @@ pub fn grid(columns: impl Into<Vec<TrackSize>>) -> NodeBuilder {
 }
 
 macro_rules! layout_setters {
-    ($($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+    (@trait $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
         $($(#[$doc])* #[must_use] fn $name(self $(, $arg: $ty)*) -> Self {
-            self.layout($crate::layout::LayoutStyle::default().$name($($arg),*))
+            let style = $crate::layout::LayoutStyle::default().$name($($arg),*);
+            self.map_node(move |node| {
+                node.mutate(move |n| $crate::layout::builder_ext::install_layout(n, &style))
+            })
+        })*
+    };
+    (@edit $call:tt $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $($crate::layout::builder_ext::layout_setters!(@edit_one $call $name($($arg: $ty),*));)*
+    };
+    (@edit_one ($($path:tt)+) $name:ident($($arg:ident: $ty:ty),*)) => {
+        fn $name(mut self $(, $arg: $ty)*) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Merge(
+                $crate::layout::LayoutStyle::default().$name($($arg),*),
+            ));
+            self
+        }
+    };
+    (@kernel $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $(fn $name(mut self $(, $arg: $ty)*) -> Self {
+            let style = $crate::layout::LayoutStyle::default().$name($($arg),*);
+            self.node = self.node.mutate(move |n| {
+                $crate::layout::builder_ext::install_layout(n, &style)
+            });
+            self
+        })*
+    };
+    (@forward $field:ident $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $(fn $name(mut self $(, $arg: $ty)*) -> Self {
+            self.$field = self.$field.map(move |inner| {
+                $crate::widgets::Widget::$name(inner $(, $arg)*)
+            });
+            self
         })*
     };
 }
 
 macro_rules! layout_methods {
     () => {
+        $crate::layout::builder_ext::layout_methods!(@emit @trait);
+    };
+    (edit $($path:tt)+) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @edit ($($path)+));
+    };
+    (kernel) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @kernel);
+    };
+    (forward $field:ident) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @forward $field);
+    };
+    (@emit $($prefix:tt)*) => {
         $crate::layout::builder_ext::layout_setters! {
+            $($prefix)*
             /// Sets the space between the node's children.
             gap(gap: impl Into<$crate::layout::Space>);
             /// Sets the space inside the node's edges.

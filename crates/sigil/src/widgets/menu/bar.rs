@@ -45,7 +45,7 @@ pub struct MenuBarBuilder {
 }
 
 /// An in-window menu bar, as wide as its menus.
-pub fn menu_bar() -> MenuBarBuilder {
+pub const fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
         slots: Vec::new(),
         style_accumulator: Style::new(),

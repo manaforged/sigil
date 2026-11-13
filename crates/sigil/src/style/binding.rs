@@ -349,7 +349,9 @@ impl StyleBinding {
             None => Box::new(overlay),
         };
         self.state_overlay = Some(merged);
-        self.state_overlay_slot = Some(slot);
+        if self.state_overlay_slot.is_none() {
+            self.state_overlay_slot = Some(slot);
+        }
         self.recompute_may_transform();
     }
 

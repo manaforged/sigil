@@ -5,7 +5,7 @@ use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, Spa
 use crate::style::engine::encode_px;
 use crate::style::{
     Background, ClipShape, ColorValue, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
-    StyleAtom, TextDecoration, TextRole,
+    StateStyleBuilder, StyleAtom, TextDecoration, TextRole,
 };
 
 mod filters;
@@ -13,12 +13,14 @@ mod slot;
 mod space;
 mod units;
 
-pub(crate) use slot::{PaintTarget, StyleSlot};
 use slot::{mask, paint, push};
 use units::{fraction_units, letter_spacing_units, opacity_units};
 
 /// Typed paint on nodes, text, widget builders, and state closures.
-pub trait Paint: PaintTarget {
+pub trait Paint: Sized {
+    /// Returns the mutable style builder for this target.
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder;
+
     /// Fills the background with a color or a gradient.
     #[must_use]
     fn background(self, background: impl Into<Background>) -> Self {
@@ -254,5 +256,3 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Animation(KeyframesId::new(keyframes)))
     }
 }
-
-impl<T: PaintTarget> Paint for T {}

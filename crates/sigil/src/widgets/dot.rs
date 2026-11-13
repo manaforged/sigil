@@ -19,13 +19,13 @@ pub struct DotBuilder {
 }
 
 /// A status dot.
-pub fn dot(tone: Tone) -> DotBuilder {
+pub const fn dot(tone: Tone) -> DotBuilder {
     DotBuilder::new(tone)
 }
 
 impl DotBuilder {
     /// Creates a status dot in `tone` at `ControlSize::Compact`.
-    pub(crate) fn new(tone: Tone) -> Self {
+    pub(crate) const fn new(tone: Tone) -> Self {
         Self {
             tone,
             size: ControlSize::Compact,

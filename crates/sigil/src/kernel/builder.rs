@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode, NodePatch};
 use crate::kernel::{A11yProps, Cx, Node, NodeId, NodeType, TextCursor, reactive_children};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::style::{Paint, StateStyleBuilder, States, Style};
 use crate::widgets::Wiring;
 
 mod keyed;
@@ -256,6 +256,10 @@ impl NodeBuilder {
         self.style.get_or_insert_with(|| Box::new(Style::new()))
     }
 
+    pub(crate) const fn take_style(&mut self) -> Option<Box<Style>> {
+        self.style.take()
+    }
+
     fn styled(mut self) -> Self {
         let style = self.style.take().filter(|style| !style.is_empty());
         match style {
@@ -285,10 +289,14 @@ impl NodeBuilder {
     }
 }
 
-impl PaintTarget for NodeBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(self.pending_style())
+impl Paint for NodeBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        &mut self.pending_style().paint
     }
+}
+
+impl States for NodeBuilder {
+    crate::style::state_methods!(style pending_style());
 }
 
 impl IntoNode for NodeBuilder {

@@ -7,8 +7,8 @@ use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
-use crate::style::{StyleAtom, Tone, space};
-use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
+use crate::style::{Paint, StateStyleBuilder, States, StyleAtom, Tone, space};
+use crate::widgets::{Layout, Widget};
 
 use super::text_field::TextFieldBuilder;
 
@@ -139,32 +139,14 @@ fn resolve_control_target(tree: &Cx, control_id: NodeId) -> NodeId {
     find_control_descendant(tree, control_id).unwrap_or(control_id)
 }
 
-impl<C: Widget> Sealed for FieldBuilder<C> {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.layout_overrides.edit(edit),
-            focus => self.control = self.control.edit(NodeEdit(focus)),
-        }
-        self
-    }
-
-    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.control = self.control.map_target(f);
-        self
+impl<C: Paint> Paint for FieldBuilder<C> {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.control.paint_mut()
     }
 }
 
-impl<C: crate::style::PaintTarget> crate::style::PaintTarget for FieldBuilder<C> {
-    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-        self.control.style_slot()
-    }
-}
-
-impl<C: Widget + StateTarget> StateTarget for FieldBuilder<C> {
-    fn set_state(mut self, state: StatePaint) -> Self {
-        self.control = self.control.set_state(state);
-        self
-    }
+impl<C: States> States for FieldBuilder<C> {
+    crate::style::state_methods!(forward control);
 }
 
 impl<C: Widget> Widget for FieldBuilder<C> {
@@ -172,7 +154,12 @@ impl<C: Widget> Widget for FieldBuilder<C> {
         self.layout_overrides.node_hook(f);
         self
     }
+
+    crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
+    crate::widgets::forward_control_methods!(direct control);
 }
+
+crate::widgets::impl_layout!([C: Widget] FieldBuilder<C>, @edit layout_overrides.edit);
 
 fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn IntoNode> {
     let label = text(label).nowrap();

@@ -1,74 +1,19 @@
 use std::borrow::Cow;
 
-use smallvec::SmallVec;
-
-use crate::events::builder_ext as on;
-use crate::kernel::{Node, NodeBuilder};
+use crate::kernel::Node;
 use crate::layout::builder_ext::install_layout;
 use crate::layout::{Axes, LayoutStyle, Length};
-use crate::reactive::Signal;
-use crate::style::{StateSlot, StyleAtom};
 
-mod sealed {
-    use super::{LayoutStyle, Length, NodeBuilder, Signal, SmallVec, StateSlot, StyleAtom};
-
-    #[allow(unnameable_types, reason = "sealed")]
-    pub trait Sealed: Sized {
-        fn edit(self, edit: NodeEdit) -> Self;
-
-        fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
-    }
-
-    #[allow(unnameable_types, reason = "sealed")]
-    #[derive(Debug)]
-    pub struct StatePaint {
-        pub(crate) slot: StateSlot,
-        pub(crate) atoms: SmallVec<[StyleAtom; 16]>,
-    }
-
-    #[allow(unnameable_types, reason = "sealed")]
-    pub trait StateTarget: Sized {
-        fn set_state(self, state: StatePaint) -> Self;
-    }
-
-    #[allow(unnameable_types, reason = "sealed")]
-    #[derive(Debug)]
-    pub struct NodeEdit(pub(crate) Edit);
-
-    #[allow(
-        clippy::large_enum_variant,
-        reason = "an edit is built and consumed within one setter call"
-    )]
-    #[derive(Debug)]
-    pub(crate) enum Edit {
-        Layout(LayoutEdit),
-        Autofocus,
-        FocusWhen(Signal<u64>),
-    }
-
-    #[allow(
-        clippy::large_enum_variant,
-        reason = "an edit is built and consumed within one setter call"
-    )]
-    #[derive(Clone, Debug)]
-    pub(crate) enum LayoutEdit {
-        Merge(LayoutStyle),
-        Width(Length),
-        Height(Length),
-        Grow(f32),
-    }
-}
-
-pub(crate) use sealed::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
-
-impl Edit {
-    pub(crate) fn apply(self, node: NodeBuilder) -> NodeBuilder {
-        match self {
-            Self::Layout(edit) => node.mutate(move |node| edit.install(node)),
-            Self::Autofocus => on::autofocus(node),
-            Self::FocusWhen(trigger) => on::focus_when(node, trigger),
-        }
-    }
+#[allow(
+    clippy::large_enum_variant,
+    reason = "an edit is built and consumed within one setter call"
+)]
+#[derive(Clone, Debug)]
+pub(crate) enum LayoutEdit {
+    Merge(LayoutStyle),
+    Width(Length),
+    Height(Length),
+    Grow(f32),
 }
 
 impl LayoutEdit {

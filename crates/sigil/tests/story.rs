@@ -1,6 +1,9 @@
 #[path = "../examples/story-07-component.rs"]
 #[allow(dead_code)]
 mod component;
+#[path = "../examples/story-09-custom-widget.rs"]
+#[allow(dead_code, unreachable_pub)]
+mod custom_widget;
 #[path = "../examples/story-03-form.rs"]
 #[allow(dead_code)]
 mod form;
@@ -20,15 +23,20 @@ mod testing;
 #[allow(dead_code)]
 mod todo;
 
+use std::cell::Cell;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::kernel::NodeId;
+use sigil::events::Event;
+use sigil::kernel::{NodeId, container};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
+use sigil::scene::SceneCommand;
 use sigil::tasks::AsyncRuntime;
+use sigil::widgets::{Framed, WidgetFrame};
 use sigil_kittest::{Harness, Query};
 
 fn hosts(app: fn() -> Harness) -> impl Iterator<Item = Harness> {
@@ -131,6 +139,127 @@ fn load_shows_loading_then_the_result_on_both_hosts() {
             .expect_text("Loading…")
             .expect_text("42 items");
     }
+}
+
+#[test]
+fn custom_rating_chains_widget_paint_states_and_field_on_both_hosts() {
+    for mut ui in hosts(|| Harness::new(custom_widget::review_form)) {
+        ui.expect_text("Score: 3, Quality: 2")
+            .focus_next()
+            .press(NamedKey::ArrowRight)
+            .expect_text("Score: 4, Quality: 2")
+            .press(NamedKey::ArrowLeft)
+            .expect_text("Score: 3, Quality: 2")
+            .click("5 of 5")
+            .expect_text("Score: 5, Quality: 2")
+            .click("3 of 4")
+            .expect_text("Score: 5, Quality: 3");
+    }
+}
+
+const BASE_REST: Color = Color::rgb(12, 24, 36);
+const BASE_HOVER: Color = Color::rgb(48, 60, 72);
+const BASE_PRESSED: Color = Color::rgb(72, 84, 96);
+const CALLER_HOVER: Color = Color::rgb(140, 40, 40);
+const CALLER_REST: Color = Color::rgb(30, 140, 50);
+
+#[derive(Debug)]
+struct PanelButton {
+    frame: WidgetFrame,
+    hits: Rc<Cell<u32>>,
+}
+
+impl PanelButton {
+    const fn new(hits: Rc<Cell<u32>>) -> Self {
+        Self {
+            frame: WidgetFrame::new(),
+            hits,
+        }
+    }
+}
+
+impl Framed for PanelButton {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl IntoNode for PanelButton {
+    fn build(self, cx: &mut sigil::Cx) -> NodeId {
+        let hits = self.hits;
+        let root = container()
+            .width(60.0)
+            .height(48.0)
+            .role(Role::Button)
+            .label("Panel")
+            .background(BASE_REST)
+            .hover(|s| s.background(BASE_HOVER))
+            .pressed(|s| s.background(BASE_PRESSED))
+            .activate(move || hits.set(hits.get() + 1));
+        self.frame.finish(root).build(cx)
+    }
+}
+
+fn panel_rect_colors(ui: &mut Harness) -> Vec<Color> {
+    ui.host()
+        .emit((480.0, 320.0))
+        .commands
+        .into_iter()
+        .filter_map(|cmd| match cmd {
+            SceneCommand::Rect(rect) => Some(rect.color),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn widget_frame_reports_sizes_and_fill_flags() {
+    let empty = WidgetFrame::new();
+    assert_eq!(empty.width(), None);
+    assert_eq!(empty.height(), None);
+    assert!(!empty.fills_width());
+    assert!(!empty.fills_height());
+
+    let sized = PanelButton::new(Rc::default()).width(96.0).height(36.0);
+    assert_eq!(sized.frame.width(), Some(Length::Px(96.0)));
+    assert_eq!(sized.frame.height(), Some(Length::Px(36.0)));
+
+    let filled = PanelButton::new(Rc::default()).fill_width().fill_height();
+    assert!(filled.frame.fills_width());
+    assert!(filled.frame.fills_height());
+}
+
+#[test]
+fn caller_hover_and_background_override_widget_defaults_on_pixel_host() {
+    let hover_hits = Rc::new(Cell::new(0));
+    let hover_counter = Rc::clone(&hover_hits);
+    let mut hover_ui = Harness::new(move || {
+        PanelButton::new(Rc::clone(&hover_counter)).hover(|s| s.background(CALLER_HOVER))
+    })
+    .pixels(480, 320);
+    hover_ui.send([Event::pointer_move(Point::new(12.0, 12.0))]);
+    let hover_colors = panel_rect_colors(&mut hover_ui);
+    assert!(hover_colors.contains(&CALLER_HOVER));
+    assert!(!hover_colors.contains(&BASE_HOVER));
+    hover_ui.send([Event::pointer_down(Point::new(12.0, 12.0))]);
+    assert!(panel_rect_colors(&mut hover_ui).contains(&BASE_PRESSED));
+    hover_ui.send([Event::pointer_up(Point::new(12.0, 12.0))]);
+    assert_eq!(hover_hits.get(), 1);
+
+    let bg_hits = Rc::new(Cell::new(0));
+    let bg_counter = Rc::clone(&bg_hits);
+    let mut bg_ui =
+        Harness::new(move || PanelButton::new(Rc::clone(&bg_counter)).background(CALLER_REST))
+            .pixels(480, 320);
+    bg_ui.send([Event::pointer_move(Point::new(12.0, 12.0))]);
+    let bg_colors = panel_rect_colors(&mut bg_ui);
+    assert!(bg_colors.contains(&CALLER_REST));
+    assert!(!bg_colors.contains(&BASE_HOVER));
+    bg_ui.send([
+        Event::pointer_down(Point::new(12.0, 12.0)),
+        Event::pointer_up(Point::new(12.0, 12.0)),
+    ]);
+    assert_eq!(bg_hits.get(), 1);
 }
 
 #[test]

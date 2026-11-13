@@ -4,9 +4,10 @@ use crate::style::atom::{
     Amount, FilterAtom, FilterPart, ShadowSpec, TextShadows, blur_units, hue_units,
 };
 
-use super::slot::{PaintTarget, push};
+use super::slot::push;
+use crate::style::Paint;
 
-pub(super) fn filter<T: PaintTarget>(target: T, part: FilterPart) -> T {
+pub(super) fn filter<T: Paint>(target: T, part: FilterPart) -> T {
     push(target, StyleAtom::Filter(FilterAtom(part)))
 }
 

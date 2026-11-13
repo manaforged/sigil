@@ -1,9 +1,10 @@
 use crate::style::StyleAtom;
 use crate::style::atom::SpaceAtom;
 
-use super::slot::{PaintTarget, push};
+use super::slot::push;
+use crate::style::Paint;
 
-pub(super) fn space<T: PaintTarget>(target: T, atom: SpaceAtom) -> T {
+pub(super) fn space<T: Paint>(target: T, atom: SpaceAtom) -> T {
     push(target, StyleAtom::Space(atom))
 }
 

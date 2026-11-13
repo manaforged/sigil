@@ -158,8 +158,12 @@ pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -
 }
 
 impl NodeBuilder {
-    pub(crate) fn style(self, style: Style) -> Self {
-        crate::style::styled::node::attach_style(self.flush_paint(), style)
+    pub(crate) fn style(self, mut style: Style) -> Self {
+        let mut this = self.flush_paint();
+        if let Some(base) = this.take_style() {
+            style.merge_under(&base);
+        }
+        crate::style::styled::node::attach_style(this, style)
     }
 
     pub(crate) fn seal_style(self) -> Self {

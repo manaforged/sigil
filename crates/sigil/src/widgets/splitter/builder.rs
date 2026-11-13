@@ -68,7 +68,7 @@ impl core::fmt::Debug for SplitterBuilder {
 }
 
 /// Resizable panes.
-pub fn splitter(orientation: Orientation) -> SplitterBuilder {
+pub const fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
         orientation,
         panes: Vec::new(),

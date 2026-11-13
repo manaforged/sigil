@@ -6,7 +6,7 @@ use crate::events::{
 };
 use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, Flaw};
-use crate::layout::builder_ext::layout_methods;
+use crate::layout::builder_ext::{install_layout, layout_methods};
 use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
@@ -16,24 +16,22 @@ use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
 
-pub(crate) use edit::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
+pub(crate) use edit::LayoutEdit;
 
 kittest_pub! {
     /// Merges a raw layout style into a builder.
     #[doc(hidden)]
-    pub trait Layout: Sealed {
+    pub trait Layout: Widget {
         /// Merges `style` into the node's layout.
         #[must_use]
         fn layout(self, style: LayoutStyle) -> Self {
-            self.edit(NodeEdit(Edit::Layout(LayoutEdit::Merge(style))))
+            self.map_node(move |node| node.mutate(move |n| install_layout(n, &style)))
         }
     }
 }
 
-impl<T: Sealed> Layout for T {}
-
 #[doc = include_str!("../../docs/widget.md")]
-pub trait Widget: Sealed {
+pub trait Widget: Sized {
     /// Applies `f` to the root node that this builder produces.
     #[must_use]
     fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
@@ -41,32 +39,32 @@ pub trait Widget: Sealed {
     /// Adds the styles that the Tailwind classes in `classes` name.
     #[must_use]
     fn class(self, classes: &'static str) -> Self {
-        self.map_target(move |node| node.class(classes))
+        self.map_node(move |node| node.class(classes))
     }
 
     /// Sets the theme for the node and its children.
     #[must_use]
     fn theme(self, theme: Theme) -> Self {
-        self.map_target(move |node| look::theme(node, theme))
+        self.map_node(move |node| look::theme(node, theme))
     }
 
     /// Sets the tone that token colors resolve against in the node and its children.
     #[must_use]
     fn tone_scope(self, tone: Tone) -> Self {
-        self.map_target(move |node| look::tone(node, tone))
+        self.map_node(move |node| look::tone(node, tone))
     }
 
     /// Sets the focus ring: a `Signal<bool>` that shows it, or a `FocusRing` with color, width, offset and opacity.
     #[must_use]
     fn focus_ring(self, ring: impl Into<FocusRing>) -> Self {
         let ring = ring.into();
-        self.map_target(move |node| look::focus_ring(node, ring))
+        self.map_node(move |node| look::focus_ring(node, ring))
     }
 
     /// Fades the node in and out over `ms` as `shown` changes.
     #[must_use]
     fn presence(self, shown: Signal<bool>, ms: u16, easing: crate::animation::Easing) -> Self {
-        self.map_target(move |node| {
+        self.map_node(move |node| {
             look::presence(
                 node,
                 shown,
@@ -82,13 +80,13 @@ pub trait Widget: Sealed {
     /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.
     #[must_use]
     fn drive(self, property: fn(f32) -> Property, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::drive(node, property, value))
+        self.map_node(move |node| look::drive(node, property, value))
     }
 
     /// Hides the node while `shown` is false.
     #[must_use]
     fn visible(self, shown: impl Reactive<bool>) -> Self {
-        self.map_target(move |node| look::visible(node, shown))
+        self.map_node(move |node| look::visible(node, shown))
     }
 
     /// Applies the style built by `paint` while `active` is true.
@@ -98,7 +96,7 @@ pub trait Widget: Sealed {
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
         let built = paint(StateStyleBuilder::new());
-        self.map_target(move |node| look::paint_when(node, active, built))
+        self.map_node(move |node| look::paint_when(node, active, built))
     }
 
     /// Opts the node and its children out of a design rule, with the reason.
@@ -118,19 +116,22 @@ pub trait Widget: Sealed {
     /// Sets the node's width.
     #[must_use]
     fn width(self, width: impl Into<Length>) -> Self {
-        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Width(width.into()))))
+        let edit = LayoutEdit::Width(width.into());
+        self.map_node(move |node| node.mutate(move |n| edit.install(n)))
     }
 
     /// Sets the node's height.
     #[must_use]
     fn height(self, height: impl Into<Length>) -> Self {
-        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Height(height.into()))))
+        let edit = LayoutEdit::Height(height.into());
+        self.map_node(move |node| node.mutate(move |n| edit.install(n)))
     }
 
     /// Sets the node's flex grow factor.
     #[must_use]
     fn grow(self, factor: f32) -> Self {
-        self.edit(NodeEdit(Edit::Layout(LayoutEdit::Grow(factor))))
+        let edit = LayoutEdit::Grow(factor);
+        self.map_node(move |node| node.mutate(move |n| edit.install(n)))
     }
 
     layout_methods!();
@@ -199,32 +200,17 @@ pub trait Widget: Sealed {
     /// Focuses the node when it is added.
     #[must_use]
     fn autofocus(self) -> Self {
-        self.edit(NodeEdit(Edit::Autofocus))
+        self.map_node(on::autofocus)
     }
 
     /// Focuses the node each time `trigger` changes.
     #[must_use]
     fn focus_when(self, trigger: Signal<u64>) -> Self {
-        self.edit(NodeEdit(Edit::FocusWhen(trigger)))
+        self.map_node(move |node| on::focus_when(node, trigger))
     }
 }
 
-impl Sealed for NodeBuilder {
-    fn edit(self, NodeEdit(edit): NodeEdit) -> Self {
-        edit.apply(self)
-    }
-
-    fn map_target(self, f: impl FnOnce(Self) -> Self + 'static) -> Self {
-        f(self)
-    }
-}
-
-impl StateTarget for NodeBuilder {
-    fn set_state(mut self, state: StatePaint) -> Self {
-        self.pending_style().set_state(state.slot, state.atoms);
-        self
-    }
-}
+impl Layout for NodeBuilder {}
 
 impl Widget for NodeBuilder {
     fn map_node(self, f: impl FnOnce(Self) -> Self + 'static) -> Self {

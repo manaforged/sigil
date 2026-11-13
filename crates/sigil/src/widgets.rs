@@ -90,48 +90,193 @@ pub(crate) fn framed_figure(
         .description(bound_source(source).trim_end().to_string())
 }
 
+macro_rules! widget_layout_methods {
+    (@edit $($path:tt)+) => {
+        fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Width(width.into()));
+            self
+        }
+
+        fn height(mut self, height: impl Into<$crate::layout::Length>) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Height(height.into()));
+            self
+        }
+
+        fn grow(mut self, factor: f32) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Grow(factor));
+            self
+        }
+
+        $crate::layout::builder_ext::layout_methods!(edit $($path)+);
+    };
+    (@kernel) => {
+        fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
+            let edit = $crate::widgets::LayoutEdit::Width(width.into());
+            self.node = self.node.mutate(move |n| edit.install(n));
+            self
+        }
+
+        fn height(mut self, height: impl Into<$crate::layout::Length>) -> Self {
+            let edit = $crate::widgets::LayoutEdit::Height(height.into());
+            self.node = self.node.mutate(move |n| edit.install(n));
+            self
+        }
+
+        fn grow(mut self, factor: f32) -> Self {
+            let edit = $crate::widgets::LayoutEdit::Grow(factor);
+            self.node = self.node.mutate(move |n| edit.install(n));
+            self
+        }
+
+        $crate::layout::builder_ext::layout_methods!(kernel);
+    };
+    (@forward $field:ident) => {
+        fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
+            let width = width.into();
+            self.$field = self.$field.map(move |inner| $crate::widgets::Widget::width(inner, width));
+            self
+        }
+
+        fn height(mut self, height: impl Into<$crate::layout::Length>) -> Self {
+            let height = height.into();
+            self.$field = self.$field.map(move |inner| $crate::widgets::Widget::height(inner, height));
+            self
+        }
+
+        fn grow(mut self, factor: f32) -> Self {
+            self.$field = self.$field.map(move |inner| $crate::widgets::Widget::grow(inner, factor));
+            self
+        }
+
+        $crate::layout::builder_ext::layout_methods!(forward $field);
+    };
+}
+
+macro_rules! impl_layout {
+    ([$($g:tt)*] $ty:ty, @edit $($path:tt)+) => {
+        impl<$($g)*> $crate::widgets::Layout for $ty {
+            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+                self.$($path)+($crate::widgets::LayoutEdit::Merge(style));
+                self
+            }
+        }
+    };
+    ([$($g:tt)*] $ty:ty, @kernel) => {
+        impl<$($g)*> $crate::widgets::Layout for $ty {
+            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+                self.node = self.node.mutate(move |n| {
+                    $crate::layout::builder_ext::install_layout(n, &style)
+                });
+                self
+            }
+        }
+    };
+    ([$($g:tt)*] $ty:ty, @forward $field:ident) => {
+        impl<$($g)*> $crate::widgets::Layout for $ty {
+            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+                self.$field = self.$field.map(move |inner| $crate::widgets::Layout::layout(inner, style));
+                self
+            }
+        }
+    };
+}
+
+macro_rules! forward_control_methods {
+    (direct $field:ident) => {
+        $crate::widgets::forward_control_methods!(@inner direct $field);
+    };
+    (map $field:ident) => {
+        $crate::widgets::forward_control_methods!(@inner map $field);
+    };
+    (@inner $mode:ident $field:ident) => {
+        fn class(mut self, classes: &'static str) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, class(classes));
+            self
+        }
+
+        fn theme(mut self, theme: $crate::style::Theme) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, theme(theme));
+            self
+        }
+
+        fn tone_scope(mut self, tone: $crate::style::Tone) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, tone_scope(tone));
+            self
+        }
+
+        fn focus_ring(mut self, ring: impl Into<$crate::style::FocusRing>) -> Self {
+            let ring = ring.into();
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, focus_ring(ring));
+            self
+        }
+
+        fn presence(
+            mut self,
+            shown: $crate::reactive::Signal<bool>,
+            ms: u16,
+            easing: $crate::animation::Easing,
+        ) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, presence(shown, ms, easing));
+            self
+        }
+
+        fn drive(
+            mut self,
+            property: fn(f32) -> $crate::animation::Property,
+            value: $crate::reactive::Signal<f32>,
+        ) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, drive(property, value));
+            self
+        }
+
+        fn visible(mut self, shown: impl $crate::reactive::Reactive<bool>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, visible(shown));
+            self
+        }
+
+        fn paint_when<F>(mut self, active: impl $crate::reactive::Reactive<bool>, paint: F) -> Self
+        where
+            F: FnOnce($crate::style::StateStyleBuilder) -> $crate::style::StateStyleBuilder,
+        {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, paint_when(active, paint));
+            self
+        }
+
+        fn autofocus(mut self) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, autofocus());
+            self
+        }
+
+        fn focus_when(mut self, trigger: $crate::reactive::Signal<u64>) -> Self {
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, focus_when(trigger));
+            self
+        }
+    };
+    (@call direct $target:expr, $method:ident($($arg:expr),*)) => {
+        $target = $crate::widgets::Widget::$method($target $(, $arg)*);
+    };
+    (@call map $target:expr, $method:ident($($arg:expr),*)) => {
+        $target = $target.map(move |inner| $crate::widgets::Widget::$method(inner $(, $arg)*));
+    };
+}
+
 macro_rules! builder_impls {
     ($gen:tt $ty:ty: $($part:ident $(($($arg:tt)*))?),+ $(,)?) => {
         $($crate::widgets::builder_impls!(@$part $gen $ty $(, $($arg)*)?);)+
     };
     (@paint [$($g:tt)*] $ty:ty, $field:ident) => {
-        impl<$($g)*> crate::style::PaintTarget for $ty {
-            fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-                crate::style::StyleSlot(&mut self.$field)
+        impl<$($g)*> crate::style::Paint for $ty {
+            fn paint_mut(&mut self) -> &mut crate::style::StateStyleBuilder {
+                self.$field.paint_mut()
             }
         }
     };
     (@states [$($g:tt)*] $ty:ty, $field:ident) => {
-        impl<$($g)*> crate::widgets::StateTarget for $ty {
-            fn set_state(mut self, state: crate::widgets::StatePaint) -> Self {
-                self.$field.set_state(state.slot, state.atoms);
-                self
-            }
+        impl<$($g)*> crate::style::States for $ty {
+            $crate::style::state_methods!(style $field);
         }
     };
     (@widget [$($g:tt)*] $ty:ty $(, focus = $autofocus:ident / $trigger:ident)?) => {
-        impl<$($g)*> crate::widgets::Sealed for $ty {
-            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
-                match edit {
-                    crate::widgets::Edit::Layout(edit) => self.layout_overrides.edit(edit),
-                    $(
-                        crate::widgets::Edit::Autofocus => self.$autofocus = true,
-                        crate::widgets::Edit::FocusWhen(trigger) => self.$trigger = Some(trigger),
-                    )?
-                    #[allow(unreachable_patterns, reason = "builders that store every edit leave no rest")]
-                    other => self.layout_overrides.node_hook(move |node| other.apply(node)),
-                }
-                self
-            }
-
-            fn map_target(
-                self,
-                f: impl FnOnce(crate::kernel::NodeBuilder) -> crate::kernel::NodeBuilder + 'static,
-            ) -> Self {
-                crate::widgets::Widget::map_node(self, f)
-            }
-        }
-
         impl<$($g)*> crate::widgets::Widget for $ty {
             fn map_node(
                 mut self,
@@ -140,23 +285,25 @@ macro_rules! builder_impls {
                 self.layout_overrides.node_hook(f);
                 self
             }
+
+            $crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
+
+            $(
+                fn autofocus(mut self) -> Self {
+                    self.$autofocus = true;
+                    self
+                }
+
+                fn focus_when(mut self, trigger: crate::reactive::Signal<u64>) -> Self {
+                    self.$trigger = Some(trigger);
+                    self
+                }
+            )?
         }
+
+        $crate::widgets::impl_layout!([$($g)*] $ty, @edit layout_overrides.edit);
     };
     (@kernel [$($g:tt)*] $ty:ty) => {
-        impl<$($g)*> crate::widgets::Sealed for $ty {
-            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
-                self.node = edit.apply(self.node);
-                self
-            }
-
-            fn map_target(
-                self,
-                f: impl FnOnce(crate::kernel::NodeBuilder) -> crate::kernel::NodeBuilder + 'static,
-            ) -> Self {
-                crate::widgets::Widget::map_node(self, f)
-            }
-        }
-
         impl<$($g)*> crate::widgets::Widget for $ty {
             fn map_node(
                 mut self,
@@ -166,35 +313,31 @@ macro_rules! builder_impls {
                     .push(Box::new(move |node| node.map_keeping_kind(f)));
                 self
             }
+
+            $crate::widgets::widget_layout_methods!(@kernel);
+
+            fn autofocus(mut self) -> Self {
+                self.node = crate::events::builder_ext::autofocus(self.node);
+                self
+            }
+
+            fn focus_when(mut self, trigger: crate::reactive::Signal<u64>) -> Self {
+                self.node = crate::events::builder_ext::focus_when(self.node, trigger);
+                self
+            }
         }
+
+        $crate::widgets::impl_layout!([$($g)*] $ty, @kernel);
     };
     (@forward [$($g:tt)*] $ty:ty, $field:ident) => {
-        impl<$($g)*> crate::widgets::Sealed for $ty {
-            fn edit(mut self, crate::widgets::NodeEdit(edit): crate::widgets::NodeEdit) -> Self {
-                self.$field = self.$field.map(move |inner| crate::widgets::Sealed::edit(inner, crate::widgets::NodeEdit(edit)));
-                self
-            }
-
-            fn map_target(
-                mut self,
-                f: impl FnOnce(crate::kernel::NodeBuilder) -> crate::kernel::NodeBuilder + 'static,
-            ) -> Self {
-                self.$field = self.$field.map(move |inner| crate::widgets::Sealed::map_target(inner, f));
-                self
+        impl<$($g)*> crate::style::Paint for $ty {
+            fn paint_mut(&mut self) -> &mut crate::style::StateStyleBuilder {
+                self.$field.paint_mut()
             }
         }
 
-        impl<$($g)*> crate::style::PaintTarget for $ty {
-            fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-                self.$field.style_slot()
-            }
-        }
-
-        impl<$($g)*> crate::widgets::StateTarget for $ty {
-            fn set_state(mut self, state: crate::widgets::StatePaint) -> Self {
-                self.$field = self.$field.map(move |inner| crate::widgets::StateTarget::set_state(inner, state));
-                self
-            }
+        impl<$($g)*> crate::style::States for $ty {
+            $crate::style::state_methods!(map $field);
         }
 
         impl<$($g)*> crate::widgets::Widget for $ty {
@@ -205,7 +348,21 @@ macro_rules! builder_impls {
                 self.$field = self.$field.map(move |inner| crate::widgets::Widget::map_node(inner, f));
                 self
             }
+
+            $crate::widgets::widget_layout_methods!(@forward $field);
+
+            fn autofocus(mut self) -> Self {
+                self.$field = self.$field.map(crate::widgets::Widget::autofocus);
+                self
+            }
+
+            fn focus_when(mut self, trigger: crate::reactive::Signal<u64>) -> Self {
+                self.$field = self.$field.map(move |inner| crate::widgets::Widget::focus_when(inner, trigger));
+                self
+            }
         }
+
+        $crate::widgets::impl_layout!([$($g)*] $ty, @forward $field);
     };
     (@node [$($g:tt)*] $ty:ty $(, $vis:vis)?) => {
         impl<$($g)*> $ty {
@@ -224,7 +381,7 @@ macro_rules! builder_impls {
     };
 }
 
-pub(crate) use builder_impls;
+pub(crate) use {builder_impls, forward_control_methods, impl_layout, widget_layout_methods};
 
 #[cfg(test)]
 #[path = "widgets/lib_tests.rs"]
@@ -250,6 +407,7 @@ mod drag;
 mod drag_drop;
 mod dropdown;
 mod field;
+mod frame;
 mod fuzzy;
 mod gauge;
 mod graphviz;
@@ -336,6 +494,7 @@ pub use drag::axis_drag;
 pub use drag_drop::{DragState, drag_ghost};
 pub use dropdown::{DropdownBuilder, dropdown};
 pub use field::{FieldBuilder, FieldControl, field};
+pub use frame::{Framed, WidgetFrame};
 pub use fuzzy::{FuzzyMatch, fuzzy_score};
 pub use gauge::{GaugeBuilder, gauge};
 pub use graphviz::graphviz;
@@ -403,7 +562,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use widget::Layout;
 }
-pub(crate) use widget::{Edit, LayoutEdit, NodeEdit, Sealed, StatePaint, StateTarget};
+pub(crate) use widget::LayoutEdit;
 
 crate::kernel::into_node_builder!(
     ButtonBuilder,

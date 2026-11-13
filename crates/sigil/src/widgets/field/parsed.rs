@@ -111,9 +111,9 @@ impl<P: FieldParser> ParsedField<P> {
     }
 }
 
-impl<P: FieldParser> crate::style::PaintTarget for ParsedField<P> {
-    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-        self.inner.style_slot()
+impl<P: FieldParser> crate::style::Paint for ParsedField<P> {
+    fn paint_mut(&mut self) -> &mut crate::style::StateStyleBuilder {
+        self.inner.paint_mut()
     }
 }
 

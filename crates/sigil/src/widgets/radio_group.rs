@@ -28,13 +28,13 @@ pub struct RadioGroupBuilder {
 }
 
 /// A set of radio options; `.label()` and `.labelled_by()` name the group.
-pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
+pub const fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
     RadioGroupBuilder::new(selected)
 }
 
 impl RadioGroupBuilder {
     /// Creates a group with no options that writes the key of the chosen option to `selected`.
-    pub(crate) fn new(selected: Signal<String>) -> Self {
+    pub(crate) const fn new(selected: Signal<String>) -> Self {
         Self {
             selected,
             options: Vec::new(),

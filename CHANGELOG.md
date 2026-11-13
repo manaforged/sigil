@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `sigil::widgets::{Framed, WidgetFrame}` and unsealed `Paint`, `States`, and `Widget` traits with blanket implementations for `T: Framed`.
+
 ## [0.2.0] - 2026-11-12
 
 First public release.

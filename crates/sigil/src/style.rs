@@ -104,7 +104,6 @@ pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
 pub(crate) use metrics::{DIMMED, DISABLED_OPACITY, ICON_SIZE};
 pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;
-pub(crate) use paint::{PaintTarget, StyleSlot};
 pub(crate) use parser::parse_class_string;
 #[cfg(any(test, fuzzing))]
 pub(crate) use parser::parse_stateful_token;
@@ -127,6 +126,61 @@ pub use strings::{StringKey, Strings};
 pub(crate) use struct_api::Style;
 pub use styled::StateStyleBuilder;
 pub use styled::States;
+
+macro_rules! state_methods {
+    (style $($access:tt)+) => {
+        $crate::style::state_methods!(@each style ($($access)+),
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (forward $field:ident) => {
+        $crate::style::state_methods!(@each forward $field,
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (map $field:ident) => {
+        $crate::style::state_methods!(@each map $field,
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (@each $mode:ident $arg:tt, $($method:ident => $slot:ident),* $(,)?) => {
+        $(
+            fn $method<F>(mut self, configure: F) -> Self
+            where
+                F: FnOnce($crate::style::StateStyleBuilder) -> $crate::style::StateStyleBuilder,
+            {
+                $crate::style::state_methods!(@body $mode $arg, self, $method, $slot, configure);
+                self
+            }
+        )*
+    };
+    (@body style ($($access:tt)+), $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$($access)+.set_state(
+            $crate::style::StateSlot::$slot,
+            $crate::style::styled::state::build_state_atoms($configure),
+        );
+    };
+    (@body forward $field:ident, $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$field = $self.$field.$method($configure);
+    };
+    (@body map $field:ident, $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$field = $self.$field.map(move |inner| inner.$method($configure));
+    };
+}
+
+pub(crate) use state_methods;
 pub(crate) use styled::node::attach_style;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;

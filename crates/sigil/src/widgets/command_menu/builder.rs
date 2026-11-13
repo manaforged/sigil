@@ -6,7 +6,7 @@ use crate::style::Style;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
 use super::nav::{PaletteEntry, SubmitObserver};
-use crate::widgets::{Edit, MenuItem, NodeEdit, Sealed, Widget};
+use crate::widgets::{MenuItem, Widget};
 
 #[derive(Default)]
 pub(super) struct LevelDef {
@@ -123,25 +123,13 @@ impl CommandMenuBuilder {
 
 builder_impls!([] CommandMenuBuilder: paint(style_accumulator), node);
 
-impl Sealed for CommandMenuBuilder {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.panel_layout.edit(edit),
-            other => self
-                .layout_overrides
-                .node_hook(move |node| other.apply(node)),
-        }
-        self
-    }
-
-    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.map_node(f)
-    }
-}
-
 impl Widget for CommandMenuBuilder {
     fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
         self.layout_overrides.node_hook(f);
         self
     }
+
+    crate::widgets::widget_layout_methods!(@edit panel_layout.edit);
 }
+
+crate::widgets::impl_layout!([] CommandMenuBuilder, @edit panel_layout.edit);

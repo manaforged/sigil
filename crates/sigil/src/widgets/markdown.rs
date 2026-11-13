@@ -99,7 +99,7 @@ pub struct MarkdownEditBuilder {
 }
 
 /// A markdown editor with preview.
-pub fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
+pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
     MarkdownEditBuilder {
         source,
         disabled: None,
