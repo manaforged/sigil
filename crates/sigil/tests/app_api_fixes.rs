@@ -30,15 +30,12 @@ fn send(host: &mut Host, keys: Vec<Event>) {
     let _ = host.frame(
         VIEW,
         1.0 / 60.0,
-        FrameHooks {
-            input: Some(Box::new(move |target| {
-                for event in queue.borrow_mut().take().unwrap_or_default() {
-                    target.route(event);
-                }
-                None
-            })),
-            ..FrameHooks::default()
-        },
+        FrameHooks::default().input(move |target| {
+            for event in queue.borrow_mut().take().unwrap_or_default() {
+                target.route(event);
+            }
+            None
+        }),
     );
     settle(host);
 }

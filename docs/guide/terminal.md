@@ -33,10 +33,7 @@ use sigil::prelude::*;
 use sigil::terminal::{Hooks, Terminal};
 
 fn main() -> sigil::AppResult<()> {
-    let hooks = Hooks {
-        region_rows: Some(Box::new(|| 3)),
-        ..Hooks::default()
-    };
+    let hooks = Hooks::default().region_rows(|| 3);
     let config = AppConfig::new("log")
         .terminal()
         .inline(true)

@@ -341,17 +341,17 @@ pub(crate) fn fail(message: impl std::fmt::Display) -> ! {
 }
 
 fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_> {
-    FrameHooks {
-        input: Some(Box::new(move |host: &mut Host| {
-            let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
-            for event in events {
-                sigil::profile::note_input(&event);
-                host.route(event);
-            }
-            None
-        })),
-        paint,
-        ..FrameHooks::default()
+    let hooks = FrameHooks::default().input(move |host: &mut Host| {
+        let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
+        for event in events {
+            sigil::profile::note_input(&event);
+            host.route(event);
+        }
+        None
+    });
+    match paint {
+        Some(paint) => hooks.paint(paint),
+        None => hooks,
     }
 }
 

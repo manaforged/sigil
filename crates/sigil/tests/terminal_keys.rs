@@ -15,13 +15,10 @@ fn press(host: &mut Host, event: Event) {
     let _ = host.frame(
         VIEW,
         1.0 / 60.0,
-        FrameHooks {
-            input: Some(Box::new(move |target| {
-                target.route(event);
-                None
-            })),
-            ..FrameHooks::default()
-        },
+        FrameHooks::default().input(move |target| {
+            target.route(event);
+            None
+        }),
     );
     let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
 }

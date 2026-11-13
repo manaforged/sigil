@@ -52,12 +52,8 @@ fn an_exit_requested_before_a_frame_whose_paint_panics_ends_the_next_frame() {
             host.frame(
                 VIEW,
                 1.0 / 60.0,
-                FrameHooks {
-                    paint: Some(Box::new(|_, _| {
-                        std::panic::resume_unwind(Box::new("paint failed"))
-                    })),
-                    ..FrameHooks::default()
-                },
+                FrameHooks::default()
+                    .paint(|_, _| std::panic::resume_unwind(Box::new("paint failed"))),
             )
         }));
         Runtime::recover_from_panic();

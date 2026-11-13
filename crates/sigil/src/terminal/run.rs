@@ -33,12 +33,32 @@ pub(crate) type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &Screen) + 'a>;
 /// The hooks of an embedded terminal loop.
 #[derive(Default)]
 pub struct Hooks<'a> {
-    /// The external events, if any.
-    pub external_events: Option<EventPump<'a>>,
-    /// The after frame, if any.
-    pub after_frame: Option<AfterFrame<'a>>,
-    /// The region rows, if any.
-    pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
+    pub(crate) external_events: Option<EventPump<'a>>,
+    pub(crate) after_frame: Option<AfterFrame<'a>>,
+    pub(crate) region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
+}
+
+impl<'a> Hooks<'a> {
+    /// Calls `external_events` each turn to add events from outside the terminal.
+    #[must_use]
+    pub fn external_events(mut self, external_events: impl FnMut(&mut Vec<Event>) + 'a) -> Self {
+        self.external_events = Some(Box::new(external_events));
+        self
+    }
+
+    /// Calls `after_frame` after each frame is written.
+    #[must_use]
+    pub fn after_frame(mut self, after_frame: impl FnMut(&mut Host, &Screen) + 'a) -> Self {
+        self.after_frame = Some(Box::new(after_frame));
+        self
+    }
+
+    /// Calls `region_rows` each turn for the height of an inline region, in rows.
+    #[must_use]
+    pub fn region_rows(mut self, region_rows: impl FnMut() -> u16 + 'a) -> Self {
+        self.region_rows = Some(Box::new(region_rows));
+        self
+    }
 }
 
 impl core::fmt::Debug for Hooks<'_> {

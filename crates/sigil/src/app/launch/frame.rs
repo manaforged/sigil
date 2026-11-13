@@ -74,18 +74,17 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
 }
 
 fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
-    FrameHooks {
-        input: Some(Box::new(|host| input_phase(&mut env.borrow_mut(), host))),
-        after_layout: Some(Box::new(|host| {
+    FrameHooks::default()
+        .input(|host| input_phase(&mut env.borrow_mut(), host))
+        .after_layout(|host| {
             let env = &mut *env.borrow_mut();
             if let Some((cx, layout, router, _)) = host.tree() {
                 sync_ime(env.shell, env.view.handle, cx, layout, router);
             }
-        })),
-        paint: Some(Box::new(|host, info| {
+        })
+        .paint(|host, info| {
             paint_phase(&mut env.borrow_mut(), host, info);
-        })),
-    }
+        })
 }
 
 fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {

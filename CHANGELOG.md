@@ -162,6 +162,8 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `FrameHooks { input: Some(Box::new(f)), .. }` | `FrameHooks::default().input(f)`, `.after_layout(f)`, `.paint(f)` |
+| `terminal::Hooks { region_rows: Some(Box::new(f)), .. }` | `Hooks::default().region_rows(f)`, `.external_events(f)`, `.after_frame(f)` |
 | `terminal::Access { focus_cursor, status }` | `Access::default().focus_cursor(..).status(..)` |
 | struct literals of `TextFace`, `TextRun`, `Locale`, `terminal::Cell`, `terminal::Lines`, `scene::GlyphRun`, `ListState` | these are `#[non_exhaustive]`; read the fields, build with the constructor |
 | `ProgressBuilder.indeterminate` field | `.indeterminate()` |

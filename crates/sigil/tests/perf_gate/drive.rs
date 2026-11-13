@@ -24,20 +24,18 @@ pub(crate) struct Sample {
 }
 
 pub(crate) fn window_frame(host: &mut Host, event: Option<Event>, force_emit: bool) {
-    let hooks = FrameHooks {
-        input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host| {
+    let hooks = FrameHooks::default()
+        .input(move |target: &mut Host| {
+            if let Some(event) = event {
                 target.route(event);
-                None
-            })
-        }),
-        after_layout: None,
-        paint: Some(Box::new(move |target, info| {
+            }
+            None
+        })
+        .paint(move |target, info| {
             if info.dirty || force_emit {
                 black_box(target.emit(VIEW).commands.len());
             }
-        })),
-    };
+        });
     black_box(host.frame(VIEW, 1.0 / 60.0, hooks).intervals);
 }
 

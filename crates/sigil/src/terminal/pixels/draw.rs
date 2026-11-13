@@ -92,21 +92,19 @@ impl Draw {
         let out = self.host.frame(
             frame.viewport,
             dt,
-            FrameHooks {
-                input: Some(Box::new(move |host: &mut Host| {
+            FrameHooks::default()
+                .input(move |host: &mut Host| {
                     for event in events {
                         host.route(event);
                     }
                     None
-                })),
-                paint: Some(Box::new(|host: &mut Host, info: &FrameInfo| {
+                })
+                .paint(|host: &mut Host, info: &FrameInfo| {
                     if force || info.dirty || info.animating {
                         let _emit = profile::span(Phase::Emit);
                         scene = Some(host.emit(frame.viewport));
                     }
-                })),
-                ..FrameHooks::default()
-            },
+                }),
         );
         out.layout?;
         if let Some(scene) = scene {

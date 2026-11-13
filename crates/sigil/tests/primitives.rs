@@ -126,15 +126,12 @@ fn a_resizable_sidebar_grows_from_its_handle_keys() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(move |target| {
-                    let (cx, _, router) = target.parts();
-                    router.set_focus(cx, Some(handle));
-                    target.route(key_down(NamedKey::ArrowRight));
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(move |target| {
+                let (cx, _, router) = target.parts();
+                router.set_focus(cx, Some(handle));
+                target.route(key_down(NamedKey::ArrowRight));
+                None
+            }),
         );
         settle(&mut host);
         let after = host
@@ -249,19 +246,16 @@ fn typing_in_the_command_menu_filters_its_items() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(|target| {
-                    for ch in ["w", "a"] {
-                        target.route(
-                            Event::key(Key::character(ch), KeyPhase::Down)
-                                .physical(PhysicalKey::KeyA)
-                                .text(Some(ch.into())),
-                        );
-                    }
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(|target| {
+                for ch in ["w", "a"] {
+                    target.route(
+                        Event::key(Key::character(ch), KeyPhase::Down)
+                            .physical(PhysicalKey::KeyA)
+                            .text(Some(ch.into())),
+                    );
+                }
+                None
+            }),
         );
         settle(&mut host);
 

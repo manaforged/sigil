@@ -59,13 +59,10 @@ fn a_tab_capture_handler_runs_before_focus_moves() {
         let _ = host.frame(
             VIEW,
             1.0 / 60.0,
-            FrameHooks {
-                input: Some(Box::new(|target| {
-                    target.route(tab_key());
-                    None
-                })),
-                ..FrameHooks::default()
-            },
+            FrameHooks::default().input(|target| {
+                target.route(tab_key());
+                None
+            }),
         );
         settle(&mut host);
 

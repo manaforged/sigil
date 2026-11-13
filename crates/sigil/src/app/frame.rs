@@ -47,12 +47,32 @@ pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
 /// The optional hooks that `Host::frame` runs.
 #[derive(Default)]
 pub struct FrameHooks<'a> {
-    /// The input, if any.
-    pub input: Option<FrameInputHook<'a>>,
-    /// The after layout, if any.
-    pub after_layout: Option<FrameLayoutHook<'a>>,
-    /// The paint, if any.
-    pub paint: Option<FramePaintHook<'a>>,
+    pub(crate) input: Option<FrameInputHook<'a>>,
+    pub(crate) after_layout: Option<FrameLayoutHook<'a>>,
+    pub(crate) paint: Option<FramePaintHook<'a>>,
+}
+
+impl<'a> FrameHooks<'a> {
+    /// Runs `input` before layout; a returned size replaces the viewport.
+    #[must_use]
+    pub fn input(mut self, input: impl FnOnce(&mut Host) -> Option<(f32, f32)> + 'a) -> Self {
+        self.input = Some(Box::new(input));
+        self
+    }
+
+    /// Runs `after_layout` after layout and before paint.
+    #[must_use]
+    pub fn after_layout(mut self, after_layout: impl FnOnce(&mut Host) + 'a) -> Self {
+        self.after_layout = Some(Box::new(after_layout));
+        self
+    }
+
+    /// Runs `paint` when the frame paints.
+    #[must_use]
+    pub fn paint(mut self, paint: impl FnOnce(&mut Host, &FrameInfo) + 'a) -> Self {
+        self.paint = Some(Box::new(paint));
+        self
+    }
 }
 
 impl core::fmt::Debug for FrameHooks<'_> {

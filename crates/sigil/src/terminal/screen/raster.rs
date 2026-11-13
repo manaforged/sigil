@@ -16,8 +16,8 @@ pub(super) fn frame_hooks<'s>(
     size: (u16, u16),
 ) -> FrameHooks<'s> {
     let (cols, rows) = size;
-    FrameHooks {
-        input: Some(Box::new(move |host| {
+    FrameHooks::default()
+        .input(move |host| {
             let _phase = profile::span(profile::Phase::Effect);
             for event in events {
                 profile::interact(profile::Cause::Input);
@@ -25,12 +25,10 @@ pub(super) fn frame_hooks<'s>(
                 host.route(event);
             }
             None
-        })),
-        paint: Some(Box::new(move |host, info| {
+        })
+        .paint(move |host, info| {
             paint(screen, host, info, (cols, rows));
-        })),
-        ..FrameHooks::default()
-    }
+        })
 }
 
 fn paint(
