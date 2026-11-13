@@ -185,12 +185,14 @@ impl PathBuilder {
 
     /// Record a vector path into a `canvas` scene.
     pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
-        if let Some(draw) = self.draw_path(destination, theme) {
+        if let Some(draw) = self.build_path(destination, theme) {
             scene.draw_path(draw);
         }
     }
 
-    fn draw_path(&self, destination: Rect, theme: &Theme) -> Option<DrawPath> {
+    /// Resolves and builds a [`DrawPath`] command for `destination` using `theme`.
+    #[must_use]
+    pub fn build_path(&self, destination: Rect, theme: &Theme) -> Option<DrawPath> {
         if self.cmds.is_empty() || (self.fill.is_none() && self.stroke.is_none()) {
             return None;
         }
@@ -248,7 +250,7 @@ impl PathBuilder {
             .as_ref()
             .is_none_or(|(at, seen, _)| *at != rect || *seen != stamp);
         if fresh {
-            *last = self.draw_path(rect, theme).map(|draw| (rect, stamp, draw));
+            *last = self.build_path(rect, theme).map(|draw| (rect, stamp, draw));
         }
         if let Some((_, _, draw)) = last.as_ref() {
             scene.draw_path(draw.clone());

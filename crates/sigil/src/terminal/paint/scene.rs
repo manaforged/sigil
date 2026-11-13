@@ -172,7 +172,6 @@ impl CellWalk<'_> {
             | SceneCommand::PopLayer => {}
             #[cfg(feature = "kittest")]
             SceneCommand::Sprite(_) => {}
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
             #[cfg(host)]
             SceneCommand::SaveLayer { .. } => {}

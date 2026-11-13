@@ -9,16 +9,16 @@ use sigil::scene::{SceneCommand, emit_scene};
 
 fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::geometry::Rect> {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
             SceneCommand::Rect(r)
-                if r.rect.width > 0.5
-                    && r.rect.width < 3.0
-                    && r.rect.height > 8.0
-                    && r.rect.height < 40.0 =>
+                if r.rect().width > 0.5
+                    && r.rect().width < 3.0
+                    && r.rect().height > 8.0
+                    && r.rect().height < 40.0 =>
             {
-                Some(r.rect)
+                Some(r.rect())
             }
             _ => None,
         })

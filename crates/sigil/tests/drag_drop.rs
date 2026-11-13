@@ -22,7 +22,7 @@ const VIEWPORT: Constraint = Constraint::fixed(WIDTH, HEIGHT);
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
             SceneCommand::GlyphRun(d) => Some(d.text().to_owned()),

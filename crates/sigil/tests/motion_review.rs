@@ -89,11 +89,11 @@ fn layer(
 ) -> Option<(f32, [[f32; 3]; 2])> {
     match command {
         SceneCommand::PushLayer(scope) => {
-            let matrix = match scope.effect {
+            let matrix = match *scope.effect() {
                 LayerEffect::Transform(transform) => transform,
                 _ => matrix,
             };
-            Some((opacity * scope.opacity, matrix))
+            Some((opacity * scope.alpha(), matrix))
         }
         SceneCommand::SaveLayer { opacity: layer } => Some((opacity * layer, matrix)),
         SceneCommand::PushTransform(transform) => Some((opacity, *transform)),
@@ -104,7 +104,7 @@ fn layer(
 fn seen(ui: &mut Harness) -> Seen {
     let scene = ui.host().emit(VIEW);
     let mut layers = vec![(1.0_f32, IDENTITY)];
-    for command in &scene.commands {
+    for command in scene.commands() {
         let top = *layers.last().unwrap();
         if let Some(pushed) = layer(command, top) {
             layers.push(pushed);
@@ -115,19 +115,19 @@ fn seen(ui: &mut Harness) -> Seen {
                 layers.pop();
             }
             SceneCommand::Rect(rect)
-                if (rect.rect.width - SIDE).abs() < 0.5
-                    && (rect.rect.height - SIDE).abs() < 0.5 =>
+                if (rect.rect().width - SIDE).abs() < 0.5
+                    && (rect.rect().height - SIDE).abs() < 0.5 =>
             {
                 return Seen {
-                    opacity: top.0 * f32::from(rect.opacity) / 10_000.0,
-                    color: rect.color,
+                    opacity: top.0 * f32::from(rect.opacity_bp()) / 10_000.0,
+                    color: rect.color(),
                     matrix: top.1,
                 };
             }
             _ => {}
         }
     }
-    panic!("the square was not painted: {:?}", scene.commands);
+    panic!("the square was not painted: {:?}", scene.commands());
 }
 
 fn animated(keyframes: Keyframes, flag: Signal<bool>) -> NodeBuilder {

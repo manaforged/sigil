@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
-use smallvec::SmallVec;
-
 use super::key::{hash_cmd, mix, mix_f32, mix_fill, mix_stroke};
 use super::{PathBuilder, PathCmd, PathFill};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
-use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint, Transform};
+use crate::scene::command::{Gradient, GradientKind, PathPaint, Transform};
 use crate::style::{Color, ColorValue, Theme};
 
 type Resolved = (Option<PathPaint>, Option<(Color, f32)>);
@@ -17,12 +15,6 @@ pub(super) fn resolve(
     theme: &Theme,
 ) -> Resolved {
     let point = |(x, y): (f32, f32)| Point::new(x, y);
-    let stops = |stops: &[(f32, Color)]| -> SmallVec<[GradientStop; 4]> {
-        stops
-            .iter()
-            .map(|&(offset, color)| GradientStop::new(offset, color))
-            .collect()
-    };
     let fill = fill.map(|fill| match fill {
         PathFill::Solid(color) => PathPaint::Solid(theme.color(*color)),
         PathFill::Linear {
@@ -34,7 +26,7 @@ pub(super) fn resolve(
                 start: point(*start),
                 end: point(*end),
             };
-            PathPaint::Gradient(Gradient::new(kind, stops(list)))
+            PathPaint::Gradient(Gradient::from_tuples(kind, list))
         }
         PathFill::Radial {
             center,
@@ -45,7 +37,7 @@ pub(super) fn resolve(
                 center: point(*center),
                 radius: [*radius; 2],
             };
-            PathPaint::Gradient(Gradient::new(kind, stops(list)))
+            PathPaint::Gradient(Gradient::from_tuples(kind, list))
         }
     });
     let stroke = stroke.map(|(color, width)| (theme.color(color), width));

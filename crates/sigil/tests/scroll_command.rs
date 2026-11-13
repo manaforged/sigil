@@ -38,7 +38,7 @@ fn scroll_emits_viewport_and_scrollbar_rects() {
 
         let scene = emit_scene(&cx, root, None);
         let rect_count = scene
-            .commands
+            .commands()
             .iter()
             .filter(|c| matches!(c, SceneCommand::Rect(_)))
             .count();
@@ -59,7 +59,7 @@ fn scroll_at_zero_has_no_thumb_offset() {
 
         let scene = emit_scene(&cx, root, None);
         let rects: Vec<_> = scene
-            .commands
+            .commands()
             .iter()
             .filter_map(|c| match c {
                 SceneCommand::Rect(r) => Some(r),
@@ -69,9 +69,9 @@ fn scroll_at_zero_has_no_thumb_offset() {
         assert!(!rects.is_empty(), "should emit at least one rect");
         let first = rects.first().expect("rects is non-empty");
         assert!(
-            first.rect.origin.y < 1.0,
+            first.rect().origin.y < 1.0,
             "viewport rect origin.y should be ~0 when scroll=0, got {}",
-            first.rect.origin.y
+            first.rect().origin.y
         );
     });
 }
@@ -86,10 +86,10 @@ fn scroll_thumb_proportional_to_content() {
 
         let scene = emit_scene(&cx, root, None);
         let rect_heights: Vec<f32> = scene
-            .commands
+            .commands()
             .iter()
             .filter_map(|c| match c {
-                SceneCommand::Rect(r) => Some(r.rect.height),
+                SceneCommand::Rect(r) => Some(r.rect().height),
                 _ => None,
             })
             .collect();
@@ -109,7 +109,7 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
         let scene = emit_scene(&cx, root, None);
         let rect_count = scene
-            .commands
+            .commands()
             .iter()
             .filter(|c| matches!(c, SceneCommand::Rect(_)))
             .count();

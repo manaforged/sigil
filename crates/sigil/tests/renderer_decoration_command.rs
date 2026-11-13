@@ -57,17 +57,17 @@ fn assert_decoration_command_shape(scene: &CommandScene) {
         SceneCommand::Decoration(underline),
         SceneCommand::Decoration(strikethrough),
         SceneCommand::Decoration(wavy),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected three decoration draw commands");
     };
 
-    assert_eq!(underline.kind, DecorationKind::Underline);
-    assert_eq!(strikethrough.kind, DecorationKind::Strikethrough);
-    assert_eq!(wavy.kind, DecorationKind::WavyUnderline);
-    assert!(approx_eq(underline.line_width, 2.0));
-    assert!(approx_eq(strikethrough.period, 0.0));
-    assert!(approx_eq(wavy.period, 32.0));
+    assert_eq!(underline.kind(), DecorationKind::Underline);
+    assert_eq!(strikethrough.kind(), DecorationKind::Strikethrough);
+    assert_eq!(wavy.kind(), DecorationKind::WavyUnderline);
+    assert!(approx_eq(underline.width(), 2.0));
+    assert!(approx_eq(strikethrough.wave_period(), 0.0));
+    assert!(approx_eq(wavy.wave_period(), 32.0));
 }
 
 fn decoration_scene() -> CommandScene {
@@ -103,15 +103,9 @@ const fn decoration_style(
     line_width: f32,
     period: f32,
 ) -> DrawDecoration {
-    DrawDecoration {
-        node: None,
-        kind,
-        band,
-        color,
-        opacity: 10_000,
-        period,
-        line_width,
-    }
+    DrawDecoration::new(kind, band, color)
+        .period(period)
+        .line_width(line_width)
 }
 
 fn approx_eq(left: f32, right: f32) -> bool {

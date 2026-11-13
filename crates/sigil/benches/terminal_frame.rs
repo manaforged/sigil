@@ -176,7 +176,7 @@ fn frame(c: &mut Criterion) {
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             drop(step(&mut host, [], COLS, ROWS));
-            b.iter(|| black_box(host.emit(VIEW).commands.len()));
+            b.iter(|| black_box(host.emit(VIEW).len()));
         });
     });
 
@@ -210,14 +210,14 @@ fn allocations(_c: &mut Criterion) {
         }
 
         let scene = host.emit(VIEW);
-        let node_count = scene.commands.len();
+        let node_count = scene.len();
         let text_count = scene
-            .commands
+            .commands()
             .iter()
             .filter(|command| matches!(command, sigil::scene::SceneCommand::GlyphRun(_)))
             .count();
         let paint = allocation_counter::measure(|| {
-            black_box(host.emit(VIEW));
+            let _ = black_box(host.emit(VIEW));
         });
         let mut cells = Grid::new(COLS, ROWS);
         let raster = allocation_counter::measure(|| {

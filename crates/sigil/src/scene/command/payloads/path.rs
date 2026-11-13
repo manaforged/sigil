@@ -65,15 +65,25 @@ impl PathStroke {
 
 pub(crate) const MITER_LIMIT: f32 = 4.0;
 
+/// Mixes one `PathCmd` verb tag and coordinates into `hash`.
+pub(crate) fn hash_path_cmd(hash: u64, cmd: PathCmd) -> u64 {
+    let (verb, points, len) = match cmd {
+        PathCmd::MoveTo(x, y) => (1, [x, y, 0.0, 0.0, 0.0, 0.0], 2),
+        PathCmd::LineTo(x, y) => (2, [x, y, 0.0, 0.0, 0.0, 0.0], 2),
+        PathCmd::QuadTo(cx, cy, x, y) => (3, [cx, cy, x, y, 0.0, 0.0], 4),
+        PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => (4, [c1x, c1y, c2x, c2y, x, y], 6),
+        PathCmd::Close => (5, [0.0; 6], 0),
+    };
+    points
+        .iter()
+        .take(len)
+        .copied()
+        .fold(crate::fnv::mix(hash, verb), crate::fnv::mix_f32)
+}
+
 /// A hash of `outline` mixed into `seed`.
 pub(crate) fn outline_key(seed: u64, outline: &[PathCmd]) -> u64 {
-    outline.iter().fold(seed, |hash, cmd| {
-        cmd.points()
-            .iter()
-            .fold(crate::fnv::mix(hash, 1), |hash, (x, y)| {
-                crate::fnv::mix_f32(crate::fnv::mix_f32(hash, *x), *y)
-            })
-    })
+    outline.iter().copied().fold(seed, hash_path_cmd)
 }
 
 /// The closed outline of `rect` with corner radii top-left, top-right, bottom-right, bottom-left.
@@ -106,23 +116,51 @@ pub(crate) fn rounded_outline(rect: Rect, radii: [f32; 4]) -> Vec<PathCmd> {
     ]
 }
 
-kittest_pub! {
-    /// A command that fills and strokes a vector path.
-    #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct DrawPath {
-        pub(crate) node: Option<NodeId>,
-        pub(crate) outline: Arc<[PathCmd]>,
-        pub(crate) transform: Transform,
-        pub(crate) fill: Option<(FillRule, PathPaint)>,
-        pub(crate) stroke: Option<PathStroke>,
-        pub(crate) opacity: u16,
-        pub(crate) bounds: Rect,
-        pub(crate) key: u64,
-    }
+/// A command that fills and strokes a vector path.
+#[derive(Clone, Debug, PartialEq)]
+#[must_use]
+pub struct DrawPath {
+    pub(crate) node: Option<NodeId>,
+    pub(crate) outline: Arc<[PathCmd]>,
+    pub(crate) transform: Transform,
+    pub(crate) fill: Option<(FillRule, PathPaint)>,
+    pub(crate) stroke: Option<PathStroke>,
+    pub(crate) opacity: u16,
+    pub(crate) bounds: Rect,
+    pub(crate) key: u64,
 }
 
 impl DrawPath {
+    /// Sets the opacity in basis points; 10000 is opaque.
+    pub const fn opacity(mut self, opacity: u16) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// Returns the owning node, if any.
+    #[must_use]
+    pub const fn node(&self) -> Option<NodeId> {
+        self.node
+    }
+
+    /// Returns the transformed path bounding rectangle.
+    #[must_use]
+    pub const fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    /// Returns the 2D affine transform applied to the path.
+    #[must_use]
+    pub const fn transform(&self) -> Transform {
+        self.transform
+    }
+
+    /// Returns the opacity in basis points; 10000 is opaque.
+    #[must_use]
+    pub const fn opacity_bp(&self) -> u16 {
+        self.opacity
+    }
+
     pub(crate) fn new(outline: Arc<[PathCmd]>, transform: Transform, key: u64) -> Self {
         Self {
             node: None,

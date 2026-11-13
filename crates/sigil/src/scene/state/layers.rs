@@ -55,7 +55,6 @@ impl SceneState {
     pub(crate) const fn draws(command: &SceneCommand) -> bool {
         match command {
             SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => false,
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => false,
             #[cfg(host)]
             SceneCommand::SaveLayer { .. } => false,

@@ -135,7 +135,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
 
         let scene = emit_scene(&cx, root, None);
         let placeholder = scene
-            .commands
+            .commands()
             .iter()
             .find_map(|command| match command {
                 SceneCommand::GlyphRun(run) if run.text() == "Add note" => Some(run),

@@ -66,14 +66,14 @@ pub(crate) fn picture(svg: &str, side: u32) -> CommandScene {
         Rect::new(Point::new(0.0, 0.0), side, side),
         WHITE,
     ));
-    let mut scene = builder.finish();
+    let mut commands = builder.finish().into_commands();
     let (lowered, fallbacks) = svg_scene(tree, 11, (side, side), WHITE, SvgMode::Vector);
     assert!(
         fallbacks.is_empty(),
         "lowered with bitmap fallbacks: {fallbacks:?}"
     );
-    scene.commands.extend(lowered.commands);
-    scene
+    commands.extend(lowered.into_commands());
+    CommandScene::from_commands(commands)
 }
 
 pub(crate) fn svg(body: &str, side: u32) -> String {

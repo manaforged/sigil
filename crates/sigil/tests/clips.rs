@@ -48,9 +48,11 @@ fn sized(node: impl IntoNode + 'static) -> impl IntoNode {
 }
 
 fn clipped(clips: Vec<Clip>) -> impl IntoNode {
-    let paint = canvas(move |scene: &mut SceneBuilder, rect: Rect| {
-        nest(scene, &clips, rect);
-    })
+    let paint = canvas(
+        move |scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
+            nest(scene, &clips, rect);
+        },
+    )
     .width(SIDE as f32)
     .height(SIDE as f32);
     sized(paint)
@@ -223,7 +225,7 @@ fn layers(clip: Clip) -> (usize, usize, usize) {
     builder.clip(clip, |scene| scene.draw_rect(DrawRect::new(whole(), RED)));
     let scene = builder.finish();
     let pushed = scene
-        .commands
+        .commands()
         .iter()
         .filter(|command| {
             matches!(command, SceneCommand::PushLayer(_))

@@ -300,7 +300,7 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
 fn a_canvas_half_cell_fill_paints_a_half_block() {
     let grid = present(
         || {
-            sigil::widgets::canvas(|scene, area| {
+            sigil::widgets::canvas(|scene, area, _theme| {
                 let cell = sigil::Host::CELL;
                 let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
                 scene.draw_rect(sigil::scene::DrawRect::new(

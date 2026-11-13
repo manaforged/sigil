@@ -19,7 +19,7 @@ fn layout(cx: &mut Cx, root: NodeId) {
 
 fn glyph_runs(scene: &sigil::scene::CommandScene) -> usize {
     scene
-        .commands
+        .commands()
         .iter()
         .filter(|cmd| matches!(cmd, SceneCommand::GlyphRun(_)))
         .count()
@@ -87,8 +87,8 @@ fn second_emit_matches_first() {
     let a = emit_scene(&cx, root, clip);
     let b = emit_scene(&cx, root, clip);
     assert_eq!(
-        a.commands.len(),
-        b.commands.len(),
+        a.len(),
+        b.len(),
         "cached emit must keep the same command count"
     );
 }

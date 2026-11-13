@@ -19,7 +19,7 @@ use std::hint::black_box;
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();
     let runs = scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
             SceneCommand::GlyphRun(draw) => Some(draw),

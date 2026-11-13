@@ -1,5 +1,5 @@
 use sigil::geometry::{PhysicalSize, Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit};
+use sigil::kernel::ImageSource;
 use sigil::scene::{CommandScene, DrawImage, SceneBuilder};
 use sigil::style::Rgba;
 use sigil_kittest::gpu::headless_renderer;
@@ -21,15 +21,10 @@ fn solid(index: u32) -> ImageSource {
 
 fn scene(source: ImageSource) -> CommandScene {
     let mut scene = SceneBuilder::new();
-    scene.draw_image(DrawImage {
-        node: None,
+    scene.draw_image(DrawImage::new(
         source,
-        fit: ObjectFit::Fill,
-        destination: Rect::new(Point::new(0.0, 0.0), VIEW as f32, VIEW as f32),
-        opacity: 10_000,
-        crop: None,
-        raster: None,
-    });
+        Rect::new(Point::new(0.0, 0.0), VIEW as f32, VIEW as f32),
+    ));
     scene.finish()
 }
 

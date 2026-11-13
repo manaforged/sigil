@@ -61,15 +61,18 @@ fn assert_pattern_command_shape(scene: &CommandScene) {
         SceneCommand::Pattern(slash_draw),
         SceneCommand::Pattern(checker_draw),
         SceneCommand::Pattern(stroked_draw),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected three pattern draw commands");
     };
 
-    assert_eq!(slash_draw.pattern, slash());
-    assert!(matches!(checker_draw.pattern, PatternKind::Checker { .. }));
-    assert_eq!(stroked_draw.pattern, slash());
-    assert_eq!(stroked_draw.stroke, Some(outside_stroke()));
+    assert_eq!(slash_draw.pattern(), slash());
+    assert!(matches!(
+        checker_draw.pattern(),
+        PatternKind::Checker { .. }
+    ));
+    assert_eq!(stroked_draw.pattern(), slash());
+    assert_eq!(stroked_draw.stroke_style(), Some(outside_stroke()));
 }
 
 fn pattern_scene() -> CommandScene {

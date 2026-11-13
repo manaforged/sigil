@@ -108,7 +108,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         assert!(checked_colors.contains(&theme.color(Token::Accent)));
         assert!(
             emit_scene(&cx, root, None)
-                .commands
+                .commands()
                 .iter()
                 .any(|command| matches!(command, SceneCommand::Path(_))),
             "checked scene must draw the vector check mark"

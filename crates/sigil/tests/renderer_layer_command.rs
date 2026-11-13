@@ -6,9 +6,7 @@ use crate::scene_support;
 
 use scene_support::{color, rect};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
-use sigil::scene::{
-    CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, SceneCommand,
-};
+use sigil::scene::{CommandScene, DrawRect, LayerEffect, LayerScope, SceneBuilder, SceneCommand};
 use sigil::style::Rgba;
 use sigil_kittest::gpu::{Capture, read_pixels, render_capture};
 
@@ -104,27 +102,20 @@ fn assert_layer_command_shape(scene: &CommandScene) {
         SceneCommand::PushLayer(scope),
         SceneCommand::Rect(draw),
         SceneCommand::PopLayer,
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected push-layer, draw-rect, pop-layer");
     };
-    assert!((scope.opacity - 0.5).abs() < f32::EPSILON);
-    assert_eq!(scope.effect, LayerEffect::Identity);
-    assert_eq!(draw.rect, rect(40.0, 24.0, 96.0, 64.0));
+    assert!((scope.alpha() - 0.5).abs() < f32::EPSILON);
+    assert_eq!(*scope.effect(), LayerEffect::Identity);
+    assert_eq!(draw.rect(), rect(40.0, 24.0, 96.0, 64.0));
 }
 
 fn layer_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
-    builder.push_layer(LayerScope {
-        clip: rect(40.0, 24.0, 96.0, 64.0),
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Identity,
-        opacity: 0.5,
-        blend: sigil::scene::BlendMode::Normal,
-    });
+    builder.push_layer(LayerScope::new(rect(40.0, 24.0, 96.0, 64.0)).opacity(0.5));
     builder.draw_rect(
-        DrawRect::new(rect(40.0, 24.0, 96.0, 64.0), color(240, 240, 250, 255))
-            .border_radius(CornerRadii::uniform(12.0)),
+        DrawRect::new(rect(40.0, 24.0, 96.0, 64.0), color(240, 240, 250, 255)).radius(12.0),
     );
     builder.pop_layer();
     builder.finish()
@@ -133,13 +124,7 @@ fn layer_scene() -> CommandScene {
 fn rounded_clip_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.composite(
-        LayerScope {
-            clip: rect(40.0, 24.0, 96.0, 64.0),
-            clip_radii: CornerRadii::uniform(24.0),
-            effect: LayerEffect::Identity,
-            opacity: 1.0,
-            blend: sigil::scene::BlendMode::Normal,
-        },
+        LayerScope::new(rect(40.0, 24.0, 96.0, 64.0)).radii([24.0; 4]),
         |scene| {
             scene.draw_rect(DrawRect::new(
                 rect(20.0, 4.0, 136.0, 104.0),
@@ -152,13 +137,7 @@ fn rounded_clip_scene() -> CommandScene {
 
 fn nested_layer_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
-    let plain = |clip| LayerScope {
-        clip,
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Identity,
-        opacity: 1.0,
-        blend: sigil::scene::BlendMode::Normal,
-    };
+    let plain = LayerScope::new;
     builder.composite(plain(rect(30.0, 10.0, 160.0, 100.0)), |scene| {
         scene.composite(plain(rect(80.0, 35.0, 60.0, 50.0)), |scene| {
             scene.draw_rect(DrawRect::new(

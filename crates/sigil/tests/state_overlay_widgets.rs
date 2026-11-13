@@ -141,10 +141,10 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         let theme = Theme::default();
         let thumb_rim = |scene_cx: &Cx, scene_root: NodeId| {
             emit_scene(scene_cx, scene_root, None)
-                .commands
+                .commands()
                 .iter()
                 .find_map(|command| match command {
-                    SceneCommand::Rect(rect) => rect.stroke.map(|stroke| stroke.color),
+                    SceneCommand::Rect(rect) => rect.stroke_style().map(|stroke| stroke.color),
                     _ => None,
                 })
         };

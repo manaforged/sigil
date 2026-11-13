@@ -123,7 +123,7 @@ fn push_container(
     let (id, style) = (node.0, paint.style);
     let radii = corner_radii_for(style.border_radius);
     if let Some(elevation) = style.shadow {
-        scene.draw_shadow(rect, radii, elevation_shadow(elevation));
+        scene.draw_shadow(rect, radii.0, elevation_shadow(elevation));
     }
     let styled = style.paint.border != BorderStyle::Solid;
     let stroke = super::borders::border_stroke(style, paint.theme).filter(|_| !styled);

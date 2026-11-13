@@ -1,39 +1,36 @@
 #![allow(clippy::redundant_pub_crate)]
 #[cfg(feature = "kittest")]
 use crate::scene::command::DrawSprite;
+use crate::scene::command::payloads::{PathCmd, PathStroke, outline_key};
 use crate::scene::command::{DrawPattern, PatternKind, Wash};
 
-use crate::geometry::Rect;
+use crate::geometry::{Point, Rect, Size};
 use crate::kernel::NodeId;
 
-#[cfg(feature = "kittest")]
-use crate::scene::command::Transform;
 use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
-    CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
-    SceneCommand,
+    CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawRect,
+    GlyphRun, LayerScope, PathPaint, SceneCommand, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::geometry::IDENTITY;
 use crate::scene::shadow::Shadow;
-use crate::style::Color;
 use crate::style::srgb::encode_byte;
+use crate::style::{Color, TextLineHeight, TextStyle};
 
 /// Appends drawing commands to a scene.
-#[derive(Debug)]
+#[derive(Debug, Default)]
+#[must_use]
 pub struct SceneBuilder {
     commands: Vec<SceneCommand>,
 }
 
 impl SceneBuilder {
-    kittest_pub! {
     /// Creates a scene builder with no commands.
-    #[doc(hidden)]
-    #[must_use]
     pub const fn new() -> Self {
         Self {
             commands: Vec::new(),
         }
-    }
     }
 
     /// Fills `rect` with a watercolour wash.
@@ -50,12 +47,9 @@ impl SceneBuilder {
             .push(SceneCommand::Rect(DrawRect::new(rect, color)));
     }
 
-    kittest_pub! {
     /// Appends a rectangle.
-    #[doc(hidden)]
     pub fn draw_rect(&mut self, draw: DrawRect) {
         self.commands.push(SceneCommand::Rect(draw));
-    }
     }
 
     pub(crate) const fn recorded(&self) -> usize {
@@ -70,12 +64,9 @@ impl SceneBuilder {
         }
     }
 
-    kittest_pub! {
     /// Appends a gradient fill.
-    #[doc(hidden)]
     pub fn draw_gradient(&mut self, draw: DrawGradient) {
         self.commands.push(SceneCommand::Gradient(draw));
-    }
     }
 
     #[cfg(feature = "kittest")]
@@ -93,28 +84,42 @@ impl SceneBuilder {
     }
     }
 
-    kittest_pub! {
-    /// Appends a shadow for `rect`.
-    #[doc(hidden)]
-    pub fn draw_shadow(&mut self, rect: Rect, radii: CornerRadii, shadow: Shadow) {
+    /// Appends a shadow for `rect` with corner radii `[top_left, top_right, bottom_right, bottom_left]`.
+    pub fn draw_shadow(&mut self, rect: Rect, radii: [f32; 4], shadow: Shadow) {
         self.commands.push(SceneCommand::DrawShadow {
-        rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
-        radii,
-        shadow,
+            rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
+            radii,
+            shadow,
         });
     }
-    }
 
-    kittest_pub! {
     /// Appends an image.
-    #[doc(hidden)]
-    pub fn draw_image(&mut self, draw: crate::scene::command::DrawImage) {
+    pub fn draw_image(&mut self, draw: DrawImage) {
         self.commands.push(SceneCommand::Image(draw));
     }
+
+    /// Appends a vector path.
+    pub fn draw_path(&mut self, draw: DrawPath) {
+        self.commands.push(SceneCommand::Path(draw));
     }
 
-    pub(crate) fn draw_path(&mut self, draw: crate::scene::command::DrawPath) {
-        self.commands.push(SceneCommand::Path(draw));
+    /// Strokes a straight line segment from `from` to `to`.
+    pub fn stroke_line(&mut self, from: Point, to: Point, color: Color, width: f32) {
+        let outline: [PathCmd; 2] = [PathCmd::MoveTo(from.x, from.y), PathCmd::LineTo(to.x, to.y)];
+        let stroke = PathStroke {
+            paint: PathPaint::Solid(color),
+            width,
+            cap: StrokeCap::Butt,
+            join: StrokeJoin::Miter,
+            dash: smallvec::SmallVec::new(),
+        };
+        let seed = crate::fnv::mix_f32(
+            crate::fnv::mix(crate::fnv::OFFSET, crate::fnv::rgba(color)),
+            width,
+        );
+        let key = outline_key(seed, &outline);
+        let draw = DrawPath::new(std::sync::Arc::from(outline), IDENTITY, key).with_stroke(stroke);
+        self.draw_path(draw);
     }
 
     pub(crate) fn draw_rect_for_node(&mut self, node: NodeId, draw: DrawRect, cell: CellRect) {
@@ -143,6 +148,56 @@ impl SceneBuilder {
     /// Appends a run of glyphs.
     pub fn draw_glyph_run(&mut self, run: GlyphRun) {
         self.commands.push(SceneCommand::GlyphRun(run));
+    }
+
+    /// Shapes `text` with `style` and draws it at `origin`.
+    pub fn draw_text(&mut self, origin: Point, text: &str, style: &TextStyle, color: Color) {
+        let size = self.measure_text(text, style);
+        let rect = Rect::new(origin, size.width, size.height);
+        let run =
+            crate::scene::command::shape_run(GlyphRun::new(rect, text, color, style.clone(), 1.0));
+        self.draw_glyph_run(run);
+    }
+
+    /// Measures `text` styled with `style` without wrapping.
+    #[must_use]
+    #[allow(
+        clippy::unused_self,
+        reason = "method lives on SceneBuilder for consistency with draw_text"
+    )]
+    pub fn measure_text(&self, text: &str, style: &TextStyle) -> Size {
+        if let Some(size) = crate::layout::with_text_geometry(|measure| {
+            let content = crate::kernel::TextContent::Static(text.to_owned());
+            measure.measure_styled(&content, style, crate::geometry::Constraint::max_content())
+        }) {
+            return size;
+        }
+        #[cfg(feature = "scene")]
+        if let Ok(paragraph) =
+            crate::text::OwnedTextEngine::thread().layout_paragraph_styled(text, None, style)
+        {
+            return Size::new(paragraph.width(), paragraph.height());
+        }
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "text column count fits cleanly within f32 mantissa"
+        )]
+        let width = text
+            .split('\n')
+            .map(|line| crate::grapheme::col_count(line) as f32 * 8.0)
+            .fold(0.0_f32, f32::max);
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "line count fits cleanly within f32 mantissa"
+        )]
+        let lines = text.split('\n').count().max(1) as f32;
+        let line_height = match style.line_height {
+            TextLineHeight::FontSizeRelative(factor) => {
+                (style.font_size.max(1.0) * factor.max(0.1)).max(1.0)
+            }
+            TextLineHeight::Absolute(value) => value.max(1.0),
+        };
+        Size::new(width, lines * line_height)
     }
 
     /// Appends a run of glyphs that belongs to `node`.
@@ -189,18 +244,13 @@ impl SceneBuilder {
     }
     }
 
-    kittest_pub! {
     /// Clips the commands that `body` appends to `clip`.
-    #[doc(hidden)]
     pub fn clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
         let open = SceneCommand::PushClip(clip.into());
         self.with_scope(open, SceneCommand::PopClip, body);
     }
-    }
 
-    #[cfg(feature = "kittest")]
-    /// Draw `body` under `transform`.
-    #[doc(hidden)]
+    /// Draws `body` under `transform`.
     pub fn transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
         let open = SceneCommand::PushTransform(transform);
         self.with_scope(open, SceneCommand::PopTransform, body);
@@ -232,18 +282,15 @@ impl SceneBuilder {
     kittest_pub! {
         if feature = "scene";
         /// Closes the last open layer.
+        #[doc(hidden)]
         pub fn pop_layer(&mut self) {
             self.commands.push(SceneCommand::PopLayer);
         }
     }
 
-    kittest_pub! {
     /// Consumes the builder and returns the scene of its commands.
-    #[doc(hidden)]
-    #[must_use]
     pub fn finish(self) -> CommandScene {
         CommandScene::new(self.commands)
-    }
     }
 
     pub(crate) const fn command_len(&self) -> usize {
@@ -267,12 +314,5 @@ impl SceneBuilder {
         self.commands.push(open);
         body(self);
         self.commands.push(close);
-    }
-}
-
-#[cfg(feature = "kittest")]
-impl Default for SceneBuilder {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -8,11 +8,8 @@ use crate::scene::shadow::Shadow;
 use super::transform3d::Transform3D;
 use super::{CommandScene, SceneCommand};
 
-kittest_pub! {
-    /// A 2D affine transform as two rows of three values.
-    #[doc(hidden)]
-    pub type Transform = [[f32; 3]; 2];
-}
+/// A 2D affine transform as two rows of three values.
+pub type Transform = [[f32; 3]; 2];
 
 kittest_pub! {
     /// How a renderer colors a sprite.
@@ -85,21 +82,101 @@ kittest_pub! {
     }
 }
 
-kittest_pub! {
-    /// The bounds and effects of a composite layer.
+/// The bounds and effects of a composite layer.
+#[derive(Clone, Debug, PartialEq)]
+#[must_use]
+pub struct LayerScope {
+    pub(crate) clip: Rect,
+    pub(crate) clip_radii: CornerRadii,
+    pub(crate) effect: LayerEffect,
+    pub(crate) opacity: f32,
+    pub(crate) blend: BlendMode,
+}
+
+impl LayerScope {
+    /// Creates an opaque normal-blended layer clipped to `clip`.
+    pub const fn new(clip: Rect) -> Self {
+        Self {
+            clip,
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Identity,
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+        }
+    }
+
+    /// Sets the four corner radii of the layer clip.
+    pub const fn radii(mut self, radii: [f32; 4]) -> Self {
+        self.clip_radii = CornerRadii(radii);
+        self
+    }
+
+    /// Sets the layer opacity from 0 to 1.
+    pub const fn opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// Sets how the layer composites with its backdrop.
+    pub const fn blend(mut self, blend: BlendMode) -> Self {
+        self.blend = blend;
+        self
+    }
+
+    /// Returns the rectangle bounding the layer.
+    #[must_use]
+    pub const fn clip(&self) -> Rect {
+        self.clip
+    }
+
+    /// Returns the four corner radii of the layer clip.
+    #[must_use]
+    pub const fn clip_radii(&self) -> [f32; 4] {
+        self.clip_radii.0
+    }
+
+    /// Returns the layer opacity from 0 to 1.
+    #[must_use]
+    pub const fn alpha(&self) -> f32 {
+        self.opacity
+    }
+
+    /// Returns the layer blend mode.
+    #[must_use]
+    pub const fn blend_mode(&self) -> BlendMode {
+        self.blend
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Sets the transform, mask, or filters applied to the layer.
     #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct LayerScope {
-        /// The rectangle that bounds the layer; pixels outside it are not drawn.
-        pub clip: Rect,
-        /// The corner radii of `clip`; zero keeps square corners.
-        pub clip_radii: CornerRadii,
-        /// The transform, mask, or filters the layer is drawn through.
-        pub effect: LayerEffect,
-        /// The opacity the layer is composited at, from 0 to 1.
-        pub opacity: f32,
-        /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
-        pub blend: BlendMode,
+    pub fn layer_effect(mut self, effect: LayerEffect) -> Self {
+        self.effect = effect;
+        self
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Sets the corner radii of the layer clip.
+    #[doc(hidden)]
+    pub const fn border_radius(mut self, radii: CornerRadii) -> Self {
+        self.clip_radii = radii;
+        self
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Returns the raw corner radii of the layer clip.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn border_radius_raw(&self) -> CornerRadii {
+        self.clip_radii
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Returns the effect applied to the layer.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn effect(&self) -> &LayerEffect {
+        &self.effect
     }
 }
 

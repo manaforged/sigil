@@ -33,7 +33,7 @@ pub(crate) fn window_frame(host: &mut Host, event: Option<Event>, force_emit: bo
     };
     let hooks = hooks.paint(move |target, info| {
         if info.dirty() || force_emit {
-            black_box(target.emit(VIEW).commands.len());
+            black_box(target.emit(VIEW).len());
         }
     });
     black_box(host.frame(VIEW, 1.0 / 60.0, hooks).intervals());

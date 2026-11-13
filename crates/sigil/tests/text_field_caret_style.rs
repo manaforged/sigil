@@ -68,15 +68,15 @@ fn focused_field_scene() -> CommandScene {
 
 fn nearest_caret(scene: &CommandScene, expected_x: f32) -> Rect {
     scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
             SceneCommand::Rect(draw)
-                if (draw.rect.width - 2.0).abs() <= 0.01
-                    && draw.rect.height < 30.0
-                    && draw.stroke.is_none() =>
+                if (draw.rect().width - 2.0).abs() <= 0.01
+                    && draw.rect().height < 30.0
+                    && draw.stroke_style().is_none() =>
             {
-                Some(draw.rect)
+                Some(draw.rect())
             }
             _ => None,
         })

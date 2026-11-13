@@ -32,10 +32,10 @@ fn a_reactive_class_change_repaints() {
 
     fn fills(scene: &sigil::scene::CommandScene) -> Vec<sigil::style::Color> {
         scene
-            .commands
+            .commands()
             .iter()
             .filter_map(|command| match command {
-                sigil::scene::SceneCommand::Rect(rect) => Some(rect.color),
+                sigil::scene::SceneCommand::Rect(rect) => Some(rect.color()),
                 _ => None,
             })
             .collect()

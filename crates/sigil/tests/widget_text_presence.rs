@@ -19,7 +19,7 @@ fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> 
             .compute(&mut cx, root, Constraint::fixed(width, 400.0))
             .expect("layout computes");
         found = emit_scene(&cx, root, None)
-            .commands
+            .commands()
             .iter()
             .filter_map(|c| match c {
                 SceneCommand::GlyphRun(g) if g.rect().width > 0.5 && g.rect().height > 0.5 => {

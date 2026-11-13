@@ -9,7 +9,6 @@ use crate::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawRect, LayerEffect, LayerScope, SceneBuilder,
 };
 
-#[must_use]
 pub fn glow() -> (CommandScene, (f32, f32), Rgba) {
     let fill = |rect: crate::geometry::Rect| {
         DrawRect::new(rect, Color::rgba(245, 245, 250, 255))
@@ -24,7 +23,7 @@ pub fn glow() -> (CommandScene, (f32, f32), Rgba) {
         let card = rect(x, 80.0, 200.0, 200.0);
         scene.draw_shadow(
             card,
-            fill(card).border_radius,
+            fill(card).border_radius.0,
             Shadow::glow(color, spread, blur),
         );
         scene.draw_rect(fill(card));
@@ -32,7 +31,6 @@ pub fn glow() -> (CommandScene, (f32, f32), Rgba) {
     (scene.finish(), (960.0, 360.0), DARK)
 }
 
-#[must_use]
 pub fn layer_pool() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_gradient(DrawGradient::new(

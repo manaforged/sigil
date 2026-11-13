@@ -5,18 +5,16 @@ use crate::scene_support;
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
-use sigil::scene::{
-    CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
-};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind};
 use sigil::style::Rgba;
 
 #[test]
 fn inner_shadow_command_keeps_shadow_kind() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(rect(), CornerRadii::uniform(10.0), inner_shadow());
+    builder.draw_shadow(rect(), [10.0; 4], inner_shadow());
     let scene = builder.finish();
 
-    match scene.commands.as_slice() {
+    match scene.commands() {
         [SceneCommand::DrawShadow { shadow, .. }] => {
             assert_eq!(shadow.shadow_kind(), ShadowKind::Inner);
         }
@@ -27,15 +25,13 @@ fn inner_shadow_command_keeps_shadow_kind() {
 #[test]
 fn outer_and_inner_shadows_emit_as_independent_commands() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(rect(), CornerRadii::uniform(10.0), outer_shadow());
-    builder.draw_rect(
-        DrawRect::new(rect(), color(240, 245, 250, 255)).border_radius(CornerRadii::uniform(10.0)),
-    );
-    builder.draw_shadow(rect(), CornerRadii::uniform(10.0), inner_shadow());
+    builder.draw_shadow(rect(), [10.0; 4], outer_shadow());
+    builder.draw_rect(DrawRect::new(rect(), color(240, 245, 250, 255)).radius(10.0));
+    builder.draw_shadow(rect(), [10.0; 4], inner_shadow());
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::DrawShadow { shadow: outer, .. },
             SceneCommand::Rect(_),

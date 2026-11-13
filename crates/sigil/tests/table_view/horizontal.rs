@@ -78,15 +78,15 @@ fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> 
 fn thumb_x(cx: &Cx, root: NodeId) -> Option<f32> {
     let thumb = Theme::default().color(Token::SurfacePressedStrong);
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|c| match c {
             SceneCommand::Rect(r)
-                if r.color == thumb
-                    && (r.rect.height - 8.0).abs() < 0.01
-                    && r.rect.width >= 24.0 =>
+                if r.color() == thumb
+                    && (r.rect().height - 8.0).abs() < 0.01
+                    && r.rect().width >= 24.0 =>
             {
-                Some(r.rect.origin.x)
+                Some(r.rect().origin.x)
             }
             _ => None,
         })

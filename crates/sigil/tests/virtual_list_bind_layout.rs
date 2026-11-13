@@ -13,7 +13,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
 fn glyph_runs(cx: &Cx, root: NodeId) -> usize {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
         .count()
@@ -322,7 +322,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));
-        for c in emit_scene(&cx, root, None).commands {
+        for c in emit_scene(&cx, root, None).commands() {
             if let SceneCommand::GlyphRun(d) = c
                 && d.text().contains("token")
             {

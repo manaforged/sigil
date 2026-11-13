@@ -61,6 +61,14 @@ impl Gradient {
         }
     }
 
+    pub(crate) fn from_tuples(kind: GradientKind, stops: &[(f32, crate::style::Color)]) -> Self {
+        let stops: SmallVec<[GradientStop; 4]> = stops
+            .iter()
+            .map(|&(offset, color)| GradientStop::new(offset, color))
+            .collect();
+        Self::new(kind, stops)
+    }
+
     kittest_pub! {
         /// Sets whether the stop span repeats.
         #[must_use]

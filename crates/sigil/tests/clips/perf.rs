@@ -1,7 +1,7 @@
 use crate::scene_support::{frame_ms, median};
 
 use sigil::geometry::{Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit, container, image};
+use sigil::kernel::{ImageSource, container, image};
 use sigil::layout::{FlexWrap, LayoutStyle, Overflow};
 use sigil::prelude::*;
 use sigil::scene::{Clip, CommandScene, DrawImage, SceneBuilder};
@@ -43,15 +43,7 @@ fn built(shape: fn(Rect) -> Clip) -> CommandScene {
     for index in 0..COLS * ROWS {
         let rect = slot(index);
         scene.clip(shape(rect), |scene| {
-            scene.draw_image(DrawImage {
-                node: None,
-                source: source(index % 8),
-                fit: ObjectFit::Fill,
-                destination: rect,
-                opacity: 10_000,
-                crop: None,
-                raster: None,
-            });
+            scene.draw_image(DrawImage::new(source(index % 8), rect));
         });
     }
     scene.finish()

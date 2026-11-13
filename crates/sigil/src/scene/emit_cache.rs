@@ -266,7 +266,6 @@ pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         }
         SceneCommand::PushLayer(scope) => shift_layer(scope, dx, dy),
         SceneCommand::PopClip | SceneCommand::PopLayer => {}
-        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
         #[cfg(host)]
         SceneCommand::SaveLayer { .. } => {}

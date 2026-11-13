@@ -41,12 +41,11 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
     );
     let scene = builder.finish();
 
-    let [SceneCommand::Rect(rect), SceneCommand::Gradient(gradient)] = scene.commands.as_slice()
-    else {
+    let [SceneCommand::Rect(rect), SceneCommand::Gradient(gradient)] = scene.commands() else {
         unreachable!("scene should contain one rect and one gradient");
     };
-    assert_eq!(rect.stroke, Some(rect_stroke));
-    assert_eq!(gradient.stroke, Some(gradient_stroke));
+    assert_eq!(rect.stroke_style(), Some(rect_stroke));
+    assert_eq!(gradient.stroke_style(), Some(gradient_stroke));
 }
 
 #[test]
@@ -70,16 +69,16 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
         SceneCommand::Rect(zero),
         SceneCommand::Rect(dashed),
         SceneCommand::Gradient(grad),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         unreachable!("scene should contain three stroke cases");
     };
-    assert_eq!(zero.stroke, None);
+    assert_eq!(zero.stroke_style(), None);
     assert_eq!(
-        dashed.stroke,
+        dashed.stroke_style(),
         Some(dashed_stroke(StrokeAlign::Inside, 3.0, 7.0))
     );
-    assert_eq!(grad.stroke, Some(outside));
+    assert_eq!(grad.stroke_style(), Some(outside));
 }
 
 const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {

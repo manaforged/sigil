@@ -33,10 +33,10 @@ fn border_class_emits_inside_stroke_command() {
 
     let scene = emit_scene(&cx, root, None);
     let stroke = scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Rect(rect) => rect.stroke,
+            SceneCommand::Rect(rect) => rect.stroke_style(),
             _ => None,
         })
         .expect("bordered container must emit a stroked rect");

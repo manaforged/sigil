@@ -95,15 +95,15 @@ const IDENTITY: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 fn seen(ui: &mut Harness) -> Seen {
     let scene = ui.host().emit(VIEW);
     let mut layers = vec![(1.0_f32, IDENTITY)];
-    for command in &scene.commands {
+    for command in scene.commands() {
         let (opacity, matrix) = *layers.last().unwrap();
         match command {
             SceneCommand::PushLayer(scope) => {
-                let matrix = match scope.effect {
+                let matrix = match *scope.effect() {
                     LayerEffect::Transform(transform) => transform,
                     _ => matrix,
                 };
-                layers.push((opacity * scope.opacity, matrix));
+                layers.push((opacity * scope.alpha(), matrix));
             }
             SceneCommand::SaveLayer { opacity: layer } => layers.push((opacity * layer, matrix)),
             SceneCommand::PushTransform(transform) => layers.push((opacity, *transform)),
@@ -111,19 +111,19 @@ fn seen(ui: &mut Harness) -> Seen {
                 layers.pop();
             }
             SceneCommand::Rect(rect)
-                if (rect.rect.width - SIDE).abs() < 0.5
-                    && (rect.rect.height - SIDE).abs() < 0.5 =>
+                if (rect.rect().width - SIDE).abs() < 0.5
+                    && (rect.rect().height - SIDE).abs() < 0.5 =>
             {
                 return Seen {
-                    opacity: opacity * f32::from(rect.opacity) / 10_000.0,
-                    color: rect.color,
+                    opacity: opacity * f32::from(rect.opacity_bp()) / 10_000.0,
+                    color: rect.color(),
                     matrix,
                 };
             }
             _ => {}
         }
     }
-    panic!("the square was not painted: {:?}", scene.commands);
+    panic!("the square was not painted: {:?}", scene.commands());
 }
 
 #[track_caller]

@@ -39,7 +39,7 @@ fn replacing_rows_repaints_the_table() {
         host.layout((320.0, 96.0)).expect("layout");
         let scene = host.emit((320.0, 96.0));
         let painted: Vec<&str> = scene
-            .commands
+            .commands()
             .iter()
             .filter_map(|command| match command {
                 sigil::scene::SceneCommand::GlyphRun(draw) => Some(draw.text()),

@@ -32,7 +32,7 @@ fn per_corner_radii_round_trip_with_strokes() {
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::Rect(_),
             SceneCommand::Gradient(_),
@@ -43,17 +43,17 @@ fn per_corner_radii_round_trip_with_strokes() {
         SceneCommand::Rect(first),
         SceneCommand::Gradient(second),
         SceneCommand::Rect(third),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
-        assert_eq!(scene.commands.len(), 3);
+        assert_eq!(scene.len(), 3);
         return;
     };
-    assert_eq!(first.border_radius, left_round);
-    assert_eq!(first.stroke, Some(stroke));
-    assert_eq!(second.border_radius, CornerRadii::top(10.0));
-    assert_eq!(second.stroke, Some(stroke));
-    assert_eq!(third.border_radius, CornerRadii::ZERO);
-    assert_eq!(third.stroke, None);
+    assert_eq!(first.border_radius_raw(), left_round);
+    assert_eq!(first.stroke_style(), Some(stroke));
+    assert_eq!(second.border_radius_raw(), CornerRadii::top(10.0));
+    assert_eq!(second.stroke_style(), Some(stroke));
+    assert_eq!(third.border_radius_raw(), CornerRadii::ZERO);
+    assert_eq!(third.stroke_style(), None);
 
     let render_path: RenderCommandScene = WgpuRenderer::render_command_scene;
     let _ = render_path;

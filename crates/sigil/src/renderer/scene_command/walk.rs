@@ -26,6 +26,7 @@ use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::vector_pass::VectorPass;
 use crate::renderer::wash_cache::WashCache;
 pub(crate) use crate::scene::command::effects::transform_rect;
+use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
 
 pub(crate) struct WalkCtx<'a> {
@@ -180,7 +181,7 @@ impl<'a> SceneWalk<'a> {
                 rect,
                 radii,
                 shadow,
-            } => self.queue_shadow(*rect, *radii, *shadow),
+            } => self.queue_shadow(*rect, CornerRadii(*radii), *shadow),
             SceneCommand::Decoration(draw) => self.queue_decoration(draw),
             SceneCommand::Path(draw) => self.queue_path(draw),
             _ => {}

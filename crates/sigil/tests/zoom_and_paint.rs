@@ -68,7 +68,7 @@ fn zoomed_content_keeps_sharp_edges() {
 #[ignore = "needs a wgpu adapter"]
 fn a_canvas_draws_what_its_closure_records() {
     let mut ui = Harness::new(|| {
-        canvas(|scene, rect: Rect| {
+        canvas(|scene, rect: Rect, _theme| {
             let inner = Rect::new(
                 Point::new(rect.origin.x + 10.0, rect.origin.y + 10.0),
                 30.0,

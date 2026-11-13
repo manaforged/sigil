@@ -2,7 +2,7 @@ use crate::scene_support;
 
 use scene_support::rect;
 use sigil::geometry::Rect;
-use sigil::scene::{CornerRadii, DrawRect, SceneBuilder, SceneCommand, Transform};
+use sigil::scene::{DrawRect, SceneBuilder, SceneCommand, Transform};
 use sigil::style::Color;
 
 #[test]
@@ -14,7 +14,7 @@ fn builder_emits_balanced_push_pop_for_with_clip() {
     });
 
     let scene = builder.finish();
-    let kinds = command_kinds(&scene.commands);
+    let kinds = command_kinds(scene.commands());
     assert_eq!(kinds.as_slice(), ["PushClip", "Rect", "PopClip"]);
 }
 
@@ -30,7 +30,7 @@ fn builder_nests_layers_correctly() {
     });
 
     let scene = builder.finish();
-    let kinds = command_kinds(&scene.commands);
+    let kinds = command_kinds(scene.commands());
     assert_eq!(
         kinds.as_slice(),
         [
@@ -42,7 +42,7 @@ fn builder_nests_layers_correctly() {
             "RestoreLayer",
         ]
     );
-    let opacities = save_layer_opacities(&scene.commands);
+    let opacities = save_layer_opacities(scene.commands());
     match opacities.as_slice() {
         [outer, inner] => {
             assert!(approx_eq(*outer, 0.8));
@@ -65,7 +65,7 @@ fn builder_closes_scopes_on_drop_of_inner_scope() {
     });
 
     let scene = builder.finish();
-    let kinds = command_kinds(&scene.commands);
+    let kinds = command_kinds(scene.commands());
     assert_eq!(
         kinds.as_slice(),
         [
@@ -88,14 +88,17 @@ fn builder_draw_rect_outside_any_scope_emits_only_draw() {
     builder.draw_rect(expected_draw);
 
     let scene = builder.finish();
-    let kinds = command_kinds(&scene.commands);
+    let kinds = command_kinds(scene.commands());
     assert_eq!(kinds.as_slice(), ["Rect"]);
-    match scene.commands.as_slice() {
+    match scene.commands() {
         [SceneCommand::Rect(draw)] => {
-            assert!(same_rect(draw.rect, expected_rect));
-            assert_eq!(draw.color, expected_draw.color);
-            assert_eq!(draw.border_radius, expected_draw.border_radius);
-            assert_eq!(draw.opacity, expected_draw.opacity);
+            assert!(same_rect(draw.rect(), expected_rect));
+            assert_eq!(draw.color(), expected_draw.color());
+            assert_eq!(
+                draw.corner_radii().map(f32::to_bits),
+                expected_draw.corner_radii().map(f32::to_bits)
+            );
+            assert_eq!(draw.opacity_bp(), expected_draw.opacity_bp());
         }
         other => {
             let other_kinds = command_kinds(other);
@@ -111,11 +114,11 @@ fn command_scene_clone_is_deep() {
 
     let scene = builder.finish();
     let cloned = scene.clone();
-    let original_kinds = command_kinds(&scene.commands);
-    let cloned_kinds = command_kinds(&cloned.commands);
+    let original_kinds = command_kinds(scene.commands());
+    let cloned_kinds = command_kinds(cloned.commands());
 
     assert_eq!(original_kinds, cloned_kinds);
-    assert_ne!(scene.commands.as_ptr(), cloned.commands.as_ptr());
+    assert_ne!(scene.commands().as_ptr(), cloned.commands().as_ptr());
 }
 
 const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
@@ -128,7 +131,7 @@ const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
             a: 255,
         },
     )
-    .border_radius(CornerRadii::uniform(6.0))
+    .radius(6.0)
     .opacity(9_500)
 }
 

@@ -76,7 +76,7 @@ fn frame_click(
 fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
     compute(cx, root, VIEWPORT, stub_text_measure());
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
         .count()
@@ -104,10 +104,10 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
 
     let scene = emit_scene(cx, root, None);
     let trigger_rects: Vec<_> = scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::Rect(rect) if rect.rect == trigger_rect => Some(rect),
+            SceneCommand::Rect(rect) if rect.rect() == trigger_rect => Some(rect),
             _ => None,
         })
         .collect();
@@ -119,7 +119,7 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
     let stroke = trigger_rects
         .first()
         .expect("one trigger surface")
-        .stroke
+        .stroke_style()
         .expect("the trigger surface must paint a real border");
     assert!((stroke.width - 1.0).abs() < f32::EPSILON);
     assert_eq!(stroke.align, StrokeAlign::Inside);

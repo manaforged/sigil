@@ -60,7 +60,6 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => scope.clip,
         },
         SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => return None,
-        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) | SceneCommand::PopTransform => return None,
         #[cfg(host)]
         SceneCommand::SaveLayer { .. } => return None,

@@ -5,7 +5,7 @@ use crate::scene_support;
 use scene_support::rect;
 use std::sync::Arc;
 
-use sigil::scene::{CommandScene, CornerRadii, Filter, LayerEffect, LayerScope, SceneBuilder};
+use sigil::scene::{CommandScene, Filter, LayerEffect, LayerScope, SceneBuilder};
 use sigil::style::Rgba;
 use sigil_kittest::gpu::{Capture, render_capture};
 
@@ -63,12 +63,12 @@ fn assert_blur_command_shape(scene: &CommandScene, expected_sigma: f32) {
     let [
         sigil::scene::SceneCommand::PushLayer(scope),
         sigil::scene::SceneCommand::PopLayer,
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
-        panic!("expected push-layer, pop-layer; got {:?}", scene.commands);
+        panic!("expected push-layer, pop-layer; got {:?}", scene.commands());
     };
-    let LayerEffect::Filter(filters) = &scope.effect else {
-        panic!("expected a blur filter, got {:?}", scope.effect);
+    let LayerEffect::Filter(filters) = scope.effect() else {
+        panic!("expected a blur filter, got {:?}", scope.effect());
     };
     let [Filter::Blur(sigma)] = **filters else {
         panic!("expected one blur filter, got {filters:?}");
@@ -81,13 +81,10 @@ fn assert_blur_command_shape(scene: &CommandScene, expected_sigma: f32) {
 
 fn blur_scene(sigma: f32) -> CommandScene {
     let mut builder = SceneBuilder::new();
-    builder.push_layer(LayerScope {
-        clip: rect(16.0, 8.0, 96.0, 48.0),
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Filter(Arc::new([Filter::Blur(sigma)])),
-        opacity: 1.0,
-        blend: sigil::scene::BlendMode::Normal,
-    });
+    builder.push_layer(
+        LayerScope::new(rect(16.0, 8.0, 96.0, 48.0))
+            .layer_effect(LayerEffect::Filter(Arc::new([Filter::Blur(sigma)]))),
+    );
     builder.pop_layer();
     builder.finish()
 }

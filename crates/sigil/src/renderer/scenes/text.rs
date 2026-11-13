@@ -13,7 +13,6 @@ const LINES: [(&str, f32); 3] = [
     ("Glyphs at 32 px: Wg@ ffi", 32.0),
 ];
 
-#[must_use]
 pub fn text() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let mut y = 16.0;

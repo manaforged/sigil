@@ -81,9 +81,9 @@ fn on_surface(surface: Color, picture: CommandScene) -> CommandScene {
         Rect::new(Point::new(0.0, 0.0), 100.0, 100.0),
         surface,
     ));
-    let mut scene = builder.finish();
-    scene.commands.extend(picture.commands);
-    scene
+    let mut commands = builder.finish().into_commands();
+    commands.extend(picture.into_commands());
+    CommandScene::from_commands(commands)
 }
 
 fn probe(backend: Backend) {

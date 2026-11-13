@@ -127,7 +127,7 @@ fn extend(stream: Signal<String>) {
 }
 
 fn frame(host: &mut Host, view: (f32, f32)) {
-    black_box(host.scene(view).expect("layout").commands.len());
+    black_box(host.scene(view).expect("layout").len());
 }
 
 fn first(side: &str) {

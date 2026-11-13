@@ -138,13 +138,10 @@ impl Gen<'_, '_, '_> {
                 self.entropy.pick(&[0.0, 0.3, 2.0, 8.0, 64.0, 1.0e4]),
             )])),
         };
-        LayerScope {
-            clip,
-            clip_radii,
-            effect,
-            opacity: self.opacity_f32(),
-            blend: sigil::scene::BlendMode::Normal,
-        }
+        LayerScope::new(clip)
+            .border_radius(clip_radii)
+            .layer_effect(effect)
+            .opacity(self.opacity_f32())
     }
 
     pub(crate) fn shadow(&mut self) -> Shadow {

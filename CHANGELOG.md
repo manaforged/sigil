@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `sigil::events::{DragPhase, A11yEdit}` and `PointerEvent::{prevent_default, default_prevented}`.
 - `Widget::{track_hovered, track_focused, track_pressed, pointer_drag, a11y_edit, capture_text_style, ime_caret}` and `NodeBuilder::{busy, invalid}`.
 - Public `TextState` editing methods, `Reactive::{read, into_signal}`, `Token::Selection` (`Token::COUNT` is now 95), `Transition::smooth`, `Theme::label`, `Metrics::track_size`, `clipboard::current`, `IconBuilder::on_solid`, and `From<&TextContent> for AccessibleName`.
+- Public `sigil::scene` drawing primitives: `SceneCommand`, `Clip`, `Transform`, `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawImage`, `DrawPath`, `DrawDecoration`, `LayerScope`, `CommandScene::{commands, iter, len, is_empty}` + `IntoIterator for &CommandScene`, `SceneBuilder::{new, draw_rect, draw_gradient, draw_path, stroke_line, draw_image, draw_shadow, draw_text, measure_text, clip, transform, finish}`, and `PathBuilder::build_path`.
 
 ### Changed
 
@@ -21,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Re-exported `HostMode` at its canonical home `sigil::app::HostMode`.
 - Replaced `crate::layout::IntoPx` with `impl Into<sigil::layout::Length>` on `VirtualListBuilder::{row_height, estimate, viewport_height}` and `TableBuilder::{row_height, viewport_height}`.
 - Trimmed 63 Layer-2 / specialist items (plus the leaked `prelude::math` submodule) from `sigil::prelude` to 157 items; the removed items remain public in their owning modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`).
+- `sigil::widgets::canvas` now passes `(scene, rect, theme)` directly and `CanvasBuilder::themed` is removed; `CanvasBuilder` implements `Framed` (`Paint`, `States`, `Widget`); `SceneCommand::DrawShadow` and `Clip::Rounded` take `[f32; 4]` corner radii.
 
 ### Migration
 
@@ -32,6 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 | `sigil::widgets::Orientation` | `sigil::layout::Orientation` (also in `sigil::prelude::*`) |
 | `HitPosition { byte_index, affinity }` | `HitPosition::new(byte_index, affinity)` / `HitPosition::downstream(byte_index)`, `.byte_index()`, `.affinity()` |
 | `CaretGeometry { x, top, height }` | `CaretGeometry::new(x, top, height)`, `.x()`, `.top()`, `.height()` |
+| `canvas(\|scene, rect\| ...)` / `canvas(...).themed(...)` | `canvas(\|scene, rect, theme\| ...)` |
+| `scene.commands` (field) | `scene.commands()` |
+| `Clip::Rounded(rect, CornerRadii)` / `SceneBuilder::draw_shadow(rect, CornerRadii, shadow)` | `[f32; 4]` corner radii |
 | Layer-2 and specialist items removed from `sigil::prelude::*` | import from their canonical modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`) |
 
 ## [0.2.0] - 2026-11-12

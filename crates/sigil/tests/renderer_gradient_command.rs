@@ -26,13 +26,13 @@ fn command_scene_accepts_rect_and_gradient_draws() {
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [SceneCommand::Rect(_), SceneCommand::Gradient(_)]
     ));
-    let [_, SceneCommand::Gradient(draw)] = scene.commands.as_slice() else {
+    let [_, SceneCommand::Gradient(draw)] = scene.commands() else {
         panic!("expected gradient draw");
     };
-    assert_eq!(draw.gradient, Gradient::from(gradient));
+    assert_eq!(*draw.gradient(), Gradient::from(gradient));
 
     let method: RenderCommandScene = WgpuRenderer::render_command_scene;
     let _ = method;

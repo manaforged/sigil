@@ -420,7 +420,6 @@ impl Host {
     kittest_pub! {
         /// Paints the laid-out tree into a new scene.
         #[doc(hidden)]
-        #[must_use]
         pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
             #[cfg(host)]
             {

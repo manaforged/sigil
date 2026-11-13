@@ -28,7 +28,7 @@ fn shadow_extent(elevation: Option<Elevation>) -> Option<f32> {
     });
     layout(&mut cx, root);
     emit_scene(&cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
             SceneCommand::DrawShadow { shadow, .. } => Some(shadow.blur() + shadow.offset()[1]),
@@ -48,7 +48,7 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
     layout(&mut cx, root);
 
     let shadow = emit_scene(&cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
             SceneCommand::DrawShadow { shadow, .. } => Some(*shadow),

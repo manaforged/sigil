@@ -50,7 +50,6 @@ const VIEW_OVERSCAN: f32 = 64.0;
 kittest_pub! {
     /// Emits the draw commands under `root`, skipping nodes outside `clip`.
     #[doc(hidden)]
-    #[must_use]
     pub fn emit_scene(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
         let selection = crate::events::selection::ranges(cx);
         let mut track = SpanTrack::off();

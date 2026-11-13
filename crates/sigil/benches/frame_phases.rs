@@ -48,7 +48,7 @@ fn layout_then_emit(c: &mut Criterion) {
                 }
                 {
                     let _emit = profile::span(sigil::profile::Phase::Emit);
-                    black_box(emit_scene(
+                    let _ = black_box(emit_scene(
                         &cx,
                         root,
                         Some(Rect::new(Point::new(0.0, 0.0), 1280.0, 800.0)),

@@ -242,7 +242,7 @@ fn two_renders_of_a_random_transform_paint_the_same_pixels() {
 fn chart_paths(ui: &mut Harness) -> Vec<String> {
     ui.host()
         .emit((1600.0, 1200.0))
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
             SceneCommand::Path(draw) => Some(format!("{draw:?}")),

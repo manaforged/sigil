@@ -285,7 +285,7 @@ fn text_field_rest_emits_border_color() {
         let border = theme.scale(Tone::Neutral).step(7);
         let scene = emit_scene(&cx, root, None);
         let rects = scene
-            .commands
+            .commands()
             .iter()
             .filter_map(|command| match command {
                 SceneCommand::Rect(rect) => Some(rect),
@@ -295,8 +295,8 @@ fn text_field_rest_emits_border_color() {
 
         assert_eq!(rects.len(), 1, "field must paint one rounded surface");
         let rect = rects.first().expect("field surface");
-        let stroke = rect.stroke.expect("field border stroke");
-        assert_eq!(rect.color, theme.scale(Tone::Neutral).step(1));
+        let stroke = rect.stroke_style().expect("field border stroke");
+        assert_eq!(rect.color(), theme.scale(Tone::Neutral).step(1));
         assert_eq!(stroke.color, border);
         assert!((stroke.width - 1.0).abs() < f32::EPSILON);
         assert_eq!(stroke.align, StrokeAlign::Inside);

@@ -2,19 +2,17 @@
 
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
-use sigil::scene::{
-    CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
-};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind};
 use sigil::style::{Color, Rgba};
 
 #[test]
 fn glow_command_keeps_shadow_kind_glow() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), glow_shadow());
+    builder.draw_shadow(surface_rect(), [24.0; 4], glow_shadow());
     let scene = builder.finish();
 
-    assert_eq!(scene.commands.len(), 1);
-    if let [SceneCommand::DrawShadow { shadow, .. }] = scene.commands.as_slice() {
+    assert_eq!(scene.len(), 1);
+    if let [SceneCommand::DrawShadow { shadow, .. }] = scene.commands() {
         assert_eq!(shadow.shadow_kind(), ShadowKind::Glow);
     }
 }
@@ -22,17 +20,15 @@ fn glow_command_keeps_shadow_kind_glow() {
 #[test]
 fn outer_inner_glow_emit_as_independent_commands() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), outer_shadow());
-    builder.draw_rect(
-        DrawRect::new(surface_rect(), fill_color()).border_radius(CornerRadii::uniform(24.0)),
-    );
-    builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), inner_shadow());
-    builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), glow_shadow());
+    builder.draw_shadow(surface_rect(), [24.0; 4], outer_shadow());
+    builder.draw_rect(DrawRect::new(surface_rect(), fill_color()).radius(24.0));
+    builder.draw_shadow(surface_rect(), [24.0; 4], inner_shadow());
+    builder.draw_shadow(surface_rect(), [24.0; 4], glow_shadow());
     let scene = builder.finish();
 
-    assert_eq!(scene.commands.len(), 4);
+    assert_eq!(scene.len(), 4);
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::DrawShadow { shadow: outer, .. },
             SceneCommand::Rect(_),

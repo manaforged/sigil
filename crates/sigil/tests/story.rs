@@ -19,6 +19,9 @@ mod nav;
 #[path = "../examples/story-10-layer2-parity.rs"]
 #[allow(dead_code, unreachable_pub)]
 mod story_10;
+#[path = "../examples/story-11-canvas-chart.rs"]
+#[allow(dead_code, unreachable_pub)]
+mod story_11;
 #[path = "../examples/story-08-test.rs"]
 #[allow(dead_code)]
 mod testing;
@@ -37,7 +40,7 @@ use sigil::events::Event;
 use sigil::kernel::{NodeId, container};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::SceneCommand;
+use sigil::scene::{Clip, DrawRect, SceneBuilder, SceneCommand};
 use sigil::tasks::AsyncRuntime;
 use sigil::widgets::{Framed, WidgetFrame};
 use sigil_kittest::{Harness, Query};
@@ -206,10 +209,10 @@ impl IntoNode for PanelButton {
 fn panel_rect_colors(ui: &mut Harness) -> Vec<Color> {
     ui.host()
         .emit((480.0, 320.0))
-        .commands
+        .into_commands()
         .into_iter()
         .filter_map(|cmd| match cmd {
-            SceneCommand::Rect(rect) => Some(rect.color),
+            SceneCommand::Rect(rect) => Some(rect.color()),
             _ => None,
         })
         .collect()
@@ -537,8 +540,10 @@ fn layer2_parity_invalid_border_persists_while_focused() {
         ui.click(&(Role::TextInput, "Email"));
         let focused = ui.host().focus().expect("field focused");
         let scene = ui.host().scene((480.0, 120.0)).expect("scene");
-        let stroke_color = scene.commands.iter().find_map(|cmd| match cmd {
-            SceneCommand::Rect(rect) if rect.node == Some(focused) => rect.stroke.map(|s| s.color),
+        let stroke_color = scene.commands().iter().find_map(|cmd| match cmd {
+            SceneCommand::Rect(rect) if rect.node() == Some(focused) => {
+                rect.stroke_style().map(|s| s.color)
+            }
             _ => None,
         });
         assert_eq!(
@@ -547,4 +552,46 @@ fn layer2_parity_invalid_border_persists_while_focused() {
             "custom={custom}: focused invalid field must emit red border stroke"
         );
     }
+}
+
+#[test]
+fn canvas_chart_app_updates_samples_on_click() {
+    for mut ui in hosts(|| Harness::new(story_11::app)) {
+        ui.expect_text("Canvas Chart")
+            .expect_text("Samples: 5")
+            .click("Add sample")
+            .expect_text("Samples: 6");
+    }
+}
+
+#[test]
+fn scene_builder_records_commands_and_iterates() {
+    let origin = Point::new(0.0, 0.0);
+    let rect = Rect::new(origin, 120.0, 80.0);
+    let mut builder = SceneBuilder::new();
+    builder.clip(Clip::rounded(rect, 8.0), |scene| {
+        scene.transform([[1.0, 0.0, 4.0], [0.0, 1.0, 4.0]], |scene| {
+            scene.draw_rect(DrawRect::new(Rect::new(origin, 24.0, 12.0), Color::WHITE).radius(4.0));
+        });
+    });
+    let scene = builder.finish();
+    assert!(!scene.is_empty());
+    assert_eq!(scene.len(), scene.commands().len());
+    assert!(
+        (&scene)
+            .into_iter()
+            .any(|cmd| matches!(cmd, SceneCommand::PushClip(_)))
+    );
+    assert!(
+        scene
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, SceneCommand::PushTransform(_)))
+    );
+    assert!(
+        scene
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, SceneCommand::Rect(_)))
+    );
 }

@@ -60,10 +60,10 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
 
     let scene = emit_scene(&cx, root, None);
     let carried = scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Image(draw) => Some(draw.source.clone()),
+            SceneCommand::Image(draw) => Some(draw.source().clone()),
             _ => None,
         })
         .expect("image node must emit a DrawImage command");

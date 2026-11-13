@@ -140,7 +140,6 @@ impl<'a> CpuPainter<'a> {
             | SceneCommand::PopLayer
             | SceneCommand::PushClip(_)
             | SceneCommand::PopClip => {}
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
             #[cfg(host)]
             SceneCommand::SaveLayer { .. } => {}
@@ -153,7 +152,7 @@ impl<'a> CpuPainter<'a> {
                 rect,
                 radii,
                 shadow: s,
-            } => self.shadow(*rect, *radii, s),
+            } => self.shadow(*rect, CornerRadii(*radii), s),
             SceneCommand::GlyphRun(draw) => match draw.fill() {
                 Some(fill) => self.path(fill),
                 None => self.glyph_run(draw),

@@ -69,10 +69,10 @@ fn on_surface(surface: Color, svg: &str, mode: SvgMode) -> CommandScene {
         Rect::new(Point::new(0.0, 0.0), 40.0, 40.0),
         surface,
     ));
-    let mut scene = builder.finish();
+    let mut commands = builder.finish().into_commands();
     let (picture, _) = svg_scene(tree(svg), 7, (40.0, 40.0), surface, mode);
-    scene.commands.extend(picture.commands);
-    scene
+    commands.extend(picture.into_commands());
+    CommandScene::from_commands(commands)
 }
 
 fn svg_rect(fill: &str) -> String {
@@ -252,7 +252,7 @@ const NESTED: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="400" heig
 fn nested_patterns_lower_to_a_bounded_number_of_commands() {
     let started = std::time::Instant::now();
     let (scene, fallbacks) = svg_scene(tree(NESTED), 9, (400.0, 400.0), WHITE, SvgMode::Vector);
-    let count = scene.commands.len();
+    let count = scene.len();
     println!(
         "{count} commands, fallbacks {fallbacks:?}, {:?}",
         started.elapsed()

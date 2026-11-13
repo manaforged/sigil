@@ -7,13 +7,13 @@ use sigil_kittest::Harness;
 use super::{INK, coverage};
 
 fn dashed() -> impl IntoNode {
-    canvas(|scene: &mut SceneBuilder, rect: Rect| {
+    canvas(|scene: &mut SceneBuilder, rect: Rect, theme: &Theme| {
         path(100, 20)
             .move_to(10.0, 10.0)
             .line_to(90.0, 10.0)
             .stroke(INK, 2.0)
             .dash(&[4.0, 4.0])
-            .draw(scene, rect, &Theme::light());
+            .draw(scene, rect, theme);
     })
     .width(100.0)
     .height(20.0)

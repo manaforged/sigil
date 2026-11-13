@@ -23,7 +23,6 @@ impl Host {
     }
 
     #[cfg(terminal_host)]
-    #[must_use]
     pub(crate) fn emit_since(
         &mut self,
         viewport: (f32, f32),

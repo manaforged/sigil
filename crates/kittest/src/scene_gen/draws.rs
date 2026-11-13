@@ -42,7 +42,9 @@ impl Gen<'_, '_, '_> {
         let mut draw = DrawRect::new(rect, color)
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroke(stroke);
+        }
         SceneCommand::Rect(draw)
     }
 
@@ -65,7 +67,9 @@ impl Gen<'_, '_, '_> {
         let mut draw = DrawGradient::new(rect, gradient)
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroke(stroke);
+        }
         SceneCommand::Gradient(draw)
     }
 
@@ -87,7 +91,9 @@ impl Gen<'_, '_, '_> {
         let mut draw = DrawPattern::new(rect, pattern)
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroke(stroke);
+        }
         SceneCommand::Pattern(draw)
     }
 
@@ -95,7 +101,7 @@ impl Gen<'_, '_, '_> {
         let rect = self.rect();
         SceneCommand::DrawShadow {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
-            radii: self.radii(),
+            radii: self.radii().0,
             shadow: self.shadow(),
         }
     }
@@ -153,15 +159,12 @@ impl Gen<'_, '_, '_> {
         let Some(source) = ImageSource::from_rgba8(w, h, rgba) else {
             return SceneCommand::PopLayer;
         };
-        SceneCommand::Image(DrawImage {
-            node: None,
-            source,
-            fit: e.pick(&[ObjectFit::Fill, ObjectFit::Contain, ObjectFit::Cover]),
-            destination,
-            opacity,
-            crop,
-            raster: None,
-        })
+        SceneCommand::Image(
+            DrawImage::new(source, destination)
+                .fit(e.pick(&[ObjectFit::Fill, ObjectFit::Contain, ObjectFit::Cover]))
+                .opacity(opacity)
+                .crop(crop),
+        )
     }
 
     fn decoration(&mut self) -> SceneCommand {
@@ -169,18 +172,16 @@ impl Gen<'_, '_, '_> {
         let color = self.color();
         let opacity = self.opacity_u16();
         let e = &mut *self.entropy;
-        SceneCommand::Decoration(DrawDecoration {
-            node: None,
-            kind: e.pick(&[
-                DecorationKind::Underline,
-                DecorationKind::Strikethrough,
-                DecorationKind::WavyUnderline,
-            ]),
-            band,
-            color,
-            opacity,
-            period: e.pick(&PERIODS),
-            line_width: e.pick(&PERIODS),
-        })
+        let kind = e.pick(&[
+            DecorationKind::Underline,
+            DecorationKind::Strikethrough,
+            DecorationKind::WavyUnderline,
+        ]);
+        SceneCommand::Decoration(
+            DrawDecoration::new(kind, band, color)
+                .opacity(opacity)
+                .period(e.pick(&PERIODS))
+                .line_width(e.pick(&PERIODS)),
+        )
     }
 }
