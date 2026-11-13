@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Public `sigil::scene` drawing primitives: `SceneCommand`, `Clip`, `Transform`, `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawImage`, `DrawPath`, `DrawDecoration`, `LayerScope`, `CommandScene::{commands, iter, len, is_empty}` + `IntoIterator for &CommandScene`, `SceneBuilder::{new, draw_rect, draw_gradient, draw_path, stroke_line, draw_image, draw_shadow, draw_text, measure_text, clip, transform, finish}`, and `PathBuilder::build_path`.
 - `KeyEvent::{prevent_default, default_prevented}`, `Widget::{offset, track_bounds, track_position, track_size, accessible_shortcut, drop_hover}`, and `sigil::events::DropEvent<T>` (`into_value`, `value`, `position`, `local_position`, `bounds`).
 - Public `sigil::animation::{Animator, Spring, every_frame}` (`Spring::{GENTLE, SMOOTH, SNAPPY, BOUNCY, STIFF, new, mass}`, `Animator::{tween, spring, target, snap, cancel, get, value, active}` with `Reactive<f32> for Animator`, and `Owner`-scoped `every_frame`).
+- Scene command getters for custom renderers: `DrawRect::{tone, is_leaf, is_outline}`, `DrawGradient::{tone, is_leaf, is_outline}`, `Wash::{paper, pigments}`, and `GlyphRun::fill`.
 
 ### Changed
 
@@ -29,6 +30,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Replaced raw geometry tuples with `Point`, `Size`, and `Rect` across `Widget::drop_target` (`DropEvent<T>`), `DragState::position -> Point`, `MenuBuilder::anchor(impl Into<Point>)`, `Host::{layout, frame, scene}(impl Into<Size>, ...)`, and `FrameInputHook -> Option<Size>`.
 - `Widget::drive` now accepts `impl Reactive<f32>` so `Animator` and closures plug directly into `.drive(Property::..., value)`.
 - Merged `kittest_pub! enum SpringPreset` and crate-private `Spring` into `pub struct sigil::animation::Spring`.
+- `Spring::new` and `Spring::mass` no longer panic. NaN, infinite, zero, and negative values are clamped, and a running spring holds its natural frequency to 6-1000 rad/s and its damping ratio to 0.3-1.0, so an undamped or heavily overdamped spring moves as the nearest spring in that range. The presets are unchanged.
+- Built-in `button` and `slider` set spacing with the public `Space::raw`, and `axis_drag` runs on `Widget::pointer_drag`. Drag handles no longer expose an accessible Click action, and a release with no active drag passes through.
+- A failed copy or cut in a single-line `text_field` logs a `sigil::clipboard` warning, as multiline does.
+
+### Fixed
+
+- Tab typed into a multiline `text_field` or the code editor no longer also moves focus to the next control.
+- `text_field(..).change` no longer fires for an edit that leaves the text unchanged.
+- Ctrl+K and Ctrl+U in a single-line `text_field` delete the selection when there is one, as multiline does.
+- An empty IME commit no longer edits a single-line `text_field`.
+- Very light, heavily damped, and undamped springs no longer reach non-finite values or move forever.
+- `Animator::target` with the value that is already the target no longer restarts a running tween.
+- A `drop_hover` signal write no longer panics when a reactive child builds a `drop_target` from it.
 
 ### Migration
 
