@@ -19,6 +19,7 @@ where
     }
 }
 
+/// Runs `f` on the calling thread, because a browser build has no blocking pool.
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::unused_async)]
 pub async fn blocking<T, F>(f: F) -> T
