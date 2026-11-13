@@ -157,16 +157,6 @@ impl Host {
         out
     }
 
-    /// Writes the ANSI bytes that turn the `prev` grid into the `next` grid.
-    pub fn ansi(
-        out: &mut impl std::io::Write,
-        prev: &Grid,
-        next: &Grid,
-        depth: crate::terminal::ColorDepth,
-    ) -> Result<(), Error> {
-        crate::terminal::write::render(out, prev, next, depth)
-    }
-
     /// Draws a scene into a cell grid with this host's theme.
     #[doc(hidden)]
     #[cfg(feature = "kittest")]
@@ -376,5 +366,17 @@ fn default_theme(config: &AppConfig, backdrop: crate::terminal::Backdrop) {
             crate::terminal::Backdrop::Light => crate::style::Theme::light(),
         })
         .apply();
+    }
+}
+
+impl Grid {
+    /// Writes the ANSI bytes that turn the `prev` grid into this grid.
+    pub fn write_ansi(
+        &self,
+        out: &mut impl std::io::Write,
+        prev: &Self,
+        depth: crate::terminal::ColorDepth,
+    ) -> Result<(), Error> {
+        crate::terminal::write::render(out, prev, self, depth)
     }
 }

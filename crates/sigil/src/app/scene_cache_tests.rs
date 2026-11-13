@@ -78,7 +78,7 @@ fn a_frame_whose_paint_was_skipped_keeps_the_next_scene_current() {
         let mut cache = SceneCache::default();
         let frame = |target: &mut Host, memo: &mut SceneCache, paint: bool| {
             let hooks =
-                FrameHooks::default().paint(|painted: &mut Host, info: &crate::app::FrameInfo| {
+                FrameHooks::default().paint(|painted: &mut Host, info: &crate::app::Frame| {
                     if !paint {
                         memo.skip();
                     } else if let Some((cx, _, _, root)) = painted.tree() {

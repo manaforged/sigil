@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInfo};
+use sigil::app::{FrameHooks, Frame};
 use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::prelude::*;
@@ -125,7 +125,7 @@ impl SigilRig {
                 }
                 None
             })
-            .paint(move |host: &mut Host, info: &FrameInfo| {
+            .paint(move |host: &mut Host, info: &Frame| {
                 if fresh || info.dirty {
                     black_box(host.emit(view));
                 }

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use rayon::prelude::*;
 use tiny_skia::Pixmap;
 
-use crate::app::{FrameHooks, FrameInfo};
+use crate::app::FrameHooks;
 use crate::events::{Event, WindowEvent};
 use crate::geometry::{PhysicalSize, Point, Rect, Scale, Size};
 use crate::kernel::{HostMode, IntoNode};
@@ -99,7 +99,7 @@ impl Draw {
                     }
                     None
                 })
-                .paint(|host: &mut Host, info: &FrameInfo| {
+                .paint(|host: &mut Host, info: &crate::app::Frame| {
                     if force || info.dirty || info.animating {
                         let _emit = profile::span(Phase::Emit);
                         scene = Some(host.emit(frame.viewport));

@@ -34,11 +34,11 @@ pub(super) fn frame_hooks<'s>(
 fn paint(
     screen: &mut Screen,
     host: &mut crate::Host,
-    info: &crate::app::FrameInfo,
+    info: &crate::app::Frame,
     (cols, rows): (u16, u16),
 ) {
     let _phase = profile::span(profile::Phase::TuiPaint);
-    if !info.layout_ok {
+    if info.layout.is_err() {
         screen.projection.quiet = false;
         host.reset_emit();
         return;

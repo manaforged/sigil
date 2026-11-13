@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use accesskit::TreeUpdate;
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInfo, FramePaintHook};
+use sigil::app::{Frame, FrameHooks, FramePaintHook};
 use sigil::events::Event;
 use sigil::prelude::*;
 use sigil::profile::{self, Backend, BackendStatus, FallbackCause};
@@ -208,7 +208,7 @@ impl Harness {
             HarnessSurface::Gpu(gpu) => {
                 let viewport = gpu.viewport;
                 let paint: FramePaintHook<'_> =
-                    Box::new(|host: &mut Host, _: &FrameInfo| gpu.paint(host));
+                    Box::new(|host: &mut Host, _: &Frame| gpu.paint(host));
                 let layout = self
                     .host
                     .frame(viewport, dt, hooks(events, Some(paint)))

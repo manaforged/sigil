@@ -120,7 +120,8 @@ fn apply(state: State, step: &Step, size: &mut (u16, u16)) {
 
 fn ansi(grid: &Grid) -> String {
     let mut out = Vec::new();
-    Host::ansi(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
+    grid.write_ansi(&mut out, &Grid::new(0, 0), ColorDepth::Truecolor)
+        .expect("render");
     String::from_utf8_lossy(&out).into_owned()
 }
 

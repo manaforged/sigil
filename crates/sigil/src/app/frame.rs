@@ -7,32 +7,22 @@ use crate::reactive::{Runtime, tick_frame};
 
 const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
-/// State of the current frame that `Host::frame` passes to the paint hook, with the frame's `FrameDelta` for `Host::emit_since`.
+/// One frame of a `Host`: what `Host::frame` returns, and what the paint hook sees before the frame ends.
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct FrameInfo {
-    /// True when a signal write or another change asked for a frame, so this frame must repaint.
-    pub dirty: bool,
-    /// True when an animation or a clock is still running, so another frame is due.
-    pub animating: bool,
-    /// True when layout finished without an error.
-    pub layout_ok: bool,
-    #[cfg(any(host, debug_assertions))]
-    pub(crate) delta: FrameDelta,
-}
-
-/// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
-#[non_exhaustive]
-#[derive(Debug)]
-pub struct FrameOutput {
+pub struct Frame {
     /// True when the app asked to exit since the last frame.
     pub exit: bool,
     /// How many interval timers fired in this frame.
     pub intervals: usize,
     /// True when an animation or a clock is still running, so another frame is due.
     pub animating: bool,
+    /// True when a signal write or another change asked for a frame, so this frame must repaint.
+    pub dirty: bool,
     /// `Ok` when layout finished, or the error that stopped it.
     pub layout: Result<(), Error>,
+    #[cfg(any(host, debug_assertions))]
+    pub(crate) delta: FrameDelta,
 }
 
 /// Runs before layout and may return a new viewport.
@@ -42,7 +32,7 @@ pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 
 pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
 
 /// Runs when the frame paints.
-pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &FrameInfo) + 'a>;
+pub type FramePaintHook<'a> = Box<dyn FnOnce(&mut Host, &Frame) + 'a>;
 
 /// The optional hooks that `Host::frame` runs.
 #[derive(Default)]
@@ -69,7 +59,7 @@ impl<'a> FrameHooks<'a> {
 
     /// Runs `paint` when the frame paints.
     #[must_use]
-    pub fn paint(mut self, paint: impl FnOnce(&mut Host, &FrameInfo) + 'a) -> Self {
+    pub fn paint(mut self, paint: impl FnOnce(&mut Host, &Frame) + 'a) -> Self {
         self.paint = Some(Box::new(paint));
         self
     }
@@ -95,12 +85,7 @@ impl Host {
 
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
-    pub fn frame(
-        &mut self,
-        mut viewport: (f32, f32),
-        dt: f32,
-        hooks: FrameHooks<'_>,
-    ) -> FrameOutput {
+    pub fn frame(&mut self, mut viewport: (f32, f32), dt: f32, hooks: FrameHooks<'_>) -> Frame {
         #[cfg(hot_patch)]
         self.remount_patched();
         #[cfg(feature = "terminal")]
@@ -118,37 +103,36 @@ impl Host {
         self.publish_viewport(viewport);
         let exit = ExitOnUnwind(take_exit());
         let layout = self.layout_phase(viewport, hooks.after_layout);
-        let layout_ok = layout.is_ok();
         self.cx().flush_announcements();
         Runtime::begin_paint();
         let dirty = Runtime::frame_dirty();
         let delta = self.cx().take_delta();
         #[cfg(not(any(host, debug_assertions)))]
         self.cx().reuse_delta(delta);
-        let info = FrameInfo {
-            dirty,
+        let mut frame = Frame {
+            exit: exit.0,
+            intervals,
             animating,
-            layout_ok,
+            dirty,
+            layout,
             #[cfg(any(host, debug_assertions))]
             delta,
         };
         if let Some(paint) = hooks.paint {
-            paint(self, &info);
+            paint(self, &frame);
         }
         #[cfg(debug_assertions)]
-        if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
+        if frame.layout.is_ok()
+            && !animating
+            && (frame.delta.structure || !frame.delta.layout.is_empty())
+        {
             self.report_flaws();
         }
         #[cfg(any(host, debug_assertions))]
-        self.cx().reuse_delta(info.delta);
+        self.cx().reuse_delta(std::mem::take(&mut frame.delta));
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
-        FrameOutput {
-            exit: exit.0,
-            intervals,
-            animating,
-            layout,
-        }
+        frame
     }
 
     fn layout_phase(

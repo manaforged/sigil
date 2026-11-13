@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use web_time::Instant;
 
 use crate::app::embed::Host;
-use crate::app::{FrameHooks, FrameInfo};
+use crate::app::{Frame, FrameHooks};
 use crate::error::{AppResult, Error};
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
@@ -167,7 +167,7 @@ fn pump_shell_features() {
     crate::app::media::pump();
 }
 
-fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &FrameInfo) {
+fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, info: &Frame) {
     let _paint = crate::profile::span(crate::profile::Phase::Paint);
     let force_paint = env.shell.take_force_paint();
     let paint_needed = !env.view.hidden && (force_paint || info.dirty);
