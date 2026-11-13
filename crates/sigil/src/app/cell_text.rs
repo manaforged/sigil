@@ -103,6 +103,9 @@ pub(crate) fn cell_glyph(text: &str) -> &str {
 /// Returns the width of `text` in terminal cells.
 #[must_use]
 pub fn cell_width(text: &str) -> usize {
+    if text.bytes().all(|byte| matches!(byte, b' '..=b'~')) {
+        return text.len();
+    }
     match CELL_WIDTH.get() {
         CellWidth::Unicode => match AMBIGUOUS.get() {
             Ambiguous::Narrow => UnicodeWidthStr::width(text),

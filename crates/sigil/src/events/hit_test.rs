@@ -87,7 +87,7 @@ impl HitTestCache {
         let mut next = 0;
         while let Some(id) = deferred.get(next).copied() {
             next += 1;
-            emit(cx, layout, id, None, self, &mut deferred);
+            emit(cx, id, None, self, &mut deferred);
         }
         self.transformed = self.transforms.iter().any(|item| item.transformed);
         self.cx_generation = cx_generation;
@@ -256,13 +256,8 @@ fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
     true
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the walk threads two outputs beside its inputs"
-)]
 fn emit(
     cx: &Cx,
-    layout: &LayoutEngine,
     id: NodeId,
     parent: Option<usize>,
     cache: &mut HitTestCache,
@@ -271,7 +266,7 @@ fn emit(
     let Some(node) = cx.get(id) else {
         return;
     };
-    let rect = layout.result(id).map(|result| result.rect());
+    let rect = node.extension::<LayoutResult>().map(LayoutResult::rect);
     let index = cache.items.len();
     cache.items.push(HitItem {
         id,
@@ -294,7 +289,7 @@ fn emit(
         {
             deferred.push(child);
         } else {
-            emit(cx, layout, child, Some(index), cache, deferred);
+            emit(cx, child, Some(index), cache, deferred);
         }
     }
 }

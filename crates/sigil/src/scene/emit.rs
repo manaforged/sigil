@@ -219,6 +219,13 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         }
         let theme = node.extension::<Theme>().unwrap_or(inherited.theme);
+        if node.extension::<StyleBinding>().is_none() && outside_clip(node, clip) {
+            self.defer_top_layer(node, || {
+                let style = render_style_for(node, theme, inherited.text_color);
+                child_inherited(node, inherited, &style)
+            });
+            return;
+        }
         let style = render_style_for(node, theme, inherited.text_color);
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
