@@ -31,6 +31,7 @@ use super::gradient::Gradient;
 
 /// A command that fills or strokes a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct DrawRect {
     /// The node this rectangle paints, or `None` when no node owns it.
     pub node: Option<NodeId>,

@@ -15,6 +15,7 @@ impl Default for TextLineHeight {
 
 /// Holds the resolved typography of a text node.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct TextStyle {
     /// The font family name, such as `sans` or `mono`; the default is `system-ui`.
     pub font_family: String,
@@ -108,6 +109,71 @@ impl TextRuns {
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
         if face.bold && base < 700 { 700 } else { base }
+    }
+}
+
+impl TextStyle {
+    /// Sets the font family name; the default is `system-ui`.
+    #[must_use]
+    pub fn font_family(mut self, font_family: impl Into<String>) -> Self {
+        self.font_family = font_family.into();
+        self
+    }
+
+    /// Sets the font size in pixels; the default is 14.
+    #[must_use]
+    pub const fn font_size(mut self, font_size: f32) -> Self {
+        self.font_size = font_size;
+        self
+    }
+
+    /// Sets the font weight from 100 to 900; the default is 400.
+    #[must_use]
+    pub const fn font_weight(mut self, font_weight: u16) -> Self {
+        self.font_weight = font_weight;
+        self
+    }
+
+    /// Sets whether the text is italic.
+    #[must_use]
+    pub const fn italic(mut self, italic: bool) -> Self {
+        self.italic = italic;
+        self
+    }
+
+    /// Sets the line height.
+    #[must_use]
+    pub const fn line_height(mut self, line_height: TextLineHeight) -> Self {
+        self.line_height = line_height;
+        self
+    }
+
+    /// Sets the extra space between letters, as a fraction of the font size.
+    #[must_use]
+    pub const fn letter_spacing_em(mut self, letter_spacing_em: f32) -> Self {
+        self.letter_spacing_em = letter_spacing_em;
+        self
+    }
+
+    /// Sets whether digits all take the same width.
+    #[must_use]
+    pub const fn tabular_nums(mut self, tabular_nums: bool) -> Self {
+        self.tabular_nums = tabular_nums;
+        self
+    }
+
+    /// Sets the underline or strike line.
+    #[must_use]
+    pub const fn decoration(mut self, decoration: crate::style::TextDecoration) -> Self {
+        self.decoration = decoration;
+        self
+    }
+
+    /// Sets the styled runs that override this style over byte ranges.
+    #[must_use]
+    pub fn runs(mut self, runs: TextRuns) -> Self {
+        self.runs = Some(runs);
+        self
     }
 }
 

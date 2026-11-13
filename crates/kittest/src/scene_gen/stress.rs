@@ -89,11 +89,9 @@ pub fn unique_glyphs(count: u32) -> GeneratedScene {
             .filter_map(|col| char::from_u32(0x4E00 + row * per_row + col))
             .collect();
         let size = ((row % 5) as f32).mul_add(3.0, 8.0);
-        let style = TextStyle {
-            font_family: String::from("system-ui"),
-            font_size: size,
-            ..TextStyle::default()
-        };
+        let style = TextStyle::default()
+            .font_family("system-ui")
+            .font_size(size);
         let area = rect(0.0, (row % 64) as f32 * 8.0, 1024.0, size * 1.5);
         commands.push(SceneCommand::GlyphRun(shape_glyph_run(
             area, text, INK, style, 10_000,

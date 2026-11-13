@@ -14,11 +14,7 @@ const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
 fn label(scene: &mut SceneBuilder, rect: Rect, shadows: &[Shadow]) {
     scene.draw_rect(DrawRect::new(rect, rgba(0, 0, 0, 255)));
-    let style = TextStyle {
-        font_size: 40.0,
-        font_weight: 800,
-        ..TextStyle::default()
-    };
+    let style = TextStyle::default().font_size(40.0).font_weight(800);
     let at = Rect::new(
         Point::new(rect.origin.x + 6.0, rect.origin.y + 4.0),
         50.0,

@@ -106,15 +106,13 @@ impl Gen<'_, '_, '_> {
         let opacity = self.opacity_u16();
         let e = &mut *self.entropy;
         let text = e.pick(&TEXTS).to_owned();
-        let style = TextStyle {
-            font_family: String::from(e.pick(&["system-ui", "monospace", "no-such-font"])),
-            font_size: e.pick(&FONT_SIZES),
-            font_weight: e.pick(&[100, 400, 700, 900]),
-            italic: e.chance(20),
-            line_height: TextLineHeight::FontSizeRelative(e.pick(&[0.0, 1.2, 3.0])),
-            letter_spacing_em: e.pick(&[0.0, -0.5, 0.1, 2.0]),
-            ..TextStyle::default()
-        };
+        let style = TextStyle::default()
+            .font_family(e.pick(&["system-ui", "monospace", "no-such-font"]))
+            .font_size(e.pick(&FONT_SIZES))
+            .font_weight(e.pick(&[100, 400, 700, 900]))
+            .italic(e.chance(20))
+            .line_height(TextLineHeight::FontSizeRelative(e.pick(&[0.0, 1.2, 3.0])))
+            .letter_spacing_em(e.pick(&[0.0, -0.5, 0.1, 2.0]));
         SceneCommand::GlyphRun(shape_glyph_run(rect, text, color, style, opacity))
     }
 

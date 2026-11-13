@@ -162,6 +162,9 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `PathNode` | `PathBuilder` |
+| `TextStyle { font_size: 16.0, ..TextStyle::default() }` | `TextStyle::default().font_size(16.0)`; one setter per field |
+| struct literals of `scene::DrawRect`, `scene::Shadow`, `events::Shortcut`, `events::PointerTilt` | these are `#[non_exhaustive]`; use their constructors |
+| `Surface { key }` | `Surface::new(key)` |
 | `FrameHooks { input: Some(Box::new(f)), .. }` | `FrameHooks::default().input(f)`, `.after_layout(f)`, `.paint(f)` |
 | `terminal::Hooks { region_rows: Some(Box::new(f)), .. }` | `Hooks::default().region_rows(f)`, `.external_events(f)`, `.after_frame(f)` |
 | `terminal::Access { focus_cursor, status }` | `Access::default().focus_cursor(..).status(..)` |

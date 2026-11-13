@@ -125,6 +125,7 @@ const KEY_LABELS: [(NamedKey, &str, &str); 12] = [
 
 /// A key plus modifiers.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub struct Shortcut {
     /// The key that triggers the shortcut.
     pub key: Key,

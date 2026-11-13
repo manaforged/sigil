@@ -101,13 +101,11 @@ fn build_paragraph(min_len: usize) -> String {
 }
 
 fn build_scene(content: &str) -> (CommandScene, usize) {
-    let style = TextStyle {
-        font_family: String::from("system-ui"),
-        font_size: FONT_SIZE,
-        font_weight: 400,
-        line_height: TextLineHeight::FontSizeRelative(1.2),
-        ..TextStyle::default()
-    };
+    let style = TextStyle::default()
+        .font_family("system-ui")
+        .font_size(FONT_SIZE)
+        .font_weight(400)
+        .line_height(TextLineHeight::FontSizeRelative(1.2));
     let rect = sigil::geometry::Rect::new(
         sigil::geometry::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,

@@ -14,8 +14,15 @@ pub struct TopLayer;
 /// Marker of a host-drawn surface.
 #[derive(Debug, Clone, Copy)]
 pub struct Surface {
-    /// The number that the embed host uses to tell its surfaces apart.
-    pub key: u64,
+    pub(crate) key: u64,
+}
+
+impl Surface {
+    /// Marks a node as the surface that the host draws under `key`.
+    #[must_use]
+    pub const fn new(key: u64) -> Self {
+        Self { key }
+    }
 }
 
 /// A node in the tree, as `NodeBuilder::mutate` sees it.

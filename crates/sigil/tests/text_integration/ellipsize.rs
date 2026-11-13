@@ -4,10 +4,7 @@ use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    })
+    OwnedTextEngine::new(TextStyle::default().font_size(16.0))
 }
 
 #[test]

@@ -91,6 +91,7 @@ pub enum PointerPhase {
 
 /// Pen tilt in degrees.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub struct PointerTilt {
     /// The tilt along the x axis, in degrees.
     pub x: f32,

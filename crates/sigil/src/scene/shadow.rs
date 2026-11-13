@@ -18,6 +18,7 @@ kittest_pub! {
 
 /// The offset, blur, spread, and color of a shadow.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct Shadow {
     /// Red, green, and blue in linear light, then alpha, each from 0 to 1 and not premultiplied.
     pub color: [f32; 4],

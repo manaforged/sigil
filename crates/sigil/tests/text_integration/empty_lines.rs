@@ -5,10 +5,7 @@ use sigil::text::OwnedTextEngine;
 use sigil::text::{HitPosition, TextAffinity};
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextStyle {
-        font_size: 16.0,
-        ..TextStyle::default()
-    })
+    OwnedTextEngine::new(TextStyle::default().font_size(16.0))
 }
 
 #[test]
