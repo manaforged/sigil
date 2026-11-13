@@ -71,35 +71,12 @@ impl TextLength {
     }
 }
 
-pub(crate) mod px_sealed {
-    #[allow(unnameable_types, reason = "sealed")]
-    pub trait Sealed {
-        fn into_px(self) -> f32;
-    }
+pub(crate) fn px_or_zero(length: impl Into<Length>) -> f32 {
+    length.into().px().unwrap_or(0.0)
 }
 
-/// A pixel count or a `Length`, for widget sizes such as `width` and `row_height`.
-#[allow(unnameable_types, reason = "sealed")]
-pub trait IntoPx: px_sealed::Sealed {}
-
-impl<P: px_sealed::Sealed> IntoPx for P {}
-
-impl px_sealed::Sealed for f32 {
-    fn into_px(self) -> f32 {
-        self
-    }
-}
-
-impl px_sealed::Sealed for TextLength {
-    fn into_px(self) -> f32 {
-        self.px()
-    }
-}
-
-impl px_sealed::Sealed for Length {
-    fn into_px(self) -> f32 {
-        self.px().unwrap_or(0.0)
-    }
+pub(crate) fn positive_px(length: impl Into<Length>) -> Option<f32> {
+    length.into().px().filter(|&px| px.is_finite() && px > 0.0)
 }
 
 fn font_size() -> f32 {

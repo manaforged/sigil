@@ -10,7 +10,7 @@ use super::pane::{build_pane, shares_free_space};
 use super::pane_builder::PaneBuilder;
 use crate::layout::Orientation;
 use crate::style::States;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 

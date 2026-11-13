@@ -9,7 +9,7 @@ use crate::layout::{LayoutStyle, mono_cell, rows};
 use crate::reactive::{Signal, effect_named, memo, signal};
 use crate::style::TextRun;
 use crate::style::theme::ambient::ActiveTheme;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::{key_payload, shell};
 

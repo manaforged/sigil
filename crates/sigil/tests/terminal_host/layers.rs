@@ -9,7 +9,7 @@ use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
 use sigil::style::{Theme, Token, Transform2D};
 use sigil::terminal::Access;
-use sigil::widgets::{Layout, modal, scroll};
+use sigil::widgets::{modal, scroll};
 
 use super::live::Side;
 

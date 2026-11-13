@@ -17,7 +17,6 @@ use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil::layout::{LayoutEngine, LayoutStyle, Length, Position, TextMeasure};
 use sigil::prelude::Widget;
 use sigil::style::TextStyle;
-use sigil::widgets::Layout;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(1_000, false);

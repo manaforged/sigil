@@ -3,7 +3,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{LayoutStyle, rows};
 use crate::reactive::{Signal, signal};
 use crate::style::Token;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::virtual_list::virtual_list;
 

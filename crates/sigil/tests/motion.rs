@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use sigil::animation::{Easing, Keyframes, Property, Transition};
 use sigil::app::FrameHooks;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{LayerEffect, SceneCommand};

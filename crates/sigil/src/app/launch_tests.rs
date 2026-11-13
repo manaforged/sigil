@@ -13,7 +13,7 @@ use crate::kernel::container;
 use crate::layout::LayoutStyle;
 use crate::reactive::{Runtime, signal};
 use crate::tasks::AsyncRuntime;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::Host;
 use crate::app::config::AppConfig;

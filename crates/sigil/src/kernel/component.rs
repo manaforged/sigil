@@ -37,6 +37,7 @@ pub trait IntoNode: IntoNodeBox {
     }
 }
 
+#[doc(hidden)]
 #[allow(unnameable_types, reason = "object-safe helper supertrait of IntoNode")]
 pub trait IntoNodeBox {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;

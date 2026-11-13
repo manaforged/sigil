@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil::prelude::*;
+use sigil::widgets::a2ui;
 use sigil_kittest::Harness;
 
 fn surface(components: &str, data: &str) -> String {

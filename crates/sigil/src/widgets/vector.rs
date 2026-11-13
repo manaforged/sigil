@@ -12,7 +12,7 @@ use crate::scene::command::{
 };
 use crate::scene::geometry::IDENTITY;
 use crate::style::{Color, ColorValue, Theme};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
 
 mod key;

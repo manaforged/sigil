@@ -18,23 +18,17 @@ mod edit;
 
 pub(crate) use edit::LayoutEdit;
 
-kittest_pub! {
-    /// Merges a raw layout style into a builder.
-    #[doc(hidden)]
-    pub trait Layout: Widget {
-        /// Merges `style` into the node's layout.
-        #[must_use]
-        fn layout(self, style: LayoutStyle) -> Self {
-            self.map_node(move |node| node.mutate(move |n| install_layout(n, &style)))
-        }
-    }
-}
-
 #[doc = include_str!("../../docs/widget.md")]
 pub trait Widget: Sized {
     /// Applies `f` to the root node that this builder produces.
     #[must_use]
     fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
+
+    /// Merges `style` into the node's layout.
+    #[must_use]
+    fn layout(self, style: LayoutStyle) -> Self {
+        self.map_node(move |node| node.mutate(move |n| install_layout(n, &style)))
+    }
 
     /// Adds the styles that the Tailwind classes in `classes` name.
     #[must_use]
@@ -209,8 +203,6 @@ pub trait Widget: Sized {
         self.map_node(move |node| on::focus_when(node, trigger))
     }
 }
-
-impl Layout for NodeBuilder {}
 
 impl Widget for NodeBuilder {
     fn map_node(self, f: impl FnOnce(Self) -> Self + 'static) -> Self {

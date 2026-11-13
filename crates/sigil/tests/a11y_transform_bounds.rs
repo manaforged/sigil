@@ -1,4 +1,4 @@
-use sigil::layout::Position;
+use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::style::Transform2D;

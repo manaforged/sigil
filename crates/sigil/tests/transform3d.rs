@@ -14,6 +14,7 @@
 use std::f32::consts::PI;
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};

@@ -1,5 +1,4 @@
 use super::*;
-use sigil::widgets::Layout;
 
 #[test]
 fn progress_empty() {

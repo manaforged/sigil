@@ -4,9 +4,10 @@
     clippy::cast_precision_loss
 )]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
 use sigil::layout::TextMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 
 const VIEWPORT: Constraint = Constraint::fixed(1440.0, 900.0);

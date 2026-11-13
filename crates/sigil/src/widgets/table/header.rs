@@ -9,7 +9,7 @@ use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{FocusRing, StyleAtom, Token, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::drag::axis_drag;
 use super::super::interaction::InteractionState;

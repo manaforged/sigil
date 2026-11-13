@@ -1,6 +1,6 @@
+use sigil::node::{Cx, NodeId};
 use sigil::prelude::*;
 use sigil::widgets::{Framed, WidgetFrame};
-use sigil::{Cx, NodeId};
 
 fn main() -> AppResult {
     run("Custom widget", review_form)

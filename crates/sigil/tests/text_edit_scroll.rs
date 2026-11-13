@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::events::EventRouter;
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;

@@ -87,8 +87,6 @@ impl Widget for PaneBuilder {
     crate::widgets::widget_layout_methods!(@edit edit_layout);
 }
 
-crate::widgets::impl_layout!([] PaneBuilder, @edit edit_layout);
-
 impl IntoNode for PaneBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         self.commit().build(cx)

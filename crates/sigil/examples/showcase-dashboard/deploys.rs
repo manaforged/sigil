@@ -1,9 +1,12 @@
+use sigil::node::TextBuilder;
 use sigil::prelude::{
-    AlignItems, ColumnWidth, FontFamily, Identifiable, MenuItem, NodeBuilder, Paint, Space,
-    TableColumn, TableState, Tone, chip, effect, row, table, text,
+    AlignItems, MenuItem, NodeBuilder, Paint, Space, TableColumn, TableState, Tone, chip, effect,
+    row, table, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
+use sigil::style::FontFamily;
+use sigil::widgets::{ColumnWidth, Identifiable};
 
 use super::data::{
     BRANCH_WIDTH, COMMIT_MIN_WIDTH, DURATION_WIDTH, Job, JobStatus, REGION_WIDTH, SHA_WIDTH,
@@ -108,7 +111,7 @@ fn columns(console: Console) -> Vec<TableColumn<JobRow>> {
     ]
 }
 
-fn plain(value: &'static str) -> sigil::prelude::TextBuilder {
+fn plain(value: &'static str) -> TextBuilder {
     text(value).nowrap().ellipsize()
 }
 
@@ -135,7 +138,7 @@ fn commit_cell(job: &'static Job) -> NodeBuilder {
         )
 }
 
-fn duration_cell(console: Console, slot: usize, secs: u32) -> sigil::prelude::TextBuilder {
+fn duration_cell(console: Console, slot: usize, secs: u32) -> TextBuilder {
     text(move || {
         if console.status_of(slot) == JobStatus::Queued {
             "—".to_owned()

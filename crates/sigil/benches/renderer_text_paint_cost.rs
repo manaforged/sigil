@@ -12,7 +12,7 @@ use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use std::hint::black_box;
 

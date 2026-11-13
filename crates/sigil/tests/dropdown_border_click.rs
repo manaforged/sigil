@@ -2,10 +2,10 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::events::{Event, KeyPhase, PointerPhase};
 use sigil::events::{MouseButton, MouseButtons};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::AccessibleName;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;

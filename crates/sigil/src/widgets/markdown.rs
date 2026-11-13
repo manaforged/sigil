@@ -22,7 +22,7 @@ use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, memo};
 use crate::style::{Radius, Style, Token, Tone as ChartTone, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::shared::caller_style;
 use std::rc::Rc;

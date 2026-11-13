@@ -8,7 +8,7 @@ use sigil::reactive::Owner;
 use std::sync::Mutex;
 
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
 

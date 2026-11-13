@@ -8,7 +8,6 @@ use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, memo, signal};
 use sigil::style::{Color, Token};
 use sigil::terminal::{ColorDepth, Grid, Screen};
-use sigil::widgets::Layout;
 
 pub(super) const COLS: u16 = 40;
 pub(super) const ROWS: u16 = 12;

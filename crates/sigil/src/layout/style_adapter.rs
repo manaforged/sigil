@@ -8,6 +8,7 @@ use crate::layout::{
     style_data::{Axes, Display, Edges, TrackSize},
 };
 
+#[doc(hidden)]
 pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     for atom in atoms {
         apply_style_atom(*atom, style);

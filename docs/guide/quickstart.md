@@ -80,6 +80,7 @@ Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes throu
 
 ```rust,no_run
 # use sigil::prelude::*;
+# use sigil::style::{Elevation, FontFamily};
 # let _ = {
 container()
     .padding(Space::Lg)

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use sigil::geometry::{Point, Rect, Size};
+use sigil::geometry::{Constraint, Point, Rect, Size};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;

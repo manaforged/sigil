@@ -7,7 +7,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, memo};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
 use super::listbox::{Move, RADIO_GROUP};

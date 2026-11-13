@@ -3,6 +3,7 @@
 use sigil::events::Event;
 use sigil::events::ScrollEvent;
 use sigil::geometry::Point;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil_kittest::Harness;

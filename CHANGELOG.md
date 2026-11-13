@@ -9,6 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `sigil::widgets::{Framed, WidgetFrame}` and unsealed `Paint`, `States`, and `Widget` traits with blanket implementations for `T: Framed`.
+- Public `sigil::node` module, public `sigil::layout` module with `sigil::layout::LayoutStyle`, and `Widget::layout(self, style: LayoutStyle) -> Self` (replacing the `kittest`-only `Layout` trait).
+
+### Changed
+
+- Moved `Cx`, `Live`, `Node`, `NodeId`, `Surface`, `TopLayer`, and `announce` from the crate root (`sigil`) to `sigil::node`, leaving the 9 application entry items at the crate root.
+- Re-exported `HostMode` at its canonical home `sigil::app::HostMode`.
+- Replaced `crate::layout::IntoPx` with `impl Into<sigil::layout::Length>` on `VirtualListBuilder::{row_height, estimate, viewport_height}` and `TableBuilder::{row_height, viewport_height}`.
+- Trimmed 63 Layer-2 / specialist items (plus the leaked `prelude::math` submodule) from `sigil::prelude` to 157 items; the removed items remain public in their owning modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`).
+
+### Migration
+
+| Before | After |
+| --- | --- |
+| `sigil::{Cx, Live, Node, NodeId, Surface, TopLayer, announce}` | `sigil::node::{Cx, Live, Node, NodeId, Surface, TopLayer, announce}` |
+| `sigil::prelude::HostMode` | `sigil::app::HostMode` |
+| `sigil::widgets::Layout` (feature `kittest`) | `sigil::widgets::Widget` (`Widget::layout`) |
+| `sigil::widgets::Orientation` | `sigil::layout::Orientation` (also in `sigil::prelude::*`) |
+| Layer-2 and specialist items removed from `sigil::prelude::*` | import from their canonical modules (`sigil::{node, layout, geometry, style, events, animation, tasks, scene, app, widgets}`) |
 
 ## [0.2.0] - 2026-11-12
 

@@ -11,7 +11,6 @@ use sigil::prelude::Widget;
 use sigil::profile::{disable, enable, end_frame, frames, reset};
 use sigil::reactive::{Owner, memo, signal};
 use sigil::style::Paint;
-use sigil::widgets::Layout;
 
 #[test]
 fn compute_records_layout_miss() {

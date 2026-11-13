@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
 use sigil::layout::LayoutResult;
 use sigil::prelude::*;
 use sigil::reactive::Owner;

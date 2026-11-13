@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use crate::events::KeyEvent;
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use crate::layout::snap::{CellForm, line};
 use crate::layout::{LayoutStyle, Overflow};

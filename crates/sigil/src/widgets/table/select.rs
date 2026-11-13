@@ -7,7 +7,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Signal, memo};
 use crate::style::Tone;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::super::interaction::InteractionState;

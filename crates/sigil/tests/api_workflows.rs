@@ -3,10 +3,12 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
+use sigil::layout::TrackSize;
 use sigil::prelude::*;
 use sigil::reactive::{EventChannel, Owner};
 use sigil::style::{ColorScale, ColorValue};
+use sigil::widgets::{DiffView, Disclosure, Patch};
 use sigil_kittest::Harness;
 
 const VIEW: (f32, f32) = (400.0, 200.0);

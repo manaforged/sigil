@@ -2,6 +2,7 @@
 
 use sigil::events::NamedKey;
 use sigil::kernel::Role;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::style::{Direction, Locale, StringKey, Strings, Theme};
 use sigil_kittest::{Harness, Query};

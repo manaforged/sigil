@@ -10,7 +10,6 @@ use sigil::scene::{
     CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
 use sigil::style::{Elevation, FontFamily, Paint, Radius, TextLineHeight, Theme, Token};
-use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 #[test]

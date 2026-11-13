@@ -4,7 +4,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::Space;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 
 fn two_cells(with_child: bool) -> Vec<f32> {

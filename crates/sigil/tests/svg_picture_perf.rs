@@ -11,7 +11,7 @@
 use std::time::{Duration, Instant};
 
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::reactive::Owner;

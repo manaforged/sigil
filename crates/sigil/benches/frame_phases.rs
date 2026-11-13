@@ -9,7 +9,7 @@ use std::hint::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::profile;
 use sigil::reactive::Owner;

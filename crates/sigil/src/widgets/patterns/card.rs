@@ -5,7 +5,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::shared::{Activate, caller_style};
 use super::ROW_SELECTED;

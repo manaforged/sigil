@@ -7,13 +7,13 @@
 )]
 
 use sigil::events::{Event, EventRouter, MouseButton, MouseButtons, PointerPhase};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::{LayoutEngine, Length};
+use sigil::layout::{LayoutEngine, LayoutStyle, Length};
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
-use sigil::style::Rgba;
+use sigil::style::{FontFamily, Rgba};
 use sigil_kittest::{FakeMeasure, gpu::read_pixels};
 use std::env::temp_dir;
 use std::process;

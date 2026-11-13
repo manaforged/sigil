@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInputHook};
-use sigil::layout::LayoutResult;
+use sigil::app::{FrameHooks, FrameInputHook, HostMode};
+use sigil::layout::{LayoutResult, LayoutStyle};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::style::FocusRing;

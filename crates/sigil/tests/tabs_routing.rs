@@ -16,10 +16,11 @@ use sigil::kernel::{Cx, NodeId};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::events::{Event, PointerPhase};
 use sigil::events::{MouseButton, MouseButtons};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use widget_support::compute;
 

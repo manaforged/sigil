@@ -4,7 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
 use sigil::events::{Event, Key, KeyPhase, Modifiers, NamedKey, Shortcut};
 use sigil::prelude::*;
 use sigil::reactive::Owner;

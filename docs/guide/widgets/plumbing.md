@@ -22,6 +22,7 @@ Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()
 
 ```rust,no_run
 # use sigil::prelude::*;
+# use sigil::widgets::{DragState, drag_ghost};
 # let node = container();
 # let bin = container();
 # let payload_string = String::from("task:1");

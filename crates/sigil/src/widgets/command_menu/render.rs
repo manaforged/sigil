@@ -5,7 +5,7 @@ use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 use std::rc::Rc;
 
 use crate::style::{ControlSize, Metrics, space};

@@ -12,7 +12,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use taffy::prelude::*;
 

@@ -1,5 +1,5 @@
 use super::*;
-use sigil::widgets::Layout;
+use sigil::style::FontFamily;
 
 #[test]
 fn text_edit_multiline() {

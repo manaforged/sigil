@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
-use sigil::events::{PhysicalKey, ScrollDelta, ScrollPhase};
+use sigil::events::{KeyPhase, PhysicalKey, ScrollDelta, ScrollPhase};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil_kittest::FakeMeasure;
@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::events::Event;
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::prelude::*;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(1600.0, 16.0);

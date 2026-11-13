@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, Position};
 use crate::style::{BORDER_WIDTH, Token, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::vector::PathBuilder;
 
 use super::super::flow_vector::{

@@ -29,6 +29,7 @@ pub struct ImageLoadBuilder {
 /// Size the box with the layout setters, such as `.width(..)` and `.height(..)`; the loaded image fills a sized axis with `fit`, and keeps its own size on an axis left unset.
 ///
 /// ```
+/// use sigil::node::ObjectFit;
 /// use sigil::prelude::*;
 ///
 /// fn logo() -> impl IntoNode {

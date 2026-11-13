@@ -4,9 +4,8 @@ use sigil::events::EventRouter;
 use sigil::events::{ScrollDelta, ScrollPhase};
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
 use sigil::layout::Space;
-use sigil::widgets::Layout;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 
 fn wide_state() -> TableState<Item> {
     TableState::new(

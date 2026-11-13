@@ -8,7 +8,7 @@ use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
 use crate::style::{Paint, StateStyleBuilder, States, StyleAtom, Tone, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::text_field::TextFieldBuilder;
 
@@ -158,8 +158,6 @@ impl<C: Widget> Widget for FieldBuilder<C> {
     crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
     crate::widgets::forward_control_methods!(direct control);
 }
-
-crate::widgets::impl_layout!([C: Widget] FieldBuilder<C>, @edit layout_overrides.edit);
 
 fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn IntoNode> {
     let label = text(label).nowrap();

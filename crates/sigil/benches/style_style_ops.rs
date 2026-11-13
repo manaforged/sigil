@@ -18,7 +18,6 @@ use sigil::style::{
     Color, ColorValue, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
-use sigil::widgets::Layout;
 
 static APPLY_ATOMS: &[StyleAtom] = &[
     StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),

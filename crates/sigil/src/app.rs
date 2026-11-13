@@ -91,6 +91,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use cell_text::CellWidth;
 }
+pub use crate::kernel::HostMode;
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;

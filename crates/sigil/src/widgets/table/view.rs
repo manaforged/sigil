@@ -7,7 +7,7 @@ use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, memo};
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
@@ -97,9 +97,9 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 }
 
 impl<Row: 'static> TableBuilder<Row> {
-    /// Sets the height of each body row in px.
-    pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.row_height = Some(length.into_px());
+    /// Sets the height of each body row.
+    pub fn row_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.row_height = crate::layout::positive_px(length);
         self
     }
 
@@ -109,9 +109,9 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    /// Sets the largest height of the body in px when the table does not fill its parent.
-    pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.viewport_height = length.into_px();
+    /// Sets the largest height of the body when the table does not fill its parent.
+    pub fn viewport_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.viewport_height = crate::layout::px_or_zero(length);
         self
     }
 

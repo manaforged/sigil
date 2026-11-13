@@ -1,5 +1,5 @@
 use crate::kernel::{Node, NodeBuilder, container};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::layout::{LayoutStyle, Space, TrackSize};
 use crate::style::{Metrics, StyleBinding};

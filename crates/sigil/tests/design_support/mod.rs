@@ -1,4 +1,5 @@
 use image::{Rgba, RgbaImage};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 

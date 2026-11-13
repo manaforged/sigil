@@ -8,7 +8,7 @@ use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::interaction::InteractionState;
 use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};

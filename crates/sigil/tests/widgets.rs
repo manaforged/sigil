@@ -8,7 +8,7 @@
 
 use crate::widget_support;
 
-use sigil::events::PhysicalKey;
+use sigil::events::{KeyPhase, MouseButtons, PhysicalKey, PointerPhase};
 use sigil::kernel::{Cx, NodeId};
 use sigil_kittest::FakeMeasure;
 use std::cell::{Cell, RefCell};

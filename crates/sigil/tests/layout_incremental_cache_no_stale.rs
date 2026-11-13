@@ -3,7 +3,7 @@
 use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 
 #[test]

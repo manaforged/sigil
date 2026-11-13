@@ -1,15 +1,15 @@
 #![allow(clippy::panic, clippy::trivially_copy_pass_by_ref, clippy::unwrap_used)]
 
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::events::{Event, KeyPhase};
 use sigil::prelude::*;
 use sigil::widgets::{Selection, SelectionMode, virtual_list};
 use sigil_kittest::stub_text_measure;

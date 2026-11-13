@@ -9,7 +9,7 @@ use crate::reactive::{Signal, effect, memo, untrack};
 use crate::style::StyleOverlay;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::listbox::{Move, RowSource, TAB_LIST};
 use super::builder::{CloseHandler, StripChrome};

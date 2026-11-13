@@ -1,5 +1,4 @@
 use super::*;
-use sigil::widgets::Layout;
 
 #[test]
 fn reactive_text_change_invalidates_cache() {

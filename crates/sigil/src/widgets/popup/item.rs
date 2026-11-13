@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::vector::path;
 

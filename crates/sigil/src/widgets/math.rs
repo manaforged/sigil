@@ -5,7 +5,7 @@ use crate::layout::{JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 
 #[cfg(feature = "scene")]

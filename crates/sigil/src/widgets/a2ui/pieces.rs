@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::kernel::{NodeBuilder, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Space};
 use crate::style::{Token, Tone};
-use crate::widgets::{Layout, chart, diff, list_row, markdown, mermaid, stat};
+use crate::widgets::{Widget, chart, diff, list_row, markdown, mermaid, stat};
 
 use super::model::display;
 use super::render::Render;

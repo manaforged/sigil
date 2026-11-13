@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{RowTone, TreeNode};
+use sigil::widgets::{Disclosure, RowTone, TreeNode};
 
 use super::project::{FileId, Folder, GitStatus, PROJECT_NAME, TreeItem};
 use super::state::{Activity, Workspace};

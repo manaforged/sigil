@@ -7,6 +7,7 @@
 
 use sigil::animation::Property;
 use sigil::geometry::{Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::scene::DrawRect;
 use sigil::style::Transform2D;

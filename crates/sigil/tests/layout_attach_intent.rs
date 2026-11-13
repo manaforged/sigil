@@ -2,7 +2,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::layout_stub as stub;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use stub::stub_engine;
 
 use sigil::geometry::Constraint;

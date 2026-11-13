@@ -3,7 +3,7 @@ use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{ColorValue, Paint, Token};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::highlight::Highlight;
 use super::{

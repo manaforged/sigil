@@ -1,7 +1,7 @@
 use super::*;
 use sigil::events::EventRouter;
 use sigil::kernel::Cx;
-use sigil::widgets::Layout;
+use sigil::layout::LayoutStyle;
 
 #[test]
 fn long_line_does_not_grow_the_box_past_its_pane() {

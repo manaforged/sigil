@@ -1,6 +1,7 @@
 #![allow(clippy::print_stdout)]
 
 use sigil::Host;
+use sigil::app::HostMode;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 

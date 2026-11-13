@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use resvg::usvg::{self, Tree};
 use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::scene::{BlendMode, CommandScene, DrawRect, SceneBuilder};
 use sigil::style::Rgba;

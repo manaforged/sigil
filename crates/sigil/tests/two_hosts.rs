@@ -5,8 +5,8 @@ use std::rc::Rc;
 
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
-use sigil::app::FrameHooks;
-use sigil::events::{Event, FocusDirection};
+use sigil::app::{FrameHooks, HostMode};
+use sigil::events::{Event, FocusDirection, KeyPhase};
 use sigil::kernel::{Live, NodeId, announce};
 use sigil::prelude::*;
 use sigil::reactive::Owner;

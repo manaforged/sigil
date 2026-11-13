@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 
 use crate::{Harness, Query};

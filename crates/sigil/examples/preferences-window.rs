@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::layout::FlexWrap;
 use sigil::prelude::*;
 
 const SECTIONS: &[&str] = &["Account", "Appearance", "Notifications"];

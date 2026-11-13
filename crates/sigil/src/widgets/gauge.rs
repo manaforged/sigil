@@ -8,7 +8,7 @@ use crate::reactive::{Reactive, Signal};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 const TRACK_WIDTH: f32 = 160.0;
 const GAUGE_GAP: f32 = space(2);

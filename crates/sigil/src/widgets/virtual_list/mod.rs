@@ -233,9 +233,9 @@ where
         self
     }
 
-    /// Sets the fixed height of each row in px.
-    pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.row_height = length.into_px();
+    /// Sets the fixed height of each row.
+    pub fn row_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.row_height = crate::layout::px_or_zero(length);
         self
     }
 
@@ -245,9 +245,9 @@ where
         self
     }
 
-    /// Sets the height in px assumed for a row not yet measured; the default is the row height.
-    pub fn estimate(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.estimate = Some(length.into_px());
+    /// Sets the height assumed for a row not yet measured; the default is the row height.
+    pub fn estimate(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.estimate = crate::layout::positive_px(length);
         self
     }
 
@@ -258,9 +258,9 @@ where
         self
     }
 
-    /// Sets the height of the list in px when it does not fill its parent; the default is 480.
-    pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.viewport_height = length.into_px();
+    /// Sets the height of the list when it does not fill its parent; the default is 480.
+    pub fn viewport_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.viewport_height = crate::layout::px_or_zero(length);
         self
     }
 

@@ -18,6 +18,7 @@ use measure::Pass;
 
 type TextProbe = (Option<u32>, u32, u32);
 
+#[doc(hidden)]
 pub struct LayoutEngine {
     drive: LayoutDrive,
     core_to_handle: SecondaryMap<slotmap::DefaultKey, NodeHandle>,

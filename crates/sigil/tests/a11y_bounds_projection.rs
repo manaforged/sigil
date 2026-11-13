@@ -6,7 +6,7 @@ use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 use sigil::widgets::{button, modal, text_field};
 use sigil_kittest::FakeMeasure;
 

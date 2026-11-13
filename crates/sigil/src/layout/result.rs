@@ -3,6 +3,7 @@ use crate::geometry::{Point, Rect};
 use crate::layout::engine_drive::ResolvedBox;
 use crate::layout::shift::Shift;
 
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LayoutResult {
     rect: Rect,

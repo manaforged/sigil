@@ -79,14 +79,20 @@ pub mod kernel;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
 pub(crate) mod kernel;
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
+/// Flexbox and grid layout rules, spacing, and length units.
 pub mod layout;
-#[cfg(not(feature = "kittest"))]
-#[allow(unused_imports, unreachable_pub, reason = "public only under kittest")]
-pub(crate) mod layout;
 #[cfg(http_fetch)]
 mod net;
+/// Tree nodes, builders, roles, and arena context.
+pub mod node {
+    #[doc(hidden)]
+    pub use crate::kernel::NodePatch;
+    pub use crate::kernel::{
+        AccessibleName, Action, Cx, ImageBuilder, ImageSource, IntoNode, Live, Node, NodeBuilder,
+        NodeId, ObjectFit, Role, Surface, SwitchBuilder, TextBuilder, TextContent, TopLayer,
+        announce, container, for_each, fragment, image, node, show, switch, text,
+    };
+}
 /// Frame timing, counters, and profile output.
 pub mod profile;
 /// Signals, effects, owners, and channels.
@@ -126,7 +132,6 @@ pub use crate::app::config::AppConfig;
 pub use crate::app::embed::Host;
 pub use crate::app::exit::exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
-pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
 pub use crate::view::View;
 
 /// Run the app component on the host that `config` selects.
@@ -195,68 +200,45 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
-    pub use crate::animation::{Easing, Keyframes, Property, Transition};
+    pub use crate::animation::{Easing, Transition};
     #[cfg(app_host)]
     pub use crate::app::open_url;
-    #[cfg(app_host)]
-    pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::{
-        Key, KeyEvent, KeyPhase, Modifiers, MouseButton, MouseButtons, NamedKey, PointerEvent,
-        PointerPhase, PointerType, Shortcut,
+        Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut,
     };
-    pub use crate::geometry::{Constraint, Point, Rect, Size};
+    pub use crate::geometry::{Point, Rect, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
-    #[doc(hidden)]
-    pub use crate::kernel::NodePatch;
-    pub use crate::kernel::{
-        AccessibleName, Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder,
-        ObjectFit, Role, SwitchBuilder, TextBuilder, TextContent, container, for_each, fragment,
-        image, node, show, switch, text,
-    };
-    pub use crate::layout::audit::Flaw;
-    #[cfg(feature = "image-decode")]
-    pub use crate::widgets::{ImageLoadBuilder, load_image};
-    kittest_pub! {
-        #[doc(hidden)]
-        pub use crate::layout::LayoutStyle;
-    }
-    kittest_pub! {
-        #[doc(hidden)]
-        pub use crate::widgets::Layout;
-    }
     pub use crate::layout::{
-        AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, Space,
-        TrackSize, cols, column, em, grid, row, rows,
+        AlignItems, Flaw, JustifyContent, Length, Orientation, Space, cols, column, em, grid, row,
+        rows,
+    };
+    pub use crate::node::{
+        AccessibleName, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
+        fragment, image, node, show, switch, text,
     };
     pub use crate::reactive::{Reactive, Signal, Timer, effect, interval, memo, signal};
     #[cfg(app_host)]
     pub use crate::run;
-    pub use crate::scene::SceneBuilder;
     pub use crate::style::{
-        Background, Color, ControlSize, Elevation, FocusRing, FontFamily, Gradient, Layer, Paint,
-        Radius, States, TextRole, Theme, Token, Tone,
+        Background, Color, ControlSize, Layer, Paint, Radius, States, TextRole, Theme, Token, Tone,
     };
-    pub use crate::tasks::{SignalWriter, Status, Task, spawn, task};
+    pub use crate::tasks::{Status, Task, spawn, task};
     pub use crate::view::View;
-    #[cfg(feature = "a2ui")]
-    pub use crate::widgets::a2ui;
+    #[cfg(feature = "image-decode")]
+    pub use crate::widgets::load_image;
     pub use crate::widgets::{
-        Change, ColumnAlign, ColumnWidth, Combobox, Date, DateTime, Density, Diagnostic,
-        DiffSelection, DiffView, Disclosure, DragState, FuzzyMatch, Glyph, Highlight, Identifiable,
-        ListRowBuilder, Log, MenuItem, ModalBuilder, NumericKind, Orientation, Patch, PathBuilder,
-        RowTone, ScrollAnchor, Selection, SelectionMode, Severity, Side, SortDirection, SortKey,
-        SparkFill, SparkMark, SubmitKey, TableColumn, TableState, TextFieldBuilder, TextState,
-        Time, TimeValue, ToastQueue, TreeNode, Widget, app_shell, avatar, axis_drag, badge,
-        breadcrumbs, button, canvas, card, chart, checkbox, chip, code_edit, color_field, combobox,
-        command_menu, context_menu, date_field, diff, disclosure, divider, dot, drag_ghost,
-        dropdown, empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
-        hint_overlay, html, icon, kv_grid, kv_row, link, list_row, log_view, markdown,
-        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
-        number_field, pagination, path, progress, radio_group, range_slider, scroll, section_label,
-        segmented, sidebar, skeleton, slider, spacer, sparkline, spinner, splitter, stat,
-        status_bar, stepper, surface, table, tabs, tag_input, terminal, text_field, time_field,
-        toast, toast_queue, toggle, tooltip, tree, vega, virtual_list,
+        MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn, TableState,
+        TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge, breadcrumbs, button,
+        canvas, card, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
+        context_menu, date_field, diff, disclosure, divider, dot, dropdown, empty_state, field,
+        gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html, icon, kv_grid, kv_row,
+        link, list_row, log_view, markdown, markdown_edit, markdown_inline, math, menu, menu_bar,
+        mermaid, modal, notice_band, number_field, pagination, path, progress, radio_group,
+        range_slider, scroll, section_label, segmented, sidebar, skeleton, slider, spacer,
+        sparkline, spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input,
+        terminal, text_field, time_field, toast, toast_queue, toggle, tooltip, tree, vega,
+        virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

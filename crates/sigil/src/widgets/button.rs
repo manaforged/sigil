@@ -5,7 +5,7 @@ use crate::kernel::{AccessibleName, TextContent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::icon::Glyph;
 use super::layout_ext::LayoutOverrides;

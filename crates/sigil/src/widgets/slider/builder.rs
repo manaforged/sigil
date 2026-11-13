@@ -12,7 +12,7 @@ use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Reactive, Signal};
 use crate::style::Style;
 use crate::style::strings::StringKey;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::layout_ext::LayoutOverrides;

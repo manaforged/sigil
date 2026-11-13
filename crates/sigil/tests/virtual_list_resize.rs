@@ -5,10 +5,10 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::kernel::{container, text};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
-use sigil::prelude::{LayoutStyle, virtual_list};
+use sigil::prelude::virtual_list;
 use sigil::reactive::{Owner, Signal, signal};
-use sigil::widgets::Layout;
 
 const COLS: u16 = 30;
 const ROWS: u16 = 10;

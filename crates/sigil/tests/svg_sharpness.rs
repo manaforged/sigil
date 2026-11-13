@@ -11,6 +11,7 @@
 
 use sigil::animation::Property;
 use sigil::geometry::PhysicalSize;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};

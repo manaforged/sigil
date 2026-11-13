@@ -3,6 +3,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::style::ControlSize;
 

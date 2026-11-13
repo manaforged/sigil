@@ -7,7 +7,7 @@ use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::{Elevation, Paint, Token};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;

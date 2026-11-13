@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::events::{Event, MouseButtons, PointerPhase};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::FakeMeasure;
 

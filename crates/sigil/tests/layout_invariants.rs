@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::FakeMeasure;
 

@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::Cx;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 
 #[test]

@@ -3,8 +3,9 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::layout::Orientation;
 use sigil::prelude::*;
-use sigil::widgets::Orientation;
+use sigil::widgets::{DragState, axis_drag, drag_ghost};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - plumbing").size(560, 480), build)

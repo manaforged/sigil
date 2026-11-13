@@ -7,7 +7,7 @@ use crate::reactive::{Owner, Signal, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string;
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::popup::{PANEL_INSET, PANEL_WIDTH, PopupAnchor, PopupLayer};
 use super::builder::{MenuItem, menu};

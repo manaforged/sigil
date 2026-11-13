@@ -5,12 +5,12 @@ use std::rc::Rc;
 use crate::animation::runtime::presets;
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, IntoPxExt as _, JustifyContent, LayoutStyle, Overflow, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow, px_or_zero, rows};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{
     BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -219,7 +219,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).into_px()).pick())
+                .height(CellForm::new(LABEL_HEIGHT, px_or_zero(rows(1.0))).pick())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

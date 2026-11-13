@@ -2,7 +2,7 @@ use crate::geometry::Point;
 use crate::geometry::{Constraint, Rect};
 use crate::kernel::container;
 use crate::layout::*;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::*;
 use crate::events::EventRouter;

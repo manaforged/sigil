@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{Combobox, Date, DiffView};
 
 const PAGES: &[&str] = &[
     "Controls",

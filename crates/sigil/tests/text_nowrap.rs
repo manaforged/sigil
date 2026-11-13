@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil_kittest::Harness;

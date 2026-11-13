@@ -5,7 +5,7 @@ use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
 use crate::style::Theme;
 use crate::widgets::Orientation;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::{Widget};
 
 use super::{Flaw, Issue, Tolerance, flaws};
 

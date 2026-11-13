@@ -1,6 +1,7 @@
 use sigil::events::Modifiers;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
+use sigil::widgets::Identifiable;
 use sigil_kittest::{Harness, Node, Query};
 
 #[derive(Clone)]

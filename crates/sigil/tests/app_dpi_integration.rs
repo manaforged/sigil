@@ -5,7 +5,7 @@ use sigil::kernel::{Cx, container};
 use sigil::layout::TextEngineMeasure;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::reactive::Owner;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 #[test]
 fn scale_change_keeps_launch_viewport_logical() {

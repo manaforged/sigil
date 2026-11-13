@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::kernel::Role;
+use sigil::node::ObjectFit;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 

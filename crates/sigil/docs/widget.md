@@ -15,6 +15,6 @@ fn toolbar() -> impl IntoNode {
 }
 ```
 
-`Widget` is sealed: implement a widget as a function that returns a builder.
+Implement [`Framed`](crate::widgets::Framed) and [`IntoNode`](crate::node::IntoNode) on a custom builder to inherit `Widget`, [`Paint`](crate::style::Paint), and [`States`](crate::style::States).
 
-See also: [`NodeBuilder`](crate::kernel::NodeBuilder), [Recipes](https://github.com/manaforged/sigil/blob/main/docs/guide/recipes.md).
+See also: [`NodeBuilder`](crate::node::NodeBuilder), [Recipes](https://github.com/manaforged/sigil/blob/main/docs/guide/recipes.md).

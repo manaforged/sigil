@@ -5,7 +5,7 @@ use sigil::layout::LayoutEngine;
 use std::rc::Rc;
 
 use sigil::events::EventRouter;
-use sigil::geometry::Rect;
+use sigil::geometry::{Constraint, Rect};
 use sigil::layout::{TextMeasure, text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{CommandScene, SceneCommand, emit_scene};

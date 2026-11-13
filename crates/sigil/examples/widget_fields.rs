@@ -4,7 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::TextFieldBuilder;
+use sigil::widgets::{Combobox, Date, TextFieldBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - fields").size(520, 720), build)

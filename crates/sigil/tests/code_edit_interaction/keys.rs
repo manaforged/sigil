@@ -1,7 +1,7 @@
 use super::*;
 use sigil::events::EventRouter;
 use sigil::kernel::Cx;
-use sigil::widgets::Layout;
+use sigil::layout::LayoutStyle;
 
 #[test]
 fn click_focuses_surface_then_keys_reach_on_key() {

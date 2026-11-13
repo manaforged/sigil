@@ -131,5 +131,3 @@ impl Widget for CommandMenuBuilder {
 
     crate::widgets::widget_layout_methods!(@edit panel_layout.edit);
 }
-
-crate::widgets::impl_layout!([] CommandMenuBuilder, @edit panel_layout.edit);

@@ -92,6 +92,11 @@ pub(crate) fn framed_figure(
 
 macro_rules! widget_layout_methods {
     (@edit $($path:tt)+) => {
+        fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Merge(style));
+            self
+        }
+
         fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
             self.$($path)+($crate::widgets::LayoutEdit::Width(width.into()));
             self
@@ -110,6 +115,13 @@ macro_rules! widget_layout_methods {
         $crate::layout::builder_ext::layout_methods!(edit $($path)+);
     };
     (@kernel) => {
+        fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+            self.node = self.node.mutate(move |n| {
+                $crate::layout::builder_ext::install_layout(n, &style)
+            });
+            self
+        }
+
         fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
             let edit = $crate::widgets::LayoutEdit::Width(width.into());
             self.node = self.node.mutate(move |n| edit.install(n));
@@ -131,6 +143,11 @@ macro_rules! widget_layout_methods {
         $crate::layout::builder_ext::layout_methods!(kernel);
     };
     (@forward $field:ident) => {
+        fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
+            self.$field = self.$field.map(move |inner| $crate::widgets::Widget::layout(inner, style));
+            self
+        }
+
         fn width(mut self, width: impl Into<$crate::layout::Length>) -> Self {
             let width = width.into();
             self.$field = self.$field.map(move |inner| $crate::widgets::Widget::width(inner, width));
@@ -149,35 +166,6 @@ macro_rules! widget_layout_methods {
         }
 
         $crate::layout::builder_ext::layout_methods!(forward $field);
-    };
-}
-
-macro_rules! impl_layout {
-    ([$($g:tt)*] $ty:ty, @edit $($path:tt)+) => {
-        impl<$($g)*> $crate::widgets::Layout for $ty {
-            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
-                self.$($path)+($crate::widgets::LayoutEdit::Merge(style));
-                self
-            }
-        }
-    };
-    ([$($g:tt)*] $ty:ty, @kernel) => {
-        impl<$($g)*> $crate::widgets::Layout for $ty {
-            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
-                self.node = self.node.mutate(move |n| {
-                    $crate::layout::builder_ext::install_layout(n, &style)
-                });
-                self
-            }
-        }
-    };
-    ([$($g:tt)*] $ty:ty, @forward $field:ident) => {
-        impl<$($g)*> $crate::widgets::Layout for $ty {
-            fn layout(mut self, style: $crate::layout::LayoutStyle) -> Self {
-                self.$field = self.$field.map(move |inner| $crate::widgets::Layout::layout(inner, style));
-                self
-            }
-        }
     };
 }
 
@@ -300,8 +288,6 @@ macro_rules! builder_impls {
                 }
             )?
         }
-
-        $crate::widgets::impl_layout!([$($g)*] $ty, @edit layout_overrides.edit);
     };
     (@kernel [$($g:tt)*] $ty:ty) => {
         impl<$($g)*> crate::widgets::Widget for $ty {
@@ -326,8 +312,6 @@ macro_rules! builder_impls {
                 self
             }
         }
-
-        $crate::widgets::impl_layout!([$($g)*] $ty, @kernel);
     };
     (@forward [$($g:tt)*] $ty:ty, $field:ident) => {
         impl<$($g)*> crate::style::Paint for $ty {
@@ -361,8 +345,6 @@ macro_rules! builder_impls {
                 self
             }
         }
-
-        $crate::widgets::impl_layout!([$($g)*] $ty, @forward $field);
     };
     (@node [$($g:tt)*] $ty:ty $(, $vis:vis)?) => {
         impl<$($g)*> $ty {
@@ -381,7 +363,7 @@ macro_rules! builder_impls {
     };
 }
 
-pub(crate) use {builder_impls, forward_control_methods, impl_layout, widget_layout_methods};
+pub(crate) use {builder_impls, forward_control_methods, widget_layout_methods};
 
 #[cfg(test)]
 #[path = "widgets/lib_tests.rs"]
@@ -423,7 +405,7 @@ mod link;
 mod listbox;
 mod log_view;
 mod markdown;
-pub(crate) mod math;
+mod math;
 mod menu;
 mod mermaid;
 mod modal;
@@ -480,7 +462,7 @@ pub use image_load::{ImageLoadBuilder, load_image};
 #[doc(hidden)]
 pub use svg_picture::{SvgMode, svg_scene};
 
-pub use crate::layout::Orientation;
+pub(crate) use crate::layout::Orientation;
 pub use combobox::{Combobox, combobox};
 pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
@@ -557,12 +539,8 @@ pub use vega::vega;
 pub use virtual_list::{
     IntoList, RowRender, ScrollAnchor, Selection, SelectionMode, VirtualListBuilder, virtual_list,
 };
-pub use widget::Widget;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use widget::Layout;
-}
 pub(crate) use widget::LayoutEdit;
+pub use widget::Widget;
 
 crate::kernel::into_node_builder!(
     ButtonBuilder,

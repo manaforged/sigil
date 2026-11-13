@@ -9,7 +9,7 @@ use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache::shift_command;
 use crate::style::Theme;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::Picture;
 use super::lower::lower;

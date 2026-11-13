@@ -3,7 +3,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use sigil::layout::TextEngineMeasure;
+use sigil::layout::{LayoutStyle, TextEngineMeasure};
 
 use sigil::prelude::*;
 

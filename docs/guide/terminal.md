@@ -56,7 +56,7 @@ fn app_tree() -> impl IntoNode {
 Terminal screen readers (VoiceOver, NVDA, Orca) read the visible text and follow the terminal cursor. The terminal host uses both.
 
 - Cursor follows focus. When a node has keyboard focus and no text caret is visible, the host moves the terminal cursor to the top-left cell of the focused node and shows it. A focused text input keeps its caret. `FocusCursor::Off` keeps the cursor hidden instead.
-- Announcements. `sigil::announce(text, politeness)`, a modal that opens, and any node with a live region (`Role::Alert`, `Role::Status`) send their new text to the terminal. In inline mode the host writes it above the live region with `print_above`. On the alternate screen it draws the text on the last row for `Access::status` (default 5 s), then redraws that row. Live regions already on screen in the first frame are not announced.
+- Announcements. `sigil::node::announce(text, politeness)`, a modal that opens, and any node with a live region (`Role::Alert`, `Role::Status`) send their new text to the terminal. In inline mode the host writes it above the live region with `print_above`. On the alternate screen it draws the text on the last row for `Access::status` (default 5 s), then redraws that row. Live regions already on screen in the first frame are not announced.
 
 ```rust,no_run
 use std::time::Duration;

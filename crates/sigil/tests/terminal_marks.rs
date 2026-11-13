@@ -1,5 +1,6 @@
 #![allow(clippy::expect_used)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 

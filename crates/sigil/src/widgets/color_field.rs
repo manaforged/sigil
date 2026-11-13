@@ -9,8 +9,8 @@ use crate::style::{
     BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StateStyleBuilder, States, StyleAtom,
     Theme, Tone,
 };
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Layout, Widget};
 
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
 #[derive(Debug)]
@@ -72,8 +72,6 @@ impl Widget for ColorFieldBuilder {
     crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
     crate::widgets::forward_control_methods!(map field);
 }
-
-crate::widgets::impl_layout!([] ColorFieldBuilder, @edit layout_overrides.edit);
 
 impl IntoNode for ColorFieldBuilder {
     fn build(mut self, cx: &mut Cx) -> NodeId {

@@ -30,7 +30,7 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
                 };
                 push_run(out, &unbreakable(body), &code);
             }
-            Inline::Math(body) => push_run(out, &crate::widgets::math::unicode(body), face),
+            Inline::Math(body) => push_run(out, &super::super::math::unicode(body), face),
             Inline::Note(label) => push_note(out, label, face),
             Inline::Image { alt, .. } => {
                 let muted = TextFace {

@@ -3,7 +3,7 @@
 
 use crate::events_support::routing_helpers;
 
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 

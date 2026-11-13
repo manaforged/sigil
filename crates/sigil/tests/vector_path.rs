@@ -12,6 +12,7 @@
 )]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJoin};

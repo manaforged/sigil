@@ -8,7 +8,7 @@ use sigil::layout::{LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Paint;
 
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::{capture, close};
 
 const SIZE: u32 = 32;

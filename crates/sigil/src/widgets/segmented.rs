@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::Space;
 use crate::layout::snap::{self, CellForm};
-use crate::layout::{AlignItems, IntoPxExt as _, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom};
 use crate::widgets::Widget;
@@ -53,7 +53,11 @@ impl SegmentedBuilder {
         let active = self.active;
         let labels = self.labels;
         let height = self.layout_overrides.height_hint().unwrap_or_else(|| {
-            CellForm::new(SEGMENTED_HEIGHT, crate::layout::rows(3.0).into_px()).pick()
+            CellForm::new(
+                SEGMENTED_HEIGHT,
+                crate::layout::px_or_zero(crate::layout::rows(3.0)),
+            )
+            .pick()
         });
         let (framed, inner) = match snap::cell() {
             Some(cell) if height <= cell => (false, height),

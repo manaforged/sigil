@@ -1,4 +1,5 @@
 use sigil::geometry::PhysicalSize;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::style::Rgba;

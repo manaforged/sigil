@@ -10,7 +10,7 @@ use sigil::geometry::{Constraint, Point};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 
 use routing_helpers::route_event;
 

@@ -4,77 +4,66 @@ use super::{LayoutFields, LayoutStyle};
 
 impl LayoutStyle {
     /// Sets the width of the node.
-    #[must_use]
     pub fn width(mut self, width: impl Into<Length>) -> Self {
         self.0.size.width = width.into();
         self.mark(LayoutFields::WIDTH)
     }
 
     /// Sets the height of the node.
-    #[must_use]
     pub fn height(mut self, height: impl Into<Length>) -> Self {
         self.0.size.height = height.into();
         self.mark(LayoutFields::HEIGHT)
     }
 
     /// Sets the smallest width that the node can have.
-    #[must_use]
     pub fn min_width(mut self, value: impl Into<Length>) -> Self {
         self.0.min_size.width = value.into();
         self.mark(LayoutFields::MIN_WIDTH)
     }
 
     /// Sets the smallest height that the node can have.
-    #[must_use]
     pub fn min_height(mut self, value: impl Into<Length>) -> Self {
         self.0.min_size.height = value.into();
         self.mark(LayoutFields::MIN_HEIGHT)
     }
 
     /// Sets the largest width that the node can have.
-    #[must_use]
     pub fn max_width(mut self, value: impl Into<Length>) -> Self {
         self.0.max_size.width = value.into();
         self.mark(LayoutFields::MAX_WIDTH)
     }
 
     /// Sets the largest height that the node can have.
-    #[must_use]
     pub fn max_height(mut self, value: impl Into<Length>) -> Self {
         self.0.max_size.height = value.into();
         self.mark(LayoutFields::MAX_HEIGHT)
     }
 
     /// Sets the width and the height in pixels.
-    #[must_use]
     pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
         self.0.size = Axes::new(Length::Px(width), Length::Px(height));
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
     /// Sets the width to `Length::Fill`.
-    #[must_use]
     pub const fn fill_width(mut self) -> Self {
         self.0.size.width = Length::Fill;
         self.mark(LayoutFields::WIDTH)
     }
 
     /// Sets the height to `Length::Fill`.
-    #[must_use]
     pub const fn fill_height(mut self) -> Self {
         self.0.size.height = Length::Fill;
         self.mark(LayoutFields::HEIGHT)
     }
 
     /// Sets the width and the height to `Length::Fill`.
-    #[must_use]
     pub const fn fill(mut self) -> Self {
         self.0.size = Axes::splat(Length::Fill);
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
     /// Sets the flex grow factor; an automatic minimum width or height becomes 0 px.
-    #[must_use]
     pub const fn grow(mut self, grow: f32) -> Self {
         self.0.flex_grow = grow;
         let mut set = LayoutFields::GROW;
@@ -90,34 +79,29 @@ impl LayoutStyle {
     }
 
     /// Sets the flex shrink factor.
-    #[must_use]
     pub const fn shrink(mut self, shrink: f32) -> Self {
         self.0.flex_shrink = shrink;
         self.mark(LayoutFields::SHRINK)
     }
 
-    #[must_use]
     pub(crate) const fn stretch_width(mut self) -> Self {
         self.0.stretch_width = true;
         self.mark(LayoutFields::STRETCH_WIDTH)
     }
 
     /// Sets the smallest width and height that the node can have.
-    #[must_use]
     pub fn min_size(mut self, width: impl Into<Length>, height: impl Into<Length>) -> Self {
         self.0.min_size = Axes::new(width.into(), height.into());
         self.mark(LayoutFields::MIN_WIDTH.with(LayoutFields::MIN_HEIGHT))
     }
 
     /// Sets the largest width and height that the node can have.
-    #[must_use]
     pub fn max_size(mut self, width: impl Into<Length>, height: impl Into<Length>) -> Self {
         self.0.max_size = Axes::new(width.into(), height.into());
         self.mark(LayoutFields::MAX_WIDTH.with(LayoutFields::MAX_HEIGHT))
     }
 
     /// Sets the flex basis of the node.
-    #[must_use]
     pub fn flex_basis(mut self, basis: impl Into<Length>) -> Self {
         self.0.flex_basis = basis.into();
         self.mark(LayoutFields::BASIS)

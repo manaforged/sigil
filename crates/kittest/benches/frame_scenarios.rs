@@ -6,6 +6,7 @@
 
 use sigil::events::Event;
 use sigil::geometry::Point;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::profile;
 use sigil_kittest::{Harness, Query};

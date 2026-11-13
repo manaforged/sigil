@@ -5,6 +5,7 @@ use crate::layout::shift::{Shift, ShiftSlot};
 use crate::layout::snap;
 use crate::reactive::Signal;
 
+#[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct ReactivePosition {
     pos: Signal<(f32, f32)>,
@@ -50,6 +51,7 @@ fn publish_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, value: T) 
     changed
 }
 
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug)]
 pub struct BoundsReactive {
     bounds: Signal<(f32, f32, f32, f32)>,

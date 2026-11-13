@@ -171,8 +171,9 @@ fn main() -> AppResult<()> {
 To reload a theme file while the app runs, call `watch_theme`. The watch stops when the `ThemeWatcher` is dropped, so keep it for the life of the tree. `AppConfig::theme_file(path)` loads and watches a file without code in the tree.
 
 ```rust,no_run
-use sigil::reactive::cleanup;
+use sigil::app::watch_theme;
 use sigil::prelude::*;
+use sigil::reactive::cleanup;
 
 fn tree() -> impl IntoNode {
     match watch_theme("theme.toml") {
@@ -235,7 +236,7 @@ A size includes the padding and the border of the node. A plain number is logica
 ```rust,no_run
 # #[cfg(feature = "terminal")]
 # mod terminal_only {
-use sigil::prelude::TrackSize;
+use sigil::layout::TrackSize;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
@@ -329,7 +330,7 @@ fn tree() -> impl IntoNode {
     let tab = signal("code");
     column()
         .children([
-            dot(Tone::Success).into(),
+            NodeBuilder::from(dot(Tone::Success)),
             text("Ready").into(),
         ])
         .child(
@@ -347,6 +348,7 @@ fn tree() -> impl IntoNode {
 
 ```rust
 use sigil::prelude::*;
+use sigil::widgets::fuzzy_score;
 
 if let Some(hit) = fuzzy_score("cmd", "command_menu") {
     assert!(!hit.positions().is_empty());
@@ -356,9 +358,10 @@ if let Some(hit) = fuzzy_score("cmd", "command_menu") {
 
 ## Animation and tone steps
 
-`Transition` configures CSS-style property transitions (`.duration(...)`, `.easing(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, signal)` binds a `Signal<f32>` directly to an animatable `Property`. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
+`Transition` configures CSS-style property transitions (`.duration(...)`, `.ease(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, signal)` binds a `Signal<f32>` directly to an animatable `Property`. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
 
 ```rust,no_run
+use sigil::animation::Property;
 use sigil::prelude::*;
 use std::time::Duration;
 
@@ -369,7 +372,7 @@ fn tree() -> impl IntoNode {
         .transition(
             Transition::opacity()
                 .duration(Duration::from_millis(150))
-                .easing(Easing::CubicOut),
+                .ease(Easing::CubicOut),
         )
         .drive(Property::Opacity, alpha)
         .child(text("Fading panel"))
@@ -618,9 +621,10 @@ Ctrl+C always reaches the tree first. With `exit_on_ctrl_c(false)` an unconsumed
 `Host::perform` handles `Focus`, `Click`, `Increment`, `Decrement`, `SetValue`, `SetTextSelection`, `Expand`, `Collapse`, and `ScrollIntoView`. Add `accesskit` 0.25 to your own dependencies to name its types.
 
 ```rust,no_run
-use sigil::NodeId;
-use sigil::prelude::*;
 use sigil::Host;
+use sigil::app::HostMode;
+use sigil::node::NodeId;
+use sigil::prelude::*;
 use sigil::reactive::Owner;
 
 fn main() {
@@ -650,9 +654,9 @@ Give each control a name that a screen reader can say. Widgets take the name fro
 `sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `Signal::writer` work as they do under `sigil::run`. `waker` wakes the host's event loop when a result arrives.
 
 ```rust,no_run
-use sigil::app::FrameHooks;
-use sigil::prelude::*;
 use sigil::Host;
+use sigil::app::{FrameHooks, HostMode};
+use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 

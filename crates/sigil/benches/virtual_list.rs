@@ -18,8 +18,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::reactive::signal;
-use sigil::widgets::Layout;
-use sigil::widgets::virtual_list;
+use sigil::widgets::{Widget, virtual_list};
 use sigil_kittest::FakeMeasure;
 
 const TOTAL_ROWS: usize = 100_000;

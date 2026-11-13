@@ -11,6 +11,7 @@
     reason = "pixel coordinates are small"
 )]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::style::{Background, GradientAxis, Radial, RadialExtent, Rgba};
 use sigil_kittest::Harness;

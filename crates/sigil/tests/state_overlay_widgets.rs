@@ -4,7 +4,7 @@ use crate::widget_support;
 
 use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;

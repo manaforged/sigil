@@ -3,10 +3,11 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::events::{Event, PointerPhase};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::Cx;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use widget_support::compute;
@@ -23,7 +24,7 @@ fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
         .layout(LayoutStyle::block().fixed_size(100.0, ROW_H))
         .child(sigil::widgets::axis_drag(
             container().layout(LayoutStyle::block().fixed_size(100.0, ROW_H)),
-            sigil::widgets::Orientation::Horizontal,
+            sigil::layout::Orientation::Horizontal,
             move || width_signal.peek(),
             move |base, delta| width_signal.set((base + delta).max(10.0)),
             || {},

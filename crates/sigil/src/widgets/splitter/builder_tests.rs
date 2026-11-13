@@ -6,7 +6,7 @@ use crate::reactive::Owner;
 use super::{Orientation, splitter};
 use crate::geometry::Constraint;
 use crate::layout::{FlexDirection, LayoutEngine, LayoutStyle, Length};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 #[test]
 fn a_width_on_a_pane_sets_the_pane_and_not_the_splitter() {

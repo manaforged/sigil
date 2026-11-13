@@ -1,4 +1,5 @@
 use sigil::prelude::*;
+use sigil::style::FontFamily;
 
 use super::facts::{DIAGNOSTICS, OUTPUT, PROMPT, Problem, severity_icon, severity_tone};
 use super::state::{BottomTab, Workspace};

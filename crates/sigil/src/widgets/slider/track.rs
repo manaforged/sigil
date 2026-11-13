@@ -8,7 +8,7 @@ use crate::style::{
     BORDER_WIDTH, BgGradient, Color, ColorValue, Elevation, GradientAxis, GradientStopKey,
     StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 

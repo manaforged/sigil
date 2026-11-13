@@ -6,7 +6,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, interval, signal};
 use crate::style::{Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::dot::dot;
 use super::popup::SURFACE;

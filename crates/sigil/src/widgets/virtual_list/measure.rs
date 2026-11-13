@@ -8,7 +8,7 @@ use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::layout::reactive_position::size_sink;
 use crate::reactive::{Signal, effect, memo, signal};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::render::WidthSpec;
 use super::{RowKey, bound_slice};

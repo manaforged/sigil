@@ -22,7 +22,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
 use sigil::events::EventRouter;
 use sigil::events::{Event, MouseButton, MouseButtons, PointerPhase};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};

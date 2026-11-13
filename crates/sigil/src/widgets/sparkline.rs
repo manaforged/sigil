@@ -6,7 +6,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, t
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, memo};
 use crate::style::{Style, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::shared::caller_style;
 

@@ -12,7 +12,7 @@ use crate::style::{
     ClassSource, Color, ColorValue, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
     StyleVariant, Token, Tone, space,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Activate, RELEASE_ENTER, press};
 

@@ -96,5 +96,3 @@ impl<T: Framed> Widget for T {
 
     crate::widgets::widget_layout_methods!(@edit frame_mut().layout.edit);
 }
-
-crate::widgets::impl_layout!([T: Framed] T, @edit frame_mut().layout.edit);

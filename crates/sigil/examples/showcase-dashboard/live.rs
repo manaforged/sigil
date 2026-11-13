@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use sigil::ErrorKind;
-use sigil::prelude::{Error, Signal, SignalWriter, Status, ToastQueue, signal, spawn};
-use sigil::tasks::sleep;
+use sigil::prelude::{Error, Signal, Status, ToastQueue, signal, spawn};
+use sigil::tasks::{SignalWriter, sleep};
 
 use super::data::{
     Bucket, CANARY_START, Event, HEALTH_PATH, Job, JobStatus, LogLine, START_DELAY_MS, SURGE_START,

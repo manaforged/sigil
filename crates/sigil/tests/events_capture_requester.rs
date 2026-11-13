@@ -4,7 +4,7 @@
 use crate::events_support::routing_helpers;
 
 use sigil::geometry::Point;
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 use std::cell::RefCell;
 use std::rc::Rc;
 

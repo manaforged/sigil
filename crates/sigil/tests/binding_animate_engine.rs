@@ -6,6 +6,7 @@ use sigil::animation::{MotionPrefs, presets, tick};
 use sigil::events::{Event, EventRouter};
 use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{SceneCommand, emit_scene};

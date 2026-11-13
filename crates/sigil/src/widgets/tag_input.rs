@@ -8,8 +8,8 @@ use crate::style::Style;
 use crate::style::Tone;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::ActiveTheme;
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Layout, Widget};
 
 use super::button::button;
 use super::chip::chip;

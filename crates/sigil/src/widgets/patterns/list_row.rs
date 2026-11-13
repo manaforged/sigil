@@ -6,7 +6,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols};
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::{Paint, Radius, States, Style, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::chip::chip;
 use super::super::popup::{ChevronDirection, chevron};

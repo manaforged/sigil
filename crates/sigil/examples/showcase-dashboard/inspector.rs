@@ -1,9 +1,10 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Orientation, Paint, Radius, Space,
-    TextContent, Token, Tone, button, column, container, divider, dropdown, field, kv_grid, memo,
-    number_field, progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
+    AlignItems, ControlSize, Icon, NodeBuilder, Orientation, Paint, Radius, Space, TextContent,
+    Token, Tone, button, column, container, divider, dropdown, field, kv_grid, memo, number_field,
+    progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
+use sigil::style::FontFamily;
 
 use super::data::{
     CANARY_STEP, HEALTH_PATH, INSPECTOR_WIDTH, Job, LOG_HEIGHT, LogLine, Region, SURGE_MAX,

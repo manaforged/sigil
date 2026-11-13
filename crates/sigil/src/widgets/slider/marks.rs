@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{JustifyContent, LayoutStyle};
 use crate::style::Tone;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
 

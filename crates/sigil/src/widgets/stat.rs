@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text
 use crate::layout::LayoutStyle;
 use crate::reactive::Reactive;
 use crate::style::{Style, StyleAtom, Token, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::patterns::card;
 use super::shared::{accessible_name, caller_style};

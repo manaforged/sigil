@@ -1,5 +1,5 @@
 use super::*;
-use sigil::widgets::Layout;
+use sigil::layout::FlexWrap;
 
 fn many_images(count: u32) -> NodeBuilder {
     let mut grid = container().layout(

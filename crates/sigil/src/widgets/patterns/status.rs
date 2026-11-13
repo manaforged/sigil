@@ -5,7 +5,7 @@ use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::chip::chip;
 use super::super::icon::CHECK_GLYPH;

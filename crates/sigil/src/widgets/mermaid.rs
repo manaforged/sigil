@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
 use crate::reactive::{Reactive, signal};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 pub(super) use crate::widgets::scrolled_diagram as scrolled;
 use crate::widgets::{bound_source, frame_source, lines_extent};

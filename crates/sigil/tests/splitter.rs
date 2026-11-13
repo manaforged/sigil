@@ -2,9 +2,11 @@
 
 use crate::widget_support;
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
+use sigil::layout::{LayoutStyle, Orientation};
 use sigil::prelude::*;
-use sigil::widgets::{Orientation, splitter};
+use sigil::widgets::splitter;
 use sigil_kittest::FakeMeasure;
 use widget_support::compute;
 

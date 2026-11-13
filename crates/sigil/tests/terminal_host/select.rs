@@ -99,6 +99,7 @@ fn a_drag_in_a_following_list_copies_the_row_it_started_on() {
     sigil::reactive::Owner::scope(
         "a_drag_in_a_following_list_copies_the_row_it_started_on",
         || {
+            use sigil::layout::LayoutStyle;
             use sigil::prelude::*;
             use sigil::widgets::virtual_list;
             let copied = Rc::new(RefCell::new(Vec::new()));

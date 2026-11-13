@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length};
 use crate::style::{Radius, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::vector::{PathBuilder, path};
 use super::axis::format_tick;

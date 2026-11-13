@@ -1,9 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::kernel::TextBuilder;
-use sigil::layout::LayoutEngine;
 use sigil::layout::TextMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 
 struct CharText;

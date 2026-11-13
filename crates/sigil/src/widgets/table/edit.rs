@@ -7,7 +7,7 @@ use crate::events::{Key, KeyEvent, MouseButton, NamedKey, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, memo, signal};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::text_field::text_field;
 use super::columns::TableColumn;

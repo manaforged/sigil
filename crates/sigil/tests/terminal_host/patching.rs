@@ -9,7 +9,6 @@ use sigil::prelude::Widget;
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Owner, Signal, signal};
 use sigil::terminal::Screen;
-use sigil::widgets::Layout;
 
 const SIZE: (u16, u16) = (40, 12);
 

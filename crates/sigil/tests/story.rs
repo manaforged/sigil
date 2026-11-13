@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 
 use accesskit::{Action, ActionRequest, TreeId};
 use sigil::Host;
-use sigil::app::FrameHooks;
+use sigil::app::{FrameHooks, HostMode};
 use sigil::events::Event;
 use sigil::kernel::{NodeId, container};
 use sigil::prelude::*;
@@ -185,7 +185,7 @@ impl Framed for PanelButton {
 }
 
 impl IntoNode for PanelButton {
-    fn build(self, cx: &mut sigil::Cx) -> NodeId {
+    fn build(self, cx: &mut sigil::node::Cx) -> NodeId {
         let hits = self.hits;
         let root = container()
             .width(60.0)

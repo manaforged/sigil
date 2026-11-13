@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::NodeId;
+use sigil::node::NodeId;
 use sigil::prelude::*;
 
 #[derive(Clone, PartialEq)]

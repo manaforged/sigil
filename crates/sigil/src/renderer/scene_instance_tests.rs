@@ -2,7 +2,7 @@ use crate::geometry::{Constraint, Point, Rect};
 use crate::kernel::*;
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::style::Color;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,

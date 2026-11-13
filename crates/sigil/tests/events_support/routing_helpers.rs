@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate, clippy::unwrap_used, dead_code)]
 
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use std::cell::RefCell;
 use std::rc::Rc;

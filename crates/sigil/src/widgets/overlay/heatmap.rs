@@ -3,7 +3,7 @@ use crate::layout::LayoutStyle;
 use crate::style::Color;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 mod raster;
 

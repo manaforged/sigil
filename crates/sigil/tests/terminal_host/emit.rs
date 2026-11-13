@@ -5,7 +5,7 @@ use sigil::layout::LayoutStyle;
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Owner, signal};
 use sigil::scene::CommandScene;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 const VIEW: (f32, f32) = (320.0, 160.0);
 

@@ -11,7 +11,7 @@ use crate::style::States;
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Style, StyleAtom, Token, space,
 };
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};

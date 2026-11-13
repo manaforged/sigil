@@ -6,7 +6,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use stub::stub_engine;
 
 const AVAILABLE: Constraint = Constraint::fixed(200.0, 1000.0);

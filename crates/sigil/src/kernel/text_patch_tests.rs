@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Owner, signal};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 #[test]
 fn a_patched_text_node_stays_in_the_tree() {

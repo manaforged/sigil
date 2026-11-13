@@ -3,7 +3,7 @@ use crate::layout::Orientation;
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 pub(super) fn with_caption(
     slider: NodeBuilder,

@@ -7,8 +7,8 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::Tone;
+use crate::widgets::Widget;
 use crate::widgets::interaction::is_primary;
-use crate::widgets::{Layout, Widget};
 
 use super::tips::{Probe, Tips, card};
 

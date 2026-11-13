@@ -1,5 +1,5 @@
 use super::*;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 #[test]
 fn rows_built_by_a_strip_rerun_keep_their_signals() {

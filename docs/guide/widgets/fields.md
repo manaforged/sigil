@@ -86,6 +86,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ```rust,no_run
 # use sigil::prelude::*;
+# use sigil::widgets::Combobox;
 # let _ = {
 let state = Combobox::new(["Rust", "Go", "Zig"])
     .placeholder("Language");

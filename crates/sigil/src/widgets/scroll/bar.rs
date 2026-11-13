@@ -4,7 +4,7 @@ use crate::layout::Display;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{Radius, StyleAtom, Token};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::pointer_drag;
 

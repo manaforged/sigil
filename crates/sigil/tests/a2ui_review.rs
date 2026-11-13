@@ -8,6 +8,7 @@ use std::io::Cursor;
 use std::time::{Duration, Instant};
 
 use sigil::prelude::*;
+use sigil::widgets::a2ui;
 use sigil_kittest::{Harness, Query};
 
 const STACK: usize = 8 << 20;

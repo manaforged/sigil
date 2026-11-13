@@ -6,7 +6,7 @@ use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
 use crate::style::{Style, Tone};
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Layout, markdown, notice_band};
+use crate::widgets::{Widget, markdown, notice_band};
 
 use super::shared::caller_style;
 

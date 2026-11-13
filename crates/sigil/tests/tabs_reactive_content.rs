@@ -5,9 +5,10 @@
     clippy::shadow_unrelated
 )]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::AccessibleName;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 

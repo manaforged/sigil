@@ -7,7 +7,7 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, frag
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{
-    CaretGeometry, IntoPxExt as _, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
+    CaretGeometry, LayoutStyle, Overflow, Position, TextStyleCapture, px_or_zero, rows,
     with_text_geometry,
 };
 use crate::reactive::{Owner, Signal, effect, interval, memo, signal};
@@ -15,7 +15,7 @@ use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
     Token, space,
 };
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::{InteractionState, is_primary};
 
@@ -82,7 +82,7 @@ pub(super) fn build_base_node(
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).into_px()).pick())
+        .height(CellForm::new(160.0, px_or_zero(rows(DEFAULT_ROWS))).pick())
         .min_size(0.0, 0.0)
         .padding(Space::px(1.0))
 }

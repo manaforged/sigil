@@ -12,7 +12,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide};
 use crate::reactive::{Signal, Timer, interval, signal};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
 use super::popup::{POPUP_GAP, PopupAnchor, PopupLayer, hide, surface};

@@ -9,7 +9,7 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
-use crate::widgets::{Layout, ModalBuilder, Widget, button, modal};
+use crate::widgets::{ModalBuilder, Widget, button, modal};
 
 use super::picture;
 

@@ -7,7 +7,7 @@ use sigil::layout::{LayoutStyle, Overflow, Position};
 use sigil::style::{Paint, Radius, Theme, Token};
 
 use crate::paint_support as support;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::{InkWindow, capture, close, count_ink};
 
 #[test]

@@ -1,7 +1,7 @@
 #![allow(clippy::expect_used)]
 
 use sigil::kernel::Role;
-use sigil::layout::TrackSize;
+use sigil::layout::{LayoutStyle, TrackSize};
 use sigil::prelude::*;
 use sigil::style::{Direction, Theme};
 use sigil_kittest::Harness;

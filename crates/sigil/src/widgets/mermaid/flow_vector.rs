@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::scene::geometry::KAPPA as CIRCLE_K;
 use crate::style::{BORDER_WIDTH, Paint, Radius, Token, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::vector::{PathBuilder, path};
 
 use super::flow::{Graph, GridRect, NodeShape, arrange};

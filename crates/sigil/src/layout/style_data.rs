@@ -104,6 +104,7 @@ impl From<f32> for Length {
     }
 }
 
+#[doc(hidden)]
 #[allow(
     clippy::derive_partial_eq_without_eq,
     reason = "intentional, reviewed trade-off"
@@ -133,6 +134,7 @@ impl<T: Copy> Axes<T> {
     }
 }
 
+#[doc(hidden)]
 #[allow(
     clippy::derive_partial_eq_without_eq,
     reason = "intentional, reviewed trade-off"
@@ -207,6 +209,7 @@ pub enum Position {
 }
 
 /// Main axis of a flex box.
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum FlexDirection {
     /// Children run in a row from the start edge; the default.
@@ -267,6 +270,7 @@ pub enum AlignItems {
 }
 
 /// How lines or tracks spread across the cross axis.
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlignContent {
     /// Lines pack at the start of the cross axis.
@@ -292,6 +296,7 @@ pub enum AlignContent {
 }
 
 /// Whether a set size includes padding and border.
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BoxSizing {
     /// A set size covers the content only, and padding and border add to it; the default.
@@ -315,6 +320,7 @@ pub enum TrackSize {
     MinMax(f32, f32),
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleData {
     pub display: Display,

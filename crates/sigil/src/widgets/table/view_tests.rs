@@ -10,7 +10,7 @@ use crate::geometry::{Constraint, Point, Rect};
 use crate::kernel::{AccessibleName, Cx, NodeId, container};
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::table;
 use crate::widgets::table::{TableColumn, TableState};

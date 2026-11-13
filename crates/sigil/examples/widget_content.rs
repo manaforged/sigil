@@ -3,9 +3,9 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::prelude::TextBuilder;
+use sigil::node::TextBuilder;
 use sigil::prelude::*;
-use sigil::widgets::{ChartBuilder, IconBuilder};
+use sigil::widgets::{ChartBuilder, IconBuilder, PathBuilder};
 
 const BLUE: Color = Color {
     r: 90,

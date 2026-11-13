@@ -8,6 +8,7 @@
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::ImageSource;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{

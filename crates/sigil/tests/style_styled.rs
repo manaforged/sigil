@@ -21,7 +21,7 @@ use sigil::style::{
     Color, ColorValue, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight,
     TextStyle, Theme, Token,
 };
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use widget_support::compute;
 
 const VIEWPORT: Constraint = Constraint::fixed(200.0, 100.0);

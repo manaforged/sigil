@@ -27,6 +27,7 @@ impl TextStyleCapture {
 }
 
 /// Holds the position and height of a text caret.
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CaretGeometry {
     /// The horizontal position of the caret within the text, in pixels.
@@ -42,6 +43,7 @@ thread_local! {
 }
 
 #[cfg(feature = "kittest")]
+#[doc(hidden)]
 pub fn text_geometry(geometry: Rc<dyn TextMeasure>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }

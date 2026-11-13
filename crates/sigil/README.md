@@ -61,6 +61,7 @@ An embed host. You own the window and the GPU:
 
 ```rust
 use sigil::Host;
+use sigil::app::HostMode;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 

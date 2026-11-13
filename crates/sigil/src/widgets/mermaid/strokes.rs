@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::scene::geometry::KAPPA;
 use crate::style::{BORDER_WIDTH, Token, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::vector::{PathBuilder, path};
 
 use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};

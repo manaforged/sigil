@@ -7,7 +7,7 @@ use crate::layout::{LayoutStyle, Orientation};
 use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::shared::control;
 use super::builder::{SliderRuntime, ValueChange, slider_layout, slider_semantics};

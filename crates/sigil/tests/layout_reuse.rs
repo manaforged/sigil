@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::profile::{Counter, Frame, disable, enable, end_frame, frames, reset};
 use sigil::reactive::Owner;

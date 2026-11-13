@@ -6,7 +6,7 @@ use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
 use crate::style::{Radius, Style, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::dot::dot;
 use super::super::shared::{Activate, accessible_name, caller_style};

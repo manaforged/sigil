@@ -1,5 +1,6 @@
+use sigil::layout::{LayoutStyle, Orientation};
 use sigil::prelude::*;
-use sigil::widgets::{ColumnWidth, Orientation, TableColumn, TableState, TreeNode};
+use sigil::widgets::{ColumnWidth, TableColumn, TableState, TreeNode};
 
 use super::{painted, present, step};
 
