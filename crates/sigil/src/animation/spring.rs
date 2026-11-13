@@ -25,37 +25,31 @@ impl Spring {
     /// Stiffness 500, damping 40, mass 1: the fastest preset, with almost no overshoot.
     pub const STIFF: Self = Self::new(500.0, 40.0);
 
-    /// Creates a spring with finite positive `stiffness`, finite non-negative `damping`, and mass `1.0`.
-    #[track_caller]
+    /// Creates a spring with mass `1.0`; motion bounds its frequency and damping ratio so it stays finite and settles.
     pub const fn new(stiffness: f32, damping: f32) -> Self {
-        assert!(
-            stiffness.is_finite() && stiffness > 0.0,
-            "Spring stiffness must be finite and positive"
-        );
-        assert!(
-            damping.is_finite() && damping >= 0.0,
-            "Spring damping must be finite and non-negative"
-        );
         Self {
-            stiffness,
-            damping,
+            stiffness: bounded(stiffness, f32::MIN_POSITIVE),
+            damping: bounded(damping, 0.0),
             mass: 1.0,
         }
     }
 
-    /// Sets the spring mass; panics when `mass` is not finite and positive.
-    #[track_caller]
+    /// Sets the spring mass; a NaN or non-positive mass reads as the smallest positive mass.
     pub const fn mass(mut self, mass: f32) -> Self {
-        assert!(
-            mass.is_finite() && mass > 0.0,
-            "Spring mass must be finite and positive"
-        );
-        self.mass = mass;
+        self.mass = bounded(mass, f32::MIN_POSITIVE);
         self
     }
 
     pub(crate) const fn parameters(self) -> (f32, f32, f32) {
         (self.stiffness, self.damping, self.mass)
+    }
+}
+
+const fn bounded(value: f32, min: f32) -> f32 {
+    if value.is_nan() {
+        min
+    } else {
+        value.clamp(min, f32::MAX)
     }
 }
 
@@ -65,6 +59,7 @@ pub(crate) struct SpringState {
     stiffness: f32,
     damping: f32,
     mass: f32,
+    substep: f32,
     value_epsilon: f32,
     velocity_epsilon: f32,
     value: f32,
@@ -81,17 +76,13 @@ impl SpringState {
 
     /// Creates a spring state.
     #[must_use]
-    #[track_caller]
     pub(crate) fn new(initial: f32, spring: Spring) -> Self {
-        let (stiffness, damping, mass) = spring.parameters();
-        assert!(
-            mass.is_finite() && mass > 0.0,
-            "Spring mass must be finite and positive (got {mass}). Use 1.0 for the default."
-        );
+        let (stiffness, damping, mass, frequency) = Self::stable(spring);
         Self {
             stiffness,
             damping,
             mass,
+            substep: Self::MAX_SUBSTEP_DT.min(Self::MAX_PHASE_PER_SUBSTEP / frequency),
             value_epsilon: Self::DEFAULT_VALUE_EPSILON,
             velocity_epsilon: Self::DEFAULT_VELOCITY_EPSILON,
             value: initial,
@@ -150,19 +141,44 @@ impl SpringState {
     pub(crate) fn is_settled(&self) -> bool {
         let precision = f32::EPSILON * self.value.abs().max(self.target.abs());
         (self.value - self.target).abs() < self.value_epsilon.max(precision)
-            && self.velocity.abs() < self.velocity_epsilon.max(precision / Self::MAX_SUBSTEP_DT)
+            && self.velocity.abs() < self.velocity_epsilon.max(precision / self.substep)
     }
 
     const MAX_SUBSTEP_DT: f32 = 1.0 / 120.0;
 
     const MAX_SUBSTEPS: u16 = 256;
 
+    const MAX_PHASE_PER_SUBSTEP: f32 = 0.5;
+
+    const MIN_FREQUENCY: f32 = 6.0;
+
+    const MAX_FREQUENCY: f32 = 1000.0;
+
+    const MIN_DAMPING_RATIO: f32 = 0.3;
+
+    const MAX_DAMPING_RATIO: f32 = 1.0;
+
+    fn stable(spring: Spring) -> (f32, f32, f32, f32) {
+        let (stiffness, damping, mass) = spring.parameters();
+        let frequency = (stiffness / mass).sqrt();
+        let clamped = frequency.clamp(Self::MIN_FREQUENCY, Self::MAX_FREQUENCY);
+        let ratio = damping / mass / (2.0 * clamped);
+        let ratios = Self::MIN_DAMPING_RATIO..=Self::MAX_DAMPING_RATIO;
+        if (Self::MIN_FREQUENCY..=Self::MAX_FREQUENCY).contains(&frequency)
+            && ratios.contains(&ratio)
+        {
+            return (stiffness, damping, mass, frequency);
+        }
+        let ratio = ratio.clamp(Self::MIN_DAMPING_RATIO, Self::MAX_DAMPING_RATIO);
+        (clamped * clamped, 2.0 * ratio * clamped, 1.0, clamped)
+    }
+
     /// Advances the spring by `dt` seconds.
     pub(crate) fn step(&mut self, dt: f32) {
         if self.snap_if_settled() || !dt.is_finite() || dt <= 0.0 {
             return;
         }
-        let clamped = (dt / Self::MAX_SUBSTEP_DT)
+        let clamped = (dt / self.substep)
             .floor()
             .clamp(0.0, f32::from(Self::MAX_SUBSTEPS));
         #[allow(
@@ -172,13 +188,13 @@ impl SpringState {
         )]
         let whole_steps = clamped as u16;
         for _ in 0..whole_steps {
-            self.integrate(Self::MAX_SUBSTEP_DT);
+            self.integrate(self.substep);
             if self.snap_if_settled() {
                 return;
             }
         }
-        let consumed = f32::from(whole_steps) * Self::MAX_SUBSTEP_DT;
-        let tail = (dt - consumed).min(Self::MAX_SUBSTEP_DT);
+        let consumed = f32::from(whole_steps) * self.substep;
+        let tail = (dt - consumed).min(self.substep);
         if tail.is_sign_positive() && tail > f32::EPSILON {
             self.integrate(tail);
             self.snap_if_settled();
@@ -213,6 +229,12 @@ impl SpringState {
         self.value = self.velocity.mul_add(dt, self.value);
     }
 }
+
+#[cfg(test)]
+pub(crate) const FRAME_SECS: f32 = 1.0 / 60.0;
+
+#[cfg(test)]
+pub(crate) const SETTLE_FRAMES: u32 = 600;
 
 #[cfg(test)]
 #[path = "spring_tests.rs"]

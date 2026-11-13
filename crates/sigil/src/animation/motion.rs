@@ -58,6 +58,10 @@ impl Motion {
         match self {
             Self::Spring(spring) => spring.set_target(value),
             Self::Tween {
+                tween: Some(active),
+                ..
+            } if active.to().to_bits() == value.to_bits() => {}
+            Self::Tween {
                 current,
                 secs,
                 delay,
