@@ -4,7 +4,7 @@ use sigil::scene::{Filter, Shadow};
 use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
-use super::{SCALE, SIDE, frames_of, gpu_frame, model, probe, rgba};
+use super::{SCALE, SIDE, frames_of, model, probe, rgba};
 
 const INPUT: Color = rgba(200, 80, 40, 255);
 const BLACK: Color = rgba(0, 0, 0, 255);
@@ -216,13 +216,13 @@ fn turning_a_parent_shadow_off_redraws_the_cached_child_text() {
             .unaudited()
             .pixels(SIDE, SIDE)
             .scale(SCALE);
-        let on = red_pixels(&gpu_frame(&mut ui));
+        let on = red_pixels(&ui.expect_image());
         off.set(true);
         ui.settle();
-        let cancelled = red_pixels(&gpu_frame(&mut ui));
+        let cancelled = red_pixels(&ui.expect_image());
         off.set(false);
         ui.settle();
-        let restored = red_pixels(&gpu_frame(&mut ui));
+        let restored = red_pixels(&ui.expect_image());
         println!("red shadow pixels: on {on}, cancelled {cancelled}, restored {restored}");
         assert!(on > 50, "the parent's shadow reaches the child");
         assert_eq!(cancelled, 0, "the cached child drops the shadow");

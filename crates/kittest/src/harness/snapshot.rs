@@ -5,6 +5,16 @@ use crate::render::physical_extent;
 use crate::{Error, ErrorKind, Golden, Rendered};
 
 impl Harness {
+    /// Renders the frame as an image and fails the test when no GPU adapter exists.
+    #[track_caller]
+    pub fn expect_image(&mut self) -> image::RgbaImage {
+        match self.image() {
+            Ok(Some(frame)) => frame,
+            Ok(None) => super::fail("no GPU adapter: the harness returned no frame"),
+            Err(err) => super::fail(format!("harness image failed: {err}")),
+        }
+    }
+
     pub fn image(&mut self) -> Rendered {
         self.live();
         if let HarnessSurface::Cells { screen, size } = &mut self.surface {

@@ -69,8 +69,11 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
 ) -> Shot {
     let (width, height) = size;
     let image = match surface {
-        Surface::Pixels => frame_of(&mut Harness::new(app).pixels(width, height).scale(SCALE)),
-        Surface::Gpu => frame_of(&mut Harness::new(app).gpu(width, height, SCALE)),
+        Surface::Pixels => Harness::new(app)
+            .pixels(width, height)
+            .scale(SCALE)
+            .expect_image(),
+        Surface::Gpu => Harness::new(app).gpu(width, height, SCALE).expect_image(),
         Surface::Cpu => cpu_frame(
             &mut Harness::new(app).pixels(width, height).scale(SCALE),
             size,
@@ -80,14 +83,6 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
 }
 
 #[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn cpu_frame(ui: &mut Harness, (width, height): (u32, u32)) -> image::RgbaImage {
     let viewport = (width as f32, height as f32);
     let scene = ui.host().emit(viewport);

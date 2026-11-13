@@ -40,14 +40,6 @@ const INK: Color = Color {
 };
 
 #[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn distance(a: image::Rgba<u8>, b: image::Rgba<u8>) -> u32 {
     a.0.iter()
         .zip(b.0)
@@ -147,7 +139,7 @@ fn split_block_rows(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usi
 
 #[track_caller]
 fn assert_sharp(ui: &mut Harness, what: &str) {
-    let frame = frame_of(ui);
+    let frame = ui.expect_image();
     let device = (SIDE as f32 * SCALE) as u32;
     assert_eq!(frame.dimensions(), (device, device), "{what}: device size");
     let (widest, peak) = (widest_edge(&frame, 30..90), weakest_peak(&frame, 30..90));
@@ -234,7 +226,7 @@ fn probes(shape: fn() -> PathBuilder, points: &[(f32, f32)]) -> Vec<f32> {
     let mut ui = Harness::new(shape_canvas(shape))
         .pixels(80, 80)
         .scale(SCALE);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     points
         .iter()
         .map(|&(x, y)| at_logical(&frame, x, y, SCALE))
@@ -269,7 +261,7 @@ fn path_scene() -> impl IntoNode {
 #[test]
 fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
     let mut ui = Harness::new(path_scene).gpu(120, 80, SCALE);
-    let gpu = frame_of(&mut ui);
+    let gpu = ui.expect_image();
     let viewport = (120.0, 80.0);
     let scene = ui.host().emit(viewport);
     let frame = Frame {

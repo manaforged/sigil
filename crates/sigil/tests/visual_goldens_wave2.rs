@@ -8,8 +8,6 @@ use sigil::style::ControlSize;
 
 use sigil_kittest::{Golden, Harness, InteractionMode};
 
-const DELTA_PCT: f32 = 0.5;
-
 #[test]
 fn icon_default() {
     let img = Harness::render(|| {
@@ -23,7 +21,7 @@ fn icon_default() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("icon_default").delta(DELTA_PCT).assert(img);
+    Golden::new("icon_default").assert(img);
 }
 
 #[test]
@@ -39,9 +37,7 @@ fn icon_primary_tone() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("icon_primary_tone")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("icon_primary_tone").assert(img);
 }
 
 #[test]
@@ -57,7 +53,7 @@ fn icon_error_tone() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("icon_error_tone").delta(DELTA_PCT).assert(img);
+    Golden::new("icon_error_tone").assert(img);
 }
 
 #[test]
@@ -73,7 +69,7 @@ fn dot_success() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("dot_success").delta(DELTA_PCT).assert(img);
+    Golden::new("dot_success").assert(img);
 }
 
 #[test]
@@ -89,9 +85,7 @@ fn dot_warn_default_size() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("dot_warn_default_size")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("dot_warn_default_size").assert(img);
 }
 
 #[test]
@@ -107,7 +101,7 @@ fn dot_error_wide() {
     .size([32, 32])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("dot_error_wide").delta(DELTA_PCT).assert(img);
+    Golden::new("dot_error_wide").assert(img);
 }
 
 #[test]
@@ -129,9 +123,7 @@ fn radio_group_three_options_first_selected() {
     .size([220, 120])
     .hit((10.0, 14.0))
     .image();
-    Golden::new("radio_group_three_options_first_selected")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("radio_group_three_options_first_selected").assert(img);
 }
 
 #[test]
@@ -153,9 +145,7 @@ fn radio_group_middle_selected() {
     .size([220, 120])
     .hit((10.0, 42.0))
     .image();
-    Golden::new("radio_group_middle_selected")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("radio_group_middle_selected").assert(img);
 }
 
 #[test]
@@ -172,9 +162,7 @@ fn validated_field_no_error() {
     .size([200, 52])
     .hit((10.0, 10.0))
     .image();
-    Golden::new("validated_field_no_error")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("validated_field_no_error").assert(img);
 }
 
 #[test]
@@ -191,7 +179,5 @@ fn validated_field_with_error() {
     .size([200, 80])
     .hit((10.0, 10.0))
     .image();
-    Golden::new("validated_field_with_error")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("validated_field_with_error").assert(img);
 }

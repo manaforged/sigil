@@ -27,9 +27,7 @@ fn virtual_list_default() {
     .size([232, 212])
     .hit((120.0, 106.0))
     .image();
-    Golden::new("virtual_list_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("virtual_list_default").assert(img);
 }
 
 #[test]
@@ -46,9 +44,7 @@ fn virtual_list_focused() {
     .size([232, 212])
     .hit((120.0, 106.0))
     .image();
-    Golden::new("virtual_list_focused")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("virtual_list_focused").assert(img);
 }
 
 #[test]
@@ -66,9 +62,7 @@ fn virtual_list_items_bind() {
     .size([232, 212])
     .hit((120.0, 106.0))
     .image();
-    Golden::new("virtual_list_items_bind")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("virtual_list_items_bind").assert(img);
 }
 
 fn splitter_pane(bg: Token) -> NodeBuilder {
@@ -91,9 +85,7 @@ fn splitter_horizontal_default() {
     .size([258, 92])
     .hit((168.0, 46.0))
     .image();
-    Golden::new("splitter_horizontal_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("splitter_horizontal_default").assert(img);
 }
 
 #[test]
@@ -110,9 +102,7 @@ fn splitter_vertical_default() {
     .size([172, 138])
     .hit((86.0, 70.0))
     .image();
-    Golden::new("splitter_vertical_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("splitter_vertical_default").assert(img);
 }
 
 #[test]
@@ -133,7 +123,5 @@ fn splitter_horizontal_with_min_max() {
     .size([258, 92])
     .hit((168.0, 46.0))
     .image();
-    Golden::new("splitter_horizontal_with_min_max")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("splitter_horizontal_with_min_max").assert(img);
 }

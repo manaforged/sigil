@@ -88,14 +88,6 @@ fn gallery() -> impl IntoNode {
 }
 
 #[track_caller]
-fn gpu_frame(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
     let (device_w, device_h) = (
         (WIDTH as f32 * SCALE) as u32,
@@ -116,8 +108,8 @@ fn frames() -> Vec<(&'static str, image::RgbaImage)> {
     let mut surface = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
     let scene = surface.host().emit((WIDTH as f32, HEIGHT as f32));
     vec![
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene)),
     ]
 }
@@ -172,7 +164,7 @@ fn a_half_transparent_source_composites_its_blend_over_the_backdrop() {
 #[test]
 fn blended_layers_agree_on_the_cpu_and_the_gpu() {
     let mut ui = Harness::new(gallery).gpu(WIDTH, HEIGHT, SCALE);
-    let gpu = gpu_frame(&mut ui);
+    let gpu = ui.expect_image();
     let scene = ui.host().emit((WIDTH as f32, HEIGHT as f32));
     let cpu = cpu_frame(&scene);
     let measured = diff(gpu.as_raw(), cpu.as_raw());

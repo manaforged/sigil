@@ -208,8 +208,6 @@ fn leaf_select_fires_observer_and_closes() {
     });
 }
 
-const DELTA_PCT: f32 = 0.5;
-
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(NamedKey, PhysicalKey)]) {
     let mut layout = LayoutEngine::new(stub_text_measure());
     layout
@@ -240,9 +238,7 @@ fn command_menu_open() {
         .size([432, 176])
         .hit((1.0, 1.0))
         .image();
-    Golden::new("command_menu_open")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_open").assert(img);
 }
 
 #[test]
@@ -264,9 +260,7 @@ fn command_menu_nested() {
     .size([432, 176])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("command_menu_nested")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_nested").assert(img);
 }
 
 #[test]
@@ -288,9 +282,7 @@ fn command_menu_disabled_item() {
     .size([432, 176])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("command_menu_disabled_item")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("command_menu_disabled_item").assert(img);
 }
 
 #[test]

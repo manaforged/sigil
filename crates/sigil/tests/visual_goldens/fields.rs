@@ -12,7 +12,7 @@ fn progress_empty() {
     .size([244, 32])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("progress_empty").delta(DELTA_PCT).assert(img);
+    Golden::new("progress_empty").assert(img);
 }
 
 #[test]
@@ -26,7 +26,7 @@ fn progress_half() {
     .size([244, 32])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("progress_half").delta(DELTA_PCT).assert(img);
+    Golden::new("progress_half").assert(img);
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn progress_full() {
     .size([244, 32])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("progress_full").delta(DELTA_PCT).assert(img);
+    Golden::new("progress_full").assert(img);
 }
 
 fn dropdown_options() -> Vec<String> {
@@ -58,7 +58,7 @@ fn dropdown_open() {
     .size([212, 160])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_open").delta(DELTA_PCT).assert(img);
+    Golden::new("dropdown_open").assert(img);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn dropdown_default() {
     .size([212, 52])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_default").delta(DELTA_PCT).assert(img);
+    Golden::new("dropdown_default").assert(img);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn dropdown_hover() {
     .size([212, 52])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_hover").delta(DELTA_PCT).assert(img);
+    Golden::new("dropdown_hover").assert(img);
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn dropdown_pressed() {
     .size([212, 52])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_pressed").delta(DELTA_PCT).assert(img);
+    Golden::new("dropdown_pressed").assert(img);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn dropdown_focused() {
     .size([212, 52])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("dropdown_focused").assert(img);
 }
 
 #[test]
@@ -129,9 +129,7 @@ fn dropdown_disabled() {
     .size([212, 52])
     .hit((90.0, 22.0))
     .image();
-    Golden::new("dropdown_disabled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("dropdown_disabled").assert(img);
 }
 
 #[test]
@@ -148,7 +146,7 @@ fn scroll_default() {
     .size([330, 252])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("scroll_default").delta(DELTA_PCT).assert(img);
+    Golden::new("scroll_default").assert(img);
 }
 
 #[test]
@@ -162,9 +160,7 @@ fn text_field_default() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("text_field_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_default").assert(img);
 }
 
 #[test]
@@ -178,7 +174,7 @@ fn text_field_hover() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("text_field_hover").delta(DELTA_PCT).assert(img);
+    Golden::new("text_field_hover").assert(img);
 }
 
 #[test]
@@ -192,9 +188,7 @@ fn text_field_pressed() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("text_field_pressed")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_pressed").assert(img);
 }
 
 #[test]
@@ -208,9 +202,7 @@ fn text_field_focused() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("text_field_focused")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_focused").assert(img);
 }
 
 #[test]
@@ -225,9 +217,7 @@ fn text_field_disabled() {
     .size([192, 44])
     .hit((40.0, 22.0))
     .image();
-    Golden::new("text_field_disabled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("text_field_disabled").assert(img);
 }
 
 fn tab_labels() -> Vec<String> {
@@ -245,7 +235,7 @@ fn tabs_default() {
     .size([260, 56])
     .hit((40.0, 17.0))
     .image();
-    Golden::new("tabs_default").delta(DELTA_PCT).assert(img);
+    Golden::new("tabs_default").assert(img);
 }
 
 #[test]
@@ -259,7 +249,7 @@ fn tabs_hover_tab2() {
     .size([260, 56])
     .hit((120.0, 17.0))
     .image();
-    Golden::new("tabs_hover_tab2").delta(DELTA_PCT).assert(img);
+    Golden::new("tabs_hover_tab2").assert(img);
 }
 
 #[test]
@@ -273,7 +263,7 @@ fn tabs_active_tab2() {
     .size([260, 56])
     .hit((120.0, 17.0))
     .image();
-    Golden::new("tabs_active_tab2").delta(DELTA_PCT).assert(img);
+    Golden::new("tabs_active_tab2").assert(img);
 }
 
 #[test]
@@ -288,7 +278,7 @@ fn tabs_focused() {
     .size([260, 56])
     .hit((40.0, 17.0))
     .image();
-    Golden::new("tabs_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("tabs_focused").assert(img);
 }
 
 #[test]
@@ -307,5 +297,5 @@ fn tabs_disabled() {
     .size([260, 56])
     .hit((40.0, 17.0))
     .image();
-    Golden::new("tabs_disabled").delta(DELTA_PCT).assert(img);
+    Golden::new("tabs_disabled").assert(img);
 }

@@ -152,14 +152,6 @@ fn group() -> impl IntoNode {
 }
 
 #[track_caller]
-fn gpu_frame(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
     let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
     let frame = Frame {
@@ -177,8 +169,8 @@ fn frames<N: IntoNode + 'static>(app: fn() -> N) -> Vec<(&'static str, image::Rg
     let mut surface = Harness::new(app).gpu(SIDE, SIDE, SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
-        ("pixels", gpu_frame(&mut pixels)),
-        ("gpu", gpu_frame(&mut surface)),
+        ("pixels", pixels.expect_image()),
+        ("gpu", surface.expect_image()),
         ("cpu", cpu_frame(&scene, SIDE)),
     ]
 }
@@ -360,7 +352,7 @@ fn gallery() -> impl IntoNode {
 fn masked_scenes_agree_on_the_cpu_and_the_gpu() {
     let (width, height) = (SIDE * 4, SIDE);
     let mut ui = Harness::new(gallery).gpu(width, height, SCALE);
-    let gpu = gpu_frame(&mut ui);
+    let gpu = ui.expect_image();
     let scene = ui.host().emit((width as f32, height as f32));
     let cpu = cpu_frame(&scene, width);
     let measured = diff(gpu.as_raw(), cpu.as_raw());

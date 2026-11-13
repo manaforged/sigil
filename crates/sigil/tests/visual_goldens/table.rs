@@ -71,7 +71,7 @@ fn table_default() {
         .size([320, 172])
         .hit((1.0, 1.0))
         .image();
-    Golden::new("table_default").delta(DELTA_PCT).assert(img);
+    Golden::new("table_default").assert(img);
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn table_selected() {
     .size([320, 172])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("table_selected").delta(DELTA_PCT).assert(img);
+    Golden::new("table_selected").assert(img);
 }
 
 #[test]
@@ -119,5 +119,5 @@ fn table_sorted() {
     .size([320, 172])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("table_sorted").delta(DELTA_PCT).assert(img);
+    Golden::new("table_sorted").assert(img);
 }

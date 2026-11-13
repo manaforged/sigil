@@ -130,20 +130,12 @@ fn split_blocks(frame: &image::RgbaImage, rows: std::ops::Range<u32>) -> usize {
 }
 
 #[track_caller]
-fn frame_of(ui: &mut Harness) -> image::RgbaImage {
-    match ui.image() {
-        Ok(Some(frame)) => frame,
-        Ok(None) => panic!("no GPU adapter: the harness returned no frame"),
-        Err(err) => panic!("harness image failed: {err}"),
-    }
-}
-
 #[test]
 fn a_pixel_render_at_scale_two_resolves_hairlines_and_text_at_device_pixels() {
     let mut ui = Harness::new(hairline_and_text)
         .pixels(WIDTH, HEIGHT)
         .scale(SCALE);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     assert_eq!(
         frame.dimensions(),
         DEVICE,
@@ -165,7 +157,7 @@ fn a_pixel_render_at_scale_two_resolves_hairlines_and_text_at_device_pixels() {
 #[test]
 fn the_gpu_surface_returns_an_image_of_its_frame() {
     let mut ui = Harness::new(hairline_and_text).gpu(WIDTH, HEIGHT, SCALE);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     assert_eq!(
         frame.dimensions(),
         DEVICE,
@@ -181,7 +173,7 @@ fn the_gpu_surface_returns_an_image_of_its_frame() {
 #[test]
 fn one_scene_agrees_on_the_cpu_and_the_gpu() {
     let mut ui = Harness::new(fixed_scene).gpu(WIDTH, HEIGHT, SCALE);
-    let gpu = frame_of(&mut ui);
+    let gpu = ui.expect_image();
     let viewport = (WIDTH as f32, HEIGHT as f32);
     let scene = ui.host().emit(viewport);
     let frame = Frame {

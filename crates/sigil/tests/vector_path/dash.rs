@@ -4,7 +4,7 @@ use sigil::scene::SceneBuilder;
 use sigil::widgets::{canvas, path};
 use sigil_kittest::Harness;
 
-use super::{INK, coverage, frame_of};
+use super::{INK, coverage};
 
 fn dashed() -> impl IntoNode {
     canvas(|scene: &mut SceneBuilder, rect: Rect| {
@@ -32,7 +32,7 @@ fn runs(lit: &[bool]) -> Vec<(bool, usize)> {
 #[test]
 fn a_four_four_dash_alternates_four_px_runs_and_gaps() {
     let mut ui = Harness::new(dashed).pixels(100, 20).scale(1.0);
-    let frame = frame_of(&mut ui);
+    let frame = ui.expect_image();
     let lit: Vec<bool> = (10..90).map(|x| coverage(&frame, x, 10) > 0.5).collect();
     let found = runs(&lit);
     println!("dash runs (lit, px): {found:?}");

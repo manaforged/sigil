@@ -8,7 +8,7 @@ fn button_default() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_default").delta(DELTA_PCT).assert(img);
+    Golden::new("button_default").assert(img);
 }
 
 #[test]
@@ -19,9 +19,7 @@ fn button_solid_default() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_solid_default")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("button_solid_default").assert(img);
 }
 
 #[test]
@@ -32,7 +30,7 @@ fn button_hover() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_hover").delta(DELTA_PCT).assert(img);
+    Golden::new("button_hover").assert(img);
 }
 
 #[test]
@@ -43,7 +41,7 @@ fn button_pressed() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_pressed").delta(DELTA_PCT).assert(img);
+    Golden::new("button_pressed").assert(img);
 }
 
 #[test]
@@ -54,7 +52,7 @@ fn button_focused() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("button_focused").assert(img);
 }
 
 #[test]
@@ -65,7 +63,7 @@ fn button_disabled() {
         .size([160, 56])
         .hit((24.0, 16.0))
         .image();
-    Golden::new("button_disabled").delta(DELTA_PCT).assert(img);
+    Golden::new("button_disabled").assert(img);
 }
 
 #[test]
@@ -81,7 +79,7 @@ fn checkbox_checked() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_checked").delta(DELTA_PCT).assert(img);
+    Golden::new("checkbox_checked").assert(img);
 }
 
 #[test]
@@ -97,7 +95,7 @@ fn checkbox_default() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_default").delta(DELTA_PCT).assert(img);
+    Golden::new("checkbox_default").assert(img);
 }
 
 #[test]
@@ -113,7 +111,7 @@ fn checkbox_hover() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_hover").delta(DELTA_PCT).assert(img);
+    Golden::new("checkbox_hover").assert(img);
 }
 
 #[test]
@@ -129,7 +127,7 @@ fn checkbox_pressed() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_pressed").delta(DELTA_PCT).assert(img);
+    Golden::new("checkbox_pressed").assert(img);
 }
 
 #[test]
@@ -145,7 +143,7 @@ fn checkbox_focused() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("checkbox_focused").assert(img);
 }
 
 #[test]
@@ -163,9 +161,7 @@ fn checkbox_disabled() {
     .size([36, 36])
     .hit((16.0, 16.0))
     .image();
-    Golden::new("checkbox_disabled")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("checkbox_disabled").assert(img);
 }
 
 #[test]
@@ -179,7 +175,7 @@ fn slider_default() {
     .size([192, 36])
     .hit((90.0, 14.0))
     .image();
-    Golden::new("slider_default").delta(DELTA_PCT).assert(img);
+    Golden::new("slider_default").assert(img);
 }
 
 #[test]
@@ -193,7 +189,7 @@ fn slider_hover() {
     .size([192, 36])
     .hit((90.0, 14.0))
     .image();
-    Golden::new("slider_hover").delta(DELTA_PCT).assert(img);
+    Golden::new("slider_hover").assert(img);
 }
 
 #[test]
@@ -207,7 +203,7 @@ fn slider_pressed() {
     .size([192, 36])
     .hit((90.0, 14.0))
     .image();
-    Golden::new("slider_pressed").delta(DELTA_PCT).assert(img);
+    Golden::new("slider_pressed").assert(img);
 }
 
 #[test]
@@ -221,7 +217,7 @@ fn slider_focused() {
     .size([192, 36])
     .hit((90.0, 14.0))
     .image();
-    Golden::new("slider_focused").delta(DELTA_PCT).assert(img);
+    Golden::new("slider_focused").assert(img);
 }
 
 #[test]
@@ -236,5 +232,5 @@ fn slider_disabled() {
     .size([192, 36])
     .hit((90.0, 14.0))
     .image();
-    Golden::new("slider_disabled").delta(DELTA_PCT).assert(img);
+    Golden::new("slider_disabled").assert(img);
 }

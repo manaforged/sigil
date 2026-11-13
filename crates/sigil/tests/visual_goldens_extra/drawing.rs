@@ -46,9 +46,7 @@ fn vector_path_shapes() {
     .size([162, 88])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("vector_path_shapes")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("vector_path_shapes").assert(img);
 }
 
 #[test]
@@ -96,9 +94,7 @@ fn vector_gradient_fill() {
     .size([162, 88])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("vector_gradient_fill")
-        .delta(DELTA_PCT)
-        .assert(img);
+    Golden::new("vector_gradient_fill").assert(img);
 }
 
 #[test]
@@ -119,5 +115,5 @@ fn emoji_text_line() {
     .size([312, 72])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("emoji_text_line").delta(DELTA_PCT).assert(img);
+    Golden::new("emoji_text_line").assert(img);
 }

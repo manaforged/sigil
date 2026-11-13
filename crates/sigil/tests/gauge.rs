@@ -102,8 +102,6 @@ fn gauge_fill_tracks_signal() {
     });
 }
 
-const DELTA_PCT: f32 = 0.5;
-
 #[test]
 fn gauge_full() {
     let img = Harness::render(|| {
@@ -115,7 +113,7 @@ fn gauge_full() {
     .size([220, 40])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("gauge_full").delta(DELTA_PCT).assert(img);
+    Golden::new("gauge_full").assert(img);
 }
 
 #[test]
@@ -129,5 +127,5 @@ fn gauge_low_warn() {
     .size([220, 40])
     .hit((1.0, 1.0))
     .image();
-    Golden::new("gauge_low_warn").delta(DELTA_PCT).assert(img);
+    Golden::new("gauge_low_warn").assert(img);
 }

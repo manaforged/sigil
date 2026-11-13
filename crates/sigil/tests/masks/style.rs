@@ -6,7 +6,7 @@ use sigil::style::{MaskImage, MaskSize, Rgba};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
-use super::{GAP, RED, SCALE, SIDE, alpha_ramp, assert_ramp, coverage, frames, gpu_frame, masked};
+use super::{GAP, RED, SCALE, SIDE, alpha_ramp, assert_ramp, coverage, frames, masked};
 
 fn below_gap(node: NodeBuilder) -> impl IntoNode {
     container()
@@ -125,10 +125,10 @@ fn moved_frames() -> Vec<(&'static str, image::RgbaImage)> {
         let width = SIDE + SHIFT as u32;
         let mut ui = Harness::new(shifted(flag)).gpu(width, SIDE, SCALE);
         ui.settle();
-        drop(gpu_frame(&mut ui));
+        drop(ui.expect_image());
         flag.set(true);
         ui.settle();
-        let gpu = gpu_frame(&mut ui);
+        let gpu = ui.expect_image();
         let scene = ui.host().emit((width as f32, SIDE as f32));
         let (device_w, device_h) = ((width as f32 * SCALE) as u32, (SIDE as f32 * SCALE) as u32);
         let frame = Frame {
