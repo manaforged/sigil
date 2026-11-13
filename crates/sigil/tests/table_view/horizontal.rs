@@ -44,7 +44,7 @@ const fn wheel_x_at(x: f32, y: f32, dx: f32) -> Event {
 fn text_x(cx: &Cx, root: NodeId, expected: &str) -> Option<f32> {
     emit_scene(cx, root, None)
         .find_text(expected)
-        .map(|draw| draw.rect.origin.x)
+        .map(|draw| draw.rect().origin.x)
 }
 
 fn scrollbar_track_count(cx: &Cx, root: NodeId) -> usize {

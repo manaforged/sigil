@@ -42,7 +42,7 @@ fn has_warn_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundColor(ColorValue::Token(Token::Warning9))
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Step(Tone::Warning, 9)))
         )
     })
 }
@@ -51,7 +51,7 @@ fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent8))
+            StyleAtom::BackgroundColor(ColorValue::Token(Token::Step(Tone::Primary, 8)))
         )
     })
 }

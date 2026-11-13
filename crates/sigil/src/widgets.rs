@@ -360,7 +360,7 @@ pub use a2ui::{A2UI_CATALOG, A2uiBuilder, a2ui};
 pub use tabs::{TabsBuilder, tabs};
 pub use tag_input::{TagInputBuilder, tag_input};
 pub use terminal::terminal;
-pub use text_edit::{SubmitKey, TextEditBuilder, TextEditState, text_edit};
+pub use text_edit::{SubmitKey, TextState};
 pub use text_field::{TextFieldBuilder, text_field};
 pub use time_field::{DateTime, Time, TimeFieldBuilder, TimeValue, time_field};
 pub use toast::toast;
@@ -403,7 +403,6 @@ crate::kernel::into_node_builder!(
     SliderBuilder,
     SparklineBuilder,
     TabsBuilder,
-    TextEditBuilder,
     TextFieldBuilder,
     ToggleBuilder,
     TooltipBuilder,

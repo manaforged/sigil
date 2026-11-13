@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use crate::style::Token;
+use crate::style::{Token, Tone};
 
 use super::rows;
 
@@ -22,7 +22,7 @@ fn color_at(parser: &vt100::Parser, row: usize, byte: usize) -> Option<Token> {
 #[test]
 fn red_text_paints_in_the_theme_error_color() {
     let parser = screen(b"\x1b[31mred\x1b[0m plain");
-    assert_eq!(color_at(&parser, 0, 0), Some(Token::Error9));
+    assert_eq!(color_at(&parser, 0, 0), Some(Token::Step(Tone::Error, 9)));
     assert_eq!(color_at(&parser, 0, 5), None);
 }
 
@@ -82,6 +82,6 @@ fn rows_fill_the_screen_width_so_backgrounds_reach_the_edge() {
     assert_eq!(rows[0].text.chars().count(), 20);
     assert_eq!(
         rows[0].runs.last().unwrap().face.background,
-        Some(Token::Info9)
+        Some(Token::Step(Tone::Info, 9))
     );
 }

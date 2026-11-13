@@ -12,7 +12,7 @@ fn a_drop_reaches_only_the_pane_under_the_pointer() {
             container()
                 .layout(LayoutStyle::block().width(200.0).height(200.0))
                 .file_drop(move |event: &FileDropEvent| {
-                    if event.phase == FileDropPhase::Dropped {
+                    if event.phase() == FileDropPhase::Dropped {
                         got.update(|seen| seen.push(name));
                     }
                 })

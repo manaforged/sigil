@@ -177,7 +177,7 @@ impl IconBuilder {
                 let token = if self.on_solid {
                     Token::OnSolid
                 } else {
-                    Token::scale(self.tone, self.step).unwrap_or(Token::Gray11)
+                    self.tone.step(self.step)
                 };
                 container_node.child(svg::glyph(svg, token, drawn))
             }

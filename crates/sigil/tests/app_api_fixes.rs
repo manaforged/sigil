@@ -73,7 +73,8 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
-                text_edit(draft)
+                text_field(draft)
+                    .multiline()
                     .submit_on(SubmitKey::Enter)
                     .submit(move |value| log.borrow_mut().push(value.to_owned()))
                     .autofocus(),
@@ -183,7 +184,8 @@ fn a_focused_empty_editor_keeps_its_placeholder() {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
-                text_edit(signal(String::new()))
+                text_field(signal(String::new()))
+                    .multiline()
                     .placeholder("Message")
                     .autofocus(),
             ),

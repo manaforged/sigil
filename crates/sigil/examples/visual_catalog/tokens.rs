@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as _};
 use std::path::Path;
 
-use sigil::style::{Color, ControlSize, Metrics, Radius, Theme, Token, space};
+use sigil::style::{Color, ControlSize, Metrics, Radius, Theme, Token, Tone, space};
 use skrifa::instance::{LocationRef, Size as FontSize};
 use skrifa::string::StringId;
 use skrifa::{FontRef, MetadataProvider};
@@ -91,10 +91,49 @@ fn font_face(out: &mut String, face: &Face) -> fmt::Result {
     )
 }
 
+const SEMANTIC_TOKENS: &[Token] = &[
+    Token::Accent,
+    Token::AccentHover,
+    Token::OnAccent,
+    Token::OnSolid,
+    Token::Field,
+    Token::Surface,
+    Token::SurfaceHover,
+    Token::SurfacePressed,
+    Token::SurfacePressedStrong,
+    Token::SurfaceSubtle,
+    Token::SurfaceInset,
+    Token::OnSurface,
+    Token::OnSurfaceMuted,
+    Token::Placeholder,
+    Token::Border,
+    Token::BorderStrong,
+    Token::BorderSubtle,
+    Token::TableHeader,
+    Token::Scrim,
+    Token::Ring,
+    Token::Overlay,
+    Token::OverlayBorder,
+];
+
 fn colors(out: &mut String, theme: &Theme, indent: &str) -> fmt::Result {
-    for token in Token::ALL {
+    for token in SEMANTIC_TOKENS {
         let value = hex(theme.color(*token));
         writeln!(out, "{indent}--sg-{}: {value};", token.name())?;
+    }
+    for tone in [
+        Tone::Neutral,
+        Tone::Primary,
+        Tone::Success,
+        Tone::Warning,
+        Tone::Error,
+        Tone::Info,
+    ] {
+        for step in 1..=12 {
+            let token = tone.step(step);
+            let value = hex(theme.color(token));
+            writeln!(out, "{indent}--sg-{}: {value};", token.name())?;
+        }
     }
     Ok(())
 }

@@ -15,7 +15,7 @@ fn glow_command_keeps_shadow_kind_glow() {
 
     assert_eq!(scene.commands.len(), 1);
     if let [SceneCommand::DrawShadow { shadow, .. }] = scene.commands.as_slice() {
-        assert_eq!(shadow.kind, ShadowKind::Glow);
+        assert_eq!(shadow.shadow_kind(), ShadowKind::Glow);
     }
 }
 
@@ -38,9 +38,9 @@ fn outer_inner_glow_emit_as_independent_commands() {
             SceneCommand::Rect(_),
             SceneCommand::DrawShadow { shadow: inner, .. },
             SceneCommand::DrawShadow { shadow: glow, .. },
-        ] if outer.kind == ShadowKind::Outer
-            && inner.kind == ShadowKind::Inner
-            && glow.kind == ShadowKind::Glow
+        ] if outer.shadow_kind() == ShadowKind::Outer
+            && inner.shadow_kind() == ShadowKind::Inner
+            && glow.shadow_kind() == ShadowKind::Glow
     ));
 
     let render_path: RenderCommandScene = WgpuRenderer::render_command_scene;
@@ -51,11 +51,11 @@ fn outer_inner_glow_emit_as_independent_commands() {
 fn glow_shadow_has_zero_offset() {
     let g = glow_shadow();
     assert!(
-        (g.offset[0]).abs() < f32::EPSILON,
+        (g.offset()[0]).abs() < f32::EPSILON,
         "glow x-offset must be 0"
     );
     assert!(
-        (g.offset[1]).abs() < f32::EPSILON,
+        (g.offset()[1]).abs() < f32::EPSILON,
         "glow y-offset must be 0"
     );
 }

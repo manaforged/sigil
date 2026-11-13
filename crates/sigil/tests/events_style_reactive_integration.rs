@@ -34,7 +34,7 @@ fn pointer_move_drives_style_reactive_without_allocating() {
                 .pointer_move_capture({
                     let flips = Rc::clone(&flips);
                     move |event| {
-                        let inside = event.position.x < 50.0 && event.position.y < 50.0;
+                        let inside = event.position().x < 50.0 && event.position().y < 50.0;
                         if hover.peek() != inside {
                             flips.set(flips.get() + 1);
                             hover.set(inside);

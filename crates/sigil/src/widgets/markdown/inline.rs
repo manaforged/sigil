@@ -1,6 +1,6 @@
 use super::parse::Inline;
 use crate::app::HostCaps;
-use crate::style::{TextFace, TextRun, Token};
+use crate::style::{TextFace, TextRun, Token, Tone};
 
 #[derive(Clone, Default)]
 pub(super) struct StyledText {
@@ -75,7 +75,7 @@ pub(super) fn note_mark(label: &str) -> String {
 
 fn push_note(out: &mut StyledText, label: &str, face: &TextFace) {
     let mark = TextFace {
-        color: Some(Token::Accent11),
+        color: Some(Tone::Primary.step(11)),
         ..face.clone()
     };
     push_run(out, &note_mark(label), &mark);
@@ -88,7 +88,7 @@ fn push_link(
     href: &str,
 ) {
     let link = TextFace {
-        color: Some(Token::Accent11),
+        color: Some(Tone::Primary.step(11)),
         link: Some(href.into()),
         ..face.clone()
     };

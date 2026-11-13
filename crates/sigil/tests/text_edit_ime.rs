@@ -14,7 +14,7 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
 use sigil::layout::text_geometry;
 use sigil::prelude::*;
-use sigil::widgets::text_edit;
+use sigil::widgets::text_field;
 use widget_support::{compute, find_text_node};
 
 const VIEWPORT: Constraint = Constraint::fixed(360.0, 160.0);
@@ -25,7 +25,7 @@ fn text_edit_preedit_displays_inline() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -49,7 +49,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aaa\nbbb\nccc"));
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -84,7 +84,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::new());
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -127,7 +127,7 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("aé"));
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -148,7 +148,7 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("café"));
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -181,7 +181,7 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         text_geometry(std::rc::Rc::new(sigil::layout::FakeMeasure::default()));
         let value = signal(String::from("initial"));
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         value.set(String::from("replaced by app"));
         let mut router = EventRouter::new();
@@ -221,7 +221,7 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
                 .focusable(true)
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
-        let root = cx.add(text_edit(value));
+        let root = cx.add(text_field(value).multiline());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let _ = compute(&mut cx, other, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -249,7 +249,7 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         let value = signal(String::new());
         let disabled = signal(false);
         let mut cx = Cx::new_root();
-        let root = cx.add(text_edit(value).disabled(disabled));
+        let root = cx.add(text_field(value).multiline().disabled(disabled));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));

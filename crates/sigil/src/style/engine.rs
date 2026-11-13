@@ -1,7 +1,7 @@
 use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
 use crate::style::{
     AnimatorOverlay, Color, ColorAtomKind, ColorValue, NumericAtomKind, Px, RenderStyle, StyleAtom,
-    TextLineHeight, TextStyle, Theme, Token, Tone,
+    TextLineHeight, TextStyle, Theme, Tone,
 };
 
 kittest_pub! {
@@ -77,11 +77,7 @@ impl<'theme> StyleEngine<'theme> {
 
     #[must_use]
     fn tone_step(&self, step: u8) -> Color {
-        let role = self.tone;
-        Token::scale(role, step).map_or_else(
-            || self.theme.scale(role).step(step),
-            |token| self.theme.color(token),
-        )
+        self.theme.color(self.tone.step(step))
     }
 
     /// Resolves a color atom against the theme.

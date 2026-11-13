@@ -4,7 +4,7 @@ use std::rc::Rc;
 use super::patch::{LineId, Patch};
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
-use crate::style::{Paint, Token};
+use crate::style::{Paint, Tone};
 use crate::widgets::Widget;
 
 /// The diff lines selected in a patch.
@@ -85,7 +85,7 @@ impl HunkPicker {
         })
         .paint_when(
             move || selection.with(|picked| picked.hunks.contains(&hunk)),
-            |paint| paint.background(Token::Accent3),
+            |paint| paint.background(Tone::Primary.step(3)),
         )
     }
 
@@ -100,7 +100,7 @@ impl HunkPicker {
         })
         .paint_when(
             move || selection.with(|picked| picked.contains(id)),
-            |paint| paint.background(Token::Accent3),
+            |paint| paint.background(Tone::Primary.step(3)),
         )
     }
 }

@@ -11,7 +11,7 @@ use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::prelude::*;
-use sigil::widgets::{SelectionMode, virtual_list};
+use sigil::widgets::{Selection, SelectionMode, virtual_list};
 use sigil_kittest::stub_text_measure;
 
 const ROW_HEIGHT: f32 = 32.0;
@@ -90,13 +90,13 @@ fn keyboard_navigation_end_to_end() {
 #[test]
 fn selection_propagates_to_a11y() {
     sigil::reactive::Owner::scope("sigil-virtual-list-integration-selection", || {
-        let mut builder = virtual_list((0..20).collect::<Vec<_>>(), row)
+        let selection = signal(Selection::new(SelectionMode::Single));
+        selection.update(|state| state.select(5));
+        let builder = virtual_list((0..20).collect::<Vec<_>>(), row)
             .row_height(ROW_HEIGHT)
             .viewport_height(480.0)
             .viewport_width(320.0)
-            .selection(SelectionMode::Single);
-        let selection = builder.selection_state();
-        selection.update(|state| state.select(5));
+            .selected(selection);
 
         let mut cx = Cx::new_root();
         let root = cx.add(builder);

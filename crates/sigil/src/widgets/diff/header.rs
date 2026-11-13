@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::style::Token;
+use crate::style::{Token, Tone};
 use crate::widgets::Layout;
 
 use super::DiffShape;
@@ -30,8 +30,8 @@ pub(super) fn header(shape: &DiffShape, added: usize, removed: usize) -> NodeBui
                 .ellipsize()
                 .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
                 .class("text-xs font-mono font-bold")
-                .class(Token::Gray12.text()),
+                .class(Tone::Neutral.step(12).text()),
         )
-        .child(count(format!("+{added}"), Token::Success11))
-        .child(count(format!("−{removed}"), Token::Error11))
+        .child(count(format!("+{added}"), Tone::Success.step(11)))
+        .child(count(format!("−{removed}"), Tone::Error.step(11)))
 }

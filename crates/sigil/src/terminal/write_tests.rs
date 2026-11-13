@@ -17,7 +17,7 @@ fn area() -> Rect {
 }
 
 fn label(text: &str, ink: Color, style: TextStyle, tone: Option<Tone>) -> SceneCommand {
-    let run = GlyphRun::new(area(), text, ink, style, 10_000).with_cell(TextFlow::Wrap, tone);
+    let run = GlyphRun::new(area(), text, ink, style, 1.0).with_cell(TextFlow::Wrap, tone);
     SceneCommand::GlyphRun(run)
 }
 
@@ -145,7 +145,7 @@ fn bold_and_italic_text_set_their_attributes() {
         ..TextStyle::default()
     };
     let grid = draw(vec![label("THOUGHT", UNSET, slanted, None)], 20, 3);
-    assert!(grid.get(0, 0).is_some_and(|cell| cell.italic));
+    assert!(grid.get(0, 0).is_some_and(|c| c.italic()));
     let out = bytes(&grid, 0);
     assert!(out.contains("\u{1b}[3m"), "expected italic in {out:?}");
 }

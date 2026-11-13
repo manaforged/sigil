@@ -31,7 +31,7 @@ fn a_gesture_reaches_the_node_under_it() {
             let record = Rc::clone(&record);
             container().layout(LayoutStyle::block().fill()).gesture(
                 move |event: &mut GestureEvent| {
-                    record.borrow_mut().push(event.kind);
+                    record.borrow_mut().push(event.kind());
                 },
             )
         });

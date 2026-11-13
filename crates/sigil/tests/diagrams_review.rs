@@ -135,7 +135,11 @@ fn a_powershell_static_member_is_not_a_comment() {
 #[test]
 fn a_julia_transpose_does_not_open_a_string() {
     let lines = marks("julia", "y = A' * B + 1");
-    assert!(!has_token(&lines[0], Token::Success11), "{:?}", lines[0]);
+    assert!(
+        !has_token(&lines[0], Tone::Success.step(11)),
+        "{:?}",
+        lines[0]
+    );
     assert!(
         !has_token(&lines[0], Token::OnSurfaceMuted),
         "{:?}",
@@ -146,7 +150,11 @@ fn a_julia_transpose_does_not_open_a_string() {
 #[test]
 fn an_fsharp_type_variable_does_not_open_a_string() {
     let lines = marks("fsharp", "let id (x: 'a) = x");
-    assert!(!has_token(&lines[0], Token::Success11), "{:?}", lines[0]);
+    assert!(
+        !has_token(&lines[0], Tone::Success.step(11)),
+        "{:?}",
+        lines[0]
+    );
     assert!(
         lines[0]
             .iter()

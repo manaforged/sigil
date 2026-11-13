@@ -3,10 +3,10 @@ use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutStyle, Overflow};
-use crate::reactive::{Reactive, Signal, memo, signal};
+use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
-use crate::style::{BORDER_WIDTH, Paint, Style, Token};
+use crate::style::{BORDER_WIDTH, Paint, Style, Token, Tone};
 use crate::widgets::Layout;
 
 use super::highlight::language_for_path;
@@ -48,29 +48,41 @@ impl DiffView {
     }
 }
 
+pub(crate) mod diff_sealed {
+    use std::rc::Rc;
+
+    use crate::reactive::{Reactive, Signal, memo, signal};
+
+    use super::Patch;
+
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed {
+        fn into_patch(self) -> Signal<Rc<Patch>>;
+    }
+
+    impl<R: Reactive<String>> Sealed for R {
+        fn into_patch(self) -> Signal<Rc<Patch>> {
+            memo(move || Rc::new(Patch::parse(&self.read())))
+        }
+    }
+
+    impl Sealed for Patch {
+        fn into_patch(self) -> Signal<Rc<Patch>> {
+            signal(Rc::new(self))
+        }
+    }
+
+    impl Sealed for Signal<Patch> {
+        fn into_patch(self) -> Signal<Rc<Patch>> {
+            memo(move || Rc::new(self.get()))
+        }
+    }
+}
+
 /// Input that a diff view can parse into a patch.
-pub trait DiffSource {
-    /// Converts this diff source to patch.
-    fn into_patch(self) -> Signal<Rc<Patch>>;
-}
+pub trait DiffSource: diff_sealed::Sealed {}
 
-impl<R: Reactive<String>> DiffSource for R {
-    fn into_patch(self) -> Signal<Rc<Patch>> {
-        memo(move || Rc::new(Patch::parse(&self.read())))
-    }
-}
-
-impl DiffSource for Patch {
-    fn into_patch(self) -> Signal<Rc<Patch>> {
-        signal(Rc::new(self))
-    }
-}
-
-impl DiffSource for Signal<Patch> {
-    fn into_patch(self) -> Signal<Rc<Patch>> {
-        memo(move || Rc::new(self.get()))
-    }
-}
+impl<S: diff_sealed::Sealed> DiffSource for S {}
 
 type PatchThunk = Box<dyn FnOnce() -> Signal<Rc<Patch>>>;
 
@@ -151,7 +163,7 @@ impl DiffBuilder {
     }
 
     /// Binds the selection; a press on a hunk row or a line row updates it.
-    pub const fn select(mut self, selection: Signal<DiffSelection>) -> Self {
+    pub const fn selected(mut self, selection: Signal<DiffSelection>) -> Self {
         self.shape.selection = Some(selection);
         self
     }
@@ -218,7 +230,7 @@ fn status_row(status: String) -> TextBuilder {
                 .min_size(0.0, 0.0),
         )
         .class("text-xs")
-        .class(Token::Gray11.text())
+        .class(Tone::Neutral.step(11).text())
 }
 
 builder_impls!([] DiffBuilder: paint(style_accumulator), widget, node);

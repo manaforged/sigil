@@ -134,10 +134,10 @@ pub(super) fn decorate(
             continue;
         };
         match line.kind {
-            DecorationKind::Strikethrough => cell.lines.strike = true,
-            DecorationKind::Underline => cell.lines.underline = Underline::Straight,
+            DecorationKind::Strikethrough => cell.set_strike(true),
+            DecorationKind::Underline => cell.underline = Underline::Straight,
             #[cfg(cpu_paint)]
-            DecorationKind::WavyUnderline => cell.lines.underline = Underline::Curly,
+            DecorationKind::WavyUnderline => cell.underline = Underline::Curly,
         }
         if !matches!(line.kind, DecorationKind::Strikethrough) {
             cell.underline_ink = ink;

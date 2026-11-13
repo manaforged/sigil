@@ -67,7 +67,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
                 };
                 DrawRect::new(rect, background)
                     .border_radius(CornerRadii::uniform(radius))
-                    .opacity(run.opacity())
+                    .opacity(run.opacity_bp())
             };
             for rect in &rects {
                 scene.draw_rect_for_node(id, style(*rect), CellRect::default());
@@ -175,7 +175,7 @@ fn line(
         let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
         scene.draw_decoration(
             DrawDecoration::new(kind, band, color)
-                .opacity(run.opacity())
+                .opacity(run.opacity_bp())
                 .line_width(thickness),
         );
     }

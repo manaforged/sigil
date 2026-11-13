@@ -109,10 +109,7 @@ impl Theme {
             Token::OnSurfaceMuted | Token::Placeholder => self.gray.step(11),
             Token::OnSolid => self.on_solid,
             Token::Scrim => SCRIM,
-            _ => {
-                let (role, step) = token.scale_step()?;
-                self.scale(role).step(step)
-            }
+            Token::Step(role, step) => self.scale(role).step(step),
         })
     }
 

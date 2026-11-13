@@ -4,7 +4,7 @@ use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
-use crate::style::{Radius, StyleAtom, Token, space};
+use crate::style::{Radius, StyleAtom, Token, Tone, space};
 use crate::widgets::Layout;
 use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
@@ -42,7 +42,7 @@ pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
         _ => "text-sm font-bold",
     };
     let grid = match level {
-        1 | 2 => Token::Accent11,
+        1 | 2 => Tone::Primary.step(11),
         3 => Token::OnSurface,
         _ => Token::OnSurfaceMuted,
     };

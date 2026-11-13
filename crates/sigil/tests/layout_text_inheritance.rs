@@ -22,7 +22,7 @@ impl TextMeasure for RecordingMeasure {
         self.calls
             .borrow_mut()
             .push((text_of(content), style.clone()));
-        Size::new(style.font_size * text_len(content) * 0.5, style.font_size)
+        Size::new(style.size_px() * text_len(content) * 0.5, style.size_px())
     }
 }
 
@@ -78,11 +78,13 @@ fn text_child_measures_with_inherited_typography() {
     );
     for style in styles {
         assert_eq!(
-            style.font_size, 18.0,
+            style.size_px(),
+            18.0,
             "measurement must see the ancestor's text-lg, not TextStyle::default()"
         );
         assert_eq!(
-            style.font_weight, 700,
+            style.weight(),
+            700,
             "font-bold must inherit into measurement"
         );
     }
@@ -111,7 +113,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     {
         let first = calls.borrow();
         let target_styles = styles_for(&first, "Target");
-        assert!(target_styles.iter().all(|style| style.font_size == 18.0));
+        assert!(target_styles.iter().all(|style| style.size_px() == 18.0));
     }
     calls.borrow_mut().clear();
 
@@ -132,6 +134,6 @@ fn ancestor_typography_change_remeasures_descendant_text() {
          (its own Node::version is unchanged)"
     );
     for style in target_styles {
-        assert_eq!(style.font_size, 20.0, "re-measure must see text-xl");
+        assert_eq!(style.size_px(), 20.0, "re-measure must see text-xl");
     }
 }

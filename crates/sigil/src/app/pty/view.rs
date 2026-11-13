@@ -1,24 +1,24 @@
-use crate::style::{Color, TextFace, TextRun, Token};
+use crate::style::{Color, TextFace, TextRun, Token, Tone};
 
 use super::Row;
 
 const BASE: [Token; 16] = [
-    Token::Gray3,
-    Token::Error9,
-    Token::Success9,
-    Token::Warning9,
-    Token::Info9,
-    Token::Accent9,
-    Token::Info11,
-    Token::Gray11,
-    Token::Gray8,
-    Token::Error11,
-    Token::Success11,
-    Token::Warning11,
-    Token::Info11,
-    Token::Accent11,
-    Token::Info12,
-    Token::Gray12,
+    Token::Step(Tone::Neutral, 3),
+    Token::Step(Tone::Error, 9),
+    Token::Step(Tone::Success, 9),
+    Token::Step(Tone::Warning, 9),
+    Token::Step(Tone::Info, 9),
+    Token::Step(Tone::Primary, 9),
+    Token::Step(Tone::Info, 11),
+    Token::Step(Tone::Neutral, 11),
+    Token::Step(Tone::Neutral, 8),
+    Token::Step(Tone::Error, 11),
+    Token::Step(Tone::Success, 11),
+    Token::Step(Tone::Warning, 11),
+    Token::Step(Tone::Info, 11),
+    Token::Step(Tone::Primary, 11),
+    Token::Step(Tone::Info, 12),
+    Token::Step(Tone::Neutral, 12),
 ];
 
 pub(super) fn rows(screen: &vt100::Screen) -> Vec<Row> {

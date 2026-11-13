@@ -8,17 +8,17 @@ use super::super::TextEdit;
 
 /// Caret and undo state of a text editor.
 #[derive(Clone)]
-pub struct TextEditState {
-    pub(in crate::widgets::text_edit) value: Signal<String>,
-    pub(in crate::widgets::text_edit) caret: Signal<usize>,
+pub struct TextState {
+    pub(in crate::widgets) value: Signal<String>,
+    pub(in crate::widgets) caret: Signal<usize>,
     pub(super) selection: Signal<Option<usize>>,
-    pub(super) edit: Rc<RefCell<TextEdit>>,
+    pub(in crate::widgets) edit: Rc<RefCell<TextEdit>>,
     pub(super) preferred_x: Rc<Cell<Option<f32>>>,
 }
 
-impl std::fmt::Debug for TextEditState {
+impl std::fmt::Debug for TextState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TextEditState")
+        f.debug_struct("TextState")
             .field("value", &self.value)
             .field("caret", &self.caret)
             .field("selection", &self.selection)
@@ -26,7 +26,7 @@ impl std::fmt::Debug for TextEditState {
     }
 }
 
-impl TextEditState {
+impl TextState {
     /// Creates a state over `value` with the caret at the byte offset in `caret`.
     #[must_use]
     pub fn new(value: Signal<String>, caret: Signal<usize>) -> Self {
@@ -41,14 +41,47 @@ impl TextEditState {
         }
     }
 
-    /// Moves the caret to `byte` and extends the selection when `extend` is true.
-    pub fn select(&self, byte: usize, extend: bool) {
-        let mut edit = synced(&self.edit, self.value, self.caret);
-        if extend {
-            edit.extend_to(byte);
-        } else {
-            edit.place_caret(byte);
+    /// Returns the text signal.
+    #[must_use]
+    pub const fn value(&self) -> Signal<String> {
+        self.value
+    }
+
+    /// Returns the caret byte-offset signal.
+    #[must_use]
+    pub const fn caret(&self) -> Signal<usize> {
+        self.caret
+    }
+
+    pub(in crate::widgets) fn rebind_caret(&mut self, position: Signal<usize>) {
+        self.caret = position;
+        let mut edit = self.edit.borrow_mut();
+        edit.sync_external(self.value.peek());
+        edit.place_caret(position.peek());
+        if position.peek() != edit.caret() {
+            position.set(edit.caret());
         }
+    }
+
+    /// Places the caret at `byte` and clears the selection.
+    pub fn select(&self, byte: usize) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        edit.place_caret(byte);
+        self.publish(&edit, false);
+    }
+
+    /// Extends the selection to `byte`.
+    pub fn extend(&self, byte: usize) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        edit.extend_to(byte);
+        self.publish(&edit, false);
+    }
+
+    /// Clears the selection while keeping the caret at its current position.
+    pub fn clear_selection(&self) {
+        let mut edit = synced(&self.edit, self.value, self.caret);
+        let caret = edit.caret();
+        edit.place_caret(caret);
         self.publish(&edit, false);
     }
 
@@ -87,6 +120,18 @@ impl TextEditState {
         let anchor = self.selection.get()?;
         let caret = self.caret.get();
         Some(anchor.min(caret)..anchor.max(caret))
+    }
+}
+
+impl From<Signal<String>> for TextState {
+    fn from(value: Signal<String>) -> Self {
+        Self::new(value, signal(value.peek().len()))
+    }
+}
+
+impl From<&Self> for TextState {
+    fn from(state: &Self) -> Self {
+        state.clone()
     }
 }
 

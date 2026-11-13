@@ -48,6 +48,10 @@ impl Selection {
         self.mode
     }
 
+    pub(super) const fn set_mode(&mut self, mode: SelectionMode) {
+        self.mode = mode;
+    }
+
     /// Returns whether `index` is selected.
     #[must_use]
     pub fn contains(&self, index: usize) -> bool {

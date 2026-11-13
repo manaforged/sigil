@@ -17,24 +17,15 @@ impl Default for TextLineHeight {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct TextStyle {
-    /// The font family name, such as `sans` or `mono`; the default is `system-ui`.
-    pub font_family: String,
-    /// The font size in pixels; the default is 14.
-    pub font_size: f32,
-    /// The font weight from 1 to 1000; the default is 400.
-    pub font_weight: u16,
-    /// Whether the text is italic.
-    pub italic: bool,
-    /// The line height, as a multiple of the font size or in pixels.
-    pub line_height: TextLineHeight,
-    /// The extra space between letters, in ems.
-    pub letter_spacing_em: f32,
-    /// Whether digits all take the same width.
-    pub tabular_nums: bool,
-    /// The line drawn with the text: none, underline, or line-through.
-    pub decoration: crate::style::TextDecoration,
-    /// The styled runs that override this style over byte ranges; `None` for plain text.
-    pub runs: Option<TextRuns>,
+    pub(crate) font_family: String,
+    pub(crate) font_size: f32,
+    pub(crate) font_weight: u16,
+    pub(crate) italic: bool,
+    pub(crate) line_height: TextLineHeight,
+    pub(crate) letter_spacing_em: f32,
+    pub(crate) tabular_nums: bool,
+    pub(crate) decoration: crate::style::TextDecoration,
+    pub(crate) runs: Option<TextRuns>,
 }
 
 /// The overrides of one styled run of text.
@@ -45,42 +36,132 @@ pub struct TextStyle {
 )]
 #[non_exhaustive]
 pub struct TextFace {
-    /// Whether the run is bold: weight 700 unless the base weight is already 700 or more.
-    pub bold: bool,
-    /// Whether the run is italic.
-    pub italic: bool,
-    /// Whether the run uses the `mono` font family.
-    pub mono: bool,
-    /// Whether a line is drawn through the run.
-    pub strike: bool,
-    /// The theme token for the text color of the run, when it sets one.
-    pub color: Option<crate::style::Token>,
-    /// The theme token for the background behind the run, when it sets one.
-    pub background: Option<crate::style::Token>,
-    /// The exact color, if any; it wins over `color`.
-    pub ink: Option<crate::style::Color>,
-    /// The exact background, if any; it wins over `background`.
-    pub fill: Option<crate::style::Color>,
-    /// Whether a line is drawn under the run.
-    pub underline: bool,
-    /// Whether the run is drawn fainter than the text around it.
-    pub dim: bool,
-    /// Whether this is a terminal cell: a square background on a fixed character grid.
-    pub square: bool,
-    /// The link target that the run carries; `None` when the run is not a link.
-    pub link: Option<std::sync::Arc<str>>,
+    pub(crate) bold: bool,
+    pub(crate) italic: bool,
+    pub(crate) mono: bool,
+    pub(crate) strike: bool,
+    pub(crate) color: Option<crate::style::Token>,
+    pub(crate) background: Option<crate::style::Token>,
+    pub(crate) ink: Option<crate::style::Color>,
+    pub(crate) fill: Option<crate::style::Color>,
+    pub(crate) underline: bool,
+    pub(crate) dim: bool,
+    pub(crate) square: bool,
+    pub(crate) link: Option<std::sync::Arc<str>>,
+}
+
+impl TextFace {
+    /// Creates a face with no overrides set.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            bold: false,
+            italic: false,
+            mono: false,
+            strike: false,
+            color: None,
+            background: None,
+            ink: None,
+            fill: None,
+            underline: false,
+            dim: false,
+            square: false,
+            link: None,
+        }
+    }
+
+    /// Sets whether the run is bold.
+    #[must_use]
+    pub const fn bold(mut self, bold: bool) -> Self {
+        self.bold = bold;
+        self
+    }
+
+    /// Sets whether the run is italic.
+    #[must_use]
+    pub const fn italic(mut self, italic: bool) -> Self {
+        self.italic = italic;
+        self
+    }
+
+    /// Sets whether the run uses the `mono` font family.
+    #[must_use]
+    pub const fn mono(mut self, mono: bool) -> Self {
+        self.mono = mono;
+        self
+    }
+
+    /// Sets whether a line is drawn through the run.
+    #[must_use]
+    pub const fn strike(mut self, strike: bool) -> Self {
+        self.strike = strike;
+        self
+    }
+
+    /// Sets whether a line is drawn under the run.
+    #[must_use]
+    pub const fn underline(mut self, underline: bool) -> Self {
+        self.underline = underline;
+        self
+    }
+
+    /// Sets whether the run is drawn fainter than surrounding text.
+    #[must_use]
+    pub const fn dim(mut self, dim: bool) -> Self {
+        self.dim = dim;
+        self
+    }
+
+    /// Sets whether this is a terminal cell background on a fixed character grid.
+    #[must_use]
+    pub const fn square(mut self, square: bool) -> Self {
+        self.square = square;
+        self
+    }
+
+    /// Sets the theme token for the text color of the run.
+    #[must_use]
+    pub fn color(mut self, color: impl Into<Option<crate::style::Token>>) -> Self {
+        self.color = color.into();
+        self
+    }
+
+    /// Sets the theme token for the background behind the run.
+    #[must_use]
+    pub fn background(mut self, background: impl Into<Option<crate::style::Token>>) -> Self {
+        self.background = background.into();
+        self
+    }
+
+    /// Sets the exact text color of the run.
+    #[must_use]
+    pub fn ink(mut self, ink: impl Into<Option<crate::style::Color>>) -> Self {
+        self.ink = ink.into();
+        self
+    }
+
+    /// Sets the exact background color behind the run.
+    #[must_use]
+    pub fn fill(mut self, fill: impl Into<Option<crate::style::Color>>) -> Self {
+        self.fill = fill.into();
+        self
+    }
+
+    /// Sets the link target carried by the run.
+    #[must_use]
+    pub fn link(mut self, link: impl Into<Option<std::sync::Arc<str>>>) -> Self {
+        self.link = link.into();
+        self
+    }
 }
 
 /// A byte range of text with a face.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct TextRun {
-    /// The byte offset where the run starts, inclusive.
-    pub start: usize,
-    /// The byte offset where the run ends, exclusive.
-    pub end: usize,
-    /// The overrides that apply to this byte range.
-    pub face: TextFace,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) face: TextFace,
 }
 
 impl TextRun {
@@ -89,16 +170,60 @@ impl TextRun {
     pub const fn new(start: usize, end: usize, face: TextFace) -> Self {
         Self { start, end, face }
     }
+
+    /// The byte offset where the run starts, inclusive.
+    #[must_use]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    /// The byte offset where the run ends, exclusive.
+    #[must_use]
+    pub const fn end(&self) -> usize {
+        self.end
+    }
+
+    /// The overrides that apply to this byte range.
+    #[must_use]
+    pub const fn face(&self) -> &TextFace {
+        &self.face
+    }
 }
 
 /// The styled runs of a text, sorted by byte offset.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TextRuns(
-    /// The runs in order of their start byte offset.
-    pub std::sync::Arc<[TextRun]>,
-);
+pub struct TextRuns(pub(crate) std::sync::Arc<[TextRun]>);
 
 impl TextRuns {
+    /// Creates styled runs from a slice, vector, or arc of runs.
+    #[must_use]
+    pub fn new(runs: impl Into<std::sync::Arc<[TextRun]>>) -> Self {
+        Self(runs.into())
+    }
+
+    /// Returns the runs in order of their start byte offset.
+    #[must_use]
+    pub fn as_slice(&self) -> &[TextRun] {
+        &self.0
+    }
+
+    /// Returns the number of runs.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns whether there are no runs.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns an iterator over the runs.
+    pub fn iter(&self) -> core::slice::Iter<'_, TextRun> {
+        self.0.iter()
+    }
+
     /// Returns the run that holds `byte`.
     #[must_use]
     pub fn at(&self, byte: usize) -> Option<&TextRun> {
@@ -117,6 +242,21 @@ impl TextRuns {
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
         if face.bold && base < 700 { 700 } else { base }
+    }
+}
+
+impl From<Vec<TextRun>> for TextRuns {
+    fn from(runs: Vec<TextRun>) -> Self {
+        Self(runs.into())
+    }
+}
+
+impl<'a> IntoIterator for &'a TextRuns {
+    type Item = &'a TextRun;
+    type IntoIter = core::slice::Iter<'a, TextRun>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
     }
 }
 
@@ -182,6 +322,38 @@ impl TextStyle {
     pub fn runs(mut self, runs: TextRuns) -> Self {
         self.runs = Some(runs);
         self
+    }
+
+    /// The font size in pixels.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn size_px(&self) -> f32 {
+        self.font_size
+    }
+
+    /// The font weight from 1 to 1000.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn weight(&self) -> u16 {
+        self.font_weight
+    }
+
+    /// The line height.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn height(&self) -> TextLineHeight {
+        self.line_height
+    }
+
+    /// The extra space between letters, in ems.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn spacing_em(&self) -> f32 {
+        self.letter_spacing_em
     }
 }
 

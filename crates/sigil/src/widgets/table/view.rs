@@ -6,7 +6,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, memo};
-use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::{Layout, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
@@ -354,7 +354,7 @@ fn default_empty() -> NodeBuilder {
             text("No rows")
                 .nowrap()
                 .class("text-sm")
-                .class(Token::Gray11.text()),
+                .class(Tone::Neutral.step(11).text()),
         )
 }
 

@@ -4,7 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{TextEditBuilder, TextFieldBuilder};
+use sigil::widgets::TextFieldBuilder;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - fields").size(520, 720), build)
@@ -14,8 +14,10 @@ pub(crate) fn text_field_demo() -> TextFieldBuilder {
     text_field(signal(String::from("Ada Lovelace"))).placeholder("Full name")
 }
 
-pub(crate) fn text_edit_demo() -> TextEditBuilder {
-    text_edit(signal(String::from("Multi-line\neditable text."))).height(96.0)
+pub(crate) fn text_edit_demo() -> TextFieldBuilder {
+    text_field(signal(String::from("Multi-line\neditable text.")))
+        .multiline()
+        .height(96.0)
 }
 
 pub(crate) fn number_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {

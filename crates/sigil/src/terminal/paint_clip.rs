@@ -263,13 +263,15 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
 }
 
 fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &StyledCell) {
-    cell.bold = styled.face.bold;
-    cell.italic = styled.face.italic;
-    cell.dim = styled.face.dim;
+    cell.set_bold(styled.face.bold);
+    cell.set_italic(styled.face.italic);
+    cell.set_dim(styled.face.dim);
     cell.link = styled.link;
-    cell.lines.strike |= styled.face.strike;
+    if styled.face.strike {
+        cell.set_strike(true);
+    }
     if styled.face.underline != Underline::None {
-        cell.lines.underline = styled.face.underline;
+        cell.underline = styled.face.underline;
     }
     if let Some(bg) = styled.bg {
         cell.bg = bg;

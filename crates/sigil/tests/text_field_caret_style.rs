@@ -19,7 +19,7 @@ fn caret_uses_the_fields_resolved_typography() {
         let scene = focused_field_scene();
         let text = scene.find_text(VALUE).expect("field text is painted");
         assert!(
-            (text.style().font_size - 14.0).abs() <= f32::EPSILON,
+            (text.font_size() - 14.0).abs() <= f32::EPSILON,
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
@@ -32,7 +32,7 @@ fn caret_uses_the_fields_resolved_typography() {
                 affinity: TextAffinity::Downstream,
             },
         );
-        let expected_x = text.rect.origin.x + expected.x;
+        let expected_x = text.rect().origin.x + expected.x;
         let caret = nearest_caret(&scene, expected_x);
 
         assert!(

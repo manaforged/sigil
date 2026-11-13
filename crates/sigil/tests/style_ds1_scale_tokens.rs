@@ -9,16 +9,16 @@ use sigil::style::{StyleAtom, Theme, Token, Tone};
 #[test]
 fn role_step_tokens_resolve_to_scale_steps() {
     let theme = Theme::default();
-    assert_eq!(theme.color(Token::Gray2), slate_light().step(2));
-    assert_eq!(theme.color(Token::Gray12), slate_light().step(12));
-    assert_eq!(theme.color(Token::Accent9), blue_light().step(9));
-    assert_eq!(theme.color(Token::Success3), green_light().step(3));
-    assert_eq!(theme.color(Token::Warning9), amber_light().step(9));
-    assert_eq!(theme.color(Token::Error9), ruby_light().step(9));
-    assert_eq!(theme.color(Token::Info3), cyan_light().step(3));
+    assert_eq!(theme.color(Tone::Neutral.step(2)), slate_light().step(2));
+    assert_eq!(theme.color(Tone::Neutral.step(12)), slate_light().step(12));
+    assert_eq!(theme.color(Tone::Primary.step(9)), blue_light().step(9));
+    assert_eq!(theme.color(Tone::Success.step(3)), green_light().step(3));
+    assert_eq!(theme.color(Tone::Warning.step(9)), amber_light().step(9));
+    assert_eq!(theme.color(Tone::Error.step(9)), ruby_light().step(9));
+    assert_eq!(theme.color(Tone::Info.step(3)), cyan_light().step(3));
 
-    assert_eq!(theme.color(Token::Success11), green_light().step(11));
-    assert_eq!(theme.color(Token::Error11), ruby_light().step(11));
+    assert_eq!(theme.color(Tone::Success.step(11)), green_light().step(11));
+    assert_eq!(theme.color(Tone::Error.step(11)), ruby_light().step(11));
 }
 
 #[test]
@@ -32,9 +32,9 @@ fn semantic_aliases_resolve_to_scale_steps() {
 #[test]
 fn dark_theme_flips_every_scale_and_semantic_alias() {
     let theme = Theme::dark();
-    assert_eq!(theme.color(Token::Gray2), slate_dark().step(2));
-    assert_eq!(theme.color(Token::Gray12), slate_dark().step(12));
-    assert_eq!(theme.color(Token::Accent9), blue_dark().step(9));
+    assert_eq!(theme.color(Tone::Neutral.step(2)), slate_dark().step(2));
+    assert_eq!(theme.color(Tone::Neutral.step(12)), slate_dark().step(12));
+    assert_eq!(theme.color(Tone::Primary.step(9)), blue_dark().step(9));
 
     assert_eq!(theme.color(Token::Surface), slate_dark().step(2));
     assert_eq!(theme.color(Token::OnSurface), slate_dark().step(12));
@@ -51,8 +51,8 @@ fn dark_theme_flips_every_scale_and_semantic_alias() {
 #[test]
 fn customizing_accent_scale_propagates_through_role_tokens() {
     let theme = Theme::default().tone(Tone::Primary, ruby_light());
-    assert_eq!(theme.color(Token::Accent9), ruby_light().step(9));
-    assert_eq!(theme.color(Token::Accent3), ruby_light().step(3));
+    assert_eq!(theme.color(Tone::Primary.step(9)), ruby_light().step(9));
+    assert_eq!(theme.color(Tone::Primary.step(3)), ruby_light().step(3));
     assert_eq!(theme.color(Token::Accent), ruby_light().step(9));
 }
 

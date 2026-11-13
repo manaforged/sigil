@@ -29,39 +29,33 @@ use crate::scene::corner_radii::CornerRadii;
 use super::fills::{PatternKind, Stroke};
 use super::gradient::Gradient;
 
-/// A command that fills or strokes a rounded rectangle.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[non_exhaustive]
-pub struct DrawRect {
-    /// The node this rectangle paints, or `None` when no node owns it.
-    pub node: Option<NodeId>,
-    /// The bounds of the rectangle, in logical pixels.
-    pub rect: Rect,
-    /// The fill color; a transparent color leaves only the stroke.
-    pub color: Color,
-    #[cfg(feature = "kittest")]
+kittest_pub! {
+    /// A command that fills or strokes a rounded rectangle.
     #[doc(hidden)]
-    pub border_radius: CornerRadii,
-    #[cfg(not(feature = "kittest"))]
-    pub(crate) border_radius: CornerRadii,
-    /// The opacity in basis points; 10000 is opaque.
-    pub opacity: u16,
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    pub stroke: Option<Stroke>,
-    #[cfg(not(feature = "kittest"))]
-    pub(crate) stroke: Option<Stroke>,
-    /// The theme tone the terminal host fills with when `color` is fully transparent.
-    pub tone: Option<Tone>,
-    /// True when the node has no laid-out child, so the terminal host may fill a partly covered cell with a half block.
-    pub leaf: bool,
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    pub border: Option<CellBorder>,
-    #[cfg(not(feature = "kittest"))]
-    pub(crate) border: Option<CellBorder>,
-    /// True for a focus ring or a border strip, which the terminal host does not fill.
-    pub outline: bool,
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[non_exhaustive]
+    pub struct DrawRect {
+        /// The node this rectangle paints, or `None` when no node owns it.
+        pub node: Option<NodeId>,
+        /// The bounds of the rectangle, in logical pixels.
+        pub rect: Rect,
+        /// The fill color; a transparent color leaves only the stroke.
+        pub color: Color,
+        /// The radius of each corner.
+        pub border_radius: CornerRadii,
+        /// The opacity in basis points; 10000 is opaque.
+        pub opacity: u16,
+        /// The stroke around the rectangle, if any.
+        pub stroke: Option<Stroke>,
+        /// The theme tone the terminal host fills with when `color` is fully transparent.
+        pub tone: Option<Tone>,
+        /// True when the node has no laid-out child, so the terminal host may fill a partly covered cell with a half block.
+        pub leaf: bool,
+        /// The box-drawing border the terminal host draws around the node, if it has one.
+        pub border: Option<CellBorder>,
+        /// True for a focus ring or a border strip, which the terminal host does not fill.
+        pub outline: bool,
+    }
 }
 
 kittest_pub! {
@@ -115,7 +109,9 @@ macro_rules! node_and_cell {
 node_and_cell!(DrawRect, DrawGradient);
 
 impl DrawRect {
+    kittest_pub! {
     /// A solid rectangle with square corners at full opacity.
+    #[doc(hidden)]
     #[must_use]
     pub const fn new(rect: Rect, color: Color) -> Self {
         Self {
@@ -131,6 +127,7 @@ impl DrawRect {
             outline: false,
         }
     }
+    }
 
     kittest_pub! {
     /// Sets the radius of each corner of the rectangle.
@@ -142,11 +139,14 @@ impl DrawRect {
     }
     }
 
+    kittest_pub! {
     /// Sets the opacity in basis points; 10000 is opaque.
+    #[doc(hidden)]
     #[must_use]
     pub const fn opacity(mut self, opacity: u16) -> Self {
         self.opacity = opacity;
         self
+    }
     }
 
     kittest_pub! {

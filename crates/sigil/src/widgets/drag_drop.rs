@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::events::{MouseButtons, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::reactive::{Signal, memo, signal};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
 use crate::widgets::Widget;
 use crate::widgets::interaction::{is_cancel, is_primary};
 
@@ -239,10 +239,10 @@ where
             .class("px-8 py-4")
             .class([
                 Radius::Md.atom(),
-                Token::Accent3.background(),
-                Token::Accent12.text(),
+                Tone::Primary.step(3).background(),
+                Tone::Primary.step(12).text(),
                 StyleAtom::BorderWidth(BORDER_WIDTH),
-                Token::Accent6.border(),
+                Tone::Primary.step(6).border(),
             ])
             .child(render(&payload)),
     ]

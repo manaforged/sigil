@@ -38,7 +38,7 @@ fn host_layout_reads_text_and_tone_without_a_window() {
     let scene = host.scene((80.0, 24.0)).unwrap();
     let hello = scene.find_text("hello").expect("hello run");
     assert!(
-        hello.rect.width > 0.0 && hello.rect.height > 0.0,
+        hello.rect().width > 0.0 && hello.rect().height > 0.0,
         "expected a laid-out rect in {scene:?}"
     );
 }

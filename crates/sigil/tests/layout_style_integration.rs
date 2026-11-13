@@ -174,15 +174,15 @@ impl TextMeasure for StyleAwareMeasure {
         _space: Constraint,
     ) -> Size {
         Size::new(
-            style.font_size + f32::from(style.font_weight) / 100.0,
+            style.size_px() + f32::from(style.weight()) / 100.0,
             text_line_height(style),
         )
     }
 }
 
 fn text_line_height(style: &TextStyle) -> f32 {
-    match style.line_height {
-        TextLineHeight::FontSizeRelative(value) => style.font_size * value,
+    match style.height() {
+        TextLineHeight::FontSizeRelative(value) => style.size_px() * value,
         TextLineHeight::Absolute(value) => value,
     }
 }

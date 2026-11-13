@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Length, Overflow};
-use crate::style::{BORDER_WIDTH, Paint, Token, space};
+use crate::style::{BORDER_WIDTH, Paint, Token, Tone, space};
 use crate::widgets::Layout;
 use crate::widgets::highlight::{byte_marks, text_runs};
 
@@ -22,18 +22,28 @@ pub(super) const ROW_INSET: f32 = space(2);
 
 const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
-        LineKind::Removed => (Some(Token::Error3), Token::Error12, "removed", '-'),
-        LineKind::Added => (Some(Token::Success3), Token::Success12, "added", '+'),
-        LineKind::Context | LineKind::Note => (None, Token::Gray12, "unchanged", ' '),
+        LineKind::Removed => (
+            Some(Tone::Error.step(3)),
+            Tone::Error.step(12),
+            "removed",
+            '-',
+        ),
+        LineKind::Added => (
+            Some(Tone::Success.step(3)),
+            Tone::Success.step(12),
+            "added",
+            '+',
+        ),
+        LineKind::Context | LineKind::Note => (None, Tone::Neutral.step(12), "unchanged", ' '),
     }
 }
 
 pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
     let picker = draw.picker;
     match row {
-        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray11),
+        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Tone::Neutral.step(11)),
         DiffRow::Hunk { hunk, header } => {
-            let line = text_row(header.clone(), "text-xs font-mono", Token::Info12);
+            let line = text_row(header.clone(), "text-xs font-mono", Tone::Info.step(12));
             match picker {
                 Some(picker) => picker.hunk(line, *hunk),
                 None => line,
@@ -44,7 +54,7 @@ pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
         DiffRow::Overflow => text_row(
             "… expand tool output to see the remaining changes".to_string(),
             "text-xs",
-            Token::Gray11,
+            Tone::Neutral.step(11),
         ),
     }
 }
@@ -133,7 +143,7 @@ pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
             .nowrap()
             .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
             .class("text-xs font-mono")
-            .class(Token::Gray11.text()),
+            .class(Tone::Neutral.step(11).text()),
     );
     let row = segments(cell, fg, draw.wrap)
         .into_iter()

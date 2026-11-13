@@ -3,7 +3,7 @@ use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone};
 
 use super::scales::Scales;
 use super::{ChartMark, ChartSeries, ChartView, Stack, interact, plot, summary};
@@ -23,7 +23,7 @@ pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
         .class([
             Radius::Md.atom(),
             StyleAtom::BorderWidth(BORDER_WIDTH),
-            Token::Gray6.border(),
+            Tone::Neutral.step(6).border(),
             Token::Surface.background(),
         ])
         .with(

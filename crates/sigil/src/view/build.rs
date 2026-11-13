@@ -4,8 +4,7 @@ use crate::kernel::{IntoNode, NodeBuilder, TextContent, fragment, show, text};
 use crate::layout::{column, row};
 use crate::style::{ClassSource, Paint};
 use crate::widgets::{
-    Orientation, Widget, button, card, checkbox, divider, field, scroll, spacer, text_edit,
-    text_field, toggle,
+    Orientation, Widget, button, card, checkbox, divider, field, scroll, spacer, text_field, toggle,
 };
 
 use super::parse::{Attrs, Item, Variant};
@@ -67,7 +66,6 @@ fn shown(item: &Rc<Item>) -> Box<dyn IntoNode> {
         Kind::TextField => text_field_of(item),
         Kind::Checkbox => checkbox_of(item),
         Kind::Toggle => toggle_of(item),
-        Kind::TextEdit => text_edit_of(item),
         Kind::Divider => Box::new(styled(divider(Orientation::Horizontal), attrs)),
         Kind::Spacer => Box::new(styled(spacer(), attrs)),
         Kind::Slot => item.slot.as_ref().map_or_else(
@@ -90,6 +88,9 @@ macro_rules! input_of {
             }
             if let Some(action) = attrs.submit.clone() {
                 node = node.submit(move |_| action());
+            }
+            if attrs.multiline {
+                node = node.multiline();
             }
             styled(node, attrs)
         })
@@ -128,20 +129,14 @@ fn field_of(item: &Item) -> Box<dyn IntoNode> {
         .children
         .first()
         .filter(|child| child.attrs.show.is_none());
-    match child.map(|child| (child.kind, child)) {
-        Some((Kind::TextField, child)) => {
-            boxed(input_of!(child, text_field).map(|node| styled(field(label(item), node), attrs)))
-        }
-        Some((Kind::TextEdit, child)) => {
-            boxed(input_of!(child, text_edit).map(|node| styled(field(label(item), node), attrs)))
-        }
-        _ => {
-            let control = item
-                .children
-                .iter()
-                .fold(fragment(), |control, next| control.child(build(next)));
-            Box::new(styled(field(label(item), control), attrs))
-        }
+    if let Some((Kind::TextField, child)) = child.map(|child| (child.kind, child)) {
+        boxed(input_of!(child, text_field).map(|node| styled(field(label(item), node), attrs)))
+    } else {
+        let control = item
+            .children
+            .iter()
+            .fold(fragment(), |control, next| control.child(build(next)));
+        Box::new(styled(field(label(item), control), attrs))
     }
 }
 
@@ -174,10 +169,6 @@ fn button_of(item: &Item) -> Box<dyn IntoNode> {
 
 fn text_field_of(item: &Item) -> Box<dyn IntoNode> {
     boxed(input_of!(item, text_field))
-}
-
-fn text_edit_of(item: &Item) -> Box<dyn IntoNode> {
-    boxed(input_of!(item, text_edit))
 }
 
 fn checkbox_of(item: &Item) -> Box<dyn IntoNode> {

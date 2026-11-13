@@ -209,16 +209,16 @@ pub(crate) fn term(cells: &Cells, look: Look) -> Term {
 
 fn cell_style(cell: &Cell, theme: &Theme) -> String {
     let mut style = String::new();
-    if let Some(colour) = ink_css(cell.fg, theme) {
+    if let Some(colour) = ink_css(cell.fg(), theme) {
         style.extend(["color:", &colour, ";"]);
     }
-    if let Some(colour) = ink_css(cell.bg, theme) {
+    if let Some(colour) = ink_css(cell.bg(), theme) {
         style.extend(["background:", &colour, ";"]);
     }
-    if cell.bold {
+    if cell.bold() {
         style.push_str("font-weight:bold;");
     }
-    if cell.italic {
+    if cell.italic() {
         style.push_str("font-style:italic;");
     }
     style
@@ -227,7 +227,7 @@ fn cell_style(cell: &Cell, theme: &Theme) -> String {
 fn ink_css(ink: Ink, theme: &Theme) -> Option<String> {
     match ink {
         Ink::Exact(rgba) => Some(hex(rgba)),
-        Ink::Of(tone) => Token::scale(tone, 11).map(|token| hex(theme.color(token))),
+        Ink::Of(tone) => Some(hex(theme.color(tone.step(11)))),
         _ => None,
     }
 }

@@ -24,8 +24,8 @@ fn map_backtab_is_shift_tab() {
     let Some(Event::Key(mapped)) = map_key(&event) else {
         panic!("backtab did not map");
     };
-    assert_eq!(mapped.key, Key::Named(NamedKey::Tab));
-    assert_eq!(mapped.modifiers, Modifiers::SHIFT);
+    assert_eq!(mapped.key(), &Key::Named(NamedKey::Tab));
+    assert_eq!(mapped.modifiers(), Modifiers::SHIFT);
 }
 #[test]
 fn a_focus_change_reaches_the_terminal() {

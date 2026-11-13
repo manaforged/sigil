@@ -58,10 +58,10 @@ fn file_drop_broadcasts_to_registered_handlers() {
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
             .file_drop(move |event: &FileDropEvent| {
-                if event.phase == FileDropPhase::Dropped
-                    && let Some(path) = &event.path
+                if event.phase() == FileDropPhase::Dropped
+                    && let Some(path) = event.path()
                 {
-                    dropped.borrow_mut().push(path.clone());
+                    dropped.borrow_mut().push(path.to_owned());
                 }
             })
     });
@@ -196,7 +196,7 @@ fn pointer_handlers_receive_target_local_position() {
                     .layout(abs_rect(40.0, 30.0, 20.0, 20.0))
                     .pointer_down({
                         let local = Rc::clone(&local);
-                        move |event| local.set((event.position.x, event.position.y))
+                        move |event| local.set((event.position().x, event.position().y))
                     }),
             ),
     );

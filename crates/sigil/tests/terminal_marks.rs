@@ -46,7 +46,7 @@ fn first_ink(tone: Option<Tone>) -> Option<sigil::terminal::Ink> {
                 .child(bar)
         });
         let grid = host.grid([], 30, 3).expect("layout");
-        grid.get(0, 0).map(|cell| cell.fg)
+        grid.get(0, 0).map(|cell| cell.fg())
     })
 }
 

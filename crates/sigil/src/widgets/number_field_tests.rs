@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
+use super::private::Sealed as _;
 use super::*;
 use crate::reactive::{Owner, signal};
 use crate::style::Locale;

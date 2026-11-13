@@ -44,9 +44,18 @@ impl SceneBuilder {
         )));
     }
 
+    /// Paints a solid `color` rectangle at `rect`.
+    pub fn fill_rect(&mut self, rect: Rect, color: Color) {
+        self.commands
+            .push(SceneCommand::Rect(DrawRect::new(rect, color)));
+    }
+
+    kittest_pub! {
     /// Appends a rectangle.
+    #[doc(hidden)]
     pub fn draw_rect(&mut self, draw: DrawRect) {
         self.commands.push(SceneCommand::Rect(draw));
+    }
     }
 
     pub(crate) const fn recorded(&self) -> usize {

@@ -220,7 +220,7 @@ fn toggle_off_emits_surface_hover() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.color(sigil::style::Token::Gray6)));
+        assert!(rect_colors(&cx, root).contains(&theme.color(Tone::Neutral.step(6))));
     });
 }
 

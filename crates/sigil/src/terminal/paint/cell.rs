@@ -42,39 +42,49 @@ pub enum Underline {
     Curly,
 }
 
-/// The text decoration lines of a cell.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct Lines {
-    /// The underline under the text; none by default.
-    pub underline: Underline,
-    /// Whether a line strikes through the text.
-    pub strike: bool,
-}
+const BOLD: u8 = 1 << 0;
+const ITALIC: u8 = 1 << 1;
+const DIM: u8 = 1 << 2;
+const STRIKE: u8 = 1 << 3;
 
 /// One character cell with its colors and attributes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Cell {
     pub(crate) text: Glyph,
-    /// The color of the text; `Ink::Bare` by default.
-    pub fg: Ink,
-    /// The color behind the text; `Ink::Bare` by default.
-    pub bg: Ink,
-    /// Whether the text is bold; bold wins over `dim`.
-    pub bold: bool,
-    /// Whether the text is italic.
-    pub italic: bool,
-    /// Whether the text is faint; ignored when `bold` is set.
-    pub dim: bool,
-    /// The underline and the strike-through of the text.
-    pub lines: Lines,
-    /// The color of the underline; `Ink::Bare` uses the text color.
-    pub underline_ink: Ink,
+    pub(crate) fg: Ink,
+    pub(crate) bg: Ink,
+    pub(crate) flags: u8,
+    pub(crate) underline: Underline,
+    pub(crate) underline_ink: Ink,
     pub(crate) link: Option<Link>,
 }
 
 impl Cell {
+    const fn set_flag(&mut self, bit: u8, value: bool) {
+        if value {
+            self.flags |= bit;
+        } else {
+            self.flags &= !bit;
+        }
+    }
+
+    pub(crate) const fn set_bold(&mut self, value: bool) {
+        self.set_flag(BOLD, value);
+    }
+
+    pub(crate) const fn set_italic(&mut self, value: bool) {
+        self.set_flag(ITALIC, value);
+    }
+
+    pub(crate) const fn set_dim(&mut self, value: bool) {
+        self.set_flag(DIM, value);
+    }
+
+    pub(crate) const fn set_strike(&mut self, value: bool) {
+        self.set_flag(STRIKE, value);
+    }
+
     /// The grapheme painted in this cell.
     #[must_use]
     pub fn text(&self) -> &str {
@@ -84,6 +94,54 @@ impl Cell {
     /// Sets the grapheme painted in this cell.
     pub fn set_text(&mut self, text: &str) {
         self.text = Glyph::new(text);
+    }
+
+    /// The color of the text; `Ink::Bare` by default.
+    #[must_use]
+    pub const fn fg(&self) -> Ink {
+        self.fg
+    }
+
+    /// The color behind the text; `Ink::Bare` by default.
+    #[must_use]
+    pub const fn bg(&self) -> Ink {
+        self.bg
+    }
+
+    /// Whether the text is bold; bold wins over `dim`.
+    #[must_use]
+    pub const fn bold(&self) -> bool {
+        (self.flags & BOLD) != 0
+    }
+
+    /// Whether the text is italic.
+    #[must_use]
+    pub const fn italic(&self) -> bool {
+        (self.flags & ITALIC) != 0
+    }
+
+    /// Whether the text is faint; ignored when `bold` is set.
+    #[must_use]
+    pub const fn dim(&self) -> bool {
+        (self.flags & DIM) != 0
+    }
+
+    /// The underline under the text; `Underline::None` by default.
+    #[must_use]
+    pub const fn underline(&self) -> Underline {
+        self.underline
+    }
+
+    /// Whether a line strikes through the text.
+    #[must_use]
+    pub const fn strike(&self) -> bool {
+        (self.flags & STRIKE) != 0
+    }
+
+    /// The color of the underline; `Ink::Bare` uses the text color.
+    #[must_use]
+    pub const fn underline_ink(&self) -> Ink {
+        self.underline_ink
     }
 
     /// Returns the URL that this cell opens as a hyperlink, or `None` when it has no link.
@@ -97,19 +155,15 @@ impl Cell {
             text: _,
             fg,
             bg,
-            bold,
-            italic,
-            dim,
-            lines,
+            flags,
+            underline,
             underline_ink,
             link,
         } = *self;
         fg == other.fg
             && bg == other.bg
-            && bold == other.bold
-            && italic == other.italic
-            && dim == other.dim
-            && lines == other.lines
+            && flags == other.flags
+            && underline == other.underline
             && underline_ink == other.underline_ink
             && link == other.link
     }
@@ -121,13 +175,8 @@ impl Cell {
             text: Glyph::inline(" "),
             fg: Ink::Bare,
             bg: Ink::Bare,
-            bold: false,
-            italic: false,
-            dim: false,
-            lines: Lines {
-                underline: Underline::None,
-                strike: false,
-            },
+            flags: 0,
+            underline: Underline::None,
             underline_ink: Ink::Bare,
             link: None,
         }

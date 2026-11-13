@@ -8,8 +8,9 @@ mod ime;
 mod render;
 
 pub(crate) use buffer::TextEdit;
-pub use builder::{SubmitKey, TextEditBuilder, text_edit};
-pub use handlers::TextEditState;
+pub use builder::SubmitKey;
+pub(in crate::widgets) use builder::{MultilineConfig, build_multiline};
+pub use handlers::TextState;
 pub(in crate::widgets) use handlers::{
     KeyProfile, LineStep, TextEditRuntime, attach_a11y_edit, clipboard_keys, edit_keys, edit_value,
     history_keys, move_caret, noop_change, submit_text, word_keys,

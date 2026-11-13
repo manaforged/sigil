@@ -13,8 +13,8 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
-    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LayerEffect, LayerScope,
-    LinearGradient, SceneBuilder,
+    CommandScene, CornerRadii, DrawGradient, GradientStop, LayerEffect, LayerScope, LinearGradient,
+    SceneBuilder,
 };
 use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::shared_device;
@@ -205,9 +205,7 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
         opacity: 1.0,
         blend: sigil::scene::BlendMode::Normal,
     });
-    scene.draw_rect(
-        DrawRect::new(clip, rgba(240, 240, 250, 220)).border_radius(CornerRadii::uniform(12.0)),
-    );
+    scene.fill_rect(clip, rgba(240, 240, 250, 220));
     scene.pop_layer();
 }
 

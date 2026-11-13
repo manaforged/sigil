@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::geometry::Rect;
 use crate::hal::RenderedGlyph;
 use crate::kernel::NodeId;
-use crate::style::{Color, TextStyle, Tone};
+use crate::style::{Color, TextLineHeight, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
@@ -90,17 +90,32 @@ impl SharedGlyph {
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct GlyphRun {
-    /// The node this text belongs to, or `None` when no node owns it.
-    pub node: Option<NodeId>,
-    /// The box the text is laid out in, in logical pixels; glyph positions are relative to its origin.
-    pub rect: Rect,
+    pub(crate) node: Option<NodeId>,
+    pub(crate) rect: Rect,
     shared: Arc<SharedGlyph>,
 }
 
 impl GlyphRun {
     /// Creates a one-line text run in `rect` with no node and no positioned glyphs.
     #[must_use]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "opacity is clamped to 0..=1 before scaling to 0..=10_000"
+    )]
     pub fn new(
+        rect: Rect,
+        text: impl Into<String>,
+        color: Color,
+        style: TextStyle,
+        opacity: f32,
+    ) -> Self {
+        let bp = (opacity.clamp(0.0, 1.0) * 10_000.0).round() as u16;
+        Self::new_bp(rect, text, color, style, bp)
+    }
+
+    #[must_use]
+    pub(crate) fn new_bp(
         rect: Rect,
         text: impl Into<String>,
         color: Color,
@@ -126,6 +141,18 @@ impl GlyphRun {
         }
     }
 
+    /// The node this text belongs to, or `None` when no node owns it.
+    #[must_use]
+    pub const fn node(&self) -> Option<NodeId> {
+        self.node
+    }
+
+    /// The box the text is laid out in, in logical pixels; glyph positions are relative to its origin.
+    #[must_use]
+    pub const fn rect(&self) -> Rect {
+        self.rect
+    }
+
     /// The string that this run draws, before shaping.
     #[must_use]
     pub fn text(&self) -> &str {
@@ -144,9 +171,39 @@ impl GlyphRun {
         &self.shared.style
     }
 
-    /// The opacity in basis points; 10000 is opaque.
+    /// The font family name of this run.
     #[must_use]
-    pub fn opacity(&self) -> u16 {
+    pub fn font_family(&self) -> &str {
+        &self.shared.style.font_family
+    }
+
+    /// The font size in pixels.
+    #[must_use]
+    pub fn font_size(&self) -> f32 {
+        self.shared.style.font_size
+    }
+
+    /// The font weight from 1 to 1000.
+    #[must_use]
+    pub fn font_weight(&self) -> u16 {
+        self.shared.style.font_weight
+    }
+
+    /// The line height of this run.
+    #[must_use]
+    pub fn line_height(&self) -> TextLineHeight {
+        self.shared.style.line_height
+    }
+
+    /// The opacity from 0.0 (transparent) to 1.0 (opaque).
+    #[must_use]
+    pub fn opacity(&self) -> f32 {
+        f32::from(self.shared.opacity) / 10_000.0
+    }
+
+    #[cfg(vector_paint)]
+    #[must_use]
+    pub(crate) fn opacity_bp(&self) -> u16 {
         self.shared.opacity
     }
 
@@ -345,7 +402,7 @@ kittest_pub! {
         style: TextStyle,
         opacity: u16,
     ) -> GlyphRun {
-        shape_run(GlyphRun::new(rect, text, color, style, opacity))
+        shape_run(GlyphRun::new_bp(rect, text, color, style, opacity))
     }
 }
 

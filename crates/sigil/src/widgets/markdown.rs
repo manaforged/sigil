@@ -112,10 +112,10 @@ impl MarkdownEditBuilder {
 
     fn root(self) -> NodeBuilder {
         use super::splitter::splitter;
-        use super::text_edit::text_edit;
+        use super::text_field::text_field;
         use crate::layout::Orientation;
 
-        let editor = text_edit(self.source);
+        let editor = text_field(self.source).multiline();
         let editor = match self.disabled {
             Some(disabled) => editor.disabled(disabled),
             None => editor,
@@ -180,7 +180,11 @@ fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
         )
         .class([Token::Field.background(), Radius::Md.atom()]);
     if let Some(title) = data.title {
-        column = column.child(text(title).class("text-xs").class(Token::Gray11.text()));
+        column = column.child(
+            text(title)
+                .class("text-xs")
+                .class(ChartTone::Neutral.step(11).text()),
+        );
     }
     let mut chart = super::chart::chart(data.values).labels(data.labels);
     if data.line {
@@ -205,7 +209,7 @@ fn image_node(alt: &str, src: &str) -> NodeBuilder {
         );
     }
     let _ = src;
-    container().child(text(format!("[{alt}]")).class(Token::Gray11.text()))
+    container().child(text(format!("[{alt}]")).class(ChartTone::Neutral.step(11).text()))
 }
 
 #[cfg(feature = "image-decode")]

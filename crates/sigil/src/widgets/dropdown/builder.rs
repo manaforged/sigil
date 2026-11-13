@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::animation::runtime::presets;
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, IntoPx, JustifyContent, LayoutStyle, Overflow, rows};
+use crate::layout::{AlignItems, IntoPxExt as _, JustifyContent, LayoutStyle, Overflow, rows};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{
     BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,

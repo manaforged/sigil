@@ -77,7 +77,7 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
         .align_items(AlignItems::Center)
         .gap(Space::None)
         .radius(Radius::Md)
-        .paint_when(active, |s| s.background(Token::Accent4))
+        .paint_when(active, |s| s.background(Tone::Primary.step(4)))
         .child(text(name).nowrap().text_role(TextRole::Body))
         .pointer_up(move |_| page.set(index))
 }
@@ -178,7 +178,10 @@ fn inputs_page() -> NodeBuilder {
             "Text field",
             text_field(signal(String::new())).placeholder("Full name"),
         ))
-        .child(field("Text edit", text_edit(notes).height(96.0)))
+        .child(field(
+            "Text edit",
+            text_field(notes).multiline().height(96.0),
+        ))
         .child(field("Number", number_field(signal(4_i32), 1..=99)))
         .child(field(
             "Date",

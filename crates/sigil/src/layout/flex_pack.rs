@@ -1,5 +1,5 @@
 use crate::Error;
-use crate::layout::IntoPx;
+use crate::layout::IntoPxExt as _;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::flex_algorithm::{FlexCtx, layout_item_subtree};
 use crate::layout::forest::{ComputedBox, NodeRef};

@@ -6,7 +6,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols};
 use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Theme, Token,
+    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Theme, Tone,
 };
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
@@ -122,7 +122,7 @@ fn swatch(value: Signal<Color>) -> NodeBuilder {
 static SWATCH_CHROME: &[StyleAtom] = &[
     StyleAtom::Radius(Radius::Md),
     StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::Gray6.border(),
+    Tone::Neutral.step(6).border(),
 ];
 static NO_CHROME: &[StyleAtom] = &[];
 

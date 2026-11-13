@@ -199,7 +199,7 @@ fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
         .layout(centered_square(MARK_OUTER))
         .style(Style::new().radius_px(8))
         .tone_scope(tone)
-        .class(Token::Gray7.background())
+        .class(Tone::Neutral.step(7).background())
         .style_reactive(move || selected_atoms(checked))
         .child(mark_core)
 }

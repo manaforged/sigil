@@ -45,7 +45,7 @@ fn painted<N: IntoNode>(
 
 fn solid(row: &[sigil::terminal::Cell]) -> usize {
     row.iter()
-        .filter(|cell| cell.text().trim().is_empty() && cell.bg != sigil::terminal::Ink::Bare)
+        .filter(|cell| cell.text().trim().is_empty() && cell.bg() != sigil::terminal::Ink::Bare)
         .count()
 }
 

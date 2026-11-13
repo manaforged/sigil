@@ -228,7 +228,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         .or_else(|| paint.text_fill.cloned());
     let color = clip.as_ref().map_or(color, text_color);
     let run = shape_run(
-        GlyphRun::new(rect, text, color, text_style.clone(), style.opacity)
+        GlyphRun::new_bp(rect, text, color, text_style.clone(), style.opacity)
             .with_cell(flow, paint.tone)
             .with_inks(super::runs::inks(text_style.runs.as_ref(), paint.theme)),
     );

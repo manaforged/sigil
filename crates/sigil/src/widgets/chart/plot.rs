@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
 use crate::layout::{JustifyContent, LayoutStyle, Length};
-use crate::style::{Token, space};
+use crate::style::{Tone, space};
 use crate::widgets::Layout;
 
 use super::axis::{Gutter, axis_width, category_axis, crowded, legend, title, x_axis, y_axis};
@@ -353,6 +353,6 @@ fn axis_slot(text: String, width: usize) -> NodeBuilder {
             crate::kernel::text(text)
                 .wrap()
                 .class("text-xs")
-                .class(Token::Gray11.text()),
+                .class(Tone::Neutral.step(11).text()),
         )
 }

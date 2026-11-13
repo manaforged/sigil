@@ -19,14 +19,10 @@ pub enum Gesture {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct GestureEvent {
-    /// Which gesture it is, with its delta.
-    pub kind: Gesture,
-    /// The stage of the gesture: started, moved, ended, or cancelled.
-    pub phase: ScrollPhase,
-    /// The pointer position at the time of the gesture, in logical pixels.
-    pub position: Point,
-    /// The modifiers held during the gesture.
-    pub modifiers: Modifiers,
+    pub(crate) kind: Gesture,
+    pub(crate) phase: ScrollPhase,
+    pub(crate) position: Point,
+    pub(crate) modifiers: Modifiers,
     pub(super) propagation_stopped: bool,
 }
 
@@ -39,5 +35,29 @@ impl GestureEvent {
             modifiers: Modifiers::empty(),
             propagation_stopped: false,
         }
+    }
+
+    /// Which gesture it is, with its delta.
+    #[must_use]
+    pub const fn kind(&self) -> Gesture {
+        self.kind
+    }
+
+    /// The stage of the gesture: started, moved, ended, or cancelled.
+    #[must_use]
+    pub const fn phase(&self) -> ScrollPhase {
+        self.phase
+    }
+
+    /// The pointer position at the time of the gesture, in logical pixels.
+    #[must_use]
+    pub const fn position(&self) -> Point {
+        self.position
+    }
+
+    /// The modifiers held during the gesture.
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
+        self.modifiers
     }
 }

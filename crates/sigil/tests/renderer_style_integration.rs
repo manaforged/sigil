@@ -43,7 +43,7 @@ fn text_emits_default_on_surface_color() {
     let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Readable").unwrap();
 
-    assert_eq!(text.node, Some(root));
+    assert_eq!(text.node(), Some(root));
     assert_eq!(text.text(), "Readable");
     assert_eq!(text.color(), Theme::default().color(Token::OnSurface));
 }
@@ -76,9 +76,9 @@ fn styled_text_typography_emits_in_scene() {
     let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Large").unwrap();
 
-    assert_eq!(text.style().font_size, 20.0);
-    assert_eq!(text.style().font_weight, 700);
-    assert_eq!(text.style().line_height, TextLineHeight::Absolute(32.0));
+    assert_eq!(text.font_size(), 20.0);
+    assert_eq!(text.font_weight(), 700);
+    assert_eq!(text.line_height(), TextLineHeight::Absolute(32.0));
 }
 
 #[test]
@@ -142,8 +142,8 @@ fn nested_text_scene_rect_is_absolute() {
     let scene = emit_scene(&cx, root, None);
     let text = find_text(&scene, "Nested").unwrap();
 
-    assert_eq!(text.rect.origin.x, 32.0);
-    assert_eq!(text.rect.origin.y, 32.0);
+    assert_eq!(text.rect().origin.x, 32.0);
+    assert_eq!(text.rect().origin.y, 32.0);
 }
 
 #[test]
@@ -248,14 +248,14 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
-        run.style().font_size,
+        run.font_size(),
         18.0,
         "a bare text child must inherit the ancestor's text-lg"
     );
-    assert_eq!(run.style().font_weight, 700, "font-bold must inherit");
-    assert_eq!(run.style().font_family, "mono", "font-mono must inherit");
+    assert_eq!(run.font_weight(), 700, "font-bold must inherit");
+    assert_eq!(run.font_family(), "mono", "font-mono must inherit");
     assert_eq!(
-        run.style().line_height,
+        run.line_height(),
         TextLineHeight::Absolute(24.0),
         "leading-24 must inherit"
     );
@@ -277,12 +277,12 @@ fn own_font_class_beats_inherited_typography() {
     let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Own").expect("child glyph run emitted");
     assert_eq!(
-        run.style().font_size,
+        run.font_size(),
         12.0,
         "a text node's own text-* size must beat the inherited one"
     );
     assert_eq!(
-        run.style().font_weight,
+        run.font_weight(),
         700,
         "properties the node does not set itself keep the inherited value"
     );
@@ -309,11 +309,11 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let scene = emit_scene(&cx, root, None);
     let run = find_text(&scene, "Deferred").expect("deferred glyph run emitted");
     assert_eq!(
-        run.style().font_size,
+        run.font_size(),
         18.0,
         "top-layer deferral must not drop the inherited font size"
     );
-    assert_eq!(run.style().font_weight, 700);
+    assert_eq!(run.font_weight(), 700);
     assert_eq!(
         run.color(),
         Theme::default().color(Token::Accent),
@@ -351,7 +351,7 @@ fn top_layer_subtree_paints_after_later_siblings() {
         .background(Token::Accent);
     let sibling = container()
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-        .background(Token::Error9);
+        .background(sigil::style::Tone::Error.step(9));
     let root = cx.add(container().child(floating).child(sibling));
 
     layout(&mut cx, root);

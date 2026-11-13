@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
-use crate::style::Token;
+use crate::style::Tone;
 use crate::widgets::Layout;
 
 use super::decimate::Candle;
@@ -97,6 +97,6 @@ fn plot_area(layer: NodeBuilder, pad: f32) -> NodeBuilder {
                 .padding(Space::px(pad)),
         )
         .class("border-b")
-        .class(Token::Gray6.border())
+        .class(Tone::Neutral.step(6).border())
         .child(layer)
 }

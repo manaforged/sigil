@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::CellForm;
-use crate::layout::{IntoPx, rows};
+use crate::layout::{IntoPxExt as _, rows};
 use crate::reactive::{Signal, memo};
 use crate::style::{StyleAtom, Token};
 use crate::widgets::Widget;

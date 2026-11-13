@@ -57,7 +57,7 @@ fn backed_rows(parent: sigil::layout::LayoutStyle) -> usize {
         .filter(|&row| {
             grid.row(row)
                 .get(1)
-                .is_some_and(|cell| cell.bg != sigil::terminal::Ink::Bare)
+                .is_some_and(|cell| cell.bg() != sigil::terminal::Ink::Bare)
         })
         .count()
 }
@@ -160,7 +160,7 @@ fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
         .filter(|&row| {
             grid.row(row)
                 .get(2)
-                .is_some_and(|cell| cell.bg != sigil::terminal::Ink::Bare)
+                .is_some_and(|cell| cell.bg() != sigil::terminal::Ink::Bare)
         })
         .count()
 }

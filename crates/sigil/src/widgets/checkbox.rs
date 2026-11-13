@@ -55,8 +55,14 @@ static EMPTY_BASE: &[StyleAtom] = &[];
 static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.background(), Token::Accent.border()];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
     &[Token::AccentHover.background(), Token::AccentHover.border()];
-static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.background(), Token::Gray9.border()];
-static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.background(), Token::Gray10.border()];
+static NEUTRAL_CHECKED: &[StyleAtom] = &[
+    Tone::Neutral.step(9).background(),
+    Tone::Neutral.step(9).border(),
+];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[
+    Tone::Neutral.step(10).background(),
+    Tone::Neutral.step(10).border(),
+];
 static UNCHECKED: &[StyleAtom] = &[Token::Field.background()];
 static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.background()];
 static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];

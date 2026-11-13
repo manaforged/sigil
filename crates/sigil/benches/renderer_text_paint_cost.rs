@@ -37,7 +37,11 @@ fn text_paint_cost(c: &mut Criterion) {
             for draw in &runs {
                 let run = draw;
                 let paragraph = engine
-                    .layout_paragraph_styled(run.text(), Some(run.rect.width.max(1.0)), run.style())
+                    .layout_paragraph_styled(
+                        run.text(),
+                        Some(run.rect().width.max(1.0)),
+                        run.style(),
+                    )
                     .expect("bench text layout succeeds");
                 glyphs = glyphs.saturating_add(paragraph.rendered_glyphs().len());
             }
@@ -60,7 +64,7 @@ fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::scene::GlyphRun]
     for draw in runs {
         let run = draw;
         let _ = engine
-            .layout_paragraph_styled(run.text(), Some(run.rect.width.max(1.0)), run.style())
+            .layout_paragraph_styled(run.text(), Some(run.rect().width.max(1.0)), run.style())
             .expect("bench text layout succeeds");
     }
 }

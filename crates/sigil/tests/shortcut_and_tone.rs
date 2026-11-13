@@ -15,9 +15,10 @@ fn shortcut_label_uses_symbols_on_mac_and_words_elsewhere() {
 
 #[test]
 fn tone_tokens_follow_the_scale_steps() {
-    assert_eq!(Tone::Success.fill(), Token::Success9);
-    assert_eq!(Tone::Error.solid(), Token::Error11);
-    assert_eq!(Tone::Warning.shade(), Token::Warning4);
-    assert_eq!(Tone::Neutral.fill(), Token::Gray9);
-    assert_eq!(Tone::Info.token(99), Token::OnSurface);
+    assert_eq!(Tone::Success.fill(), Tone::Success.step(9));
+    assert_eq!(Tone::Error.solid(), Tone::Error.step(11));
+    assert_eq!(Tone::Warning.shade(), Tone::Warning.step(4));
+    assert_eq!(Tone::Neutral.fill(), Tone::Neutral.step(9));
+    assert_eq!(Tone::Info.step(99), Token::Step(Tone::Info, 12));
+    assert_eq!(Tone::Info.step(0), Token::Step(Tone::Info, 1));
 }

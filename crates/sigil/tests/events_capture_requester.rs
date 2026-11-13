@@ -78,7 +78,7 @@ fn tree() -> (Cx, NodeId, Log, Log) {
         let moves = Rc::clone(&moves);
         move |ev: &mut PointerEvent| {
             if ev.is_captured() {
-                let at = ev.window_position;
+                let at = ev.window_position();
                 moves.borrow_mut().push((at.x, at.y));
             }
         }
@@ -87,7 +87,7 @@ fn tree() -> (Cx, NodeId, Log, Log) {
         let ups = Rc::clone(&ups);
         move |ev: &mut PointerEvent| {
             if ev.is_captured() {
-                let at = ev.window_position;
+                let at = ev.window_position();
                 ups.borrow_mut().push((at.x, at.y));
             }
         }

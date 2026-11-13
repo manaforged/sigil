@@ -169,7 +169,7 @@ The node owns the hit testing and the state, so a hover background needs no sign
 
 ## Where to go next
 
-- Widgets: `button`, `text_field`, `text_edit`, `modal`, `virtual_list`, `table`, `card`, `avatar`, `sidebar`. Alerts are `sigil::app::dialog::message` / `confirm`; they return a signal and do not block.
+- Widgets: `button`, `text_field`, `modal`, `virtual_list`, `table`, `card`, `avatar`, `sidebar`. Alerts are `sigil::app::dialog::message` / `confirm`; they return a signal and do not block.
 - Architecture: [Overview](arch/overview.md), [State](arch/state.md), [Painting](arch/painting.md), [Platform](arch/platform.md), [Modules](arch/modules.md).
 - The runnable widget demos: `crates/sigil/examples`.
 - The terminal host: [Terminal host](terminal.md).

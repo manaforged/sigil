@@ -20,18 +20,10 @@ kittest_pub! {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct Shadow {
-    /// Red, green, and blue in linear light, then alpha, each from 0 to 1 and not premultiplied.
-    pub color: [f32; 4],
-    /// How far the shadow moves right and down from the shape, in logical pixels.
-    pub offset: [f32; 2],
-    /// The standard deviation of the blur, in logical pixels; a negative value counts as 0.
-    pub blur: f32,
-    /// How far the shadow grows past the shape's edge before the blur, in logical pixels; a negative value shrinks it.
-    pub spread: f32,
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    pub kind: ShadowKind,
-    #[cfg(not(feature = "kittest"))]
+    pub(crate) color: [f32; 4],
+    pub(crate) offset: [f32; 2],
+    pub(crate) blur: f32,
+    pub(crate) spread: f32,
     pub(crate) kind: ShadowKind,
 }
 
@@ -46,6 +38,30 @@ impl Shadow {
             spread,
             kind: ShadowKind::Outer,
         }
+    }
+
+    /// Red, green, and blue in linear light, then alpha, each from 0 to 1 and not premultiplied.
+    #[must_use]
+    pub const fn color(&self) -> [f32; 4] {
+        self.color
+    }
+
+    /// How far the shadow moves right and down from the shape, in logical pixels.
+    #[must_use]
+    pub const fn offset(&self) -> [f32; 2] {
+        self.offset
+    }
+
+    /// The standard deviation of the blur, in logical pixels; a negative value counts as 0.
+    #[must_use]
+    pub const fn blur(&self) -> f32 {
+        self.blur
+    }
+
+    /// How far the shadow grows past the shape's edge before the blur, in logical pixels; a negative value shrinks it.
+    #[must_use]
+    pub const fn spread(&self) -> f32 {
+        self.spread
     }
 
     /// Creates a glow: a shadow of `color` with no offset.
@@ -64,6 +80,14 @@ impl Shadow {
             self.kind = kind;
             self
         }
+    }
+
+    /// Returns whether the shadow is outer, inner, or a glow.
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn shadow_kind(&self) -> ShadowKind {
+        self.kind
     }
 }
 

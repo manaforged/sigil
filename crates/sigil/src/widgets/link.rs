@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, TextContent, text};
-use crate::style::{StateStyle, StyleAtom, StyleVariant, TextDecoration, Token};
+use crate::style::{StateStyle, StyleAtom, StyleVariant, TextDecoration, Tone};
 
 use super::shared::{Activate, DIMMED, accessible_name, noop_activate};
 
 const UNDERLINE: StyleAtom = StyleAtom::TextDecoration(TextDecoration::Underline);
 
-static REST: &[StyleAtom] = &[Token::Accent11.text(), UNDERLINE];
-static ACTIVE: &[StyleAtom] = &[Token::Accent12.text(), UNDERLINE];
+static REST: &[StyleAtom] = &[Tone::Primary.step(11).text(), UNDERLINE];
+static ACTIVE: &[StyleAtom] = &[Tone::Primary.step(12).text(), UNDERLINE];
 
 static LINK: StyleVariant =
     StyleVariant::new(REST, StateStyle::new(&[], ACTIVE, ACTIVE, ACTIVE, DIMMED));

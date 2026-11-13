@@ -1,22 +1,26 @@
-use crate::kernel::IntoNode;
+pub(crate) mod row_sealed {
+    use crate::kernel::IntoNode;
 
-/// Row renderer of a virtual list.
-pub trait RowRender<T>: 'static {
-    /// The node type of one row.
-    type Row: IntoNode + 'static;
+    #[allow(unnameable_types, reason = "sealed")]
+    pub trait Sealed<T>: 'static {
+        type Row: IntoNode + 'static;
+        fn row(&self, index: usize, item: &T) -> Self::Row;
+    }
 
-    /// Renders the row of `item` at `index`.
-    fn row(&self, index: usize, item: &T) -> Self::Row;
-}
+    impl<T, F, N> Sealed<T> for F
+    where
+        F: Fn(usize, &T) -> N + 'static,
+        N: IntoNode + 'static,
+    {
+        type Row = N;
 
-impl<T, F, N> RowRender<T> for F
-where
-    F: Fn(usize, &T) -> N + 'static,
-    N: IntoNode + 'static,
-{
-    type Row = N;
-
-    fn row(&self, index: usize, item: &T) -> N {
-        self(index, item)
+        fn row(&self, index: usize, item: &T) -> N {
+            self(index, item)
+        }
     }
 }
+
+/// Row renderer of a virtual list.
+pub trait RowRender<T>: row_sealed::Sealed<T> + 'static {}
+
+impl<T, R: row_sealed::Sealed<T> + 'static> RowRender<T> for R {}

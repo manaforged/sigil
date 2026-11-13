@@ -10,7 +10,7 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
     ClassSource, Color, ColorValue, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
-    StyleVariant, Token, space,
+    StyleVariant, Token, Tone, space,
 };
 use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
@@ -46,7 +46,7 @@ static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.background()
 static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
 static LINE_ACTIVE_HOVER: &[StyleAtom] =
     &[Token::Accent.border(), Token::SurfaceHover.background()];
-static LABEL_MUTED: &[StyleAtom] = &[Token::Gray11.text(), StyleAtom::FontWeight(500)];
+static LABEL_MUTED: &[StyleAtom] = &[Tone::Neutral.step(11).text(), StyleAtom::FontWeight(500)];
 static LABEL_ACTIVE: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(600)];
 static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(700)];
 static LINE_BASE: &[StyleAtom] = &[

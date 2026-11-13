@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, Position};
-use crate::style::{BORDER_WIDTH, Token};
+use crate::style::{BORDER_WIDTH, Token, Tone};
 use crate::widgets::Layout;
 use crate::widgets::vector::PathBuilder;
 
@@ -71,7 +71,9 @@ impl Pens {
                 size,
             ))
             .child(layer(
-                self.notes.fill(Token::Accent3).stroke(Token::Accent7, thin),
+                self.notes
+                    .fill(Tone::Primary.step(3))
+                    .stroke(Tone::Primary.step(7), thin),
                 size,
             ));
         for label in self.labels {

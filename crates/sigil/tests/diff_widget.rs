@@ -46,7 +46,7 @@ fn a_click_on_a_hunk_header_selects_its_changed_lines() {
         export.set(Some(selection));
         diff(text.to_owned())
             .view(DiffView::Unified)
-            .select(selection)
+            .selected(selection)
     })
     .size(80, 12);
     ui.settle();

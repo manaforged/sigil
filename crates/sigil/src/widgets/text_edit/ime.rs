@@ -32,7 +32,7 @@ impl ImeState {
         }
     }
 
-    pub(super) fn report_caret_rect(&self, target: Signal<Option<Rect>>) {
+    pub(in crate::widgets) fn report_caret_rect(&self, target: Signal<Option<Rect>>) {
         self.caret_rect.set(Some(target));
     }
 

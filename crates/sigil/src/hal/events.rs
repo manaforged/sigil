@@ -54,10 +54,22 @@ pub enum FileDropPhase {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct FileDropEvent {
+    pub(crate) path: Option<alloc::string::String>,
+    pub(crate) phase: FileDropPhase,
+}
+
+impl FileDropEvent {
     /// The path of the file; `None` when the drag is cancelled.
-    pub path: Option<alloc::string::String>,
+    #[must_use]
+    pub fn path(&self) -> Option<&str> {
+        self.path.as_deref()
+    }
+
     /// Whether the file hovers, was dropped, or the drag was cancelled.
-    pub phase: FileDropPhase,
+    #[must_use]
+    pub const fn phase(&self) -> FileDropPhase {
+        self.phase
+    }
 }
 
 /// A named key or a character.
@@ -96,6 +108,30 @@ impl From<String> for Key {
     }
 }
 
+impl PartialEq<Key> for &Key {
+    fn eq(&self, other: &Key) -> bool {
+        **self == *other
+    }
+}
+
+impl PartialEq<&Self> for Key {
+    fn eq(&self, other: &&Self) -> bool {
+        *self == **other
+    }
+}
+
+impl PartialEq<NamedKey> for Key {
+    fn eq(&self, other: &NamedKey) -> bool {
+        matches!(self, Self::Named(named) if named == other)
+    }
+}
+
+impl PartialEq<NamedKey> for &Key {
+    fn eq(&self, other: &NamedKey) -> bool {
+        matches!(*self, Key::Named(named) if named == other)
+    }
+}
+
 #[cfg(target_os = "macos")]
 const PRIMARY: Modifiers = Modifiers::META;
 #[cfg(not(target_os = "macos"))]
@@ -127,10 +163,8 @@ const KEY_LABELS: [(NamedKey, &str, &str); 12] = [
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub struct Shortcut {
-    /// The key that triggers the shortcut.
-    pub key: Key,
-    /// The modifiers that must be held with the key.
-    pub modifiers: Modifiers,
+    pub(crate) key: Key,
+    pub(crate) modifiers: Modifiers,
 }
 
 impl Shortcut {
@@ -141,6 +175,18 @@ impl Shortcut {
             key: key.into(),
             modifiers,
         }
+    }
+
+    /// The key that triggers the shortcut.
+    #[must_use]
+    pub const fn key(&self) -> &Key {
+        &self.key
+    }
+
+    /// The modifiers that must be held with the key.
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
+        self.modifiers
     }
 
     /// Creates a shortcut for `key` with no modifiers.
@@ -236,18 +282,12 @@ pub enum KeyPhase {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct KeyEvent {
-    /// The key by its meaning: a named key or the text that it types.
-    pub key: Key,
-    /// The key by its place on the keyboard; `Unidentified` when the host does not report it.
-    pub physical: PhysicalKey,
-    /// The modifiers held during the event.
-    pub modifiers: Modifiers,
-    /// True when the event is an auto-repeat of a held key.
-    pub repeat: bool,
-    /// Whether the key was pressed or released.
-    pub phase: KeyPhase,
-    /// The text that the key press types; `None` when it types none.
-    pub text: Option<String>,
+    pub(crate) key: Key,
+    pub(crate) physical: PhysicalKey,
+    pub(crate) modifiers: Modifiers,
+    pub(crate) repeat: bool,
+    pub(crate) phase: KeyPhase,
+    pub(crate) text: Option<String>,
     propagation_stopped: bool,
 }
 
@@ -262,6 +302,42 @@ impl KeyEvent {
             text: None,
             propagation_stopped: false,
         }
+    }
+
+    /// The key by its meaning: a named key or the text that it types.
+    #[must_use]
+    pub const fn key(&self) -> &Key {
+        &self.key
+    }
+
+    /// The key by its place on the keyboard; `Unidentified` when the host does not report it.
+    #[must_use]
+    pub const fn physical(&self) -> PhysicalKey {
+        self.physical
+    }
+
+    /// The modifiers held during the event.
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
+        self.modifiers
+    }
+
+    /// True when the event is an auto-repeat of a held key.
+    #[must_use]
+    pub const fn repeat(&self) -> bool {
+        self.repeat
+    }
+
+    /// Whether the key was pressed or released.
+    #[must_use]
+    pub const fn phase(&self) -> KeyPhase {
+        self.phase
+    }
+
+    /// The text that the key press types; `None` when it types none.
+    #[must_use]
+    pub fn text(&self) -> Option<&str> {
+        self.text.as_deref()
     }
 
     /// The modifiers of the event, limited to Shift, Ctrl, Alt, and Meta.
@@ -313,14 +389,10 @@ pub enum ScrollDelta {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct ScrollEvent {
-    /// The pointer position at the time of the scroll, in logical pixels.
-    pub position: Point,
-    /// The amount to scroll, in pixels or in lines.
-    pub delta: ScrollDelta,
-    /// The modifiers held during the scroll.
-    pub modifiers: Modifiers,
-    /// The stage of the scroll: started, moved, ended, or cancelled.
-    pub phase: ScrollPhase,
+    pub(crate) position: Point,
+    pub(crate) delta: ScrollDelta,
+    pub(crate) modifiers: Modifiers,
+    pub(crate) phase: ScrollPhase,
     propagation_stopped: bool,
 }
 
@@ -333,6 +405,30 @@ impl ScrollEvent {
             phase,
             propagation_stopped: false,
         }
+    }
+
+    /// The pointer position at the time of the scroll, in logical pixels.
+    #[must_use]
+    pub const fn position(&self) -> Point {
+        self.position
+    }
+
+    /// The amount to scroll, in pixels or in lines.
+    #[must_use]
+    pub const fn delta(&self) -> ScrollDelta {
+        self.delta
+    }
+
+    /// The modifiers held during the scroll.
+    #[must_use]
+    pub const fn modifiers(&self) -> Modifiers {
+        self.modifiers
+    }
+
+    /// The stage of the scroll: started, moved, ended, or cancelled.
+    #[must_use]
+    pub const fn phase(&self) -> ScrollPhase {
+        self.phase
     }
 }
 

@@ -70,4 +70,5 @@ pub use text_geometry::text_geometry;
 pub(crate) use text_geometry::{TextStyleCapture, with_text_geometry};
 #[cfg(feature = "pty")]
 pub(crate) use units::mono_cell;
+pub(crate) use units::px_sealed::Sealed as IntoPxExt;
 pub use units::{IntoPx, cols, em, rows};

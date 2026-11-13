@@ -3,7 +3,7 @@ use crate::layout::{AlignItems, LayoutStyle, Space};
 use crate::reactive::{Reactive, Signal, effect, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{StyleAtom, Token};
+use crate::style::{StyleAtom, Token, Tone};
 use crate::widgets::{Layout, Widget};
 
 use super::super::button::{ButtonBuilder, button};
@@ -30,7 +30,10 @@ const fn slot(index: usize, page: usize, pages: usize) -> Option<usize> {
     }
 }
 
-static CURRENT: &[StyleAtom] = &[Token::Accent4.background(), Token::Accent12.text()];
+static CURRENT: &[StyleAtom] = &[
+    Tone::Primary.step(4).background(),
+    Tone::Primary.step(12).text(),
+];
 static OTHER: &[StyleAtom] = &[];
 
 fn row_layout() -> LayoutStyle {
@@ -155,5 +158,9 @@ pub fn breadcrumbs(
 }
 
 fn separator() -> NodeBuilder {
-    container().child(text(SEPARATOR).class(Token::Gray11.text()).hittable(false))
+    container().child(
+        text(SEPARATOR)
+            .class(Tone::Neutral.step(11).text())
+            .hittable(false),
+    )
 }

@@ -324,7 +324,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             if let SceneCommand::GlyphRun(d) = c
                 && d.text().contains("token")
             {
-                eprintln!("PAINTED {:?} @ y={}", d.text(), d.rect.origin.y);
+                eprintln!("PAINTED {:?} @ y={}", d.text(), d.rect().origin.y);
             }
         }
         assert_eq!(

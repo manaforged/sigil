@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token, Tone};
 use crate::widgets::Layout;
 
 use super::super::shared::Activate;
@@ -14,7 +14,7 @@ static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
     ROW_SELECTED.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::Accent8.border(),
+    Tone::Primary.step(8).border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 

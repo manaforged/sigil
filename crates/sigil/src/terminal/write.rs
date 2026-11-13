@@ -118,7 +118,7 @@ struct AnsiStyle {
 impl AnsiStyle {
     fn of(cell: &Cell, caps: &Capabilities) -> Self {
         let (foreground, background) = terminal_inks(cell);
-        let underline = match cell.lines.underline {
+        let underline = match cell.underline {
             Underline::Curly if !caps.underline_styles => Underline::Straight,
             other => other,
         };
@@ -126,15 +126,15 @@ impl AnsiStyle {
         Self {
             fg: paint(foreground, caps.color),
             bg: paint(background, caps.color),
-            intensity: if cell.bold {
+            intensity: if cell.bold() {
                 Attribute::Bold
-            } else if cell.dim {
+            } else if cell.dim() {
                 Attribute::Dim
             } else {
                 Attribute::NormalIntensity
             },
-            italic: cell.italic,
-            strike: cell.lines.strike,
+            italic: cell.italic(),
+            strike: cell.strike(),
             underline,
             underline_color: (styled && cell.underline_ink.set())
                 .then(|| paint(cell.underline_ink, caps.color))

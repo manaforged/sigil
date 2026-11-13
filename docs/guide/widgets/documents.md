@@ -12,7 +12,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 
 `markdown_inline(&str) -> TextBuilder` renders one paragraph of inline spans as a single wrapped text node. Code spans keep their background, and the caller's `Paint` methods style the rest of the paragraph.
 
-`markdown_edit(Signal<String>)` is the editor split: `text_edit(source)` beside `markdown(source)` inside a horizontal `splitter`, each pane starting at 360 px. The preview follows the signal live. `.disabled(impl Reactive<bool>)` disables the editor pane.
+`markdown_edit(Signal<String>)` is the editor split: `text_field(source).multiline()` beside `markdown(source)` inside a horizontal `splitter`, each pane starting at 360 px. The preview follows the signal live. `.disabled(impl Reactive<bool>)` disables the editor pane.
 
 ## html
 
@@ -20,7 +20,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 
 ## code_edit
 
-`code_edit(lines, caret)` where `lines` is `Signal<Vec<String>>` and `caret` is `Signal<(usize, usize)>` as `(row, column)`. A column is a grapheme cluster index, the same unit `text_edit` uses, so the caret and selection never split a grapheme. `Highlight` and `Diagnostic` columns use the same unit. A line-oriented code editor that renders only the rows inside the scroll viewport. `first_row` derives the visible window from `scroll_y`, and an effect follows the caret so typing scrolls.
+`code_edit(lines, caret)` where `lines` is `Signal<Vec<String>>` and `caret` is `Signal<(usize, usize)>` as `(row, column)`. A column is a grapheme cluster index, the same unit `text_field` uses, so the caret and selection never split a grapheme. `Highlight` and `Diagnostic` columns use the same unit. A line-oriented code editor that renders only the rows inside the scroll viewport. `first_row` derives the visible window from `scroll_y`, and an effect follows the caret so typing scrolls.
 
 - `.highlights(Signal<Vec<Vec<Highlight>>>)`: per-line syntax spans; `Highlight::new(start, end, token)` maps a column range to a token class.
 - `.selection(Signal<Option<(usize, usize)>>)`: selection anchor; the range from anchor to caret paints selected.
@@ -30,7 +30,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 - `.row_height(px)`: defaults to 18 px, or one cell on a terminal.
 - `.disabled(impl Reactive<bool>)`: ignores keys, removes the editor from the focus order, and paints it at the disabled opacity.
 
-The widget edits the `lines`, `caret`, and `.selection()` signals through the `text_edit` controller: typing, Enter, Backspace, Delete, arrow keys, Home, End, Page Up, Page Down, Shift selection, word motion, clipboard, undo and redo, and IME commit.
+The widget edits the `lines`, `caret`, and `.selection()` signals through the `text_field` controller: typing, Enter, Backspace, Delete, arrow keys, Home, End, Page Up, Page Down, Shift selection, word motion, clipboard, undo and redo, and IME commit.
 
 ## mermaid
 
@@ -62,8 +62,8 @@ The visual catalog captures `code_edit` and `markdown_edit` in default, hover, f
 | Widget | Keys | Role | Name source |
 | --- | --- | --- | --- |
 | `markdown`, `html` | none | `Document`, with `Heading`, `Paragraph`, `List`, `ListItem`, `Code`, and `Link` children | The document text |
-| `markdown_edit` | As `text_edit` in the source pane | `TextInput` beside a `Document` | As `text_edit` |
-| `code_edit` | As `text_edit`; your `.key_handler()` runs first | `TextInput` | "Code editor" |
+| `markdown_edit` | As `text_field(..).multiline()` in the source pane | `TextInput` beside a `Document` | As `text_field` |
+| `code_edit` | As `text_field(..).multiline()`; your `.key_handler()` runs first | `TextInput` | "Code editor" |
 | `mermaid` | none | `Figure` | "Mermaid" plus the diagram kind, for example "Mermaid graph"; the source is the description |
 | `diff` | Enter or Space on the layout buttons | `List`, rows `ListItem` | `.path()`, else "Diff" |
 

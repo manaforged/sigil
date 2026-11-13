@@ -17,7 +17,7 @@ fn a_fitted_path_keeps_its_aspect_ratio() {
                     .move_to(0.0, 0.0)
                     .line_to(960.0, 220.0)
                     .close()
-                    .fill(Token::Accent9)
+                    .fill(Tone::Primary.step(9))
                     .fit(),
             ),
     );

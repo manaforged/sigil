@@ -7,7 +7,7 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, frag
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{
-    CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
+    CaretGeometry, IntoPxExt as _, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
     with_text_geometry,
 };
 use crate::reactive::{Owner, Signal, effect, interval, memo, signal};

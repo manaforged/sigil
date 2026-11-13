@@ -33,7 +33,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
             match command {
                 SceneCommand::PushClip(Clip::Rect(push)) => clip = Some(*push),
                 SceneCommand::PopClip => clip = None,
-                SceneCommand::GlyphRun(draw) if draw.node == Some(text_id) => hit = clip,
+                SceneCommand::GlyphRun(draw) if draw.node() == Some(text_id) => hit = clip,
                 _ => {}
             }
         }

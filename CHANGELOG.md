@@ -330,6 +330,15 @@ First public release.
 | `FuzzyMatch` fields (`score`, `positions`) | `score()`, `positions()` |
 | `ListState` fields (`cursor`, `scroll`, `expanded`, `query`, `caret`), `select`, `toggle` | getters `cursor()`, `scroll()`, `expanded()`, `query()`, `caret()`; `move_to`; `toggle_expanded` |
 | `TextEditBuilder::caret_visible(&mut self)`, `TextFieldBuilder::{caret_visible(&mut self), scroll_offset(&mut self)}` | chaining setters taking `Signal<_>` and returning `Self` |
+| `Token::Gray1..Info12`, `Tone::token(step)`, `Token::scale` | `Tone::step(step)` / `Token::Step(tone, step)` |
+| `text_edit(v)`, `TextEditBuilder`, `.caret_position(s)` | `text_field(v).multiline()`, `TextFieldBuilder`, `.caret(s)` |
+| `TextEditState`, `state.select(b, extend)`, `.state(s)` | `TextState`, `state.select(b)` / `state.extend(b)` / `state.clear_selection()`, `text_field(state)` |
+| `VirtualListBuilder::selection_state()`, `DiffBuilder::select(s)` | `VirtualListBuilder::selected(s)`, `DiffBuilder::selected(s)` |
+| `SceneBuilder::draw_rect(DrawRect)` | `SceneBuilder::fill_rect(rect, color)` |
+| `Host::emit(viewport)` | `Host::scene(viewport)` |
+| `GlyphRun` `u16` basis-point opacity + `rect`/`node` fields | `f32` (`0.0..=1.0`) opacity + `rect()`/`node()` getters |
+| `terminal::Lines` + `Cell` public fields | `Cell` getters (`fg()`, `bg()`, `bold()`, `italic()`, `dim()`, `underline()`, `strike()`, `underline_ink()`) |
+| Public fields on event structs, `Shadow`, `Locale`, `TextStyle`, `TextFace`, `TextRun`, `TextRuns` | getters and builder setters |
 
 ### Changed
 
