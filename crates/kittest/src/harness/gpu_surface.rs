@@ -7,10 +7,7 @@ use crate::gpu::{
 };
 use crate::{Error, ErrorKind};
 
-pub(super) const GPU_STATUS: BackendStatus = BackendStatus {
-    kind: Backend::Gpu,
-    fallback: FallbackCause::None,
-};
+pub(super) const GPU_STATUS: BackendStatus = BackendStatus::new(Backend::Gpu, FallbackCause::None);
 
 pub(super) struct GpuSurface {
     pub(super) viewport: (f32, f32),

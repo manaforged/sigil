@@ -115,10 +115,10 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         let _profile = crate::serial::profile();
         sigil::profile::enable();
         sigil::profile::reset();
-        sigil::profile::begin_frame(sigil::profile::BackendStatus {
-            kind: sigil::profile::Backend::Cpu,
-            fallback: sigil::profile::FallbackCause::None,
-        });
+        sigil::profile::begin_frame(sigil::profile::BackendStatus::new(
+            sigil::profile::Backend::Cpu,
+            sigil::profile::FallbackCause::None,
+        ));
         pos.set((0.0, -35.0));
         engine
             .compute(&mut cx, root, Constraint::fixed(800.0, 600.0))
@@ -167,10 +167,10 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         let _profile = crate::serial::profile();
         sigil::profile::enable();
         sigil::profile::reset();
-        sigil::profile::begin_frame(sigil::profile::BackendStatus {
-            kind: sigil::profile::Backend::Cpu,
-            fallback: sigil::profile::FallbackCause::None,
-        });
+        sigil::profile::begin_frame(sigil::profile::BackendStatus::new(
+            sigil::profile::Backend::Cpu,
+            sigil::profile::FallbackCause::None,
+        ));
         label.set(String::from("bb"));
         pos.set((0.0, -35.0));
         engine

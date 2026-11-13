@@ -55,10 +55,7 @@ impl HarnessSurface {
     const fn backend(&self) -> BackendStatus {
         match self {
             Self::Cells { .. } => BackendStatus::TERMINAL,
-            Self::Pixels { fallback, .. } => BackendStatus {
-                kind: Backend::Cpu,
-                fallback: *fallback,
-            },
+            Self::Pixels { fallback, .. } => BackendStatus::new(Backend::Cpu, *fallback),
             Self::Gpu(_) => GPU_STATUS,
         }
     }
