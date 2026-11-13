@@ -1,9 +1,8 @@
-use std::time::Instant;
+use crate::scene_support::{frame_ms, median};
 
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::WgpuRenderer;
 use sigil::scene::{BlendMode, CommandScene, DrawRect, SceneBuilder};
-use sigil_kittest::gpu::{Capture, headless_renderer, read_pixels, render_capture, shared_device};
+use sigil_kittest::gpu::headless_renderer;
 
 use super::{BACKDROP, SOURCE, blended, rgba};
 
@@ -44,22 +43,6 @@ fn built(mode: Option<BlendMode>) -> CommandScene {
     scene.finish()
 }
 
-fn frame_ms(renderer: &mut WgpuRenderer, scene: &CommandScene) -> f64 {
-    let (device, queue) = shared_device().expect("sigil-kittest").expect("adapter");
-    let capture =
-        Capture::new(VIEW, [(VIEW.0 * SCALE) as u32, (VIEW.1 * SCALE) as u32]).scale(SCALE);
-    let start = Instant::now();
-    let texture = render_capture(renderer, (device, queue), scene, &capture).expect("render");
-    let [w, h] = capture.size_px();
-    std::hint::black_box(read_pixels(device, queue, &texture, w, h).expect("readback"));
-    start.elapsed().as_secs_f64() * 1e3
-}
-
-fn median(values: &mut [f64]) -> f64 {
-    values.sort_by(f64::total_cmp);
-    values.get(values.len() / 2).copied().unwrap_or(f64::NAN)
-}
-
 #[test]
 #[ignore = "manual: cargo test --release -p sigil-ui --test integration blend::perf -- --ignored --nocapture"]
 fn two_hundred_blended_layers_frame_time() {
@@ -78,7 +61,7 @@ fn two_hundred_blended_layers_frame_time() {
     for round in 0..WARM + ROUNDS {
         for offset in 0..scenes.len() {
             let pick = (round + offset) % scenes.len();
-            let ms = frame_ms(&mut renderer, &scenes[pick].1);
+            let ms = frame_ms(&mut renderer, &scenes[pick].1, VIEW, SCALE);
             if round >= WARM {
                 samples[pick].push(ms);
             }
