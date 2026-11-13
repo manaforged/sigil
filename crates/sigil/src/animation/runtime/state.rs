@@ -125,6 +125,7 @@ pub(crate) fn finish_all() {
 }
 
 kittest_pub! {
+    /// Advances every running animation by `dt` seconds.
     pub fn tick(dt: f32) {
         if !dt.is_finite() || dt <= 0.0 {
             return;
@@ -143,6 +144,7 @@ kittest_pub! {
 }
 
 kittest_pub! {
+    /// Returns the number of animations that are not settled and not perpetual.
     #[must_use]
     pub fn active_count() -> usize {
         with_sources(|sources| {

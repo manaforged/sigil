@@ -150,6 +150,7 @@ impl AsyncRuntime {
         self.parts.backend.started()
     }
 
+    /// Returns the number of task results that wait for the UI thread.
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn pending_count(&self) -> usize {

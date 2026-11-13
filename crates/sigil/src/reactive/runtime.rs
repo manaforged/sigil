@@ -185,6 +185,7 @@ kittest_pub! {
 }
 
 impl Runtime {
+    /// Returns the phase of the frame that the runtime is in.
     #[cfg(feature = "kittest")]
     #[must_use]
     pub fn current_phase() -> DrawPhase {

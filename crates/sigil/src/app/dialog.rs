@@ -1,5 +1,6 @@
 mod entries;
 pub(crate) mod layer;
+/// Queued answers that stand in for the native dialogs in a test.
 #[cfg(feature = "kittest")]
 pub mod mock;
 #[cfg(feature = "native-dialog")]

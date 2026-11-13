@@ -30,6 +30,7 @@ pub fn events() -> EventChannel<MediaKey> {
     NATIVE.with(Native::events)
 }
 
+/// Emits `key` as if the user pressed that media key.
 #[cfg(feature = "kittest")]
 pub fn simulate(key: MediaKey) {
     events().emit(key);

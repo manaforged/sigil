@@ -65,26 +65,31 @@ impl Node {
         })
     }
 
+    /// Whether the node has keyboard focus.
     #[must_use]
     pub const fn is_focused(&self) -> bool {
         self.focused
     }
 
+    /// Whether the node is checked; `None` when it has no checked state.
     #[must_use]
     pub const fn is_checked(&self) -> Option<bool> {
         self.checked
     }
 
+    /// Whether the node is selected; `None` when it has no selected state.
     #[must_use]
     pub const fn is_selected(&self) -> Option<bool> {
         self.selected
     }
 
+    /// Whether the node is expanded; `None` when it cannot expand.
     #[must_use]
     pub const fn is_expanded(&self) -> Option<bool> {
         self.expanded
     }
 
+    /// Whether the node is disabled.
     #[must_use]
     pub const fn is_disabled(&self) -> bool {
         self.disabled

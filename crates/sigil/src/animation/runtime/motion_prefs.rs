@@ -11,6 +11,7 @@ pub fn reduced_motion() -> bool {
 }
 
 kittest_pub! {
+    /// The reduced-motion setting of this thread.
     #[derive(Debug)]
     pub struct MotionPrefs;
 }
@@ -22,6 +23,7 @@ impl MotionPrefs {
     }
 
     kittest_pub! {
+        /// Sets whether motion is reduced; true also finishes every running animation.
         #[cfg(host)]
         pub fn set(preferred: bool) {
             REDUCED_MOTION.with(|cell| cell.set(preferred));

@@ -28,6 +28,7 @@ pub fn clock() -> Signal<f64> {
 }
 
 kittest_pub! {
+    /// Returns the number of frame clocks and perpetual animations that are running.
     #[must_use]
     pub fn running_clocks() -> usize {
         with_sources(|sources| {

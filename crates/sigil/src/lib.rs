@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 #![cfg_attr(
     all(feature = "scene", not(window_host)),
     allow(
@@ -160,6 +161,7 @@ where
 
 /// Read and write the system clipboard.
 pub mod clipboard;
+/// Helpers that Sigil's own tests use to reach the kernel.
 #[cfg(feature = "kittest")]
 pub mod testing;
 

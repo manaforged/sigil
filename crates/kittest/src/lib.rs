@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 use sigil::layout::TextMeasure;
 
 mod bounds;
@@ -54,13 +55,33 @@ pub enum InteractionMode {
     /// The widget is disabled.
     Disabled,
     /// Hovered, then `frames` frames run `dt` seconds apart.
-    HoverAfterFrames { frames: u32, dt: f32 },
+    HoverAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
     /// Pressed, then `frames` frames run `dt` seconds apart.
-    PressedAfterFrames { frames: u32, dt: f32 },
+    PressedAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
     /// Focused, then `frames` frames run `dt` seconds apart.
-    FocusedAfterFrames { frames: u32, dt: f32 },
+    FocusedAfterFrames {
+        /// The number of frames to run.
+        frames: u32,
+        /// The seconds between frames.
+        dt: f32,
+    },
     /// Dragged from the pointer position by `dx` and `dy` logical pixels.
-    Dragged { dx: f32, dy: f32 },
+    Dragged {
+        /// The horizontal move in logical pixels.
+        dx: f32,
+        /// The vertical move in logical pixels.
+        dy: f32,
+    },
 }
 
 impl InteractionMode {

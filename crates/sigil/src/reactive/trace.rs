@@ -28,6 +28,7 @@ pub(crate) fn trace_effect_fire(
     test_hook::maybe_record(&line);
 }
 
+/// Captures the last trace line so that a test can read it.
 #[cfg(feature = "kittest")]
 pub mod test_hook {
     use std::cell::{Cell, RefCell};
@@ -37,6 +38,7 @@ pub mod test_hook {
         static CAPTURE_ENABLED: Cell<bool> = const { Cell::new(false) };
     }
 
+    /// Starts the capture of trace lines on this thread.
     pub fn enable_capture() {
         CAPTURE_ENABLED.with(|cell| cell.set(true));
     }
@@ -45,16 +47,19 @@ pub mod test_hook {
         CAPTURE_ENABLED.with(Cell::get)
     }
 
+    /// Stops the capture and drops the captured line.
     pub fn disable_capture() {
         CAPTURE_ENABLED.with(|cell| cell.set(false));
         reset_last_line();
     }
 
+    /// Takes the last captured trace line, or `None` when there is none.
     #[must_use]
     pub fn take_last_line() -> Option<String> {
         LAST_TRACE.with(|slot| slot.borrow_mut().take())
     }
 
+    /// Drops the captured trace line.
     pub fn reset_last_line() {
         LAST_TRACE.with(|slot| *slot.borrow_mut() = None);
     }

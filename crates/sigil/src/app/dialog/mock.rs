@@ -9,18 +9,22 @@ thread_local! {
     static ALERTS: RefCell<VecDeque<bool>> = const { RefCell::new(VecDeque::new()) };
 }
 
+/// Queues the answer of the next single-path dialog; `None` is a cancel.
 pub fn push_path(response: Option<PathBuf>) {
     PATHS.with(|queue| queue.borrow_mut().push_back(response));
 }
 
+/// Queues the answer of the next multi-path dialog; `None` is a cancel.
 pub fn push_paths(response: Option<Vec<PathBuf>>) {
     PATH_LISTS.with(|queue| queue.borrow_mut().push_back(response));
 }
 
+/// Queues the answer of the next alert; true is the confirm button.
 pub fn push_alert(ok: bool) {
     ALERTS.with(|queue| queue.borrow_mut().push_back(ok));
 }
 
+/// Removes every queued answer.
 pub fn reset() {
     PATHS.with(|queue| queue.borrow_mut().clear());
     PATH_LISTS.with(|queue| queue.borrow_mut().clear());
