@@ -29,6 +29,24 @@ impl CpuPainter<'_> {
         take(self.pool, width, height)
     }
 
+    pub(super) fn offscreen(
+        &mut self,
+        bounds: Rect,
+        content: Transform,
+        children: &[PlanNode<'_>],
+    ) -> Option<(Pixmap, u32, u32)> {
+        let width = (bounds.width * self.scale).ceil().max(1.0) as u32;
+        let height = (bounds.height * self.scale).ceil().max(1.0) as u32;
+        let mut layer = self.take_pixmap(width, height)?;
+        self.spawn(
+            &mut layer,
+            Point::new(bounds.origin.x * self.scale, bounds.origin.y * self.scale),
+            SceneState::new(Some(bounds), content, 1.0),
+        )
+        .walk(children);
+        Some((layer, width, height))
+    }
+
     pub(super) fn release_pixmap(&mut self, layer: Pixmap) {
         if self.pool.len() < CacheLimits::DEFAULT.cpu_layer_pool {
             self.pool.push(layer);
@@ -199,17 +217,10 @@ impl CpuPainter<'_> {
             return;
         };
         let bounds = frame.bounds;
-        let width = (bounds.width * self.scale).ceil().max(1.0) as u32;
-        let height = (bounds.height * self.scale).ceil().max(1.0) as u32;
-        let Some(mut layer) = self.take_pixmap(width, height) else {
+        let Some((mut layer, width, height)) = self.offscreen(bounds, frame.content, children)
+        else {
             return;
         };
-        self.spawn(
-            &mut layer,
-            Point::new(bounds.origin.x * self.scale, bounds.origin.y * self.scale),
-            SceneState::new(Some(bounds), frame.content, 1.0),
-        )
-        .walk(children);
         if let Some(mask) = source_mask(&frame.scope, bounds, (width, height), self.scale) {
             layer.apply_mask(&mask);
         }

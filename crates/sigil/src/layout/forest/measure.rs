@@ -111,14 +111,7 @@ impl<'a> MeasureScope<'a> {
         } else {
             crate::geometry::Dim::MaxContent
         };
-        let space = crate::geometry::Constraint {
-            width,
-            height: crate::geometry::Dim::MaxContent,
-        };
-        let measured = text.style.as_ref().map_or_else(
-            || self.text.measure(&text.content, space),
-            |style| self.text.measure_styled(&text.content, style, space),
-        );
+        let measured = self.measure_at(text, width);
         let out = crate::layout::style_data::Axes {
             width: measured.width,
             height: measured.height,
@@ -163,6 +156,21 @@ impl<'a> MeasureScope<'a> {
         Some(out)
     }
 
+    fn measure_at(
+        &self,
+        text: &super::LayoutText,
+        width: crate::geometry::Dim,
+    ) -> crate::geometry::Size {
+        let space = crate::geometry::Constraint {
+            width,
+            height: crate::geometry::Dim::MaxContent,
+        };
+        text.style.as_ref().map_or_else(
+            || self.text.measure(&text.content, space),
+            |style| self.text.measure_styled(&text.content, style, space),
+        )
+    }
+
     fn shape(
         &self,
         text: &super::LayoutText,
@@ -177,14 +185,7 @@ impl<'a> MeasureScope<'a> {
         } else {
             crate::geometry::Dim::MaxContent
         };
-        let space = crate::geometry::Constraint {
-            width,
-            height: crate::geometry::Dim::MaxContent,
-        };
-        let measured = text.style.as_ref().map_or_else(
-            || self.text.measure(&text.content, space),
-            |style| self.text.measure_styled(&text.content, style, space),
-        );
+        let measured = self.measure_at(text, width);
         let natural_w = if text.ellipsis {
             known
                 .width
