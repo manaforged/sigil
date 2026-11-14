@@ -87,7 +87,9 @@ pub(super) fn menu_panel(
     let rows = Rc::new(rows);
     let cursor = signal(usize::MAX);
     let commit = commit_fn(Rc::clone(&rows), Rc::clone(&close), host);
-    let mut panel = popup::popup(Role::Menu, side).focusable(true);
+    let mut panel = popup::popup(Role::Menu, side)
+        .focusable(true)
+        .focus_ring(signal(false));
     for (index, row) in rows.iter().enumerate() {
         panel = match row {
             Row::Item(item) => panel.child(build_item(item, index, cursor, Rc::clone(&commit))),

@@ -69,13 +69,16 @@ fn chrome_section(
     chrome: &'static [StyleAtom],
     child: impl IntoNode + 'static,
 ) -> NodeBuilder {
+    let band = LayoutStyle::flex_row().fill_width();
+    let band = if crate::layout::snap::cell().is_some() {
+        band.min_size(0.0, height)
+    } else {
+        band.height(height)
+    };
     container()
         .role(Role::GenericContainer)
         .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .min_size(0.0, height)
-                .shrink(0.0)
+            band.shrink(0.0)
                 .padding_x(Space::Sm)
                 .gap(Space::Sm)
                 .align_items(AlignItems::Center),
