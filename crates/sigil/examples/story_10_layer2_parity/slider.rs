@@ -50,8 +50,15 @@ impl SliderRuntime {
             .clamp(self.min, self.max)
     }
     fn commit(self, next: f32, cb: &Rc<dyn Fn(f32)>) {
+        let before = self.value.peek();
         self.value.set(next);
-        cb(self.value.peek());
+        self.report(before, cb);
+    }
+    fn report(self, before: f32, cb: &Rc<dyn Fn(f32)>) {
+        let after = self.value.peek();
+        if after.to_bits() != before.to_bits() {
+            cb(after);
+        }
     }
     fn value_at(self, event: &PointerEvent) -> f32 {
         let w = event.target_size().width;
@@ -163,7 +170,7 @@ impl CustomSliderBuilder {
         let (filled, rest) = slider_track_parts(rt, extent, Metrics::current().track_size(6.0));
         let mut node = container()
             .role(Role::Slider)
-            .label(name)
+            .accessible(name)
             .action(Action::Increment)
             .action(Action::Decrement)
             .value(rt.value, rt.min, rt.max)
@@ -307,9 +314,11 @@ fn attach_slider_drag(
             rt.value.set(rt.value_at(event));
             event.stop_propagation();
         }
-        DragPhase::End if start_value.take().is_some() => {
-            dragging.set(false);
-            drag_change(rt.value.peek());
+        DragPhase::End => {
+            if let Some(initial) = start_value.take() {
+                dragging.set(false);
+                rt.report(initial, &drag_change);
+            }
         }
         DragPhase::Cancel => {
             if let Some(initial) = start_value.take() {

@@ -53,9 +53,7 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                         .child(text(mark.clone()).class("text-xs").text_color(tone))
                         .pointer_down(move |event| {
                             if !runtime.disabled() {
-                                let thumb = runtime.value.nearest(at);
-                                thumb.set(at);
-                                change(thumb.peek());
+                                runtime.on(runtime.value.nearest(at)).commit(at, &change);
                                 event.stop_propagation();
                             }
                         })

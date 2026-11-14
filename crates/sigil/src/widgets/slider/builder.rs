@@ -299,9 +299,21 @@ impl SliderRuntime {
         Self { value, ..self }
     }
 
-    pub(super) fn nudge(self, steps: f32) {
-        let delta = self.step_size() * steps;
-        self.value.set(self.quantize(self.value.peek() + delta));
+    pub(super) fn nudged(self, steps: f32) -> f32 {
+        self.quantize(self.step_size().mul_add(steps, self.value.peek()))
+    }
+
+    pub(super) fn commit(self, next: f32, on_change: &ValueChange) {
+        let before = self.value.peek();
+        self.value.set(next);
+        self.report(before, on_change);
+    }
+
+    pub(super) fn report(self, before: f32, on_change: &ValueChange) {
+        let after = self.value.peek();
+        if after.to_bits() != before.to_bits() {
+            on_change(after);
+        }
     }
 }
 
@@ -318,7 +330,7 @@ fn slider_node<T>(builder: &SliderBuilder<T>) -> NodeBuilder {
 pub(super) fn slider_semantics(runtime: SliderRuntime, name: AccessibleName) -> NodeBuilder {
     container()
         .role(Role::Slider)
-        .label(name)
+        .accessible(name)
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value.signal(), runtime.range.min, runtime.range.max)

@@ -61,15 +61,13 @@ fn handle_a11y_edit(edit: &A11yEdit, runtime: SliderRuntime, on_change: &ValueCh
                 } else {
                     -1.0
                 };
-                runtime.nudge(sign);
-                on_change(runtime.value.peek());
+                runtime.commit(runtime.nudged(sign), on_change);
             }
             true
         }
         A11yEdit::Number(raw) => {
             if !runtime.disabled() {
-                runtime.value.set(runtime.quantize(*raw));
-                on_change(runtime.value.peek());
+                runtime.commit(runtime.quantize(*raw), on_change);
             }
             true
         }
@@ -158,7 +156,7 @@ pub(super) fn attach_pointer_drag(
             if phase == DragPhase::Cancel {
                 active.thumb.value.set(active.start);
             } else {
-                on_change(active.thumb.value.peek());
+                active.thumb.report(active.start, &on_change);
             }
         }
     })
@@ -199,11 +197,11 @@ fn change_key(
         return;
     }
     event.stop_propagation();
-    match step {
-        ValueStep::Unit(sign) => runtime.nudge(sign),
-        ValueStep::Page(sign) => runtime.nudge(sign * PAGE_STEPS),
-        ValueStep::Start => runtime.value.set(runtime.range.min),
-        ValueStep::End => runtime.value.set(runtime.range.max),
-    }
-    on_change(runtime.value.peek());
+    let next = match step {
+        ValueStep::Unit(sign) => runtime.nudged(sign),
+        ValueStep::Page(sign) => runtime.nudged(sign * PAGE_STEPS),
+        ValueStep::Start => runtime.range.min,
+        ValueStep::End => runtime.range.max,
+    };
+    runtime.commit(next, on_change);
 }
