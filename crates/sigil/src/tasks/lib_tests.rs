@@ -9,7 +9,7 @@ use std::time::Duration;
 use crate::reactive::Owner;
 use crate::tasks::{AsyncRuntime, MessageReceiver, Status, listen, task};
 
-const WAIT: Duration = Duration::from_secs(5);
+pub(super) const WAIT: Duration = Duration::from_secs(5);
 
 pub(super) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = std::time::Instant::now();

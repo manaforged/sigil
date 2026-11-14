@@ -9,6 +9,12 @@ use crate::tasks::runtime::attach_task;
 
 pub(crate) mod sealed {
     use std::future::Future;
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc::RecvTimeoutError,
+    };
 
     use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 
@@ -41,15 +47,40 @@ pub(crate) mod sealed {
         }
     }
 
+    /// How long a blocking `std::sync::mpsc` wait lasts before it checks whether its reader was dropped.
+    #[cfg(not(target_arch = "wasm32"))]
+    const POLL: std::time::Duration = std::time::Duration::from_millis(50);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[derive(Default)]
+    struct Cancel(Arc<AtomicBool>);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    impl Drop for Cancel {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+        }
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     impl<T: Send + 'static> Sealed<T> for std::sync::mpsc::Receiver<T> {
         async fn recv(&mut self) -> Option<T> {
             let rx = std::mem::replace(self, std::sync::mpsc::channel().1);
+            let cancel = Cancel::default();
+            let stop = Arc::clone(&cancel.0);
             let (rx, message) = crate::tasks::blocking(move || {
-                let message = rx.recv().ok();
-                (rx, message)
+                loop {
+                    match rx.recv_timeout(POLL) {
+                        Ok(message) => break (rx, Some(message)),
+                        Err(RecvTimeoutError::Timeout) if !stop.load(Ordering::Acquire) => {}
+                        Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => {
+                            break (rx, None);
+                        }
+                    }
+                }
             })
             .await;
+            drop(cancel);
             *self = rx;
             message
         }
@@ -128,6 +159,7 @@ pub fn listen<T: Send + 'static>(
         close: Rc::clone(&close),
     };
     let Some((owner, parts)) = scope_parts("listen") else {
+        close.set(Close::Ended);
         return listener;
     };
     let handlers: Signal<Rc<Handlers<T>>> = signal(Rc::new(Handlers {
