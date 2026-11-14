@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use crate::app::backdrop::{from_dark_light, set_system_backdrop, system_backdrop};
 use crate::reactive::{Owner, Signal, signal};
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::terminal::Backdrop;
@@ -34,7 +35,7 @@ pub(crate) struct Follow {
 
 impl Follow {
     pub(crate) fn start(probed: Option<Backdrop>) -> Self {
-        let system = dark_light::detect().ok().and_then(from_mode);
+        let system = system_backdrop().peek();
         backdrop().set(probed.or(system));
         let stop = Arc::new(AtomicBool::new(false));
         let owner = Owner::new("sigil::backdrop_follow", None);
@@ -47,9 +48,10 @@ impl Follow {
                 let stop = Arc::clone(&stop);
                 Some(std::thread::spawn(move || {
                     while !stop.load(Ordering::Relaxed) {
-                        if let Some(next) = watcher.try_iter().filter_map(from_mode).last() {
+                        if let Some(next) = watcher.try_iter().filter_map(from_dark_light).last() {
                             dispatch_to_owner(&dispatcher, owner, move || {
                                 backdrop().set(Some(next));
+                                set_system_backdrop(next);
                             });
                         }
                         std::thread::park_timeout(POLL);
@@ -72,13 +74,5 @@ impl Drop for Follow {
             drop(thread.join());
         }
         self.owner.dispose();
-    }
-}
-
-const fn from_mode(mode: dark_light::Mode) -> Option<Backdrop> {
-    match mode {
-        dark_light::Mode::Dark => Some(Backdrop::Dark),
-        dark_light::Mode::Light => Some(Backdrop::Light),
-        dark_light::Mode::Unspecified => None,
     }
 }

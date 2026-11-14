@@ -51,6 +51,13 @@ impl ActiveTheme {
     }
 }
 
+pub(crate) fn current_metrics() -> crate::style::Metrics {
+    ACTIVE
+        .with(Cell::get)
+        .and_then(|theme| theme.try_peek_with(Theme::metrics))
+        .unwrap_or_else(|| fallback_theme().metrics())
+}
+
 pub(crate) fn fallback_theme<'a>() -> &'a Theme {
     static DEFAULT: OnceLock<Theme> = OnceLock::new();
     DEFAULT.get_or_init(Theme::default)

@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Public `sigil::scene` drawing primitives: `SceneCommand`, `Clip`, `Transform`, `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawImage`, `DrawPath`, `DrawDecoration`, `LayerScope`, `CommandScene::{commands, iter, len, is_empty}` + `IntoIterator for &CommandScene`, `SceneBuilder::{new, draw_rect, draw_gradient, draw_path, stroke_line, draw_image, draw_shadow, draw_text, measure_text, clip, transform, finish}`, and `PathBuilder::build_path`.
 - `KeyEvent::{prevent_default, default_prevented}`, `Widget::{offset, track_bounds, track_position, track_size, accessible_shortcut, drop_hover}`, and `sigil::events::DropEvent<T>` (`into_value`, `value`, `position`, `local_position`, `bounds`).
 - Public `sigil::animation::{Animator, Spring, every_frame}` (`Spring::{GENTLE, SMOOTH, SNAPPY, BOUNCY, STIFF, new, mass}`, `Animator::{tween, spring, target, snap, cancel, get, value, active}` with `Reactive<f32> for Animator`, and `Owner`-scoped `every_frame`).
+- Typed theming, subtree overrides, OS backdrop tracking, and 2D paint transforms: `Token::Custom(&'static str)`, `Theme::for_backdrop(Backdrop)`, `Theme::{control_height, radius, metrics}`, `sigil::style::Backdrop`, `sigil::app::system_backdrop()`, `WindowEvent::BackdropChanged(Backdrop)`, `Widget::theme(impl Reactive<Theme>)`, and `Paint::{translate_x, translate_y, translate, scale, scale_x, scale_y, rotate}`.
 - Scene command getters for custom renderers: `DrawRect::{tone, is_leaf, is_outline}`, `DrawGradient::{tone, is_leaf, is_outline}`, `Wash::{paper, pigments}`, and `GlyphRun::fill`.
 
 ### Changed
@@ -30,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Replaced raw geometry tuples with `Point`, `Size`, and `Rect` across `Widget::drop_target` (`DropEvent<T>`), `DragState::position -> Point`, `MenuBuilder::anchor(impl Into<Point>)`, `Host::{layout, frame, scene}(impl Into<Size>, ...)`, and `FrameInputHook -> Option<Size>`.
 - `Widget::drive` now accepts `impl Reactive<f32>` so `Animator` and closures plug directly into `.drive(Property::..., value)`.
 - Merged `kittest_pub! enum SpringPreset` and crate-private `Spring` into `pub struct sigil::animation::Spring`.
+- Replaced stringly-typed `Theme::token(&str, impl Into<ThemeValue>)` with typed `Theme::token(Token, Color)`, deleted `ThemeValue`, removed the five `Theme` `Length` config-echo getters (`control_width`, `control_height(&self, ControlSize)`, `control_padding`, `control_gap`, `radius(&self, ControlSize)`), unified `sigil::terminal::Backdrop` with `sigil::style::Backdrop`, and upgraded `Widget::theme` to `impl Reactive<Theme>`.
 - `Spring::new` and `Spring::mass` no longer panic. NaN, infinite, zero, and negative values are clamped, and a running spring holds its natural frequency to 6-1000 rad/s and its damping ratio to 0.3-1.0, so an undamped or heavily overdamped spring moves as the nearest spring in that range. The presets are unchanged.
 - Built-in `button` and `slider` set spacing with the public `Space::raw`, and `axis_drag` runs on `Widget::pointer_drag`. Drag handles no longer expose an accessible Click action, and a release with no active drag passes through.
 - A failed copy or cut in a single-line `text_field` logs a `sigil::clipboard` warning, as multiline does.
@@ -70,6 +72,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 | `SpringPreset::{Gentle, Smooth, Snappy, Bouncy, Stiff}` (feature `kittest`) | `Spring::{GENTLE, SMOOTH, SNAPPY, BOUNCY, STIFF}` in `sigil::animation` |
 | `Animator::spring(signal, preset)` / `Animator::tween(signal, ms, easing)` | `Animator::spring(initial, spring)` / `Animator::tween(initial, transition)` (read with `.get()` or `.value().peek()`) |
 | `Animator::settled()` / `Animator::finish()` | `!anim.active().peek()` / `anim.snap(value)` |
+| `Theme::token("name", color)` / `ThemeValue` | `Theme::token(Token, Color)` with `Token::Custom("name")` (`ThemeValue` removed) |
+| `Theme::{control_width, control_height, control_padding, control_gap, radius}(&self, ControlSize)` | `Theme::{control_height(ControlSize, f32), radius(Radius, f32)}` setters and `theme.metrics()` (`Metrics::{control_width, control_height, control_padding, control_gap, radius}`) |
+| `sigil::terminal::Backdrop` (separate enum) | `sigil::style::Backdrop` (re-exported at `sigil::terminal::Backdrop`) with `Theme::for_backdrop(Backdrop)` |
+| Manual dark/light OS polling | `sigil::app::system_backdrop()` and `WindowEvent::BackdropChanged(Backdrop)` |
+| `Widget::theme(Theme)` | `Widget::theme(impl Reactive<Theme>)` (accepts `Theme`, `Signal<Theme>`, or closure `move \|\| Theme`) |
+| `Paint` 3D-only transforms | Added 2D `Paint::{translate_x, translate_y, translate, scale, scale_x, scale_y, rotate}` |
 
 ## [0.2.0] - 2026-11-12
 

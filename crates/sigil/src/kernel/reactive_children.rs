@@ -376,6 +376,7 @@ impl Cx {
             loop {
                 let pending = drain_pending();
                 if pending.is_empty() {
+                    self.apply_pending_edits();
                     return;
                 }
                 for mut rebuild in pending {

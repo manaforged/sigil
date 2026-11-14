@@ -361,11 +361,7 @@ fn enter(config: &AppConfig) -> AppResult<Term> {
 
 fn default_theme(config: &AppConfig, backdrop: crate::terminal::Backdrop) {
     if config.theme_file.is_none() {
-        (match backdrop {
-            crate::terminal::Backdrop::Dark => crate::style::Theme::dark(),
-            crate::terminal::Backdrop::Light => crate::style::Theme::light(),
-        })
-        .apply();
+        crate::style::Theme::for_backdrop(backdrop).apply();
     }
 }
 

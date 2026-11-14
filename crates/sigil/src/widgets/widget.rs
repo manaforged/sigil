@@ -39,7 +39,7 @@ pub trait Widget: Sized {
 
     /// Sets the theme for the node and its children.
     #[must_use]
-    fn theme(self, theme: Theme) -> Self {
+    fn theme(self, theme: impl Reactive<Theme>) -> Self {
         self.map_node(move |node| look::theme(node, theme))
     }
 

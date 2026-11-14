@@ -1,6 +1,6 @@
 use crate::animation::Property;
 use crate::kernel::{DeltaKind, Node};
-use crate::reactive::{Runtime, Signal, effect_named};
+use crate::reactive::{Reactive, Runtime, Signal, effect_named, untrack};
 
 use crate::style::merge::SlotSet;
 use crate::style::{
@@ -79,8 +79,26 @@ fn debug_assert_not_fragment(node: &Node, op: &'static str) {
     );
 }
 
-pub(super) fn install_theme(node: &mut Node, theme: Theme) {
+pub(super) fn install_theme(node: &mut Node, theme: impl Reactive<Theme>) {
     debug_assert_not_fragment(node, "theme");
+    let initial = untrack(|| theme.read());
+    attach_theme(node, initial.clone());
+    let Some(tag) = node.tag() else {
+        return;
+    };
+    let mut last = initial;
+    effect_named("sigil-style::theme", move || {
+        let next = theme.read();
+        if next != last {
+            last = next.clone();
+            tag.queue_edit(move |target| attach_theme(target, next));
+            tag.record(DeltaKind::Layout);
+            Runtime::mark_frame_dirty();
+        }
+    });
+}
+
+fn attach_theme(node: &mut Node, theme: Theme) {
     let _previous = node.attach(theme);
     crate::scene::emit_cache::theme_changed();
 }

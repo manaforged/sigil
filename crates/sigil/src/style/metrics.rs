@@ -42,25 +42,111 @@ impl Radius {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Heights {
+    compact: f32,
+    default: f32,
+    wide: f32,
+}
+
+impl Heights {
+    const DEFAULT: Self = Self {
+        compact: space(6),
+        default: space(7),
+        wide: space(9),
+    };
+
+    const fn slot(&mut self, size: ControlSize) -> &mut f32 {
+        match size {
+            ControlSize::Compact => &mut self.compact,
+            ControlSize::Default => &mut self.default,
+            ControlSize::Wide => &mut self.wide,
+        }
+    }
+
+    const fn get(mut self, size: ControlSize) -> f32 {
+        *self.slot(size)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Radii {
+    none: f32,
+    sm: f32,
+    base: f32,
+    md: f32,
+    lg: f32,
+    full: f32,
+}
+
+impl Radii {
+    const DEFAULT: Self = Self {
+        none: 0.0,
+        sm: 2.0,
+        base: 4.0,
+        md: 6.0,
+        lg: 8.0,
+        full: 9_999.0,
+    };
+
+    const fn slot(&mut self, radius: Radius) -> &mut f32 {
+        match radius {
+            Radius::None => &mut self.none,
+            Radius::Sm => &mut self.sm,
+            Radius::Base => &mut self.base,
+            Radius::Md => &mut self.md,
+            Radius::Lg => &mut self.lg,
+            Radius::Full => &mut self.full,
+        }
+    }
+
+    const fn get(mut self, radius: Radius) -> f32 {
+        *self.slot(radius)
+    }
+}
+
+const fn clamp_non_neg(px: f32) -> f32 {
+    if px.is_finite() && px >= 0.0 { px } else { 0.0 }
+}
+
 /// The sizes that a theme gives its controls.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Metrics {
     cell: Option<f32>,
+    heights: Heights,
+    radii: Radii,
 }
 
 impl Metrics {
     /// The metrics of the active cell grid, or the window metrics when no cell size is set.
     #[must_use]
     pub fn current() -> Self {
-        Self {
-            cell: crate::style::cell_size(),
-        }
+        crate::style::theme::ambient::current_metrics()
     }
 
     /// The metrics of a window, with no cell grid.
     #[must_use]
     pub const fn window() -> Self {
-        Self { cell: None }
+        Self {
+            cell: None,
+            heights: Heights::DEFAULT,
+            radii: Radii::DEFAULT,
+        }
+    }
+
+    pub(crate) const fn with_cell(mut self, cell: Option<f32>) -> Self {
+        self.cell = cell;
+        self
+    }
+
+    pub(crate) const fn with_control_height(mut self, size: ControlSize, px: f32) -> Self {
+        *self.heights.slot(size) = clamp_non_neg(px);
+        self
+    }
+
+    pub(crate) const fn with_radius(mut self, radius: Radius, px: f32) -> Self {
+        *self.radii.slot(radius) = clamp_non_neg(px);
+        self
     }
 
     /// Returns whether this metrics is grid.
@@ -72,11 +158,7 @@ impl Metrics {
     /// The height of a control of `size` in pixels; one cell on a cell grid.
     #[must_use]
     pub fn control_height(self, size: ControlSize) -> f32 {
-        self.cell.unwrap_or(match size {
-            ControlSize::Compact => space(6),
-            ControlSize::Default => space(7),
-            ControlSize::Wide => space(9),
-        })
+        self.cell.unwrap_or_else(|| self.heights.get(size))
     }
 
     /// The width of a control of `size` in pixels.
@@ -112,7 +194,15 @@ impl Metrics {
     /// Returns the corner radius for `radius`.
     #[must_use]
     pub const fn radius(self, radius: Radius) -> f32 {
-        radius_px(radius) as f32
+        self.radii.get(radius)
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "value is rounded and clamped to 0..=i16::MAX before the cast"
+    )]
+    pub(crate) fn radius_i16(self, radius: Radius) -> i16 {
+        self.radius(radius).round().clamp(0.0, f32::from(i16::MAX)) as i16
     }
 
     /// The stroke width of the focus ring: 2 px.
@@ -191,16 +281,5 @@ impl Layer {
                 }
             }
         }
-    }
-}
-
-pub(crate) const fn radius_px(radius: Radius) -> i16 {
-    match radius {
-        Radius::None => 0,
-        Radius::Sm => 2,
-        Radius::Base => 4,
-        Radius::Md => 6,
-        Radius::Lg => 8,
-        Radius::Full => 9_999,
     }
 }

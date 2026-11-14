@@ -98,6 +98,23 @@ impl Transform2D {
         }
     }
 
+    pub(crate) const fn apply_space(&mut self, atom: super::SpaceAtom) {
+        match atom {
+            super::SpaceAtom::TranslateX(px) => self.translation[0] = px,
+            super::SpaceAtom::TranslateY(px) => self.translation[1] = px,
+            super::SpaceAtom::ScaleX(factor) => self.scale[0] = factor,
+            super::SpaceAtom::ScaleY(factor) => self.scale[1] = factor,
+            super::SpaceAtom::Rotate(radians) => self.rotation = radians,
+            super::SpaceAtom::RotateX(_)
+            | super::SpaceAtom::RotateY(_)
+            | super::SpaceAtom::RotateZ(_)
+            | super::SpaceAtom::TranslateZ(_)
+            | super::SpaceAtom::Perspective(_)
+            | super::SpaceAtom::PerspectiveOrigin(_)
+            | super::SpaceAtom::Backface(_) => {}
+        }
+    }
+
     /// Sets the point the transform turns around.
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
@@ -185,16 +202,17 @@ impl Transform2D {
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
-        #[cfg(feature = "kittest")]
-        let transform = binding.cascade().fold(Self::IDENTITY, |transform, atom| {
-            if let super::StyleAtom::Transform(value) = atom {
-                value
-            } else {
+        let transform = binding
+            .cascade()
+            .fold(Self::IDENTITY, |mut transform, atom| {
+                match atom {
+                    #[cfg(feature = "kittest")]
+                    super::StyleAtom::Transform(value) => return value,
+                    super::StyleAtom::Space(space) => transform.apply_space(space),
+                    _ => {}
+                }
                 transform
-            }
-        });
-        #[cfg(not(feature = "kittest"))]
-        let transform = Self::IDENTITY;
+            });
         binding
             .animator_overlay()
             .map_or(transform, |overlay| transform.overlay(overlay))

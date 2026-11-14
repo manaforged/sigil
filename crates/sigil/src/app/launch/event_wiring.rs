@@ -190,6 +190,9 @@ impl WindowEventCtx<'_> {
                 let logical = Size::new(self.viewport.0, self.viewport.1);
                 resize_surface(self.renderer, self.surface, scale.to_physical(logical));
             }
+            WindowEvent::BackdropChanged(backdrop) => {
+                crate::app::backdrop::set_system_backdrop(backdrop);
+            }
             WindowEvent::CloseRequested
             | WindowEvent::Destroyed
             | WindowEvent::Focused(_)

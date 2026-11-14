@@ -229,6 +229,11 @@ const fn mask_slot(part: MaskPart) -> ResolvedSlot {
 
 const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
     match atom {
+        SpaceAtom::TranslateX(_) => ResolvedSlot::TranslateX,
+        SpaceAtom::TranslateY(_) => ResolvedSlot::TranslateY,
+        SpaceAtom::ScaleX(_) => ResolvedSlot::ScaleX,
+        SpaceAtom::ScaleY(_) => ResolvedSlot::ScaleY,
+        SpaceAtom::Rotate(_) => ResolvedSlot::Rotate,
         SpaceAtom::RotateX(_) => ResolvedSlot::RotateX,
         SpaceAtom::RotateY(_) => ResolvedSlot::RotateY,
         SpaceAtom::RotateZ(_) => ResolvedSlot::RotateZ,
@@ -324,6 +329,11 @@ pub(crate) enum ResolvedSlot {
     BackgroundClip,
     BorderStyle,
     ClipPath,
+    TranslateX,
+    TranslateY,
+    ScaleX,
+    ScaleY,
+    Rotate,
     RotateX,
     RotateY,
     RotateZ,

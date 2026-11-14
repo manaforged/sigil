@@ -281,10 +281,17 @@ impl Host {
     /// Sends an input event through the tree and returns whether a key press was consumed.
     pub fn route(&mut self, event: Event) -> bool {
         let _env = self.enter();
-        #[cfg(window_host)]
-        if let Event::Window(crate::events::WindowEvent::ScaleFactorChanged(scale)) = &event {
-            self.cx.set_scale(scale.factor());
-            Runtime::mark_frame_dirty();
+        match &event {
+            #[cfg(window_host)]
+            Event::Window(crate::events::WindowEvent::ScaleFactorChanged(scale)) => {
+                self.cx.set_scale(scale.factor());
+                Runtime::mark_frame_dirty();
+            }
+            Event::Window(crate::events::WindowEvent::BackdropChanged(backdrop)) => {
+                crate::app::backdrop::set_system_backdrop(*backdrop);
+                Runtime::mark_frame_dirty();
+            }
+            _ => {}
         }
         self.router.set_visual_transforms(self.visual_transforms);
         let handled = self.root.is_some() && self.router.route(&mut self.cx, &self.layout, event);

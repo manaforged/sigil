@@ -341,3 +341,57 @@ fn theme_swap_invalidates_binding() {
     assert!(node.extension::<Theme>().is_some());
     assert!(node.extension::<StyleBinding>().is_some());
 }
+
+#[test]
+fn paint_2d_transforms_merge_per_axis_and_resolve() {
+    use crate::style::atom::SpaceAtom;
+
+    assert_ne!(SpaceAtom::TranslateX(1.0), SpaceAtom::TranslateX(2.0));
+    assert_eq!(SpaceAtom::TranslateX(-0.0), SpaceAtom::TranslateX(0.0));
+
+    let base = Style::new()
+        .translate_x(10.0)
+        .scale(1.05)
+        .rotate(45.0)
+        .into_atoms();
+    let over = Style::new().scale_x(2.0).translate_y(5.0).into_atoms();
+    let merged = merge_classes(&base, &over, 0);
+
+    let expected = Transform2D::IDENTITY
+        .translate(10.0, 5.0)
+        .scale(2.0, 1.05)
+        .rotate(45.0_f32.to_radians());
+
+    let render = applied(&Theme::default(), &merged);
+    assert_eq!(render.transform, expected);
+
+    let binding = StyleBinding::owned_atoms(merged.into_iter().collect());
+    assert_eq!(Transform2D::for_binding(&binding), expected);
+}
+
+#[test]
+fn theme_radius_override_applies_to_radius_atom() {
+    let theme = Theme::default().radius(Radius::Md, 12.0);
+    let render = applied(&theme, &[StyleAtom::Radius(Radius::Md)]);
+    assert_eq!(render.border_radius, Some(12));
+}
+
+#[test]
+fn reactive_subtree_theme_updates_node_extension() {
+    crate::reactive::Owner::scope("sigil_style_reactive_theme", || {
+        let active = crate::reactive::signal(Theme::light());
+        let mut cx = Cx::new_root();
+        let id = cx.add(container().theme(active));
+        assert_eq!(
+            cx.get(id).unwrap().extension::<Theme>(),
+            Some(&Theme::light())
+        );
+
+        active.set(Theme::dark());
+        cx.flush_reactive_children();
+        assert_eq!(
+            cx.get(id).unwrap().extension::<Theme>(),
+            Some(&Theme::dark())
+        );
+    });
+}

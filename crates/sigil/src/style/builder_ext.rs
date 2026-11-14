@@ -108,7 +108,7 @@ impl TextBuilder {
     }
 }
 
-pub(crate) fn theme(node: NodeBuilder, theme: Theme) -> NodeBuilder {
+pub(crate) fn theme(node: NodeBuilder, theme: impl Reactive<Theme>) -> NodeBuilder {
     node.mutate(move |node| install_theme(node, theme))
 }
 

@@ -91,14 +91,7 @@ pub enum ColorDepth {
     Monochrome,
 }
 
-/// Terminal background brightness.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Backdrop {
-    /// The terminal background is dark, so the dark theme is the default.
-    Dark,
-    /// The terminal background is light, so the light theme is the default.
-    Light,
-}
+pub use crate::style::Backdrop;
 
 /// The keyboard protocol a terminal speaks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

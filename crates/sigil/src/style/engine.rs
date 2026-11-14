@@ -103,7 +103,7 @@ impl<'theme> StyleEngine<'theme> {
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::Radius(radius) => {
-                render.border_radius = Some(super::metrics::radius_px(radius));
+                render.border_radius = Some(self.theme.metrics.radius_i16(radius));
             }
             StyleAtom::BorderWidth(width) => render.border_width = Some(width),
             StyleAtom::BorderTop(width) => render.border_top = Some(width),
@@ -165,7 +165,10 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::Animation(_) => {}
             StyleAtom::Paint(paint) => self.apply_paint(paint, render),
             StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
-            StyleAtom::Space(atom) => render.space.apply(atom),
+            StyleAtom::Space(atom) => {
+                render.transform.apply_space(atom);
+                render.space.apply(atom);
+            }
             StyleAtom::Mask(atom) => render.mask.apply(atom.0),
             StyleAtom::MixBlend(mode) => render.blend = mode,
             StyleAtom::Filter(atom) => render.filter.apply(atom.0),

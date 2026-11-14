@@ -68,6 +68,8 @@ macro_rules! tokens {
             $(#[doc = concat!("The `", $name, "` color.")] $variant,)*
             /// Step `1..=12` of a theme tone scale.
             Step(Tone, u8),
+            /// A custom token defined by the application theme.
+            Custom(&'static str),
         }
 
         #[repr(usize)]
@@ -84,11 +86,11 @@ macro_rules! tokens {
             /// Every built-in semantic token in declaration order.
             pub const ALL: [Self; Self::COUNT] = all_tokens!($($variant,)*);
 
-            /// Returns the position of this token in `Token::ALL`.
+            /// Returns the position of this token in `Token::ALL`, or `None` for a custom token.
             #[must_use]
-            pub const fn index(self) -> usize {
+            pub const fn index(self) -> Option<usize> {
                 match self {
-                    $(Self::$variant => SemanticIndex::$variant as usize,)*
+                    $(Self::$variant => Some(SemanticIndex::$variant as usize),)*
                     Self::Step(tone, step) => {
                         let row = match tone {
                             Tone::Neutral => 0,
@@ -105,8 +107,9 @@ macro_rules! tokens {
                         } else {
                             (step - 1) as usize
                         };
-                        SEMANTIC_COUNT + row * STEPS + clamped
+                        Some(SEMANTIC_COUNT + row * STEPS + clamped)
                     }
+                    Self::Custom(_) => None,
                 }
             }
 
@@ -116,6 +119,7 @@ macro_rules! tokens {
                 match self {
                     $(Self::$variant => $name,)*
                     Self::Step(tone, step) => step_name(tone, step),
+                    Self::Custom(name) => name,
                 }
             }
 
@@ -178,6 +182,13 @@ tokens! {
 const STEPS: usize = 12;
 
 impl Token {
+    pub(crate) fn canonical(self) -> Self {
+        match self {
+            Self::Custom(name) => Self::from_name(name).unwrap_or(self),
+            other => other,
+        }
+    }
+
     /// Returns this token as a color atom.
     #[must_use]
     pub const fn color(self) -> ColorValue {

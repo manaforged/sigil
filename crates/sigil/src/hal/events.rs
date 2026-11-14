@@ -518,6 +518,8 @@ pub enum WindowEvent {
     Destroyed,
     /// The window became fully hidden (`true`) or visible again (`false`).
     Occluded(bool),
+    /// The operating system switched between dark and light appearance.
+    BackdropChanged(crate::style::Backdrop),
 }
 
 const fn normalize_modifiers(modifiers: Modifiers) -> Modifiers {

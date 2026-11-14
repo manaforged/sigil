@@ -74,6 +74,7 @@ impl WinitShell {
             WinitWindowEvent::Occluded(occluded) => {
                 self.push_window(SigilWindowEvent::Occluded(occluded))
             }
+            WinitWindowEvent::ThemeChanged(theme) => self.push_backdrop(theme),
             WinitWindowEvent::HoveredFile(path) => {
                 self.push_file_drop(Some(path), FileDropPhase::Hovered)
             }
@@ -84,6 +85,19 @@ impl WinitShell {
                 self.push_file_drop(None, FileDropPhase::Cancelled)
             }
             _ => false,
+        }
+    }
+
+    fn push_backdrop(&mut self, theme: winit::window::Theme) -> bool {
+        self.push_window(SigilWindowEvent::BackdropChanged(Self::map_winit_theme(
+            theme,
+        )))
+    }
+
+    pub(super) const fn map_winit_theme(theme: winit::window::Theme) -> crate::style::Backdrop {
+        match theme {
+            winit::window::Theme::Dark => crate::style::Backdrop::Dark,
+            winit::window::Theme::Light => crate::style::Backdrop::Light,
         }
     }
 

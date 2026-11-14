@@ -1,4 +1,3 @@
-use crate::layout::Length;
 use crate::style::locale::{Direction, Locale};
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
@@ -25,16 +24,13 @@ mod table;
 pub(crate) use ambient::fallback_theme;
 pub(crate) use table::TokenTable;
 
-/// One theme token value.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[non_exhaustive]
-pub enum ThemeValue {
-    /// A color.
-    Color(Color),
-    /// A length in pixels.
-    Px(f32),
-    /// A duration in milliseconds.
-    Ms(u16),
+/// Terminal or window background brightness.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Backdrop {
+    /// The background is dark, so the dark theme is the default.
+    Dark,
+    /// The background is light, so the light theme is the default.
+    Light,
 }
 
 /// Theme values.
@@ -157,6 +153,15 @@ fn readable_hover(accent: ColorScale, on: Color) -> Color {
 }
 
 impl Theme {
+    /// Creates the light or dark theme matching `backdrop`.
+    #[must_use]
+    pub fn for_backdrop(backdrop: Backdrop) -> Self {
+        match backdrop {
+            Backdrop::Dark => Self::dark(),
+            Backdrop::Light => Self::light(),
+        }
+    }
+
     /// Creates the light theme from the built-in light color scales.
     #[must_use]
     pub fn light() -> Self {
@@ -205,7 +210,7 @@ impl Theme {
             border: gray.step(7),
             missing_token_fallback: Color::rgb(255, 0, 255),
             tokens: TokenTable::default(),
-            metrics: Metrics::current(),
+            metrics: Metrics::window(),
             direction: Direction::Ltr,
             locale: Locale::default(),
             strings: Strings::default(),
@@ -245,38 +250,24 @@ impl Theme {
         }
     }
 
-    /// The width of a control of `size`, as a pixel length.
+    /// Sets the height of a control of `size` in pixels.
     #[must_use]
-    pub const fn control_width(&self, size: ControlSize) -> Length {
-        Length::Px(self.metrics.control_width(size))
+    pub const fn control_height(mut self, size: ControlSize, px: f32) -> Self {
+        self.metrics = self.metrics.with_control_height(size, px);
+        self
     }
 
-    /// The height of a control of `size`, as a pixel length.
+    /// Sets the corner radius for `radius` in pixels.
     #[must_use]
-    pub fn control_height(&self, size: ControlSize) -> Length {
-        Length::Px(self.metrics.control_height(size))
+    pub const fn radius(mut self, radius: Radius, px: f32) -> Self {
+        self.metrics = self.metrics.with_radius(radius, px);
+        self
     }
 
-    /// The padding of a control of `size`, as a pixel length.
+    /// Returns the host-resolved layout metrics of this theme.
     #[must_use]
-    pub fn control_padding(&self, size: ControlSize) -> Length {
-        Length::Px(self.metrics.control_padding(size))
-    }
-
-    /// The gap of a control of `size`, as a pixel length.
-    #[must_use]
-    pub fn control_gap(&self, size: ControlSize) -> Length {
-        Length::Px(self.metrics.control_gap(size))
-    }
-
-    /// The corner radius of a control of `size`, as a pixel length.
-    #[must_use]
-    pub const fn radius(&self, size: ControlSize) -> Length {
-        Length::Px(self.metrics.radius(match size {
-            ControlSize::Compact => Radius::Sm,
-            ControlSize::Default => Radius::Md,
-            ControlSize::Wide => Radius::Lg,
-        }))
+    pub fn metrics(&self) -> Metrics {
+        self.metrics.with_cell(crate::style::cell_size())
     }
 
     /// Creates a theme from the obsidian palette with the normal variant.

@@ -4,6 +4,7 @@ use windows_core as _;
 mod appearance;
 #[cfg(feature = "audio")]
 pub(crate) mod audio;
+pub(crate) mod backdrop;
 #[cfg(any(native_commands, global_hotkey))]
 mod bridge;
 mod cell_text;
@@ -73,6 +74,7 @@ pub use crate::text::web_fallbacks;
 pub use crate::text::web_font::{WebFont, WebFontScript};
 #[cfg(feature = "audio")]
 pub use audio::Player;
+pub use backdrop::system_backdrop;
 #[cfg(feature = "terminal")]
 pub(crate) use cell_text::cell_glyph;
 #[cfg(feature = "terminal")]

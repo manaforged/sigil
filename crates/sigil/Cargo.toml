@@ -25,7 +25,7 @@ ahash = { workspace = true }
 notify = { workspace = true, optional = true }
 phf = { workspace = true }
 slotmap = { workspace = true }
-smallvec = { workspace = true }
+smallvec = { workspace = true, features = ["const_new"] }
 smol_str = { workspace = true }
 strsim = { workspace = true }
 tiny-skia = { workspace = true }
@@ -109,7 +109,7 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 
 [features]
 default = ["desktop", "a2ui", "vega"]
-desktop = ["scene", "shell", "clipboard", "dep:notify"]
+desktop = ["scene", "shell", "clipboard", "dep:notify", "dep:dark-light"]
 scene = [
     "cpu",
     "shaping-complex",

@@ -74,15 +74,23 @@ where
     }
 }
 
-impl sealed::Sealed<Self> for String {
-    fn read_value(&self) -> Self {
-        self.clone()
-    }
+macro_rules! clone_reactive {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl sealed::Sealed<Self> for $ty {
+                fn read_value(&self) -> Self {
+                    self.clone()
+                }
 
-    fn to_signal(self) -> Signal<Self> {
-        signal(self)
-    }
+                fn to_signal(self) -> Signal<Self> {
+                    signal(self)
+                }
+            }
+        )+
+    };
 }
+
+clone_reactive!(String, crate::style::Theme);
 
 impl sealed::Sealed<String> for &'static str {
     fn read_value(&self) -> String {

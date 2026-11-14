@@ -8,8 +8,55 @@ pub(super) fn space<T: Paint>(target: T, atom: SpaceAtom) -> T {
     push(target, StyleAtom::Space(atom))
 }
 
+pub(super) fn finite_space<T: Paint>(target: T, make: fn(f32) -> SpaceAtom, value: f32) -> T {
+    assert!(value.is_finite(), "2D transform values must be finite");
+    space(target, make(value))
+}
+
 macro_rules! space_setters {
     () => {
+        /// Moves the node horizontally by `px` pixels.
+        #[must_use]
+        fn translate_x(self, px: f32) -> Self {
+            space::finite_space(self, SpaceAtom::TranslateX, px)
+        }
+
+        /// Moves the node vertically by `px` pixels.
+        #[must_use]
+        fn translate_y(self, px: f32) -> Self {
+            space::finite_space(self, SpaceAtom::TranslateY, px)
+        }
+
+        /// Moves the node by `(x, y)` pixels.
+        #[must_use]
+        fn translate(self, x: f32, y: f32) -> Self {
+            self.translate_x(x).translate_y(y)
+        }
+
+        /// Scales the node uniformly on both axes by `factor`.
+        #[must_use]
+        fn scale(self, factor: f32) -> Self {
+            self.scale_x(factor).scale_y(factor)
+        }
+
+        /// Scales the node horizontally by `factor`.
+        #[must_use]
+        fn scale_x(self, factor: f32) -> Self {
+            space::finite_space(self, SpaceAtom::ScaleX, factor)
+        }
+
+        /// Scales the node vertically by `factor`.
+        #[must_use]
+        fn scale_y(self, factor: f32) -> Self {
+            space::finite_space(self, SpaceAtom::ScaleY, factor)
+        }
+
+        /// Turns the node in 2D by `degrees` (in degrees).
+        #[must_use]
+        fn rotate(self, degrees: f32) -> Self {
+            space::finite_space(self, |deg| SpaceAtom::Rotate(deg.to_radians()), degrees)
+        }
+
         /// Gives the children a 3D viewing distance in px, like Tailwind `perspective-*`.
         #[must_use]
         fn perspective(self, px: f32) -> Self {

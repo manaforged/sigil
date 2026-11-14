@@ -111,6 +111,11 @@ impl WinitShell {
             let attrs = self.web_attrs(attrs);
             match active.create_window(attrs) {
                 Ok(window) => {
+                    if self.windows.is_empty()
+                        && let Some(theme) = window.theme()
+                    {
+                        crate::app::backdrop::set_system_backdrop(Self::map_winit_theme(theme));
+                    }
                     if spec.opts.overlay
                         && let Err(err) = window.set_cursor_hittest(false)
                     {

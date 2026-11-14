@@ -182,7 +182,7 @@ macro_rules! forward_control_methods {
             self
         }
 
-        fn theme(mut self, theme: $crate::style::Theme) -> Self {
+        fn theme(mut self, theme: impl $crate::reactive::Reactive<$crate::style::Theme>) -> Self {
             $crate::widgets::forward_control_methods!(@call $mode self.$field, theme(theme));
             self
         }
