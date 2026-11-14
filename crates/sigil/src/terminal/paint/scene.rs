@@ -198,9 +198,10 @@ impl CellWalk<'_> {
                 self.state.push_transform(match scope.effect {
                     LayerEffect::Transform(transform) => transform,
                     LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
-                    LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => {
-                        IDENTITY
-                    }
+                    LayerEffect::Identity
+                    | LayerEffect::Mask(_)
+                    | LayerEffect::Filter(_)
+                    | LayerEffect::Backdrop(_) => IDENTITY,
                 });
             }
             SceneCommand::PopLayer => {

@@ -25,7 +25,7 @@ impl KeptKey {
     pub(super) fn of(scope: &LayerScope, target: &LayerTarget, scale: f32) -> Option<Self> {
         if matches!(
             scope.effect,
-            LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+            LayerEffect::Transform(_) | LayerEffect::Projected { .. } | LayerEffect::Backdrop(_)
         ) {
             return None;
         }

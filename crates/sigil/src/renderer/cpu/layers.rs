@@ -10,6 +10,7 @@ use crate::geometry::{Point, Rect};
 use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::cache_limits::CacheLimits;
+use crate::renderer::filter::LayerFilters;
 use crate::renderer::plan::{MaskSource, PlanNode};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
@@ -67,7 +68,41 @@ impl CpuPainter<'_> {
             self.projected_layer(&scope, children);
             return;
         }
+        if let Some(filters) = LayerFilters::behind(&scope.effect) {
+            self.filter_behind(&scope, &filters);
+            if children.is_empty() {
+                return;
+            }
+        }
         self.untransformed_layer(scope, mask, (children, commands));
+    }
+
+    fn filter_behind(&mut self, scope: &LayerScope, filters: &LayerFilters) {
+        if self.state.layer_bounds(scope, self.area()).is_none() {
+            return;
+        }
+        let clip = transform_rect(self.state.current_transform(), scope.clip);
+        let Some(mask) = self.backdrop_mask(clip, scope.clip_radii) else {
+            return;
+        };
+        let (x0, y0, width, height) = self.pixel_window(clip.expand(filters.reach()));
+        let Some(mut behind) = self.take_pixmap(width, height) else {
+            return;
+        };
+        copy_window(self.target, (x0, y0), &mut behind);
+        super::filter::run(&mut behind, filters, self.scale);
+        let at = TsTransform::from_translate(x0, y0);
+        self.composite(&behind, at, Ink::plain(scope.opacity), Some(&mask));
+        self.release_pixmap(behind);
+    }
+
+    fn backdrop_mask(&self, clip: Rect, radii: CornerRadii) -> Option<Mask> {
+        let shape = self.layer_mask(clip, radii)?;
+        let current = self
+            .state
+            .current_clip()
+            .and_then(|visible| self.layer_mask(visible, CornerRadii::ZERO));
+        Some(multiplied(shape, current.as_ref()))
     }
 
     pub(super) fn area(&self) -> Rect {
@@ -262,6 +297,30 @@ pub(super) fn take(pool: &mut Vec<Pixmap>, width: u32, height: u32) -> Option<Pi
         return Some(reused);
     }
     Pixmap::new(width, height)
+}
+
+fn copy_window(source: &Pixmap, (x0, y0): (f32, f32), out: &mut Pixmap) {
+    let (left, top) = (x0 as i64, y0 as i64);
+    let (width, stride) = (i64::from(out.width()), i64::from(source.width()));
+    let (start, end) = (left.clamp(0, stride), (left + width).clamp(0, stride));
+    if end <= start {
+        return;
+    }
+    let bytes = ((end - start) * 4) as usize;
+    let into = ((start - left) * 4) as usize;
+    let rows = out.data_mut().chunks_exact_mut((width * 4) as usize);
+    for (row, y) in rows.zip(top..) {
+        if !(0..i64::from(source.height())).contains(&y) {
+            continue;
+        }
+        let from = ((y * stride + start) * 4) as usize;
+        if let (Some(dst), Some(src)) = (
+            row.get_mut(into..into + bytes),
+            source.data().get(from..from + bytes),
+        ) {
+            dst.copy_from_slice(src);
+        }
+    }
 }
 
 fn source_mask(scope: &LayerScope, bounds: Rect, size: (u32, u32), scale: f32) -> Option<Mask> {

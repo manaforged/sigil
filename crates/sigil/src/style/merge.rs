@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
-use crate::style::atom::{Amount, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot};
+use crate::style::atom::{
+    Amount, BackdropPart, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot,
+};
 use crate::style::diagnostic::Seen;
 
 /// Identifies a component's style.
@@ -205,6 +207,9 @@ const fn filter_slot(part: FilterPart) -> ResolvedSlot {
         FilterPart::HueRotate(_) => ResolvedSlot::HueRotate,
         FilterPart::DropShadow(_) => ResolvedSlot::DropShadow,
         FilterPart::TextShadow(_) => ResolvedSlot::TextShadow,
+        FilterPart::Backdrop(BackdropPart::Blur, _) => ResolvedSlot::BackdropBlur,
+        FilterPart::Backdrop(BackdropPart::Brightness, _) => ResolvedSlot::BackdropBrightness,
+        FilterPart::Backdrop(BackdropPart::Saturate, _) => ResolvedSlot::BackdropSaturate,
     }
 }
 
@@ -362,6 +367,9 @@ pub(crate) enum ResolvedSlot {
     HueRotate,
     DropShadow,
     TextShadow,
+    BackdropBlur,
+    BackdropBrightness,
+    BackdropSaturate,
     DropShadowColor,
     TextShadowColor,
 }

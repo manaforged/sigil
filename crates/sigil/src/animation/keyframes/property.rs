@@ -104,6 +104,12 @@ pub enum Property {
     TextShadowY(f32),
     /// The text shadow blur in pixels; the node must have at most one text shadow.
     TextShadowBlur(f32),
+    /// The `backdrop-filter` blur's standard deviation in pixels.
+    BackdropBlur(f32),
+    /// The `backdrop-filter` brightness amount, 1.0 unchanged.
+    BackdropBrightness(f32),
+    /// The `backdrop-filter` saturate amount, 1.0 unchanged.
+    BackdropSaturate(f32),
 }
 
 pub(super) type Key = (u8, [u32; 3], Option<ColorValue>);
@@ -190,6 +196,9 @@ impl Property {
             Self::TextShadowX(px) => (K::TextShadowX, px),
             Self::TextShadowY(px) => (K::TextShadowY, px),
             Self::TextShadowBlur(px) => (K::TextShadowBlur, px.max(0.0)),
+            Self::BackdropBlur(px) => (K::BackdropBlur, px.max(0.0)),
+            Self::BackdropBrightness(amount) => (K::BackdropBrightness, amount.max(0.0)),
+            Self::BackdropSaturate(amount) => (K::BackdropSaturate, amount.max(0.0)),
             _ => return None,
         })
     }
@@ -291,6 +300,9 @@ impl Property {
             Self::TextShadowX(_) => 46,
             Self::TextShadowY(_) => 47,
             Self::TextShadowBlur(_) => 48,
+            Self::BackdropBlur(_) => 49,
+            Self::BackdropBrightness(_) => 50,
+            Self::BackdropSaturate(_) => 51,
             _ => u8::MAX,
         }
     }

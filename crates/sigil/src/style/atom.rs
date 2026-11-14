@@ -28,8 +28,8 @@ kittest_pub! {
     pub use filter::FilterAtom;
 }
 pub(crate) use filter::{
-    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
-    shadow_color,
+    Amount, BackdropPart, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units,
+    hue_units, shadow_color,
 };
 kittest_pub! {
     #[doc(hidden)]

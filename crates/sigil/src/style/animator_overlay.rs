@@ -85,6 +85,12 @@ pub(crate) enum NumericAtomKind {
     MaskFrom,
     /// Where a gradient mask is fully clear, in percent from 0 to 100; the node must have a gradient mask.
     MaskTo,
+    /// The `backdrop-filter` blur's standard deviation in logical pixels, 0 or more.
+    BackdropBlur,
+    /// The `backdrop-filter` brightness amount, 0 or more, 1.0 unchanged.
+    BackdropBrightness,
+    /// The `backdrop-filter` saturate amount, 0 or more, 1.0 unchanged.
+    BackdropSaturate,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -109,7 +115,7 @@ pub(crate) enum Family {
 }
 
 impl NumericAtomKind {
-    pub(crate) const COUNT: usize = 40;
+    pub(crate) const COUNT: usize = 43;
 
     pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::Opacity,
@@ -152,6 +158,9 @@ impl NumericAtomKind {
         Self::StopTo,
         Self::MaskFrom,
         Self::MaskTo,
+        Self::BackdropBlur,
+        Self::BackdropBrightness,
+        Self::BackdropSaturate,
     ];
 
     pub(crate) const fn affects_layout(self) -> bool {
@@ -188,7 +197,13 @@ impl NumericAtomKind {
     pub(crate) const fn initial(self) -> f32 {
         match self {
             Self::Opacity => OPACITY_UNITS,
-            Self::ScaleX | Self::ScaleY | Self::Brightness | Self::Contrast | Self::Saturate => 1.0,
+            Self::ScaleX
+            | Self::ScaleY
+            | Self::Brightness
+            | Self::Contrast
+            | Self::Saturate
+            | Self::BackdropBrightness
+            | Self::BackdropSaturate => 1.0,
             Self::StopVia => 50.0,
             Self::StopTo | Self::MaskTo => 100.0,
             _ => 0.0,
@@ -207,7 +222,10 @@ impl NumericAtomKind {
             | Self::Sepia
             | Self::DropShadowX
             | Self::DropShadowY
-            | Self::DropShadowBlur => Family::Filter,
+            | Self::DropShadowBlur
+            | Self::BackdropBlur
+            | Self::BackdropBrightness
+            | Self::BackdropSaturate => Family::Filter,
             Self::TextShadowX | Self::TextShadowY | Self::TextShadowBlur => Family::TextShadow,
             Self::StopFrom | Self::StopVia | Self::StopTo => Family::Gradient,
             Self::MaskFrom | Self::MaskTo => Family::Mask,

@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Canvas::redraw_on(source)` repaints a canvas when a signal, memo, or closure changes.
 - `Render::font(family, bytes, face)` in `sigil-kittest` renders an offscreen image with a custom font.
 - `DefaultFonts::set(family, bytes, face)` and a `serif` slot.
+- `Paint::{backdrop_blur, backdrop_brightness, backdrop_saturate}` and the classes `backdrop-blur-*`, `backdrop-brightness-*`, and `backdrop-saturate-*` filter what is painted behind a node, inside its corners, like CSS `backdrop-filter`, on the wgpu and CPU renderers. The terminal host draws the node without the filter.
+- `Property::{BackdropBlur, BackdropBrightness, BackdropSaturate}` animate the backdrop filter with `.drive` and keyframes.
+- `LayerEffect::Backdrop`, and `Mask::new` and `LayerScope::layer_effect` without the `kittest` feature.
 
 ### Fixed
 

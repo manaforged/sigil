@@ -232,12 +232,16 @@ impl<'t> EmitWalk<'_, 't> {
             || style.blend != BlendMode::Normal)
             && node.extension::<LayoutResult>().is_some();
         let cut = style.clip_path.is_some() && node.extension::<LayoutResult>().is_some();
-        if style.opacity > 0 && layered {
-            self.push_effect(id, inherited, clip, style);
-        } else if style.opacity > 0 && (cut || !outside_clip(node, clip)) {
-            self.push_masked(id, inherited, clip, style);
-        } else {
+        let painted = layered || cut || !outside_clip(node, clip);
+        if style.opacity == 0 || !painted {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
+            return;
+        }
+        self.push_backdrop(id, &style);
+        if layered {
+            self.push_effect(id, inherited, clip, style);
+        } else {
+            self.push_masked(id, inherited, clip, style);
         }
     }
 

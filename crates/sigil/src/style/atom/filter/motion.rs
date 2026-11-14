@@ -53,6 +53,9 @@ impl FilterStyle {
                 .filter(|blur| *blur > 0)
                 .map(|blur| f32::from(blur) / super::SUB),
             K::HueRotate => self.hue.map(f32::from),
+            K::BackdropBlur | K::BackdropBrightness | K::BackdropSaturate => {
+                self.backdrop_value(kind)
+            }
             K::DropShadowX | K::DropShadowY | K::DropShadowBlur => {
                 self.drop.map(|spec| spec.part(kind))
             }
@@ -120,6 +123,7 @@ impl FilterStyle {
         if let Some(degrees) = shown(K::HueRotate, self.hue.is_some()) {
             self.hue = Some(hue_units(degrees));
         }
+        self.overlay_backdrop(&shown);
         self.overlay_shadows(overlay);
     }
 

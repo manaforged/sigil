@@ -145,9 +145,7 @@ impl LayerScope {
         self.blend
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the transform, mask, or filters applied to the layer.
-    #[doc(hidden)]
     pub fn layer_effect(mut self, effect: LayerEffect) -> Self {
         self.effect = effect;
         self
@@ -271,6 +269,8 @@ pub enum LayerEffect {
     Mask(Mask),
     /// The layer's pixels pass through each filter in order, as in CSS `filter`.
     Filter(Arc<[Filter]>),
+    /// The pixels already painted under the layer's clip pass through each filter in order and draw before the layer, as in CSS `backdrop-filter`.
+    Backdrop(Arc<[Filter]>),
 }
 
 /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
@@ -341,14 +341,12 @@ pub struct Mask {
 }
 
 impl Mask {
-    kittest_pub! {
-        /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
-        #[must_use]
-        pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
-            Self {
-                mode,
-                commands: scene.commands.into(),
-            }
+    /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
+    #[must_use]
+    pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
+        Self {
+            mode,
+            commands: scene.commands.into(),
         }
     }
 

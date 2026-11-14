@@ -205,7 +205,7 @@ fn local_effect(effect: &LayerEffect) -> bool {
         LayerEffect::Identity | LayerEffect::Mask(_) => true,
         LayerEffect::Transform([[_, skew_x, _], [skew_y, _, _]]) => skew_x == 0.0 && skew_y == 0.0,
         LayerEffect::Filter(ref filters) => filters.iter().all(|filter| filter.is_color()),
-        LayerEffect::Projected { .. } => false,
+        LayerEffect::Projected { .. } | LayerEffect::Backdrop(_) => false,
     }
 }
 

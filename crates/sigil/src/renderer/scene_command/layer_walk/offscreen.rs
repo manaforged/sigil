@@ -40,6 +40,7 @@ enum LayerReason {
     Blur,
     Filter,
     Blend,
+    Backdrop,
     Transform,
     Other,
 }
@@ -55,6 +56,7 @@ impl LayerReason {
             Self::Blur => "blur",
             Self::Filter => "filter",
             Self::Blend => "blend",
+            Self::Backdrop => "backdrop",
             Self::Transform => "transform",
             Self::Other => "other",
         };
@@ -75,6 +77,7 @@ impl LayerReason {
             }
             LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
+            LayerEffect::Backdrop(_) => Self::Backdrop,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
             LayerEffect::Identity if scope.opacity < 1.0 => Self::Opacity,
             LayerEffect::Identity => Self::Other,
@@ -91,6 +94,7 @@ pub(super) struct LayerPlan<'n> {
     clip_radii: CornerRadii,
     transform: Transform,
     filters: Option<LayerFilters>,
+    backdrop: Option<LayerFilters>,
     mask: Option<MaskSource<'n>>,
     projection: Option<Transform3D>,
     blend: BlendMode,
@@ -147,6 +151,7 @@ pub(super) fn layer_plan<'n>(
             clip_radii: CornerRadii::ZERO,
             transform: IDENTITY,
             filters: None,
+            backdrop: None,
             mask: None,
             projection: Some(frame.composite),
             blend: scope.blend,
@@ -165,6 +170,7 @@ pub(super) fn layer_plan<'n>(
             clip_radii: frame.scope.clip_radii,
             transform: frame.composite,
             filters: None,
+            backdrop: None,
             mask: None,
             projection: None,
             blend: scope.blend,
@@ -181,6 +187,7 @@ pub(super) fn layer_plan<'n>(
         clip_radii: scope.clip_radii,
         transform: IDENTITY,
         filters: LayerFilters::of(&scope.effect),
+        backdrop: LayerFilters::behind(&scope.effect),
         mask: None,
         projection: None,
         blend: scope.blend,
@@ -203,6 +210,7 @@ pub(super) fn group_plan<'n>(
         clip_radii: CornerRadii::ZERO,
         transform: IDENTITY,
         filters: None,
+        backdrop: None,
         mask: None,
         projection: None,
         blend: BlendMode::Normal,
@@ -274,7 +282,7 @@ fn filtered_view(
     let pipeline = pipeline_for(
         ctx.filter_pipelines,
         ctx.device,
-        LAYER_FORMAT,
+        handle.format,
         (FilterPipeline::format, FilterPipeline::new),
     );
     let src = PassSrc {

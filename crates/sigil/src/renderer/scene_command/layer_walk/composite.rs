@@ -1,4 +1,5 @@
 use crate::geometry::{Point, Rect};
+use crate::renderer::filter::LayerFilters;
 use crate::renderer::layer_composite::{
     Backdrop, CompositeRequest, LayerCompositePipeline, LayerMask,
 };
@@ -28,6 +29,9 @@ pub(in super::super) fn composite_layer(
         .mask
         .map(|source| mask::render(ctx, target, source, (layer.plan.dest, layer.extent)));
     let request = request_of(&layer, target);
+    if let Some(filters) = &layer.plan.backdrop {
+        filter_behind(ctx, target, &request, filters);
+    }
     let copy = match layer.plan.blend {
         BlendMode::Normal => None,
         mode => backdrop::copy(ctx, target, &request).map(|copy| (copy, mode)),
@@ -46,6 +50,31 @@ pub(in super::super) fn composite_layer(
     }
     release(ctx, copy.map(|(copy, _)| copy));
     release_layer(ctx, layer.handle);
+}
+
+fn filter_behind(
+    ctx: &mut WalkCtx<'_>,
+    target: &LayerTarget,
+    request: &CompositeRequest<'_>,
+    filters: &LayerFilters,
+) {
+    let area = request.round.expand(filters.reach());
+    let Some(copy) = backdrop::copy_area(ctx, target, area, true) else {
+        return;
+    };
+    let Ok(filtered) = super::filtered_view(ctx, &copy.handle, filters) else {
+        release(ctx, Some(copy));
+        return;
+    };
+    let behind = CompositeRequest {
+        layer_view: filtered.as_ref().unwrap_or(&copy.handle.view),
+        dest: copy.rect(ctx.scale),
+        texture_size: (copy.handle.width, copy.handle.height),
+        source_extent: copy.extent,
+        ..*request
+    };
+    draw(ctx, target, behind, (None, None));
+    release(ctx, Some(copy));
 }
 
 fn draw(

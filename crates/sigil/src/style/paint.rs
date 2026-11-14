@@ -2,7 +2,9 @@ use crate::animation::{Keyframes, KeyframesId, Transition};
 use crate::kernel::ImageSource;
 use crate::reactive::Reactive;
 use crate::scene::{BlendMode, Shadow};
-use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom};
+use crate::style::atom::{
+    Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom,
+};
 use crate::style::engine::encode_px;
 use crate::style::{
     Background, ClipShape, ColorValue, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
