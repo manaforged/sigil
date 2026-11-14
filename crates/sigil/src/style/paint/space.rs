@@ -106,6 +106,12 @@ macro_rules! space_setters {
         fn backface_visible(self) -> Self {
             space::space(self, SpaceAtom::Backface(Backface::Visible))
         }
+
+        /// Keeps the children's 3D transforms in this node's 3D space, like CSS `transform-style: preserve-3d`.
+        #[must_use]
+        fn preserve_3d(self) -> Self {
+            space::space(self, SpaceAtom::Preserve3d(true))
+        }
     };
 }
 

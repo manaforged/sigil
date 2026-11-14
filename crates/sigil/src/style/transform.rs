@@ -111,7 +111,8 @@ impl Transform2D {
             | super::SpaceAtom::TranslateZ(_)
             | super::SpaceAtom::Perspective(_)
             | super::SpaceAtom::PerspectiveOrigin(_)
-            | super::SpaceAtom::Backface(_) => {}
+            | super::SpaceAtom::Backface(_)
+            | super::SpaceAtom::Preserve3d(_) => {}
         }
     }
 

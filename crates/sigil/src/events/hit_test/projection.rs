@@ -1,43 +1,37 @@
-use crate::geometry::{Point, Rect};
+use crate::geometry::Point;
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::LayoutResult;
 use crate::scene::command::Transform3D;
-use crate::style::atom::SpaceStyle;
-use crate::style::projection::projection;
-use crate::style::{ClipShape, StyleAtom, StyleBinding, Transform2D};
+use crate::style::projection::{in_context, node_plane};
+use crate::style::{ClipShape, StyleAtom, StyleBinding};
 
-fn node_projection(
-    cx: &Cx,
-    id: NodeId,
-    binding: &StyleBinding,
-    rect: Rect,
-) -> Option<(Transform3D, bool)> {
-    let flat = Transform2D::for_binding(binding);
-    let space = SpaceStyle::for_binding(binding);
-    projection(cx, id, (flat, &space), rect)
-        .or_else(|| (!flat.is_identity()).then(|| (Transform3D::from(flat.matrix(rect)), false)))
+pub(super) fn node_transform(cx: &Cx, id: NodeId) -> Option<Transform3D> {
+    node_plane(cx, id).map(|(transform, _)| transform)
 }
 
-pub(super) fn node_transform(
-    cx: &Cx,
-    id: NodeId,
-    binding: &StyleBinding,
-    rect: Rect,
-) -> Option<Transform3D> {
-    node_projection(cx, id, binding, rect).map(|(transform, _)| transform)
-}
-
-pub(super) fn to_local(
-    cx: &Cx,
-    id: NodeId,
-    binding: &StyleBinding,
-    rect: Rect,
-    point: Point,
-) -> Option<Point> {
-    match node_projection(cx, id, binding, rect) {
+fn to_local(cx: &Cx, id: NodeId, point: Point) -> Option<Point> {
+    match node_plane(cx, id) {
         None => Some(point),
         Some((transform, hidden)) => transform.visible(hidden)?.unproject(point),
     }
+}
+
+pub(super) type Step = (Option<Point>, Option<Point>);
+
+pub(super) fn descend(
+    cx: &Cx,
+    id: NodeId,
+    (moved, linked): (bool, bool),
+    (base, local): Step,
+) -> Step {
+    let context = linked && in_context(cx, id);
+    let from = if context { base } else { local };
+    let to = if moved || context {
+        from.and_then(|point| to_local(cx, id, point))
+    } else {
+        from
+    };
+    (from, to)
 }
 
 fn clip_shape(binding: &StyleBinding) -> Option<ClipShape> {

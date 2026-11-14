@@ -44,6 +44,8 @@ kittest_pub! {
         PerspectiveOrigin([u16; 2]),
         /// Whether the node draws while its back faces the viewer.
         Backface(Backface),
+        /// Whether the children stay in this node's 3D space.
+        Preserve3d(bool),
     }
 }
 
@@ -61,6 +63,8 @@ kittest_pub! {
         pub perspective_origin: [u16; 2],
         /// Whether the node draws while its back faces the viewer; the default is visible.
         pub backface: Backface,
+        /// Whether the children stay in this node's 3D space; the default is flat.
+        pub preserve: bool,
     }
 }
 
@@ -72,6 +76,7 @@ impl SpaceStyle {
         perspective: None,
         perspective_origin: [5_000, 5_000],
         backface: Backface::Visible,
+        preserve: false,
     };
 
     pub(crate) const fn apply(&mut self, atom: SpaceAtom) {
@@ -88,6 +93,7 @@ impl SpaceStyle {
             SpaceAtom::Perspective(distance) => self.perspective = distance,
             SpaceAtom::PerspectiveOrigin(origin) => self.perspective_origin = origin,
             SpaceAtom::Backface(backface) => self.backface = backface,
+            SpaceAtom::Preserve3d(on) => self.preserve = on,
         }
     }
 
@@ -127,7 +133,7 @@ impl SpaceStyle {
         }
     }
 
-    fn key(&self) -> [u32; 7] {
+    fn key(&self) -> [u32; 8] {
         [
             f32_bits(self.turn[0]),
             f32_bits(self.turn[1]),
@@ -136,6 +142,7 @@ impl SpaceStyle {
             self.perspective.map_or(u32::MAX, f32_bits),
             u32::from(self.perspective_origin[0]) << 16 | u32::from(self.perspective_origin[1]),
             u32::from(self.backface == Backface::Hidden),
+            u32::from(self.preserve),
         ]
     }
 }
@@ -161,6 +168,7 @@ impl SpaceAtom {
             Self::PerspectiveOrigin([x, y]) => (11, u64::from(x) << 16 | u64::from(y)),
             Self::Backface(Backface::Visible) => (12, 0),
             Self::Backface(Backface::Hidden) => (12, 1),
+            Self::Preserve3d(on) => (13, u64::from(on)),
         }
     }
 }

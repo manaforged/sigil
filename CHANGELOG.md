@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `PointerEvent::velocity()` returns the pointer speed in logical pixels per second over its last moves; it is zero after a pause, so a held release does not fling.
 - `Animator::fling(velocity)` coasts to rest, `Animator::fling_to(velocity, points)` springs to the point the fling would reach, and `Animator::velocity()` reads the current speed in value units per second.
 - `Spring::duration(d).bounce(b)` builds a spring from a visual duration and a bounce, `Transition::spring(spring)` gives any spring to a style transition, `Keyframes::delay(d)` holds the start frame, and `Keyframes::fade()` fades in.
+- `Paint::preserve_3d()` keeps the 3D transforms of children in the 3D space of the node, like CSS `transform-style: preserve-3d`, so a flip card is one rotating parent with two `backface_hidden()` faces. Opacity below 1, filters, clip paths, masks, blend modes and clipping overflow force flat, as in CSS.
 
 ### Fixed
 

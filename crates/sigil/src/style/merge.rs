@@ -246,6 +246,7 @@ const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
         SpaceAtom::Perspective(_) => ResolvedSlot::Perspective,
         SpaceAtom::PerspectiveOrigin(_) => ResolvedSlot::PerspectiveOrigin,
         SpaceAtom::Backface(_) => ResolvedSlot::Backface,
+        SpaceAtom::Preserve3d(_) => ResolvedSlot::Preserve3d,
     }
 }
 
@@ -346,6 +347,7 @@ pub(crate) enum ResolvedSlot {
     Perspective,
     PerspectiveOrigin,
     Backface,
+    Preserve3d,
     MaskImage,
     MaskFrom,
     MaskTo,

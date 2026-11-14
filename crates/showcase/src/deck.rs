@@ -1,8 +1,9 @@
 use std::f32::consts::PI;
 
 use sigil::animation::{Animator, Property, Spring};
-use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
+
+use crate::overlay;
 
 const CARD_WIDTH: f32 = 300.0;
 const CARD_HEIGHT: f32 = 200.0;
@@ -80,10 +81,14 @@ fn seat(card: &'static Card, turn: f32) -> NodeBuilder {
                 .width(CARD_WIDTH)
                 .height(CARD_HEIGHT)
                 .perspective(DEPTH)
-                .child(face(card.question, "Question").drive(Property::RotateY, angle.value()))
                 .child(
-                    face(card.answer, "Answer")
-                        .drive(Property::RotateY, move || angle.get() + PI),
+                    container()
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .preserve_3d()
+                        .drive(Property::RotateY, angle.value())
+                        .child(face(card.question, "Question"))
+                        .child(face(card.answer, "Answer").rotate_y(180.0)),
                 ),
         )
         .child(button("Turn over").activate(move || {
@@ -94,11 +99,7 @@ fn seat(card: &'static Card, turn: f32) -> NodeBuilder {
 
 fn face(words: &'static str, side: &'static str) -> NodeBuilder {
     container()
-        .layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset(Length::Px(0.0)),
-        )
+        .layout(overlay())
         .backface_hidden()
         .radius(Radius::Md)
         .shadow(sigil::style::Elevation::Lg)

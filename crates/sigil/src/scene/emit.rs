@@ -7,6 +7,7 @@ use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::scene::canvas::CanvasPaint;
+use crate::style::projection::in_context;
 use crate::style::text_identity::DiscreteTextStyle;
 use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
 
@@ -218,7 +219,10 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         }
         let theme = node.extension::<Theme>().unwrap_or(inherited.theme);
-        if node.extension::<StyleBinding>().is_none() && outside_clip(node, clip) {
+        if node.extension::<StyleBinding>().is_none()
+            && outside_clip(node, clip)
+            && !in_context(self.cx, id)
+        {
             self.defer_top_layer(node, || {
                 let style = render_style_for(node, theme, inherited.text_color);
                 child_inherited(node, inherited, &style)
@@ -229,7 +233,9 @@ impl<'t> EmitWalk<'_, 't> {
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
             || style.opacity < 10_000
-            || style.blend != BlendMode::Normal)
+            || style.blend != BlendMode::Normal
+            || style.space.preserve
+            || in_context(self.cx, id))
             && node.extension::<LayoutResult>().is_some();
         let cut = style.clip_path.is_some() && node.extension::<LayoutResult>().is_some();
         let painted = layered || cut || !outside_clip(node, clip);
@@ -278,6 +284,9 @@ impl<'t> EmitWalk<'_, 't> {
                 if !selected {
                     emit_cache::store(key, node, rect, inherit, self.scene.copy_from(start));
                 }
+            }
+            if style.space.preserve {
+                return;
             }
             if result.clips() {
                 self.emit_clipped_children(node, &child_context, clip, rect, style);
@@ -347,7 +356,16 @@ impl<'t> EmitWalk<'_, 't> {
     }
 
     fn push_children(&mut self, node: &Node, inherited: &Inherited<'t>, clip: Option<Rect>) {
-        for child in node.children().iter().copied() {
+        self.push_nodes(node.children().iter().copied(), inherited, clip);
+    }
+
+    fn push_nodes(
+        &mut self,
+        nodes: impl IntoIterator<Item = NodeId>,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+    ) {
+        for child in nodes {
             if self.cx.get(child).is_some_and(is_top_layer) {
                 self.deferred.push((child, inherited.clone(), None));
             } else {

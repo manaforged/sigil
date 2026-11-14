@@ -156,6 +156,19 @@ impl Default for RenderStyle {
     }
 }
 
+impl RenderStyle {
+    pub(crate) fn preserves_3d(&self, clips: bool) -> bool {
+        self.space.preserve
+            && !clips
+            && f32::from(self.opacity) >= OPACITY_UNITS
+            && self.blend == crate::scene::BlendMode::Normal
+            && self.clip_path.is_none()
+            && self.mask.kind.is_none()
+            && self.filter.filters().is_empty()
+            && self.filter.backdrop().is_empty()
+    }
+}
+
 /// Selects the line drawn with text.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextDecoration {
