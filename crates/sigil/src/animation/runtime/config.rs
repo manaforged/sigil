@@ -11,5 +11,6 @@ pub(crate) enum AnimationConfig {
     Playback {
         end: Option<f64>,
         cycle: f64,
+        delay: f64,
     },
 }

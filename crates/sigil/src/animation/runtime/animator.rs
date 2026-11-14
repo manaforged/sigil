@@ -1,5 +1,5 @@
 use crate::animation::{Spring, Transition};
-use crate::reactive::{Runtime, Signal, batch, cleanup, signal};
+use crate::reactive::{Runtime, Signal, batch, cleanup, signal, untrack};
 
 use crate::animation::runtime::config::AnimationConfig;
 use crate::animation::runtime::motion_prefs::MotionPrefs;
@@ -69,6 +69,25 @@ impl Animator {
         self.with_inner(SignalAnimator::cancel);
     }
 
+    /// Coasts from the current value at `velocity` and slows to rest by exponential decay, like Motion `inertia`.
+    pub fn fling(&self, velocity: f32) {
+        self.fling_to(velocity, &[]);
+    }
+
+    /// Springs to the point in `points` nearest to where a `fling` would rest, starting at `velocity`.
+    pub fn fling_to(&self, velocity: f32, points: &[f32]) {
+        self.with_inner(|inner| inner.fling(velocity, points));
+    }
+
+    /// Returns the current velocity in value units per second, without subscribing.
+    #[must_use]
+    pub fn velocity(&self) -> f32 {
+        if !self.inner.is_alive() {
+            return 0.0;
+        }
+        untrack(|| self.inner.with(|inner| inner.id)).map_or(0.0, AnimatorId::velocity)
+    }
+
     fn with_inner(&self, f: impl FnOnce(&mut SignalAnimator)) {
         batch(|| {
             self.inner.try_update(f);
@@ -130,14 +149,15 @@ impl SignalAnimator {
 
     pub(crate) fn set_config(&mut self, config: AnimationConfig) {
         if self.config != config {
-            self.cancel();
             self.config = config;
+            if let Some(id) = self.id {
+                id.update(|motion| motion.reconfigure(config));
+            }
         }
     }
 
     pub(crate) fn target(&mut self, value: f32) {
-        if !value.is_finite() {
-            tracing::warn!(target: "sigil::animation", value, "ignored a non-finite animation target");
+        if !finite(value, "target") {
             return;
         }
         if MotionPrefs::reduced() {
@@ -153,15 +173,31 @@ impl SignalAnimator {
             self.cancel();
             return;
         }
+        let config = self.config;
+        self.source().retarget(value, config);
+    }
+
+    pub(crate) fn fling(&mut self, velocity: f32, points: &[f32]) {
+        if !finite(velocity, "fling velocity") {
+            return;
+        }
+        let config = self.config;
+        self.source()
+            .update(|motion| motion.fling(velocity, points, config));
+        if MotionPrefs::reduced() {
+            self.cancel();
+        }
+    }
+
+    fn source(&mut self) -> AnimatorId {
         let (signal, active, config) = (self.signal, self.active, self.config);
-        self.id
+        *self
+            .id
             .get_or_insert_with(|| state::register_config(signal, active, config))
-            .retarget(value);
     }
 
     pub(crate) fn snap(&mut self, value: f32) {
-        if !value.is_finite() {
-            tracing::warn!(target: "sigil::animation", value, "ignored a non-finite animation snap value");
+        if !finite(value, "snap value") {
             return;
         }
         self.apply_immediate(value);
@@ -211,4 +247,12 @@ impl Drop for SignalAnimator {
             id.deregister();
         }
     }
+}
+
+fn finite(value: f32, input: &'static str) -> bool {
+    let finite = value.is_finite();
+    if !finite {
+        tracing::warn!(target: "sigil::animation", value, input, "ignored a non-finite animation input");
+    }
+    finite
 }

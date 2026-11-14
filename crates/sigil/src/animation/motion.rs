@@ -1,6 +1,9 @@
 use std::num::NonZeroU16;
 
-use super::{Easing, Spring, SpringState, Tween};
+use super::runtime::AnimationConfig;
+use super::{Decay, Easing, SpringState, Tween};
+
+const VELOCITY_PROBE_SECS: f32 = 0.001;
 
 pub(crate) enum Motion {
     Spring(SpringState),
@@ -16,10 +19,12 @@ pub(crate) enum Motion {
         end: Option<f64>,
         cycle: f64,
     },
+    Decay(Decay),
 }
 
 impl Motion {
-    pub(crate) fn spring(initial: f32, spring: Spring) -> Self {
+    #[cfg(test)]
+    pub(crate) fn spring(initial: f32, spring: super::Spring) -> Self {
         Self::Spring(SpringState::new(initial, spring))
     }
 
@@ -33,12 +38,62 @@ impl Motion {
         }
     }
 
-    pub(crate) const fn playback(end: Option<f64>, cycle: f64) -> Self {
+    pub(crate) const fn playback(end: Option<f64>, cycle: f64, delay: f64) -> Self {
         Self::Playback {
-            elapsed: 0.0,
+            elapsed: -delay,
             end,
             cycle,
         }
+    }
+
+    pub(crate) fn configured(initial: f32, velocity: f32, config: AnimationConfig) -> Self {
+        match config {
+            AnimationConfig::Spring(spring) => {
+                let mut state = SpringState::new(initial, spring);
+                state.set_velocity(velocity);
+                Self::Spring(state)
+            }
+            AnimationConfig::Tween {
+                ms,
+                easing,
+                delay_ms,
+            } => Self::tween(initial, ms, easing, delay_ms),
+            AnimationConfig::Playback { end, cycle, delay } => Self::playback(end, cycle, delay),
+        }
+    }
+
+    pub(crate) fn reconfigure(&mut self, config: AnimationConfig) {
+        let settled = self.is_settled();
+        let target = self.target();
+        *self = Self::configured(self.value(), self.velocity(), config);
+        if !settled {
+            self.retarget(target);
+        }
+    }
+
+    pub(crate) fn resume(&mut self, config: AnimationConfig) {
+        if matches!(self, Self::Decay(_)) {
+            self.reconfigure(config);
+        }
+    }
+
+    pub(crate) fn fling(&mut self, velocity: f32, points: &[f32], config: AnimationConfig) {
+        let value = self.value();
+        let coast = Decay::new(value, velocity);
+        let rest = coast.target();
+        let nearest = points
+            .iter()
+            .copied()
+            .filter(|point| point.is_finite())
+            .min_by(|a, b| (a - rest).abs().total_cmp(&(b - rest).abs()));
+        *self = match nearest {
+            Some(point) => {
+                let mut snap = Self::configured(value, velocity, config);
+                snap.retarget(point);
+                snap
+            }
+            None => Self::Decay(coast),
+        };
     }
 
     pub(crate) fn tick(&mut self, dt: f32) {
@@ -51,6 +106,7 @@ impl Motion {
                     *elapsed = elapsed.min(end);
                 }
             }
+            Self::Decay(decay) => decay.step(dt),
         }
     }
 
@@ -76,7 +132,7 @@ impl Motion {
                         Some(timed(*current, value, [*secs, *delay], *easing))
                     };
             }
-            Self::Playback { .. } => {}
+            Self::Playback { .. } | Self::Decay(_) => {}
         }
     }
 
@@ -93,6 +149,7 @@ impl Motion {
                     *elapsed = end;
                 }
             }
+            Self::Decay(decay) => decay.finish(),
         }
     }
 
@@ -106,6 +163,32 @@ impl Motion {
             Self::Tween { current, .. } => *current,
             Self::Playback { elapsed, cycle, .. } if *cycle > 0.0 => (*elapsed % *cycle) as f32,
             Self::Playback { .. } => 0.0,
+            Self::Decay(decay) => decay.value(),
+        }
+    }
+
+    pub(crate) fn velocity(&self) -> f32 {
+        match self {
+            Self::Spring(spring) => spring.velocity(),
+            Self::Tween {
+                tween: Some(active),
+                ..
+            } => {
+                let mut ahead = *active;
+                ahead.step(VELOCITY_PROBE_SECS);
+                (ahead.value() - active.value()) / VELOCITY_PROBE_SECS
+            }
+            Self::Decay(decay) => decay.velocity(),
+            Self::Tween { .. } | Self::Playback { .. } => 0.0,
+        }
+    }
+
+    fn target(&self) -> f32 {
+        match self {
+            Self::Spring(spring) => spring.target(),
+            Self::Tween { current, tween, .. } => tween.map_or(*current, |active| active.to()),
+            Self::Decay(decay) => decay.target(),
+            Self::Playback { .. } => self.value(),
         }
     }
 
@@ -114,6 +197,7 @@ impl Motion {
             Self::Spring(spring) => spring.is_settled(),
             Self::Tween { tween, .. } => tween.is_none(),
             Self::Playback { elapsed, end, .. } => end.is_some_and(|end| *elapsed >= end),
+            Self::Decay(decay) => decay.is_settled(),
         }
     }
 

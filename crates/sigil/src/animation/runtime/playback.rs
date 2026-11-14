@@ -63,6 +63,7 @@ impl Player {
         let config = AnimationConfig::Playback {
             end: keyframes.end(),
             cycle: keyframes.cycle(),
+            delay: keyframes.delay_secs(),
         };
         Some(Playing {
             id,

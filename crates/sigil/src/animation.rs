@@ -1,3 +1,4 @@
+mod decay;
 mod easing;
 mod keyframes;
 mod motion;
@@ -16,6 +17,7 @@ kittest_pub! {
     pub use keyframes::KeyframesId;
 }
 pub use keyframes::{Keyframes, Property};
+pub(crate) use decay::Decay;
 pub(crate) use motion::Motion;
 pub use runtime::clock::{clock, every_frame};
 pub use runtime::{Animator, reduced_motion};

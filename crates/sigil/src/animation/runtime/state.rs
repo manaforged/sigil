@@ -19,16 +19,7 @@ pub(crate) fn register_config(
     config: AnimationConfig,
 ) -> AnimatorId {
     let initial = signal.try_peek().unwrap_or_default();
-    let motion = match config {
-        AnimationConfig::Spring(spring) => Motion::spring(initial, spring),
-        AnimationConfig::Tween {
-            ms,
-            easing,
-            delay_ms,
-        } => Motion::tween(initial, ms, easing, delay_ms),
-        AnimationConfig::Playback { end, cycle } => Motion::playback(end, cycle),
-    };
-    register(signal, active, motion)
+    register(signal, active, Motion::configured(initial, 0.0, config))
 }
 
 pub(crate) fn register(
@@ -73,16 +64,16 @@ fn retain_animators(mut keep: impl FnMut(&mut AnimatorSource) -> bool) {
 
 impl AnimatorId {
     pub(crate) fn finish(self) {
-        self.update(|entry| entry.motion.finish());
+        self.update(Motion::finish);
     }
 
-    fn update(self, change: impl FnOnce(&mut AnimatorSource)) {
+    pub(crate) fn update(self, change: impl FnOnce(&mut Motion)) {
         batch(|| {
             with_sources(|sources| {
                 let Some(entry) = animator_mut(sources, self.0) else {
                     return;
                 };
-                change(entry);
+                change(&mut entry.motion);
                 if MotionPrefs::reduced() && !entry.motion.is_settled() {
                     entry.motion.finish();
                 }
@@ -103,10 +94,11 @@ impl AnimatorId {
         });
     }
 
-    pub(crate) fn retarget(self, value: f32) {
+    pub(crate) fn retarget(self, value: f32, config: AnimationConfig) {
         batch(|| {
             with_sources(|sources| {
                 if let Some(entry) = animator_mut(sources, self.0) {
+                    entry.motion.resume(config);
                     entry.motion.retarget(value);
                     Runtime::mark_frame_dirty();
                     let settled = entry.motion.is_settled();
@@ -128,6 +120,13 @@ impl AnimatorId {
         with_sources(|sources| {
             animator_mut(sources, self.0).is_none_or(|entry| entry.motion.is_settled())
         })
+    }
+
+    pub(crate) fn velocity(self) -> f32 {
+        try_with_sources(|sources| {
+            animator_mut(sources, self.0).map_or(0.0, |entry| entry.motion.velocity())
+        })
+        .unwrap_or_default()
     }
 
     #[cfg(test)]

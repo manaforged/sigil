@@ -1,3 +1,5 @@
+use std::sync::{Mutex, PoisonError};
+
 use crate::animation::{Easing, Spring};
 use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, TransitionId};
 
@@ -28,6 +30,49 @@ kittest_pub! {
             pub const ALL: TransitionId = TransitionId(23);
         }
     }
+}
+
+pub(crate) const TWEEN_MS: u16 = 150;
+
+const SPRING_BASE: u16 = 0x8000;
+
+const SPRING_PRESETS: [TransitionId; 5] = [
+    presets::SMOOTH,
+    presets::GENTLE,
+    presets::SNAPPY,
+    presets::BOUNCY,
+    presets::STIFF,
+];
+
+static SPRINGS: Mutex<Vec<Spring>> = Mutex::new(Vec::new());
+
+pub(crate) fn intern(spring: Spring) -> TransitionId {
+    let wanted = Some(AnimationConfig::Spring(spring));
+    if let Some(id) = SPRING_PRESETS.into_iter().find(|id| config(*id) == wanted) {
+        return id;
+    }
+    let mut springs = SPRINGS.lock().unwrap_or_else(PoisonError::into_inner);
+    let index = springs.iter().position(|held| *held == spring).unwrap_or_else(|| {
+        springs.push(spring);
+        springs.len() - 1
+    });
+    let id = u16::try_from(index)
+        .ok()
+        .and_then(|index| SPRING_BASE.checked_add(index));
+    id.map_or_else(
+        || {
+            springs.truncate(index);
+            tracing::warn!(target: "sigil::animation", "too many distinct transition springs; using the smooth spring");
+            presets::SMOOTH
+        },
+        TransitionId,
+    )
+}
+
+fn interned(id: TransitionId) -> Option<AnimationConfig> {
+    let index = usize::from(id.0.checked_sub(SPRING_BASE)?);
+    let springs = SPRINGS.lock().unwrap_or_else(PoisonError::into_inner);
+    springs.get(index).copied().map(AnimationConfig::Spring)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,7 +148,7 @@ pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
         | presets::TRANSFORM
         | presets::ALL => {
             return Some(AnimationConfig::Tween {
-                ms: 150,
+                ms: TWEEN_MS,
                 easing: Easing::IN_OUT,
                 delay_ms: 0,
             });
@@ -137,7 +182,7 @@ pub(crate) fn transition_config(atoms: &[StyleAtom]) -> Option<(AnimationConfig,
         StyleAtom::Transition(id) => Some(*id),
         _ => None,
     })?;
-    let mut config = config(id)?;
+    let mut config = config(id).or_else(|| interned(id))?;
     if let AnimationConfig::Tween {
         ms,
         easing,

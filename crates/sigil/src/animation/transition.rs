@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use super::Easing;
+use super::{Easing, Spring};
 use crate::animation::runtime::presets;
-use crate::animation::runtime::registry::timing;
+use crate::animation::runtime::registry::{intern, timing};
 use crate::style::{MillisU16, StyleAtom, TransitionId};
 
 /// The properties a node animates when its style changes, with the duration, easing, and delay.
@@ -24,6 +24,11 @@ impl Transition {
     /// Transitions colors, opacity, and transform on the smooth spring used by interactive controls.
     pub const fn smooth() -> Self {
         Self::preset(presets::SMOOTH)
+    }
+
+    /// Transitions every animatable property on `spring` physics; `duration`, `ease`, and `delay` do not apply.
+    pub fn spring(spring: Spring) -> Self {
+        Self::preset(intern(spring))
     }
 
     /// Transitions every animatable property over 150 ms, like Tailwind `transition-all`.

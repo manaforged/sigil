@@ -1,3 +1,6 @@
+use core::f32::consts::TAU;
+use std::time::Duration;
+
 /// Spring constants for damped spring motion.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[must_use]
@@ -34,6 +37,19 @@ impl Spring {
         }
     }
 
+    /// Creates a spring without bounce that visually reaches its target in about `duration`, like Motion `visualDuration`.
+    pub fn duration(duration: Duration) -> Self {
+        let root = TAU / (VISUAL_PERIODS * duration.as_secs_f32());
+        Self::new(root * root, 0.0).bounce(0.0)
+    }
+
+    /// Sets the bounce from 0.0 (none) to 1.0 (most) and keeps the stiffness and mass, like Motion `bounce`.
+    pub fn bounce(mut self, bounce: f32) -> Self {
+        let ratio = (1.0 - bounded(bounce, 0.0).min(1.0)).max(SpringState::MIN_DAMPING_RATIO);
+        self.damping = bounded(2.0 * ratio * (self.stiffness * self.mass).sqrt(), 0.0);
+        self
+    }
+
     /// Sets the spring mass; a NaN or non-positive mass reads as the smallest positive mass.
     pub const fn mass(mut self, mass: f32) -> Self {
         self.mass = bounded(mass, f32::MIN_POSITIVE);
@@ -44,6 +60,8 @@ impl Spring {
         (self.stiffness, self.damping, self.mass)
     }
 }
+
+const VISUAL_PERIODS: f32 = 1.2;
 
 const fn bounded(value: f32, min: f32) -> f32 {
     if value.is_nan() {
@@ -123,11 +141,15 @@ impl SpringState {
         self.value
     }
 
-    #[cfg(test)]
     /// Returns the velocity.
     #[must_use]
     pub(crate) const fn velocity(&self) -> f32 {
         self.velocity
+    }
+
+    /// Sets the velocity; a non-finite velocity reads as zero.
+    pub(crate) const fn set_velocity(&mut self, velocity: f32) {
+        self.velocity = if velocity.is_finite() { velocity } else { 0.0 };
     }
 
     /// Returns the target.
