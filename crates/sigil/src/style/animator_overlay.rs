@@ -91,6 +91,12 @@ pub(crate) enum NumericAtomKind {
     BackdropBrightness,
     /// The `backdrop-filter` saturate amount, 0 or more, 1.0 unchanged.
     BackdropSaturate,
+    /// The angle of a linear or conic gradient in degrees clockwise from up.
+    GradientAngle,
+    /// The gradient center's x in percent of the box width, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterX,
+    /// The gradient center's y in percent of the box height, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterY,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -115,7 +121,7 @@ pub(crate) enum Family {
 }
 
 impl NumericAtomKind {
-    pub(crate) const COUNT: usize = 43;
+    pub(crate) const COUNT: usize = 46;
 
     pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::Opacity,
@@ -161,6 +167,9 @@ impl NumericAtomKind {
         Self::BackdropBlur,
         Self::BackdropBrightness,
         Self::BackdropSaturate,
+        Self::GradientAngle,
+        Self::GradientCenterX,
+        Self::GradientCenterY,
     ];
 
     pub(crate) const fn affects_layout(self) -> bool {
@@ -204,7 +213,7 @@ impl NumericAtomKind {
             | Self::Saturate
             | Self::BackdropBrightness
             | Self::BackdropSaturate => 1.0,
-            Self::StopVia => 50.0,
+            Self::StopVia | Self::GradientCenterX | Self::GradientCenterY => 50.0,
             Self::StopTo | Self::MaskTo => 100.0,
             _ => 0.0,
         }
@@ -227,7 +236,12 @@ impl NumericAtomKind {
             | Self::BackdropBrightness
             | Self::BackdropSaturate => Family::Filter,
             Self::TextShadowX | Self::TextShadowY | Self::TextShadowBlur => Family::TextShadow,
-            Self::StopFrom | Self::StopVia | Self::StopTo => Family::Gradient,
+            Self::StopFrom
+            | Self::StopVia
+            | Self::StopTo
+            | Self::GradientAngle
+            | Self::GradientCenterX
+            | Self::GradientCenterY => Family::Gradient,
             Self::MaskFrom | Self::MaskTo => Family::Mask,
             _ => Family::Plain,
         }

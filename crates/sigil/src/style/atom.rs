@@ -8,6 +8,14 @@ pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
 pub(crate) const OPACITY_UNITS: f32 = 10_000.0;
 
+pub(crate) const fn bits(value: f32) -> u32 {
+    if value.is_nan() {
+        f32::NAN.to_bits()
+    } else {
+        (value + 0.0).to_bits()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Px(pub i16);
 
@@ -23,6 +31,7 @@ mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
 pub use color::{Color, ColorValue, GradientAxis};
+pub(crate) use color::direction;
 kittest_pub! {
     #[doc(hidden)]
     pub use filter::FilterAtom;
@@ -36,6 +45,7 @@ kittest_pub! {
     pub use gradient::{BorderStyle, GradientShape, PaintAtom, PaintStyle, StopSlot};
 }
 pub use gradient::{Conic, Radial, RadialExtent};
+pub(crate) use gradient::Geometry;
 kittest_pub! {
     #[doc(hidden)]
     pub use mask::MaskAtom;
@@ -146,6 +156,7 @@ impl Default for RenderStyle {
                 clip_text: false,
                 image: None,
                 border: BorderStyle::Solid,
+                geometry: Geometry::default(),
             },
             clip_path: None,
             space: SpaceStyle::FLAT,

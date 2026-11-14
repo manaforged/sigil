@@ -1,5 +1,5 @@
 use crate::scene::Shadow;
-use crate::style::atom::{OPACITY_UNITS, shadow_color};
+use crate::style::atom::{OPACITY_UNITS, bits, shadow_color};
 use crate::style::{ColorAtomKind, ColorValue, Family, NumericAtomKind};
 
 /// One animatable property and its value, set by a keyframe or driven from a signal.
@@ -110,6 +110,12 @@ pub enum Property {
     BackdropBrightness(f32),
     /// The `backdrop-filter` saturate amount, 1.0 unchanged.
     BackdropSaturate(f32),
+    /// The angle of a linear or conic gradient in degrees clockwise from up, as `Conic::new` takes it.
+    GradientAngle(f32),
+    /// The gradient center's x in percent of the box width, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterX(f32),
+    /// The gradient center's y in percent of the box height, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterY(f32),
 }
 
 pub(super) type Key = (u8, [u32; 3], Option<ColorValue>);
@@ -175,11 +181,6 @@ impl Property {
             Self::Invert(amount) => (K::Invert, amount.max(0.0)),
             Self::Saturate(amount) => (K::Saturate, amount.max(0.0)),
             Self::Sepia(amount) => (K::Sepia, amount.max(0.0)),
-            Self::GradientFromPosition(percent) => (K::StopFrom, percent.clamp(0.0, 100.0)),
-            Self::GradientViaPosition(percent) => (K::StopVia, percent.clamp(0.0, 100.0)),
-            Self::GradientToPosition(percent) => (K::StopTo, percent.clamp(0.0, 100.0)),
-            Self::MaskFrom(percent) => (K::MaskFrom, percent.clamp(0.0, 100.0)),
-            Self::MaskTo(percent) => (K::MaskTo, percent.clamp(0.0, 100.0)),
             Self::Scale(factor) | Self::ScaleX(factor) => (K::ScaleX, factor),
             Self::ScaleY(factor) => (K::ScaleY, factor),
             Self::BorderRadius(px) => (K::BorderRadius, px),
@@ -199,8 +200,24 @@ impl Property {
             Self::BackdropBlur(px) => (K::BackdropBlur, px.max(0.0)),
             Self::BackdropBrightness(amount) => (K::BackdropBrightness, amount.max(0.0)),
             Self::BackdropSaturate(amount) => (K::BackdropSaturate, amount.max(0.0)),
-            _ => return None,
+            _ => return self.gradient(),
         })
+    }
+
+    fn gradient(self) -> Option<(NumericAtomKind, f32)> {
+        use NumericAtomKind as K;
+        let (kind, percent) = match self {
+            Self::GradientAngle(degrees) => return Some((K::GradientAngle, degrees)),
+            Self::GradientFromPosition(percent) => (K::StopFrom, percent),
+            Self::GradientViaPosition(percent) => (K::StopVia, percent),
+            Self::GradientToPosition(percent) => (K::StopTo, percent),
+            Self::GradientCenterX(percent) => (K::GradientCenterX, percent),
+            Self::GradientCenterY(percent) => (K::GradientCenterY, percent),
+            Self::MaskFrom(percent) => (K::MaskFrom, percent),
+            Self::MaskTo(percent) => (K::MaskTo, percent),
+            _ => return None,
+        };
+        Some((kind, percent.clamp(0.0, 100.0)))
     }
 
     pub(crate) fn color(self, kind: ColorAtomKind) -> Option<ColorValue> {
@@ -303,6 +320,9 @@ impl Property {
             Self::BackdropBlur(_) => 49,
             Self::BackdropBrightness(_) => 50,
             Self::BackdropSaturate(_) => 51,
+            Self::GradientAngle(_) => 52,
+            Self::GradientCenterX(_) => 53,
+            Self::GradientCenterY(_) => 54,
             _ => u8::MAX,
         }
     }
@@ -316,13 +336,5 @@ const fn shadow_part(shadow: Shadow, kind: NumericAtomKind) -> Option<f32> {
             Some(shadow.blur.max(0.0))
         }
         _ => None,
-    }
-}
-
-const fn bits(value: f32) -> u32 {
-    if value.is_nan() {
-        f32::NAN.to_bits()
-    } else {
-        (value + 0.0).to_bits()
     }
 }

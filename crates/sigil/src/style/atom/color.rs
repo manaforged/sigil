@@ -113,6 +113,7 @@ impl From<&'static str> for ColorValue {
 
 /// The direction of a background gradient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum GradientAxis {
     /// The first stop is at the top edge and the last at the bottom edge.
     TopToBottom,
@@ -122,6 +123,28 @@ pub enum GradientAxis {
     LeftToRight,
     /// The first stop is at the right edge and the last at the left edge.
     RightToLeft,
+    /// Toward this angle in degrees clockwise from up, like CSS `linear-gradient(<angle>)`.
+    Angle(i16),
+}
+
+impl GradientAxis {
+    pub(crate) fn heading(self) -> (f32, [f32; 2]) {
+        match self {
+            Self::BottomToTop => (0.0, [0.0, -1.0]),
+            Self::LeftToRight => (90.0, [1.0, 0.0]),
+            Self::TopToBottom => (180.0, [0.0, 1.0]),
+            Self::RightToLeft => (270.0, [-1.0, 0.0]),
+            Self::Angle(degrees) => {
+                let degrees = f32::from(degrees);
+                (degrees, direction(degrees))
+            }
+        }
+    }
+}
+
+pub(crate) fn direction(degrees: f32) -> [f32; 2] {
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    [sin, -cos]
 }
 
 fn parse_hex(input: &str) -> Option<Color> {
