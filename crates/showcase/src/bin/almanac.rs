@@ -4,7 +4,7 @@ use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
     sigil::run(
-        AppConfig::new("Almanac").size(1180, 720),
+        AppConfig::new("Almanac").size(sigil_showcase::SIZE[0], sigil_showcase::SIZE[1]),
         sigil_showcase::almanac::app,
     )
 }

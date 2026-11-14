@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use sigil::animation::{Animator, Property};
-use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
 use sigil::scene::BlendMode;
 use sigil::style::{GradientAxis, MaskImage, Radial};
@@ -9,6 +8,7 @@ use sigil::style::{GradientAxis, MaskImage, Radial};
 use crate::almanac::sky::{self, DAY};
 use crate::almanac::sun::Sun;
 use crate::almanac::{LATITUDE, PLACE, START_DAY};
+use crate::overlay;
 
 const PLATE_HOUR: f32 = 17.1;
 const PANEL_WIDTH: f32 = 340.0;
@@ -161,11 +161,7 @@ fn plate(darkroom: &Darkroom) -> NodeBuilder {
 
 fn leak(mode: BlendMode) -> NodeBuilder {
     container()
-        .layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset(Length::Px(0.0)),
-        )
+        .layout(overlay())
         .background(
             Background::linear(GradientAxis::LeftToRight)
                 .start(DAY.pigments[1])

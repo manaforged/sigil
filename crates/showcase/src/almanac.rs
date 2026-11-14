@@ -2,10 +2,10 @@ pub(crate) mod sky;
 pub(crate) mod sun;
 
 use sigil::animation::{Animator, Spring};
-use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
 use sigil::style::Backdrop;
 
+use crate::overlay;
 use sun::{Sun, clock, span};
 
 pub(crate) const PLACE: &str = "Austin, Texas";
@@ -65,12 +65,6 @@ pub fn at(hour: f32) -> impl IntoNode {
         )
 }
 
-fn overlay() -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .position(Position::Absolute)
-        .inset(Length::Px(0.0))
-}
-
 fn theme(night: bool) -> Theme {
     let (backdrop, palette) = if night {
         (Backdrop::Dark, sky::NIGHT)
@@ -90,11 +84,6 @@ fn land_theme() -> Theme {
 }
 
 fn sky(almanac: Almanac) -> impl IntoNode {
-    let frame = signal(0_u64);
-    effect(move || {
-        let (_hour, _sun) = (almanac.drift.get(), almanac.sun.get());
-        frame.set(frame.peek() + 1);
-    });
     canvas(move |scene, rect, theme| {
         sky::paint(
             scene,
@@ -104,7 +93,7 @@ fn sky(almanac: Almanac) -> impl IntoNode {
             almanac.drift.value().peek(),
         );
     })
-    .redraw_on(frame)
+    .redraw_on(move || (almanac.drift.get(), almanac.sun.get()))
     .width(Length::Fill)
     .height(Length::Fill)
 }

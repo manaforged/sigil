@@ -4,7 +4,7 @@ use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
     sigil::run(
-        AppConfig::new("Deck").size(1180, 720),
+        AppConfig::new("Deck").size(sigil_showcase::SIZE[0], sigil_showcase::SIZE[1]),
         sigil_showcase::deck::app,
     )
 }
