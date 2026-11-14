@@ -1,7 +1,7 @@
 use crate::geometry::Constraint;
 use crate::kernel::{Cx, NodeId};
 use crate::style::TextStyle;
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use std::collections::BTreeSet;
@@ -40,6 +40,7 @@ pub struct LayoutEngine {
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     hidden: AHashSet<NodeId>,
+    gliding: AHashMap<slotmap::DefaultKey, Option<[f32; 2]>>,
     last_reactive_sig: u64,
     republished: bool,
 }
@@ -79,6 +80,7 @@ impl LayoutEngine {
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
             hidden: AHashSet::new(),
+            gliding: AHashMap::new(),
             last_reactive_sig: 0,
             republished: false,
         }
@@ -228,6 +230,8 @@ impl LayoutEngine {
     fn finish(&mut self, cx: &mut Cx, cache_key: LayoutCacheKey) {
         let _finish = crate::profile::span(crate::profile::Phase::LayoutFinish);
         cx.clear_dirty();
+        let resized = self.resized(cache_key);
+        self.glide(cx, resized);
         let unsized_labels: SmallVec<[NodeId; 8]> = self
             .reactive_layout
             .iter()
@@ -251,6 +255,29 @@ impl LayoutEngine {
         self.cached_key = settled.then_some(cache_key);
         let _sig = crate::profile::span(crate::profile::Phase::LayoutSig);
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
+    }
+
+    fn glide(&mut self, cx: &Cx, resized: bool) {
+        for (key, last) in &mut self.gliding {
+            let id = NodeId::from_key(*key);
+            let place = place_in_parent(cx, &self.published_result, id);
+            let (Some(from), Some(to)) = (std::mem::replace(last, place), place) else {
+                continue;
+            };
+            if resized || from.map(f32::to_bits) == to.map(f32::to_bits) {
+                continue;
+            }
+            let by = [from[0] - to[0], from[1] - to[1]];
+            crate::animation::runtime::layout_motion::glide(cx, id, by);
+        }
+    }
+
+    fn track_glide(&mut self, id: NodeId, node: &crate::kernel::Node) {
+        if crate::animation::runtime::layout_motion::opted_in(node) {
+            self.gliding.entry(id.key()).or_insert(None);
+        } else if !self.gliding.is_empty() {
+            self.gliding.remove(&id.key());
+        }
     }
 
     pub fn gc(&mut self, cx: &Cx) -> Result<(), Error> {
@@ -277,6 +304,7 @@ impl LayoutEngine {
                 let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
                 self.hidden.remove(&core_id);
+                self.gliding.remove(&core_id.key());
                 self.reactive_layout.remove(&core_id.key());
                 self.geometry_reactive.remove(&core_id.key());
             }
@@ -291,6 +319,7 @@ impl LayoutEngine {
         self.popup_offsets.clear();
         self.core_to_handle.clear();
         self.hidden.clear();
+        self.gliding.clear();
         self.reactive_layout.clear();
         self.geometry_reactive.clear();
         self.positions.clear();
@@ -306,9 +335,13 @@ impl LayoutEngine {
             self.reactive_layout.insert(id.key());
             self.reactive_sigs
                 .insert(id.key(), node.reactive_seed_signature());
+            self.track_glide(id, node);
         } else {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
+            if !self.gliding.is_empty() {
+                self.gliding.remove(&id.key());
+            }
         }
         if node.extension::<crate::layout::SizeReactive>().is_some()
             || node.extension::<crate::layout::BoundsReactive>().is_some()
@@ -372,6 +405,21 @@ mod sync;
 mod viewport;
 
 pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
+
+fn place_in_parent(
+    cx: &Cx,
+    results: &SecondaryMap<slotmap::DefaultKey, LayoutResult>,
+    id: NodeId,
+) -> Option<[f32; 2]> {
+    let own = results.get(id.key())?.rect().origin;
+    let base = std::iter::successors(cx.parent(id), |&at| cx.parent(at))
+        .find_map(|at| results.get(at.key()))
+        .map_or([0.0; 2], |parent| {
+            let origin = parent.rect().origin;
+            [origin.x, origin.y]
+        });
+    Some([own.x - base[0], own.y - base[1]])
+}
 
 fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
     crate::profile::count(crate::profile::Counter::LayoutFull, 1);

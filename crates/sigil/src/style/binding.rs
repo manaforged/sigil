@@ -60,6 +60,7 @@ kittest_pub! {
         reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
         state_channels: SmallVec<[(StateSlot, ReactiveStyleAtoms); 1]>,
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
+        glide: OnceCell<Box<crate::animation::runtime::layout_motion::Glide>>,
         state_overlay: Option<Box<StyleOverlay>>,
         animated_values: SmallVec<[Driven; 2]>,
         state_overlay_slots: SmallVec<[ReactiveStateSlot; 1]>,
@@ -292,9 +293,13 @@ impl StyleBinding {
         self.replace_owned(kept);
     }
 
+    pub(crate) const fn glide(&self) -> &OnceCell<Box<crate::animation::runtime::layout_motion::Glide>> {
+        &self.glide
+    }
+
     #[must_use]
     pub(crate) fn animator_overlay(&self) -> Option<&dyn AnimatorOverlay> {
-        if self.animated_values.is_empty() {
+        if self.animated_values.is_empty() && self.glide.get().is_none() {
             self.attached_animators.get().map(Box::as_ref)
         } else {
             Some(self)
@@ -438,17 +443,23 @@ impl AnimatorOverlay for StyleBinding {
             .and_then(|overlay| overlay.value_for_color(kind))
     }
 
+    fn layout_offset(&self) -> Option<[f32; 2]> {
+        self.glide.get().and_then(|glide| glide.offset())
+    }
+
     fn cache_key(&self) -> u64 {
         use core::hash::{Hash as _, Hasher as _};
         let base = self
             .attached_animators
             .get()
             .map_or(0, |overlay| overlay.cache_key());
-        if self.animated_values.is_empty() {
+        let glide = self.layout_offset();
+        if self.animated_values.is_empty() && glide.is_none() {
             return base;
         }
         let mut hasher = ahash::AHasher::default();
         base.hash(&mut hasher);
+        glide.map(|offset| offset.map(f32::to_bits)).hash(&mut hasher);
         for entry in &self.animated_values {
             let prop = (entry.property)(entry.value.peek());
             core::mem::discriminant(&prop).hash(&mut hasher);

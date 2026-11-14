@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Widget::track_visible(signal)` writes the share of a node that is inside its scroll views and the window, from 0.0 to 1.0, after each layout pass and scroll. `ScrollBuilder::scroll_x(signal)` scrolls sideways.
 - `toast_queue` toasts rise in, fade out, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
 - A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
+- `Transition::layout()` also glides a node from its old place in its parent to its new one when layout moves it, like Motion `layout`: `row.transition(Transition::smooth().layout())`. When a keyed row leaves a list, the rows below slide up. It moves position only; a size change snaps. Toasts in `toast_queue` use it.
 
 ### Fixed
 

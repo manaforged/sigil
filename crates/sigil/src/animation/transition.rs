@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use super::{Easing, Spring};
 use crate::animation::runtime::presets;
-use crate::animation::runtime::registry::{intern, timing};
+use crate::animation::runtime::registry::{intern, timing, with_layout};
 use crate::style::{MillisU16, StyleAtom, TransitionId};
 
 /// The properties a node animates when its style changes, with the duration, easing, and delay.
@@ -66,6 +66,12 @@ impl Transition {
     /// Holds the start value for `delay` before the change moves, like Tailwind `delay-*`.
     pub fn delay(mut self, delay: Duration) -> Self {
         self.delay = Some(millis(delay));
+        self
+    }
+
+    /// Also glides the node from its old place in its parent to its new one when layout moves it, like Motion `layout`.
+    pub const fn layout(mut self) -> Self {
+        self.id = with_layout(self.id);
         self
     }
 

@@ -277,6 +277,10 @@ pub(crate) trait AnimatorOverlay {
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color>;
 
+    fn layout_offset(&self) -> Option<[f32; 2]> {
+        None
+    }
+
     fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
         default_visit_layout_values(self, visit);
     }
@@ -325,6 +329,10 @@ pub(crate) fn default_cache_key<T: AnimatorOverlay + ?Sized>(overlay: &T) -> u64
             color.hash(&mut hasher);
             active = true;
         }
+    }
+    if let Some(offset) = overlay.layout_offset() {
+        offset.map(f32::to_bits).hash(&mut hasher);
+        active = true;
     }
     if active { hasher.finish() } else { 0 }
 }

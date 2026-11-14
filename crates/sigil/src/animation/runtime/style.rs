@@ -142,7 +142,7 @@ impl StyleAnimator {
     }
 }
 
-fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
+pub(crate) fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
     let Some(tag) = tag else {
         return;
     };

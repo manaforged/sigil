@@ -147,6 +147,7 @@ impl Transform2D {
     pub(crate) fn overlay(self, overlay: &dyn AnimatorOverlay) -> Self {
         let value = |kind| overlay.value_for(kind).or_else(|| self.value(kind));
         let get = |kind| value(kind).unwrap_or_default();
+        let [glide_x, glide_y] = overlay.layout_offset().unwrap_or_default();
         Self {
             shift: [
                 shift_units(get(NumericAtomKind::TranslateXFraction)),
@@ -155,8 +156,8 @@ impl Transform2D {
             ..self
         }
         .translate(
-            get(NumericAtomKind::TranslateX),
-            get(NumericAtomKind::TranslateY),
+            get(NumericAtomKind::TranslateX) + glide_x,
+            get(NumericAtomKind::TranslateY) + glide_y,
         )
         .scale(get(NumericAtomKind::ScaleX), get(NumericAtomKind::ScaleY))
         .rotate(get(NumericAtomKind::Rotation))

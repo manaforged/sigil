@@ -8,6 +8,7 @@ pub(crate) mod binding_animate;
 pub(crate) mod binding_animate_color;
 pub(crate) mod clock;
 pub(crate) mod config;
+pub(crate) mod layout_motion;
 pub(crate) mod motion_prefs;
 pub(crate) mod playback;
 pub(crate) mod registry;
