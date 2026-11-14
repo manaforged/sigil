@@ -133,15 +133,18 @@ fn assert_settles_finitely(spring: Spring) {
             state.value()
         );
         if state.is_settled() {
-            assert!(
-                (state.value() - 1.0).abs() < f32::EPSILON,
-                "{spring:?} settled at {}",
-                state.value()
-            );
-            return;
+            break;
         }
     }
-    panic!("{spring:?} did not settle within {SETTLE_FRAMES} frames");
+    assert!(
+        state.is_settled(),
+        "{spring:?} did not settle within {SETTLE_FRAMES} frames"
+    );
+    assert!(
+        (state.value() - 1.0).abs() < f32::EPSILON,
+        "{spring:?} settled at {}",
+        state.value()
+    );
 }
 
 #[test]
@@ -180,8 +183,12 @@ fn presets_keep_their_parameters_and_step() {
         let state = SpringState::new(0.0, spring);
         let (stiffness, damping, mass) = spring.parameters();
         assert_eq!(
-            [state.stiffness, state.damping, state.mass].map(f32::to_bits),
-            [stiffness, damping, mass].map(f32::to_bits),
+            (
+                state.stiffness.to_bits(),
+                state.damping.to_bits(),
+                state.mass.to_bits()
+            ),
+            (stiffness.to_bits(), damping.to_bits(), mass.to_bits()),
             "{spring:?}"
         );
         assert_eq!(

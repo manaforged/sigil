@@ -278,7 +278,7 @@ fn hover_write_can_rebuild_a_nested_drop_target() {
                     container()
                         .layout(LayoutStyle::flex_column().fixed_size(200.0, 100.0))
                         .drop_target(state.clone(), |_| true, |_| {})
-                        .drop_hover(state.clone(), cursor)
+                        .drop_hover(state, cursor)
                         .children_reactive(move || {
                             cursor.get().map(|_| {
                                 container()
