@@ -98,10 +98,12 @@ fn label(id: NodeId, node: &Node) -> NodeLabel {
         NodeType::Text { .. } => "Text",
         NodeType::Image { .. } => "Image",
     };
-    NodeLabel {
-        id,
-        label: format!("{kind} role={:?}", node.a11y.role),
-    }
+    let role = node.a11y.role;
+    let label = match &node.kind {
+        NodeType::Text { content, .. } => format!("{kind} {:?} role={role:?}", content.resolve()),
+        _ => format!("{kind} role={role:?}"),
+    };
+    NodeLabel { id, label }
 }
 
 fn style(node: &Node) -> (Display, FlexDirection, FlexWrap) {
