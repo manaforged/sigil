@@ -175,13 +175,12 @@ fn overlay_stroke(fill: vec4<f32>, stroke: vec4<f32>, amount: f32) -> vec4<f32> 
     return vec4<f32>(rgb, out_alpha);
 }
 
-fn slash_color(local: vec2<f32>, geometry: vec2<f32>, color: vec4<f32>) -> vec4<f32> {
+fn slash_color(local: vec2<f32>, geometry: vec2<f32>, color: vec4<f32>, aa: f32) -> vec4<f32> {
     let period = geometry.x;
     let line_width = geometry.y;
     let p = (local.x - local.y) / period;
     let phase = (p - floor(p)) * period;
     let edge_dist = min(phase, period - phase) - line_width * 0.5;
-    let aa = fwidth(local.x - local.y) * 0.5;
     let soft = 1.0 - smoothstep(-aa, aa, edge_dist);
     let full = select(soft, 1.0, line_width >= period);
     let mask = select(full, 0.0, line_width <= 0.0);
@@ -431,14 +430,16 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let aa = max(fwidth(d) * 0.5, 0.0001);
     let coverage = edge_coverage(d, aa);
     let linear = in.stops_meta.w == 1u;
+    let pattern = in.local + in.half_size + in.start + in.axis;
+    let slash_aa = fwidth(pattern.x - pattern.y) * 0.5;
 
     var color: vec4<f32>;
     if in.fill_kind == FILL_KIND_SLASH {
-        color = slash_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a);
+        color = slash_color(pattern, in.start, in.pattern_a, slash_aa);
     } else if in.fill_kind == FILL_KIND_WASH {
-        color = wash_color(in.local + in.half_size + in.start + in.axis, in.stops_meta.x, in.stops_meta.y, in.pattern_a, in.pattern_b, in.start);
+        color = wash_color(pattern, in.stops_meta.x, in.stops_meta.y, in.pattern_a, in.pattern_b, in.start);
     } else if in.fill_kind == FILL_KIND_CHECKER {
-        color = checker_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a, in.pattern_b);
+        color = checker_color(pattern, in.start, in.pattern_a, in.pattern_b);
     } else {
         let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
         color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear);
