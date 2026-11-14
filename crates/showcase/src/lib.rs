@@ -13,6 +13,10 @@ pub mod darkroom;
 pub mod deck;
 /// A pomodoro timer on frosted glass over stage lights.
 pub mod focus;
+/// A scrolling list of glowing cards that fade in as they come into view.
+pub mod gallery;
+/// A marquee, a shimmering loading card, a toast stack and a bottom sheet.
+pub mod kit;
 /// A glass session tray that is dragged, flung, and snaps to its stops.
 pub mod tray;
 

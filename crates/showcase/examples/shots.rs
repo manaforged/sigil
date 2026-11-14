@@ -8,12 +8,13 @@ use std::time::Duration;
 
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_showcase::{SIZE, almanac, beam, darkroom, deck, focus, tray};
+use sigil_showcase::{SIZE, almanac, beam, darkroom, deck, focus, gallery, kit, tray};
 
 const SCALE: f32 = 2.0;
 const REVEAL_FRAMES: u32 = 4;
 const REVEAL_STEP: f32 = 0.12;
 const BEAM: f32 = 215.0;
+const SCROLLED: f32 = 430.0;
 const MID_ROLL: Duration = Duration::from_millis(90);
 const MID_EXIT: Duration = Duration::from_millis(110);
 const TURNS: [f32; 3] = [0.0, 0.3, 1.0];
@@ -31,6 +32,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     shot(dir, "deck", || deck::turned(TURNS))?;
     shot(dir, "focus", focus::app)?;
     shot(dir, "focus-clear", || focus::frosted(0.0))?;
+    shot(dir, "gallery", gallery::app)?;
+    shot(dir, "gallery-scrolled", || gallery::at(SCROLLED))?;
+    settled(dir, "kit", kit::app)?;
+    settled(dir, "kit-sheet", || kit::sheet(true))?;
+    shot(dir, "kit-gpu", kit::app)?;
     settled(dir, "tray", || tray::lifted(1.0))?;
     settled(dir, "tray-lowered", tray::app)?;
     settled(dir, "focus-cpu", focus::app)?;
