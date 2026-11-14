@@ -2,9 +2,8 @@ use super::install::{
     install_animation, install_class, install_default_focus_ring, install_focus_ring,
     install_reactive, install_state_overlay, install_theme, install_tone,
 };
-use super::presence::install_presence;
-use crate::animation::Property;
-use crate::animation::runtime::AnimationConfig;
+use super::presence::{Edge, install_motion, install_presence};
+use crate::animation::{Property, Transition};
 use crate::kernel::{NodeBuilder, TextBuilder};
 use crate::reactive::{Reactive, Signal};
 use crate::widgets::Widget;
@@ -16,7 +15,7 @@ use std::rc::Rc;
 use crate::style::class_parse::intern_atoms;
 use crate::style::styled::StateStyleBuilder;
 use crate::style::{
-    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
+    FocusRing, Paint, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
     StyleState, StyleVariant, Theme, Tone, parse_classes,
 };
 
@@ -130,10 +129,16 @@ pub(crate) fn default_focus_ring(node: NodeBuilder, visible: Signal<bool>) -> No
 pub(crate) fn presence(
     node: NodeBuilder,
     shown: Signal<bool>,
-    config: AnimationConfig,
+    transition: Transition,
 ) -> NodeBuilder {
+    node.transition(transition)
+        .flush_paint()
+        .mutate(move |node| install_presence(node, shown))
+}
+
+pub(crate) fn motion(node: NodeBuilder, edge: Edge, property: Property) -> NodeBuilder {
     node.flush_paint()
-        .mutate(move |node| install_presence(node, shown, config))
+        .mutate(move |node| install_motion(node, edge, property))
 }
 
 pub(crate) fn drive(

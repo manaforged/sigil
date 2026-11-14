@@ -1,4 +1,6 @@
-use crate::animation::Property;
+use std::time::Duration;
+
+use crate::animation::{Property, Transition};
 use crate::events::builder_ext as on;
 use crate::events::{
     A11yEdit, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
@@ -12,6 +14,7 @@ use crate::layout::reactive_position;
 use crate::layout::{CaretGeometry, LayoutStyle, Length, TextStyleCapture};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
+use crate::style::presence::Edge;
 use crate::style::{FocusRing, StateStyleBuilder, TextStyle, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
@@ -59,17 +62,22 @@ pub trait Widget: Sized {
     /// Fades the node in when `shown` turns true and out when it turns false, over `ms` milliseconds with `easing`.
     #[must_use]
     fn presence(self, shown: Signal<bool>, ms: u16, easing: crate::animation::Easing) -> Self {
-        self.map_node(move |node| {
-            look::presence(
-                node,
-                shown,
-                crate::animation::runtime::AnimationConfig::Tween {
-                    ms,
-                    easing,
-                    delay_ms: 0,
-                },
-            )
-        })
+        let transition = Transition::opacity()
+            .duration(Duration::from_millis(u64::from(ms)))
+            .ease(easing);
+        self.map_node(move |node| look::presence(node, shown, transition))
+    }
+
+    /// Starts the node from `property` when it mounts, then animates it to its own style with its `transition`.
+    #[must_use]
+    fn enter(self, property: Property) -> Self {
+        self.map_node(move |node| look::motion(node, Edge::Enter, property))
+    }
+
+    /// Animates the node to `property` with its `transition` when `show`, `switch` or `for_each` removes it; the leaving node still takes its layout space.
+    #[must_use]
+    fn exit(self, property: Property) -> Self {
+        self.map_node(move |node| look::motion(node, Edge::Exit, property))
     }
 
     /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.

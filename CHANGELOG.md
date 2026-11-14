@@ -19,7 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Animator::fling(velocity)` coasts to rest, `Animator::fling_to(velocity, points)` springs to the point the fling would reach, and `Animator::velocity()` reads the current speed in value units per second.
 - `Spring::duration(d).bounce(b)` builds a spring from a visual duration and a bounce, `Transition::spring(spring)` gives any spring to a style transition, `Keyframes::delay(d)` holds the start frame, and `Keyframes::fade()` fades in.
 - `Paint::preserve_3d()` keeps the 3D transforms of children in the 3D space of the node, like CSS `transform-style: preserve-3d`, so a flip card is one rotating parent with two `backface_hidden()` faces. Opacity below 1, filters, clip paths, masks, blend modes and clipping overflow force flat, as in CSS.
+- `Widget::enter(property)` and `Widget::exit(property)` animate a node from a start value when it mounts and to an end value before it is removed, on the timing of its `.transition`. A keyed row of `for_each` holds its space until the exit ends.
 - `animation::reduced_transparency()` and `AppConfig::reduced_transparency(bool)`. With the setting on, a backdrop filter is skipped and the node keeps its own fill. `animation::reduced_motion()` is now reactive, both settings are read again when the window gains focus, and `clock()` holds still under reduced motion.
+- `Harness::step(by)` in `sigil-kittest` moves the test clock and stops there, so a test can read a running animation. `Harness::advance` still settles afterwards.
 
 ### Fixed
 

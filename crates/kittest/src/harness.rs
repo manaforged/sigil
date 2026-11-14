@@ -230,9 +230,15 @@ impl Harness {
         self.send([])
     }
 
-    /// Moves the test clock forward by `by`, one frame at a time, so timers and animations run.
+    /// Moves the test clock forward by `by`, one frame at a time, then settles.
     #[track_caller]
     pub fn advance(&mut self, by: Duration) -> &mut Self {
+        self.step(by).settle()
+    }
+
+    /// Moves the test clock forward by `by`, one frame at a time, and stops there, so a running animation can be read.
+    #[track_caller]
+    pub fn step(&mut self, by: Duration) -> &mut Self {
         self.live();
         let step = Duration::from_secs_f32(FRAME_DT);
         let end = self.clock + by;
@@ -244,7 +250,7 @@ impl Harness {
             self.frame(Vec::new())
                 .unwrap_or_else(|err| fail(err.chain()));
         }
-        self.settle()
+        self
     }
 
     #[track_caller]
