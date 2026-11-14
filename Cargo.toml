@@ -5,6 +5,7 @@ members = [
     "crates/sigil-fonts",
     "crates/sign",
     "crates/kittest",
+    "crates/showcase",
 ]
 exclude = ["benches/rivals", "fuzz"]
 default-members = ["crates/sigil", "crates/sigil-fonts", "crates/sign"]
