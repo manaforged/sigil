@@ -24,7 +24,7 @@ pub(super) fn install_handle_keys(
     };
     let node = node
         .focusable(true)
-        .label(theme_label(StringKey::ResizePanes))
+        .accessible(theme_label(StringKey::ResizePanes))
         .value(value, min, max)
         .value_step(KEY_STEP);
     resize_keys(node, (back, forward), move |step| {

@@ -159,7 +159,7 @@ impl Cell<'_> {
             LayoutStyle::block().fill_height().min_size(MIN_BAR, 0.0)
         };
         container()
-            .label(caption)
+            .accessible(caption)
             .layout(layout.grow(grow).flex_basis(Length::Px(0.0)))
             .class([Radius::Sm.atom(), self.hue.background()])
             .tone_scope(self.hue.tone)

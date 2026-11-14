@@ -81,7 +81,7 @@ impl LinkBuilder {
             (None, Some(href)) => open_href(href.clone()),
             (None, None) => noop_activate(),
         };
-        let node = text(self.label).nowrap().role(Role::Link).label(name);
+        let node = text(self.label).nowrap().role(Role::Link).accessible(name);
         let node = match self.href {
             Some(href) => node.description(href),
             None => node,

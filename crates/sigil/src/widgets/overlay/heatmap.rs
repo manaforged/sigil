@@ -15,7 +15,7 @@ pub fn heatmap<F: Fn(usize, usize) -> Color>(
 ) -> NodeBuilder {
     let root = container()
         .role(Role::Figure)
-        .label(theme_label(StringKey::Heatmap))
+        .accessible(theme_label(StringKey::Heatmap))
         .description(ActiveTheme::capture().fill(StringKey::HeatmapGrid, &[&grid_w, &grid_h]))
         .layout(
             LayoutStyle::flex_column()

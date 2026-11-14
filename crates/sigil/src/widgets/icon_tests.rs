@@ -20,7 +20,7 @@ fn decorative_icon_is_one_generic_container() {
 fn labeled_icon_promotes_to_image_role() {
     Owner::scope("icon-labeled-role", || {
         let mut cx = Cx::new_root();
-        let id = icon("\u{2699}").label("Settings").build(&mut cx);
+        let id = icon("\u{2699}").accessible("Settings").build(&mut cx);
         let node = cx.get(id).expect("icon node exists");
         assert_eq!(node.a11y.role, crate::kernel::Role::Image);
     });

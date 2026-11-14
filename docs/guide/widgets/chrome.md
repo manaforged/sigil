@@ -31,7 +31,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 `tabs().tab(label, component)` adds one tab per call. Each component builds once when the tabs mount; a hidden tab keeps its state. `.active(Signal<usize>)` binds the selected index. `.labels(iter)` adds tabs without panels, for a strip that drives content elsewhere. The strip is a `Role::TabList`; each tab activates on click or Enter. The active tab label is semibold in the surface text color; other labels are medium weight in gray step 11. The bare strip also gives the active tab a pressed surface, and the line strip an accent underline. The pane sits 8 px (`space(2)`) below the strip.
 
 - `.line()` / `.pill()`: strip chrome; default is bare.
-- `.label(name)`: assistive name for the list.
+- `.accessible(name)`: assistive name for the list.
 - `.disabled(&[usize])`: disable specific indices.
 - `.justify_list(JustifyContent)`: strip alignment.
 - `.reorderable(true)` + `.order(Signal<Vec<usize>>)`: drag to reorder; the order signal holds the permutation.
@@ -40,13 +40,13 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## segmented
 
-`segmented(active: Signal<usize>, labels: impl IntoIterator<Item = impl Into<String>>) -> SegmentedBuilder`. A framed row of mutually exclusive options where one is active; `.label(name)` sets the accessible name of the group.
+`segmented(active: Signal<usize>, labels: impl IntoIterator<Item = impl Into<String>>) -> SegmentedBuilder`. A framed row of mutually exclusive options where one is active; `.accessible(name)` sets the accessible name of the group.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 let active = signal(0_usize);
-segmented(active, ["Code", "Diff", "Docs"]).label("View");
+segmented(active, ["Code", "Diff", "Docs"]).accessible("View");
 # };
 ```
 
@@ -55,7 +55,7 @@ segmented(active, ["Code", "Diff", "Docs"]).label("View");
 `tree(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K>` where `K: Clone + Eq + Hash + 'static`. A virtualized hierarchical list for explorers and outlines. Build nodes with `TreeNode::new(id, label)`:
 
 - `TreeNode::new(id, label)` chains `.leading(glyph)`, `.status(text, tone)`, `.detail(text)`, `.tone(RowTone)`, `.child(node)`, and `.children(iter)`.
-- `TreeBuilder` chains `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(Fn(&K))`, `.label(name)`, and `.indent(px)`.
+- `TreeBuilder` chains `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(Fn(&K))`, `.accessible(name)`, and `.indent(px)`.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -63,7 +63,7 @@ segmented(active, ["Code", "Diff", "Docs"]).label("View");
 let nodes = vec![
     TreeNode::new("src", "src").children([TreeNode::new("lib", "lib.rs")]),
 ];
-tree(nodes).label("Files");
+tree(nodes).accessible("Files");
 # };
 ```
 
@@ -143,7 +143,7 @@ The visual catalog captures these states. The frame widgets (`card`, `surface`, 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `menu_bar` | default, hover, pressed, open | Enter or Space on a trigger; the open panel uses the list keys in [Overlays](overlays.md#keyboard-in-lists) | Triggers are `Button` | The trigger label |
-| `tabs` | default, hover, pressed, focused, disabled, selected | Tab enters the active tab only; Left, Right, Home, and End move focus between tabs and select the tab; Enter activates | `TabList`, tabs `Tab` | `.label()` for the list, else "Tabs"; each tab uses its label |
+| `tabs` | default, hover, pressed, focused, disabled, selected | Tab enters the active tab only; Left, Right, Home, and End move focus between tabs and select the tab; Enter activates | `TabList`, tabs `Tab` | `.accessible()` for the list, else "Tabs"; each tab uses its label |
 | `splitter` | default, hover, pressed, focused | Arrow keys move the handle by 16 px; Home and End move it to the minimum and maximum | Handles are `Splitter` with a value: the size of the pane before the handle | "Resize panes" |
 | `scroll` | default, hover | Wheel, scrollbar drag; when focused, arrow keys, Page Up, Page Down, Home, and End. The area is a Tab stop only when its content overflows | `ScrollView` | None |
 | `sidebar` | static | none | `Navigation` | None |

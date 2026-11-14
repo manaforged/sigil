@@ -104,7 +104,7 @@ impl CommandMenuBuilder {
             .wrap(
                 container()
                     .role(Role::Dialog)
-                    .label(theme_label(StringKey::CommandMenu))
+                    .accessible(theme_label(StringKey::CommandMenu))
                     .hittable(true)
                     .layout(root_layout())
                     .class(BACKDROP),

@@ -138,7 +138,7 @@ impl IconBuilder {
     }
 
     /// Sets the accessible name and gives the icon the image role.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn accessible(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -186,7 +186,7 @@ impl IconBuilder {
             }
         };
         if let Some(label) = self.label {
-            container_node = container_node.label(label);
+            container_node = container_node.accessible(label);
         }
         caller_style(container_node, self.style_accumulator)
     }

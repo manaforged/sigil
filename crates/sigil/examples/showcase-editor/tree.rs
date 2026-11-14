@@ -92,7 +92,7 @@ fn explorer(ws: Workspace) -> NodeBuilder {
                     ws.open_file(*file);
                 }
             })
-            .label("Explorer")
+            .accessible("Explorer")
             .grow(1.0),
         )
 }

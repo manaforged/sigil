@@ -65,7 +65,7 @@ pub(super) fn build_base_node(
             }
         })
         .role(Role::TextInput)
-        .label(accessible_label(placeholder_str.as_str()))
+        .accessible(accessible_label(placeholder_str.as_str()))
         .text_value(value)
         .text_cursor(runtime.caret, runtime.selection)
         .placeholder(placeholder_str)

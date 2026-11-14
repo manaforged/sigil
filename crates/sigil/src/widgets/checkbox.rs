@@ -150,7 +150,7 @@ impl CheckboxBuilder {
         let mut node = control(
             container()
                 .role(Role::CheckBox)
-                .label(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
+                .accessible(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
                 .checked(checked)
                 .mixed(partial)
                 .layout(checkbox_layout(self.label.is_some())),

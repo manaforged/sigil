@@ -12,7 +12,7 @@ fn rows_built_by_a_strip_rerun_keep_their_signals() {
         let _root = cx.add(
             virtual_list(items, move |index, _| {
                 sink.borrow_mut().push((index, signal(index)));
-                container().label(format!("row {index}"))
+                container().accessible(format!("row {index}"))
             })
             .scroll_y(scroll_y)
             .row_height(20.0)
@@ -52,7 +52,7 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
         let _root = cx.add(
             virtual_list(items, move |index, _| {
                 sink.set(sink.get() + 1);
-                container().label(format!("row {index}"))
+                container().accessible(format!("row {index}"))
             })
             .scroll_y(scroll_y)
             .row_height(20.0)
@@ -95,7 +95,7 @@ fn scrolled_rows_land_at_their_document_position() {
             virtual_list(items, move |index, _| {
                 container()
                     .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 24.0))
-                    .label(format!("row {index}"))
+                    .accessible(format!("row {index}"))
                     .child(crate::kernel::text(move || {
                         format!("{index}:{}", tick.get())
                     }))
@@ -188,7 +188,7 @@ fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
                 count.set(count.get() + 1);
                 container()
                     .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 64.0))
-                    .label(format!("row {index}"))
+                    .accessible(format!("row {index}"))
             })
             .key_by(|index, _| index as u64)
             .scroll_y(scroll_y)

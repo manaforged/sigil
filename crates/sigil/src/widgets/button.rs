@@ -231,7 +231,7 @@ impl ButtonBuilder {
             .unwrap_or_else(|| AccessibleName::from(&self.label));
         let mut node = container()
             .role(Role::Button)
-            .label(name)
+            .accessible(name)
             .layout(button_layout(self.width, self.height, self.padding_x));
         node = style_button(node, self.resolved_fill(), self.resolved_tone());
         if let Some(disabled) = self.disabled {

@@ -309,7 +309,7 @@ impl CustomTextFieldBuilder {
                 .track_focused(rt.focused)
                 .capture_text_style(rt.text_style)
                 .role(Role::TextInput)
-                .label(label)
+                .accessible(label)
                 .placeholder(ph_str)
                 .invalid(invalid)
                 .text_value(rt.state.value())

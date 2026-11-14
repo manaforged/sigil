@@ -193,7 +193,7 @@ impl DiffBuilder {
         let top = shape.clone();
         let mut root = container()
             .role(Role::List)
-            .label(
+            .accessible(
                 shape
                     .path
                     .clone()

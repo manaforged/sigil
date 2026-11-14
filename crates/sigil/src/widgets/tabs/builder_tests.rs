@@ -30,14 +30,14 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
     ] {
         Owner::scope("tabs-chrome", || {
             let mut cx = Cx::new_root();
-            let strip = chrome(tabs().labels(["A", "B"])).label("test");
+            let strip = chrome(tabs().labels(["A", "B"])).accessible("test");
             let root = cx.add(
                 container()
                     .layout(LayoutStyle::flex_column().fill())
                     .child(strip)
                     .child(
                         container()
-                            .label("body")
+                            .accessible("body")
                             .layout(LayoutStyle::block().height(100.0)),
                     ),
             );

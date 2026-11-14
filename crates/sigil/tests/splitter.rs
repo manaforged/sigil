@@ -15,9 +15,9 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         splitter(Orientation::Horizontal)
-            .child(container().label("a"), 200.0)
-            .child(container().label("b"), 200.0)
-            .child(container().label("c"), 200.0),
+            .child(container().accessible("a"), 200.0)
+            .child(container().accessible("b"), 200.0)
+            .child(container().accessible("c"), 200.0),
     );
 
     let layout = compute(
@@ -54,8 +54,8 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         splitter(Orientation::Vertical)
-            .child(container().label("top"), 100.0)
-            .child(container().label("bottom"), 100.0),
+            .child(container().accessible("top"), 100.0)
+            .child(container().accessible("bottom"), 100.0),
     );
 
     let layout = compute(
@@ -88,13 +88,13 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
 #[test]
 fn nested_splitter_renders_all_leaves() {
     let inner = splitter(Orientation::Horizontal)
-        .child(container().label("bottom-left"), 150.0)
-        .child(container().label("bottom-right"), 150.0);
+        .child(container().accessible("bottom-left"), 150.0)
+        .child(container().accessible("bottom-right"), 150.0);
 
     let mut cx = Cx::new_root();
     let root = cx.add(
         splitter(Orientation::Vertical)
-            .child(container().label("top"), 100.0)
+            .child(container().accessible("top"), 100.0)
             .child(inner, 100.0),
     );
 
@@ -120,11 +120,11 @@ fn pane_builder_carries_initial_min_max_into_layout() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         splitter(Orientation::Horizontal)
-            .pane(container().label("a"))
+            .pane(container().accessible("a"))
             .width(150.0)
             .min_width(50.0)
             .max_width(300.0)
-            .pane(container().label("b"))
+            .pane(container().accessible("b"))
             .width(250.0)
             .min_width(100.0)
             .max_width(400.0),
@@ -159,9 +159,9 @@ fn grow_pane_takes_leftover_width() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             splitter(Orientation::Horizontal)
-                .pane(container().label("side"))
+                .pane(container().accessible("side"))
                 .width(120.0)
-                .pane(container().label("main"))
+                .pane(container().accessible("main"))
                 .grow(1.0)
                 .commit()
                 .width(406.0)
@@ -195,9 +195,9 @@ fn sizes_bind_carries_initial_sizes() {
         let mut cx = Cx::new_root();
         let _root = cx.add(
             splitter(Orientation::Horizontal)
-                .child(container().label("a"), 100.0)
-                .child(container().label("b"), 150.0)
-                .child(container().label("c"), 200.0)
+                .child(container().accessible("a"), 100.0)
+                .child(container().accessible("b"), 150.0)
+                .child(container().accessible("c"), 200.0)
                 .sizes(bound),
         );
 
@@ -215,7 +215,7 @@ fn dragging_the_handle_resizes_the_panes() {
     let pane = |name: &'static str| {
         container()
             .role(Role::Image)
-            .label(name)
+            .accessible(name)
             .layout(LayoutStyle::flex_column().fill())
     };
     let mut ui = sigil_kittest::Harness::new(
@@ -249,7 +249,7 @@ fn shared(width: u32) -> sigil_kittest::Harness {
     let pane = |name: &'static str| {
         container()
             .role(Role::Image)
-            .label(name)
+            .accessible(name)
             .layout(LayoutStyle::flex_column().fill())
     };
     sigil_kittest::Harness::new(

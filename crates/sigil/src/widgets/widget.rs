@@ -220,7 +220,7 @@ pub trait Widget: Sized {
     #[must_use]
     fn accessible(self, name: impl Into<AccessibleName>) -> Self {
         let name = name.into();
-        self.map_node(move |node| node.label(name))
+        self.map_node(move |node| node.accessible(name))
     }
 
     /// Runs `h` when a pointer button goes up on the node, and marks the node clickable.

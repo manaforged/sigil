@@ -248,7 +248,7 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
     listbox(
         container()
             .role(Role::ComboBox)
-            .label(label)
+            .accessible(label)
             .expanded(memo(move || state.shown()))
             .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT)),
         state,

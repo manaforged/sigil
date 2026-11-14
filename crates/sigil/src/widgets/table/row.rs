@@ -124,7 +124,7 @@ fn build_row<Row: 'static>(
         });
     let cells = container()
         .role(Role::Row)
-        .label(theme_fill_once(StringKey::Row, &[&(visible_pos + 1)]))
+        .accessible(theme_fill_once(StringKey::Row, &[&(visible_pos + 1)]))
         .row_index(visible_pos + 2)
         .selected(is_selected)
         .layout(row_layout(row_height, spec.pad_x))

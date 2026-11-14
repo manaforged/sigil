@@ -56,7 +56,7 @@ impl RatingBuilder {
         });
         let root = row()
             .role(Role::Slider)
-            .label("Rating")
+            .accessible("Rating")
             .focusable(true)
             .gap(Space::Xxs)
             .key(NamedKey::ArrowRight, move |event| {

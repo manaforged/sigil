@@ -148,7 +148,7 @@ impl HintOverlayBuilder {
     fn root(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .label(theme_label(StringKey::KeyboardShortcuts))
+            .accessible(theme_label(StringKey::KeyboardShortcuts))
             .layout(
                 LayoutStyle::flex_column()
                     .padding(Space::Md)
@@ -241,7 +241,7 @@ impl EmptyStateBuilder {
         let name = accessible_name(&self.title);
         let mut root = container()
             .role(Role::Status)
-            .label(name)
+            .accessible(name)
             .layout(
                 LayoutStyle::flex_column()
                     .fill_width()
@@ -317,7 +317,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let name = accessible_name(&content);
     container()
         .role(Role::Image)
-        .label(name)
+        .accessible(name)
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(AVATAR_PX, AVATAR_PX)

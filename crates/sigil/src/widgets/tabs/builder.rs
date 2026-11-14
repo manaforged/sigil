@@ -132,7 +132,7 @@ impl TabsBuilder {
     }
 
     /// Sets the accessible name of the tab list.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn accessible(mut self, label: impl Into<String>) -> Self {
         self.aria_label = label.into();
         self
     }

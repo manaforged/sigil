@@ -48,7 +48,7 @@ pub fn spinner() -> NodeBuilder {
     let grid = Metrics::current().is_grid();
     let indicator = container()
         .role(Role::ProgressIndicator)
-        .label(theme_label(StringKey::Loading));
+        .accessible(theme_label(StringKey::Loading));
     #[cfg(feature = "scene")]
     if !grid {
         return indicator.children_reactive(move || {

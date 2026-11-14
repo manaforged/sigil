@@ -143,7 +143,7 @@ fn build_context_menu<Row: 'static>(
         panel = panel.host(host);
     }
     let mut panel = panel
-        .label(theme_string(StringKey::TableMenu))
+        .accessible(theme_string(StringKey::TableMenu))
         .anchor(Point::new(x, y))
         .width(menu_width);
     for item in items {

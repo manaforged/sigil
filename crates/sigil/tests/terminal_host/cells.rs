@@ -365,7 +365,7 @@ fn tabs_built_from_a_label_list_print_every_label() {
                         tabs()
                             .labels(shown.clone())
                             .active(signal(0))
-                            .label("Settings tabs"),
+                            .accessible("Settings tabs"),
                     )
             },
             60,

@@ -5,7 +5,7 @@ use sigil::kernel::{Cx, container, fragment};
 #[test]
 fn button_role_and_name() {
     let mut cx = Cx::new_root();
-    let _ = container().role(Role::Button).label("Save").add(&mut cx);
+    let _ = container().role(Role::Button).accessible("Save").add(&mut cx);
 
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
@@ -18,7 +18,7 @@ fn checkbox_role_surfaces() {
     let mut cx = Cx::new_root();
     let _ = container()
         .role(Role::CheckBox)
-        .label("Accept terms")
+        .accessible("Accept terms")
         .add(&mut cx);
 
     let update = tree(&cx, None, &|_| None);
@@ -42,7 +42,7 @@ fn generic_container_default_role() {
 fn fragment_reparents_children_in_projection() {
     let mut cx = Cx::new_root();
     let _ = fragment()
-        .child(container().role(Role::Button).label("Inner"))
+        .child(container().role(Role::Button).accessible("Inner"))
         .add(&mut cx);
 
     let update = tree(&cx, None, &|_| None);

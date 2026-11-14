@@ -86,7 +86,7 @@ pub(crate) fn framed_figure(
     scroll::Horizontal::new(crate::reactive::signal(extent), None)
         .wrap(col)
         .role(crate::kernel::Role::Figure)
-        .label(label.into())
+        .accessible(label.into())
         .description(bound_source(source).trim_end().to_string())
 }
 

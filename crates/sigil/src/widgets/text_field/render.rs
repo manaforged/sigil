@@ -36,7 +36,7 @@ pub(super) fn build_base_node(
         } else {
             Role::TextInput
         })
-        .label(accessible_label(placeholder_str.as_str()))
+        .accessible(accessible_label(placeholder_str.as_str()))
         .invalid(inputs.invalid);
     if let Some(flag) = disabled {
         node = node.disabled(flag);

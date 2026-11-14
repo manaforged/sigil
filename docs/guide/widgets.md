@@ -28,7 +28,7 @@ The family pages carry signatures, options, and behavior notes:
 - **date_field(Signal\<Date\>)**: ISO `YYYY-MM-DD`.
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings (such as `["Small", "Large"]`). Chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
-- **segmented(Signal\<usize\>, labels)**: a framed row of mutually exclusive options where one is active; `labels` is any `IntoIterator` of strings. Chain `.label(name)`.
+- **segmented(Signal\<usize\>, labels)**: a framed row of mutually exclusive options where one is active; `labels` is any `IntoIterator` of strings. Chain `.accessible(name)`.
 - **radio_group(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings, as in `dropdown`. Chain `.accessible(name)` to name the group. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
 - **command_menu(Signal\<bool\>)**: a nested action tree shown over the app while the signal is true: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Choosing an item, Escape at the top level, or a backdrop press sets the signal to false. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 

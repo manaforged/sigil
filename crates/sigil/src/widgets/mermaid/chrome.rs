@@ -41,7 +41,7 @@ impl Chrome {
         let lightbox = expandable.then(|| lightbox::lightbox(self.open, &drawn.source, &name));
         let mut root = container()
             .role(Role::Figure)
-            .label(name)
+            .accessible(name)
             .description(source.trim_end().to_string())
             .layout(LayoutStyle::flex_column().fill_width())
             .hittable(true)

@@ -18,7 +18,7 @@ fn disabled_control_stays_visible_and_updates_accessibility() {
         let id = cx.add(
             container()
                 .role(Role::Button)
-                .label("Save")
+                .accessible("Save")
                 .focusable(true)
                 .mutate(move |node| node.a11y.disabled = Some(disabled)),
         );
@@ -45,7 +45,7 @@ fn checkbox_signal_change_shows_in_tree() {
         let _ = cx.add(
             container()
                 .role(Role::CheckBox)
-                .label("Accept terms")
+                .accessible("Accept terms")
                 .checked(checked),
         );
 

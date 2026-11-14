@@ -263,7 +263,7 @@ impl IntoNode for PanelButton {
             .width(60.0)
             .height(48.0)
             .role(Role::Button)
-            .label("Panel")
+            .accessible("Panel")
             .background(BASE_REST)
             .hover(|s| s.background(BASE_HOVER))
             .pressed(|s| s.background(BASE_PRESSED))

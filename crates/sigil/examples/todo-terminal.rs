@@ -178,7 +178,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
     .fill();
     column()
         .role(Role::List)
-        .label("Todo items")
+        .accessible("Todo items")
         .focusable(true)
         .fill_width()
         .grow(1.0)

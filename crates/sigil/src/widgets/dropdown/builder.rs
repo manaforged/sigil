@@ -91,7 +91,7 @@ impl DropdownBuilder {
     }
 
     /// Sets the accessible name; the default is "Dropdown".
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn accessible(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
@@ -168,7 +168,7 @@ fn dropdown_root(
         container()
             .role(Role::ComboBox)
             .expanded(ctx.open)
-            .label(label)
+            .accessible(label)
             .layout(root_layout),
         DropdownModel {
             ctx,

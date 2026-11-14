@@ -126,7 +126,7 @@ fn option_row(
     );
     let mut row = control(row, disabled)
         .role(Role::RadioButton)
-        .label(label.to_owned())
+        .accessible(label.to_owned())
         .checked(checked)
         .tone_scope(tone)
         .focus_ring(ring_visible)

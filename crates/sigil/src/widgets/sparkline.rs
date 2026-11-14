@@ -212,7 +212,7 @@ impl SparklineBuilder {
         let description = memo(move || values.with(|values| label_shape.describe(values, theme)));
         let node = container()
             .role(Role::Image)
-            .label(theme_label(StringKey::Sparkline))
+            .accessible(theme_label(StringKey::Sparkline))
             .mutate(move |target| {
                 target.a11y.description = Some(AccessibleName::Derived(description));
             })

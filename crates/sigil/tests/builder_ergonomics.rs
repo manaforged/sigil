@@ -65,7 +65,7 @@ fn a_converted_builder_is_the_widget_node_itself() {
     sigil::reactive::Owner::scope("node-from", || {
         let mut cx = sigil::kernel::Cx::new_root();
         let converted: NodeBuilder = text("hello").into();
-        let root = cx.add(column().child(converted.label("greeting")));
+        let root = cx.add(column().child(converted.accessible("greeting")));
         let child = cx.nth_child(root, 0).expect("child");
         let node = cx.get(child).expect("node");
         assert!(matches!(node.kind, sigil::kernel::NodeType::Text { .. }));

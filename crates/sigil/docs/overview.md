@@ -5,7 +5,7 @@ Seven types cover most apps. Import them with `use sigil::prelude::*;` (except `
 | Type | Get one with | Use it to |
 | --- | --- | --- |
 | `AppConfig` | `AppConfig::new(title)` | Set the title, size, theme file, and host, then pass it to `sigil::run` |
-| `NodeBuilder` | `row()`, `column()`, `container()`, or any widget builder via `.into()` | Add children, set the role and label for screen readers, attach handlers. Every widget constructor returns a typed builder implementing `Widget`, `Paint`, `IntoNode`, and `Into<NodeBuilder>` |
+| `NodeBuilder` | `row()`, `column()`, `container()`, or any widget builder via `.into()` | Add children, set the role and the name for screen readers, attach handlers. Every widget constructor returns a typed builder implementing `Widget`, `Paint`, `IntoNode`, and `Into<NodeBuilder>` |
 | `Widget` | implemented by every builder | Set layout, style, and handlers with typed steps: `.gap(Space::Md)`, `.padding(Space::Lg)` |
 | `Signal` | `signal(value)`, `memo(f)` | Hold state; a closure that calls `get` updates when the value changes |
 | `View` | `sigil::view!("src/screen.sigil")` | Load a screen from a `.sigil` file and reload it on each save |

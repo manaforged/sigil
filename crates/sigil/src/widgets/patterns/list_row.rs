@@ -247,7 +247,7 @@ impl ListRowBuilder {
         }
         let tone = self.tone;
         if let TextContent::Static(name) = &self.title {
-            row = row.label(name.clone());
+            row = row.accessible(name.clone());
         }
         row = row.child(title_text(&self));
         if let Some(detail) = self.detail.take() {

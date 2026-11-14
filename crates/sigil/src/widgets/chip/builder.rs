@@ -96,7 +96,7 @@ impl ChipBuilder {
             .class(Radius::Full.atom())
             .class(chip_class(self.tone));
         if activate.is_some() {
-            node = node.label(accessible_name(&self.label));
+            node = node.accessible(accessible_name(&self.label));
         }
         if self.dot {
             node = match self.tone_signal {

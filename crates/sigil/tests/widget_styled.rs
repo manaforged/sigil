@@ -248,7 +248,7 @@ fn tabs_accepts_styled_surface() {
             tabs()
                 .active(signal(0_usize))
                 .labels(["A", "B"])
-                .label("Settings sections")
+                .accessible("Settings sections")
                 .background(A)
                 .hover(|s| s.background(B))
         };
@@ -270,7 +270,7 @@ fn scroll_accepts_styled_surface() {
 fn menu_accepts_styled_surface() {
     Owner::scope("widget-styled-menu-surface", || {
         let build = menu(signal(true))
-            .label("File menu")
+            .accessible("File menu")
             .item(MenuItem::new("New"))
             .item(MenuItem::new("Save").hint("Ctrl+S"))
             .separator()

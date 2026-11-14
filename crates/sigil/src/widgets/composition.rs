@@ -27,7 +27,7 @@ where
     let last = children.len().checked_sub(1).filter(|last| *last > 0);
     let mut root = container()
         .role(Role::Status)
-        .label(theme_label(StringKey::StatusBar))
+        .accessible(theme_label(StringKey::StatusBar))
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()

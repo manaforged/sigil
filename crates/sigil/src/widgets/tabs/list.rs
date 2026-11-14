@@ -97,7 +97,7 @@ pub(super) fn build_tab_list(
     };
     container()
         .role(Role::TabList)
-        .label(AccessibleName::Static(name))
+        .accessible(AccessibleName::Static(name))
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(spec.chrome))

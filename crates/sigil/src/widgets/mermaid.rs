@@ -146,7 +146,7 @@ fn text_figure(source: &str) -> NodeBuilder {
     Horizontal::new(signal(extent), None)
         .wrap(form.pick()(col, &lines))
         .role(Role::Figure)
-        .label(diagram_name(source))
+        .accessible(diagram_name(source))
         .description(bound_source(source).trim_end().to_string())
 }
 

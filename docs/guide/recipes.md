@@ -151,7 +151,7 @@ impl IntoNode for RatingBuilder {
                 .accessible(format!("{star} of {max}"))
                 .activate(move || value.set(star))
         });
-        let root = row().role(Role::Group).label("Rating").gap(Space::Xxs).children(stars);
+        let root = row().role(Role::Group).accessible("Rating").gap(Space::Xxs).children(stars);
         self.frame.finish(root).build(cx)
     }
 }
@@ -739,7 +739,7 @@ fn main() {
 }
 ```
 
-Give each control a name that a screen reader can say. Widgets take the name from their label. For a bare container, set `.role(Role::...)` and `.label("...")`.
+Give each control a name that a screen reader can say. Widgets take the name from their label. For a bare container, set `.role(Role::...)` and `.accessible("...")`.
 
 ## Tasks in an embed
 

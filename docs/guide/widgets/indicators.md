@@ -74,7 +74,7 @@ Indicators have one visual state each: the visual catalog captures only the defa
 | `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
 | `gauge` | none | `ProgressIndicator` | The `.label()`, else "Gauge" |
 | `progress` | none | `ProgressIndicator` | `.label()` or `.accessible(name)`, else "Progress" |
-| `spinner` | none | `ProgressIndicator` | `.label()` on the returned `NodeBuilder`, else "Loading" |
+| `spinner` | none | `ProgressIndicator` | `.accessible()` on the returned `NodeBuilder`, else "Loading" |
 
 ## Terminal notes
 

@@ -21,7 +21,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
                 .child(
                     container()
                         .role(sigil::kernel::Role::Button)
-                        .label("Card")
+                        .accessible("Card")
                         .layout(LayoutStyle::block().fixed_size(80.0, 32.0))
                         .offset(pos),
                 ),

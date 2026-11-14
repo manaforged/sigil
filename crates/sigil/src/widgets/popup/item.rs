@@ -36,7 +36,7 @@ impl ItemSlots {
 pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder {
     let disabled = slots.disabled;
     let mut row = container()
-        .label(slots.label.clone())
+        .accessible(slots.label.clone())
         .layout({
             let metrics = Metrics::current();
             LayoutStyle::flex_row()

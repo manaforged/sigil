@@ -63,7 +63,7 @@ fn tab_section(
         .child(
             container()
                 .role(Role::TextInput)
-                .label("Code buffer")
+                .accessible("Code buffer")
                 .focusable(true)
                 .autofocus()
                 .padding_x(Space::Sm)
@@ -128,7 +128,7 @@ fn anchor_popup(
         move || {
             let bounds = anchor_bounds.peek();
             menu(menu_open)
-                .label("Caret actions")
+                .accessible("Caret actions")
                 .anchor(Point::new(bounds.origin.x, bounds.origin.y + bounds.height))
                 .item(
                     MenuItem::new("Insert snippet")
@@ -171,7 +171,7 @@ fn reorder_row(label: String, dnd: &DndState) -> NodeBuilder {
 
     row()
         .role(Role::ListItem)
-        .label(row_label)
+        .accessible(row_label)
         .fill_width()
         .padding_x(Space::Sm)
         .padding_y(row_pad_y())

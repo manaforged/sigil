@@ -39,7 +39,7 @@ fn items_bind_window_advances_in_place_on_scroll() {
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list(items, |index, _| container().label(format!("row {index}")))
+            virtual_list(items, |index, _| container().accessible(format!("row {index}")))
                 .scroll_y(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
@@ -66,7 +66,7 @@ fn scroll_one_row_keeps_overlapping_node() {
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list(items, |index, _| container().label(format!("row {index}")))
+            virtual_list(items, |index, _| container().accessible(format!("row {index}")))
                 .scroll_y(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
@@ -100,7 +100,7 @@ fn identified_reorder_keeps_row_nodes() {
     Owner::scope("sigil-vlist-identified-reorder", || {
         let items = signal(vec![Row { id: 1, name: "a" }, Row { id: 2, name: "b" }]);
         let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list(items, |_, row| container().label(row.name)).identified());
+        let root = cx.add(virtual_list(items, |_, row| container().accessible(row.name)).identified());
         cx.flush_reactive_children();
         let visible = bound_visible(&cx, root);
         let before = [

@@ -47,7 +47,7 @@ pub(super) fn range_root(
     let root = control_frame(
         container()
             .role(Role::Group)
-            .label(name(label, None))
+            .accessible(name(label, None))
             .track_size(extent)
             .layout(slider_layout(
                 runtime.orientation,

@@ -85,7 +85,7 @@ pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
         .child(
             panel
                 .active(ws.bottom)
-                .label("Panel")
+                .accessible("Panel")
                 .line()
                 .justify_list(JustifyContent::Start),
         )

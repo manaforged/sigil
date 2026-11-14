@@ -177,7 +177,7 @@ impl ModalBuilder {
                 .wrap(
                     container()
                         .role(Role::GenericContainer)
-                        .label(root_name)
+                        .accessible(root_name)
                         .layout(root_layout(side)),
                 )
                 .child(backdrop)
@@ -272,7 +272,7 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
 
     let mut dialog = PopupLayer::new(show, PopupAnchor::Inline).trap(trap).wrap(
         popup::surface(Role::Dialog)
-            .label(title_label)
+            .accessible(title_label)
             .focusable(true)
             .focus_ring(signal(false))
             .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))

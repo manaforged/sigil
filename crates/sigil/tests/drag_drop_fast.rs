@@ -26,7 +26,7 @@ fn drag_rows(first: f32, release_below: bool) -> (Option<(u32, u32)>, bool) {
             col.child(
                 container()
                     .role(Role::ListItem)
-                    .label(format!("row {id}"))
+                    .accessible(format!("row {id}"))
                     .layout(LayoutStyle::block().fill_width().height(28.0))
                     .child(text(format!("row {id}")))
                     .drag_source(drag.clone(), id)

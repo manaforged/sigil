@@ -26,7 +26,7 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
     {
         return scrolled_diagram(diagram, width)
             .role(Role::Figure)
-            .label(graph_name(source))
+            .accessible(graph_name(source))
             .description(bounded.trim_end().to_string());
     }
     framed_figure(source, graph_name(source), &frame_source(&bounded))

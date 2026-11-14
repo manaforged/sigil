@@ -111,7 +111,7 @@ dropdown(choice, ["Small", "Large"])
 # };
 ```
 
-`.label()` names the control for accessibility (default "Dropdown"); `.disabled(impl Reactive<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
+`.accessible()` names the control for accessibility (default "Dropdown"); `.disabled(impl Reactive<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
 
 Enter opens or commits, Escape closes, the arrows move the cursor, and pointer enter moves it too. `focus_out` on the root closes the popup. The popup is a `TopLayer` list of `Role::ListBoxOption` rows capped at six visible options; longer lists scroll inside the popup.
 
@@ -129,7 +129,7 @@ The visual catalog captures each field in the states in the table. Invalid comes
 | `field(..).error(..)` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
 | `text_field(..).multiline()` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
 | `number_field`, `date_field`, `color_field` | default, hover, pressed, focused, disabled, invalid | As `text_field` | `TextInput` | As `text_field` |
-| `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |
+| `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.accessible()`, else "Dropdown" |
 | `combobox` | default, hover, pressed, focused, disabled, open | Typing, Arrow keys, Enter, Escape | `ComboBox`, popup `ListBox` | The placeholder, else "Combobox" |
 
 `field` labels its control: the control is `labelled_by` the visible label, so assistive technology and `Harness::type_into("Name", ..)` find it by that text.

@@ -180,7 +180,7 @@ fn build_recording_list(scroll_y: Signal<f32>, rendered: Rc<RefCell<Vec<usize>>>
 fn row(index: usize, _item: &usize) -> NodeBuilder {
     container()
         .role(Role::ListItem)
-        .label(format!("Row {index}"))
+        .accessible(format!("Row {index}"))
         .layout(LayoutStyle::flex_row().fixed_size(320.0, ROW_HEIGHT))
         .child(container().layout(LayoutStyle::block().fixed_size(80.0, ROW_HEIGHT)))
         .child(container().layout(LayoutStyle::block().fixed_size(160.0, ROW_HEIGHT)))

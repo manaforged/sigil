@@ -30,7 +30,7 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let body: TextContent = body.into();
     let band = container()
         .role(role)
-        .label(announced(name, &body))
+        .accessible(announced(name, &body))
         .tone_scope(tone);
     let band = CellForm::<fn(NodeBuilder, Tone) -> NodeBuilder>::new(
         |node, _| {

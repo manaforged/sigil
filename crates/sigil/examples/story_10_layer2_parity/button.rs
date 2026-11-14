@@ -108,7 +108,7 @@ impl CustomButtonBuilder {
         let disabled_bg = p.disabled_bg;
         let mut node = container()
             .role(Role::Button)
-            .label(AccessibleName::from(&self.label))
+            .accessible(AccessibleName::from(&self.label))
             .layout(layout)
             .radius(Radius::Lg)
             .transition(Transition::smooth())

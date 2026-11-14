@@ -138,7 +138,7 @@ fn tab_content_fills_the_space_below_the_strip() {
             .child(tabs().tab("One", || {
                 container()
                     .role(Role::Group)
-                    .label("body")
+                    .accessible("body")
                     .layout(LayoutStyle::block().fill())
             }))
     })

@@ -120,7 +120,7 @@ fn drawn(spec: &Rc<Spec>, chart: &Chart) -> NodeBuilder {
     Horizontal::new(signal(width), None)
         .wrap(row)
         .role(Role::Figure)
-        .label(spec.name.clone())
+        .accessible(spec.name.clone())
         .description(description(spec.about.as_deref(), &chart.text))
 }
 

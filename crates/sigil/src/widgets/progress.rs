@@ -88,7 +88,7 @@ impl ProgressBuilder {
         let name = accessible_name_or(self.caption.as_ref(), StringKey::Progress);
         let node = container()
             .role(Role::ProgressIndicator)
-            .label(name)
+            .accessible(name)
             .value(value, 0.0, max)
             .layout(if self.caption.is_some() {
                 LayoutStyle::flex_row()

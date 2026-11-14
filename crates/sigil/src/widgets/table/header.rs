@@ -97,7 +97,7 @@ fn header_cell<Row: 'static>(
     let override_px = state.column_layout().peek().widths.get(id).copied();
     let cell = container()
         .role(Role::ColumnHeader)
-        .label(column.title().to_owned())
+        .accessible(column.title().to_owned())
         .column_index(def_index + 1 + usize::from(spec.select))
         .hittable(true)
         .layout(column.cell_layout(override_px, spec.height, None))
@@ -125,7 +125,7 @@ fn resize_handle<Row: 'static>(
 ) -> NodeBuilder {
     let handle = container()
         .role(Role::Splitter)
-        .label(theme_fill_once(StringKey::ResizeColumn, &[&column]))
+        .accessible(theme_fill_once(StringKey::ResizeColumn, &[&column]))
         .hittable(true)
         .layout(
             LayoutStyle::block()

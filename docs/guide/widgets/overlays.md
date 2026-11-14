@@ -54,7 +54,7 @@ modal(open)
 
 ## menu and menu_bar
 
-`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(point)` to pin the top-left corner at a `Point` or an `(x, y)` tuple (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
+`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.accessible(name)` for accessibility, `.anchor(point)` to pin the top-left corner at a `Point` or an `(x, y)` tuple (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
 
 `MenuItem::new(label)` carries `.hint(text)` (a displayed hint, not a binding), `.disabled(bool)`, `.submenu(bool)` (shows the indicator; you render the submenu yourself), and `.activate(Fn())` which fires and closes the menu.
 
@@ -107,7 +107,7 @@ The visual catalog captures the closed and open state of each overlay, and the h
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `modal` | closed, open | Escape closes the top dialog; Tab stays inside while `.trap(true)` | `Dialog` | `.title()`, else "Dialog" |
-| `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.label()` |
+| `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.accessible()` |
 | `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Dialog` over a `Menu` panel, rows `MenuItem` | "Command Menu" |
 | `tooltip` | hidden, shown on hover or keyboard focus | The bubble shows when the first focusable node in the target gets keyboard focus; blur or Escape hides it | `Tooltip` | The label, plus the shortcut in parentheses |
 | `toast`, `toast_queue` | hidden, shown | none | `Status` | None; the message is the text child |

@@ -170,7 +170,7 @@ fn form(rollout: Rollout) -> NodeBuilder {
                 rollout.region,
                 Region::ALL.iter().map(|region| region.label()),
             )
-            .label("Target region"),
+            .accessible("Target region"),
         ))
         .child(field(
             "Canary percent",

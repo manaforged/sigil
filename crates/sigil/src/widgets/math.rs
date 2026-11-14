@@ -36,7 +36,7 @@ pub(crate) fn block(source: &str) -> NodeBuilder {
         return Horizontal::new(signal(width), None)
             .wrap(centred)
             .role(Role::Figure)
-            .label(theme_string_once(StringKey::Math))
+            .accessible(theme_string_once(StringKey::Math))
             .description(source.trim().to_string());
     }
     text(unicode(source)).into()

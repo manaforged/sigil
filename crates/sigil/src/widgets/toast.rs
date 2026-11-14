@@ -13,7 +13,7 @@ pub fn toast(message: impl Reactive<Option<String>>) -> NodeBuilder {
     let body = memo(move || message.get().unwrap_or_default());
     container()
         .role(Role::Status)
-        .label(body)
+        .accessible(body)
         .layout(
             LayoutStyle::flex_row()
                 .position(Position::Absolute)

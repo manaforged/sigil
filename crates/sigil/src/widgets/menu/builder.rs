@@ -117,7 +117,7 @@ impl MenuBuilder {
     }
 
     /// Sets the accessible name; the default is the menu string of the theme.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn accessible(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -177,7 +177,7 @@ impl MenuBuilder {
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
-            .label(menu_label)
+            .accessible(menu_label)
             .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);

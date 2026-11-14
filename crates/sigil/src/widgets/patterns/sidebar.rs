@@ -102,7 +102,7 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
         .role(Role::Splitter)
         .hittable(true)
         .focusable(true)
-        .label(theme_label(StringKey::ResizeSidebar))
+        .accessible(theme_label(StringKey::ResizeSidebar))
         .value(width, min, max)
         .value_step(KEY_STEP)
         .layout(

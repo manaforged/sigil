@@ -69,7 +69,7 @@ impl GaugeBuilder {
         let (value, max, warn) = (self.value, self.max, self.warn_threshold);
         let mut node = container()
             .role(Role::ProgressIndicator)
-            .label(accessible_name_or(self.label.as_ref(), StringKey::Gauge))
+            .accessible(accessible_name_or(self.label.as_ref(), StringKey::Gauge))
             .value(value, 0.0, max)
             .layout(
                 LayoutStyle::flex_row()

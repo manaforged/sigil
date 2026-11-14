@@ -42,7 +42,7 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
     container()
         .layout(column)
         .child(
-            container().label(name.to_owned()).layout(
+            container().accessible(name.to_owned()).layout(
                 LayoutStyle::flex_row()
                     .height(28.0)
                     .padding_x(Space::raw(10.0, "test fixture")),
@@ -216,7 +216,7 @@ fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuil
 fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -> NodeBuilder {
     let row = container()
         .role(Role::Button)
-        .label(name.to_owned())
+        .accessible(name.to_owned())
         .focusable(true)
         .layout(LayoutStyle::flex_row().height(22.0).padding_x(Space::Sm));
     let row = if active {

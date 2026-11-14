@@ -257,7 +257,7 @@ fn build_bubble(
     });
     let mut bubble = surface(Role::Tooltip)
         .hittable(false)
-        .label(description.to_owned())
+        .accessible(description.to_owned())
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)

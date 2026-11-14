@@ -140,7 +140,7 @@ impl ToggleBuilder {
         let mut node = control(
             container()
                 .role(Role::Switch)
-                .label(accessible_name_or(
+                .accessible(accessible_name_or(
                     accessible.as_ref().or(self.label.as_ref()),
                     StringKey::Toggle,
                 ))

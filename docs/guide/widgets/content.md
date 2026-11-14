@@ -14,7 +14,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 # };
 ```
 
-`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.accessible_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)` (`sigil::style::FontFamily`), `.text_color(Token::OnSurfaceMuted)`.
+`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.accessible(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.accessible_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)` (`sigil::style::FontFamily`), `.text_color(Token::OnSurfaceMuted)`.
 
 ## icon
 
@@ -22,7 +22,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 - `.tone(Tone)`: glyph color.
 - `.size(ControlSize)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
-- `.label(name)`: assistive name; always set it when the icon stands alone.
+- `.accessible(name)`: assistive name; always set it when the icon stands alone.
 
 `icon(Glyph::svg(source))` draws an SVG image instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
 
@@ -114,8 +114,8 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 
 | Widget | Role | Name source |
 | --- | --- | --- |
-| `text` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
-| `icon` | `Image` with `.label()`, else `GenericContainer` | `.label(name)` |
+| `text` | `Label` (change it with `.role()`) | The text, or `.accessible(name)` |
+| `icon` | `Image` with `.accessible()`, else `GenericContainer` | `.accessible(name)` |
 | `image` | Image node | `.alt(text)` |
 | `path` | Image node | None |
 | `chart` | `Figure` | "Chart" |

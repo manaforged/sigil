@@ -82,7 +82,7 @@ fn anchored_menu(
         }
     };
     let mut panel = menu(open)
-        .label(theme_string(StringKey::ContextMenu))
+        .accessible(theme_string(StringKey::ContextMenu))
         .anchor((
             fit(x, viewport.width, PANEL_WIDTH),
             fit(y, viewport.height, height),

@@ -72,7 +72,7 @@ impl MenuBarBuilder {
         let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
-            .label(theme_label(StringKey::MenuBar))
+            .accessible(theme_label(StringKey::MenuBar))
             .with(
                 LayoutStyle::flex_row()
                     .height(TRIGGER_H)
@@ -148,7 +148,7 @@ fn interactive_trigger(
 ) -> impl IntoNode {
     let inner = container()
         .role(Role::Button)
-        .label(label.clone())
+        .accessible(label.clone())
         .hittable(true)
         .layout(
             LayoutStyle::flex_row()

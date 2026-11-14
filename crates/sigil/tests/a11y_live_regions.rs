@@ -81,7 +81,7 @@ fn multiple_announces_overwrite_label_polite() {
 #[test]
 fn no_announce_no_live_region_node() {
     let mut cx = Cx::new_root();
-    let _ = cx.add(container().label("just a button"));
+    let _ = cx.add(container().accessible("just a button"));
 
     let update = tree(&cx, None, &|_| None);
     assert!(

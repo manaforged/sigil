@@ -109,17 +109,17 @@ fn routing_only_materialises_active_content() {
                 .active(active)
                 .tab("One", move || {
                     container()
-                        .label("panel-0")
+                        .accessible("panel-0")
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
                 })
                 .tab("Two", move || {
                     container()
-                        .label("panel-1")
+                        .accessible("panel-1")
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
                 })
                 .tab("Three", move || {
                     container()
-                        .label("panel-2")
+                        .accessible("panel-2")
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
                 }),
         );

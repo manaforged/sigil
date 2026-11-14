@@ -167,7 +167,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
     }
 
     /// Sets the accessible name of the tree.
-    pub fn label(mut self, label: impl Into<TextContent>) -> Self {
+    pub fn accessible(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -197,7 +197,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
             .map_node(move |node| {
                 let node = keys::attach(node.role(Role::Tree), &state);
                 match label {
-                    Some(label) => node.label(accessible_name(&label)),
+                    Some(label) => node.accessible(accessible_name(&label)),
                     None => node,
                 }
             })

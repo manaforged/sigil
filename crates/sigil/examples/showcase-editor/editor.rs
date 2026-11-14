@@ -29,7 +29,7 @@ fn tab_strip(ws: Workspace) -> impl IntoNode {
     tabs()
         .labels(labels)
         .active(ws.active_tab)
-        .label("Open editors")
+        .accessible("Open editors")
         .closeable(true)
         .close(move |index| ws.close_tab(index))
         .line()

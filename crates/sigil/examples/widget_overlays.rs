@@ -40,7 +40,7 @@ pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
 
 pub(crate) fn menu_demo(open: Signal<bool>) -> impl IntoNode {
     menu(open)
-        .label("Edit")
+        .accessible("Edit")
         .anchor(Point::new(16.0, 16.0))
         .item(MenuItem::new("Undo").hint("Ctrl+Z").activate(|| {}))
         .item(MenuItem::new("Redo").disabled(true))

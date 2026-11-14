@@ -318,7 +318,7 @@ fn compact_dropdown_keeps_its_label_and_popup_anchor() {
                 signal(0_usize),
                 vec!["Local".to_owned(), "Remote".to_owned()],
             )
-            .label("Backend")
+            .accessible("Backend")
             .width(132.0)
             .height(28.0),
         );

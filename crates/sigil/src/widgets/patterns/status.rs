@@ -45,7 +45,7 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
         .children_reactive(move || {
             shown.get().then(|| {
                 chip(move || shown_text.get(), tone)
-                    .map_node(move |node| node.role(Role::Status).label(shown_text))
+                    .map_node(move |node| node.role(Role::Status).accessible(shown_text))
             })
         })
 }
@@ -90,7 +90,7 @@ impl SkeletonBuilder {
         let lines = self.lines;
         let mut root = container()
             .role(Role::Status)
-            .label(theme_label(StringKey::Loading))
+            .accessible(theme_label(StringKey::Loading))
             .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
         for index in 0..lines {
             let width = if index + 1 == lines && lines > 1 {
@@ -157,7 +157,7 @@ fn step(index: usize, name: String, current: Signal<usize>) -> NodeBuilder {
     let number = (index + 1).to_string();
     container()
         .role(Role::ListItem)
-        .label(name.clone())
+        .accessible(name.clone())
         .selected(selected)
         .layout(
             LayoutStyle::flex_row()

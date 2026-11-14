@@ -9,7 +9,7 @@ fn list() -> impl IntoNode {
     let items = signal(vec!["one", "two"]);
     let open = signal(true);
     column()
-        .label("Items")
+        .accessible("Items")
         .child(for_each(items, |item: &&str| *item, |item: &&str| text(*item)))
         .child(show(open, || text("Open"), || text("Closed")))
 }

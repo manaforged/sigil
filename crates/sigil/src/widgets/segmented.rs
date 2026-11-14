@@ -44,7 +44,7 @@ pub fn segmented(
 
 impl SegmentedBuilder {
     /// Sets the accessible name of the group.
-    pub fn label(mut self, name: impl Into<String>) -> Self {
+    pub fn accessible(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
@@ -87,7 +87,7 @@ impl SegmentedBuilder {
                 .collect::<Vec<_>>()
         });
         if let Some(name) = self.name {
-            node = node.label(name);
+            node = node.accessible(name);
         }
         caller_style(node, self.style_accumulator)
     }

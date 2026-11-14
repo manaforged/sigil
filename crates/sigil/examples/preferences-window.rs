@@ -161,7 +161,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
         )
         .child(field(
             "Language",
-            dropdown(prefs.language, LANGUAGES.iter().copied()).label("Language"),
+            dropdown(prefs.language, LANGUAGES.iter().copied()).accessible("Language"),
         ))
 }
 

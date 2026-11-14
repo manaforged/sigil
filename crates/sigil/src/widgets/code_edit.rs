@@ -250,7 +250,7 @@ impl CodeEditBuilder {
         let runtime = editing::runtime(model, disabled);
         let node = field_chrome(container(), interaction, disabled)
             .role(Role::TextInput)
-            .label(theme_label(StringKey::CodeEditor))
+            .accessible(theme_label(StringKey::CodeEditor))
             .with(Direction::Ltr)
             .focusable(true)
             .traps_tab(traps_tab)

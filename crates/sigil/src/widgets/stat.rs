@@ -97,7 +97,7 @@ impl StatBuilder {
         };
         let mut body = container()
             .role(Role::Group)
-            .label(name)
+            .accessible(name)
             .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
             .child(caption_text(
                 self.label,

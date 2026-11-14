@@ -112,7 +112,7 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
         let group = if placeholder.peek().is_empty() {
             group
         } else {
-            group.label(placeholder)
+            group.accessible(placeholder)
         };
         let node = group
             .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))

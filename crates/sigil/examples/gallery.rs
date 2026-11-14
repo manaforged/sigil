@@ -244,7 +244,7 @@ fn content_page() -> NodeBuilder {
         .child(text("Labels and text share TextContent.").nowrap())
         .child(section_label("Icons and indicators"))
         .child(row3(
-            icon("★").tone(Tone::Warning).label("Star"),
+            icon("★").tone(Tone::Warning).accessible("Star"),
             chip("stable", Tone::Success),
             chip("4", Tone::Error),
         ))

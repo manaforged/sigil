@@ -19,7 +19,7 @@ macro_rules! shared_node_methods {
         }
 
         /// Sets the accessible name of the node.
-        pub fn label(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
+        pub fn accessible(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
             self$(.$field)*.a11y.name = name.into();
             self
         }
