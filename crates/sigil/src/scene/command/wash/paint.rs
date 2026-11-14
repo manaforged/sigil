@@ -24,26 +24,7 @@ impl Wash {
     pub fn shade(&self, x: f32, y: f32, centre: (f32, f32)) -> [f32; 3] {
         let wash = self.normalized();
         let seed = wash.seed;
-        let (u, v) = (x / wash.scale, y / wash.scale);
-        let wx = 1.1f32.mul_add(
-            fbm(u.mul_add(0.8, 3.0), v.mul_add(0.8, 7.0), 3, seed) - 0.5,
-            u,
-        );
-        let wy = 1.1f32.mul_add(
-            fbm(u.mul_add(0.8, -5.0), v.mul_add(0.8, 1.0), 3, seed) - 0.5,
-            v,
-        );
-        let body = if wash.band {
-            band(
-                u - centre.0 / wash.scale,
-                v - centre.1 / wash.scale,
-                wx,
-                wy,
-                seed,
-            )
-        } else {
-            smoothstep(0.38, 0.78, fbm(wx * 0.9, wy * 0.9, 5, seed))
-        };
+        let (body, (wx, wy)) = wash.body((x, y), centre);
         let (amount, fibre) = wash.soak((x, y), body, (wx, wy));
         let hue = ((fbm(wx * 0.6 + 90.0, wy * 0.5, 3, seed) - 0.3) / 0.4).clamp(0.0, 1.0);
         let pigment = ramp(&wash, hue);
@@ -63,7 +44,32 @@ impl Wash {
                 .mul_add(-0.035f32.mul_add(fine, 0.045 * fibre), 1.0);
             out = out.map(|channel| channel * texture);
         }
-        speck(&wash, (x, y), body, dark, out)
+        speck(&wash, (x, y), centre, dark, out)
+    }
+
+    fn body(&self, (x, y): (f32, f32), centre: (f32, f32)) -> (f32, (f32, f32)) {
+        let seed = self.seed;
+        let (u, v) = (x / self.scale, y / self.scale);
+        let wx = 1.1f32.mul_add(
+            fbm(u.mul_add(0.8, 3.0), v.mul_add(0.8, 7.0), 3, seed) - 0.5,
+            u,
+        );
+        let wy = 1.1f32.mul_add(
+            fbm(u.mul_add(0.8, -5.0), v.mul_add(0.8, 1.0), 3, seed) - 0.5,
+            v,
+        );
+        let body = if self.band {
+            band(
+                u - centre.0 / self.scale,
+                v - centre.1 / self.scale,
+                wx,
+                wy,
+                seed,
+            )
+        } else {
+            smoothstep(0.38, 0.78, fbm(wx * 0.9, wy * 0.9, 5, seed))
+        };
+        (body, (wx, wy))
     }
 
     fn soak(&self, (x, y): (f32, f32), body: f32, (wx, wy): (f32, f32)) -> (f32, f32) {
@@ -120,28 +126,81 @@ fn ramp(wash: &Wash, t: f32) -> [f32; 3] {
     zip_with(rgb(from), rgb(to), |a, b| (b - a).mul_add(mix, a))
 }
 
-fn speck(wash: &Wash, (x, y): (f32, f32), body: f32, dark: bool, out: [f32; 3]) -> [f32; 3] {
+const SPECK_CELL: f32 = 4.0;
+const SPECK_SOFT: f32 = 0.6;
+const SPECK_RADIUS: f32 = 0.6;
+const SPECK_RADIUS_SPAN: f32 = 0.7;
+const SPECK_REACH: f32 = SPECK_RADIUS + SPECK_RADIUS_SPAN + SPECK_SOFT;
+const _: () = assert!(SPECK_REACH < SPECK_CELL / 2.0);
+
+fn speck(
+    wash: &Wash,
+    (x, y): (f32, f32),
+    centre: (f32, f32),
+    dark: bool,
+    out: [f32; 3],
+) -> [f32; 3] {
     if wash.specks <= 0.0 {
         return out;
     }
-    let (cx, cy) = ((x / 4.0).floor(), (y / 4.0).floor());
-    let seed = wash.seed ^ 0xabc;
-    let roll = rand(cx as i32, cy as i32, seed);
-    if roll >= wash.specks * 0.05 * (0.35 + body) {
+    let light = speck_cells(x, y)
+        .into_iter()
+        .map(|cell| star(wash, cell, (x, y), centre, dark))
+        .fold(0.0, f32::max);
+    if light <= 0.0 {
         return out;
     }
-    let ox = cx.mul_add(4.0, 4.0 * rand(cx as i32, cy as i32, seed ^ 1));
-    let oy = cy.mul_add(4.0, 4.0 * rand(cx as i32, cy as i32, seed ^ 2));
-    let radius = 0.7f32.mul_add(rand(cx as i32, cy as i32, seed ^ 3), 0.6);
-    let distance = (x - ox).hypot(y - oy);
-    let dot = 1.0 - smoothstep(radius - 0.6, radius + 0.6, distance);
     if dark {
-        let glow = 0.45f32.mul_add(rand(cx as i32, cy as i32, seed ^ 4), 0.55);
-        out.map(|channel| ((1.0 - channel) * dot).mul_add(glow, channel))
+        out.map(|channel| (1.0 - channel).mul_add(light, channel))
     } else {
         let ink = ramp(wash, 1.0).map(|channel| channel * 0.45);
-        zip_with(out, ink, |o, k| ((k - o) * dot).mul_add(0.55, o))
+        zip_with(out, ink, |o, k| ((k - o) * light).mul_add(0.55, o))
     }
+}
+
+fn speck_cells(x: f32, y: f32) -> [(f32, f32); 4] {
+    let (fx, fy) = ((x / SPECK_CELL).floor(), (y / SPECK_CELL).floor());
+    let side = |at: f32, cell: f32| {
+        if cell.mul_add(-SPECK_CELL, at) < SPECK_CELL / 2.0 {
+            -1.0
+        } else {
+            1.0
+        }
+    };
+    let (sx, sy) = (side(x, fx), side(y, fy));
+    [(fx, fy), (fx + sx, fy), (fx, fy + sy), (fx + sx, fy + sy)]
+}
+
+fn star(
+    wash: &Wash,
+    (cx, cy): (f32, f32),
+    (x, y): (f32, f32),
+    centre: (f32, f32),
+    dark: bool,
+) -> f32 {
+    let (ix, iy) = (cx as i32, cy as i32);
+    let seed = wash.seed ^ 0xabc;
+    let roll = rand(ix, iy, seed);
+    if roll >= speck_limit(wash.specks, 1.0) {
+        return 0.0;
+    }
+    let ox = cx.mul_add(SPECK_CELL, SPECK_CELL * rand(ix, iy, seed ^ 1));
+    let oy = cy.mul_add(SPECK_CELL, SPECK_CELL * rand(ix, iy, seed ^ 2));
+    let radius = SPECK_RADIUS_SPAN.mul_add(rand(ix, iy, seed ^ 3), SPECK_RADIUS);
+    let dot = 1.0 - smoothstep(radius - SPECK_SOFT, radius + SPECK_SOFT, (x - ox).hypot(y - oy));
+    if dot <= 0.0 || roll >= speck_limit(wash.specks, wash.body((ox, oy), centre).0) {
+        return 0.0;
+    }
+    let weight = if dark {
+        0.45f32.mul_add(rand(ix, iy, seed ^ 4), 0.55)
+    } else {
+        1.0
+    };
+    dot * weight
+}
+
+fn speck_limit(specks: f32, body: f32) -> f32 {
+    specks * 0.05 * (0.35 + body)
 }
 
 const UNDERWASH: f32 = 0.7;
