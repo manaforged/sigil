@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
-use super::{
-    bands::FLOATS_TOTAL,
-    cache::{GlyphCache, GlyphKey},
-};
+use super::cache::{GlyphCache, GlyphKey};
 
-const F32S_PER_GLYPH: u64 = FLOATS_TOTAL as u64;
-const BYTES_PER_GLYPH: u64 = F32S_PER_GLYPH * 4;
+const BYTES_PER_FLOAT: u64 = size_of::<f32>() as u64;
 
 const INITIAL_ATLAS_BYTES: u64 = 8 * 1024 * 1024;
 
@@ -35,8 +31,8 @@ impl AtlasLayout {
         }
     }
 
-    fn prepare_rebuild(&mut self, glyph_count: u64, current_generation: u64) -> RebuildDecision {
-        if glyph_count == 0 {
+    fn prepare_rebuild(&mut self, float_count: u64, current_generation: u64) -> RebuildDecision {
+        if float_count == 0 {
             self.offsets.clear();
             self.last_generation = current_generation;
             return RebuildDecision::Empty;
@@ -47,7 +43,7 @@ impl AtlasLayout {
         }
 
         RebuildDecision::Upload {
-            required_bytes: glyph_count * BYTES_PER_GLYPH,
+            required_bytes: float_count * BYTES_PER_FLOAT,
         }
     }
 }
@@ -71,10 +67,10 @@ impl GlyphAtlas {
         queue: &wgpu::Queue,
         cache: &GlyphCache,
     ) {
-        let glyph_count = cache.map.len() as u64;
         let current_gen = cache.generation;
-        let RebuildDecision::Upload { required_bytes } =
-            self.layout.prepare_rebuild(glyph_count, current_gen)
+        let RebuildDecision::Upload { required_bytes } = self
+            .layout
+            .prepare_rebuild(u64::from(cache.floats), current_gen)
         else {
             return;
         };
@@ -93,14 +89,8 @@ impl GlyphAtlas {
             if self.layout.offsets.contains_key(key) {
                 continue;
             }
-            let byte_offset = u64::from(cached.slot) * BYTES_PER_GLYPH;
-            #[allow(
-                clippy::cast_possible_truncation,
-                reason = "values are bounded to the target range before the cast"
-            )]
-            self.layout
-                .offsets
-                .insert(key.clone(), (byte_offset / 4) as u32);
+            self.layout.offsets.insert(key.clone(), cached.offset);
+            let byte_offset = u64::from(cached.offset) * BYTES_PER_FLOAT;
             queue.write_buffer(&self.buffer, byte_offset, cached.band_data.as_bytes());
         }
 

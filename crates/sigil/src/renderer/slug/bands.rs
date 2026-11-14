@@ -9,10 +9,8 @@ use crate::text::outline::{Oblique, coords};
 use super::curve::{QuadBez, cubic_to_quads, line_to_quad};
 
 pub(super) const BANDS: usize = 16;
-pub(super) const MAX_CURVES_PER_BAND: usize = 32;
-pub(super) const FLOATS_PER_BAND: usize = 1 + MAX_CURVES_PER_BAND * 6;
-pub(super) const FLOATS_PER_AXIS: usize = BANDS * FLOATS_PER_BAND;
-pub(super) const FLOATS_TOTAL: usize = 2 * FLOATS_PER_AXIS;
+pub(super) const BAND_HEADER_FLOATS: usize = 2;
+pub(super) const HEADER_FLOATS: usize = 2 * BANDS * BAND_HEADER_FLOATS;
 
 #[derive(Copy, Clone, Debug)]
 pub(super) struct GlyphBbox {
@@ -153,15 +151,34 @@ fn compute_bbox(quads: &[QuadBez]) -> Option<GlyphBbox> {
 }
 
 fn pack_into_bands(quads: &[QuadBez], bbox: GlyphBbox, units_per_em: u16) -> BandData {
-    let mut data = vec![0.0f32; FLOATS_TOTAL];
-    let (h_out, v_out) = data.split_at_mut(FLOATS_PER_AXIS);
-    pack_bands(&partition_bands(quads, |p| p[1]), h_out);
-    pack_bands(&partition_bands(quads, |p| p[0]), v_out);
+    let axes = [
+        partition_bands(quads, |p| p[1]),
+        partition_bands(quads, |p| p[0]),
+    ];
+    let mut data: Vec<f32> = Vec::with_capacity(HEADER_FLOATS);
+    let mut curves: Vec<f32> = Vec::new();
+    for band in axes.iter().flatten() {
+        let entry: [f32; BAND_HEADER_FLOATS] = [
+            exact_f32(HEADER_FLOATS + curves.len()),
+            exact_f32(band.len()),
+        ];
+        data.extend(entry);
+        curves.extend(band.iter().flat_map(|quad| quad.floats()));
+    }
+    data.append(&mut curves);
     BandData {
         data,
         bbox,
         units_per_em,
     }
+}
+
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "glyph float counts stay far below 2^24, where f32 holds every integer exactly"
+)]
+const fn exact_f32(n: usize) -> f32 {
+    n as f32
 }
 
 #[allow(
@@ -183,48 +200,5 @@ fn partition_bands(quads: &[QuadBez], axis: fn([f32; 2]) -> f32) -> [Vec<QuadBez
             }
         }
     }
-    #[cfg(debug_assertions)]
-    warn_band_overflow(&bands);
     bands
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-)]
-fn pack_bands(band_curves: &[Vec<QuadBez>; BANDS], out: &mut [f32]) {
-    for (chunk, band) in out
-        .as_chunks_mut::<FLOATS_PER_BAND>()
-        .0
-        .iter_mut()
-        .zip(band_curves.iter())
-    {
-        if let Some((count_slot, curves_data)) = chunk.split_first_mut() {
-            *count_slot = band.len().min(MAX_CURVES_PER_BAND) as f32;
-            for (cf, quad) in curves_data
-                .as_chunks_mut::<6>()
-                .0
-                .iter_mut()
-                .zip(band.iter())
-            {
-                *cf = [
-                    quad.p0[0], quad.p0[1], quad.p1[0], quad.p1[1], quad.p2[0], quad.p2[1],
-                ];
-            }
-        }
-    }
-}
-
-#[cfg(debug_assertions)]
-fn warn_band_overflow(bands: &[Vec<QuadBez>; BANDS]) {
-    for (i, band) in bands.iter().enumerate() {
-        if band.len() > MAX_CURVES_PER_BAND {
-            eprintln!(
-                "sigil-renderer: band {i} overflow ({} curves, max {MAX_CURVES_PER_BAND}); \
-                 extra curves dropped at render time",
-                band.len()
-            );
-        }
-    }
 }

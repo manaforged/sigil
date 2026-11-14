@@ -1,3 +1,25 @@
+use super::{
+    bands::{BAND_HEADER_FLOATS, BANDS},
+    curve::QuadBez,
+};
+
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "the layout constants are small integers that f64 holds exactly"
+)]
+static SHADER_CONSTANTS: [(&str, f64); 3] = [
+    ("BANDS", BANDS as f64),
+    ("BAND_HEADER_FLOATS", BAND_HEADER_FLOATS as f64),
+    ("CURVE_FLOATS", QuadBez::FLOATS as f64),
+];
+
+fn compilation_options() -> wgpu::PipelineCompilationOptions<'static> {
+    wgpu::PipelineCompilationOptions {
+        constants: &SHADER_CONSTANTS,
+        ..Default::default()
+    }
+}
+
 pub(super) fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("slug-bgl"),
@@ -64,7 +86,7 @@ pub(super) fn create_pipeline(
             module: &shader,
             entry_point: Some("vs_main"),
             buffers: &BUFFERS,
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: compilation_options(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -74,7 +96,7 @@ pub(super) fn create_pipeline(
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: compilation_options(),
         }),
         primitive: wgpu::PrimitiveState::default(),
         depth_stencil: None,
