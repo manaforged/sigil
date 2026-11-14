@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_showcase::{SIZE, almanac, beam, darkroom, deck, focus, gallery, index, kit, tray};
+use sigil_showcase::{SIZE, almanac, beam, console, darkroom, deck, focus, gallery, index, kit, tray};
 
 const SCALE: f32 = 2.0;
 const REVEAL_FRAMES: u32 = 4;
@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     shot(dir, "almanac-noon", || almanac::at(12.0))?;
     shot(dir, "almanac-golden", || almanac::at(16.75))?;
     shot(dir, "almanac-night", || almanac::at(22.0))?;
+    shot(dir, "console", console::still)?;
     shot(dir, "darkroom-rest", darkroom::app)?;
     shot(dir, "darkroom-graded", || darkroom::graded(&GRADE))?;
     shot(dir, "deck", || deck::turned(TURNS))?;
