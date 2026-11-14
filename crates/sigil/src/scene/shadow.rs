@@ -62,7 +62,7 @@ impl Shadow {
         self.spread
     }
 
-    /// Creates a glow: a shadow of `color` with no offset.
+    /// Creates a glow of `color` with no offset, a halo that reaches `3 * blur + spread` logical pixels past the shape.
     #[must_use]
     pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
         let [r, g, b] = srgb::decode_rgb(color);
@@ -70,20 +70,23 @@ impl Shadow {
         Self::new([0.0, 0.0], blur, spread, c).kind(ShadowKind::Glow)
     }
 
-    kittest_pub! {
-        /// Sets whether the shadow is outer, inner, or a glow.
-        #[must_use]
-        #[doc(hidden)]
-        pub const fn kind(mut self, kind: ShadowKind) -> Self {
-            self.kind = kind;
-            self
-        }
+    /// Sets whether the shadow is outer, inner, or a glow.
+    #[must_use]
+    pub const fn kind(mut self, kind: ShadowKind) -> Self {
+        self.kind = kind;
+        self
     }
 
     /// Returns whether the shadow is outer, inner, or a glow.
     #[must_use]
     pub const fn shadow_kind(&self) -> ShadowKind {
         self.kind
+    }
+
+    /// Returns how far the shadow paints past its shape before the offset, `3 * blur + |spread|` logical pixels.
+    #[must_use]
+    pub fn reach(&self) -> f32 {
+        self.blur.mul_add(3.0, self.spread.abs())
     }
 }
 
@@ -92,7 +95,7 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
         return surface;
     }
     let [offset_x, offset_y] = shadow.offset;
-    let outset = shadow.blur.mul_add(3.0, shadow.spread.abs());
+    let outset = shadow.reach();
     Rect::new(
         Point::new(
             surface.origin.x - outset + offset_x,

@@ -202,6 +202,12 @@ macro_rules! shaped_box {
             pub const fn stroke(&self) -> Option<Stroke> {
                 self.stroke
             }
+
+            /// Draws `stroke` along the edge of the rectangle.
+            pub const fn stroked(mut self, stroke: Stroke) -> Self {
+                self.stroke = Some(stroke);
+                self
+            }
         }
     )+};
 }
@@ -236,15 +242,6 @@ impl DrawRect {
         #[doc(hidden)]
         pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
             self.border_radius = border_radius;
-            self
-        }
-    }
-
-    kittest_pub! {
-        /// Adds a stroke to the rectangle.
-        #[doc(hidden)]
-        pub const fn stroked(mut self, stroke: Stroke) -> Self {
-            self.stroke = Some(stroke);
             self
         }
     }
@@ -299,22 +296,19 @@ impl DrawGradient {
         )
     }
 
-    kittest_pub! {
-        /// A gradient rectangle with square corners at full opacity.
-        #[doc(hidden)]
-        pub fn new(rect: Rect, gradient: impl Into<Gradient>) -> Self {
-            Self {
-                node: None,
-                rect,
-                gradient: gradient.into(),
-                border_radius: CornerRadii::ZERO,
-                opacity: 10_000,
-                stroke: None,
-                tone: None,
-                leaf: false,
-                border: None,
-                outline: false,
-            }
+    /// Creates a fill of `gradient` across `rect` with square corners at full opacity.
+    pub fn new(rect: Rect, gradient: impl Into<Gradient>) -> Self {
+        Self {
+            node: None,
+            rect,
+            gradient: gradient.into(),
+            border_radius: CornerRadii::ZERO,
+            opacity: 10_000,
+            stroke: None,
+            tone: None,
+            leaf: false,
+            border: None,
+            outline: false,
         }
     }
 
@@ -329,15 +323,6 @@ impl DrawGradient {
         #[doc(hidden)]
         pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
             self.border_radius = border_radius;
-            self
-        }
-    }
-
-    kittest_pub! {
-        /// Adds a stroke to the gradient fill.
-        #[doc(hidden)]
-        pub const fn stroked(mut self, stroke: Stroke) -> Self {
-            self.stroke = Some(stroke);
             self
         }
     }
@@ -367,18 +352,15 @@ impl DrawPattern {
         Self::new(rect, PatternKind::Wash(wash))
     }
 
-    kittest_pub! {
-        /// A pattern rectangle with square corners at full opacity.
-        #[doc(hidden)]
-        pub const fn new(rect: Rect, pattern: PatternKind) -> Self {
-            Self {
-                node: None,
-                rect,
-                pattern,
-                border_radius: CornerRadii::ZERO,
-                opacity: 10_000,
-                stroke: None,
-            }
+    /// Creates a fill of `pattern` across `rect` with square corners at full opacity.
+    pub const fn new(rect: Rect, pattern: PatternKind) -> Self {
+        Self {
+            node: None,
+            rect,
+            pattern,
+            border_radius: CornerRadii::ZERO,
+            opacity: 10_000,
+            stroke: None,
         }
     }
 
@@ -393,14 +375,6 @@ impl DrawPattern {
     #[doc(hidden)]
     pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
         self.border_radius = border_radius;
-        self
-    }
-
-    #[cfg(feature = "kittest")]
-    /// Adds a stroke to the pattern fill.
-    #[doc(hidden)]
-    pub const fn stroked(mut self, stroke: Stroke) -> Self {
-        self.stroke = Some(stroke);
         self
     }
 }

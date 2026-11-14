@@ -41,33 +41,30 @@ pub struct Gradient {
 }
 
 impl Gradient {
-    kittest_pub! {
-        /// Creates a gradient of `kind` with `stops` that does not repeat.
-        #[must_use]
-        pub fn new(kind: GradientKind, stops: impl Into<SmallVec<[GradientStop; 4]>>) -> Self {
-            Self {
-                kind,
-                stops: stops.into(),
-                repeat: false,
-            }
+    /// Creates a gradient of `kind` from an array, `Vec`, or iterator of `stops` that does not repeat.
+    #[must_use]
+    pub fn new(kind: GradientKind, stops: impl IntoIterator<Item = GradientStop>) -> Self {
+        Self {
+            kind,
+            stops: stops.into_iter().collect(),
+            repeat: false,
         }
     }
 
     pub(crate) fn from_tuples(kind: GradientKind, stops: &[(f32, crate::style::Color)]) -> Self {
-        let stops: SmallVec<[GradientStop; 4]> = stops
-            .iter()
-            .map(|&(offset, color)| GradientStop::new(offset, color))
-            .collect();
-        Self::new(kind, stops)
+        Self::new(
+            kind,
+            stops
+                .iter()
+                .map(|&(offset, color)| GradientStop::new(offset, color)),
+        )
     }
 
-    kittest_pub! {
-        /// Sets whether the stop span repeats.
-        #[must_use]
-        pub const fn repeat(mut self, repeat: bool) -> Self {
-            self.repeat = repeat;
-            self
-        }
+    /// Sets whether the span from the first to the last stop repeats, as in CSS `repeating-*-gradient`.
+    #[must_use]
+    pub const fn repeat(mut self, repeat: bool) -> Self {
+        self.repeat = repeat;
+        self
     }
 
     /// Returns whether the gradient is linear, radial, or conic, with its points.

@@ -14,21 +14,13 @@ pub(crate) struct TextSetup {
 }
 
 impl AppConfig {
-    /// Replaces the bundled face of `family` with face `face` of the font file `bytes`; `Serif` has no bundled face and is ignored.
+    /// Sets the face of `family` to face `face` of the font file `bytes`.
     #[cfg(feature = "scene")]
     pub fn font(mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
-        let fonts = self.text.fonts.get_or_insert_default();
-        let slot = match family {
-            FontFamily::Sans => &mut fonts.sans,
-            FontFamily::Mono => &mut fonts.mono,
-            FontFamily::Icon => &mut fonts.icon,
-            FontFamily::Display => &mut fonts.display,
-            FontFamily::Serif => {
-                tracing::warn!(target: "sigil::text", "the serif family has no bundled face to replace");
-                return self;
-            }
-        };
-        *slot = Some((Arc::new(bytes.into()), face));
+        self.text
+            .fonts
+            .get_or_insert_default()
+            .set(family, bytes, face);
         self
     }
 

@@ -220,12 +220,10 @@ pub struct GradientStop {
 }
 
 impl GradientStop {
-    kittest_pub! {
-        /// Creates a stop with `color` at `offset`.
-        #[must_use]
-        pub const fn new(offset: f32, color: Color) -> Self {
-            Self { offset, color }
-        }
+    /// Creates a stop with `color` at `offset`.
+    #[must_use]
+    pub const fn new(offset: f32, color: Color) -> Self {
+        Self { offset, color }
     }
 
     /// Returns the position along the gradient, from 0 at its start to 1 at its end.
@@ -275,9 +273,7 @@ pub struct Stroke {
 }
 
 impl Stroke {
-    #[cfg(feature = "kittest")]
     /// Creates a stroke of `color` and `width` with a dash `style` and an `align` side.
-    #[doc(hidden)]
     #[must_use]
     pub const fn new(color: Color, width: f32, style: StrokeStyle, align: StrokeAlign) -> Self {
         Self {

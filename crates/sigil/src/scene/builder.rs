@@ -2,7 +2,7 @@
 #[cfg(feature = "kittest")]
 use crate::scene::command::DrawSprite;
 use crate::scene::command::payloads::{PathCommand, PathStroke, outline_key};
-use crate::scene::command::{DrawPattern, PatternKind, Wash};
+use crate::scene::command::{DrawPattern, Wash};
 
 use crate::geometry::{Point, Rect, Size};
 use crate::kernel::NodeId;
@@ -35,10 +35,7 @@ impl SceneBuilder {
 
     /// Fills `rect` with a watercolour wash.
     pub fn draw_wash(&mut self, rect: Rect, wash: Wash) {
-        self.commands.push(SceneCommand::Pattern(DrawPattern::new(
-            rect,
-            PatternKind::Wash(wash),
-        )));
+        self.draw_pattern(DrawPattern::wash(rect, wash));
     }
 
     /// Paints a solid `color` rectangle at `rect`.
@@ -69,19 +66,14 @@ impl SceneBuilder {
         self.commands.push(SceneCommand::Gradient(draw));
     }
 
-    #[cfg(feature = "kittest")]
     /// Appends a pattern fill.
-    #[doc(hidden)]
     pub fn draw_pattern(&mut self, draw: DrawPattern) {
         self.commands.push(SceneCommand::Pattern(draw));
     }
 
-    kittest_pub! {
     /// Appends a text decoration.
-    #[doc(hidden)]
     pub fn draw_decoration(&mut self, draw: DrawDecoration) {
         self.commands.push(SceneCommand::Decoration(draw));
-    }
     }
 
     /// Appends a shadow for `rect` with corner radii `[top_left, top_right, bottom_right, bottom_left]`.
@@ -209,9 +201,7 @@ impl SceneBuilder {
             .push(SceneCommand::GlyphRun(run.with_node(node)));
     }
 
-    kittest_pub! {
     /// Draws `shadow` behind `run` like CSS `text-shadow`, with `shadow.blur` as the standard deviation; draw a run's shadows last to first, then the run.
-    #[doc(hidden)]
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -237,14 +227,7 @@ impl SceneBuilder {
             opacity: 1.0,
             blend: BlendMode::default(),
         };
-        self.with_scope(
-            SceneCommand::PushLayer(scope),
-            SceneCommand::PopLayer,
-            |scene| {
-                scene.draw_glyph_run(copy);
-            },
-        );
-    }
+        self.composite(scope, |scene| scene.draw_glyph_run(copy));
     }
 
     /// Clips the commands that `body` appends to `clip`.
@@ -267,12 +250,9 @@ impl SceneBuilder {
         self.with_scope(open, SceneCommand::RestoreLayer, body);
     }
 
-    kittest_pub! {
-    /// Draws the commands that `body` appends into a layer.
-    #[doc(hidden)]
+    /// Draws the commands that `body` appends into a layer with the clip, effect, opacity, and blend of `scope`.
     pub fn composite<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
         self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, body);
-    }
     }
 
     #[cfg(feature = "kittest")]

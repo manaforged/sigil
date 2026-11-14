@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Canvas authors can build every scene payload without the `kittest` feature: `GradientStop::new`, `Gradient::{new, repeat}`, `Stroke::new`, `DrawGradient::new`, `DrawPattern::new`, `DrawDecoration::new`, `stroked` on the box payloads, `Shadow::{kind, reach}`, `Transform3D::{IDENTITY, then, translate, rotate_x, rotate_y, rotate_z, perspective, around}`, and `SceneBuilder::{draw_pattern, draw_decoration, draw_text_shadow, composite}`.
+- `Canvas::redraw_on(source)` repaints a canvas when a signal, memo, or closure changes.
+- `Render::font(family, bytes, face)` in `sigil-kittest` renders an offscreen image with a custom font.
+- `DefaultFonts::set(family, bytes, face)` and a `serif` slot.
+
+### Fixed
+
+- `AppConfig::font(FontFamily::Serif, ..)` loads the face; it was dropped with a warning.
+
 ## [0.2.0] - 2026-11-12
 
 First public release.

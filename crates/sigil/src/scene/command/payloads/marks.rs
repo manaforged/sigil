@@ -92,19 +92,16 @@ impl DrawDecoration {
         Self::new(DecorationKind::Strikethrough, band, color)
     }
 
-    kittest_pub! {
-        /// A straight text decoration one pixel wide at full opacity.
-        #[doc(hidden)]
-        pub const fn new(kind: DecorationKind, band: Rect, color: Color) -> Self {
-            Self {
-                node: None,
-                kind,
-                band,
-                color,
-                opacity: 10_000,
-                period: 0.0,
-                line_width: 1.0,
-            }
+    /// Creates a decoration of `kind` in `band`, one pixel wide at full opacity.
+    pub const fn new(kind: DecorationKind, band: Rect, color: Color) -> Self {
+        Self {
+            node: None,
+            kind,
+            band,
+            color,
+            opacity: 10_000,
+            period: 0.0,
+            line_width: 1.0,
         }
     }
 
