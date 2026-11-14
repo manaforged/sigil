@@ -3,11 +3,11 @@ use crate::kernel::ImageSource;
 use crate::reactive::Reactive;
 use crate::scene::{BlendMode, Shadow};
 use crate::style::atom::{
-    Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom,
+    Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, ShadowAtom, SpaceAtom,
 };
 use crate::style::engine::encode_px;
 use crate::style::{
-    Background, ClipShape, ColorValue, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
+    Background, ClipShape, ColorValue, FontFamily, Layer, MaskImage, MaskSize, Radius,
     StateStyleBuilder, StyleAtom, TextDecoration, TextRole,
 };
 
@@ -156,10 +156,10 @@ pub trait Paint: Sized {
             .fold(self, |target, atom| push(target, *atom))
     }
 
-    /// Sets the shadow to a step of the elevation scale.
+    /// Sets the shadow to a step of the elevation scale or to a custom `Shadow`, such as `Shadow::glow`.
     #[must_use]
-    fn shadow(self, elevation: Elevation) -> Self {
-        push(self, StyleAtom::Shadow(elevation))
+    fn shadow(self, shadow: impl Into<Shadow>) -> Self {
+        push(self, StyleAtom::Shadow(ShadowAtom::from(shadow.into())))
     }
 
     /// Sets the opacity from 0.0 (clear) to 1.0 (opaque).

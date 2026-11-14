@@ -1,5 +1,7 @@
 use super::Transform2D;
 use crate::layout::{AlignItems, Display, FlexWrap, JustifyContent, Overflow};
+use crate::scene::shadow::elevation_shadow;
+use crate::scene::{Shadow, ShadowKind};
 
 /// Sets the pixel size of one spacing step in style atoms.
 pub(crate) const SPACING_STEP: f32 = 4.0;
@@ -94,6 +96,59 @@ pub enum Elevation {
 }
 
 kittest_pub! {
+    #[doc(hidden)]
+    /// A node shadow in a form that compares and hashes, with sRGB color bytes and the other values as `f32` bits.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct ShadowAtom {
+        rgb: [u8; 3],
+        kind: ShadowKind,
+        alpha: u32,
+        offset: [u32; 2],
+        blur: u32,
+        spread: u32,
+    }
+}
+
+impl ShadowAtom {
+    pub(crate) const fn elevation(elevation: Elevation) -> Self {
+        Self::pack(elevation_shadow(elevation), [0; 3])
+    }
+
+    const fn pack(shadow: Shadow, rgb: [u8; 3]) -> Self {
+        let [.., alpha] = shadow.color;
+        let [x, y] = shadow.offset;
+        Self {
+            rgb,
+            kind: shadow.kind,
+            alpha: bits(alpha),
+            offset: [bits(x), bits(y)],
+            blur: bits(shadow.blur),
+            spread: bits(shadow.spread),
+        }
+    }
+}
+
+impl From<Shadow> for ShadowAtom {
+    fn from(shadow: Shadow) -> Self {
+        let Color { r, g, b, .. } = shadow_color(shadow);
+        Self::pack(shadow, [r, g, b])
+    }
+}
+
+impl From<ShadowAtom> for Shadow {
+    fn from(atom: ShadowAtom) -> Self {
+        let [r, g, b] = atom.rgb.map(super::srgb::decode);
+        Self::new(
+            atom.offset.map(f32::from_bits),
+            f32::from_bits(atom.blur),
+            f32::from_bits(atom.spread),
+            [r, g, b, f32::from_bits(atom.alpha)],
+        )
+        .kind(atom.kind)
+    }
+}
+
+kittest_pub! {
     /// Holds the resolved paint properties of one node.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RenderStyle {
@@ -115,8 +170,8 @@ kittest_pub! {
         pub border_left: Option<i16>,
         /// The border color, when a style atom sets one.
         pub border_color: Option<Color>,
-        /// The shadow depth, when a style atom sets one.
-        pub shadow: Option<Elevation>,
+        /// The shadow that the node casts, when a style atom sets one.
+        pub shadow: Option<ShadowAtom>,
         /// The opacity in ten-thousandths, where 10000 is opaque and the default.
         pub opacity: u16,
         /// The 2D move, scale, and turn applied when the node paints; the default is the identity.
@@ -289,8 +344,8 @@ kittest_pub! {
         BorderColor(ColorValue),
         /// Colors the border with this step, 1 to 12, of the tone in scope.
         BorderToneStep(u8),
-        /// The depth of the shadow that the node casts.
-        Shadow(Elevation),
+        /// The shadow that the node casts: a step of the elevation scale or a custom shadow such as a glow.
+        Shadow(ShadowAtom),
         /// The opacity in ten-thousandths, where 10000 is opaque.
         Opacity(u16),
         /// A 2D move, scale, and turn applied when the node paints.

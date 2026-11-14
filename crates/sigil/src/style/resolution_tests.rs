@@ -177,7 +177,7 @@ fn struct_api_covers_every_atom() {
         StyleAtom::BorderLeft(1),
         StyleAtom::BorderRadius(1),
         StyleAtom::Radius(Radius::Base),
-        StyleAtom::Shadow(Elevation::Lg),
+        StyleAtom::Shadow(crate::style::atom::ShadowAtom::elevation(Elevation::Lg)),
         StyleAtom::Opacity(10_000),
         StyleAtom::Transform(Transform2D::IDENTITY),
         StyleAtom::FontSize(12),

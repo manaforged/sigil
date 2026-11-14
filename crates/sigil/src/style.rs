@@ -70,7 +70,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use atom::{
         Backface, BorderStyle, FilterAtom, GradientShape, MaskAtom, MillisU16, PaintAtom,
-        PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, StopSlot, StyleAtom, TransitionId,
+        PaintStyle, RenderStyle, ShadowAtom, SpaceAtom, SpaceStyle, StopSlot, StyleAtom, TransitionId,
     };
 }
 pub(crate) use binding::ReactiveStateSlot;

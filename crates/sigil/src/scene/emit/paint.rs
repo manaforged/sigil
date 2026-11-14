@@ -12,7 +12,7 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
 use crate::style::atom::BorderStyle;
-use crate::style::{Color, Elevation, RenderStyle, TextDecoration, TextStyle, Theme, Tone};
+use crate::style::{Color, RenderStyle, TextDecoration, TextStyle, Theme, Tone};
 
 pub(super) fn push_focus_ring(
     scene: &mut SceneBuilder,
@@ -122,8 +122,8 @@ fn push_container(
 ) {
     let (id, style) = (node.0, paint.style);
     let radii = corner_radii_for(style.border_radius);
-    if let Some(elevation) = style.shadow {
-        scene.draw_shadow(rect, radii.0, elevation_shadow(elevation));
+    if let Some(shadow) = style.shadow {
+        scene.draw_shadow(rect, radii.0, shadow.into());
     }
     let styled = style.paint.border != BorderStyle::Solid;
     let stroke = super::borders::border_stroke(style, paint.theme).filter(|_| !styled);
@@ -327,14 +327,3 @@ fn push_color_glyphs(scene: &mut SceneBuilder, id: NodeId, run: &GlyphRun, opaci
 
 #[cfg(not(feature = "scene"))]
 const fn push_color_glyphs(_: &mut SceneBuilder, _: NodeId, _: &GlyphRun, _: u16) {}
-
-pub(super) const fn elevation_shadow(elevation: Elevation) -> Shadow {
-    let (offset_y, blur, spread, alpha) = match elevation {
-        Elevation::Sm => (1.0, 2.0, 0.0, 0.10),
-        Elevation::Base => (2.0, 4.0, 0.0, 0.12),
-        Elevation::Md => (4.0, 8.0, -1.0, 0.14),
-        Elevation::Lg => (8.0, 16.0, -2.0, 0.16),
-        Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
-    };
-    Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
-}

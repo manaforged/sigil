@@ -15,7 +15,7 @@ static CARD_SELECTED: &[StyleAtom] = &[
     ROW_SELECTED.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Tone::Primary.step(8).border(),
-    StyleAtom::Shadow(Elevation::Sm),
+    StyleAtom::Shadow(crate::style::atom::ShadowAtom::elevation(Elevation::Sm)),
 ];
 
 /// Builds a card.

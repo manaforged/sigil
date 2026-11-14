@@ -24,7 +24,7 @@ pub fn glow() -> (CommandScene, (f32, f32), Rgba) {
         scene.draw_shadow(
             card,
             fill(card).border_radius.0,
-            Shadow::glow(color, spread, blur),
+            Shadow::glow(color, blur, spread),
         );
         scene.draw_rect(fill(card));
     }

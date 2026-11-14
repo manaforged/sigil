@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `animation::reduced_transparency()` and `AppConfig::reduced_transparency(bool)`. With the setting on, a backdrop filter is skipped and the node keeps its own fill. `animation::reduced_motion()` is now reactive, both settings are read again when the window gains focus, and `clock()` holds still under reduced motion.
 - `Harness::step(by)` in `sigil-kittest` moves the test clock and stops there, so a test can read a running animation. `Harness::advance` still settles afterwards.
 - `accessibility_hidden(bool)` on any node keeps it and its subtree out of the accessibility tree, like `aria-hidden`. The pieces of `words` and `ticker` use it, so a screen reader reads the text once. The index that `words` passes is now a `u32`, so `STAGGER * index` needs no cast.
+- `Paint::shadow` takes `impl Into<Shadow>`, so a node can carry `Shadow::glow(color, blur, spread)`; `.shadow(Elevation::Lg)` still compiles. `Shadow::glow` now takes blur before spread, the order of `Shadow::new` and CSS `box-shadow`: swap the last two arguments of an existing call.
 
 ### Fixed
 

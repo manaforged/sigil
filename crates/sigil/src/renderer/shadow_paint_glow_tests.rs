@@ -55,8 +55,8 @@ fn shadow_glow_constructor_sets_kind_and_zero_offset() {
             b: 255,
             a: 128,
         },
-        8.0,
         18.0,
+        8.0,
     );
     assert_eq!(g.kind, super::ShadowKind::Glow);
     assert!((g.offset[0]).abs() < f32::EPSILON);

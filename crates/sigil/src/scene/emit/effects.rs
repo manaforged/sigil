@@ -111,18 +111,18 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
     }
     let result = node.extension::<LayoutResult>()?;
     let mut bounds = result.rect();
-    if let Some(elevation) = node.extension::<StyleBinding>().and_then(|binding| {
+    if let Some(shadow) = node.extension::<StyleBinding>().and_then(|binding| {
         binding
             .cascade()
             .filter_map(|atom| match atom {
-                StyleAtom::Shadow(elevation) => Some(elevation),
+                StyleAtom::Shadow(shadow) => Some(shadow),
                 _ => None,
             })
             .last()
     }) {
         bounds = bounds.union(crate::scene::shadow::expanded_shadow_rect(
             result.rect(),
-            super::paint::elevation_shadow(elevation),
+            shadow.into(),
         ));
     }
     if let Some(ring) = node.extension::<FocusRing>().filter(|ring| ring.visible()) {
