@@ -36,3 +36,31 @@ fn building_leaves_the_value_signal_alone() {
         );
     });
 }
+
+#[test]
+fn unsigned_rejects_minus_and_stays_at_zero() {
+    let locale = Locale::default();
+    assert_eq!(u32::parse("-1", &locale), None);
+    assert_eq!(u8::parse("-1", &locale), None);
+    assert_eq!(u8::parse("300", &locale), None);
+    assert_eq!(0u32.clamp_to(&(0..=10)), 0);
+    assert_eq!(0u8.clamp_to(&(0..=10)), 0);
+}
+
+#[test]
+fn wide_integers_round_trip() {
+    let locale = Locale::default();
+    assert_eq!(u64::parse(&u64::MAX.render(&locale), &locale), Some(u64::MAX));
+    assert_eq!(i128::parse(&i128::MIN.render(&locale), &locale), Some(i128::MIN));
+    assert_eq!(u128::parse(&u128::MAX.render(&locale), &locale), Some(u128::MAX));
+}
+
+#[test]
+fn every_builtin_number_type_builds_a_field() {
+    Owner::scope("number-field-kinds", || {
+        let _ = number_field(signal(0u8), 0..=10);
+        let _ = number_field(signal(0u32), 0..=10);
+        let _ = number_field(signal(0i128), -5..=5);
+        let _ = number_field(signal(0isize), -5..=5);
+    });
+}
