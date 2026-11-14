@@ -31,16 +31,24 @@ static BACKDROP_BASE: &[StyleAtom] = &[
 
 static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
-/// Edge of a sheet.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Edge of the window that a sheet fills, or side of its anchor that an anchored node sits on.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Side {
-    /// The sheet fills the height of the left edge and is 360 px wide.
+    /// The left edge: a sheet 360 px wide, or a node left of its anchor.
     Left,
-    /// The sheet fills the height of the right edge and is 360 px wide.
+    /// The right edge: a sheet 360 px wide, or a node right of its anchor.
     Right,
-    /// The sheet fills the width of the bottom edge and is 320 px high.
+    /// The bottom edge: a sheet 320 px high, or a node below its anchor.
     Bottom,
+    /// The top edge: a sheet 320 px high, or a node above its anchor.
+    Top,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Dismiss {
+    escape: bool,
+    backdrop: bool,
 }
 
 /// Builder of a modal or sheet.
@@ -52,8 +60,7 @@ pub struct ModalBuilder {
     actions: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
     trap: bool,
-    escape_closes: bool,
-    dismiss_on_backdrop: bool,
+    dismiss: Dismiss,
     close_button: CloseControl,
     side: Option<Side>,
     drag: bool,
@@ -67,8 +74,7 @@ impl core::fmt::Debug for ModalBuilder {
             .field("title", &self.title)
             .field("style_accumulator", &self.style_accumulator)
             .field("trap", &self.trap)
-            .field("escape_closes", &self.escape_closes)
-            .field("dismiss_on_backdrop", &self.dismiss_on_backdrop)
+            .field("dismiss", &self.dismiss)
             .field("close_button", &self.close_button)
             .field("side", &self.side)
             .field("drag", &self.drag)
@@ -92,8 +98,10 @@ impl ModalBuilder {
             actions: Vec::new(),
             style_accumulator: Style::new(),
             trap: true,
-            escape_closes: true,
-            dismiss_on_backdrop: false,
+            dismiss: Dismiss {
+                escape: true,
+                backdrop: false,
+            },
             close_button: CloseControl::Shown,
             side: None,
             drag: false,
@@ -101,7 +109,7 @@ impl ModalBuilder {
         }
     }
 
-    /// Docks the dialog to `side` as a sheet: 360 px wide at left or right, 320 px high at bottom.
+    /// Docks the dialog to `side` as a sheet: 360 px wide at left or right, 320 px high at top or bottom.
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
         self
@@ -127,13 +135,13 @@ impl ModalBuilder {
 
     /// Closes the modal on Escape when `enabled` is true; the default is true.
     pub const fn escape_closes(mut self, enabled: bool) -> Self {
-        self.escape_closes = enabled;
+        self.dismiss.escape = enabled;
         self
     }
 
     /// Closes the modal on a press of the backdrop when `enabled` is true; the default is false.
     pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
-        self.dismiss_on_backdrop = enabled;
+        self.dismiss.backdrop = enabled;
         self
     }
 
@@ -175,13 +183,13 @@ impl ModalBuilder {
         let layer = PopupLayer::new(show, PopupAnchor::Top);
 
         install_open_effects(layer, self.title.clone(), body_scroll);
-        if self.escape_closes {
+        let escape = self.dismiss.escape;
+        if escape {
             layer.register_escape();
         }
 
         let side = self.side;
-        let escape_closes = self.escape_closes;
-        let backdrop = build_backdrop(show, self.dismiss_on_backdrop);
+        let backdrop = build_backdrop(show, self.dismiss.backdrop);
         let dialog = build_dialog(self, body_scroll);
 
         let root = contain_scroll(
@@ -195,11 +203,7 @@ impl ModalBuilder {
                 .child(backdrop)
                 .child(dialog),
         );
-        if escape_closes {
-            close_on_escape(root)
-        } else {
-            root
-        }
+        if escape { close_on_escape(root) } else { root }
     }
 }
 
@@ -223,12 +227,12 @@ fn install_open_effects(layer: PopupLayer, title: Option<TextContent>, body_scro
 
 fn root_layout(side: Option<Side>) -> LayoutStyle {
     let root = match side {
-        None | Some(Side::Bottom) => LayoutStyle::flex_column(),
+        None | Some(Side::Bottom | Side::Top) => LayoutStyle::flex_column(),
         Some(Side::Left | Side::Right) => LayoutStyle::flex_row(),
     };
     let (align, justify) = match side {
         None => (AlignItems::Center, JustifyContent::Center),
-        Some(Side::Left) => (AlignItems::Stretch, JustifyContent::Start),
+        Some(Side::Left | Side::Top) => (AlignItems::Stretch, JustifyContent::Start),
         Some(Side::Right | Side::Bottom) => (AlignItems::Stretch, JustifyContent::End),
     };
     let pad = if side.is_none() {
@@ -352,7 +356,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     match side {
         None => base.width(DIALOG_WIDTH),
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
-        Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
+        Some(Side::Bottom | Side::Top) => base.fill_width().height(SHEET_HEIGHT),
     }
 }
 

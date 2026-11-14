@@ -15,7 +15,7 @@ use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{BlendMode, CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
 use crate::scene::shadow::Shadow;
-use crate::scene::style_adapter::{corner_radii_for, render_style_for};
+use crate::scene::style_adapter::render_style_for;
 
 mod background;
 mod borders;
@@ -265,7 +265,8 @@ impl<'t> EmitWalk<'_, 't> {
         let child_context = child_inherited(node, inherited, style);
         let theme = child_context.theme;
         if let Some(result) = node.extension::<LayoutResult>() {
-            let rect = result.rect();
+            let morph = crate::animation::runtime::layout_motion::box_rect(node, result.rect());
+            let rect = morph.unwrap_or_else(|| result.rect());
             let paint = NodePaint {
                 style,
                 theme,
@@ -279,17 +280,18 @@ impl<'t> EmitWalk<'_, 't> {
             let inherit = paint_key(node, inherited, &paint);
             let selected = paint.selected.is_some();
             let key = (self.cx.instance_id(), id);
-            if selected || !emit_cache::replay(self.scene, key, node, rect, inherit) {
+            let fresh = selected || morph.is_some();
+            if fresh || !emit_cache::replay(self.scene, key, node, rect, inherit) {
                 let start = self.scene.command_len();
                 self.record_node(id, node, rect, &paint);
-                if !selected {
+                if !fresh {
                     emit_cache::store(key, node, rect, inherit, self.scene.copy_from(start));
                 }
             }
             if style.space.preserve {
                 return;
             }
-            if result.clips() {
+            if result.clips() || morph.is_some() {
                 self.emit_clipped_children(node, &child_context, clip, rect, style);
                 return;
             }
@@ -329,7 +331,7 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         };
         let inner = inner.expand(1.0);
-        let clip_radii = corner_radii_for(style.border_radius);
+        let clip_radii = style.paint.radii();
         let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
         let track = &mut *self.track;
         let body = |scene: &mut SceneBuilder| {

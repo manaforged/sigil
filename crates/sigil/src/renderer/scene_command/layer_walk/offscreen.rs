@@ -140,48 +140,63 @@ pub(super) fn restored(
     }
 }
 
+fn moved_plan<'n>(scope: &LayerScope, target: &LayerTarget, scale: f32) -> Option<LayerPlan<'n>> {
+    let (bounds, content, round, clip_radii, transform, projection) = match scope.effect {
+        LayerEffect::Projected { .. } => {
+            let frame = ProjectedFrame::new(&target.state, scope, target.bounds, scale)?;
+            let bounds = frame.bounds;
+            (
+                bounds,
+                frame.content,
+                bounds,
+                CornerRadii::ZERO,
+                IDENTITY,
+                Some(frame.composite),
+            )
+        }
+        LayerEffect::Transform(effect) => {
+            let frame = target
+                .state
+                .transform_frame(scope, effect, target.bounds, scale)?;
+            let (clip, radii) = (frame.scope.clip, frame.scope.clip_radii);
+            (
+                frame.bounds,
+                frame.content,
+                clip,
+                radii,
+                frame.composite,
+                None,
+            )
+        }
+        _ => return None,
+    };
+    Some(LayerPlan {
+        reason: LayerReason::Transform,
+        dest: bounds,
+        state: SceneState::new(Some(bounds), content, 1.0),
+        round,
+        opacity: scope.opacity,
+        clip_radii,
+        transform,
+        filters: None,
+        backdrop: None,
+        mask: None,
+        projection,
+        shading: None,
+        blend: scope.blend,
+    })
+}
+
 pub(super) fn layer_plan<'n>(
     scope: &LayerScope,
     target: &LayerTarget,
     scale: f32,
 ) -> Option<LayerPlan<'n>> {
-    if let LayerEffect::Projected { .. } = scope.effect {
-        let frame = ProjectedFrame::new(&target.state, scope, target.bounds, scale)?;
-        return Some(LayerPlan {
-            reason: LayerReason::Transform,
-            dest: frame.bounds,
-            state: SceneState::new(Some(frame.bounds), frame.content, 1.0),
-            round: frame.bounds,
-            opacity: scope.opacity,
-            clip_radii: CornerRadii::ZERO,
-            transform: IDENTITY,
-            filters: None,
-            backdrop: None,
-            mask: None,
-            projection: Some(frame.composite),
-            shading: None,
-            blend: scope.blend,
-        });
-    }
-    if let LayerEffect::Transform(effect) = scope.effect {
-        let frame = target
-            .state
-            .transform_frame(scope, effect, target.bounds, scale)?;
-        return Some(LayerPlan {
-            reason: LayerReason::Transform,
-            dest: frame.bounds,
-            state: SceneState::new(Some(frame.bounds), frame.content, 1.0),
-            round: frame.scope.clip,
-            opacity: scope.opacity,
-            clip_radii: frame.scope.clip_radii,
-            transform: frame.composite,
-            filters: None,
-            backdrop: None,
-            mask: None,
-            projection: None,
-            shading: None,
-            blend: scope.blend,
-        });
+    if matches!(
+        scope.effect,
+        LayerEffect::Projected { .. } | LayerEffect::Transform(_)
+    ) {
+        return moved_plan(scope, target, scale);
     }
     let bounds = target.state.layer_bounds(scope, target.bounds)?;
     let transform = target.state.current_transform();

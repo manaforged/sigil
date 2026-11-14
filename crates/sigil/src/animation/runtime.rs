@@ -12,6 +12,7 @@ pub(crate) mod layout_motion;
 pub(crate) mod motion_prefs;
 pub(crate) mod playback;
 pub(crate) mod registry;
+pub(crate) mod shared;
 pub(crate) mod state;
 pub(crate) mod style;
 pub(crate) mod targets;

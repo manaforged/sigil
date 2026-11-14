@@ -12,6 +12,7 @@ use tiny_skia::{Mask, Pixmap, Transform};
 use crate::renderer::blur_paint::{BLUR_PASSES, box_radius, downsample_levels};
 use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::shadow_paint::Shadow;
+use crate::scene::command::CornerShape;
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::expanded_shadow_rect;
 use crate::style::srgb::{decode, decode_unit, encode, encode_byte, unit};
@@ -22,6 +23,7 @@ use super::shapes::{blit, coverage_table};
 pub(super) struct ShadowPlacement {
     pub(super) rect: Rect,
     pub(super) radii: CornerRadii,
+    pub(super) shape: CornerShape,
     pub(super) scale: f32,
     pub(super) offset: Point,
     pub(super) opacity: f32,
@@ -52,6 +54,7 @@ fn field(shadow: &Shadow, place: &ShadowPlacement) -> ShadowField {
         spread: shadow.spread * s,
         kind: shadow.kind,
         unit: s,
+        code: place.shape.code(),
     }
 }
 

@@ -1,24 +1,18 @@
 use crate::geometry::{Point, Rect};
 
-#[cfg(feature = "kittest")]
 use super::fills::StrokeStyle;
 use super::fills::{Stroke, StrokeAlign};
 
-#[cfg(feature = "kittest")]
 const MIN_DASH_GAP: f32 = 1.0 / 16.0;
-#[cfg(feature = "kittest")]
 const MIN_DASH_LENGTH: f32 = 1.0;
-#[cfg(feature = "kittest")]
 const DASH_PER_WIDTH: f32 = 3.0;
 
-#[cfg(feature = "kittest")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct StrokeDash {
     pub(crate) length: f32,
     pub(crate) gap: f32,
 }
 
-#[cfg(feature = "kittest")]
 impl StrokeDash {
     pub(crate) fn covers(self, local: Point, center: [f64; 2]) -> bool {
         let [cx, cy] = center;
@@ -53,7 +47,6 @@ impl StrokeDash {
 pub(crate) struct StrokeBand {
     pub(crate) inside: f32,
     pub(crate) outside: f32,
-    #[cfg(feature = "kittest")]
     pub(crate) dash: Option<StrokeDash>,
 }
 
@@ -64,7 +57,6 @@ impl StrokeBand {
             return None;
         }
         let (inside, outside) = match stroke.align {
-            #[cfg(feature = "kittest")]
             StrokeAlign::Centered => (width / 2.0, width / 2.0),
             StrokeAlign::Inside => (width, 0.0),
             StrokeAlign::Outside => (0.0, width),
@@ -73,7 +65,6 @@ impl StrokeBand {
         Some(Self {
             inside: inside.min(depth),
             outside,
-            #[cfg(feature = "kittest")]
             dash: dash(width, stroke.style),
         })
     }
@@ -94,7 +85,6 @@ impl StrokeBand {
     }
 }
 
-#[cfg(feature = "kittest")]
 fn dash(width: f32, style: StrokeStyle) -> Option<StrokeDash> {
     let StrokeStyle::Dashed(gap) = style else {
         return None;

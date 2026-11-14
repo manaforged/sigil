@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::events::{
-    A11yEdit, Cursor, DragPhase, FileDropEvent, Gesture, GestureEvent, ImeEvent, KeyEvent,
+    A11yEdit, CursorIcon, DragPhase, FileDropEvent, Gesture, GestureEvent, ImeEvent, KeyEvent,
     PointerEvent, ScrollEvent, Shortcut,
 };
 use crate::kernel::Action;
@@ -285,7 +285,7 @@ pub(crate) fn rotation(
 }
 
 #[cfg(window_host)]
-pub(crate) fn cursor(node: NodeBuilder, cursor: impl Reactive<Cursor>) -> NodeBuilder {
+pub(crate) fn cursor(node: NodeBuilder, cursor: impl Reactive<CursorIcon>) -> NodeBuilder {
     let cursor = crate::events::cursor::NodeCursor::new(cursor);
     node.mutate(move |node| {
         let _ = node.attach(cursor);
@@ -293,7 +293,7 @@ pub(crate) fn cursor(node: NodeBuilder, cursor: impl Reactive<Cursor>) -> NodeBu
 }
 
 #[cfg(not(window_host))]
-pub(crate) fn cursor(node: NodeBuilder, _cursor: impl Reactive<Cursor>) -> NodeBuilder {
+pub(crate) fn cursor(node: NodeBuilder, _cursor: impl Reactive<CursorIcon>) -> NodeBuilder {
     node
 }
 

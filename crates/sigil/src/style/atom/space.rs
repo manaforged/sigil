@@ -42,6 +42,8 @@ kittest_pub! {
         Perspective(Option<f32>),
         /// The perspective origin in ten-thousandths of the width and height.
         PerspectiveOrigin([u16; 2]),
+        /// The point that scale and rotate turn around, in ten-thousandths of the width and height.
+        TransformOrigin([u16; 2]),
         /// Whether the node draws while its back faces the viewer.
         Backface(Backface),
         /// Whether the children stay in this node's 3D space.
@@ -85,7 +87,8 @@ impl SpaceStyle {
             | SpaceAtom::TranslateY(_)
             | SpaceAtom::ScaleX(_)
             | SpaceAtom::ScaleY(_)
-            | SpaceAtom::Rotate(_) => {}
+            | SpaceAtom::Rotate(_)
+            | SpaceAtom::TransformOrigin(_) => {}
             SpaceAtom::RotateX(radians) => self.turn[0] = radians,
             SpaceAtom::RotateY(radians) => self.turn[1] = radians,
             SpaceAtom::RotateZ(radians) => self.turn[2] = radians,
@@ -169,6 +172,7 @@ impl SpaceAtom {
             Self::Backface(Backface::Visible) => (12, 0),
             Self::Backface(Backface::Hidden) => (12, 1),
             Self::Preserve3d(on) => (13, u64::from(on)),
+            Self::TransformOrigin([x, y]) => (14, u64::from(x) << 16 | u64::from(y)),
         }
     }
 }

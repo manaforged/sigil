@@ -43,7 +43,7 @@ pub(crate) fn batch_of(command: &SceneCommand) -> Option<Batch> {
     match command {
         SceneCommand::GlyphRun(run) if run.fill().is_some() => Some(Batch::Path),
         SceneCommand::GlyphRun(_) => Some(Batch::Glyphs),
-        SceneCommand::Rect(_) => Some(Batch::Rect),
+        SceneCommand::Rect(_) | SceneCommand::Rects(_) => Some(Batch::Rect),
         SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => Some(Batch::Fill),
         SceneCommand::DrawShadow { .. } => Some(Batch::Shadow),
         SceneCommand::Decoration(_) => Some(Batch::Decoration),

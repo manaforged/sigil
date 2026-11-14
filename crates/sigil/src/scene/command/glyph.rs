@@ -94,13 +94,8 @@ pub struct GlyphRun {
 }
 
 impl GlyphRun {
-    /// Creates a one-line text run in `rect` with no node and no positioned glyphs.
+    /// Shapes `text` with `style` into one line of glyphs at the origin of `rect`, drawn at `opacity` from 0 to 1.
     #[must_use]
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "opacity is clamped to 0..=1 before scaling to 0..=10_000"
-    )]
     pub fn new(
         rect: Rect,
         text: impl Into<String>,
@@ -108,8 +103,18 @@ impl GlyphRun {
         style: TextStyle,
         opacity: f32,
     ) -> Self {
-        let bp = (opacity.clamp(0.0, 1.0) * 10_000.0).round() as u16;
-        Self::new_bp(rect, text, color, style, bp)
+        shape_run(Self::unshaped(rect, text, color, style, opacity))
+    }
+
+    #[must_use]
+    pub(crate) fn unshaped(
+        rect: Rect,
+        text: impl Into<String>,
+        color: Color,
+        style: TextStyle,
+        opacity: f32,
+    ) -> Self {
+        Self::new_bp(rect, text, color, style, super::opacity::to_basis(opacity))
     }
 
     #[must_use]
@@ -196,7 +201,7 @@ impl GlyphRun {
     /// The opacity from 0.0 (transparent) to 1.0 (opaque).
     #[must_use]
     pub fn opacity(&self) -> f32 {
-        f32::from(self.shared.opacity) / 10_000.0
+        super::opacity::from_basis(self.shared.opacity)
     }
 
     #[cfg(vector_paint)]

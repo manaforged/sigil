@@ -1,21 +1,20 @@
-use crate::events::Cursor;
+use crate::events::CursorIcon;
 use crate::kernel::{Node, Role};
 use crate::reactive::{Reactive, Signal};
 
 pub(crate) enum NodeCursor {
-    Fixed(Cursor),
-    Live(Signal<Cursor>),
+    Fixed(CursorIcon),
+    Live(Signal<CursorIcon>),
 }
 
 impl NodeCursor {
-    pub(crate) fn new(cursor: impl Reactive<Cursor>) -> Self {
-        match cursor.try_static() {
-            Some(cursor) => Self::Fixed(cursor),
-            None => Self::Live(cursor.into_signal()),
-        }
+    pub(crate) fn new(cursor: impl Reactive<CursorIcon>) -> Self {
+        cursor
+            .try_static()
+            .map_or_else(|| Self::Live(cursor.into_signal()), Self::Fixed)
     }
 
-    fn get(&self) -> Option<Cursor> {
+    fn get(&self) -> Option<CursorIcon> {
         match self {
             Self::Fixed(cursor) => Some(*cursor),
             Self::Live(signal) => signal.try_peek(),
@@ -23,7 +22,7 @@ impl NodeCursor {
     }
 }
 
-pub(crate) fn node_cursor(node: &Node) -> Option<Cursor> {
+pub(crate) fn node_cursor(node: &Node) -> Option<CursorIcon> {
     if let Some(cursor) = node.extension::<NodeCursor>().and_then(NodeCursor::get) {
         return Some(cursor);
     }
@@ -31,22 +30,8 @@ pub(crate) fn node_cursor(node: &Node) -> Option<Cursor> {
         return None;
     }
     match node.a11y.role {
-        Role::Link => Some(Cursor::Pointer),
-        role if edits_text(role) => Some(Cursor::Text),
+        Role::Link => Some(CursorIcon::Pointer),
+        role if role.is_text_entry() => Some(CursorIcon::Text),
         _ => None,
     }
-}
-
-const fn edits_text(role: Role) -> bool {
-    matches!(
-        role,
-        Role::TextInput
-            | Role::MultilineTextInput
-            | Role::SearchInput
-            | Role::EmailInput
-            | Role::NumberInput
-            | Role::PasswordInput
-            | Role::PhoneNumberInput
-            | Role::UrlInput
-    )
 }

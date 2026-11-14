@@ -42,10 +42,7 @@ pub(super) fn stroke_fields(
     let Some((stroke, band)) = stroke.and_then(|s| StrokeBand::of(s, rect).map(|b| (s, b))) else {
         return ([0.0; 4], [0.0; 4]);
     };
-    #[cfg(feature = "kittest")]
     let (length, gap) = band.dash.map_or((0.0, 0.0), |dash| (dash.length, dash.gap));
-    #[cfg(not(feature = "kittest"))]
-    let (length, gap) = (0.0, 0.0);
     (
         space.rgba(stroke.color),
         [band.inside, band.outside, length, gap],

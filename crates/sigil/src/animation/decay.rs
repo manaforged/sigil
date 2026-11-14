@@ -26,22 +26,22 @@ impl Decay {
     }
 
     /// Returns the value where the decay comes to rest.
-    pub(crate) const fn target(&self) -> f32 {
+    pub(crate) const fn target(self) -> f32 {
         self.target
     }
 
     /// Returns the value.
-    pub(crate) fn value(&self) -> f32 {
+    pub(crate) const fn value(self) -> f32 {
         self.target - self.offset
     }
 
     /// Returns the velocity in units per second.
-    pub(crate) fn velocity(&self) -> f32 {
+    pub(crate) const fn velocity(self) -> f32 {
         self.offset / Self::TIME_CONSTANT
     }
 
     /// Returns whether the decay is at rest.
-    pub(crate) fn is_settled(&self) -> bool {
+    pub(crate) const fn is_settled(self) -> bool {
         self.offset.abs() < SpringState::DEFAULT_VALUE_EPSILON
     }
 

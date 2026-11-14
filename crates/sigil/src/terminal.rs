@@ -31,7 +31,7 @@ mod write;
 pub use access::{Access, FocusCursor};
 pub(crate) use backdrop::backdrop;
 pub use caps::{
-    Backdrop, Borders, Capabilities, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard,
+    Backdrop, Borders, Capabilities, ClipRoute, ColorDepth, CursorStyle, Erase, Fills, Keyboard,
     Notices, Notify,
 };
 pub use glyphs::Glyphs;
@@ -39,8 +39,6 @@ pub use glyphs::Glyphs;
 #[doc(hidden)]
 pub use glyphs::glyphs;
 pub use graphics::{Mux, Protocol};
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
 pub use graphics::{blocks, png, sextants};
 pub use handle::Terminal;
 kittest_pub! {

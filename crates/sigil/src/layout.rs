@@ -59,7 +59,7 @@ pub use engine::LayoutEngine;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) use engine::LayoutEngine;
-pub(crate) use engine::{Popup, PopupSide, ViewportOverlay};
+pub(crate) use engine::{Popup, ViewportOverlay};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
@@ -92,15 +92,16 @@ pub use space::Space;
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use style_adapter::apply_style_atoms;
+pub use style_data::{
+    AlignContent, AlignItems, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent, Length,
+    Overflow, Position, TrackSize,
+};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
-pub use style_data::{AlignContent, Axes, BoxSizing, Edges, FlexDirection, StyleData};
+pub use style_data::{Axes, Edges, StyleData};
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, reason = "public only under kittest")]
-pub(crate) use style_data::{AlignContent, Axes, BoxSizing, Edges, FlexDirection, StyleData};
-pub use style_data::{
-    AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, TrackSize,
-};
+pub(crate) use style_data::{Axes, Edges, StyleData};
 #[cfg(scene_harness)]
 #[doc(hidden)]
 pub use text_adapter::TextEngineMeasure;

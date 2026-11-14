@@ -29,32 +29,16 @@ fn overflow(node: &Node) -> (Overflow, Overflow) {
 }
 
 const fn is_control(role: Role) -> bool {
-    matches!(
-        role,
-        Role::Button
-            | Role::DefaultButton
-            | Role::CheckBox
-            | Role::RadioButton
-            | Role::Switch
-            | Role::TextInput
-            | Role::PasswordInput
-            | Role::SearchInput
-            | Role::EmailInput
-            | Role::NumberInput
-    )
+    role.is_text_entry()
+        || matches!(
+            role,
+            Role::Button | Role::DefaultButton | Role::CheckBox | Role::RadioButton | Role::Switch
+        )
 }
 
 const fn is_boxed_control(role: Role) -> bool {
-    matches!(
-        role,
-        Role::Button
-            | Role::DefaultButton
-            | Role::TextInput
-            | Role::PasswordInput
-            | Role::SearchInput
-            | Role::EmailInput
-            | Role::NumberInput
-    )
+    matches!(role, Role::Button | Role::DefaultButton)
+        || (role.is_text_entry() && !matches!(role, Role::MultilineTextInput))
 }
 
 pub(super) fn clipped_text(

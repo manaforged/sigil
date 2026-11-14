@@ -15,11 +15,13 @@ use crate::widgets::{Framed, Widget, WidgetFrame};
 const FACES: u8 = 10;
 const FACE_PERCENT: f32 = 100.0;
 
+type Format<T> = Rc<dyn Fn(&T) -> String>;
+
 /// Builder of a number whose digits roll to each new value.
 #[must_use]
 pub struct TickerBuilder<T: 'static> {
     value: Rc<dyn Reactive<T>>,
-    format: Rc<dyn Fn(&T) -> String>,
+    format: Format<T>,
     spring: Spring,
     frame: WidgetFrame,
 }
@@ -28,7 +30,7 @@ pub struct TickerBuilder<T: 'static> {
 pub fn ticker<T: Display + 'static>(value: impl Reactive<T>) -> TickerBuilder<T> {
     TickerBuilder {
         value: Rc::new(value),
-        format: Rc::new(|value: &T| value.to_string()),
+        format: Rc::new(T::to_string),
         spring: Spring::default(),
         frame: WidgetFrame::new(),
     }
@@ -123,10 +125,10 @@ fn digit_from_right(written: &str, from_right: usize) -> u8 {
 }
 
 fn place(slot: &Slot, shown: Signal<String>, spring: Spring) -> NodeBuilder {
-    let piece = match &slot.mark {
-        None => roll(slot.from_right, shown, spring),
-        Some(mark) => text(mark).nowrap().into(),
-    };
+    let piece = slot.mark.as_ref().map_or_else(
+        || roll(slot.from_right, shown, spring),
+        |mark| text(mark).nowrap().into(),
+    );
     piece.accessibility_hidden(true)
 }
 

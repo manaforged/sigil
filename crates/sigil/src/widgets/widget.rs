@@ -3,20 +3,22 @@ use std::time::Duration;
 use crate::animation::{Property, Transition};
 use crate::events::builder_ext as on;
 use crate::events::{
-    A11yEdit, Cursor, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent,
+    A11yEdit, CursorIcon, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent,
     PointerEvent, ScrollEvent, Shortcut, ValueStep, event_methods, handler_methods,
 };
 use crate::geometry::{Point, Rect, Size};
-use crate::kernel::{AccessibleName, NodeBuilder};
+use crate::kernel::{AccessibleName, NodeBuilder, Role};
 use crate::layout::audit::{AllowedFlaws, Flaw};
 use crate::layout::builder_ext::{install_layout, layout_methods};
 use crate::layout::reactive_position;
-use crate::layout::{CaretGeometry, LayoutStyle, Length, TextStyleCapture};
+use crate::layout::{AlignItems, CaretGeometry, LayoutStyle, Length, Position, TextStyleCapture};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
 use crate::style::presence::Edge;
 use crate::style::{FocusRing, StateStyleBuilder, TextStyle, Theme, Tone};
+use crate::widgets::Side;
 use crate::widgets::drag_drop::{self, DragState};
+use crate::widgets::popup::{float, placement};
 
 mod edit;
 
@@ -78,6 +80,13 @@ pub trait Widget: Sized {
     #[must_use]
     fn exit(self, property: Property) -> Self {
         self.map_node(move |node| look::motion(node, Edge::Exit, property))
+    }
+
+    /// Morphs the node from the last place and corners of the node with the same `key` that just left or is leaving, like Motion `layoutId`.
+    #[must_use]
+    fn shared(self, key: impl std::hash::Hash) -> Self {
+        let key = crate::animation::runtime::shared::Shared::of(&key);
+        self.map_node(move |node| crate::animation::runtime::shared::attach(node, key))
     }
 
     /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.
@@ -237,6 +246,48 @@ pub trait Widget: Sized {
         self.map_node(move |node| node.accessible(name))
     }
 
+    /// Sets the role that a screen reader announces for this widget.
+    #[must_use]
+    fn role(self, role: Role) -> Self {
+        self.map_node(move |node| node.role(role))
+    }
+
+    /// Sets the description that a screen reader reads after the name.
+    #[must_use]
+    fn description(self, description: impl Into<String>) -> Self {
+        let description = description.into();
+        self.map_node(move |node| node.description(description))
+    }
+
+    /// Sets whether the widget and its children stay out of the accessibility tree, like `aria-hidden`.
+    #[must_use]
+    fn accessibility_hidden(self, yes: bool) -> Self {
+        self.map_node(move |node| node.accessibility_hidden(yes))
+    }
+
+    /// Sets whether the widget can take keyboard focus.
+    #[must_use]
+    fn focusable(self, yes: bool) -> Self {
+        self.map_node(move |node| node.focusable(yes))
+    }
+
+    /// Sets the tab order: lower indexes come first, and a negative index skips the widget.
+    #[must_use]
+    fn tab_index(self, index: i32) -> Self {
+        self.map_node(move |node| node.tab_index(index))
+    }
+
+    /// Floats the widget above the tree on `side` of its first sibling, aligned by `align`, and flips or shifts it to stay in the window.
+    #[must_use]
+    fn anchor(self, side: Side, align: AlignItems) -> Self {
+        let place = LayoutStyle::default()
+            .position(Position::Absolute)
+            .inset_top(0.0)
+            .inset_left(0.0);
+        self.layout(place)
+            .map_node(move |node| float(node, placement(Some(side), align, true)))
+    }
+
     /// Runs `h` when a pointer button goes up on the node, and marks the node clickable.
     #[must_use]
     fn pointer_up<H>(self, h: H) -> Self
@@ -311,7 +362,7 @@ pub trait Widget: Sized {
 
     /// Sets the mouse cursor shown while the pointer is over the node and over children that set none.
     #[must_use]
-    fn cursor(self, cursor: impl Reactive<Cursor>) -> Self {
+    fn cursor(self, cursor: impl Reactive<CursorIcon>) -> Self {
         self.map_node(move |node| on::cursor(node, cursor))
     }
 

@@ -19,7 +19,9 @@ impl Spans {
 
     /// Appends `text` drawn with `face` over the paragraph style.
     pub fn span(mut self, text: impl AsRef<str>, face: TextFace) -> Self {
-        self.push(text.as_ref(), &face);
+        if let Some(start) = self.append(text.as_ref(), &face) {
+            self.mark(start, face);
+        }
         self
     }
 
@@ -30,15 +32,20 @@ impl Spans {
     }
 
     pub(crate) fn push(&mut self, text: &str, face: &TextFace) {
+        if let Some(start) = self.append(text, face) {
+            self.mark(start, face.clone());
+        }
+    }
+
+    fn append(&mut self, text: &str, face: &TextFace) -> Option<usize> {
         let start = self.text.len();
         self.text.push_str(text);
-        if !text.is_empty() && *face != TextFace::new() {
-            self.runs.push(TextRun {
-                start,
-                end: self.text.len(),
-                face: face.clone(),
-            });
-        }
+        (!text.is_empty() && *face != TextFace::new()).then_some(start)
+    }
+
+    fn mark(&mut self, start: usize, face: TextFace) {
+        let end = self.text.len();
+        self.runs.push(TextRun { start, end, face });
     }
 
     pub(crate) fn into_parts(self) -> (String, Vec<TextRun>) {

@@ -1,11 +1,10 @@
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::PopupSide;
 use crate::layout::Space;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, batch, memo, signal};
 use crate::style::{ControlSize, Metrics, space};
-use crate::widgets::Widget;
+use crate::widgets::{Side, Widget};
 
 use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
@@ -122,9 +121,9 @@ impl Combobox {
             .collect()
     }
 
-    /// The row of the highlighted option in the filtered list.
+    /// The row of the active, highlighted option in the filtered list.
     #[must_use]
-    pub fn cursor(self) -> usize {
+    pub fn active(self) -> usize {
         self.cursor.get()
     }
 
@@ -137,8 +136,8 @@ impl Combobox {
         self.edit(text);
     }
 
-    /// Moves the list cursor by `delta`.
-    pub fn move_cursor(self, delta: i32) {
+    /// Moves the active row by `delta`.
+    pub fn move_active(self, delta: i32) {
         let len = self.filtered().len();
         if len == 0 {
             self.cursor.set(0);
@@ -172,7 +171,7 @@ impl Combobox {
         clippy::must_use_candidate,
         reason = "commits the highlighted row; the result is optional"
     )]
-    pub fn commit_cursor(self) -> bool {
+    pub fn commit_active(self) -> bool {
         let Some(&(index, _)) = self.filtered().get(self.cursor.peek()) else {
             return false;
         };
@@ -281,7 +280,7 @@ fn build_field(state: Combobox) -> TextFieldBuilder {
         .change(move |text| state.edit(text))
         .submit(move |_| {
             if state.open.peek() {
-                state.commit_cursor();
+                state.commit_active();
             }
         })
 }
@@ -319,7 +318,7 @@ pub(super) fn list_popup(
         .inset_left(0.0)
         .height(2.0f32.mul_add(popup::inset(), view_h))
         .padding(Space::px(Metrics::current().overlay_padding()));
-    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(match width {
+    let frame = popup::popup(Role::ListBox, Some(Side::Bottom)).layout(match width {
         Some(width) => base.width(width),
         None => base.fill_width(),
     });

@@ -3,6 +3,7 @@ use smallvec::SmallVec;
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId, TopLayer};
 use crate::layout::LayoutResult;
+use crate::layout::stack::{Stack, stacked};
 use crate::scene::command::Transform3D;
 
 use super::atom::{Backface, SpaceStyle};
@@ -115,15 +116,15 @@ pub(crate) fn node_plane(cx: &Cx, id: NodeId) -> Option<(Transform3D, bool)> {
         .or_else(|| (!flat.is_identity()).then(|| (Transform3D::from(flat.matrix(rect)), false)))
 }
 
-pub(crate) fn planes(cx: &Cx, id: NodeId) -> SmallVec<[NodeId; 8]> {
+pub(crate) fn planes(cx: &Cx, id: NodeId) -> Stack {
     let Some(node) = cx.get(id) else {
-        return SmallVec::new();
+        return Stack::new();
     };
+    let stack = stacked(cx, node).unwrap_or_else(|| SmallVec::from_slice(node.children()));
     if !preserves(cx, id) {
-        return SmallVec::from_slice(node.children());
+        return stack;
     }
-    let mut order: SmallVec<[(f32, NodeId); 8]> = node
-        .children()
+    let mut order: SmallVec<[(f32, NodeId); 8]> = stack
         .iter()
         .map(|&child| (depth(cx, child), child))
         .collect();

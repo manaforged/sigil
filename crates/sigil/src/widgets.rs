@@ -540,7 +540,7 @@ pub use html::html;
 pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use link::{LinkBuilder, link};
-pub use listbox::{CursorEdge, ListState};
+pub use listbox::{ListEdge, ListState};
 pub use log_view::{Log, log_view};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
 pub use marquee::{MarqueeBuilder, marquee};

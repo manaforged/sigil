@@ -96,7 +96,7 @@ fn painted_opacity(build: impl IntoNode) -> Option<u16> {
                 layers.pop();
             }
             SceneCommand::Rect(rect) => {
-                let scaled = (f32::from(rect.opacity_bp()) * top).round();
+                let scaled = (rect.alpha() * 10_000.0 * top).round();
                 #[allow(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,

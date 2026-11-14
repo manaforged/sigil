@@ -41,7 +41,7 @@ impl Gen<'_, '_, '_> {
         let color = self.color();
         let mut draw = DrawRect::new(rect, color)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
+            .opacity(self.opacity_f32());
         if let Some(stroke) = self.stroke() {
             draw = draw.stroked(stroke);
         }
@@ -66,7 +66,7 @@ impl Gen<'_, '_, '_> {
         let gradient = LinearGradient::new(start, end, stops);
         let mut draw = DrawGradient::new(rect, gradient)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
+            .opacity(self.opacity_f32());
         if let Some(stroke) = self.stroke() {
             draw = draw.stroked(stroke);
         }
@@ -90,7 +90,7 @@ impl Gen<'_, '_, '_> {
         };
         let mut draw = DrawPattern::new(rect, pattern)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
+            .opacity(self.opacity_f32());
         if let Some(stroke) = self.stroke() {
             draw = draw.stroked(stroke);
         }
@@ -102,6 +102,7 @@ impl Gen<'_, '_, '_> {
         SceneCommand::DrawShadow {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
             radii: self.radii().0,
+            shape: sigil::scene::CornerShape::Round,
             shadow: self.shadow(),
         }
     }
@@ -147,7 +148,7 @@ impl Gen<'_, '_, '_> {
 
     fn image(&mut self) -> SceneCommand {
         let destination = self.rect();
-        let opacity = self.opacity_u16();
+        let opacity = self.opacity_f32();
         let e = &mut *self.entropy;
         let (w, h) = (e.pick(&[1_u32, 2, 7, 33]), e.pick(&[1_u32, 3, 16, 40]));
         let pixels = usize::try_from(w * h * 4).unwrap_or(4);
@@ -170,7 +171,7 @@ impl Gen<'_, '_, '_> {
     fn decoration(&mut self) -> SceneCommand {
         let band = self.rect();
         let color = self.color();
-        let opacity = self.opacity_u16();
+        let opacity = self.opacity_f32();
         let e = &mut *self.entropy;
         let kind = e.pick(&[
             DecorationKind::Underline,

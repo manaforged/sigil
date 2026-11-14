@@ -204,18 +204,19 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
-    pub use crate::animation::{Easing, Keyframes, Property, Spring, Transition};
+    pub use crate::animation::{Animator, Easing, Keyframes, Property, Spring, Transition};
     #[cfg(app_host)]
     pub use crate::app::open_url;
     pub use crate::events::{
-        Cursor, Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut, ValueStep,
+        CursorIcon, Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut,
+        ValueStep,
     };
     pub use crate::geometry::{Point, Rect, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
     pub use crate::layout::{
-        AlignItems, Flaw, FlexWrap, JustifyContent, Length, Orientation, Overflow, Position, Space,
-        TrackSize, cols, column, em, grid, row, rows,
+        AlignContent, AlignItems, Flaw, FlexDirection, FlexWrap, JustifyContent, Length,
+        Orientation, Overflow, Position, Space, TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::node::{
         AccessibleName, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
@@ -226,7 +227,7 @@ pub mod prelude {
     };
     #[cfg(app_host)]
     pub use crate::run;
-    pub use crate::scene::{BlendMode, Shader, Shadow};
+    pub use crate::scene::{BlendMode, ColorSpace, CornerShape, Shader, Shadow};
     pub use crate::style::{
         Background, ClipShape, Color, ControlSize, Elevation, FocusRing, FontFamily, Layer,
         MaskImage, MaskSize, Paint, Radius, States, TextFace, TextRole, Theme, Token, Tone,
@@ -237,9 +238,9 @@ pub mod prelude {
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::load_image;
     pub use crate::widgets::{
-        DragState, MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn,
-        TableState, TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge, breadcrumbs,
-        button, canvas, card, chart, checkbox, chip, code_edit, color_field, combobox,
+        DragState, MenuItem, PathBuilder, Selection, SelectionMode, Side, SortDirection,
+        TableColumn, TableState, TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge,
+        breadcrumbs, button, canvas, card, chart, checkbox, chip, code_edit, color_field, combobox,
         command_menu, context_menu, date_field, diff, disclosure, divider, dot, dropdown,
         empty_state, field, gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html,
         icon, kv_grid, kv_row, link, list_row, log_view, markdown, markdown_edit, markdown_inline,

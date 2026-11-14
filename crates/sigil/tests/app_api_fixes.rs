@@ -121,7 +121,7 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
                     .row_height(20.0)
                     .viewport_height(100.0)
                     .scroll_y(scroll)
-                    .cursor(cursor),
+                    .active(cursor),
             ),
         );
         settle(&mut host);

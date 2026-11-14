@@ -32,12 +32,24 @@ pub enum GradientKind {
     },
 }
 
+/// The color space a gradient mixes its stops in, as in CSS `linear-gradient(in oklab, ..)`.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum ColorSpace {
+    /// Premultiplied gamma-encoded sRGB, the CSS default.
+    #[default]
+    Srgb,
+    /// Premultiplied `OKLab`, which keeps mid-tones bright and hues even.
+    Oklab,
+}
+
 /// A linear, radial, or conic gradient with color stops.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Gradient {
     pub(crate) kind: GradientKind,
     pub(crate) stops: SmallVec<[GradientStop; 4]>,
     pub(crate) repeat: bool,
+    pub(crate) space: ColorSpace,
 }
 
 impl Gradient {
@@ -48,6 +60,7 @@ impl Gradient {
             kind,
             stops: stops.into_iter().collect(),
             repeat: false,
+            space: ColorSpace::Srgb,
         }
     }
 
@@ -65,6 +78,19 @@ impl Gradient {
     pub const fn repeat(mut self, repeat: bool) -> Self {
         self.repeat = repeat;
         self
+    }
+
+    /// Sets the color space the stops mix in.
+    #[must_use]
+    pub const fn space(mut self, space: ColorSpace) -> Self {
+        self.space = space;
+        self
+    }
+
+    /// Returns the color space the stops mix in.
+    #[must_use]
+    pub const fn color_space(&self) -> ColorSpace {
+        self.space
     }
 
     /// Returns whether the gradient is linear, radial, or conic, with its points.
@@ -92,6 +118,7 @@ impl Gradient {
             kind: self.kind,
             stops: normalize_stops(&self.stops, self.is_degenerate()),
             repeat: self.repeat,
+            space: self.space,
         }
     }
 
@@ -124,10 +151,10 @@ impl Gradient {
             }
             GradientKind::Conic { center, angle } => (3, [center.x, center.y, angle, 0.0]),
         };
-        let hash = values.into_iter().fold(
-            crate::fnv::mix(seed, tag + 4 * u64::from(self.repeat)),
-            crate::fnv::mix_f32,
-        );
+        let tag = tag + 4 * u64::from(self.repeat) + 8 * u64::from(self.space == ColorSpace::Oklab);
+        let hash = values
+            .into_iter()
+            .fold(crate::fnv::mix(seed, tag), crate::fnv::mix_f32);
         self.stops.iter().fold(hash, |hash, stop| {
             crate::fnv::mix(
                 crate::fnv::mix_f32(hash, stop.offset),

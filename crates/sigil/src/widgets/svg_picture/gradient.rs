@@ -36,6 +36,7 @@ pub(super) fn linear(gradient: &usvg::LinearGradient, opacity: f32) -> Fill {
         kind,
         stops,
         repeat,
+        space: crate::scene::ColorSpace::Srgb,
     }))
 }
 
@@ -76,6 +77,7 @@ pub(super) fn radial(gradient: &usvg::RadialGradient, opacity: f32) -> Result<Fi
             kind,
             stops,
             repeat,
+            space: crate::scene::ColorSpace::Srgb,
         })
     };
     if t.kx.abs() < EPSILON && t.ky.abs() < EPSILON {

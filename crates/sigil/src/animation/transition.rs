@@ -69,7 +69,7 @@ impl Transition {
         self
     }
 
-    /// Also glides the node from its old place in its parent to its new one when layout moves it, like Motion `layout`.
+    /// Also morphs the node from its old place and size to its new ones when layout moves or resizes it, like Motion `layout`.
     pub const fn layout(mut self) -> Self {
         self.id = with_layout(self.id);
         self

@@ -232,7 +232,8 @@ impl AtlasPipeline {
             (r.origin.x + r.width) / aw,
             (r.origin.y + r.height) / ah,
         ];
-        let opacity = (f32::from(draw.opacity) / 10_000.0 * paint.opacity).clamp(0.0, 1.0);
+        let opacity = (crate::scene::command::opacity::from_basis(draw.opacity) * paint.opacity)
+            .clamp(0.0, 1.0);
         Some(QuadInstance::new(
             (
                 [dest.origin.x, dest.origin.y, dest.width, dest.height],

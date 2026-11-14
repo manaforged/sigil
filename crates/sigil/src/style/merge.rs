@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
 use crate::style::atom::{
-    Amount, BackdropPart, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot,
+    Amount, BackdropPart, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot, corners,
 };
 use crate::style::diagnostic::Seen;
 
@@ -66,6 +66,9 @@ fn insert_atom(
     let mut expanded = SmallVec::<[(ResolvedSlot, StyleAtom); 4]>::new();
     expand_atom(atom, &mut expanded);
     for (slot, expanded_atom) in expanded {
+        for longhand in longhands(slot) {
+            merged.retain(|(existing, _atom)| *existing != longhand);
+        }
         if let Some((_existing_slot, existing_atom)) = merged
             .iter_mut()
             .find(|(existing, _atom)| *existing == slot)
@@ -80,9 +83,33 @@ fn insert_atom(
     }
 }
 
+const fn corner_slot(index: u32) -> ResolvedSlot {
+    match index {
+        0 => ResolvedSlot::RadiusTopLeft,
+        1 => ResolvedSlot::RadiusTopRight,
+        2 => ResolvedSlot::RadiusBottomRight,
+        _ => ResolvedSlot::RadiusBottomLeft,
+    }
+}
+
+fn longhands(slot: ResolvedSlot) -> impl Iterator<Item = ResolvedSlot> {
+    let count = if slot == ResolvedSlot::BorderRadius {
+        4
+    } else {
+        0
+    };
+    (0..count).map(corner_slot)
+}
+
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     use ResolvedSlot as S;
     use StyleAtom as A;
+    if let A::Paint(PaintAtom::Corners(mask, radius)) = atom {
+        return out.extend(corners::each(mask).map(|index| {
+            let corner = A::Paint(PaintAtom::Corners(1 << index, radius));
+            (slot(corner), corner)
+        }));
+    }
     let (px, sides): (i16, &[S]) = match atom {
         A::PaddingAll(px) => (
             px,
@@ -167,6 +194,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
+        StyleAtom::ZIndex(_) => ResolvedSlot::ZIndex,
         #[cfg(feature = "kittest")]
         StyleAtom::Transform(_) => ResolvedSlot::Transform,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
@@ -246,6 +274,7 @@ const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
         SpaceAtom::TranslateZ(_) => ResolvedSlot::TranslateZ,
         SpaceAtom::Perspective(_) => ResolvedSlot::Perspective,
         SpaceAtom::PerspectiveOrigin(_) => ResolvedSlot::PerspectiveOrigin,
+        SpaceAtom::TransformOrigin(_) => ResolvedSlot::TransformOrigin,
         SpaceAtom::Backface(_) => ResolvedSlot::Backface,
         SpaceAtom::Preserve3d(_) => ResolvedSlot::Preserve3d,
     }
@@ -266,6 +295,8 @@ const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
         PaintAtom::StopAt(StopSlot::To, _) => ResolvedSlot::GradientToPosition,
         PaintAtom::ClipText => ResolvedSlot::BackgroundClip,
         PaintAtom::Border(_) => ResolvedSlot::BorderStyle,
+        PaintAtom::CornerShape(_) => ResolvedSlot::CornerShape,
+        PaintAtom::Corners(mask, _) => corner_slot(mask.trailing_zeros()),
     }
 }
 
@@ -335,6 +366,7 @@ pub(crate) enum ResolvedSlot {
     GradientToPosition,
     BackgroundClip,
     BorderStyle,
+    CornerShape,
     ClipPath,
     TranslateX,
     TranslateY,
@@ -376,4 +408,10 @@ pub(crate) enum ResolvedSlot {
     FilterShader,
     DropShadowColor,
     TextShadowColor,
+    ZIndex,
+    TransformOrigin,
+    RadiusTopLeft,
+    RadiusTopRight,
+    RadiusBottomRight,
+    RadiusBottomLeft,
 }

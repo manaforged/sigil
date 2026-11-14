@@ -158,7 +158,7 @@ impl Walk {
     ) -> Result<(), Fallback> {
         match paint {
             Fill::Plain(paint) => {
-                scene.draw_path(self.draw(outline(data), t).with_fill(rule, paint));
+                scene.draw_path(self.draw(outline(data), t).filled(rule, paint));
             }
             Fill::Space(paint, space) => {
                 let local = space
@@ -166,13 +166,13 @@ impl Walk {
                     .and_then(|inverse| data.clone().transform(inverse));
                 if let Some(local) = local {
                     let draw = self.draw(outline(&local), t.pre_concat(space));
-                    scene.draw_path(draw.with_fill(rule, paint));
+                    scene.draw_path(draw.filled(rule, paint));
                 }
             }
             Fill::Pattern(pattern, opacity) => {
                 let area = self
                     .draw(outline(data), t)
-                    .with_fill(rule, PathPaint::Solid(OPAQUE));
+                    .filled(rule, PathPaint::Solid(OPAQUE));
                 self.pattern(scene, (&pattern, opacity), area, t)?;
             }
         }
@@ -193,6 +193,7 @@ impl Walk {
                 cap: native.cap,
                 join: native.join,
                 dash: native.dash,
+                trim: [0.0, 1.0],
             };
             scene.draw_path(self.draw(outline(data), t).stroked(line));
             return Ok(());
@@ -204,7 +205,7 @@ impl Walk {
 
     fn draw(&mut self, cmds: Arc<[PathCommand]>, t: Transform) -> DrawPath {
         let key = transform_key(outline_key(self.next_key(), &cmds), t);
-        DrawPath::new(cmds, scene_transform(t), key)
+        DrawPath::keyed(cmds, scene_transform(t), key)
     }
 }
 

@@ -4,15 +4,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use smallvec::SmallVec;
 
-static TRANSFORM_GENERATION: AtomicU64 = AtomicU64::new(0);
+static HIT_GENERATION: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) fn bump_transform_generation() {
-    TRANSFORM_GENERATION.fetch_add(1, Ordering::Relaxed);
+pub(crate) fn bump_hit_generation() {
+    HIT_GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
 #[must_use]
-pub(crate) fn transform_generation() -> u64 {
-    TRANSFORM_GENERATION.load(Ordering::Relaxed)
+pub(crate) fn hit_generation() -> u64 {
+    HIT_GENERATION.load(Ordering::Relaxed)
 }
 
 use crate::animation::Property;
@@ -42,6 +42,7 @@ const FLAG_TRANSFORM: u8 = 1 << 0;
 const FLAG_ANIMATE: u8 = 1 << 1;
 const FLAG_HIDES: u8 = 1 << 2;
 const FLAG_OVERLAY_HIDES: u8 = 1 << 3;
+const FLAG_STACK: u8 = 1 << 4;
 
 const fn is_animation_atom(atom: StyleAtom) -> bool {
     matches!(atom, StyleAtom::Transition(_) | StyleAtom::Animation(_))
@@ -192,10 +193,16 @@ impl StyleBinding {
             if is_display_none_atom(atom) {
                 flags |= FLAG_HIDES;
             }
+            if atom.restacks() {
+                flags |= FLAG_STACK;
+            }
         }
         if let Some(overlay) = self.state_overlay.as_deref() {
             if overlay.may_transform() {
                 flags |= FLAG_TRANSFORM;
+            }
+            if overlay.any(StyleAtom::restacks) {
+                flags |= FLAG_STACK;
             }
             if overlay.any(is_animation_atom) {
                 flags |= FLAG_ANIMATE;
@@ -212,6 +219,20 @@ impl StyleBinding {
             flags |= FLAG_TRANSFORM;
         }
         self.flags = flags;
+    }
+
+    pub(crate) fn z_index(&self) -> i16 {
+        let live = || {
+            self.reactive_channels()
+                .any(|atoms| atoms.iter().copied().any(StyleAtom::restacks))
+        };
+        if (self.flags & FLAG_STACK) == 0 && !live() {
+            return 0;
+        }
+        self.cascade().fold(0, |z, atom| match atom {
+            StyleAtom::ZIndex(index) => index,
+            _ => z,
+        })
     }
 
     pub(crate) fn has_transition(&self) -> bool {
@@ -428,10 +449,15 @@ impl Eq for StyleBinding {}
 
 impl AnimatorOverlay for StyleBinding {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
-        self.animated_values
-            .iter()
-            .rev()
-            .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
+        self.glide
+            .get()
+            .and_then(|glide| glide.value_for(kind))
+            .or_else(|| {
+                self.animated_values
+                    .iter()
+                    .rev()
+                    .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
+            })
             .or_else(|| {
                 self.attached_animators
                     .get()
@@ -455,15 +481,13 @@ impl AnimatorOverlay for StyleBinding {
             .attached_animators
             .get()
             .map_or(0, |overlay| overlay.cache_key());
-        let glide = self.layout_offset();
+        let glide = self.glide.get().and_then(|glide| glide.bits());
         if self.animated_values.is_empty() && glide.is_none() {
             return base;
         }
         let mut hasher = ahash::AHasher::default();
         base.hash(&mut hasher);
-        glide
-            .map(|offset| offset.map(f32::to_bits))
-            .hash(&mut hasher);
+        glide.hash(&mut hasher);
         for entry in &self.animated_values {
             let prop = (entry.property)(entry.value.peek());
             core::mem::discriminant(&prop).hash(&mut hasher);

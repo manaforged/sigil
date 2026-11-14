@@ -1,13 +1,10 @@
-use winit::window::CursorIcon;
-
-use crate::events::Cursor;
+use crate::events::CursorIcon;
 use crate::shell::WinitWindowHandle;
 
 use super::WinitShell;
-use super::commands::winit_direction;
 
 impl WinitShell {
-    pub(super) fn show_cursor(&mut self, handle: WinitWindowHandle, cursor: Cursor) {
+    pub(super) fn show_cursor(&mut self, handle: WinitWindowHandle, cursor: CursorIcon) {
         let shown = self
             .window_cursors
             .iter()
@@ -27,19 +24,31 @@ impl WinitShell {
     }
 }
 
-fn winit_cursor(cursor: Cursor) -> CursorIcon {
+const fn winit_cursor(cursor: CursorIcon) -> winit::window::CursorIcon {
+    use winit::window::CursorIcon as Shown;
     match cursor {
-        Cursor::Default => CursorIcon::Default,
-        Cursor::Pointer => CursorIcon::Pointer,
-        Cursor::Text => CursorIcon::Text,
-        Cursor::Grab => CursorIcon::Grab,
-        Cursor::Grabbing => CursorIcon::Grabbing,
-        Cursor::Crosshair => CursorIcon::Crosshair,
-        Cursor::NotAllowed => CursorIcon::NotAllowed,
-        Cursor::Move => CursorIcon::Move,
-        Cursor::Wait => CursorIcon::Wait,
-        Cursor::Resize(direction) => CursorIcon::from(winit_direction(direction)),
-        Cursor::ColumnResize => CursorIcon::ColResize,
-        Cursor::RowResize => CursorIcon::RowResize,
+        CursorIcon::Default => Shown::Default,
+        CursorIcon::Pointer => Shown::Pointer,
+        CursorIcon::Text => Shown::Text,
+        CursorIcon::Grab => Shown::Grab,
+        CursorIcon::Grabbing => Shown::Grabbing,
+        CursorIcon::Crosshair => Shown::Crosshair,
+        CursorIcon::NotAllowed => Shown::NotAllowed,
+        CursorIcon::Move => Shown::Move,
+        CursorIcon::Wait => Shown::Wait,
+        CursorIcon::EResize => Shown::EResize,
+        CursorIcon::NResize => Shown::NResize,
+        CursorIcon::NeResize => Shown::NeResize,
+        CursorIcon::NwResize => Shown::NwResize,
+        CursorIcon::SResize => Shown::SResize,
+        CursorIcon::SeResize => Shown::SeResize,
+        CursorIcon::SwResize => Shown::SwResize,
+        CursorIcon::WResize => Shown::WResize,
+        CursorIcon::EwResize => Shown::EwResize,
+        CursorIcon::NsResize => Shown::NsResize,
+        CursorIcon::NeswResize => Shown::NeswResize,
+        CursorIcon::NwseResize => Shown::NwseResize,
+        CursorIcon::ColResize => Shown::ColResize,
+        CursorIcon::RowResize => Shown::RowResize,
     }
 }

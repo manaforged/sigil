@@ -84,7 +84,8 @@ impl LayoutStyle {
         self.mark(LayoutFields::SHRINK)
     }
 
-    pub(crate) const fn stretch_width(mut self) -> Self {
+    /// Makes the node fill the width of its parent, as `row()` and `column()` do.
+    pub const fn stretch_width(mut self) -> Self {
         self.0.stretch_width = true;
         self.mark(LayoutFields::STRETCH_WIDTH)
     }

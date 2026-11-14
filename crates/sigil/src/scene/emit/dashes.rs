@@ -8,10 +8,8 @@ use crate::kernel::NodeId;
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{
     DrawPath, PathCommand, PathPaint, PathStroke, StrokeCap, StrokeJoin, outline_key,
-    rounded_outline,
 };
 use crate::scene::geometry::IDENTITY;
-use crate::scene::style_adapter::corner_radii_for;
 use crate::style::Color;
 use crate::style::atom::BorderStyle;
 
@@ -46,15 +44,21 @@ pub(super) fn push_styled_border(
         node: id,
     };
     if borders_uniform(edges) {
-        let radii = corner_radii_for(style.border_radius).0;
-        push_ring(scene, rect, radii, edges[0], &line);
+        let radii = style.paint.radii().0;
+        push_ring(scene, rect, (radii, style.paint.shape), edges[0], &line);
     } else {
         push_sides(scene, rect, edges, &line);
     }
     true
 }
 
-fn push_ring(scene: &mut SceneBuilder, rect: Rect, radii: [f32; 4], width: f32, line: &Line) {
+fn push_ring(
+    scene: &mut SceneBuilder,
+    rect: Rect,
+    (radii, shape): ([f32; 4], crate::scene::CornerShape),
+    width: f32,
+    line: &Line,
+) {
     if width <= 0.0 {
         return;
     }
@@ -70,7 +74,12 @@ fn push_ring(scene: &mut SceneBuilder, rect: Rect, radii: [f32; 4], width: f32, 
     let length = radii.iter().fold(straight, |sum, radius| {
         (FRAC_PI_2 - 2.0).mul_add(*radius, sum)
     });
-    scene.draw_path(stroked(rounded_outline(inset, radii), width, length, line));
+    scene.draw_path(stroked(
+        crate::scene::command::payloads::shaped_outline(inset, radii, shape),
+        width,
+        length,
+        line,
+    ));
 }
 
 fn push_sides(scene: &mut SceneBuilder, rect: Rect, edges: [f32; 4], line: &Line) {
@@ -112,8 +121,9 @@ fn stroked(outline: Vec<PathCommand>, width: f32, length: f32, line: &Line) -> D
         cap,
         join: StrokeJoin::Miter,
         dash,
+        trim: [0.0, 1.0],
     };
-    let mut draw = DrawPath::new(Arc::from(outline), IDENTITY, key).stroked(stroke);
+    let mut draw = DrawPath::keyed(Arc::from(outline), IDENTITY, key).stroked(stroke);
     draw.node = Some(line.node);
     draw.opacity = line.opacity;
     draw

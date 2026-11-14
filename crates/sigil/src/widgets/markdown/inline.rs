@@ -1,23 +1,18 @@
 use super::parse::Inline;
 use crate::app::HostCaps;
-use crate::style::{TextFace, TextRun, Token, Tone};
+use crate::style::{TextFace, Token, Tone};
+use crate::text::Spans;
 
-#[derive(Clone, Default)]
-pub(super) struct StyledText {
-    pub(super) text: String,
-    pub(super) runs: Vec<TextRun>,
-}
-
-pub(super) fn styled(body: &[Inline]) -> StyledText {
-    let mut out = StyledText::default();
-    push_spans(&mut out, body, &TextFace::default());
+pub(super) fn styled(body: &[Inline]) -> Spans {
+    let mut out = Spans::new();
+    push_spans(&mut out, body, &TextFace::new());
     out
 }
 
-fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
+fn push_spans(out: &mut Spans, spans: &[Inline], face: &TextFace) {
     for span in spans {
         match span {
-            Inline::Text(body) => push_run(out, body, face),
+            Inline::Text(body) => out.push(body, face),
             Inline::Strong(body) => push_marked(out, body, face, |inner| inner.bold = true),
             Inline::Em(body) => push_marked(out, body, face, |inner| inner.italic = true),
             Inline::Strike(body) => push_marked(out, body, face, |inner| inner.strike = true),
@@ -28,16 +23,16 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
                     background: Some(Token::SurfaceSubtle),
                     ..face.clone()
                 };
-                push_run(out, &unbreakable(body), &code);
+                out.push(&unbreakable(body), &code);
             }
-            Inline::Math(body) => push_run(out, &super::super::math::unicode(body), face),
+            Inline::Math(body) => out.push(&super::super::math::unicode(body), face),
             Inline::Note(label) => push_note(out, label, face),
             Inline::Image { alt, .. } => {
                 let muted = TextFace {
                     color: Some(Token::OnSurfaceMuted),
                     ..face.clone()
                 };
-                push_run(out, &format!("[{alt}]"), &muted);
+                out.push(&format!("[{alt}]"), &muted);
             }
             Inline::Link {
                 href,
@@ -51,7 +46,7 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
 }
 
 fn push_marked(
-    out: &mut StyledText,
+    out: &mut Spans,
     spans: &[Inline],
     face: &TextFace,
     mark: impl FnOnce(&mut TextFace),
@@ -73,16 +68,16 @@ pub(super) fn note_mark(label: &str) -> String {
     }
 }
 
-fn push_note(out: &mut StyledText, label: &str, face: &TextFace) {
+fn push_note(out: &mut Spans, label: &str, face: &TextFace) {
     let mark = TextFace {
         color: Some(Tone::Primary.step(11)),
         ..face.clone()
     };
-    push_run(out, &note_mark(label), &mark);
+    out.push(&note_mark(label), &mark);
 }
 
 fn push_link(
-    out: &mut StyledText,
+    out: &mut Spans,
     face: &TextFace,
     (body, label_is_href): (&[Inline], bool),
     href: &str,
@@ -93,17 +88,17 @@ fn push_link(
         ..face.clone()
     };
     match body {
-        [Inline::Text(url)] if url.contains("://") => push_run(out, &url_breaks(url), &link),
+        [Inline::Text(url)] if url.contains("://") => out.push(&url_breaks(url), &link),
         _ => push_spans(out, body, &link),
     }
     if !HostCaps::current().hyperlinks && !label_is_href {
-        push_run(out, " (", face);
+        out.push(" (", face);
         let url = TextFace {
             color: Some(Token::OnSurfaceMuted),
             ..face.clone()
         };
-        push_run(out, &url_breaks(href), &url);
-        push_run(out, ")", face);
+        out.push(&url_breaks(href), &url);
+        out.push(")", face);
     }
 }
 
@@ -155,15 +150,3 @@ fn unbreakable(body: &str) -> String {
 #[cfg(test)]
 #[path = "inline_tests.rs"]
 mod tests;
-
-fn push_run(out: &mut StyledText, body: &str, face: &TextFace) {
-    let start = out.text.len();
-    out.text.push_str(body);
-    if *face != TextFace::default() && !body.is_empty() {
-        out.runs.push(TextRun {
-            start,
-            end: out.text.len(),
-            face: face.clone(),
-        });
-    }
-}

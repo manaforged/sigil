@@ -73,9 +73,12 @@ pub(crate) fn intern(spring: Spring) -> TransitionId {
         .ok()
         .filter(|index| *index < LAYOUT)
         .and_then(|index| SPRING_BASE.checked_add(index));
+    if id.is_none() {
+        springs.truncate(index);
+    }
+    drop(springs);
     id.map_or_else(
         || {
-            springs.truncate(index);
             tracing::warn!(target: "sigil::animation", "too many distinct transition springs; using the smooth spring");
             presets::SMOOTH
         },
@@ -205,11 +208,22 @@ pub(crate) fn glides(atoms: impl IntoIterator<Item = StyleAtom>) -> bool {
     transition_id(atoms).is_some_and(|id| id.0 & LAYOUT != 0)
 }
 
-pub(crate) fn glide_config(atoms: &[StyleAtom]) -> Option<AnimationConfig> {
+fn glide_config(atoms: &[StyleAtom]) -> Option<AnimationConfig> {
     glides(atoms.iter().copied())
         .then(|| transition_config(atoms))
         .flatten()
         .map(|(config, _)| config)
+}
+
+pub(crate) fn morph_config(atoms: &[StyleAtom], shared: bool) -> Option<AnimationConfig> {
+    glide_config(atoms).or_else(|| {
+        shared.then(|| {
+            transition_config(atoms)
+                .map_or(AnimationConfig::Spring(Spring::SMOOTH), |(config, _)| {
+                    config
+                })
+        })
+    })
 }
 
 pub(crate) fn transition_config(atoms: &[StyleAtom]) -> Option<(AnimationConfig, Transitioned)> {

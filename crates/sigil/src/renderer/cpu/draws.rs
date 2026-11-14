@@ -17,9 +17,10 @@ use crate::renderer::scene_command::{
     DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, GlyphRun, Stroke, StrokeBand,
 };
 use crate::renderer::shadow_paint::Shadow;
+use crate::scene::command::CornerShape;
 use crate::scene::corner_radii::CornerRadii;
 
-use super::bound::{CpuBound, rounded_rect};
+use super::bound::{CpuBound, shaped_rect};
 use super::glyph_outline::{fill_glyphs, run_paths};
 use super::paint::{CpuPainter, brush, shader_brush};
 use super::pattern::PatternPlacement;
@@ -69,7 +70,7 @@ impl CpuPainter<'_> {
     fn shape(
         &mut self,
         rect: Rect,
-        radii: CornerRadii,
+        corners: (CornerRadii, CornerShape),
         outline: Option<Stroke>,
         opacity: f32,
         shader: bool,
@@ -81,11 +82,11 @@ impl CpuPainter<'_> {
         );
         self.with_brush(bounds, opacity, shader, |target, quads, brush| {
             let bound = CpuBound::of(target, brush.transform);
-            if let Some(path) = rounded_rect(rect, radii, bound) {
+            if let Some(path) = shaped_rect(rect, corners, bound) {
                 fill(target, quads, &path, brush, bound);
             }
             if let Some(s) = outline {
-                stroke(target, rect, radii, s, brush);
+                stroke(target, rect, corners, s, brush);
             }
             true
         })
@@ -133,7 +134,7 @@ impl CpuPainter<'_> {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         if self.shape(
             draw.rect,
-            draw.border_radius,
+            (draw.border_radius, draw.shape),
             draw.stroke,
             opacity,
             false,
@@ -149,7 +150,7 @@ impl CpuPainter<'_> {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         if self.shape(
             draw.rect,
-            draw.border_radius,
+            (draw.border_radius, draw.shape),
             draw.stroke,
             opacity,
             false,
@@ -167,7 +168,7 @@ impl CpuPainter<'_> {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         if self.shape(
             draw.rect,
-            draw.border_radius,
+            (draw.border_radius, draw.shape),
             draw.stroke,
             opacity,
             true,
@@ -194,12 +195,19 @@ impl CpuPainter<'_> {
         }
     }
 
-    pub(super) fn shadow(&mut self, rect: [f32; 4], radii: CornerRadii, s: &Shadow) {
+    pub(super) fn shadow(
+        &mut self,
+        rect: [f32; 4],
+        corners: (CornerRadii, CornerShape),
+        s: &Shadow,
+    ) {
         let placed = self.placed(Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]));
         let opacity = self.state.current_opacity();
+        let (radii, shape) = corners;
         let place = ShadowPlacement {
             rect: placed,
             radii,
+            shape,
             scale: self.scale,
             offset: self.origin,
             opacity,

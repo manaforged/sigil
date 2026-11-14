@@ -85,7 +85,7 @@ impl Shadow {
 
     /// Returns how far the shadow paints past its shape before the offset, `3 * blur + |spread|` logical pixels.
     #[must_use]
-    pub fn reach(&self) -> f32 {
+    pub const fn reach(&self) -> f32 {
         self.blur.mul_add(3.0, self.spread.abs())
     }
 }
@@ -118,7 +118,7 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
             surface.origin.x - outset + offset_x,
             surface.origin.y - outset + offset_y,
         ),
-        surface.width + outset * 2.0,
-        surface.height + outset * 2.0,
+        outset.mul_add(2.0, surface.width),
+        outset.mul_add(2.0, surface.height),
     )
 }

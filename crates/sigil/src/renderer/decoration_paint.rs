@@ -62,7 +62,7 @@ pub(crate) fn decoration_instance(
     space: BlendSpace,
 ) -> Option<DecorationInstance> {
     let geometry = draw.geometry()?;
-    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let opacity = crate::scene::command::opacity::from_basis(draw.opacity) * opacity_scale;
     let kind_f32 = match draw.kind {
         DecorationKind::Underline => 0.0_f32,
         DecorationKind::Strikethrough => 1.0_f32,

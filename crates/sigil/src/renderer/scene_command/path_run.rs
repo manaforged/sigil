@@ -28,7 +28,8 @@ impl SceneWalk<'_> {
             size: (side(extent.width), side(extent.height)),
             scale,
             visible,
-            opacity: f32::from(draw.opacity) / 10_000.0 * self.state.current_opacity(),
+            opacity: crate::scene::command::opacity::from_basis(draw.opacity)
+                * self.state.current_opacity(),
         };
         let device = compose([[scale, 0.0, 0.0], [0.0, scale, 0.0]], current);
         self.ctx.vector.queue(draw, device, run);

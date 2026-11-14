@@ -34,7 +34,7 @@ fn first_rect_opacity(cx: &Cx, root: NodeId) -> u16 {
                 opacities.pop();
             }
             SceneCommand::Rect(rect) => {
-                return (f32::from(rect.opacity_bp()) * opacity)
+                return (rect.alpha() * 10_000.0 * opacity)
                     .round()
                     .clamp(0.0, 10000.0) as u16;
             }

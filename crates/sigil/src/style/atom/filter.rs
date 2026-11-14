@@ -156,7 +156,9 @@ pub(crate) struct FilterStyle {
     pub(crate) text_color: Option<Color>,
 }
 
-const BACKDROP: [(K, fn(f32) -> Filter); 3] = [
+type BackdropFilter = (K, fn(f32) -> Filter);
+
+const BACKDROP: [BackdropFilter; 3] = [
     (K::BackdropBlur, Filter::Blur),
     (K::BackdropBrightness, Filter::Brightness),
     (K::BackdropSaturate, Filter::Saturate),

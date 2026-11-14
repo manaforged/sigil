@@ -240,7 +240,7 @@ impl LayerCompositePipeline {
         )
     }
 
-    fn bound(&self) -> &wgpu::BindGroup {
+    const fn bound(&self) -> &wgpu::BindGroup {
         let (_, group) = self.uniforms.as_ref().expect("layer uniforms initialized");
         group
     }

@@ -178,7 +178,7 @@ pub fn pattern() -> (CommandScene, (f32, f32), Rgba) {
             slash_kind(Color::rgba(255, 255, 255, 220), 32.0, 10.0),
         )
         .border_radius(CornerRadii::top(24.0))
-        .opacity(8_500)
+        .opacity(0.85)
         .stroked(stroke_with(StrokeStyle::Solid, StrokeAlign::Outside, 4.0)),
     );
     (scene.finish(), (1200.0, 380.0), DARK)

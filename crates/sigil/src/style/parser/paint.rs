@@ -1,6 +1,22 @@
 use super::color_key;
-use crate::style::atom::{PaintAtom, StopSlot};
-use crate::style::{Conic, StyleAtom};
+use crate::style::atom::{PaintAtom, StopSlot, corners};
+use crate::style::{Conic, Radius, StyleAtom};
+
+const SIDES: [(&str, u8); 4] = [
+    ("rounded-t", corners::TOP),
+    ("rounded-r", corners::RIGHT),
+    ("rounded-b", corners::BOTTOM),
+    ("rounded-l", corners::LEFT),
+];
+
+const RADII: [(&str, Radius); 6] = [
+    ("", Radius::Base),
+    ("-none", Radius::None),
+    ("-sm", Radius::Sm),
+    ("-md", Radius::Md),
+    ("-lg", Radius::Lg),
+    ("-full", Radius::Full),
+];
 
 const STOPS: [(&str, StopSlot); 3] = [
     ("from-", StopSlot::From),
@@ -9,7 +25,18 @@ const STOPS: [(&str, StopSlot); 3] = [
 ];
 
 pub(super) fn parse_paint_token(token: &str) -> Option<StyleAtom> {
-    conic(token).or_else(|| stop(token)).map(StyleAtom::Paint)
+    conic(token)
+        .or_else(|| stop(token))
+        .or_else(|| corner(token))
+        .map(StyleAtom::Paint)
+}
+
+fn corner(token: &str) -> Option<PaintAtom> {
+    let (rest, mask) = SIDES
+        .iter()
+        .find_map(|(prefix, mask)| token.strip_prefix(prefix).map(|rest| (rest, *mask)))?;
+    let (_, radius) = RADII.iter().find(|(suffix, _)| *suffix == rest)?;
+    Some(PaintAtom::Corners(mask, *radius))
 }
 
 fn conic(token: &str) -> Option<PaintAtom> {

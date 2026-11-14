@@ -2,7 +2,7 @@ use core::error::Error;
 
 use alloc::vec::IntoIter;
 
-use crate::hal::cursor::Cursor;
+use crate::hal::cursor::CursorIcon;
 use crate::hal::events::Event;
 use crate::hal::{
     geometry::{PhysicalSize, Point, Rect},
@@ -132,7 +132,7 @@ pub trait Shell: Sized {
         Ok(())
     }
 
-    fn set_cursor(&mut self, window: &Self::Window, cursor: Cursor) -> Result<(), Self::Error> {
+    fn set_cursor(&mut self, window: &Self::Window, cursor: CursorIcon) -> Result<(), Self::Error> {
         let _ = (window, cursor);
         Ok(())
     }

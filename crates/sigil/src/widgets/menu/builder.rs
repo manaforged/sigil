@@ -3,7 +3,6 @@ use std::rc::Rc;
 use crate::events::PointerEvent;
 use crate::geometry::Point;
 use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, NodeId, container};
-use crate::layout::PopupSide;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal};
 use crate::style::Style;
@@ -121,7 +120,7 @@ impl MenuBuilder {
     }
 
     /// Places the top-left corner of the panel at `point` in a layer that fills the parent.
-    pub fn anchor(mut self, point: impl Into<Point>) -> Self {
+    pub fn at(mut self, point: impl Into<Point>) -> Self {
         self.anchor = Some(point.into());
         self
     }
@@ -163,7 +162,7 @@ impl MenuBuilder {
         );
         let overrides = std::mem::take(&mut self.layout_overrides);
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
-        let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
+        let panel = menu_panel(self.rows, close, None, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .accessible(theme_string_once(StringKey::Menu))
             .with(placement)

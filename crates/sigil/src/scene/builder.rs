@@ -1,7 +1,9 @@
 #![allow(clippy::redundant_pub_crate)]
 #[cfg(feature = "kittest")]
 use crate::scene::command::DrawSprite;
-use crate::scene::command::payloads::{PathCommand, PathStroke, outline_key};
+use std::sync::Arc;
+
+use crate::scene::command::payloads::{PathCommand, PathStroke};
 use crate::scene::command::{DrawPattern, Wash};
 
 use crate::geometry::{Point, Rect, Size};
@@ -9,11 +11,10 @@ use crate::kernel::NodeId;
 
 use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
-    CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawRect,
-    GlyphRun, LayerScope, PathPaint, SceneCommand, StrokeCap, StrokeJoin, Transform,
+    CellRect, Clip, CommandScene, CornerShape, DrawDecoration, DrawGradient, DrawImage, DrawPath,
+    DrawRect, GlyphRun, LayerScope, SceneCommand, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::geometry::IDENTITY;
 use crate::scene::shader::{DrawShader, Shader};
 use crate::scene::shadow::Shadow;
 use crate::style::srgb::encode_byte;
@@ -50,14 +51,28 @@ impl SceneBuilder {
         self.commands.push(SceneCommand::Rect(draw));
     }
 
+    /// Appends many rectangles as one command, drawn in order as if each were appended with `draw_rect`.
+    pub fn draw_rects(&mut self, rects: impl Into<Arc<[DrawRect]>>) {
+        let rects = rects.into();
+        if !rects.is_empty() {
+            self.commands.push(SceneCommand::Rects(rects));
+        }
+    }
+
     pub(crate) const fn recorded(&self) -> usize {
         self.commands.len()
     }
 
     pub(crate) fn mark_leaf_from(&mut self, start: usize) {
         for command in self.commands.iter_mut().skip(start) {
-            if let SceneCommand::Rect(draw) = command {
-                draw.leaf = true;
+            match command {
+                SceneCommand::Rect(draw) => draw.leaf = true,
+                SceneCommand::Rects(rects) => {
+                    for draw in Arc::make_mut(rects) {
+                        draw.leaf = true;
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -79,9 +94,20 @@ impl SceneBuilder {
 
     /// Appends a shadow for `rect` with corner radii `[top_left, top_right, bottom_right, bottom_left]`.
     pub fn draw_shadow(&mut self, rect: Rect, radii: [f32; 4], shadow: Shadow) {
+        self.shaped_shadow(rect, radii, CornerShape::Round, shadow);
+    }
+
+    pub(crate) fn shaped_shadow(
+        &mut self,
+        rect: Rect,
+        radii: [f32; 4],
+        shape: CornerShape,
+        shadow: Shadow,
+    ) {
         self.commands.push(SceneCommand::DrawShadow {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
             radii,
+            shape,
             shadow,
         });
     }
@@ -124,20 +150,8 @@ impl SceneBuilder {
             PathCommand::MoveTo(from.x, from.y),
             PathCommand::LineTo(to.x, to.y),
         ];
-        let stroke = PathStroke {
-            paint: PathPaint::Solid(color),
-            width,
-            cap: StrokeCap::Butt,
-            join: StrokeJoin::Miter,
-            dash: smallvec::SmallVec::new(),
-        };
-        let seed = crate::fnv::mix_f32(
-            crate::fnv::mix(crate::fnv::OFFSET, crate::fnv::rgba(color)),
-            width,
-        );
-        let key = outline_key(seed, &outline);
-        let draw = DrawPath::new(std::sync::Arc::from(outline), IDENTITY, key).stroked(stroke);
-        self.draw_path(draw);
+        let stroke = PathStroke::new(color, width, StrokeCap::Butt, StrokeJoin::Miter);
+        self.draw_path(DrawPath::new(outline).stroked(stroke));
     }
 
     pub(crate) fn draw_rect_for_node(&mut self, node: NodeId, draw: DrawRect, cell: CellRect) {
@@ -172,9 +186,7 @@ impl SceneBuilder {
     pub fn draw_text(&mut self, origin: Point, text: &str, style: &TextStyle, color: Color) {
         let size = self.measure_text(text, style);
         let rect = Rect::new(origin, size.width, size.height);
-        let run =
-            crate::scene::command::shape_run(GlyphRun::new(rect, text, color, style.clone(), 1.0));
-        self.draw_glyph_run(run);
+        self.draw_glyph_run(GlyphRun::new(rect, text, color, style.clone(), 1.0));
     }
 
     /// Measures `text` styled with `style` without wrapping.
@@ -278,20 +290,14 @@ impl SceneBuilder {
         self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, body);
     }
 
-    #[cfg(feature = "kittest")]
-    /// Opens a layer.
-    #[doc(hidden)]
+    /// Opens a layer with the clip, effect, opacity, and blend of `scope`; `pop_layer` closes it.
     pub fn push_layer(&mut self, scope: LayerScope) {
         self.commands.push(SceneCommand::PushLayer(scope));
     }
 
-    kittest_pub! {
-        if feature = "scene";
-        /// Closes the last open layer.
-        #[doc(hidden)]
-        pub fn pop_layer(&mut self) {
-            self.commands.push(SceneCommand::PopLayer);
-        }
+    /// Closes the layer that the last unmatched `push_layer` opened.
+    pub fn pop_layer(&mut self) {
+        self.commands.push(SceneCommand::PopLayer);
     }
 
     /// Consumes the builder and returns the scene of its commands.

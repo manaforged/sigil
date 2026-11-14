@@ -41,7 +41,8 @@ pub struct LayoutEngine {
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     hidden: AHashSet<NodeId>,
-    gliding: AHashMap<slotmap::DefaultKey, Option<[f32; 2]>>,
+    gliding:
+        AHashMap<slotmap::DefaultKey, Option<crate::animation::runtime::layout_motion::Placed>>,
     last_reactive_sig: u64,
     republished: bool,
 }
@@ -260,18 +261,16 @@ impl LayoutEngine {
     }
 
     fn glide(&mut self, cx: &Cx, resized: bool) {
+        use crate::animation::runtime::layout_motion::{Placed, glide};
         for (key, last) in &mut self.gliding {
             let id = NodeId::from_key(*key);
-            let place = place_in_parent(cx, &self.published_result, id);
-            let (Some(from), Some(to)) = (std::mem::replace(last, place), place) else {
-                continue;
-            };
-            if resized || from.map(f32::to_bits) == to.map(f32::to_bits) {
-                continue;
+            let placed = Placed::of(cx, &self.published_result, id);
+            let from = std::mem::replace(last, placed);
+            if let Some(to) = placed.filter(|_| !resized) {
+                glide(cx, id, from, to);
             }
-            let by = [from[0] - to[0], from[1] - to[1]];
-            crate::animation::runtime::layout_motion::glide(cx, id, by);
         }
+        crate::animation::runtime::shared::settle(cx);
     }
 
     fn track_glide(&mut self, id: NodeId, node: &crate::kernel::Node) {
@@ -335,17 +334,14 @@ impl LayoutEngine {
     }
 
     fn track_reactive(&mut self, id: NodeId, node: &crate::kernel::Node) {
+        self.track_glide(id, node);
         if node.has_unversioned_layout() {
             self.reactive_layout.insert(id.key());
             self.reactive_sigs
                 .insert(id.key(), node.reactive_seed_signature());
-            self.track_glide(id, node);
         } else {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());
-            if !self.gliding.is_empty() {
-                self.gliding.remove(&id.key());
-            }
         }
         if node.extension::<crate::layout::SizeReactive>().is_some()
             || node.extension::<crate::layout::BoundsReactive>().is_some()
@@ -415,22 +411,7 @@ mod sticky;
 mod sync;
 mod viewport;
 
-pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
-
-fn place_in_parent(
-    cx: &Cx,
-    results: &SecondaryMap<slotmap::DefaultKey, LayoutResult>,
-    id: NodeId,
-) -> Option<[f32; 2]> {
-    let own = results.get(id.key())?.rect().origin;
-    let base = std::iter::successors(cx.parent(id), |&at| cx.parent(at))
-        .find_map(|at| results.get(at.key()))
-        .map_or([0.0; 2], |parent| {
-            let origin = parent.rect().origin;
-            [origin.x, origin.y]
-        });
-    Some([own.x - base[0], own.y - base[1]])
-}
+pub(crate) use viewport::{Popup, ViewportOverlay};
 
 fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
     crate::profile::count(crate::profile::Counter::LayoutFull, 1);

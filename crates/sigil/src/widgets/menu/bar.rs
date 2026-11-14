@@ -4,14 +4,13 @@ use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
-use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Owner, Signal, signal};
 use crate::style::States;
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Style, StyleAtom, Token, space,
 };
-use crate::widgets::Widget;
+use crate::widgets::{Side, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
@@ -128,7 +127,7 @@ fn slot_node(
             if open_idx.get() == Some(index) {
                 let close: Rc<dyn Fn()> = Rc::new(move || open_idx.set(None));
                 vec![
-                    menu_panel(rows.clone(), close, PopupSide::Below, host).layout(panel_layout(
+                    menu_panel(rows.clone(), close, Some(Side::Bottom), host).layout(panel_layout(
                         TRIGGER_H + POPUP_GAP,
                         0.0,
                         PANEL_WIDTH,

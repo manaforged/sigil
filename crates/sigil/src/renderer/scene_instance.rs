@@ -11,7 +11,7 @@ use crate::renderer::scene_command::{
     DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::shadow_paint::Shadow;
-use crate::scene::command::{Gradient, GradientKind};
+use crate::scene::command::{ColorSpace, CornerShape, Gradient, GradientKind};
 use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::shadow::expanded_shadow_rect;
 
@@ -58,9 +58,7 @@ impl BlendSpace {
 }
 
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
-#[cfg(feature = "kittest")]
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
-#[cfg(feature = "kittest")]
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
 pub(crate) const FILL_KIND_WASH: u32 = 3;
 pub(crate) const FILL_KIND_RADIAL: u32 = 4;
@@ -125,7 +123,14 @@ macro_rules! dash_and_transform {
             }
 
             pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
+                let shape = self.xform_y[3];
                 [self.xform_x, self.xform_y] = affine_rows(transform);
+                self.xform_y[3] = shape;
+                self
+            }
+
+            const fn shaped(mut self, code: f32) -> Self {
+                self.xform_y[3] = code;
                 self
             }
         }
@@ -170,7 +175,7 @@ pub(crate) fn draw_rect_instance(
     let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, rect, space);
     let outset = StrokeBand::reach(draw.stroke, rect);
     let [xform_x, xform_y] = affine_rows(IDENTITY);
-    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let opacity = crate::scene::command::opacity::from_basis(draw.opacity) * opacity_scale;
     RectInstance {
         rect: rect_fields(inflate(rect, outset)),
         color: space.rgba(draw.color),
@@ -181,6 +186,7 @@ pub(crate) fn draw_rect_instance(
         xform_x,
         xform_y,
     }
+    .shaped(draw.shape.code())
 }
 
 pub(crate) fn draw_gradient_instance(
@@ -190,11 +196,12 @@ pub(crate) fn draw_gradient_instance(
     stop_count: u32,
     space: BlendSpace,
 ) -> FillInstance {
-    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let opacity = crate::scene::command::opacity::from_basis(draw.opacity) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
     let (fill_kind, line, pattern_a) = pack_gradient(&draw.gradient);
     let span = draw.gradient.repeat_span();
     let [first, last] = span.unwrap_or([0.0, 1.0]);
+    let oklab = f32::from(u8::from(draw.gradient.space == ColorSpace::Oklab));
     FillInstance {
         line,
         stop_range: [
@@ -204,9 +211,10 @@ pub(crate) fn draw_gradient_instance(
             space.flag(),
         ],
         pattern_a,
-        pattern_b: [first, last, f32::from(u8::from(span.is_some())), 0.0],
+        pattern_b: [first, last, f32::from(u8::from(span.is_some())), oklab],
         ..base
     }
+    .shaped(draw.shape.code())
 }
 
 const fn pack_gradient(gradient: &Gradient) -> (u32, [f32; 4], [f32; 4]) {
@@ -235,10 +243,9 @@ pub(crate) fn draw_pattern_instance(
     space: BlendSpace,
     [stop_offset, stop_count]: [u32; 2],
 ) -> FillInstance {
-    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let opacity = crate::scene::command::opacity::from_basis(draw.opacity) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
     let (fill_kind, line, pattern_a, mut pattern_b) = match draw.pattern.normalized() {
-        #[cfg(feature = "kittest")]
         PatternKind::Slash {
             color,
             period,
@@ -249,7 +256,6 @@ pub(crate) fn draw_pattern_instance(
             premultiplied(space, color),
             [0.0; 4],
         ),
-        #[cfg(feature = "kittest")]
         PatternKind::Checker {
             color_a,
             color_b,
@@ -272,6 +278,7 @@ pub(crate) fn draw_pattern_instance(
         pattern_b,
         ..base
     }
+    .shaped(draw.shape.code())
 }
 
 fn fill_base(
@@ -327,7 +334,6 @@ pub(crate) fn wash_stops(wash: crate::scene::Wash) -> Vec<GradientStop> {
         .collect()
 }
 
-#[cfg(feature = "kittest")]
 fn premultiplied(space: BlendSpace, color: Color) -> [f32; 4] {
     let [r, g, b, a] = space.rgba(color);
     [r * a, g * a, b * a, a]
@@ -335,7 +341,7 @@ fn premultiplied(space: BlendSpace, color: Color) -> [f32; 4] {
 
 pub(crate) fn draw_shadow_instance(
     surface: Rect,
-    radii: CornerRadii,
+    (radii, shape): (CornerRadii, CornerShape),
     shadow: Shadow,
     opacity_scale: f32,
 ) -> ShadowInstance {
@@ -347,7 +353,7 @@ pub(crate) fn draw_shadow_instance(
         corner_radii: radii.normalized_for(surface.width, surface.height),
         color: shadow_color(shadow.color, opacity_scale),
         shadow_params: [offset_x, offset_y, shadow.blur.max(0.0), shadow.spread],
-        shadow_meta: [shadow.kind.as_f32(), 0.0, 0.0, 0.0],
+        shadow_meta: [shadow.kind.as_f32(), shape.code(), 0.0, 0.0],
     }
 }
 

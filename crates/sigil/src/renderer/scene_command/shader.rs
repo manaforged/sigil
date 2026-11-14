@@ -12,16 +12,16 @@ pub(crate) struct Programs<'c> {
     pub(crate) device: &'c wgpu::Device,
     pub(crate) format: wgpu::TextureFormat,
     pub(crate) composites: &'c mut Vec<LayerCompositePipeline>,
-    pub(crate) programs: &'c mut ShaderPrograms,
+    pub(crate) shaders: &'c mut ShaderPrograms,
 }
 
 impl<'c> Programs<'c> {
-    pub(crate) fn of(ctx: &'c mut WalkCtx<'_>) -> Self {
+    pub(crate) const fn of(ctx: &'c mut WalkCtx<'_>) -> Self {
         Self {
             device: ctx.device,
             format: ctx.format,
             composites: &mut *ctx.layer_pipelines,
-            programs: &mut *ctx.shader_programs,
+            shaders: &mut *ctx.shader_programs,
         }
     }
 
@@ -38,7 +38,7 @@ impl<'c> Programs<'c> {
             Form::Layer => [Some(uniform), Some(texture)],
         };
         let used = groups.iter().take_while(|group| group.is_some()).count();
-        let quad = self.programs.ready(
+        let quad = self.shaders.ready(
             self.device,
             (key, form, self.format),
             groups.get(..used).unwrap_or_default(),
@@ -70,7 +70,8 @@ impl SceneWalk<'_> {
         let place = Place {
             rect: draw.rect,
             radii: draw.radii,
-            opacity: f32::from(draw.opacity) / 10_000.0 * self.state.current_opacity(),
+            opacity: crate::scene::command::opacity::from_basis(draw.opacity)
+                * self.state.current_opacity(),
             transform,
             layer_uv: [0.0; 2],
         };
@@ -108,7 +109,7 @@ impl SceneWalk<'_> {
             device: ctx.device,
             format: ctx.format,
             composites: &mut *ctx.layer_pipelines,
-            programs: &mut *ctx.shader_programs,
+            shaders: &mut *ctx.shader_programs,
         };
         if let Some((quad, composite)) = programs.ready(key, Form::Fill) {
             composite.paint_shader(paint, quad, &instances, None);

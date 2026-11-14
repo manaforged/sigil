@@ -9,8 +9,11 @@ use tiny_skia::{
 };
 
 use crate::renderer::scene_command::walk::intersect_rect;
+use crate::scene::command::CornerShape;
+use crate::scene::command::payloads::shaped_outline;
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::geometry::KAPPA;
+use crate::scene::path_raster::skia_path;
 
 #[path = "outline.rs"]
 mod outline;
@@ -131,6 +134,22 @@ pub(super) fn rounded_rect(rect: Rect, radii: CornerRadii, bound: CpuBound) -> O
         return path_of(clipped, [0.0; 4]);
     }
     outline::clipped(rect, radii, clipped, bound.device_scale())
+}
+
+pub(super) fn shaped_rect(
+    rect: Rect,
+    (radii, shape): (CornerRadii, CornerShape),
+    bound: CpuBound,
+) -> Option<Path> {
+    if shape.is_round() {
+        return rounded_rect(rect, radii, bound);
+    }
+    if rect.width <= 0.0 || rect.height <= 0.0 {
+        return None;
+    }
+    bound.clip(rect)?;
+    let radii = radii.normalized_for(rect.width, rect.height);
+    skia_path(&shaped_outline(rect, radii, shape))
 }
 
 pub(super) fn rect_mask(

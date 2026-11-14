@@ -190,6 +190,50 @@ impl TextFace {
     }
 }
 
+impl TextFace {
+    /// Returns whether the run is bold.
+    #[must_use]
+    pub const fn is_bold(&self) -> bool {
+        self.bold
+    }
+
+    /// Returns whether the run is italic.
+    #[must_use]
+    pub const fn is_italic(&self) -> bool {
+        self.italic
+    }
+
+    /// Returns whether the run uses the `mono` font family.
+    #[must_use]
+    pub const fn is_mono(&self) -> bool {
+        self.mono
+    }
+
+    /// Returns whether a line is drawn through the run.
+    #[must_use]
+    pub const fn is_strike(&self) -> bool {
+        self.strike
+    }
+
+    /// Returns whether a line is drawn under the run.
+    #[must_use]
+    pub const fn is_underline(&self) -> bool {
+        self.underline
+    }
+
+    /// Returns whether the run is drawn fainter than surrounding text.
+    #[must_use]
+    pub const fn is_dim(&self) -> bool {
+        self.dim
+    }
+
+    /// Returns whether this is a terminal cell background on a fixed character grid.
+    #[must_use]
+    pub const fn is_square(&self) -> bool {
+        self.square
+    }
+}
+
 /// A byte range of text with a face.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -383,36 +427,58 @@ impl TextStyle {
         self
     }
 
-    /// The font size in pixels.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the font family name.
+    #[must_use]
+    pub fn family(&self) -> &str {
+        &self.font_family
+    }
+
+    /// Returns the font size in pixels.
     #[must_use]
     pub const fn size_px(&self) -> f32 {
         self.font_size
     }
 
-    /// The font weight from 1 to 1000.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the font weight from 1 to 1000.
     #[must_use]
     pub const fn weight(&self) -> u16 {
         self.font_weight
     }
 
-    /// The line height.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns whether the text is italic.
+    #[must_use]
+    pub const fn is_italic(&self) -> bool {
+        self.italic
+    }
+
+    /// Returns the line height.
     #[must_use]
     pub const fn height(&self) -> TextLineHeight {
         self.line_height
     }
 
-    /// The extra space between letters, in ems.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the extra space between letters, as a fraction of the font size.
     #[must_use]
     pub const fn spacing_em(&self) -> f32 {
         self.letter_spacing_em
+    }
+
+    /// Returns whether digits all take the same width.
+    #[must_use]
+    pub const fn is_tabular_nums(&self) -> bool {
+        self.tabular_nums
+    }
+
+    /// Returns the underline or strike line.
+    #[must_use]
+    pub const fn text_decoration(&self) -> crate::style::TextDecoration {
+        self.decoration
+    }
+
+    /// Returns the styled runs that override this style over byte ranges.
+    #[must_use]
+    pub const fn text_runs(&self) -> Option<&TextRuns> {
+        self.runs.as_ref()
     }
 }
 

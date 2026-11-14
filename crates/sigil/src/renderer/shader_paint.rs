@@ -63,12 +63,12 @@ pub(crate) struct Place {
 impl ShaderInstance {
     pub(crate) fn new(place: &Place, shading: &Shading, space: BlendSpace, scale: f32) -> Self {
         let rect = place.rect;
-        let [a, b, c, d, e, f, g, h] = shading.vars;
+        let v = shading.vars;
         let [layer_u, layer_v] = place.layer_uv;
         Self {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
             radii: place.radii.normalized_for(rect.width, rect.height),
-            vars: [[a, b, c, d], [e, f, g, h]],
+            vars: [[v[0], v[1], v[2], v[3]], [v[4], v[5], v[6], v[7]]],
             colors: shading.colors.map(|color| BlendSpace::Linear.rgba(color)),
             params: [
                 place.opacity.clamp(0.0, 1.0),

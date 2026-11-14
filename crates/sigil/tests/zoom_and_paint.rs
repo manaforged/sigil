@@ -74,7 +74,7 @@ fn a_canvas_draws_what_its_closure_records() {
                 30.0,
                 20.0,
             );
-            scene.draw_rect(DrawRect::new(inner, RED).opacity(u16::MAX));
+            scene.draw_rect(DrawRect::new(inner, RED).opacity(1.0));
         })
         .layout(LayoutStyle::block().width(100.0).height(60.0))
     })

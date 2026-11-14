@@ -72,6 +72,12 @@ macro_rules! space_setters {
             )
         }
 
+        /// Sets the point that scale and rotate turn around, as fractions of the box, like CSS `transform-origin`.
+        #[must_use]
+        fn transform_origin(self, x: f32, y: f32) -> Self {
+            space::space(self, SpaceAtom::TransformOrigin([x, y].map(fraction_units)))
+        }
+
         /// Turns the node around the x axis by `degrees` (in degrees), like Tailwind `rotate-x-*`.
         #[must_use]
         fn rotate_x(self, degrees: f32) -> Self {

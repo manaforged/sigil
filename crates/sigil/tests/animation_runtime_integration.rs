@@ -40,7 +40,7 @@ fn bar_width_and_opacity(host: &mut Host, bar_color: Color) -> (f32, f32) {
             SceneCommand::Rect(rect)
                 if rect.color() == bar_color && (rect.rect().height - BAR_HEIGHT).abs() < 0.5 =>
             {
-                let eff = opacity * f32::from(rect.opacity_bp()) / 10_000.0;
+                let eff = opacity * rect.alpha();
                 found = Some((rect.rect().width, eff));
                 break;
             }

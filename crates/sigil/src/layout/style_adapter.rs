@@ -83,6 +83,7 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::Radius(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
+        | StyleAtom::ZIndex(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
         | StyleAtom::FontItalic(_)

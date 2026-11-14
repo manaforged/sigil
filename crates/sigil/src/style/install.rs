@@ -170,9 +170,9 @@ where
                 .iter()
                 .chain(next)
                 .copied()
-                .any(StyleAtom::may_transform)
+                .any(|atom| atom.may_transform() || atom.restacks())
             {
-                crate::style::binding::bump_transform_generation();
+                crate::style::binding::bump_hit_generation();
             }
             let layout = previous
                 .iter()

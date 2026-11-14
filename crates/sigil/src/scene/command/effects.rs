@@ -294,7 +294,6 @@ pub enum Filter {
     HueRotate(f32),
     /// Mixes toward the inverted color by the amount, clamped to 1.
     Invert(f32),
-    #[cfg(feature = "kittest")]
     /// Multiplies alpha by the amount, clamped to 1.
     Opacity(f32),
     /// Scales saturation by the amount.

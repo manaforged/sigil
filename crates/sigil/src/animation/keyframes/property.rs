@@ -204,7 +204,7 @@ impl Property {
         })
     }
 
-    fn gradient(self) -> Option<(NumericAtomKind, f32)> {
+    const fn gradient(self) -> Option<(NumericAtomKind, f32)> {
         use NumericAtomKind as K;
         let (kind, percent) = match self {
             Self::GradientAngle(degrees) => return Some((K::GradientAngle, degrees)),

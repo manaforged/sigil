@@ -75,7 +75,7 @@ fn shade(
         device: ctx.device,
         format: ctx.format,
         composites: &mut *ctx.layer_pipelines,
-        programs: &mut *ctx.shader_programs,
+        shaders: &mut *ctx.shader_programs,
     };
     let Some((quad, composite)) = programs.ready(shading.key, Form::Layer) else {
         return false;

@@ -5,7 +5,7 @@ use tiny_skia::{
 
 use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
-use crate::scene::command::{Gradient, GradientKind, GradientStop};
+use crate::scene::command::{ColorSpace as Mixing, Gradient, GradientKind, GradientStop};
 use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
 use crate::style::Color;
 use crate::style::srgb::unit;
@@ -31,10 +31,10 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
     } else {
         SpreadMode::Pad
     };
-    let stops = if opaque {
+    let stops = if opaque && gradient.space == Mixing::Srgb {
         stops.to_vec()
     } else {
-        dense(&stops)
+        dense(&stops, gradient.space)
     };
     let stops = stops
         .iter()
@@ -66,7 +66,11 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
     Some((shader, space))
 }
 
-fn dense(stops: &[GradientStop]) -> Vec<GradientStop> {
+fn dense(stops: &[GradientStop], space: Mixing) -> Vec<GradientStop> {
+    let blend = match space {
+        Mixing::Oklab => crate::scene::command::oklab::mix,
+        Mixing::Srgb => mix,
+    };
     let mut out: Vec<GradientStop> = stops.first().copied().into_iter().collect();
     for pair in stops.windows(2) {
         let &[a, b] = pair else {
@@ -75,7 +79,7 @@ fn dense(stops: &[GradientStop]) -> Vec<GradientStop> {
         if b.offset > a.offset && a.color != b.color {
             out.extend((1..SUBSTEPS).map(|step| {
                 let t = f32::from(step) / f32::from(SUBSTEPS);
-                GradientStop::new(lerp(a.offset, b.offset, t), mix(a.color, b.color, t))
+                GradientStop::new(lerp(a.offset, b.offset, t), blend(a.color, b.color, t))
             }));
         }
         out.push(b);

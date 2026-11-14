@@ -5,7 +5,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
 use super::{AnsiPen, AnsiStyle, clip, same_row};
-use crate::terminal::caps::{Capabilities, Cursor};
+use crate::terminal::caps::{Capabilities, CursorStyle};
 use crate::terminal::paint::Grid;
 
 pub(crate) fn inline(
@@ -60,7 +60,7 @@ fn inline_cursor(
     let Some((col, row)) = at.filter(|(_, row)| *row < rows) else {
         return queue!(out, cursor::Hide);
     };
-    if caps.cursor == Cursor::Bar {
+    if caps.cursor_style == CursorStyle::Bar {
         queue!(out, cursor::SetCursorStyle::SteadyBar)?;
     }
     let rise = painted - 1 - row;

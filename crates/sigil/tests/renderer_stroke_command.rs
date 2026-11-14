@@ -36,7 +36,7 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0), gradient())
             .border_radius(CornerRadii::uniform(8.0))
-            .opacity(9_000)
+            .opacity(0.90)
             .stroked(gradient_stroke),
     );
     let scene = builder.finish();

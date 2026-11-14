@@ -141,12 +141,8 @@ impl CellWalk<'_> {
             return;
         }
         match command {
-            SceneCommand::Rect(draw) => {
-                let caret = self.paint.marks.caret(draw.node);
-                if caret || self.wanted(reach(draw.rect, draw.border)) {
-                    self.rect(draw);
-                }
-            }
+            SceneCommand::Rect(draw) => self.rect_command(draw),
+            SceneCommand::Rects(draws) => draws.iter().for_each(|draw| self.rect_command(draw)),
             SceneCommand::Gradient(draw) => {
                 if self.wanted(reach(draw.rect, draw.border)) {
                     self.gradient(draw);
@@ -315,6 +311,13 @@ impl CellWalk<'_> {
         }
     }
 
+    fn rect_command(&mut self, draw: &DrawRect) {
+        let caret = self.paint.marks.caret(draw.node);
+        if caret || self.wanted(reach(draw.rect, draw.border)) {
+            self.rect(draw);
+        }
+    }
+
     fn gradient(&mut self, draw: &DrawGradient) {
         let flat = gradient_flat(&draw.gradient.normalized());
         let draw_rect = DrawRect {
@@ -322,6 +325,7 @@ impl CellWalk<'_> {
             rect: draw.rect,
             color: flat,
             border_radius: draw.border_radius,
+            shape: draw.shape,
             opacity: draw.opacity,
             stroke: draw.stroke,
             tone: draw.tone,

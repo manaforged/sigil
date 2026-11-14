@@ -125,7 +125,7 @@ impl Presence {
         presence.release_when_done(Rc::clone(&clock));
         install_reactive(node, move || presence.atoms(&clock));
         if let Some(tag) = node.tag() {
-            tag.queue_edit(move |node| presence.resolve(node));
+            tag.queue_edit(move |tagged| presence.resolve(tagged));
         }
         let _previous = node.attach(presence);
         presence

@@ -34,7 +34,7 @@ impl<'t> EmitWalk<'_, 't> {
         let (effect, screen) = layer_effect(self.cx, id, &style, rect, content);
         let flat =
             style.transform.is_identity() && !matches!(effect, LayerEffect::Projected { .. });
-        let context = preserve.then(|| child_inherited(node, inherited, &style));
+        let nested = preserve.then(|| child_inherited(node, inherited, &style));
         if let Some(bounds) = visible_bounds(content, clip, screen, flat) {
             let scope = LayerScope {
                 clip: bounds,
@@ -52,11 +52,11 @@ impl<'t> EmitWalk<'_, 't> {
             self.nested(LayerOrClip::Layer(scope), |walk| {
                 walk.push_masked(id, inherited, None, style);
             });
-        } else if context.is_none() {
+        } else if nested.is_none() {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
         }
-        if let Some(context) = context {
-            self.push_nodes(planes(self.cx, id), &context, clip);
+        if let Some(nested) = nested {
+            self.push_nodes(planes(self.cx, id), &nested, clip);
         }
     }
 }
@@ -110,7 +110,7 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
         return None;
     }
     let result = node.extension::<LayoutResult>()?;
-    let mut bounds = result.rect();
+    let mut bounds = crate::animation::runtime::layout_motion::paint_bounds(node, result.rect());
     if let Some(shadow) = node.extension::<StyleBinding>().and_then(|binding| {
         binding
             .cascade()

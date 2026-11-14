@@ -119,7 +119,7 @@ fn seen(ui: &mut Harness) -> Seen {
                     && (rect.rect().height - SIDE).abs() < 0.5 =>
             {
                 return Seen {
-                    opacity: top.0 * f32::from(rect.opacity_bp()) / 10_000.0,
+                    opacity: top.0 * rect.alpha(),
                     color: rect.color(),
                     matrix: top.1,
                 };

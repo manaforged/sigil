@@ -35,6 +35,13 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             let ink = stroked(draw.rect, draw.stroke);
             draw.border.map_or(ink, |border| ink.union(border.rect))
         }
+        SceneCommand::Rects(draws) => draws
+            .iter()
+            .map(|draw| {
+                let ink = stroked(draw.rect, draw.stroke);
+                draw.border.map_or(ink, |border| ink.union(border.rect))
+            })
+            .reduce(Rect::union)?,
         SceneCommand::Gradient(draw) => {
             let ink = stroked(draw.rect, draw.stroke);
             draw.border.map_or(ink, |border| ink.union(border.rect))

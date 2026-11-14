@@ -146,13 +146,15 @@ impl<'a> CpuPainter<'a> {
             #[cfg(terminal_host)]
             SceneCommand::RestoreLayer => {}
             SceneCommand::Rect(draw) => self.rect(draw),
+            SceneCommand::Rects(rects) => rects.iter().for_each(|draw| self.rect(draw)),
             SceneCommand::Gradient(draw) => self.gradient(draw),
             SceneCommand::Pattern(draw) => self.pattern(draw),
             SceneCommand::DrawShadow {
                 rect,
                 radii,
+                shape,
                 shadow: s,
-            } => self.shadow(*rect, CornerRadii(*radii), s),
+            } => self.shadow(*rect, (CornerRadii(*radii), *shape), s),
             SceneCommand::GlyphRun(draw) => match draw.fill() {
                 Some(fill) => self.path(fill),
                 None => self.glyph_run(draw),

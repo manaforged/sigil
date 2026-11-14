@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
+use crate::scene::command::corner_shape::CornerShape;
 use crate::scene::command::fills::{FillRule, PathPaint};
-use crate::scene::command::payloads::{DrawPath, PathCommand};
+use crate::scene::command::payloads::{DrawPath, PathCommand, shaped_outline};
 #[cfg(feature = "scene")]
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::geometry::{IDENTITY, KAPPA};
@@ -36,6 +37,15 @@ impl Clip {
     #[must_use]
     pub const fn rounded(rect: Rect, radius: f32) -> Self {
         Self::Rounded(rect, [radius; 4])
+    }
+
+    /// A rectangle with corner `radii` `[top_left, top_right, bottom_right, bottom_left]` curved as `shape`.
+    #[must_use]
+    pub fn shaped(rect: Rect, radii: [f32; 4], shape: CornerShape) -> Self {
+        if shape.is_round() {
+            return Self::Rounded(rect, radii);
+        }
+        Self::outline(shaped_outline(rect, radii, shape).into(), FillRule::NonZero)
     }
 
     /// A disc of `radius` around `center`.
@@ -80,7 +90,7 @@ impl Clip {
 
     pub(crate) fn outline(outline: Arc<[PathCommand]>, rule: FillRule) -> Self {
         let key = outline_key(&outline, rule);
-        let draw = DrawPath::new(outline, IDENTITY, key).with_fill(rule, PathPaint::Solid(OPAQUE));
+        let draw = DrawPath::keyed(outline, IDENTITY, key).filled(rule, PathPaint::Solid(OPAQUE));
         Self::Path(draw)
     }
 

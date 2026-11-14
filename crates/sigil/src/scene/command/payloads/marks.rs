@@ -45,7 +45,7 @@ impl DrawSprite {
                 kind,
                 destination,
                 color,
-                opacity: 10_000,
+                opacity: crate::scene::command::opacity::OPAQUE,
             }
         }
     }
@@ -60,6 +60,8 @@ impl DrawSprite {
         }
     }
 }
+
+opacity_and_node!(DrawDecoration);
 
 /// A text decoration.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -99,16 +101,10 @@ impl DrawDecoration {
             kind,
             band,
             color,
-            opacity: 10_000,
+            opacity: crate::scene::command::opacity::OPAQUE,
             period: 0.0,
             line_width: 1.0,
         }
-    }
-
-    /// Sets the opacity in basis points; 10000 is opaque.
-    pub const fn opacity(mut self, opacity: u16) -> Self {
-        self.opacity = opacity;
-        self
     }
 
     /// Sets the width of the line; the default is 1.
@@ -123,12 +119,6 @@ impl DrawDecoration {
         self
     }
 
-    /// Returns the owning node, if any.
-    #[must_use]
-    pub const fn node(&self) -> Option<NodeId> {
-        self.node
-    }
-
     /// Returns the decoration band rectangle.
     #[must_use]
     pub const fn band(&self) -> Rect {
@@ -139,12 +129,6 @@ impl DrawDecoration {
     #[must_use]
     pub const fn color(&self) -> Color {
         self.color
-    }
-
-    /// Returns the opacity in basis points; 10000 is opaque.
-    #[must_use]
-    pub const fn opacity_bp(&self) -> u16 {
-        self.opacity
     }
 
     /// Returns the stroke width of the decoration line.

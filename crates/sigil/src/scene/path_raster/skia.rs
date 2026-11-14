@@ -1,11 +1,11 @@
 use tiny_skia::{
-    Color as TsColor, ColorSpace, FillRule as TsFillRule, LineCap, LineJoin, Paint, PathBuilder,
-    Pixmap, Shader, Stroke, StrokeDash, Transform as TsTransform,
+    Color as TsColor, ColorSpace, FillRule as TsFillRule, LineCap, LineJoin, Paint, Pixmap, Shader,
+    Stroke, StrokeDash, Transform as TsTransform,
 };
 
+use super::skia_path;
 use crate::scene::command::{
-    DrawPath, FillRule, MITER_LIMIT, PathCommand, PathPaint, PathStroke, StrokeCap, StrokeJoin,
-    Transform,
+    DrawPath, FillRule, MITER_LIMIT, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::geometry::compose;
 use crate::style::Color;
@@ -16,7 +16,6 @@ pub(super) fn raster(
     (width, height): (u16, u16),
     opacity: f32,
 ) -> Option<Vec<u8>> {
-    let path = outline(&draw.outline)?;
     let mut pixmap = Pixmap::new(u32::from(width), u32::from(height))?;
     let [[sx, kx, tx], [ky, sy, ty]] = compose(device, draw.transform);
     let transform = TsTransform::from_row(sx, ky, kx, sy, tx, ty);
@@ -25,29 +24,16 @@ pub(super) fn raster(
             FillRule::NonZero => TsFillRule::Winding,
             FillRule::EvenOdd => TsFillRule::EvenOdd,
         };
+        let path = skia_path(&draw.outline)?;
         pixmap.fill_path(&path, &skia_paint(paint, opacity), rule, transform, None);
     }
-    if let Some(stroke) = &draw.stroke {
+    if let Some(stroke) = &draw.stroke
+        && let Some(path) = skia_path(draw.stroke_outline())
+    {
         let paint = skia_paint(&stroke.paint, opacity);
         pixmap.stroke_path(&path, &paint, &skia_stroke(stroke), transform, None);
     }
     Some(pixmap.take())
-}
-
-fn outline(cmds: &[PathCommand]) -> Option<tiny_skia::Path> {
-    let mut builder = PathBuilder::new();
-    for cmd in cmds {
-        match *cmd {
-            PathCommand::MoveTo(x, y) => builder.move_to(x, y),
-            PathCommand::LineTo(x, y) => builder.line_to(x, y),
-            PathCommand::QuadTo(cx, cy, x, y) => builder.quad_to(cx, cy, x, y),
-            PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
-                builder.cubic_to(c1x, c1y, c2x, c2y, x, y);
-            }
-            PathCommand::Close => builder.close(),
-        }
-    }
-    builder.finish()
 }
 
 fn skia_stroke(stroke: &PathStroke) -> Stroke {

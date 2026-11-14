@@ -110,8 +110,8 @@ impl Font {
         let snapped: SmallVec<[([u8; 4], f32); AXES]> = axes
             .values()
             .map(|(tag, value)| {
-                let axis = collection.get_by_tag(Tag::new(&tag));
-                (tag, variations::snap(axis.as_ref(), value))
+                let font_axis = collection.get_by_tag(Tag::new(&tag));
+                (tag, variations::snap(font_axis.as_ref(), value))
             })
             .collect();
         let settings = self.variations.settings_at(weight, size_px, &snapped);

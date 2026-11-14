@@ -14,7 +14,7 @@ mod stream;
 mod table;
 mod table_data;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, rich, text};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::layout::cols;
@@ -52,8 +52,7 @@ pub fn markdown(source: impl Reactive<String>) -> NodeBuilder {
 
 /// One wrapped paragraph with inline markdown spans.
 pub fn markdown_inline(source: &str) -> TextBuilder {
-    let body = inline::styled(&parse::parse_inlines(source));
-    text(body.text).runs(body.runs)
+    rich(inline::styled(&parse::parse_inlines(source)))
 }
 
 struct KeyedBlock(Rc<Block>, bool);

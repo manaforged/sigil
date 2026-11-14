@@ -138,7 +138,7 @@ pub enum Fills {
 /// How the terminal host shows the text cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum Cursor {
+pub enum CursorStyle {
     /// The host sets a steady bar cursor at the caret; the default on a known modern terminal.
     Bar,
     /// The host leaves the cursor shape of the terminal unchanged.
@@ -169,7 +169,7 @@ pub struct Capabilities {
     pub(crate) glyphs: Glyphs,
     pub(crate) ambiguous: Ambiguous,
     pub(crate) erase: Erase,
-    pub(crate) cursor: Cursor,
+    pub(crate) cursor_style: CursorStyle,
     pub(crate) sync: bool,
     pub(crate) clipboard: ClipRoute,
     pub(crate) backdrop: Option<Backdrop>,
@@ -192,7 +192,7 @@ impl Default for Capabilities {
             glyphs: Glyphs::Unicode,
             ambiguous: Ambiguous::Narrow,
             erase: Erase::Background,
-            cursor: Cursor::Block,
+            cursor_style: CursorStyle::Block,
             sync: true,
             clipboard: ClipRoute::Osc52,
             backdrop: None,
@@ -237,7 +237,7 @@ fields!(Capabilities {
     "the glyph set" glyphs set_glyphs: Glyphs,
     "the width of ambiguous-width characters" ambiguous set_ambiguous: Ambiguous,
     "how clearing to the end of a line fills the cleared cells" erase set_erase: Erase,
-    "the text cursor shape" cursor set_cursor: Cursor,
+    "the text cursor style" cursor_style set_cursor_style: CursorStyle,
     "whether the terminal supports synchronized output" sync set_sync: bool,
     "how the host reaches the clipboard" clipboard set_clipboard: ClipRoute,
     "the startup notices" notices set_notices: Notices,

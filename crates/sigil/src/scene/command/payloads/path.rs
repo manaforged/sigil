@@ -5,9 +5,10 @@ use smallvec::SmallVec;
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
 use crate::scene::command::Transform;
+use crate::scene::command::corner_shape::CornerShape;
 use crate::scene::command::effects::transform_rect;
 use crate::scene::command::fills::{FillRule, PathPaint, StrokeCap, StrokeJoin};
-use crate::scene::geometry::KAPPA;
+use crate::scene::geometry::{IDENTITY, KAPPA};
 
 /// One segment of a path outline, with its points in path units.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -40,15 +41,52 @@ impl PathCommand {
 
 /// The line drawn along a path.
 #[derive(Clone, Debug, PartialEq)]
+#[must_use]
 pub struct PathStroke {
     pub(crate) paint: PathPaint,
     pub(crate) width: f32,
     pub(crate) cap: StrokeCap,
     pub(crate) join: StrokeJoin,
     pub(crate) dash: SmallVec<[f32; 4]>,
+    pub(crate) trim: [f32; 2],
 }
 
 impl PathStroke {
+    /// Creates a solid line of `paint` and `width` in path units with `cap` ends and `join` corners.
+    pub fn new(paint: impl Into<PathPaint>, width: f32, cap: StrokeCap, join: StrokeJoin) -> Self {
+        Self {
+            paint: paint.into(),
+            width,
+            cap,
+            join,
+            dash: SmallVec::new(),
+            trim: WHOLE,
+        }
+    }
+
+    /// Sets the dash lengths in path units, alternating on and off, as in SVG `stroke-dasharray`.
+    pub fn dashed(mut self, dash: &[f32]) -> Self {
+        self.dash = dash.iter().copied().collect();
+        self
+    }
+
+    /// Draws only the part of the line from `start` to `end`, as fractions from 0 to 1 of the whole path length.
+    pub fn trimmed(mut self, start: f32, end: f32) -> Self {
+        let unit = |v: f32| if v.is_nan() { 0.0 } else { v.clamp(0.0, 1.0) };
+        self.trim = [unit(start), unit(end)];
+        self
+    }
+
+    /// Returns the drawn part of the line as `[start, end]` fractions of the path length; `[0, 1]` draws it whole.
+    #[must_use]
+    pub const fn trim(&self) -> [f32; 2] {
+        self.trim
+    }
+
+    fn is_trimmed(&self) -> bool {
+        self.trim != WHOLE
+    }
+
     /// Returns the color or gradient the line is painted with.
     #[must_use]
     pub const fn paint(&self) -> &PathPaint {
@@ -100,6 +138,7 @@ impl PathStroke {
 }
 
 pub(crate) const MITER_LIMIT: f32 = 4.0;
+const WHOLE: [f32; 2] = [0.0, 1.0];
 
 /// Mixes one `PathCommand` verb tag and coordinates into `hash`.
 pub(crate) fn hash_path_cmd(hash: u64, cmd: PathCommand) -> u64 {
@@ -120,6 +159,24 @@ pub(crate) fn hash_path_cmd(hash: u64, cmd: PathCommand) -> u64 {
 /// A hash of `outline` mixed into `seed`.
 pub(crate) fn outline_key(seed: u64, outline: &[PathCommand]) -> u64 {
     outline.iter().copied().fold(seed, hash_path_cmd)
+}
+
+fn paint_key(seed: u64, paint: &PathPaint) -> u64 {
+    match paint {
+        PathPaint::Solid(color) => crate::fnv::mix(seed, crate::fnv::rgba(*color)),
+        PathPaint::Gradient(gradient) => gradient.key(seed),
+    }
+}
+
+fn stroke_key(seed: u64, stroke: &PathStroke) -> u64 {
+    let painted = paint_key(seed, &stroke.paint);
+    let shape = crate::fnv::mix(painted, 8 * stroke.cap as u64 + stroke.join as u64);
+    let sized = crate::fnv::mix_f32(shape, stroke.width);
+    let dashed = stroke.dash.iter().copied().fold(sized, crate::fnv::mix_f32);
+    if stroke.is_trimmed() {
+        return stroke.trim.into_iter().fold(dashed, crate::fnv::mix_f32);
+    }
+    dashed
 }
 
 /// The closed outline of `rect` with corner radii top-left, top-right, bottom-right, bottom-left.
@@ -152,6 +209,50 @@ pub(crate) fn rounded_outline(rect: Rect, radii: [f32; 4]) -> Vec<PathCommand> {
     ]
 }
 
+/// The closed outline of `rect` with corner radii top-left, top-right, bottom-right, bottom-left and corners of `shape`.
+pub(crate) fn shaped_outline(rect: Rect, radii: [f32; 4], shape: CornerShape) -> Vec<PathCommand> {
+    let code = shape.code();
+    if code == 0.0 {
+        return rounded_outline(rect, radii);
+    }
+    let (l, t) = (rect.origin.x, rect.origin.y);
+    let (r, b) = (l + rect.width, t + rect.height);
+    let limit = rect.width.min(rect.height).max(0.0) * 0.5;
+    let [tl, tr, br, bl] = radii.map(|radius| radius.clamp(0.0, limit));
+    let corners = [
+        ([r - tr, t + tr], [1.0, -1.0], tr, true),
+        ([r - br, b - br], [1.0, 1.0], br, false),
+        ([l + bl, b - bl], [-1.0, 1.0], bl, true),
+        ([l + tl, t + tl], [-1.0, -1.0], tl, false),
+    ];
+    let mut out = Vec::with_capacity(4 * usize::from(CORNER_STEPS) + 6);
+    for (center, sign, radius, reversed) in corners {
+        corner(&mut out, (center, sign, radius), reversed, code);
+    }
+    out.push(PathCommand::Close);
+    out
+}
+
+const CORNER_STEPS: u8 = 24;
+
+fn corner(out: &mut Vec<PathCommand>, place: ([f32; 2], [f32; 2], f32), reversed: bool, code: f32) {
+    let ([cx, cy], [sx, sy], radius) = place;
+    for step in 0..=CORNER_STEPS {
+        let fraction = f32::from(step) / f32::from(CORNER_STEPS);
+        let turn = if reversed { 1.0 - fraction } else { fraction };
+        let [ax, ay] = crate::scene::command::corner_shape::corner_point(
+            turn * std::f32::consts::FRAC_PI_2,
+            code,
+        );
+        let point = ((ax * sx).mul_add(radius, cx), (ay * sy).mul_add(radius, cy));
+        out.push(if out.is_empty() {
+            PathCommand::MoveTo(point.0, point.1)
+        } else {
+            PathCommand::LineTo(point.0, point.1)
+        });
+    }
+}
+
 /// A command that fills and strokes a vector path.
 #[derive(Clone, Debug, PartialEq)]
 #[must_use]
@@ -161,22 +262,38 @@ pub struct DrawPath {
     pub(crate) transform: Transform,
     pub(crate) fill: Option<(FillRule, PathPaint)>,
     pub(crate) stroke: Option<PathStroke>,
+    pub(crate) trimmed: Option<Arc<[PathCommand]>>,
     pub(crate) opacity: u16,
     pub(crate) bounds: Rect,
     pub(crate) key: u64,
 }
 
+opacity_and_node!(DrawPath);
+
 impl DrawPath {
-    /// Sets the opacity in basis points; 10000 is opaque.
-    pub const fn opacity(mut self, opacity: u16) -> Self {
-        self.opacity = opacity;
+    /// Creates a path of `outline` segments in the coordinates of the scene, with no fill and no stroke.
+    pub fn new(outline: impl Into<Arc<[PathCommand]>>) -> Self {
+        let outline = outline.into();
+        let key = outline_key(crate::fnv::OFFSET, &outline);
+        Self::keyed(outline, IDENTITY, key)
+    }
+
+    /// Fills the inside of the path with `paint`, deciding inside by `rule`.
+    pub fn filled(mut self, rule: FillRule, paint: impl Into<PathPaint>) -> Self {
+        let paint = paint.into();
+        self.key = paint_key(crate::fnv::mix(self.key, 1 + rule as u64), &paint);
+        self.fill = Some((rule, paint));
         self
     }
 
-    /// Returns the owning node, if any.
-    #[must_use]
-    pub const fn node(&self) -> Option<NodeId> {
-        self.node
+    /// Draws `stroke` along the outline.
+    pub fn stroked(mut self, stroke: PathStroke) -> Self {
+        self.key = stroke_key(self.key, &stroke);
+        self.trimmed = stroke
+            .is_trimmed()
+            .then(|| super::path_trim::trim(&self.outline, stroke.trim));
+        self.stroke = Some(stroke);
+        self.measured()
     }
 
     /// Returns the transformed path bounding rectangle.
@@ -189,12 +306,6 @@ impl DrawPath {
     #[must_use]
     pub const fn transform(&self) -> Transform {
         self.transform
-    }
-
-    /// Returns the opacity in basis points; 10000 is opaque.
-    #[must_use]
-    pub const fn opacity_bp(&self) -> u16 {
-        self.opacity
     }
 
     /// Returns the segments of the outline, in path units before `transform`.
@@ -224,28 +335,24 @@ impl DrawPath {
         self.stroke.as_ref()
     }
 
-    pub(crate) fn new(outline: Arc<[PathCommand]>, transform: Transform, key: u64) -> Self {
+    pub(crate) fn keyed(outline: Arc<[PathCommand]>, transform: Transform, key: u64) -> Self {
         Self {
             node: None,
             outline,
             transform,
             fill: None,
             stroke: None,
-            opacity: 10_000,
+            trimmed: None,
+            opacity: crate::scene::command::opacity::OPAQUE,
             bounds: Rect::new(Point::new(0.0, 0.0), 0.0, 0.0),
             key,
         }
         .measured()
     }
 
-    pub(crate) fn with_fill(mut self, rule: FillRule, paint: PathPaint) -> Self {
-        self.fill = Some((rule, paint));
-        self
-    }
-
-    pub(crate) fn stroked(mut self, stroke: PathStroke) -> Self {
-        self.stroke = Some(stroke);
-        self.measured()
+    #[cfg(not(feature = "scene"))]
+    pub(crate) fn stroke_outline(&self) -> &[PathCommand] {
+        self.trimmed.as_deref().unwrap_or(&self.outline)
     }
 
     pub(crate) fn shift(&mut self, dx: f32, dy: f32) {

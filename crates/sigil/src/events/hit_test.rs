@@ -1,5 +1,6 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId, TopLayer};
+use crate::layout::stack::{Stack, stacked};
 use crate::layout::{LayoutEngine, LayoutResult};
 use crate::style::StyleBinding;
 use crate::style::projection::{in_context, planes, requests_3d};
@@ -17,16 +18,14 @@ pub(crate) type NodePath = SmallVec<[NodeId; 64]>;
 
 type HitItems = SmallVec<[HitItem; 64]>;
 
-type Planes = SmallVec<[NodeId; 8]>;
-
 #[derive(Debug)]
 pub(crate) struct HitTestCache {
     cx_generation: u64,
     layout_generation: u64,
-    transform_generation: u64,
+    hit_generation: u64,
     items: HitItems,
     transforms: SmallVec<[HitTransform; 64]>,
-    contexts: Vec<(NodeId, Planes)>,
+    contexts: Vec<(NodeId, Stack)>,
     query: u64,
     transformed: bool,
     pub(super) visual_transforms: bool,
@@ -53,7 +52,7 @@ impl Default for HitTestCache {
         Self {
             cx_generation: u64::MAX,
             layout_generation: u64::MAX,
-            transform_generation: u64::MAX,
+            hit_generation: u64::MAX,
             items: HitItems::new(),
             transforms: SmallVec::new(),
             contexts: Vec::new(),
@@ -79,10 +78,10 @@ impl HitTestCache {
     fn refresh(&mut self, cx: &Cx, layout: &LayoutEngine) {
         let cx_generation = cx.mutation_generation();
         let layout_generation = layout.generation();
-        let transform_generation = crate::style::binding::transform_generation();
+        let hit_generation = crate::style::binding::hit_generation();
         if self.cx_generation == cx_generation
             && self.layout_generation == layout_generation
-            && self.transform_generation == transform_generation
+            && self.hit_generation == hit_generation
             && self
                 .contexts
                 .iter()
@@ -103,7 +102,7 @@ impl HitTestCache {
         self.transformed = self.transforms.iter().any(|item| item.transformed);
         self.cx_generation = cx_generation;
         self.layout_generation = layout_generation;
-        self.transform_generation = transform_generation;
+        self.hit_generation = hit_generation;
     }
 
     pub(super) const fn uses_transforms(&self) -> bool {
@@ -294,7 +293,7 @@ fn emit(
             emit_child(cx, child, below, cache, deferred);
         }
         cache.contexts.push((id, order));
-    } else if let Some(order) = crate::layout::stack::stacked(cx, node) {
+    } else if let Some(order) = stacked(cx, node) {
         for child in order {
             emit_child(cx, child, below, cache, deferred);
         }

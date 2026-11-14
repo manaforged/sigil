@@ -16,6 +16,7 @@ use crate::renderer::scene_paint::{PaintCtx, scene_pipeline};
 use crate::renderer::shadow_paint::Shadow;
 use crate::renderer::shadow_paint::shadow_pipeline;
 use crate::scene::CornerRadii;
+use crate::scene::command::CornerShape;
 use crate::scene::command::trim::{Trimmed, tile_phase, trim_to_view};
 
 const TRIM_PAD: f32 = 2.0;
@@ -162,7 +163,6 @@ impl SceneWalk<'_> {
         let space = BlendSpace::from_format(self.ctx.format);
         let stops = match draw.pattern {
             PatternKind::Wash(wash) => gradient_stop_records(&wash_stops(wash), space),
-            #[cfg(feature = "kittest")]
             _ => Vec::new(),
         };
         let range = [
@@ -196,16 +196,18 @@ impl SceneWalk<'_> {
             Some(view) => trim_to_view(rect, radii, view, margin)?,
             None => Trimmed::whole(rect, radii),
         };
-        #[cfg(feature = "kittest")]
         let dash = trimmed.dash_origin(rect, band);
-        #[cfg(not(feature = "kittest"))]
-        let dash = [0.0; 2];
         Some((transform, trimmed, dash))
     }
 
-    pub(super) fn queue_shadow(&mut self, rect: [f32; 4], radii: CornerRadii, shadow: Shadow) {
+    pub(super) fn queue_shadow(
+        &mut self,
+        rect: [f32; 4],
+        corners: (CornerRadii, CornerShape),
+        shadow: Shadow,
+    ) {
         let surface = transform_rect(self.state.current_transform(), rect_from_fields(rect));
-        let instance = draw_shadow_instance(surface, radii, shadow, self.state.current_opacity());
+        let instance = draw_shadow_instance(surface, corners, shadow, self.state.current_opacity());
         if self
             .state
             .clip_rect(rect_from_fields(instance.rect))

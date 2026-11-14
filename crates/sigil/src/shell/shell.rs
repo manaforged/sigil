@@ -53,7 +53,7 @@ pub struct WinitShell {
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
     window_zooms: Vec<(WinitWindowHandle, f32)>,
-    window_cursors: Vec<(WinitWindowHandle, crate::events::Cursor)>,
+    window_cursors: Vec<(WinitWindowHandle, crate::events::CursorIcon)>,
     title_bars: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<TaggedEvent>,

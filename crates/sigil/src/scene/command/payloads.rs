@@ -1,7 +1,32 @@
 #![allow(clippy::redundant_pub_crate)]
 
+macro_rules! opacity_and_node {
+    ($($command:ty),+) => {$(
+        impl $command {
+            /// Sets the opacity from 0 (transparent) to 1 (opaque).
+            pub const fn opacity(mut self, opacity: f32) -> Self {
+                self.opacity = crate::scene::command::opacity::to_basis(opacity);
+                self
+            }
+
+            /// Returns the opacity from 0 (transparent) to 1 (opaque).
+            #[must_use]
+            pub fn alpha(&self) -> f32 {
+                crate::scene::command::opacity::from_basis(self.opacity)
+            }
+
+            /// Returns the owning node, if any.
+            #[must_use]
+            pub const fn node(&self) -> Option<crate::kernel::NodeId> {
+                self.node
+            }
+        }
+    )+};
+}
+
 mod marks;
 mod path;
+mod path_trim;
 
 pub use marks::DrawDecoration;
 kittest_pub! {
@@ -12,7 +37,7 @@ kittest_pub! {
 #[cfg(vector_paint)]
 pub(crate) use path::MITER_LIMIT;
 pub use path::{DrawPath, PathCommand, PathStroke};
-pub(crate) use path::{hash_path_cmd, outline_key, rounded_outline};
+pub(crate) use path::{hash_path_cmd, outline_key, shaped_outline};
 
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
@@ -22,8 +47,10 @@ use crate::style::{Color, Tone};
 use crate::scene::corner_radii::CornerRadii;
 
 use super::Wash;
+use super::corner_shape::CornerShape;
 use super::fills::{PatternKind, Stroke};
 use super::gradient::{Gradient, GradientKind};
+use super::opacity::OPAQUE;
 
 /// A command that fills or strokes a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,6 +64,8 @@ pub struct DrawRect {
     pub(crate) color: Color,
     /// The radius of each corner.
     pub(crate) border_radius: CornerRadii,
+    /// The curve of each corner.
+    pub(crate) shape: CornerShape,
     /// The opacity in basis points; 10000 is opaque.
     pub(crate) opacity: u16,
     /// The stroke around the rectangle, if any.
@@ -159,16 +188,16 @@ macro_rules! shaped_box {
                 self
             }
 
-            /// Sets the opacity in basis points; 10000 is opaque.
-            pub const fn opacity(mut self, opacity: u16) -> Self {
-                self.opacity = opacity;
+            /// Sets the curve of every corner, as in CSS `corner-shape`.
+            pub const fn shape(mut self, shape: CornerShape) -> Self {
+                self.shape = shape;
                 self
             }
 
-            /// Returns the owning node, if any.
+            /// Returns the curve of every corner.
             #[must_use]
-            pub const fn node(&self) -> Option<NodeId> {
-                self.node
+            pub const fn corner_shape(&self) -> CornerShape {
+                self.shape
             }
 
             /// Returns the rectangle bounds in logical pixels.
@@ -181,12 +210,6 @@ macro_rules! shaped_box {
             #[must_use]
             pub const fn corner_radii(&self) -> [f32; 4] {
                 self.border_radius.0
-            }
-
-            /// Returns the opacity in basis points; 10000 is opaque.
-            #[must_use]
-            pub const fn opacity_bp(&self) -> u16 {
-                self.opacity
             }
 
             #[cfg(feature = "kittest")]
@@ -213,6 +236,7 @@ macro_rules! shaped_box {
 }
 
 shaped_box!(DrawRect, DrawGradient, DrawPattern);
+opacity_and_node!(DrawRect, DrawGradient, DrawPattern, DrawImage);
 
 impl DrawRect {
     /// Creates a solid rectangle with square corners at full opacity.
@@ -222,7 +246,8 @@ impl DrawRect {
             rect,
             color,
             border_radius: CornerRadii::ZERO,
-            opacity: 10_000,
+            shape: CornerShape::Round,
+            opacity: OPAQUE,
             stroke: None,
             tone: None,
             leaf: false,
@@ -259,6 +284,8 @@ pub struct DrawGradient {
     pub(crate) gradient: Gradient,
     /// The radius of each corner of the filled rectangle.
     pub(crate) border_radius: CornerRadii,
+    /// The curve of each corner.
+    pub(crate) shape: CornerShape,
     /// The opacity in basis points; 10000 is opaque.
     pub(crate) opacity: u16,
     /// The line drawn along the edge of the rectangle, if it has one.
@@ -303,7 +330,8 @@ impl DrawGradient {
             rect,
             gradient: gradient.into(),
             border_radius: CornerRadii::ZERO,
-            opacity: 10_000,
+            shape: CornerShape::Round,
+            opacity: OPAQUE,
             stroke: None,
             tone: None,
             leaf: false,
@@ -340,6 +368,8 @@ pub struct DrawPattern {
     pub(crate) pattern: PatternKind,
     /// The radius of each corner of the filled rectangle.
     pub(crate) border_radius: CornerRadii,
+    /// The curve of each corner.
+    pub(crate) shape: CornerShape,
     /// The opacity in basis points; 10000 is opaque.
     pub(crate) opacity: u16,
     /// The line drawn along the edge of the rectangle, if it has one.
@@ -359,7 +389,8 @@ impl DrawPattern {
             rect,
             pattern,
             border_radius: CornerRadii::ZERO,
-            opacity: 10_000,
+            shape: CornerShape::Round,
+            opacity: OPAQUE,
             stroke: None,
         }
     }
@@ -410,7 +441,7 @@ impl DrawImage {
             source,
             fit: ObjectFit::Fill,
             destination,
-            opacity: 10_000,
+            opacity: OPAQUE,
             crop: None,
             raster: None,
         }
@@ -420,18 +451,6 @@ impl DrawImage {
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
         self.fit = fit;
         self
-    }
-
-    /// Sets the opacity in basis points; 10000 is opaque.
-    pub const fn opacity(mut self, opacity: u16) -> Self {
-        self.opacity = opacity;
-        self
-    }
-
-    /// Returns the owning node, if any.
-    #[must_use]
-    pub const fn node(&self) -> Option<NodeId> {
-        self.node
     }
 
     /// Returns the decoded image source.
@@ -450,12 +469,6 @@ impl DrawImage {
     #[must_use]
     pub const fn destination(&self) -> Rect {
         self.destination
-    }
-
-    /// Returns the opacity in basis points; 10000 is opaque.
-    #[must_use]
-    pub const fn opacity_bp(&self) -> u16 {
-        self.opacity
     }
 
     #[cfg(feature = "kittest")]

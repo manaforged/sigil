@@ -141,7 +141,7 @@ fn entry_list(picker: FilePicker) -> impl IntoNode {
         .row_height(rows(1.0))
         .viewport_height(rows(LIST_ROWS))
         .keyboard(true)
-        .cursor(cursor);
+        .active(cursor);
         let enter = picker.clone();
         let back = picker.clone();
         let id = container()

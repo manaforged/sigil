@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::events::Cursor;
+use crate::events::CursorIcon;
 use crate::events::cursor::node_cursor;
 use crate::events::links::{LinkText, byte_at, has_links, link_ranges, link_text};
 use crate::geometry::Point;
@@ -47,9 +47,9 @@ impl EventRouter {
     kittest_pub! {
         /// The cursor of the deepest hovered node that sets one, or the default.
         #[doc(hidden)]
-        pub fn cursor(&mut self, cx: &Cx, layout: &LayoutEngine) -> Cursor {
+        pub fn cursor(&mut self, cx: &Cx, layout: &LayoutEngine) -> CursorIcon {
             let Some(global) = self.last_pointer.as_ref().map(|pointer| pointer.position) else {
-                return Cursor::Default;
+                return CursorIcon::Default;
             };
             let links = &mut self.link_hover;
             for target in self.hover_targets.iter().rev() {
@@ -60,10 +60,10 @@ impl EventRouter {
                     return cursor;
                 }
                 if has_links(node) && links.over_link(cx, layout, target.id, global) {
-                    return Cursor::Pointer;
+                    return CursorIcon::Pointer;
                 }
             }
-            Cursor::Default
+            CursorIcon::Default
         }
     }
 }

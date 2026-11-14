@@ -10,7 +10,6 @@ mod wash;
 pub(crate) use crate::scene::state;
 pub(crate) mod walk;
 
-#[cfg(feature = "kittest")]
 pub(crate) use crate::scene::command::StrokeDash;
 pub(crate) use crate::scene::command::{
     CommandScene, DecorationGeometry, DecorationKind, DrawDecoration, DrawGradient, DrawImage,

@@ -4,7 +4,6 @@ use crate::layout::LayoutResult;
 use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{BlendMode, LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::style_adapter::corner_radii_for;
 use crate::style::atom::OPACITY_UNITS;
 use crate::style::{RenderStyle, Theme};
 
@@ -92,7 +91,7 @@ impl<'t> EmitWalk<'_, 't> {
         };
         let scope = LayerScope {
             clip,
-            clip_radii: corner_radii_for(style.border_radius),
+            clip_radii: style.paint.radii(),
             effect: LayerEffect::Backdrop(filters.into_vec().into()),
             opacity: f32::from(style.opacity) / OPACITY_UNITS,
             blend: BlendMode::Normal,

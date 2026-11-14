@@ -240,13 +240,20 @@ fn shift_rect(rect: Rect, dx: f32, dy: f32) -> Rect {
     )
 }
 
+fn shift_draw_rect(draw: &mut crate::scene::command::DrawRect, dx: f32, dy: f32) {
+    draw.rect = shift_rect(draw.rect, dx, dy);
+    if let Some(border) = draw.border.as_mut() {
+        border.rect = shift_rect(border.rect, dx, dy);
+    }
+}
+
 pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
     match command {
         SceneCommand::PushClip(clip) => clip.shift(dx, dy),
-        SceneCommand::Rect(draw) => {
-            draw.rect = shift_rect(draw.rect, dx, dy);
-            if let Some(border) = draw.border.as_mut() {
-                border.rect = shift_rect(border.rect, dx, dy);
+        SceneCommand::Rect(draw) => shift_draw_rect(draw, dx, dy),
+        SceneCommand::Rects(draws) => {
+            for draw in std::sync::Arc::make_mut(draws) {
+                shift_draw_rect(draw, dx, dy);
             }
         }
         SceneCommand::Gradient(draw) => {

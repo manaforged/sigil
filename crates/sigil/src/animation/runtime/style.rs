@@ -352,9 +352,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     if binding.animator_overlay().is_none() && !binding.has_transition() {
         return;
     }
-    let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
-        .find_map(|ancestor| cx.get(ancestor)?.extension::<Theme>())
-        .unwrap_or_else(crate::style::theme::fallback_theme);
+    let theme = theme_at(cx, id);
     let tone = node
         .extension::<ToneContext>()
         .copied()
@@ -364,6 +362,12 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     owner_by_id(node.owner, || {
         binding.update_animations(theme, tone, inherited_text, node.tag());
     });
+}
+
+pub(crate) fn theme_at(cx: &Cx, id: NodeId) -> &Theme {
+    std::iter::successors(Some(id), |&at| cx.parent(at))
+        .find_map(|ancestor| cx.get(ancestor)?.extension::<Theme>())
+        .unwrap_or_else(crate::style::theme::fallback_theme)
 }
 
 fn transition_cache_key(state: &State) -> u64 {

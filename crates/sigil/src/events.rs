@@ -48,7 +48,7 @@ pub fn invoke_node(
     pointer_dispatch::invoke_node(cx, layout, target, false);
 }
 
-pub use crate::hal::cursor::{Cursor, ResizeDirection};
+pub use crate::hal::cursor::{CursorIcon, ResizeDirection};
 pub(crate) use crate::hal::events::ClickConfig;
 pub use crate::hal::events::{
     Event, FileDropEvent, FileDropPhase, Gesture, GestureEvent, ImeEvent, Key, KeyEvent, KeyPhase,

@@ -80,7 +80,7 @@ impl EventRouter {
             .and_then(|id| cx.get(id))
             .map(|node| node.a11y.role);
         match role {
-            Some(Role::TextInput | Role::PasswordInput) => Focused::Text,
+            Some(role) if role.is_text_entry() => Focused::Text,
             Some(Role::Terminal) => Focused::Terminal,
             _ => Focused::Other,
         }

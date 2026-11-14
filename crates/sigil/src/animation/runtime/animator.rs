@@ -1,4 +1,4 @@
-use crate::animation::{Spring, Transition};
+use crate::animation::{Motion, Spring, Transition};
 use crate::reactive::{Runtime, Signal, batch, cleanup, signal, untrack};
 
 use crate::animation::runtime::config::AnimationConfig;
@@ -71,10 +71,11 @@ impl Animator {
 
     /// Coasts from the current value at `velocity` and slows to rest by exponential decay, like Motion `inertia`.
     pub fn fling(&self, velocity: f32) {
-        self.fling_to(velocity, &[]);
+        let _ = self.fling_to(velocity, &[]);
     }
 
     /// Springs to the point in `points` nearest to where a `fling` would rest, starting at `velocity`; returns that point, or `None` when it picked none.
+    #[must_use]
     pub fn fling_to(&self, velocity: f32, points: &[f32]) -> Option<f32> {
         self.with_inner(|inner| inner.fling(velocity, points))
             .flatten()
@@ -207,6 +208,21 @@ impl SignalAnimator {
         *self
             .id
             .get_or_insert_with(|| state::register_config(signal, active, config))
+    }
+
+    pub(crate) fn rebase(&mut self, by: f32) {
+        if !finite(by, "rebase offset") {
+            return;
+        }
+        let config = self.config;
+        let moved = self.id.and_then(|id| {
+            id.update(|motion| {
+                *motion = Motion::configured(motion.value() + by, motion.velocity(), config);
+            })
+        });
+        if moved.is_none() {
+            self.apply_immediate(self.signal.try_peek().unwrap_or_default() + by);
+        }
     }
 
     pub(crate) fn snap(&mut self, value: f32) {

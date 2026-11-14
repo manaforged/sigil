@@ -129,7 +129,7 @@ fn anchor_popup(
             let bounds = anchor_bounds.peek();
             menu(menu_open)
                 .accessible("Caret actions")
-                .anchor(Point::new(bounds.origin.x, bounds.origin.y + bounds.height))
+                .at(Point::new(bounds.origin.x, bounds.origin.y + bounds.height))
                 .item(
                     MenuItem::new("Insert snippet")
                         .activate(move || chosen_action.set("Inserted snippet")),

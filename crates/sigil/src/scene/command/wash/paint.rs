@@ -26,7 +26,7 @@ impl Wash {
         let seed = wash.seed;
         let (body, (wx, wy)) = wash.body((x, y), centre);
         let (amount, fibre) = wash.soak((x, y), body, (wx, wy));
-        let hue = ((fbm(wx * 0.6 + 90.0, wy * 0.5, 3, seed) - 0.3) / 0.4).clamp(0.0, 1.0);
+        let hue = ((fbm(wx.mul_add(0.6, 90.0), wy * 0.5, 3, seed) - 0.3) / 0.4).clamp(0.0, 1.0);
         let pigment = ramp(&wash, hue);
         let paper = rgb(wash.paper);
         let dark = wash.dark();

@@ -98,7 +98,7 @@ fn builder_draw_rect_outside_any_scope_emits_only_draw() {
                 draw.corner_radii().map(f32::to_bits),
                 expected_draw.corner_radii().map(f32::to_bits)
             );
-            assert_eq!(draw.opacity_bp(), expected_draw.opacity_bp());
+            assert_eq!(draw.alpha().to_bits(), expected_draw.alpha().to_bits());
         }
         other => {
             let other_kinds = command_kinds(other);
@@ -132,7 +132,7 @@ const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
         },
     )
     .radius(6.0)
-    .opacity(9_500)
+    .opacity(0.95)
 }
 
 fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {

@@ -131,7 +131,7 @@ struct Piece<'a> {
 }
 
 impl<'a> Piece<'a> {
-    fn base(range: Range<usize>, style: &'a TextStyle) -> Self {
+    const fn base(range: Range<usize>, style: &'a TextStyle) -> Self {
         Self {
             range,
             family: style.font_family.as_str(),

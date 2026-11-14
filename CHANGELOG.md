@@ -6,52 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Added
-
-- `provide(value)` and `context::<T>()` share a value with every component, handler and effect under an owner; the nearest provider wins.
-- `keyed(key, view)` mounts `view` again from scratch when `key` changes, which replays its enter animation and resets its local state.
-- `Widget::cursor(Cursor)` sets the pointer cursor over a node on the window host and in the browser. Links show `Cursor::Pointer` and enabled text inputs show `Cursor::Text` by default.
-- `Widget::hittable(false)` lets pointer events pass through any widget, such as a decorative overlay.
-- `Widget::pinch` and `Widget::rotation` deliver trackpad pinch and rotation gestures to the node under the pointer. `ResizeDirection` is also exported from `sigil::events`.
-- `aspect_ratio(ratio)` keeps a width-to-height ratio when one side is auto, in block, flex and grid layout.
-- `Position::Sticky` holds a node at its insets inside the nearest scroll area while its parent is in view, and paints it above its in-flow siblings.
-- `TextStyle::{axis, feature}` and `TextFace::{axis, feature, weight, family}` set continuous variable-font axes and OpenType features.
-- `Spans` and `rich(spans)` build one paragraph from styled runs that shape, wrap and select together and expose one accessible string.
-- `Shader::new(wgsl)` runs a WGSL `shade` function on the GPU: `.background(shader)` and `SceneBuilder::draw_shader` fill with it, and `Paint::filter_shader(shader)` composites a live subtree through it. `.var(index, value)` binds up to 8 numbers and `.color(index, color)` up to 4 colors. The CPU renderer and the terminal draw color 0 for a fill and the plain subtree for a filter. The [Shaders recipe](docs/guide/recipes.md#shaders) lists the WGSL contract.
-- Canvas authors can build every scene payload without the `kittest` feature: `GradientStop::new`, `Gradient::{new, repeat}`, `Stroke::new`, `DrawGradient::new`, `DrawPattern::new`, `DrawDecoration::new`, `stroked` on the box payloads, `Shadow::{kind, reach}`, `Transform3D::{IDENTITY, then, translate, rotate_x, rotate_y, rotate_z, perspective, around}`, and `SceneBuilder::{draw_pattern, draw_decoration, draw_text_shadow, composite}`.
-- `Canvas::redraw_on(source)` repaints a canvas when a signal, memo, or closure changes.
-- `Render::font(family, bytes, face)` in `sigil-kittest` renders an offscreen image with a custom font.
-- `DefaultFonts::set(family, bytes, face)` and a `serif` slot.
-- `Paint::{backdrop_blur, backdrop_brightness, backdrop_saturate}` and the classes `backdrop-blur-*`, `backdrop-brightness-*`, and `backdrop-saturate-*` filter what is painted behind a node, inside its corners, like CSS `backdrop-filter`, on the wgpu and CPU renderers. The terminal host draws the node without the filter.
-- `Property::{BackdropBlur, BackdropBrightness, BackdropSaturate}` animate the backdrop filter with `.drive` and keyframes.
-- `LayerEffect::Backdrop`, and `Mask::new` and `LayerScope::layer_effect` without the `kittest` feature.
-- `PointerEvent::velocity()` returns the pointer speed in logical pixels per second over its last moves; it is zero after a pause, so a held release does not fling.
-- `Animator::fling(velocity)` coasts to rest, `Animator::fling_to(velocity, points)` springs to the point the fling would reach, and `Animator::velocity()` reads the current speed in value units per second.
-- `Spring::duration(d).bounce(b)` builds a spring from a visual duration and a bounce, `Transition::spring(spring)` gives any spring to a style transition, `Keyframes::delay(d)` holds the start frame, and `Keyframes::fade()` fades in.
-- `Paint::preserve_3d()` keeps the 3D transforms of children in the 3D space of the node, like CSS `transform-style: preserve-3d`, so a flip card is one rotating parent with two `backface_hidden()` faces. Opacity below 1, filters, clip paths, masks, blend modes and clipping overflow force flat, as in CSS.
-- `Widget::enter(property)` and `Widget::exit(property)` animate a node from a start value when it mounts and to an end value before it is removed, on the timing of its `.transition`. A keyed row of `for_each` holds its space until the exit ends.
-- `Property::{GradientAngle, GradientCenterX, GradientCenterY}` animate the angle and centre of a gradient background, and `GradientAxis::Angle(degrees)` sets any linear angle. `GradientAxis` is now `#[non_exhaustive]`; add a `_` arm to a match on it.
-- `words(text, |index, word| ..)` lays text out as one node per word behind one accessible name, and `ticker(value)` rolls a number to each new value with `.format` and `.spring`. `Keyframes` and `Spring` are in the prelude.
-- `animation::reduced_transparency()` and `AppConfig::reduced_transparency(bool)`. With the setting on, a backdrop filter is skipped and the node keeps its own fill. `animation::reduced_motion()` is now reactive, both settings are read again when the window gains focus, and `clock()` holds still under reduced motion.
-- `Harness::step(by)` in `sigil-kittest` moves the test clock and stops there, so a test can read a running animation. `Harness::advance` still settles afterwards.
-- `accessibility_hidden(bool)` on any node keeps it and its subtree out of the accessibility tree, like `aria-hidden`. The pieces of `words` and `ticker` use it, so a screen reader reads the text once. The index that `words` passes is now a `u32`, so `STAGGER * index` needs no cast.
-- `Paint::shadow` takes `impl Into<Shadow>`, so a node can carry `Shadow::glow(color, blur, spread)`; `.shadow(Elevation::Lg)` still compiles. `Shadow::glow` now takes blur before spread, the order of `Shadow::new` and CSS `box-shadow`: swap the last two arguments of an existing call.
-- `Widget::track_visible(signal)` writes the share of a node that is inside its scroll views and the window, from 0.0 to 1.0, after each layout pass and scroll. `ScrollBuilder::scroll_x(signal)` scrolls sideways.
-- `toast_queue` toasts rise in, fade out, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
-- A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
-- `Transition::layout()` also glides a node from its old place in its parent to its new one when layout moves it, like Motion `layout`: `row.transition(Transition::smooth().layout())`. When a keyed row leaves a list, the rows below slide up. It moves position only; a size change snaps. Toasts in `toast_queue` use it.
-- `Animator::peek()` reads the value without subscribing, and `Animator::fling_to` returns the point it springs to. The prelude exports the argument types of its setters: `Shadow`, `Elevation`, `FontFamily`, `BlendMode`, `ClipShape`, `MaskImage`, `MaskSize`, `Property`, `FocusRing`, `DragState`, `ValueStep`, `Overflow`, `Position`, `FlexWrap`, and `TrackSize`. `image(..)` takes `.role`, `.accessible`, `.description`, `.accessibility_hidden`, `.focusable`, `.tab_index`, and `.hittable`; `ImageBuilder::alt(text)` is now `ImageBuilder::accessible(text)`.
-- Toasts in a stack share the width of the widest, a draggable bottom sheet shows a grip bar, and `skeleton().shimmer(true)` draws translucent bars with a bright band on light and dark themes.
-
-### Fixed
-
-- `AppConfig::font(FontFamily::Serif, ..)` loads the face; it was dropped with a warning.
-- Changing the transition of a running style animation keeps its value and velocity; it restarted from rest.
-- A glyph with more than 32 outline curves in one band, such as a serif capital "W", keeps every curve on the GPU; the extra curves were dropped and the glyph drew streaks. Glyph data in the GPU buffer is sized to each outline.
-- GPU text draws no thin tick beside an italic stem; a curve that bends toward a sample ray without reaching it counted as two crossings.
-- The fill shader compiles in a browser; WebGPU rejected its derivative call inside a branch, so a screen with a gradient, wash or pattern fill drew nothing.
-
-## [0.2.0] - 2026-11-12
+## [0.2.0] - 2026-11-14
 
 First public release.
 
@@ -84,6 +39,54 @@ First public release.
 - `Key` implements `From<&str>`, `From<char>`, `PartialEq<&str>`, and `PartialEq<char>` so `Shortcut::primary('k')`, `Shortcut::ctrl("s")`, and `event.key() == '?'` work directly.
 - `Selection` implements `Default` and `From<SelectionMode>`.
 - `sigil_kittest::Target` and `Query` accept `String`, `&String`, `Role`, `(Role, &str)`, and `(Role, String)`.
+- `provide(value)` and `context::<T>()` share a value with every component, handler and effect under an owner; the nearest provider wins.
+- `keyed(key, view)` mounts `view` again from scratch when `key` changes, which replays its enter animation and resets its local state.
+- `Widget::cursor(CursorIcon)` sets the pointer cursor over a node on the window host and in the browser. `CursorIcon` names its variants as the CSS `cursor` keywords do. Links show `CursorIcon::Pointer` and enabled text inputs show `CursorIcon::Text` by default.
+- `Widget::hittable(false)` lets pointer events pass through any widget, such as a decorative overlay.
+- `Widget::pinch` and `Widget::rotation` deliver trackpad pinch and rotation gestures to the node under the pointer. `ResizeDirection` is also exported from `sigil::events`.
+- `aspect_ratio(ratio)` keeps a width-to-height ratio when one side is auto, in block, flex and grid layout.
+- `Position::Sticky` holds a node at its insets inside the nearest scroll area while its parent is in view, and paints it above its in-flow siblings.
+- `TextStyle::{axis, feature}` and `TextFace::{axis, feature, weight, family}` set continuous variable-font axes and OpenType features.
+- `Spans` and `rich(spans)` build one paragraph from styled runs that shape, wrap and select together and expose one accessible string.
+- `Shader::new(wgsl)` runs a WGSL `shade` function on the GPU: `.background(shader)` and `SceneBuilder::draw_shader` fill with it, and `Paint::filter_shader(shader)` composites a live subtree through it. `.var(index, value)` binds up to 8 numbers and `.color(index, color)` up to 4 colors. The CPU renderer and the terminal draw color 0 for a fill and the plain subtree for a filter. The [Shaders recipe](docs/guide/recipes.md#shaders) lists the WGSL contract.
+- Canvas authors can build every scene payload without the `kittest` feature: `GradientStop::new`, `Gradient::{new, repeat}`, `Stroke::new`, `DrawGradient::new`, `DrawPattern::new`, `DrawDecoration::new`, `stroked` on the box payloads, `Shadow::{kind, reach}`, `Transform3D::{IDENTITY, then, translate, rotate_x, rotate_y, rotate_z, perspective, around}`, and `SceneBuilder::{draw_pattern, draw_decoration, draw_text_shadow, composite}`.
+- `Canvas::redraw_on(source)` repaints a canvas when a signal, memo, or closure changes.
+- `Render::font(family, bytes, face)` in `sigil-kittest` renders an offscreen image with a custom font.
+- `DefaultFonts::set(family, bytes, face)` and a `serif` slot.
+- `Paint::{backdrop_blur, backdrop_brightness, backdrop_saturate}` and the classes `backdrop-blur-*`, `backdrop-brightness-*`, and `backdrop-saturate-*` filter what is painted behind a node, inside its corners, like CSS `backdrop-filter`, on the wgpu and CPU renderers. The terminal host draws the node without the filter.
+- `Property::{BackdropBlur, BackdropBrightness, BackdropSaturate}` animate the backdrop filter with `.drive` and keyframes.
+- `LayerEffect::Backdrop`, and `Mask::new` and `LayerScope::layer_effect` without the `kittest` feature.
+- `PointerEvent::velocity()` returns the pointer speed in logical pixels per second over its last moves; it is zero after a pause, so a held release does not fling.
+- `Animator::fling(velocity)` coasts to rest, `Animator::fling_to(velocity, points)` springs to the point the fling would reach, and `Animator::velocity()` reads the current speed in value units per second.
+- `Spring::duration(d).bounce(b)` builds a spring from a visual duration and a bounce, `Transition::spring(spring)` gives any spring to a style transition, `Keyframes::delay(d)` holds the start frame, and `Keyframes::fade()` fades in.
+- `Paint::preserve_3d()` keeps the 3D transforms of children in the 3D space of the node, like CSS `transform-style: preserve-3d`, so a flip card is one rotating parent with two `backface_hidden()` faces. Opacity below 1, filters, clip paths, masks, blend modes and clipping overflow force flat, as in CSS.
+- `Widget::enter(property)` and `Widget::exit(property)` animate a node from a start value when it mounts and to an end value before it is removed, on the timing of its `.transition`. A keyed row of `for_each` holds its space until the exit ends.
+- `Property::{GradientAngle, GradientCenterX, GradientCenterY}` animate the angle and centre of a gradient background, and `GradientAxis::Angle(degrees)` sets any linear angle. `GradientAxis` is now `#[non_exhaustive]`; add a `_` arm to a match on it.
+- `words(text, |index, word| ..)` lays text out as one node per word behind one accessible name, and `ticker(value)` rolls a number to each new value with `.format` and `.spring`. `Keyframes` and `Spring` are in the prelude.
+- `animation::reduced_transparency()` and `AppConfig::reduced_transparency(bool)`. With the setting on, a backdrop filter is skipped and the node keeps its own fill. `animation::reduced_motion()` is now reactive, both settings are read again when the window gains focus, and `clock()` holds still under reduced motion.
+- `Harness::step(by)` in `sigil-kittest` moves the test clock and stops there, so a test can read a running animation. `Harness::advance` still settles afterwards.
+- `accessibility_hidden(bool)` on any node keeps it and its subtree out of the accessibility tree, like `aria-hidden`. The pieces of `words` and `ticker` use it, so a screen reader reads the text once. The index that `words` passes is now a `u32`, so `STAGGER * index` needs no cast.
+- `Paint::shadow` takes `impl Into<Shadow>`, so a node can carry `Shadow::glow(color, blur, spread)`; `.shadow(Elevation::Lg)` still compiles. `Shadow::glow` now takes blur before spread, the order of `Shadow::new` and CSS `box-shadow`: swap the last two arguments of an existing call.
+- `Widget::track_visible(signal)` writes the share of a node that is inside its scroll views and the window, from 0.0 to 1.0, after each layout pass and scroll. `ScrollBuilder::scroll_x(signal)` scrolls sideways.
+- `toast_queue` toasts rise in, fade out, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
+- A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
+- `Transition::layout()` also glides a node from its old place in its parent to its new one when layout moves it, like Motion `layout`: `row.transition(Transition::smooth().layout())`. When a keyed row leaves a list, the rows below slide up. A size change morphs too: the box is drawn at the in-between rect and its children are clipped to it, so text never stretches. Toasts in `toast_queue` use it.
+- `Animator::peek()` reads the value without subscribing, and `Animator::fling_to` returns the point it springs to. The prelude exports the argument types of its setters: `Shadow`, `Elevation`, `FontFamily`, `BlendMode`, `ClipShape`, `MaskImage`, `MaskSize`, `Property`, `FocusRing`, `DragState`, `ValueStep`, `Overflow`, `Position`, `FlexWrap`, and `TrackSize`. `image(..)` takes `.role`, `.accessible`, `.description`, `.accessibility_hidden`, `.focusable`, `.tab_index`, and `.hittable`; `ImageBuilder::alt(text)` is now `ImageBuilder::accessible(text)`.
+- Toasts in a stack share the width of the widest, a draggable bottom sheet shows a grip bar, and `skeleton().shimmer(true)` draws translucent bars with a bright band on light and dark themes.
+- `Widget::shared(key)` morphs a node from the last rect and corner radius of the node with the same key that just left or is leaving, like Motion `layoutId`: a thumbnail into its detail view, a pill into its palette, and back. Accessibility uses the final layout.
+- `Widget::anchor(side, align)` places a node beside its previous sibling in the top layer and flips it to the other side when it would leave the window. `Side::Top` is new.
+- `Widget::{role, description, focusable, tab_index}` set the accessibility role, the description, and the focus order of any widget.
+- `Paint::z_index(order)` paints and hit-tests a node above or below its siblings, and `Paint::transform_origin(x, y)` sets the point that scale and rotation turn about.
+- `Paint::{radius_top, radius_right, radius_bottom, radius_left}` and the classes `rounded-{t,r,b,l}-*` round one side of a box.
+- `Color::mix(to, t, ColorSpace)` mixes two colors in sRGB or OKLab.
+- `TextStyle` getters read the resolved font without the `kittest` feature: `family`, `size_px`, `weight`, `height`, `spacing_em`, `text_decoration`, `text_runs`, `is_italic`, `is_tabular_nums`. `TextFace` has `is_bold`, `is_italic`, `is_mono`, `is_strike`, `is_underline`, `is_dim`, and `is_square`.
+- `LayoutStyle::{flex_direction, align_content, box_sizing, stretch_width}` and the `FlexDirection`, `AlignContent`, and `BoxSizing` types work without the `kittest` feature, as do the terminal image encoders `sigil::terminal::graphics::{blocks, sextants, png}`. `Animator`, `PathBuilder`, `FlexDirection`, and `AlignContent` are in the prelude.
+- `Paint::corner_shape(CornerShape)` curves the corners of a fill, border and shadow as CSS `corner-shape` does: `Round`, `Squircle`, `Bevel`, `Scoop`, or `Superellipse(k)`. `DrawRect`, `DrawGradient` and `DrawPattern` take `.shape(..)`, and `Clip::shaped` clips to one. Children of a clipping node are still clipped to round corners.
+- `Gradient::space(ColorSpace::Oklab)` mixes the stops of a gradient in OKLab, like CSS `linear-gradient(in oklab, ..)`, on the wgpu, CPU and vector renderers.
+- `PathStroke::new(paint, width, cap, join)` with `.dashed(..)` and `.trimmed(start, end)`, which draws only the part of a stroke between two fractions of its length, like SVG path trimming.
+- `SceneBuilder::draw_rects(rects)` appends many rectangles as one `SceneCommand::Rects` command, and `SceneBuilder::{push_layer, pop_layer}` are public.
+- `DrawPath::new(outline)` with `.filled(rule, paint)` and `.stroked(stroke)`, `From<Color>` and `From<Gradient>` for `PathPaint`, a shaping `GlyphRun::new`, and `CommandScene::{from_commands, into_commands}`, so a canvas or a custom renderer can build every command.
+- `StrokeStyle::Dashed`, `StrokeAlign::Centered`, `PatternKind::{Slash, Checker}` and `Filter::Opacity` work without the `kittest` feature.
 
 ### Changed
 
@@ -113,6 +116,12 @@ First public release.
 - `markdown`, `html`, `toast`, `progress`, and `gauge` accept `impl Reactive<...>` inputs, `scroll` and `axis_drag` accept `impl Into<NodeBuilder>`, `Widget::grid_columns` / `grid_rows` accept `impl Into<Vec<TrackSize>>`, and `Menu::{item, check}` accept `impl Into<Option<Shortcut>>`.
 - `segmented`, `dropdown`, and `Combobox::new` accept `impl IntoIterator<Item = impl Into<String>>`, and `tag_input` accepts `impl IntoIterator<Item = impl Into<T>>`.
 - `ListRowBuilder::selected`, `ListRowBuilder::disclosure`, `DiffBuilder::view`, and `TableBuilder::density` accept reactive values (`impl Reactive<...>`).
+- The focused row of a list is its active row, after ARIA `aria-activedescendant`: `VirtualListBuilder::cursor` is now `active`, `ListState::cursor` is `active`, `CursorEdge` is `ListEdge`, and `Combobox::{cursor, move_cursor, commit_cursor}` are `{active, move_active, commit_active}`.
+- The terminal cursor shape type `sigil::terminal::Cursor` is now `CursorStyle`, with `cursor_style()` and `set_cursor_style(..)`.
+- `MenuBuilder::anchor(point)` is now `MenuBuilder::at(point)`; `anchor` names placement beside a sibling.
+- Scene payloads take and return opacity as an `f32` from 0 to 1: `.opacity(0.5)` replaces basis points, and `alpha()` replaces `opacity_bp()`.
+- `SceneCommand::DrawShadow` has a `shape` field and `PathStroke` has a `trim` field; build a stroke with `PathStroke::new`.
+- `Widget::anchor` and the built-in popups anchor to the nearest sibling before them.
 
 ### Fixed
 
@@ -146,6 +155,12 @@ First public release.
 - `GridSolver` sizes `Length::Auto` grids to their content height (clamped by `min_size`/`max_size`) and honors Flex `assigned_h` instead of expanding nested grids to the viewport height.
 - `divider`, `splitter`, and `sidebar` snap hairline rules and resize handles to cell units on terminal/cell hosts so flex panes and sibling controls do not accumulate sub-cell drift.
 - `section_label` and `hint_bar` set `.shrink(0.0)` so 1-row chrome bars do not clip text inside flex columns.
+- A window shortcut on a plain letter no longer fires while a search field, a number field, or a combobox has focus; only `Role::TextInput` blocked it.
+- `AppConfig::font(FontFamily::Serif, ..)` loads the face; it was dropped with a warning.
+- Changing the transition of a running style animation keeps its value and velocity; it restarted from rest.
+- A glyph with more than 32 outline curves in one band, such as a serif capital "W", keeps every curve on the GPU; the extra curves were dropped and the glyph drew streaks. Glyph data in the GPU buffer is sized to each outline.
+- GPU text draws no thin tick beside an italic stem; a curve that bends toward a sample ray without reaching it counted as two crossings.
+- The fill shader compiles in a browser; WebGPU rejected its derivative call inside a branch, so a screen with a gradient, wash or pattern fill drew nothing.
 
 ### Migration
 

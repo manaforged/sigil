@@ -144,7 +144,7 @@ fn build_context_menu<Row: 'static>(
     }
     let mut panel = panel
         .accessible(theme_string(StringKey::TableMenu))
-        .anchor(Point::new(x, y))
+        .at(Point::new(x, y))
         .width(menu_width);
     for item in items {
         panel = panel.item(item);

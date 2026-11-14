@@ -20,7 +20,6 @@ pub enum PaintFill {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum PatternKind {
-    #[cfg(feature = "kittest")]
     /// Diagonal lines of one color.
     Slash {
         /// The color of the lines; the space between them stays unpainted.
@@ -30,7 +29,6 @@ pub enum PatternKind {
         /// The width of each line, clamped to 0 through `period`.
         line_width: f32,
     },
-    #[cfg(feature = "kittest")]
     /// Squares that alternate between two colors.
     Checker {
         /// The color of the square at the origin of the filled rectangle.
@@ -51,7 +49,6 @@ impl PatternKind {
         #[must_use]
         pub const fn normalized(self) -> Self {
             match self {
-                #[cfg(feature = "kittest")]
                 Self::Slash {
                     color,
                     period,
@@ -69,7 +66,6 @@ impl PatternKind {
                         line_width,
                     }
                 }
-                #[cfg(feature = "kittest")]
                 Self::Checker {
                     color_a,
                     color_b,
@@ -90,9 +86,7 @@ impl PatternKind {
         #[must_use]
         pub const fn tile_extent(self) -> f32 {
             match self.normalized() {
-                #[cfg(feature = "kittest")]
                 Self::Slash { period, .. } => period,
-                #[cfg(feature = "kittest")]
                 Self::Checker { cell, .. } => cell * 2.0,
                 Self::Wash(_) => WASH_EXTENT,
             }
@@ -110,12 +104,12 @@ pub(crate) const TRANSPARENT: Color = Color {
     a: 0,
 };
 
-#[cfg(feature = "kittest")]
+#[cfg(raster)]
 const MIN_PATTERN_LENGTH: f32 = 1.0;
-#[cfg(feature = "kittest")]
+#[cfg(raster)]
 const MAX_PATTERN_LENGTH: f32 = 1024.0;
 
-#[cfg(feature = "kittest")]
+#[cfg(raster)]
 const fn pattern_length(length: f32) -> f32 {
     if length.is_nan() {
         MIN_PATTERN_LENGTH
@@ -245,7 +239,6 @@ impl GradientStop {
 pub enum StrokeStyle {
     /// One unbroken line.
     Solid,
-    #[cfg(feature = "kittest")]
     /// Dashes with a gap of this length between them.
     Dashed(f32),
 }
@@ -254,7 +247,6 @@ pub enum StrokeStyle {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum StrokeAlign {
-    #[cfg(feature = "kittest")]
     /// Half of the width lies on each side of the shape's edge.
     Centered,
     /// The whole width lies inside the shape's edge.
@@ -351,4 +343,16 @@ pub enum PathPaint {
     Solid(Color),
     /// A linear, radial, or conic gradient.
     Gradient(super::gradient::Gradient),
+}
+
+impl From<Color> for PathPaint {
+    fn from(color: Color) -> Self {
+        Self::Solid(color)
+    }
+}
+
+impl From<super::gradient::Gradient> for PathPaint {
+    fn from(gradient: super::gradient::Gradient) -> Self {
+        Self::Gradient(gradient)
+    }
 }

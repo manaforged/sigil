@@ -59,6 +59,7 @@ struct VertexOut {
     @location(11) pattern_b: vec4<f32>,
     @location(12) @interpolate(flat) fill_kind: u32,
     @location(13) dash_origin: vec2<f32>,
+    @location(14) @interpolate(flat) shape: f32,
 };
 
 @vertex
@@ -93,6 +94,7 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     out.pattern_a = inst.pattern_a;
     out.pattern_b = inst.pattern_b;
     out.fill_kind = inst.stop_range.z;
+    out.shape = inst.xform_y.w;
     return out;
 }
 
@@ -119,7 +121,18 @@ fn target_premultiplied(mixed: vec4<f32>, linear: bool) -> vec4<f32> {
     return vec4<f32>(select(rgb, srgb_decode(rgb), linear) * mixed.a, mixed.a);
 }
 
-fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool) -> vec4<f32> {
+fn oklab_mixed(a: vec4<f32>, b: vec4<f32>, amount: f32, linear: bool) -> vec4<f32> {
+    let alpha = mix(a.a, b.a, amount);
+    if alpha <= 0.0 {
+        return vec4<f32>(0.0);
+    }
+    let lab_a = linear_to_oklab(select(srgb_decode(a.rgb), a.rgb, linear)) * a.a;
+    let lab_b = linear_to_oklab(select(srgb_decode(b.rgb), b.rgb, linear)) * b.a;
+    let rgb = clamp(oklab_to_linear(mix(lab_a, lab_b, amount) / alpha), vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(select(srgb_encode(rgb), rgb, linear) * alpha, alpha);
+}
+
+fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool, oklab: bool) -> vec4<f32> {
     let count = clamp(count_in, 1u, 8u);
     var prev = read_stop(base, 0u);
     if t < prev.offset {
@@ -129,6 +142,9 @@ fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool) -> vec4<f32> 
         let next = read_stop(base, i);
         if t < next.offset {
             let amount = (t - prev.offset) / (next.offset - prev.offset);
+            if oklab {
+                return oklab_mixed(prev.color, next.color, amount, linear);
+            }
             let a = gamma_premultiplied(prev.color, linear);
             let b = gamma_premultiplied(next.color, linear);
             return target_premultiplied(mix(a, b, amount), linear);
@@ -426,7 +442,7 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    let d = rounded_rect_sdf(in.local, in.half_size, in.corner_radii);
+    let d = shaped_rect_sdf(in.local, in.half_size, in.corner_radii, in.shape);
     let aa = max(fwidth(d) * 0.5, 0.0001);
     let coverage = edge_coverage(d, aa);
     let linear = in.stops_meta.w == 1u;
@@ -442,7 +458,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         color = checker_color(pattern, in.start, in.pattern_a, in.pattern_b);
     } else {
         let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
-        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear);
+        let oklab = in.pattern_b.w > 0.5;
+        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear, oklab);
     }
 
     let alpha = color.a * in.opacity * coverage;

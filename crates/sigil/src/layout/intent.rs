@@ -1,4 +1,3 @@
-#[cfg(feature = "kittest")]
 use crate::layout::style_data::AlignContent;
 use crate::layout::style_data::{
     AlignItems, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
@@ -111,9 +110,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::DISPLAY)
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the main axis of a flex box.
-    #[doc(hidden)]
     pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Self {
         self.0.flex_direction = flex_direction;
         self.mark(LayoutFields::DIRECTION)
@@ -131,9 +128,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::ALIGN_ITEMS)
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the `align-content` value of the node.
-    #[doc(hidden)]
     pub const fn align_content(mut self, align_content: AlignContent) -> Self {
         self.0.align_content = Some(align_content);
         self.mark(LayoutFields::ALIGN_CONTENT)
@@ -151,9 +146,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::ALIGN_SELF)
     }
 
-    #[cfg(feature = "kittest")]
     /// Sets the box sizing mode of the node.
-    #[doc(hidden)]
     pub const fn box_sizing(mut self, box_sizing: BoxSizing) -> Self {
         self.0.box_sizing = box_sizing;
         self.mark(LayoutFields::BOX_SIZING)

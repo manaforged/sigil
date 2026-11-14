@@ -165,10 +165,10 @@ impl LayoutEngine {
             if unchanged {
                 continue;
             }
-            let node = cx
+            let target = cx
                 .get_mut_untracked(id)
                 .ok_or_else(|| Error::node_missing(id))?;
-            let _ = node.attach_untracked(result);
+            let _ = target.attach_untracked(result);
             cx.delta.record(id, DeltaKind::Layout);
             self.published_result.insert(id.key(), result);
         }

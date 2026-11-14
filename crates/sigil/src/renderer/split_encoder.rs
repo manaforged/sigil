@@ -83,6 +83,9 @@ impl SplitEncoder {
         for command in commands {
             match command {
                 SceneCommand::Rect(_) => vertices += size_of::<RectInstance>() as u64,
+                SceneCommand::Rects(rects) => {
+                    vertices += (rects.len() * size_of::<RectInstance>()) as u64;
+                }
                 SceneCommand::Gradient(draw) => {
                     let stops = draw.gradient.stops.len().clamp(1, MAX_GRADIENT_STOPS);
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
@@ -91,7 +94,6 @@ impl SplitEncoder {
                 SceneCommand::Pattern(draw) => {
                     let stops = match draw.pattern {
                         PatternKind::Wash(_) => MAX_PIGMENTS + 1,
-                        #[cfg(feature = "kittest")]
                         _ => 1,
                     };
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;

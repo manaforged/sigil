@@ -94,9 +94,9 @@ combobox(state);
 # };
 ```
 
-`Combobox` holds the option list, the query, the selection, the popup open flag, and the cursor. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_cursor(delta)`. `.disabled(impl Reactive<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
+`Combobox` holds the option list, the query, the selection, the popup open flag, and the active row. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_active(delta)`. `.disabled(impl Reactive<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
 
-Typing opens the popup and clears the selection unless the text equals the committed label. Arrow Down opens or moves the cursor, Arrow Up moves it, Enter commits the cursor row, Escape closes. The popup also closes when the text field loses focus. The popup caps at eight 28 px rows and scrolls past that. Committing bumps a session signal that rebuilds the field so the label repaints.
+Typing opens the popup and clears the selection unless the text equals the committed label. Arrow Down opens or moves the active row, Arrow Up moves it, Enter commits the active row, Escape closes. The popup also closes when the text field loses focus. The popup caps at eight 28 px rows and scrolls past that. Committing bumps a session signal that rebuilds the field so the label repaints.
 
 ## dropdown
 

@@ -97,6 +97,14 @@ pub(crate) enum NumericAtomKind {
     GradientCenterX,
     /// The gradient center's y in percent of the box height, from 0 to 100; the gradient must be radial or conic.
     GradientCenterY,
+    /// Top left corner radius in logical pixels, 0 or more.
+    RadiusTopLeft,
+    /// Top right corner radius in logical pixels, 0 or more.
+    RadiusTopRight,
+    /// Bottom right corner radius in logical pixels, 0 or more.
+    RadiusBottomRight,
+    /// Bottom left corner radius in logical pixels, 0 or more.
+    RadiusBottomLeft,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -121,7 +129,7 @@ pub(crate) enum Family {
 }
 
 impl NumericAtomKind {
-    pub(crate) const COUNT: usize = 46;
+    pub(crate) const COUNT: usize = 50;
 
     pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::Opacity,
@@ -170,6 +178,10 @@ impl NumericAtomKind {
         Self::GradientAngle,
         Self::GradientCenterX,
         Self::GradientCenterY,
+        Self::RadiusTopLeft,
+        Self::RadiusTopRight,
+        Self::RadiusBottomRight,
+        Self::RadiusBottomLeft,
     ];
 
     pub(crate) const fn affects_layout(self) -> bool {

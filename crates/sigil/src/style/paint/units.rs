@@ -34,6 +34,6 @@ pub(super) fn letter_spacing_units(em: f32) -> i16 {
     clippy::cast_sign_loss,
     reason = "the fraction is clamped to 0..=1 before it is encoded in ten-thousandths"
 )]
-pub(super) fn fraction_units(value: f32) -> u16 {
+pub(in crate::style) fn fraction_units(value: f32) -> u16 {
     (value.clamp(0.0, 1.0) * 10_000.0).round() as u16
 }

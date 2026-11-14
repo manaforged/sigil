@@ -3,7 +3,6 @@ use crate::kernel::Node;
 use crate::scene::builder::SceneBuilder;
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shader::Shading;
-use crate::scene::style_adapter::corner_radii_for;
 use crate::style::shader_paint::lookup;
 use crate::style::{RenderStyle, Theme};
 
@@ -25,7 +24,9 @@ pub(super) fn push_fill(
     );
     let inset = top.max(right).max(bottom).max(left);
     let radii = CornerRadii(
-        corner_radii_for(style.border_radius)
+        style
+            .paint
+            .radii()
             .0
             .map(|radius| (radius - inset).max(0.0)),
     );

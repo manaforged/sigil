@@ -56,7 +56,10 @@ pub(super) fn push_side_borders(
         return;
     }
     let color = border_color(style, paint.theme);
-    let fill = |side: crate::geometry::Rect| DrawRect::new(side, color).opacity(style.opacity);
+    let fill = |side: crate::geometry::Rect| {
+        DrawRect::new(side, color)
+            .opacity(crate::scene::command::opacity::from_basis(style.opacity))
+    };
     let Rect {
         origin,
         width,

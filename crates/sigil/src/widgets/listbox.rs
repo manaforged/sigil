@@ -12,7 +12,7 @@ mod nav;
 mod selection;
 mod state;
 
-pub use state::{CursorEdge, ListState};
+pub use state::{ListEdge, ListState};
 
 pub(crate) use filter::Matcher;
 pub(crate) use nav::{LIST, Move, RADIO_GROUP, RowSource, TAB_LIST, TREE};

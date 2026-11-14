@@ -91,14 +91,11 @@ impl Motion {
             .copied()
             .filter(|point| point.is_finite())
             .min_by(|a, b| (a - rest).abs().total_cmp(&(b - rest).abs()));
-        *self = match nearest {
-            Some(point) => {
-                let mut snap = Self::configured(value, velocity, config);
-                snap.retarget(point);
-                snap
-            }
-            None => Self::Decay(coast),
-        };
+        *self = nearest.map_or(Self::Decay(coast), |point| {
+            let mut snap = Self::configured(value, velocity, config);
+            snap.retarget(point);
+            snap
+        });
         nearest
     }
 

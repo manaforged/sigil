@@ -303,11 +303,11 @@ where
         self
     }
 
-    /// Binds the index of the focused row to `cursor` and keeps that row in view.
-    pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
-        self.focused_row = Some(cursor);
+    /// Binds the index of the active, keyboard-focused row to `active` and keeps that row in view.
+    pub const fn active(mut self, active: Signal<usize>) -> Self {
+        self.focused_row = Some(active);
         if self.follow.is_none() {
-            self.follow = Some(cursor);
+            self.follow = Some(active);
         }
         self
     }

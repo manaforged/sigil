@@ -3,14 +3,14 @@ mod layer;
 
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::LayoutStyle;
-use crate::layout::Space;
-use crate::layout::{Popup, PopupSide};
+use crate::layout::Popup;
+use crate::layout::{AlignItems, Space};
 use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Side, Widget};
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
 pub(crate) use layer::{
-    PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when,
+    PopupAnchor, PopupLayer, close_light, close_on_escape, float, hide, shown, shown_when,
 };
 pub(crate) use layer::{Stacks as PopupStacks, swap_layers};
 
@@ -26,13 +26,19 @@ pub(crate) fn surface(role: Role) -> NodeBuilder {
     container().role(role).class(SURFACE)
 }
 
-pub(crate) fn popup(role: Role, side: PopupSide) -> NodeBuilder {
-    surface(role).with(TopLayer).with(Popup {
+pub(crate) const fn placement(side: Option<Side>, align: AlignItems, sibling: bool) -> Popup {
+    Popup {
         side,
-        center: false,
-        sibling: false,
+        align,
+        sibling,
         gap: POPUP_GAP,
-    })
+    }
+}
+
+pub(crate) fn popup(role: Role, side: Option<Side>) -> NodeBuilder {
+    surface(role)
+        .with(TopLayer)
+        .with(placement(side, AlignItems::Start, false))
 }
 
 #[must_use]

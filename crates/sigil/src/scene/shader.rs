@@ -104,10 +104,10 @@ impl Shader {
 
     /// Binds `in.vars[index]`, 0 to 7, to a number, signal, animator, or closure; a change redraws only this node.
     pub fn var<V: Into<f64> + 'static>(mut self, index: usize, value: impl Reactive<V>) -> Self {
-        let var = match value.try_static() {
-            Some(fixed) => Var::Fixed(narrow(fixed.into())),
-            None => Var::Live(memo(move || narrow(value.read().into())).into_sendable()),
-        };
+        let var = value.try_static().map_or_else(
+            move || Var::Live(memo(move || narrow(value.read().into())).into_sendable()),
+            |fixed| Var::Fixed(narrow(fixed.into())),
+        );
         if let Some(slot) = self.parts().vars.get_mut(index) {
             *slot = var;
         }
@@ -157,7 +157,7 @@ impl Shader {
         DrawShader {
             rect,
             radii,
-            opacity: 10_000,
+            opacity: crate::scene::command::opacity::OPAQUE,
             shading: self.shading(theme),
             paints: self.0.colors,
         }
@@ -262,9 +262,10 @@ impl DrawShader {
         self.shading.colors = resolve(&self.paints, theme);
     }
 
-    pub(crate) fn fallback(&self) -> crate::scene::command::DrawRect {
-        crate::scene::command::DrawRect::new(self.rect, self.shading.fallback())
-            .border_radius(self.radii)
-            .opacity(self.opacity)
+    pub(crate) const fn fallback(&self) -> crate::scene::command::DrawRect {
+        let mut rect = crate::scene::command::DrawRect::new(self.rect, self.shading.fallback())
+            .border_radius(self.radii);
+        rect.opacity = self.opacity;
+        rect
     }
 }

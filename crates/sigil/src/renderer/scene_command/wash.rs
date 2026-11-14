@@ -97,7 +97,8 @@ impl SceneWalk<'_> {
     fn composite_wash(&mut self, draw: &DrawPattern, view: &wgpu::TextureView, size: (u32, u32)) {
         let clip = self.state.current_clip();
         let transform = self.state.current_transform();
-        let opacity = self.state.current_opacity() * f32::from(draw.opacity) / 10_000.0;
+        let opacity =
+            self.state.current_opacity() * crate::scene::command::opacity::from_basis(draw.opacity);
         let pipeline = LayerCompositePipeline::for_format(
             self.ctx.layer_pipelines,
             self.ctx.device,

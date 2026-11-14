@@ -114,8 +114,8 @@ fn main_basis(
     let fills_cross = stretches
         && matches!(axes.pick(style.size.height, style.size.width), Length::Auto)
         && matches!(style.align_self, None | Some(AlignItems::Stretch));
-    let stretched = stretched_basis(style, axes, cb_cross, edges).filter(|_| fills_cross);
-    let basis = stretched
+    let basis = stretched_basis(style, axes, cb_cross, edges)
+        .filter(|_| fills_cross)
         .unwrap_or_else(|| item_main_basis(measured, node, style, axes, cb_main, edges, false));
     (basis, fills_cross)
 }
@@ -126,8 +126,8 @@ fn stretched_basis(
     cb_cross: f32,
     edges: &NodeEdges,
 ) -> Option<f32> {
-    let main = axes.pick(style.size.width, style.size.height);
-    if main != Length::Auto || style.flex_basis != Length::Auto {
+    let length = axes.pick(style.size.width, style.size.height);
+    if length != Length::Auto || style.flex_basis != Length::Auto {
         return None;
     }
     let m = edges.margin.or_zero();

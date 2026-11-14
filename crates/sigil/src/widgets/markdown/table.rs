@@ -2,15 +2,16 @@ use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::app::cell_width;
-use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
+use crate::kernel::{NodeBuilder, Role, SortDirection, container, rich, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{JustifyContent, LayoutStyle, Length, cols, px_or_zero};
 use crate::reactive::{Signal, memo, signal};
-use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
+use crate::style::{StyleAtom, TextFace, TextRun, TextRuns, TextStyle, Token};
+use crate::text::Spans;
 use crate::widgets::Widget;
 use crate::widgets::button::button;
 
-use super::inline::{StyledText, styled};
+use super::inline::styled;
 use super::table_data::{Align, Table};
 
 type Sort = Signal<Option<(usize, SortDirection)>>;
@@ -50,10 +51,10 @@ fn measure(body: &str, runs: &[TextRun], bold: bool) -> f32 {
     CellForm::new(window.ceil(), cells).pick()
 }
 
-fn extent(body: &StyledText, bold: bool) -> Extent {
-    let lines = body.text.lines().map(|line| {
-        if line.len() == body.text.len() {
-            measure(line, &body.runs, bold)
+fn extent((body, runs): (&str, &[TextRun]), bold: bool) -> Extent {
+    let lines = body.lines().map(|line| {
+        if line.len() == body.len() {
+            measure(line, runs, bold)
         } else {
             measure(line, &[], bold)
         }
@@ -61,8 +62,8 @@ fn extent(body: &StyledText, bold: bool) -> Extent {
     let max = lines.fold(0.0, f32::max);
     let mut min = 0.0_f32;
     let mut at = 0;
-    for (index, _) in unicode_linebreak::linebreaks(&body.text) {
-        let word = body.text.get(at..index).unwrap_or_default().trim_end();
+    for (index, _) in unicode_linebreak::linebreaks(body) {
+        let word = body.get(at..index).unwrap_or_default().trim_end();
         at = index;
         if !word.is_empty() {
             min = min.max(measure(word, &[], bold));
@@ -74,7 +75,7 @@ fn extent(body: &StyledText, bold: bool) -> Extent {
     }
 }
 
-fn extents(cells: &[Vec<StyledText>]) -> Vec<Extent> {
+fn extents(cells: Vec<Vec<Spans>>) -> Vec<Extent> {
     let columns = cells.iter().map(Vec::len).max().unwrap_or(0);
     let floor = px_or_zero(cols(1.0));
     let mut out = vec![
@@ -84,9 +85,10 @@ fn extents(cells: &[Vec<StyledText>]) -> Vec<Extent> {
         };
         columns
     ];
-    for (index, row) in cells.iter().enumerate() {
+    for (index, row) in cells.into_iter().enumerate() {
         for (column, cell) in out.iter_mut().zip(row) {
-            let next = extent(cell, index == 0);
+            let (body, runs) = cell.into_parts();
+            let next = extent((&body, &runs), index == 0);
             column.min = column.min.max(next.min);
             column.max = column.max.max(next.max);
         }
@@ -96,7 +98,7 @@ fn extents(cells: &[Vec<StyledText>]) -> Vec<Extent> {
 
 struct Grid {
     data: Table,
-    cells: Vec<Vec<StyledText>>,
+    cells: Vec<Vec<Spans>>,
     widths: Vec<Extent>,
     sort: Sort,
 }
@@ -135,8 +137,7 @@ impl Grid {
             node = node.class([StyleAtom::BorderRight(1), Token::Border.border()]);
         }
         node.child(
-            text(body.text)
-                .runs(body.runs)
+            rich(body)
                 .class(Token::OnSurface.text())
                 .layout(LayoutStyle::block().shrink(1.0).min_width(0.0)),
         )
@@ -189,7 +190,7 @@ const fn next_sort(
 }
 
 pub(super) fn table(data: Table) -> NodeBuilder {
-    let mut cells: Vec<Vec<StyledText>> = data
+    let mut cells: Vec<Vec<Spans>> = data
         .rows
         .iter()
         .map(|row| row.iter().map(|body| styled(body)).collect())
@@ -197,10 +198,10 @@ pub(super) fn table(data: Table) -> NodeBuilder {
     let mut measured = cells.clone();
     if let Some(header) = measured.first_mut() {
         for cell in header {
-            cell.text.push_str(" ▲");
+            cell.push(" ▲", &TextFace::new());
         }
     }
-    let widths = extents(&measured);
+    let widths = extents(measured);
     cells.resize_with(data.rows.len(), Vec::new);
     let total = widths
         .iter()

@@ -57,7 +57,7 @@ pub(super) fn glyph_fill(run: &GlyphRun, gradient: &Gradient) -> Option<DrawPath
     let key = outline_key(gradient.key(TEXT_FILL_SEED), &outline);
     let paint = PathPaint::Gradient(gradient);
     let mut draw =
-        DrawPath::new(Arc::from(outline), IDENTITY, key).with_fill(FillRule::NonZero, paint);
+        DrawPath::keyed(Arc::from(outline), IDENTITY, key).filled(FillRule::NonZero, paint);
     draw.node = run.node;
     draw.opacity = run.opacity_bp();
     Some(draw)

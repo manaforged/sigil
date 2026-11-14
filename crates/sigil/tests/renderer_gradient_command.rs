@@ -21,7 +21,7 @@ fn command_scene_accepts_rect_and_gradient_draws() {
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0, 96.0, 48.0), gradient.clone())
             .border_radius(CornerRadii::uniform(8.0))
-            .opacity(8_500),
+            .opacity(0.85),
     );
     let scene = builder.finish();
 

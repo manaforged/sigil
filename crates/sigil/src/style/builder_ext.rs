@@ -209,10 +209,14 @@ impl NodeBuilder {
     {
         let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
         let cell_for_closure = Rc::clone(&slot_cell);
+        let restacks = overlay.any(StyleAtom::restacks);
         self.class(variant.base())
             .style_reactive(move || {
                 let state = state_fn();
-                cell_for_closure.set(state.slot());
+                let slot = state.slot();
+                if cell_for_closure.replace(slot) != slot && restacks {
+                    crate::style::binding::bump_hit_generation();
+                }
                 variant.state(state)
             })
             .state_overlay(overlay, slot_cell)

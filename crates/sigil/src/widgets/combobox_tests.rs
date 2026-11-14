@@ -39,11 +39,11 @@ fn filter_matches_case_insensitive_substring() {
 #[test]
 fn editing_opens_popup_and_resets_cursor() {
     with_state("combobox-edit-opens", |state| {
-        state.move_cursor(2);
+        state.move_active(2);
         state.close();
         state.edit_query("pro");
         assert!(state.is_open(), "editing opens the popup");
-        assert_eq!(state.cursor(), 0, "editing resets the cursor");
+        assert_eq!(state.active(), 0, "editing resets the cursor");
     });
 }
 
@@ -83,13 +83,13 @@ fn cursor_move_clamps_to_filtered_bounds() {
     with_state("combobox-cursor-clamp", |state| {
         state.edit_query("proxy");
         for _ in 0..10 {
-            state.move_cursor(1);
+            state.move_active(1);
         }
-        assert_eq!(state.cursor(), 1, "clamped at last filtered row");
+        assert_eq!(state.active(), 1, "clamped at last filtered row");
         for _ in 0..10 {
-            state.move_cursor(-1);
+            state.move_active(-1);
         }
-        assert_eq!(state.cursor(), 0, "clamped at first row");
+        assert_eq!(state.active(), 0, "clamped at first row");
     });
 }
 
@@ -97,12 +97,12 @@ fn cursor_move_clamps_to_filtered_bounds() {
 fn commit_cursor_commits_highlighted_row_or_nothing() {
     with_state("combobox-commit-cursor", |state| {
         state.edit_query("zzz");
-        assert!(!state.commit_cursor());
+        assert!(!state.commit_active());
         assert_eq!(state.selected(), None);
         assert!(state.is_open(), "failed commit leaves the popup open");
         state.edit_query("proxy");
-        state.move_cursor(1);
-        assert!(state.commit_cursor());
+        state.move_active(1);
+        assert!(state.commit_active());
         assert_eq!(state.selected_option().as_deref(), Some("Proxy Rules"));
     });
 }
@@ -112,7 +112,7 @@ fn open_places_cursor_on_selected_row() {
     with_state("combobox-open-cursor", |state| {
         state.commit(1);
         state.open();
-        let under_cursor = state.filtered().get(state.cursor()).map(|(i, _)| *i);
+        let under_cursor = state.filtered().get(state.active()).map(|(i, _)| *i);
         assert_eq!(
             under_cursor,
             state.selected(),

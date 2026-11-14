@@ -1,3 +1,4 @@
+use crate::scene::command::gradient::ColorSpace;
 use crate::style::Token;
 
 /// An 8-bit RGBA color.
@@ -43,6 +44,15 @@ impl Color {
     pub const fn alpha(mut self, a: u8) -> Self {
         self.a = a;
         self
+    }
+
+    /// Mixes this color toward `to` by `t` from 0.0 to 1.0 in `space`, like CSS `color-mix()`.
+    #[must_use]
+    pub fn mix(self, to: Self, t: f32, space: ColorSpace) -> Self {
+        match space {
+            ColorSpace::Oklab => crate::scene::command::oklab::mix(self, to, t),
+            ColorSpace::Srgb => crate::animation::runtime::binding_animate_color::mix(self, to, t),
+        }
     }
 
     /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.

@@ -180,7 +180,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
         });
         let node = list
             .selection(SelectionMode::None)
-            .cursor(state.cursor)
+            .active(state.cursor)
             .measured()
             .estimate(ROW_ESTIMATE)
             .fill()

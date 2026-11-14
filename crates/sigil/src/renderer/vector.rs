@@ -6,8 +6,8 @@ use vello_cpu::{PaintType, color::AlphaColor, color::Srgb};
 
 use crate::geometry::Point;
 use crate::scene::command::{
-    DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCommand, PathPaint, PathStroke,
-    StrokeCap, StrokeJoin, Transform,
+    ColorSpace, DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCommand, PathPaint,
+    PathStroke, StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
 use crate::style::Color;
@@ -61,7 +61,10 @@ pub(crate) fn record(sink: &mut impl PathSink, draw: &DrawPath, device: Transfor
     }
     if let Some(stroke) = &draw.stroke {
         set_paint(sink, &stroke.paint, opacity);
-        sink.stroke(&path, kurbo_stroke(stroke));
+        match &draw.trimmed {
+            Some(part) => sink.stroke(&outline(part), kurbo_stroke(stroke)),
+            None => sink.stroke(&path, kurbo_stroke(stroke)),
+        }
     }
 }
 
@@ -151,7 +154,10 @@ fn gradient_brush(gradient: &Gradient, opacity: f32) -> (PaintType, Affine) {
         .collect();
     let shape = shape
         .with_extend(extend)
-        .with_interpolation_cs(ColorSpaceTag::Srgb)
+        .with_interpolation_cs(match gradient.space {
+            ColorSpace::Oklab => ColorSpaceTag::Oklab,
+            ColorSpace::Srgb => ColorSpaceTag::Srgb,
+        })
         .with_interpolation_alpha_space(InterpolationAlphaSpace::Premultiplied)
         .with_stops(stops.as_slice());
     (PaintType::Gradient(shape), placement)

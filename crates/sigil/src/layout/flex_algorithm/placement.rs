@@ -223,13 +223,9 @@ fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -
     }
     match align.unwrap_or(AlignContent::Stretch) {
         AlignContent::Stretch => (0.0, 0.0),
-        #[cfg(feature = "kittest")]
         AlignContent::Start => (0.0, 0.0),
-        #[cfg(feature = "kittest")]
         AlignContent::End => (free, 0.0),
-        #[cfg(feature = "kittest")]
         AlignContent::Center => (free / 2.0, 0.0),
-        #[cfg(feature = "kittest")]
         AlignContent::SpaceBetween => {
             if line_count <= 1 {
                 (0.0, 0.0)
@@ -237,12 +233,10 @@ fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -
                 (0.0, free / (line_count - 1) as f32)
             }
         }
-        #[cfg(feature = "kittest")]
         AlignContent::SpaceAround => {
             let g = free / line_count as f32;
             (g / 2.0, g)
         }
-        #[cfg(feature = "kittest")]
         AlignContent::SpaceEvenly => {
             let g = free / (line_count + 1) as f32;
             (g, g)

@@ -205,10 +205,10 @@ impl PathBuilder {
         } else {
             (Arc::from(self.cmds.as_slice()), view, None)
         };
-        let mut draw = DrawPath::new(outline, transform, key);
+        let mut draw = DrawPath::keyed(outline, transform, key);
         if let Some(fill) = fill {
             let fill = baked.map_or_else(|| fill.clone(), |frame| paint::map(&fill, frame));
-            draw = draw.with_fill(self.rule, fill);
+            draw = draw.filled(self.rule, fill);
         }
         if let Some((color, width)) = stroke {
             draw = draw.stroked(self.path_stroke(color, width));
@@ -228,6 +228,7 @@ impl PathBuilder {
             cap: self.cap.unwrap_or(cap),
             join: self.join.unwrap_or(join),
             dash: self.dash.iter().copied().collect(),
+            trim: [0.0, 1.0],
         }
     }
 

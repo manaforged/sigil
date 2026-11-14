@@ -187,6 +187,10 @@ kittest_pub! {
         Shader(u64),
         /// How the line of the border is drawn: solid, dashed, or dotted.
         Border(BorderStyle),
+        /// The radius of the corners in a bit mask, clockwise from the top left.
+        Corners(u8, crate::style::Radius),
+        /// The curve of every corner.
+        CornerShape(crate::scene::CornerShape),
     }
 }
 
@@ -209,6 +213,8 @@ kittest_pub! {
         /// How the line of the border is drawn; the default is solid.
         pub border: BorderStyle,
         pub(crate) geometry: Geometry,
+        pub(crate) corners: [Option<i16>; 4],
+        pub(crate) shape: crate::scene::CornerShape,
     }
 }
 
@@ -229,7 +235,10 @@ impl Geometry {
 
     pub(crate) fn center(self, at: [u8; 2]) -> [f32; 2] {
         let [x, y] = self.center;
-        [x.unwrap_or(f32::from(at[0])), y.unwrap_or(f32::from(at[1]))]
+        [
+            x.unwrap_or_else(|| f32::from(at[0])),
+            y.unwrap_or_else(|| f32::from(at[1])),
+        ]
     }
 
     fn overlay(&mut self, shape: GradientShape, overlay: &dyn AnimatorOverlay) {
@@ -352,6 +361,9 @@ impl PaintStyle {
     }
 
     pub(crate) fn value(&self, kind: NumericAtomKind) -> Option<f32> {
+        if let Some(px) = self.corner(kind) {
+            return Some(px);
+        }
         let Some(index) = STOPS.iter().position(|(owner, _)| *owner == kind) else {
             return self.gradient.and_then(|shape| shape.value(kind));
         };
@@ -382,6 +394,7 @@ impl PaintStyle {
     }
 
     pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
+        self.overlay_corners(overlay);
         let shown = [0, 1, 2].map(|index| self.drawn(index));
         let slots = self.stops.iter_mut().zip(self.positions.iter_mut());
         for ((stop, position), ((numeric, color), drawn)) in slots.zip(STOPS.into_iter().zip(shown))

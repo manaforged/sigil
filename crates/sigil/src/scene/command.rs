@@ -3,6 +3,7 @@
 use crate::scene::shadow::Shadow;
 
 mod clip;
+pub(crate) mod corner_shape;
 #[cfg(scene_host)]
 mod decoration;
 pub(crate) mod effects;
@@ -10,6 +11,9 @@ pub(crate) mod fills;
 mod glyph;
 pub(crate) mod gradient;
 pub(crate) mod image_fit;
+#[cfg(vector_paint)]
+pub(crate) mod oklab;
+pub(crate) mod opacity;
 pub(crate) mod payloads;
 #[cfg(scene_host)]
 pub(crate) mod stroke_band;
@@ -19,6 +23,7 @@ pub(crate) mod trim;
 mod wash;
 
 pub use clip::Clip;
+pub use corner_shape::CornerShape;
 #[cfg(scene_host)]
 pub(crate) use decoration::DecorationGeometry;
 pub use effects::{
@@ -46,7 +51,7 @@ kittest_pub! {
     pub use glyph::shape_glyph_run;
 }
 pub(crate) use glyph::{RunInk, shape_run};
-pub use gradient::{Gradient, GradientKind};
+pub use gradient::{ColorSpace, Gradient, GradientKind};
 #[cfg(vector_paint)]
 pub(crate) use payloads::MITER_LIMIT;
 pub use payloads::{
@@ -59,10 +64,10 @@ kittest_pub! {
     #[cfg(scene_paint)]
     pub use payloads::DrawSprite;
 }
-pub(crate) use payloads::{outline_key, rounded_outline};
+pub(crate) use payloads::outline_key;
 #[cfg(scene_host)]
 pub(crate) use stroke_band::StrokeBand;
-#[cfg(scene_harness)]
+#[cfg(scene_host)]
 pub(crate) use stroke_band::StrokeDash;
 pub use transform3d::Transform3D;
 pub use wash::Wash;
@@ -104,16 +109,12 @@ impl CommandScene {
         self.commands.is_empty()
     }
 
-    #[cfg(feature = "kittest")]
-    /// Creates a scene from an existing command list.
-    #[doc(hidden)]
+    /// Creates a scene from a list of commands in draw order.
     pub const fn from_commands(commands: Vec<SceneCommand>) -> Self {
         Self { commands }
     }
 
-    #[cfg(feature = "kittest")]
-    /// Consumes the scene and returns its command list.
-    #[doc(hidden)]
+    /// Consumes the scene and returns its commands in draw order.
     #[must_use]
     pub fn into_commands(self) -> Vec<SceneCommand> {
         self.commands
@@ -172,6 +173,8 @@ pub enum SceneCommand {
     PopLayer,
     /// Fills or strokes a rounded rectangle with one color.
     Rect(DrawRect),
+    /// Fills or strokes many rectangles in one batch, each as `Rect` would.
+    Rects(std::sync::Arc<[DrawRect]>),
     /// Fills a rounded rectangle with a gradient.
     Gradient(DrawGradient),
     /// Fills a rounded rectangle with a repeating pattern.
@@ -182,6 +185,8 @@ pub enum SceneCommand {
         rect: [f32; 4],
         /// The corner radii of the rectangle that casts the shadow.
         radii: [f32; 4],
+        /// The corner curve of the rectangle that casts the shadow.
+        shape: CornerShape,
         /// The offset, blur, spread, color, and kind of the shadow.
         shadow: Shadow,
     },

@@ -4,6 +4,7 @@ use crate::reactive::Reactive;
 use crate::scene::{BlendMode, Shader, Shadow};
 use crate::style::atom::{
     Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, ShadowAtom, SpaceAtom,
+    corners,
 };
 use crate::style::engine::encode_px;
 use crate::style::{
@@ -14,7 +15,7 @@ use crate::style::{
 mod filters;
 mod slot;
 mod space;
-mod units;
+pub(super) mod units;
 
 use slot::{live, mask, paint, push};
 use units::{fraction_units, letter_spacing_units, opacity_units};
@@ -40,6 +41,12 @@ pub trait Paint: Sized {
     #[must_use]
     fn background_image(self, image: ImageSource) -> Self {
         slot::image(self, image, |id| StyleAtom::Paint(PaintAtom::Image(id)))
+    }
+
+    /// Sets the curve of every corner of the fill, border, and shadow, like CSS `corner-shape`.
+    #[must_use]
+    fn corner_shape(self, shape: crate::scene::CornerShape) -> Self {
+        paint(self, PaintAtom::CornerShape(shape))
     }
 
     /// Draws a solid border, like Tailwind `border-solid`.
@@ -108,6 +115,30 @@ pub trait Paint: Sized {
         push(self, StyleAtom::Radius(radius))
     }
 
+    /// Sets the radius of the top left and top right corners, like Tailwind `rounded-t-*`.
+    #[must_use]
+    fn radius_top(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::TOP, radius))
+    }
+
+    /// Sets the radius of the top right and bottom right corners, like Tailwind `rounded-r-*`.
+    #[must_use]
+    fn radius_right(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::RIGHT, radius))
+    }
+
+    /// Sets the radius of the bottom right and bottom left corners, like Tailwind `rounded-b-*`.
+    #[must_use]
+    fn radius_bottom(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::BOTTOM, radius))
+    }
+
+    /// Sets the radius of the top left and bottom left corners, like Tailwind `rounded-l-*`.
+    #[must_use]
+    fn radius_left(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::LEFT, radius))
+    }
+
     /// Clips the node and its children to `shape`, like CSS `clip-path`.
     #[must_use]
     fn clip_path(self, shape: ClipShape) -> Self {
@@ -165,6 +196,12 @@ pub trait Paint: Sized {
     #[track_caller]
     fn opacity(self, value: f32) -> Self {
         push(self, StyleAtom::Opacity(opacity_units(value)))
+    }
+
+    /// Sets the stacking index among siblings, where a higher index paints later and is hit first; the default is 0.
+    #[must_use]
+    fn z_index(self, index: impl Reactive<i16>) -> Self {
+        live(self, index, |z| [StyleAtom::ZIndex(z)])
     }
 
     filters::filter_setters!();

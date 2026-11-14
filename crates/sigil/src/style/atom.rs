@@ -26,6 +26,7 @@ mod background;
 pub(crate) use background::NO_GRADIENT;
 mod clip;
 mod color;
+pub(crate) mod corners;
 mod filter;
 mod gradient;
 mod mask;
@@ -213,6 +214,8 @@ impl Default for RenderStyle {
                 shader: None,
                 border: BorderStyle::Solid,
                 geometry: Geometry::default(),
+                corners: [None; 4],
+                shape: crate::scene::CornerShape::Round,
             },
             clip_path: None,
             space: SpaceStyle::FLAT,
@@ -350,6 +353,8 @@ kittest_pub! {
         Shadow(ShadowAtom),
         /// The opacity in ten-thousandths, where 10000 is opaque.
         Opacity(u16),
+        /// The stacking index among siblings; higher paints later and is hit first.
+        ZIndex(i16),
         /// A 2D move, scale, and turn applied when the node paints.
         #[cfg(feature = "kittest")]
         Transform(Transform2D),
@@ -458,6 +463,11 @@ impl StyleAtom {
                     | Self::OverflowY(_)
             )
         }
+    }
+
+    #[must_use]
+    pub(crate) const fn restacks(self) -> bool {
+        matches!(self, Self::ZIndex(_))
     }
 
     #[must_use]

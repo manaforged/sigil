@@ -211,7 +211,6 @@ pub enum Position {
 }
 
 /// Main axis of a flex box.
-#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum FlexDirection {
     /// Children run in a row from the start edge; the default.
@@ -272,33 +271,25 @@ pub enum AlignItems {
 }
 
 /// How lines or tracks spread across the cross axis.
-#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlignContent {
     /// Lines pack at the start of the cross axis.
-    #[cfg(feature = "kittest")]
     Start,
     /// Lines pack at the end of the cross axis.
-    #[cfg(feature = "kittest")]
     End,
     /// Lines pack in the middle of the cross axis.
-    #[cfg(feature = "kittest")]
     Center,
     /// Each line grows by an equal share of the free space on the cross axis.
     Stretch,
     /// Free space goes between lines, with none at the two ends.
-    #[cfg(feature = "kittest")]
     SpaceBetween,
     /// Each line gets equal free space on both sides, so each end gets half a gap.
-    #[cfg(feature = "kittest")]
     SpaceAround,
     /// Free space is equal between lines and at the two ends.
-    #[cfg(feature = "kittest")]
     SpaceEvenly,
 }
 
 /// Whether a set size includes padding and border.
-#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BoxSizing {
     /// A set size covers the content only, and padding and border add to it; the default.

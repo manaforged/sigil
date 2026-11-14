@@ -20,6 +20,7 @@ const fn heading(side: Side) -> (Orientation, f32) {
         Side::Left => (Orientation::Horizontal, -1.0),
         Side::Right => (Orientation::Horizontal, 1.0),
         Side::Bottom => (Orientation::Vertical, 1.0),
+        Side::Top => (Orientation::Vertical, -1.0),
     }
 }
 

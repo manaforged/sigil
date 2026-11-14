@@ -14,7 +14,6 @@ use crate::scene::damage::scene_damage;
 use crate::scene::damage::{Damage, command_ink};
 use crate::style::{Color, Rgba};
 
-const FULL_OPACITY: u16 = 10_000;
 const CLEAR_BLEED: f32 = 2.0;
 const MAX_REGIONS: usize = 3;
 pub(crate) const GPU_BUDGET: Budget = Budget {
@@ -83,7 +82,8 @@ pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Rgba) -> Co
             rect: region.expand(CLEAR_BLEED),
             color: fill,
             border_radius: CornerRadii::ZERO,
-            opacity: FULL_OPACITY,
+            shape: crate::scene::command::CornerShape::Round,
+            opacity: crate::scene::command::opacity::OPAQUE,
             stroke: None,
             tone: None,
             leaf: true,
