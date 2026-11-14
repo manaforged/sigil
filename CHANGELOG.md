@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `AppConfig::font(FontFamily::Serif, ..)` loads the face; it was dropped with a warning.
 - Changing the transition of a running style animation keeps its value and velocity; it restarted from rest.
 - A glyph with more than 32 outline curves in one band, such as a serif capital "W", keeps every curve on the GPU; the extra curves were dropped and the glyph drew streaks. Glyph data in the GPU buffer is sized to each outline.
+- GPU text draws no thin tick beside an italic stem; a curve that bends toward a sample ray without reaching it counted as two crossings.
 - The fill shader compiles in a browser; WebGPU rejected its derivative call inside a branch, so a screen with a gradient, wash or pattern fill drew nothing.
 
 ## [0.2.0] - 2026-11-12

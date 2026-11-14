@@ -90,9 +90,12 @@ fn quad_coverage(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: 
     let code  = (CROSSING_CODES >> shift) & 3u;
     if code == 0u { return; }
 
+    let disc = y1 * y1 - y0 * y2;
+    if disc < 0.0 { return; }
+
     let a    = y0 - 2.0 * y1 + y2;
     let b    = y0 - y1;
-    let d    = sqrt(max(b * b - a * y0, 0.0));
+    let d    = sqrt(disc);
     let far  = select(b - d, b + d, b >= 0.0);
     let near = y0 / select(far, 1.0, far == 0.0);
     let wide = far / select(a, 1.0, a == 0.0);
