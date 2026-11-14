@@ -27,7 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `accessibility_hidden(bool)` on any node keeps it and its subtree out of the accessibility tree, like `aria-hidden`. The pieces of `words` and `ticker` use it, so a screen reader reads the text once. The index that `words` passes is now a `u32`, so `STAGGER * index` needs no cast.
 - `Paint::shadow` takes `impl Into<Shadow>`, so a node can carry `Shadow::glow(color, blur, spread)`; `.shadow(Elevation::Lg)` still compiles. `Shadow::glow` now takes blur before spread, the order of `Shadow::new` and CSS `box-shadow`: swap the last two arguments of an existing call.
 - `Widget::track_visible(signal)` writes the share of a node that is inside its scroll views and the window, from 0.0 to 1.0, after each layout pass and scroll. `ScrollBuilder::scroll_x(signal)` scrolls sideways.
-- `toast_queue` toasts rise in, fade out, share one width, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
+- `toast_queue` toasts rise in, fade out, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
 - A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
 
 ### Fixed
