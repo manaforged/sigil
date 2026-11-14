@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use sigil::animation::{Animator, Property, Spring};
 use sigil::events::DragPhase;
 use sigil::prelude::*;
@@ -12,6 +14,9 @@ const RAISED: f32 = 0.0;
 const STOPS: [f32; 2] = [RAISED, LOWERED];
 const GRIP_WIDTH: f32 = 44.0;
 const GRIP_HEIGHT: f32 = 5.0;
+const SWAP: Duration = Duration::from_millis(260);
+const RISE: f32 = 12.0;
+const SLIDE: f32 = 48.0;
 const GRIP: Color = Color::rgba(255, 255, 255, 150);
 
 struct Session {
@@ -57,6 +62,12 @@ pub fn app() -> impl IntoNode {
 /// The session tray lifted by `share` of its travel, from 0 lowered to 1 raised.
 #[must_use]
 pub fn lifted(share: f32) -> impl IntoNode {
+    listing(signal((0..SESSIONS.len()).collect()), share)
+}
+
+/// The session tray lifted by `share`, listing the sessions whose indexes are in `open`.
+#[must_use]
+pub fn listing(open: Signal<Vec<usize>>, share: f32) -> impl IntoNode {
     let drop = Animator::spring((RAISED - LOWERED).mul_add(share, LOWERED), Spring::SNAPPY);
     container()
         .theme(theme)
@@ -68,11 +79,11 @@ pub fn lifted(share: f32) -> impl IntoNode {
                 .layout(overlay())
                 .justify_content(JustifyContent::End)
                 .align_items(AlignItems::Center)
-                .child(tray(drop)),
+                .child(tray(drop, open)),
         )
 }
 
-fn tray(drop: Animator) -> NodeBuilder {
+fn tray(drop: Animator, open: Signal<Vec<usize>>) -> NodeBuilder {
     let tray = column()
         .width(WIDTH)
         .height(HEIGHT)
@@ -99,7 +110,7 @@ fn tray(drop: Animator) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween)
                 .child(text("Today").text_role(TextRole::Title))
                 .child(
-                    text(format!("{} sessions", SESSIONS.len()))
+                    text(move || format!("{} to do", open.with(Vec::len)))
                         .text_role(TextRole::Body)
                         .tabular_nums(true),
                 ),
@@ -108,21 +119,41 @@ fn tray(drop: Animator) -> NodeBuilder {
             column()
                 .width(Length::Fill)
                 .gap(Space::Md)
-                .children(SESSIONS.iter().map(session)),
+                .child(for_each(
+                    open,
+                    |index| *index,
+                    move |index| session(*index, open),
+                )),
         )
         .into()
 }
 
-fn session(session: &Session) -> NodeBuilder {
+fn session(index: usize, open: Signal<Vec<usize>>) -> impl IntoNode + use<> {
+    let session = SESSIONS.get(index);
+    let task = session.map_or("", |session| session.task);
     row()
         .width(Length::Fill)
         .gap(Space::Lg)
-        .child(text(session.start).text_role(TextRole::Body).tabular_nums(true))
-        .child(text(session.task).text_role(TextRole::Body).grow(1.0))
+        .align_items(AlignItems::Center)
+        .transition(Transition::new().duration(SWAP).ease(Easing::CubicOut))
+        .enter(Property::Opacity(0.0))
+        .enter(Property::TranslateY(RISE))
+        .exit(Property::Opacity(0.0))
+        .exit(Property::TranslateX(SLIDE))
         .child(
-            text(format!("{} min", session.minutes))
+            text(session.map_or("", |session| session.start))
                 .text_role(TextRole::Body)
                 .tabular_nums(true),
         )
-        .into()
+        .child(text(task).text_role(TextRole::Body).grow(1.0))
+        .child(
+            text(format!("{} min", session.map_or(0, |session| session.minutes)))
+                .text_role(TextRole::Body)
+                .tabular_nums(true),
+        )
+        .child(
+            button("Done")
+                .accessible(format!("Done: {task}"))
+                .activate(move || open.update(|open| open.retain(|other| *other != index))),
+        )
 }

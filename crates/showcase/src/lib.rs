@@ -5,6 +5,8 @@ use sigil::prelude::Length;
 
 /// Sun and sky for one place, painted as a watercolour wash.
 pub mod almanac;
+/// A card with a turning border light, a staggered headline, and a rolling number.
+pub mod beam;
 /// One painted plate graded live with filters, blend modes, and a mask.
 pub mod darkroom;
 /// Flashcards that turn over in 3D on a spring.
