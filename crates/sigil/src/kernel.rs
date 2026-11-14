@@ -31,6 +31,14 @@ macro_rules! shared_node_methods {
             self
         }
 
+        /// Sets whether the node and its subtree stay out of the accessibility tree, like `aria-hidden`.
+        pub fn accessibility_hidden(mut self, yes: bool) -> Self {
+            if self$(.$field)*.a11y.hidden != yes {
+                self$(.$field)*.a11y.hidden = yes;
+            }
+            self
+        }
+
         /// Sets whether the node can take keyboard focus; a fragment cannot.
         pub fn focusable(mut self, yes: bool) -> Self {
             debug_assert!(

@@ -13,16 +13,17 @@ pub struct WordsBuilder {
     frame: WidgetFrame,
 }
 
-/// Text that `piece` renders word by word in a wrapping row, read as one name; each word is shaped alone, so kerning and complex-script shaping across words are lost.
+/// Text that `piece` renders word by word in a wrapping row, read as one name; the `u32` index scales a `Duration` for a stagger, and each word is shaped alone, so kerning and complex-script shaping across words are lost.
 pub fn words<N: Into<NodeBuilder>>(
     source: impl Into<String>,
-    mut piece: impl FnMut(usize, &str) -> N,
+    mut piece: impl FnMut(u32, &str) -> N,
 ) -> WordsBuilder {
     let label = source.into();
-    let pieces = split(&label)
-        .into_iter()
-        .enumerate()
-        .map(|(index, (word, gap))| spaced(piece(index, word).into(), gap))
+    let pieces = (0_u32..)
+        .zip(split(&label))
+        .map(|(index, (word, gap))| {
+            spaced(piece(index, word).into(), gap).accessibility_hidden(true)
+        })
         .collect();
     WordsBuilder {
         label,

@@ -43,6 +43,7 @@ fn overlay_a11y(base: &mut A11yProps, mut edits: A11yProps) {
     keep(&mut base.focus_scope, edits.focus_scope);
     if let Some(mut edits) = edits.into_detail() {
         base.actions.extend(std::mem::take(&mut edits.actions));
+        base.hidden |= edits.hidden;
         overlay_options(base, edits);
     }
 }

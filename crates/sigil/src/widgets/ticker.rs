@@ -121,10 +121,11 @@ fn digit_from_right(written: &str, from_right: usize) -> u8 {
 }
 
 fn place(slot: &Slot, shown: Signal<String>, spring: Spring) -> NodeBuilder {
-    match &slot.mark {
+    let piece = match &slot.mark {
         None => roll(slot.from_right, shown, spring),
         Some(mark) => text(mark).nowrap().into(),
-    }
+    };
+    piece.accessibility_hidden(true)
 }
 
 fn roll(from_right: usize, shown: Signal<String>, spring: Spring) -> NodeBuilder {

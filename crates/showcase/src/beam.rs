@@ -59,8 +59,7 @@ fn card(minutes: Signal<u32>) -> NodeBuilder {
         .background(Token::Surface)
         .child(
             words(HEADLINE, |index, word| {
-                let wait = STAGGER.saturating_mul(u32::try_from(index).unwrap_or(u32::MAX));
-                text(word).animation(Keyframes::fade().delay(wait))
+                text(word).animation(Keyframes::fade().delay(STAGGER * index))
             })
             .text_role(TextRole::Title),
         )

@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `words(text, |index, word| ..)` lays text out as one node per word behind one accessible name, and `ticker(value)` rolls a number to each new value with `.format` and `.spring`. `Keyframes` and `Spring` are in the prelude.
 - `animation::reduced_transparency()` and `AppConfig::reduced_transparency(bool)`. With the setting on, a backdrop filter is skipped and the node keeps its own fill. `animation::reduced_motion()` is now reactive, both settings are read again when the window gains focus, and `clock()` holds still under reduced motion.
 - `Harness::step(by)` in `sigil-kittest` moves the test clock and stops there, so a test can read a running animation. `Harness::advance` still settles afterwards.
+- `accessibility_hidden(bool)` on any node keeps it and its subtree out of the accessibility tree, like `aria-hidden`. The pieces of `words` and `ticker` use it, so a screen reader reads the text once. The index that `words` passes is now a `u32`, so `STAGGER * index` needs no cast.
 
 ### Fixed
 
