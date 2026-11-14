@@ -204,7 +204,7 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
-    pub use crate::animation::{Easing, Transition};
+    pub use crate::animation::{Easing, Keyframes, Spring, Transition};
     #[cfg(app_host)]
     pub use crate::app::open_url;
     pub use crate::events::{
@@ -241,8 +241,8 @@ pub mod prelude {
         mermaid, modal, notice_band, number_field, pagination, path, progress, radio_group,
         range_slider, scroll, section_label, segmented, sidebar, skeleton, slider, spacer,
         sparkline, spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input,
-        terminal, text_field, time_field, toast, toast_queue, toggle, tooltip, tree, vega,
-        virtual_list,
+        terminal, text_field, ticker, time_field, toast, toast_queue, toggle, tooltip, tree, vega,
+        virtual_list, words,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

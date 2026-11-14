@@ -488,6 +488,7 @@ mod terminal;
 mod text_edit;
 mod text_field;
 mod text_search;
+mod ticker;
 mod time_field;
 mod toast;
 mod toast_queue;
@@ -498,6 +499,7 @@ mod vector;
 mod vega;
 mod virtual_list;
 mod widget;
+mod words;
 
 pub use button::{ButtonBuilder, button};
 pub use canvas::{CanvasBuilder, canvas};
@@ -579,6 +581,7 @@ pub use tag_input::{TagInputBuilder, tag_input};
 pub use terminal::terminal;
 pub use text_edit::{SubmitKey, TextState};
 pub use text_field::{TextFieldBuilder, text_field};
+pub use ticker::{TickerBuilder, ticker};
 pub use time_field::{DateTime, Time, TimeFieldBuilder, TimeValue, time_field};
 pub use toast::toast;
 pub use toast_queue::{ToastQueue, toast_queue};
@@ -592,6 +595,7 @@ pub use virtual_list::{
 };
 pub(crate) use widget::LayoutEdit;
 pub use widget::Widget;
+pub use words::{WordsBuilder, words};
 
 crate::kernel::into_node_builder!(
     ButtonBuilder,
@@ -626,6 +630,7 @@ crate::kernel::into_node_builder!(
     TextFieldBuilder,
     ToggleBuilder,
     TooltipBuilder,
+    WordsBuilder,
 );
 
 #[cfg(feature = "image-decode")]
@@ -653,6 +658,7 @@ generic_into_node_builder!(
     [T: 'static] SliderBuilder<T>,
     [Row: 'static] TableBuilder<Row>,
     [T: Clone + PartialEq + std::fmt::Display + 'static] TagInputBuilder<T>,
+    [T: 'static] TickerBuilder<T>,
     [T: TimeValue] TimeFieldBuilder<T>,
     [K: Clone + Eq + std::hash::Hash + 'static] TreeBuilder<K>,
     [T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>,
