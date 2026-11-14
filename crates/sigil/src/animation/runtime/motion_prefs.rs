@@ -29,8 +29,7 @@ impl Pref {
             slot.get()
                 .filter(|value| value.is_alive())
                 .unwrap_or_else(|| {
-                    let value =
-                        Owner::new("sigil::accessibility", None).with(|| signal(false));
+                    let value = Owner::new("sigil::accessibility", None).with(|| signal(false));
                     slot.set(Some(value));
                     value
                 })

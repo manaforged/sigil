@@ -98,4 +98,5 @@ fields! {
     42 ROW_START [] grid_row_start;
     43 DENSE [] grid_auto_flow_dense;
     44 STRETCH_WIDTH [] stretch_width;
+    46 ASPECT_RATIO [] aspect_ratio;
 }

@@ -183,6 +183,8 @@ kittest_pub! {
         ClipText,
         /// A tiled background image, by image id.
         Image(u64),
+        /// A background shader, by shader id.
+        Shader(u64),
         /// How the line of the border is drawn: solid, dashed, or dotted.
         Border(BorderStyle),
     }
@@ -202,6 +204,8 @@ kittest_pub! {
         pub clip_text: bool,
         /// The id of the tiled background image, when one is set.
         pub image: Option<u64>,
+        /// The id of the background shader, when one is set.
+        pub shader: Option<u64>,
         /// How the line of the border is drawn; the default is solid.
         pub border: BorderStyle,
         pub(crate) geometry: Geometry,

@@ -2,7 +2,7 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
-use crate::reactive::diagnostic::{Cycle, no_scope, reactive_cycle};
+use crate::reactive::diagnostic::{Cycle, reactive_cycle};
 use crate::reactive::effect_run::run_effect;
 use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, RuntimeState, with_rt};
 
@@ -29,9 +29,7 @@ pub(crate) fn effect_at<F: FnMut() + 'static>(
     f: F,
 ) {
     let key = with_rt(|rt| {
-        let owner = rt
-            .active_owner()
-            .unwrap_or_else(|| no_scope("effect()", location));
+        let owner = rt.scoped_owner("effect()", location);
         assert!(
             rt.owners.contains(owner),
             "effect() with a disposed current owner (at {location})"

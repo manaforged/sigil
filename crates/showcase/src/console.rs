@@ -105,7 +105,8 @@ impl Deck {
             let now = seconds.get();
             let step = previous.replace(now).map_or(0.0, |before| now - before) as f32;
             if self.running.peek() {
-                self.drift.update(|at| *at = DRIFT.mul_add(step, *at).rem_euclid(TAU));
+                self.drift
+                    .update(|at| *at = DRIFT.mul_add(step, *at).rem_euclid(TAU));
             }
         });
     }
@@ -228,8 +229,18 @@ fn graticule(scene: &mut SceneBuilder, glass: Rect) {
         let offset = f32::from(line) * pitch;
         let (x, y) = (glass.origin.x + offset, glass.origin.y + offset);
         let (right, bottom) = (glass.origin.x + glass.width, glass.origin.y + glass.height);
-        scene.stroke_line(Point::new(x, glass.origin.y), Point::new(x, bottom), GRID, 1.0);
-        scene.stroke_line(Point::new(glass.origin.x, y), Point::new(right, y), GRID, 1.0);
+        scene.stroke_line(
+            Point::new(x, glass.origin.y),
+            Point::new(x, bottom),
+            GRID,
+            1.0,
+        );
+        scene.stroke_line(
+            Point::new(glass.origin.x, y),
+            Point::new(right, y),
+            GRID,
+            1.0,
+        );
     }
 }
 
@@ -296,7 +307,10 @@ fn knob(dial: Dial) -> impl IntoNode {
 }
 
 fn cap(scene: &mut SceneBuilder, rect: Rect, turn: f32) {
-    let centre = Point::new(rect.origin.x + rect.width / 2.0, rect.origin.y + rect.height / 2.0);
+    let centre = Point::new(
+        rect.origin.x + rect.width / 2.0,
+        rect.origin.y + rect.height / 2.0,
+    );
     let along = |angle: f32, radius: f32| {
         Point::new(
             radius.mul_add(angle.cos(), centre.x),
@@ -305,14 +319,24 @@ fn cap(scene: &mut SceneBuilder, rect: Rect, turn: f32) {
     };
     for tick in 0..TICKS {
         let angle = SWEEP.mul_add(f32::from(tick) / f32::from(TICKS - 1), SWEEP_START);
-        scene.stroke_line(along(angle, TICK_RADIUS - TICK), along(angle, TICK_RADIUS), INK, 1.0);
+        scene.stroke_line(
+            along(angle, TICK_RADIUS - TICK),
+            along(angle, TICK_RADIUS),
+            INK,
+            1.0,
+        );
     }
     let body = disc(centre, CAP_RADIUS);
     scene.draw_shadow(body, [CAP_RADIUS; 4], Shadow::new(LIFT, SOFT, 0.0, DROP));
     scene.draw_rect(DrawRect::new(body, CAP).radius(CAP_RADIUS));
     scene.draw_rect(DrawRect::new(disc(centre, CROWN_RADIUS), CROWN).radius(CROWN_RADIUS));
     let angle = SWEEP.mul_add(turn, SWEEP_START);
-    scene.stroke_line(along(angle, POINTER[0]), along(angle, POINTER[1]), SIGNAL, 3.0);
+    scene.stroke_line(
+        along(angle, POINTER[0]),
+        along(angle, POINTER[1]),
+        SIGNAL,
+        3.0,
+    );
 }
 
 fn disc(centre: Point, radius: f32) -> Rect {

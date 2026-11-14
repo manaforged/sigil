@@ -194,6 +194,9 @@ pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
         .margin
         .map(|value| finite_edge_or(value, Length::Px(0.0)));
     style.inset = style.inset.map(|value| finite_edge_or(value, Length::Auto));
+    style.aspect_ratio = style
+        .aspect_ratio
+        .filter(|ratio| ratio.is_finite() && *ratio > 0.0);
     for list in [
         &mut style.grid_template_columns,
         &mut style.grid_template_rows,

@@ -6,7 +6,7 @@ use crate::reactive::{Signal, memo, signal};
 use crate::widgets::Widget;
 
 use super::{
-    SCROLL_LINE, SCROLLBAR_WIDTH, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS, ScrollAxis,
+    SCROLL_LINE, SCROLLBAR_WIDTH, ScrollAxis, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS,
     WheelAxis, geometry, to_i16, wheel,
 };
 

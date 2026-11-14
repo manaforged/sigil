@@ -76,7 +76,11 @@ impl Palette {
         let [x, y, z] = other.pigments;
         Self {
             paper: blend(self.paper, other.paper, amount),
-            pigments: [blend(a, x, amount), blend(b, y, amount), blend(c, z, amount)],
+            pigments: [
+                blend(a, x, amount),
+                blend(b, y, amount),
+                blend(c, z, amount),
+            ],
             disc: blend(self.disc, other.disc, amount),
             glow: blend(self.glow, other.glow, amount),
             land: blend(self.land, other.land, amount),
@@ -131,8 +135,8 @@ struct Page<'a> {
 impl Page<'_> {
     fn point(&self, hour: f32) -> Point {
         let x = (hour / HOURS).mul_add(self.rect.width, self.rect.origin.x);
-        let y = (height(self.sun.altitude(hour)) / UNITS)
-            .mul_add(self.rect.height, self.rect.origin.y);
+        let y =
+            (height(self.sun.altitude(hour)) / UNITS).mul_add(self.rect.height, self.rect.origin.y);
         Point::new(x, y)
     }
 

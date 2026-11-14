@@ -210,6 +210,7 @@ const fn filter_slot(part: FilterPart) -> ResolvedSlot {
         FilterPart::Backdrop(BackdropPart::Blur, _) => ResolvedSlot::BackdropBlur,
         FilterPart::Backdrop(BackdropPart::Brightness, _) => ResolvedSlot::BackdropBrightness,
         FilterPart::Backdrop(BackdropPart::Saturate, _) => ResolvedSlot::BackdropSaturate,
+        FilterPart::Shader(_) => ResolvedSlot::FilterShader,
     }
 }
 
@@ -253,7 +254,7 @@ const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
 const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
     match atom {
         PaintAtom::Gradient(_) | PaintAtom::NoGradient => ResolvedSlot::BackgroundGradient,
-        PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
+        PaintAtom::Image(_) | PaintAtom::Shader(_) => ResolvedSlot::BackgroundImage,
         PaintAtom::NoColor => ResolvedSlot::BackgroundColor,
         PaintAtom::Stop(slot, _) | PaintAtom::NoStop(slot) => match slot {
             StopSlot::From => ResolvedSlot::GradientFrom,
@@ -372,6 +373,7 @@ pub(crate) enum ResolvedSlot {
     BackdropBlur,
     BackdropBrightness,
     BackdropSaturate,
+    FilterShader,
     DropShadowColor,
     TextShadowColor,
 }

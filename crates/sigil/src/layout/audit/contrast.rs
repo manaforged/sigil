@@ -71,6 +71,7 @@ fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: 
     if render.opacity < OPAQUE
         || render.paint.gradient.is_some()
         || render.paint.image.is_some()
+        || render.paint.shader.is_some()
     {
         return;
     }

@@ -132,7 +132,7 @@ pub(crate) fn resolve_lp(lp: Length, cb: f32) -> f32 {
     }
 }
 
-fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
+pub(crate) fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
     match lp {
         LengthPercentageAuto::Px(v) => Some(v),
         LengthPercentageAuto::Percent(p) => Some(p * cb),

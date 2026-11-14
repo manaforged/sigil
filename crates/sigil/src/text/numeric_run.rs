@@ -1,12 +1,11 @@
 use std::cell::RefCell;
-use std::hash::{Hash, Hasher};
 
-use ahash::AHasher;
 use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
 use crate::cache::Bounded;
+use crate::text::font_settings::FontSettings;
 use crate::text::glyph::{GlyphPos, ShapedRun};
 use crate::text::shaper::{FaceStyle, Font, TextSegment};
 
@@ -19,7 +18,7 @@ struct NumericKey {
     index: u32,
     size: u32,
     weight: u16,
-    features: u64,
+    settings: FontSettings,
     ch: u8,
 }
 
@@ -43,19 +42,18 @@ pub(crate) fn shape(
     font: &Font,
     full: impl Fn(&TextSegment<'_>, &FaceStyle, &Font) -> Option<ShapedRun>,
 ) -> Option<ShapedRun> {
-    if segment.level & 1 == 1 || !is_simple(segment.text) {
+    if segment.level & 1 == 1
+        || !is_simple(segment.text)
+        || style.font.features.iter().any(|(tag, _)| tag != *b"tnum")
+    {
         return None;
-    }
-    let mut features = AHasher::default();
-    for tag in &style.features {
-        tag.0.hash(&mut features);
     }
     let base = NumericKey {
         font: font.id(),
         index: font.face_index(),
         size: style.size_px.to_bits(),
         weight: style.weight,
-        features: features.finish(),
+        settings: style.font,
         ch: 0,
     };
     let mut glyphs: SmallVec<[GlyphPos; 16]> = SmallVec::with_capacity(segment.text.len());
@@ -98,7 +96,7 @@ fn shape_char(
         return None;
     };
     let face = font.font_ref();
-    let location = font.location(style.weight, style.size_px);
+    let location = style.location(font);
     let metrics = face.metrics(
         Size::new(style.size_px.max(1.0)),
         LocationRef::new(location.coords()),

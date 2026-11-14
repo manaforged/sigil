@@ -14,6 +14,7 @@ use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, buffer_group, clipped_pass, linear_sampler, texture_group,
     texture_layout,
 };
+use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_command::walk::pipeline_for;
 use crate::renderer::scene_instance::SceneUniforms;
 use crate::renderer::scene_paint::PaintCtx;
@@ -111,6 +112,34 @@ impl LayerCompositePipeline {
         self.quad.format
     }
 
+    pub(crate) const fn layouts(&self) -> [&wgpu::BindGroupLayout; 2] {
+        [&self.uniform_layout, &self.texture_layout]
+    }
+
+    pub(crate) fn paint_shader(
+        &mut self,
+        mut ctx: PaintCtx<'_>,
+        quad: &QuadPipeline,
+        instances: &UploadedRange,
+        layer: Option<&wgpu::TextureView>,
+    ) {
+        let offset = self.uniform(&mut ctx);
+        let texture = layer.map(|view| self.texture(ctx.device, view));
+        let uniform_bg = self.bound();
+        let sampled = texture.and_then(|index| self.textures.get(index).map(|(_, group)| group));
+        let all = [uniform_bg, sampled.unwrap_or(uniform_bg)];
+        let count = if sampled.is_some() { 2 } else { 1 };
+        if let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer shader pass") {
+            quad.draw(
+                pass,
+                all.get(..count).unwrap_or_default(),
+                &[offset],
+                instances.buffer.slice(instances.bytes.clone()),
+                instances.count,
+            );
+        }
+    }
+
     pub(crate) fn retain(&mut self, keep: impl Fn(&wgpu::TextureView) -> bool) {
         self.textures.retain(|(view, _)| keep(view));
     }
@@ -161,7 +190,7 @@ impl LayerCompositePipeline {
         let behind = inputs
             .backdrop
             .map(|backdrop| self.texture(ctx.device, backdrop.view));
-        let (_, uniform_bg) = self.uniforms.as_ref().expect("layer uniforms initialized");
+        let uniform_bg = self.bound();
         let group = |index: usize| {
             self.textures
                 .get(index)
@@ -209,6 +238,11 @@ impl LayerCompositePipeline {
                 blend: variant.blend,
             },
         )
+    }
+
+    fn bound(&self) -> &wgpu::BindGroup {
+        let (_, group) = self.uniforms.as_ref().expect("layer uniforms initialized");
+        group
     }
 
     fn uniform(&mut self, ctx: &mut PaintCtx<'_>) -> u32 {

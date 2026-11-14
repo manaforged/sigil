@@ -66,6 +66,10 @@ impl Style {
         self.paint.take_images()
     }
 
+    pub(crate) fn take_shaders(&mut self) -> crate::style::shader_paint::ShaderPaints {
+        self.paint.take_shaders()
+    }
+
     pub(crate) fn take_live(&mut self) -> LivePaint {
         self.paint.take_live()
     }

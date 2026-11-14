@@ -92,6 +92,8 @@ pub mod scenes;
 #[cfg(host)]
 mod scissor;
 #[cfg(host)]
+mod shader_paint;
+#[cfg(host)]
 mod shadow_paint;
 pub(crate) mod slug;
 #[cfg(host)]

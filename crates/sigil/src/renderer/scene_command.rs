@@ -5,6 +5,7 @@ mod layer_walk;
 pub(crate) use layer_walk::KeptLayers;
 mod path_run;
 mod primitive;
+pub(crate) mod shader;
 mod wash;
 pub(crate) use crate::scene::state;
 pub(crate) mod walk;

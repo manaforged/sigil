@@ -9,6 +9,7 @@ fn render(name: &'static str, depth: usize) -> String {
         signals: Vec::new(),
         effects: Vec::new(),
         cleanups: Vec::new(),
+        context: None,
         name,
         location: core::panic::Location::caller(),
     };

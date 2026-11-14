@@ -103,6 +103,8 @@ macro_rules! layout_methods {
             fill();
             /// Sets the node's flex shrink factor.
             shrink(factor: f32);
+            /// Sets the width-to-height ratio that the node keeps when one side is set and the other is auto.
+            aspect_ratio(ratio: f32);
             /// Sets the node's size along the main axis before it grows or shrinks.
             flex_basis(basis: impl Into<$crate::layout::Length>);
             /// Sets the space inside the node's left and right edges.
@@ -141,15 +143,15 @@ macro_rules! layout_methods {
             overflow_x(overflow: $crate::layout::Overflow);
             /// Sets what happens to content that is higher than the node.
             overflow_y(overflow: $crate::layout::Overflow);
-            /// Sets the distance from each edge of the parent for an absolute node.
+            /// Sets the distance from each edge of the parent for an absolute node, or of the scroll area for a sticky node.
             inset(inset: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's top edge for an absolute node.
+            /// Sets the distance from the parent's top edge for an absolute node, or from the scroll area's top edge for a sticky node.
             inset_top(top: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's right edge for an absolute node.
+            /// Sets the distance from the parent's right edge for an absolute node, or from the scroll area's right edge for a sticky node.
             inset_right(right: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's bottom edge for an absolute node.
+            /// Sets the distance from the parent's bottom edge for an absolute node, or from the scroll area's bottom edge for a sticky node.
             inset_bottom(bottom: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's left edge for an absolute node.
+            /// Sets the distance from the parent's left edge for an absolute node, or from the scroll area's left edge for a sticky node.
             inset_left(left: impl Into<$crate::layout::Length>);
             /// Sets whether the node is placed in the flow or at its insets.
             position(position: $crate::layout::Position);

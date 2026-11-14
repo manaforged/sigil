@@ -540,10 +540,10 @@ pub use html::html;
 pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use link::{LinkBuilder, link};
-pub use marquee::{MarqueeBuilder, marquee};
 pub use listbox::{CursorEdge, ListState};
 pub use log_view::{Log, log_view};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
+pub use marquee::{MarqueeBuilder, marquee};
 pub use math::math;
 pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
 #[cfg(fuzzing)]

@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::layout::aspect;
 use crate::layout::flex::CbSize;
 use crate::layout::flex_lines::{FlexItem, FlexLine, FlexLines};
 use crate::layout::resolve::{clamp, resolve_lp};
@@ -109,7 +110,13 @@ fn resolve_cross_sizes(
         let node = forest
             .refer(item.id)
             .ok_or_else(|| Error::layout(format!("stale flex item id {:?}", item.id)))?;
-        if node.style().size.width != Length::Auto {
+        let style = node.style();
+        if style.size.width != Length::Auto && style.aspect_ratio.is_none() {
+            continue;
+        }
+        let edges = node.edges(item.main_size);
+        if let Some(cross) = aspect::derive(style, item.main_size, &edges, true) {
+            item.cross_size = clamp(cross, item.min_cross, item.max_cross).max(0.0);
             continue;
         }
         let sized = FlexCtx {
@@ -119,7 +126,6 @@ fn resolve_cross_sizes(
             },
             ..*ctx
         };
-        let edges = node.edges(item.main_size);
         let (cross, _) = item_cross_basis(
             &sized,
             node,

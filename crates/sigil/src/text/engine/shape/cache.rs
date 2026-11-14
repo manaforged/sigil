@@ -28,9 +28,7 @@ impl SpanKey {
         style.weight.hash(&mut hasher);
         style.letter_spacing_em.to_bits().hash(&mut hasher);
         style.cell_grid.hash(&mut hasher);
-        for feature in &style.features {
-            feature.0.hash(&mut hasher);
-        }
+        style.font.hash(&mut hasher);
         Self {
             hash: hasher.finish(),
             faces,

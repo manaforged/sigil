@@ -1,3 +1,4 @@
+use crate::layout::aspect;
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
 use crate::layout::style_data::{Length, Overflow, StyleData};
@@ -64,7 +65,8 @@ pub(crate) fn item_cross_basis(
     let (_, chrome_cross) = axes.chrome(edges);
     let dim = axes.pick(style.size.height, style.size.width);
     let was_auto = matches!(dim, Length::Auto);
-    let resolved = dim_to_border_box(dim, cb_cross, chrome_cross, style.box_sizing);
+    let resolved = dim_to_border_box(dim, cb_cross, chrome_cross, style.box_sizing)
+        .or_else(|| ratio_from(ctx, style, axes, edges, false));
     let resolved = resolved.or_else(|| {
         if node.children().is_empty() {
             let measured = text_intrinsic(ctx, node, style)?;
@@ -94,6 +96,11 @@ pub(crate) fn item_main_basis(
     if sized && let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
         return size.max(0.0);
     }
+    if matches!(dim, Length::Auto)
+        && let Some(size) = ratio_from(ctx, style, axes, edges, true)
+    {
+        return size.max(0.0);
+    }
     if node.children().is_empty() {
         return text_intrinsic(ctx, node, style)
             .map_or(0.0, |measured| {
@@ -105,6 +112,27 @@ pub(crate) fn item_main_basis(
     container_intrinsic_main(ctx, node, cb_main_axis, cb_cross_axis, axes)
         .unwrap_or(0.0)
         .max(0.0)
+}
+
+fn ratio_from(
+    ctx: &FlexCtx<'_, '_>,
+    style: &StyleData,
+    axes: Axis2,
+    edges: &NodeEdges,
+    to_main: bool,
+) -> Option<f32> {
+    style.aspect_ratio?;
+    let (cb_main, cb_cross) = ctx.cb.along(axes);
+    let (from, cb) = if to_main {
+        (axes.cross(), cb_cross)
+    } else {
+        (axes, cb_main)
+    };
+    let dim = from.pick(style.size.width, style.size.height);
+    let (chrome, _) = from.chrome(edges);
+    let (min, max) = item_min_max_main(style, from, cb, edges);
+    let known = dim_to_border_box(dim, cb, chrome, style.box_sizing)?;
+    aspect::derive(style, clamp(known, min, max), edges, from.row)
 }
 
 pub(crate) fn item_min_max_main(

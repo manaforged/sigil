@@ -221,7 +221,10 @@ pub(crate) fn leave(cx: &Cx, id: NodeId) -> bool {
         return false;
     };
     let timing = timing(node).filter(|_| !MotionPrefs::reduced());
-    let exits = presence.exit.try_peek().is_some_and(|atoms| !atoms.is_empty());
+    let exits = presence
+        .exit
+        .try_peek()
+        .is_some_and(|atoms| !atoms.is_empty());
     let shown = presence
         .phase
         .try_peek()

@@ -2,6 +2,7 @@ use core::error::Error;
 
 use alloc::vec::IntoIter;
 
+use crate::hal::cursor::Cursor;
 use crate::hal::events::Event;
 use crate::hal::{
     geometry::{PhysicalSize, Point, Rect},
@@ -30,27 +31,7 @@ pub struct WindowOpts {
     pub fixed_size: bool,
 }
 
-/// Edge or corner for `WindowCommand::DragResize`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum ResizeDirection {
-    /// The right edge.
-    East,
-    /// The top edge.
-    North,
-    /// The top right corner.
-    NorthEast,
-    /// The top left corner.
-    NorthWest,
-    /// The bottom edge.
-    South,
-    /// The bottom right corner.
-    SouthEast,
-    /// The bottom left corner.
-    SouthWest,
-    /// The left edge.
-    West,
-}
+pub use crate::hal::cursor::ResizeDirection;
 
 /// Window stacking level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -148,6 +129,11 @@ pub trait Shell: Sized {
         rect: Rect,
     ) -> Result<(), Self::Error> {
         let _ = (window, rect);
+        Ok(())
+    }
+
+    fn set_cursor(&mut self, window: &Self::Window, cursor: Cursor) -> Result<(), Self::Error> {
+        let _ = (window, cursor);
         Ok(())
     }
 

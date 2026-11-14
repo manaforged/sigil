@@ -12,6 +12,8 @@ use crate::events::pointer_dispatch::{
     local_point, pointer_target_for_node, pointer_targets, synthetic_leave_source,
 };
 
+#[cfg(window_host)]
+mod cursor;
 mod file_drop;
 mod gesture;
 mod hover;
@@ -34,6 +36,8 @@ kittest_pub! {
         hover_seen: Option<(u64, u64, (u32, u32))>,
         link_press: Option<std::sync::Arc<str>>,
         quit: Option<crate::app::config::QuitKeys>,
+        #[cfg(window_host)]
+        link_hover: cursor::LinkHover,
     }
 }
 

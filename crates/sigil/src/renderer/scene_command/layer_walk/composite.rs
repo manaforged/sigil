@@ -1,15 +1,22 @@
 use crate::geometry::{Point, Rect};
+use crate::profile::{Counter, count};
 use crate::renderer::filter::LayerFilters;
+use crate::renderer::frame_upload::FrameUploads;
 use crate::renderer::layer_composite::{
     Backdrop, CompositeRequest, LayerCompositePipeline, LayerMask,
 };
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::projected::{ProjectedPipeline, ProjectedRequest};
+use crate::renderer::scene_command::shader::Programs;
 use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, compose, translation};
+use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
+use crate::renderer::shader_paint::{Form, ShaderInstance};
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::shader::Shading;
 use crate::style::Rgba;
+use std::slice::from_ref;
 
 use super::super::backdrop::{self, BackdropCopy};
 use super::super::{LayerTarget, local_rect, mask};
@@ -22,6 +29,12 @@ pub(in super::super) fn composite_layer(
 ) {
     if let Some(projection) = layer.plan.projection {
         composite_projected(ctx, target, layer, projection);
+        return;
+    }
+    if let Some(shading) = layer.plan.shading
+        && shade(ctx, target, &request_of(&layer, target), &shading)
+    {
+        release_layer(ctx, layer.handle);
         return;
     }
     let mask = layer
@@ -50,6 +63,44 @@ pub(in super::super) fn composite_layer(
     }
     release(ctx, copy.map(|(copy, _)| copy));
     release_layer(ctx, layer.handle);
+}
+
+fn shade(
+    ctx: &mut WalkCtx<'_>,
+    target: &LayerTarget,
+    request: &CompositeRequest<'_>,
+    shading: &Shading,
+) -> bool {
+    let programs = Programs {
+        device: ctx.device,
+        format: ctx.format,
+        composites: &mut *ctx.layer_pipelines,
+        programs: &mut *ctx.shader_programs,
+    };
+    let Some((quad, composite)) = programs.ready(shading.key, Form::Layer) else {
+        return false;
+    };
+    let space = BlendSpace::from_format(ctx.format);
+    let instance = ShaderInstance::layer(request, shading, space, ctx.scale);
+    let Some(instances) = FrameUploads::upload(ctx.encoder, from_ref(&instance), &mut *ctx.stats)
+    else {
+        return false;
+    };
+    let paint = PaintCtx {
+        device: ctx.device,
+        queue: ctx.queue,
+        encoder: &mut *ctx.encoder,
+        view: &target.view,
+        viewport: target.viewport(ctx.scale),
+        clip: target
+            .state
+            .current_clip()
+            .map(|clip| local_rect(clip, target.bounds.origin)),
+        scale: ctx.scale,
+    };
+    composite.paint_shader(paint, quad, &instances, Some(request.layer_view));
+    count(Counter::GpuShaderDraws, 1);
+    true
 }
 
 fn filter_behind(

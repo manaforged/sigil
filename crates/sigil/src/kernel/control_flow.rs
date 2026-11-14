@@ -51,6 +51,19 @@ where
     })
 }
 
+/// Mounts `view(&key)` and mounts it again from scratch each time `key` changes.
+pub fn keyed<K, N>(key: impl Reactive<K>, view: impl Fn(&K) -> N + 'static) -> NodeBuilder
+where
+    K: Clone + Eq + Hash + 'static,
+    N: IntoNode + 'static,
+{
+    fragment().keyed_children_unmounted(move |mounted| {
+        let current = key.read();
+        let child = (!mounted(&current)).then(|| view(&current));
+        [(current, child)]
+    })
+}
+
 type ViewFn = Rc<dyn Fn() -> Box<dyn IntoNode>>;
 
 fn erase<N: IntoNode + 'static>(view: impl Fn() -> N + 'static) -> ViewFn {

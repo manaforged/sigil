@@ -20,6 +20,7 @@ impl RuntimeState {
             signals: Vec::new(),
             effects: Vec::new(),
             cleanups: Vec::new(),
+            context: None,
             #[cfg(feature = "kittest")]
             name,
             #[cfg(feature = "kittest")]
@@ -98,7 +99,7 @@ impl RuntimeState {
         owner
     }
 
-    fn settled_owner(&self) -> Option<OwnerKey> {
+    pub(crate) fn settled_owner(&self) -> Option<OwnerKey> {
         let mut at = match self.current_owner {
             Some(owner) => return Some(owner),
             None => self.deferred_at?,

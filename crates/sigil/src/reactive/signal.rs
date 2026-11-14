@@ -3,7 +3,7 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
-use crate::reactive::diagnostic::{disposed_signal, no_scope};
+use crate::reactive::diagnostic::disposed_signal;
 use crate::reactive::runtime::{
     OwnerKey, RuntimeState, SignalKey, SignalSlot, runtime_id, with_rt,
 };
@@ -110,8 +110,7 @@ impl<T: 'static> core::fmt::Debug for Signal<T> {
 #[track_caller]
 pub fn signal<T: 'static>(initial: T) -> Signal<T> {
     let location = Location::caller();
-    let owner =
-        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("signal()", location));
+    let owner = with_rt(|rt| rt.scoped_owner("signal()", location));
     signal_in(initial, owner, location)
 }
 

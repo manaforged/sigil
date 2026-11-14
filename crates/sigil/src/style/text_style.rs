@@ -26,6 +26,7 @@ pub struct TextStyle {
     pub(crate) tabular_nums: bool,
     pub(crate) decoration: crate::style::TextDecoration,
     pub(crate) runs: Option<TextRuns>,
+    pub(crate) font_settings: crate::text::FontSettings,
 }
 
 /// The overrides of one styled run of text.
@@ -48,6 +49,9 @@ pub struct TextFace {
     pub(crate) dim: bool,
     pub(crate) square: bool,
     pub(crate) link: Option<std::sync::Arc<str>>,
+    pub(crate) font_settings: crate::text::FontSettings,
+    pub(crate) weight: Option<u16>,
+    pub(crate) family: Option<std::sync::Arc<str>>,
 }
 
 impl TextFace {
@@ -67,6 +71,9 @@ impl TextFace {
             dim: false,
             square: false,
             link: None,
+            font_settings: crate::text::FontSettings::new(),
+            weight: None,
+            family: None,
         }
     }
 
@@ -81,6 +88,34 @@ impl TextFace {
     #[must_use]
     pub const fn italic(mut self, italic: bool) -> Self {
         self.italic = italic;
+        self
+    }
+
+    /// Sets a variable-font axis of the run, such as `wdth` or `slnt`, in the axis's own units.
+    #[must_use]
+    pub fn axis(mut self, tag: &str, value: f32) -> Self {
+        self.font_settings.axis(tag, value);
+        self
+    }
+
+    /// Sets an OpenType feature of the run, such as `ss01` or `liga`, where 0 turns it off.
+    #[must_use]
+    pub fn feature(mut self, tag: &str, value: u16) -> Self {
+        self.font_settings.feature(tag, value);
+        self
+    }
+
+    /// Sets the font weight of the run from 1 to 1000.
+    #[must_use]
+    pub fn weight(mut self, weight: impl Into<Option<u16>>) -> Self {
+        self.weight = weight.into();
+        self
+    }
+
+    /// Sets the font family of the run.
+    #[must_use]
+    pub fn family(mut self, family: impl Into<Option<std::sync::Arc<str>>>) -> Self {
+        self.family = family.into();
         self
     }
 
@@ -234,14 +269,24 @@ impl TextRuns {
 
     /// Returns the family of `face`, or `base` when it sets none.
     #[must_use]
-    pub const fn family<'a>(face: &TextFace, base: &'a str) -> &'a str {
-        if face.mono { "mono" } else { base }
+    pub fn family<'a>(face: &'a TextFace, base: &'a str) -> &'a str {
+        match &face.family {
+            Some(family) => family,
+            None if face.mono => "mono",
+            None => base,
+        }
     }
 
     /// Returns the weight of `face`, or `base` when it sets none.
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
-        if face.bold && base < 700 { 700 } else { base }
+        match face.weight {
+            Some(weight) if weight < 1 => 1,
+            Some(weight) if weight > 1000 => 1000,
+            Some(weight) => weight,
+            None if face.bold && base < 700 => 700,
+            None => base,
+        }
     }
 }
 
@@ -310,6 +355,20 @@ impl TextStyle {
         self
     }
 
+    /// Sets a variable-font axis such as `wdth`, `opsz`, `slnt`, or `wght` in the axis's own units.
+    #[must_use]
+    pub fn axis(mut self, tag: &str, value: f32) -> Self {
+        self.font_settings.axis(tag, value);
+        self
+    }
+
+    /// Sets an OpenType feature such as `ss01`, `calt`, or `liga`, where 0 turns it off.
+    #[must_use]
+    pub fn feature(mut self, tag: &str, value: u16) -> Self {
+        self.font_settings.feature(tag, value);
+        self
+    }
+
     /// Sets the underline or strike line.
     #[must_use]
     pub const fn decoration(mut self, decoration: crate::style::TextDecoration) -> Self {
@@ -363,6 +422,7 @@ impl Default for TextStyle {
             font_family: String::from("system-ui"),
             font_size: 14.0,
             font_weight: 400,
+            font_settings: crate::text::FontSettings::new(),
             italic: false,
             line_height: TextLineHeight::default(),
             letter_spacing_em: 0.0,

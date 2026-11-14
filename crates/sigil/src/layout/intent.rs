@@ -159,7 +159,7 @@ impl LayoutStyle {
         self.mark(LayoutFields::BOX_SIZING)
     }
 
-    /// Sets the position mode: `Position::Relative` or `Position::Absolute`.
+    /// Sets the position mode: `Position::Relative`, `Position::Absolute`, or `Position::Sticky`.
     pub const fn position(mut self, position: Position) -> Self {
         self.0.position = position;
         self.mark(LayoutFields::POSITION)

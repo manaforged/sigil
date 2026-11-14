@@ -477,6 +477,55 @@ fn tree() -> impl IntoNode {
 }
 ```
 
+## Shaders
+
+`Shader::new(source)` runs your own WGSL on the GPU. `node.background(shader)` fills the node inside its border, and `SceneBuilder::draw_shader(rect, &shader)` fills a rectangle in a `canvas`. `node.filter_shader(shader)` draws the node and its children into an offscreen layer and composites that layer through the shader; hit testing, focus, text input, and the accessibility tree do not change. Each distinct source compiles once and is cached.
+
+Your source defines one function, `fn shade(in: Shading) -> vec4<f32>`, that returns linear RGBA with straight alpha. The library supplies the rest:
+
+| Name | Value |
+| --- | --- |
+| `in.uv` | `vec2<f32>`, 0 to 1 across the node (the layer for `filter_shader`) |
+| `in.pixel` | `vec2<f32>`, logical pixels from the top left corner |
+| `in.size` | `vec2<f32>`, the size in logical pixels |
+| `in.scale` | `f32`, physical pixels per logical pixel |
+| `in.vars` | `array<f32, 8>`, the values that `.var(index, value)` binds |
+| `in.colors` | `array<vec4<f32>, 4>`, linear RGBA from `.color(index, color)`; tokens follow the theme |
+| `layer(uv)` | linear RGBA with straight alpha of the subtree at `uv`; transparent in the fill form |
+| `srgb_encode`, `srgb_decode`, `rounded_rect_sdf` | helpers you can call |
+
+The prelude also defines `Shading`, `u`, `Uniforms`, `VertexIn`, `ShaderInstance`, `ShaderVertex`, `vs_main`, `fs_main`, `shading_layer_uv`, `layer_texture`, `layer_sampler`, `aa_pad`, `corner_radius`, `edge_coverage`, `dash_mask`, and `stroke_mask`; do not define those names again. A var takes a number, signal, animator, or closure; the node redraws when a bound var changes and is idle while all are still. WebGPU rejects `fwidth`, `dpdx`, `dpdy`, and `textureSample` inside a branch that depends on a pixel value, so call them before any such branch; `layer` uses `textureSampleLevel` and is safe anywhere. A source that does not compile is logged once on the `sigil::shader` tracing target, and the node draws its fallback. The fallback is also what the CPU renderer and the terminal draw: the fill form paints color 0, or nothing when color 0 is unset, and the filter form draws the subtree unchanged.
+
+```rust,no_run
+use sigil::animation::{Animator, Spring};
+use sigil::prelude::*;
+
+const DITHER: &str = r"
+fn shade(in: Shading) -> vec4<f32> {
+    let cell = floor(in.pixel * in.scale / 2.0);
+    let bayer = fract(dot(cell, vec2<f32>(0.5, 0.25)) + fract(cell.y * 0.5) * 0.5);
+    let seen = layer(in.uv);
+    let ink = dot(seen.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let on = step(bayer, mix(ink, 1.0 - ink, in.vars[0]));
+    let color = mix(in.colors[1], in.colors[0], on);
+    return vec4<f32>(color.rgb, seen.a);
+}
+";
+
+fn form() -> impl IntoNode {
+    let name = signal(String::new());
+    let amount = Animator::spring(0.0, Spring::SNAPPY);
+    let dither = Shader::new(DITHER)
+        .var(0, amount.value())
+        .color(0, Token::OnSurface)
+        .color(1, Token::Surface);
+    column()
+        .filter_shader(dither)
+        .child(text_field(name))
+        .child(button("Send").activate(move || amount.target(1.0)))
+}
+```
+
 ## Streaming from a backend
 
 Signals belong to the UI thread. A backend task writes through a `SignalWriter`. The host runs each write on the UI thread at the start of the next turn. `SignalWriter::update` appends in place, so a long transcript is not copied on each chunk. Read it with `Signal::with` to avoid a clone.

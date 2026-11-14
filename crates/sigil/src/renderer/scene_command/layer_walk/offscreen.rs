@@ -14,6 +14,7 @@ use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::scene::command::Filter;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::shader::Shading;
 use crate::style::Rgba;
 
 use super::kept::KeptKey;
@@ -42,6 +43,7 @@ enum LayerReason {
     Blend,
     Backdrop,
     Transform,
+    Shader,
     Other,
 }
 
@@ -58,6 +60,7 @@ impl LayerReason {
             Self::Blend => "blend",
             Self::Backdrop => "backdrop",
             Self::Transform => "transform",
+            Self::Shader => "shader",
             Self::Other => "other",
         };
         crate::profile::attribute(
@@ -78,6 +81,7 @@ impl LayerReason {
             LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
             LayerEffect::Backdrop(_) => Self::Backdrop,
+            LayerEffect::Shader(_) => Self::Shader,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
             LayerEffect::Identity if scope.opacity < 1.0 => Self::Opacity,
             LayerEffect::Identity => Self::Other,
@@ -97,6 +101,7 @@ pub(super) struct LayerPlan<'n> {
     backdrop: Option<LayerFilters>,
     mask: Option<MaskSource<'n>>,
     projection: Option<Transform3D>,
+    shading: Option<Shading>,
     blend: BlendMode,
 }
 
@@ -154,6 +159,7 @@ pub(super) fn layer_plan<'n>(
             backdrop: None,
             mask: None,
             projection: Some(frame.composite),
+            shading: None,
             blend: scope.blend,
         });
     }
@@ -173,6 +179,7 @@ pub(super) fn layer_plan<'n>(
             backdrop: None,
             mask: None,
             projection: None,
+            shading: None,
             blend: scope.blend,
         });
     }
@@ -190,6 +197,10 @@ pub(super) fn layer_plan<'n>(
         backdrop: LayerFilters::behind(&scope.effect),
         mask: None,
         projection: None,
+        shading: match scope.effect {
+            LayerEffect::Shader(shading) => Some(shading),
+            _ => None,
+        },
         blend: scope.blend,
     })
 }
@@ -213,6 +224,7 @@ pub(super) fn group_plan<'n>(
         backdrop: None,
         mask: None,
         projection: None,
+        shading: None,
         blend: BlendMode::Normal,
     })
 }

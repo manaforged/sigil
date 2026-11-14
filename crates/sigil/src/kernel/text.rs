@@ -155,6 +155,12 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
     }
 }
 
+/// Creates a text node from spans that shape, wrap, and select as one paragraph.
+pub fn rich(spans: crate::text::Spans) -> TextBuilder {
+    let (body, runs) = spans.into_parts();
+    text(body).runs(runs)
+}
+
 impl TextBuilder {
     /// Turns wrapping on and the ellipsis off.
     pub const fn wrap(mut self) -> Self {

@@ -7,7 +7,7 @@ use crate::geometry::Point;
 pub enum Gesture {
     /// A two-finger pinch; a positive delta zooms in and a negative delta zooms out.
     Pinch(f64),
-    /// A two-finger rotation; a positive delta turns counterclockwise.
+    /// A two-finger rotation by a delta in degrees; a positive delta turns counterclockwise.
     Rotate(f32),
     /// A pan by a distance in logical pixels.
     Pan(Point),

@@ -102,14 +102,15 @@ pub(crate) fn projection(
 pub(crate) fn node_plane(cx: &Cx, id: NodeId) -> Option<(Transform3D, bool)> {
     let node = cx.get(id)?;
     let rect = node.extension::<LayoutResult>()?.rect();
-    let (flat, space) = node
-        .extension::<StyleBinding>()
-        .map_or((Transform2D::IDENTITY, SpaceStyle::FLAT), |binding| {
+    let (flat, space) = node.extension::<StyleBinding>().map_or(
+        (Transform2D::IDENTITY, SpaceStyle::FLAT),
+        |binding| {
             (
                 Transform2D::for_binding(binding),
                 SpaceStyle::for_binding(binding),
             )
-        });
+        },
+    );
     projection(cx, id, (flat, &space), rect)
         .or_else(|| (!flat.is_identity()).then(|| (Transform3D::from(flat.matrix(rect)), false)))
 }
@@ -148,5 +149,9 @@ fn depth(cx: &Cx, id: NodeId) -> f32 {
     );
     let along = |row: [f32; 4]| row[0].mul_add(x, row[1].mul_add(y, row[3]));
     let w = along(m[3]);
-    if w > 0.0 { along(m[2]) / w } else { f32::NEG_INFINITY }
+    if w > 0.0 {
+        along(m[2]) / w
+    } else {
+        f32::NEG_INFINITY
+    }
 }

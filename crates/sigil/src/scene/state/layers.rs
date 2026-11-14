@@ -28,9 +28,10 @@ impl SceneState {
                 let reach = filter_reach(filters).min(MAX_BLUR_REACH);
                 self.target_clip(scope, visible.expand(reach))
             }
-            LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Backdrop(_) => {
-                self.target_clip(scope, visible)
-            }
+            LayerEffect::Identity
+            | LayerEffect::Mask(_)
+            | LayerEffect::Backdrop(_)
+            | LayerEffect::Shader(_) => self.target_clip(scope, visible),
             LayerEffect::Projected { .. } => Some(scope.clip),
         }
     }

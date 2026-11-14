@@ -3,8 +3,5 @@
 use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
-    sigil::run(
-        sigil_showcase::window("Deck"),
-        sigil_showcase::deck::app,
-    )
+    sigil::run(sigil_showcase::window("Deck"), sigil_showcase::deck::app)
 }

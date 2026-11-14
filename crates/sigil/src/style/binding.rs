@@ -293,7 +293,9 @@ impl StyleBinding {
         self.replace_owned(kept);
     }
 
-    pub(crate) const fn glide(&self) -> &OnceCell<Box<crate::animation::runtime::layout_motion::Glide>> {
+    pub(crate) const fn glide(
+        &self,
+    ) -> &OnceCell<Box<crate::animation::runtime::layout_motion::Glide>> {
         &self.glide
     }
 
@@ -459,7 +461,9 @@ impl AnimatorOverlay for StyleBinding {
         }
         let mut hasher = ahash::AHasher::default();
         base.hash(&mut hasher);
-        glide.map(|offset| offset.map(f32::to_bits)).hash(&mut hasher);
+        glide
+            .map(|offset| offset.map(f32::to_bits))
+            .hash(&mut hasher);
         for entry in &self.animated_values {
             let prop = (entry.property)(entry.value.peek());
             core::mem::discriminant(&prop).hash(&mut hasher);

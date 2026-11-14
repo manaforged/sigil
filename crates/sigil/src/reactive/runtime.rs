@@ -4,6 +4,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use std::collections::{BTreeSet, VecDeque};
 
 use crate::reactive::arena::Arena;
+use crate::reactive::diagnostic::no_scope;
 use crate::reactive::phase::DrawPhase;
 pub(crate) use crate::reactive::runtime_slots::{
     EffectKey, EffectSlot, OwnerKey, OwnerSlot, SignalKey, SignalSlot,
@@ -203,6 +204,15 @@ impl RuntimeState {
         let run_owner = self.effect_run_owner(effect)?;
         self.current_owner = Some(run_owner);
         Some(run_owner)
+    }
+
+    pub(crate) fn scoped_owner(
+        &mut self,
+        api: &'static str,
+        location: &'static Location<'static>,
+    ) -> OwnerKey {
+        self.active_owner()
+            .unwrap_or_else(|| no_scope(api, location))
     }
 
     pub(crate) fn effect_run_owner(&mut self, eff_key: EffectKey) -> Option<OwnerKey> {

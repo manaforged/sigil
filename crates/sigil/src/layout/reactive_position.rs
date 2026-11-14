@@ -126,9 +126,7 @@ fn viewport(cx: &Cx, node: &Node) -> Option<Rect> {
             && (parent.is_none() || (result.clips() && !escaped))
         {
             let rect = result.rect();
-            clip = Some(clip.map_or(rect, |inner| {
-                inner.intersection(rect).unwrap_or_default()
-            }));
+            clip = Some(clip.map_or(rect, |inner| inner.intersection(rect).unwrap_or_default()));
         }
         escaped |= ancestor.extension::<TopLayer>().is_some();
         current = parent;
@@ -141,8 +139,9 @@ fn visible_share(rect: Rect, view: Rect) -> f32 {
     if area <= 0.0 {
         return if holds(view, rect) { 1.0 } else { 0.0 };
     }
-    rect.intersection(view)
-        .map_or(0.0, |seen| (seen.width * seen.height / area).clamp(0.0, 1.0))
+    rect.intersection(view).map_or(0.0, |seen| {
+        (seen.width * seen.height / area).clamp(0.0, 1.0)
+    })
 }
 
 const fn holds(outer: Rect, inner: Rect) -> bool {

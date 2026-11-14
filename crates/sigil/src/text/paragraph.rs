@@ -11,6 +11,7 @@ use crate::hal::{HitPosition, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;
+use crate::text::font_settings::Axes;
 use crate::text::glyph::ShapedRun;
 
 #[path = "paragraph_geometry.rs"]
@@ -201,7 +202,7 @@ impl FaceEntry {
             bytes: face.font.bytes_arc(),
             index: face.font.face_index(),
             id: face.font.id() ^ if oblique { OBLIQUE_ID } else { 0 },
-            variation_coords: face.font.variation_coords(face.weight, size_px),
+            variation_coords: face.font.coords(face.weight, size_px, &face.axes),
             skew: face.skew,
         }
     }
@@ -212,6 +213,7 @@ pub(crate) struct FaceSpec {
     pub(crate) font: Font,
     pub(crate) weight: u16,
     pub(crate) skew: f32,
+    pub(crate) axes: Axes,
 }
 
 struct ParagraphInner {

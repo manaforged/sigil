@@ -15,6 +15,7 @@ pub(crate) enum Batch {
     Decoration,
     Glyphs,
     Path,
+    Shader,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -47,6 +48,7 @@ pub(crate) fn batch_of(command: &SceneCommand) -> Option<Batch> {
         SceneCommand::DrawShadow { .. } => Some(Batch::Shadow),
         SceneCommand::Decoration(_) => Some(Batch::Decoration),
         SceneCommand::Path(_) => Some(Batch::Path),
+        SceneCommand::Shader(_) => Some(Batch::Shader),
         _ => None,
     }
 }

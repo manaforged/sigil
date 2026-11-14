@@ -62,10 +62,13 @@ pub(crate) fn intern(spring: Spring) -> TransitionId {
         return id;
     }
     let mut springs = SPRINGS.lock().unwrap_or_else(PoisonError::into_inner);
-    let index = springs.iter().position(|held| *held == spring).unwrap_or_else(|| {
-        springs.push(spring);
-        springs.len() - 1
-    });
+    let index = springs
+        .iter()
+        .position(|held| *held == spring)
+        .unwrap_or_else(|| {
+            springs.push(spring);
+            springs.len() - 1
+        });
     let id = u16::try_from(index)
         .ok()
         .filter(|index| *index < LAYOUT)

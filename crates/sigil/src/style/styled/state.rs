@@ -4,6 +4,7 @@ use crate::kernel::ImageSource;
 use crate::style::image_paint::ImagePaints;
 use crate::style::live_paint::LivePaint;
 use crate::style::merge::SlotSet;
+use crate::style::shader_paint::ShaderPaints;
 use crate::style::{Paint, StyleAtom};
 
 /// Builds the paint for one interaction state.
@@ -12,6 +13,7 @@ use crate::style::{Paint, StyleAtom};
 pub struct StateStyleBuilder {
     atoms: SmallVec<[StyleAtom; 16]>,
     images: ImagePaints,
+    shaders: ShaderPaints,
     live: LivePaint,
 }
 
@@ -20,13 +22,17 @@ impl StateStyleBuilder {
         Self {
             atoms: SmallVec::new_const(),
             images: ImagePaints::new(),
+            shaders: ShaderPaints::new(),
             live: LivePaint::new(),
         }
     }
 
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
-        self.atoms.is_empty() && self.images.is_empty() && self.live.is_empty()
+        self.atoms.is_empty()
+            && self.images.is_empty()
+            && self.shaders.is_empty()
+            && self.live.is_empty()
     }
 
     pub(crate) fn push_atom(&mut self, atom: StyleAtom) {
@@ -61,6 +67,14 @@ impl StateStyleBuilder {
 
     pub(crate) fn take_images(&mut self) -> ImagePaints {
         std::mem::take(&mut self.images)
+    }
+
+    pub(crate) fn push_shader(&mut self, shader: crate::scene::Shader) -> u64 {
+        self.shaders.push(shader)
+    }
+
+    pub(crate) fn take_shaders(&mut self) -> ShaderPaints {
+        std::mem::take(&mut self.shaders)
     }
 
     pub(crate) fn take_live(&mut self) -> LivePaint {

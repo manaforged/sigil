@@ -6,6 +6,7 @@ use criterion as _;
 mod arena;
 mod batch;
 mod channel;
+mod context;
 kittest_pub! {
     /// Diagnostics for the reactive graph.
     #[doc(hidden)]
@@ -31,6 +32,7 @@ mod trace;
 
 pub use batch::batch;
 pub use channel::{EventChannel, Subscription};
+pub use context::{context, provide};
 pub(crate) use effect::effect_at;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use effect::effect_named;

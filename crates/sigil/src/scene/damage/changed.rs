@@ -143,7 +143,7 @@ pub(crate) fn command_ink(
     let moved = layers.iter().find(|layer| {
         matches!(
             layer.effect,
-            LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+            LayerEffect::Transform(_) | LayerEffect::Projected { .. } | LayerEffect::Shader(_)
         )
     });
     let rect = match moved {

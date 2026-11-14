@@ -1,6 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::Error;
+use crate::layout::aspect;
 use crate::layout::block_collapse::OpenMargin;
 use crate::layout::block_size::SizeIntent;
 use crate::layout::flex::{CbSize, FlexSolver};
@@ -76,7 +77,8 @@ fn child_border_x(
         return start;
     }
     let intent = SizeIntent::build(style, inner_cb, edges);
-    intent.w.preferred.map_or(start, |width| {
+    let (ratio_w, _) = aspect::assign(style, edges, inner_cb, (None, None));
+    ratio_w.or(intent.w.preferred).map_or(start, |width| {
         content_x + inner_cb.width - edges.margin.right.unwrap_or(0.0) - intent.w.clamp(width)
     })
 }
@@ -133,12 +135,13 @@ impl BlockSolver<'_> {
         }
         let intent = SizeIntent::build(style, cb, &edges);
         let (natural_w, text_size) = self.natural_width(node, &intent, cb.width, &edges);
-        let w = intent.w.clamp(assigned.width.unwrap_or(natural_w));
+        let (ratio_w, _) = aspect::assign(style, &edges, cb, (assigned.width, None));
+        let w = intent.w.clamp(ratio_w.unwrap_or(natural_w));
+        let (_, ratio_h) = aspect::assign(style, &edges, cb, (Some(w), None));
+        let preferred_h = ratio_h.or(intent.h.preferred);
         let inner_cb = Axes {
             width: (w - edges.inline_chrome()).max(0.0),
-            height: intent
-                .h
-                .preferred
+            height: preferred_h
                 .map_or(cb.height, |height| height - edges.block_chrome())
                 .max(0.0),
         };
@@ -147,11 +150,9 @@ impl BlockSolver<'_> {
             None => self.layout_children(node, inner_cb, border_origin, &edges)?,
         };
         let auto_h = content_height + edges.block_chrome();
-        let h = assigned.height.unwrap_or_else(|| {
-            intent
-                .h
-                .clamp(intent.h.preferred.unwrap_or(auto_h).max(0.0))
-        });
+        let h = assigned
+            .height
+            .unwrap_or_else(|| intent.h.clamp(preferred_h.unwrap_or(auto_h).max(0.0)));
         self.scope.write(node.id(), ComputedBox { x, y, w, h });
         if text_size.is_none() {
             self.place_absolutes(node, (w, h), border_origin, &edges)?;

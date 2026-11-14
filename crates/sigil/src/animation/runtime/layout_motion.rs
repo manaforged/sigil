@@ -25,7 +25,9 @@ impl Glide {
     }
 
     pub(crate) fn offset(&self) -> Option<[f32; 2]> {
-        let offset = self.offset.map(|value| value.try_peek().unwrap_or_default());
+        let offset = self
+            .offset
+            .map(|value| value.try_peek().unwrap_or_default());
         (offset != [0.0; 2]).then_some(offset)
     }
 

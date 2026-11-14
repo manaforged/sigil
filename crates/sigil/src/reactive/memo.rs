@@ -2,9 +2,8 @@ use core::panic::Location;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::reactive::diagnostic::no_scope;
 use crate::reactive::effect::effect;
-use crate::reactive::runtime::{RuntimeState, with_rt};
+use crate::reactive::runtime::with_rt;
 use crate::reactive::signal::{Signal, signal_in};
 
 /// Creates a signal that holds the result of `f` and updates when a signal that `f` reads changes.
@@ -16,8 +15,7 @@ where
     F: FnMut() -> T + 'static,
 {
     let caller = Location::caller();
-    let parent_owner =
-        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("memo()", caller));
+    let parent_owner = with_rt(|rt| rt.scoped_owner("memo()", caller));
     let holder: Rc<Cell<Option<Signal<T>>>> = Rc::new(Cell::new(None));
     let holder_inside = Rc::clone(&holder);
     effect(move || {

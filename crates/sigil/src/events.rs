@@ -4,6 +4,8 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 pub(crate) mod builder_ext;
+#[cfg(window_host)]
+mod cursor;
 mod drop;
 pub(crate) mod focus;
 mod handlers;
@@ -13,8 +15,8 @@ pub(crate) mod links;
 pub(crate) mod pointer_dispatch;
 mod router;
 pub(crate) mod selection;
-mod velocity;
 mod selection_walk;
+mod velocity;
 #[cfg(feature = "desktop")]
 mod window_command;
 
@@ -46,6 +48,7 @@ pub fn invoke_node(
     pointer_dispatch::invoke_node(cx, layout, target, false);
 }
 
+pub use crate::hal::cursor::{Cursor, ResizeDirection};
 pub(crate) use crate::hal::events::ClickConfig;
 pub use crate::hal::events::{
     Event, FileDropEvent, FileDropPhase, Gesture, GestureEvent, ImeEvent, Key, KeyEvent, KeyPhase,

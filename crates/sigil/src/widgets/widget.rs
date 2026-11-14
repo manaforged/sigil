@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::animation::{Property, Transition};
 use crate::events::builder_ext as on;
 use crate::events::{
-    A11yEdit, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
-    ScrollEvent, Shortcut, ValueStep, event_methods, handler_methods,
+    A11yEdit, Cursor, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent,
+    PointerEvent, ScrollEvent, Shortcut, ValueStep, event_methods, handler_methods,
 };
 use crate::geometry::{Point, Rect, Size};
 use crate::kernel::{AccessibleName, NodeBuilder};
@@ -295,6 +295,30 @@ pub trait Widget: Sized {
     #[must_use]
     fn pointer_drag(self, handler: impl FnMut(DragPhase, &mut PointerEvent) + 'static) -> Self {
         self.map_node(move |node| on::pointer_drag(node, handler))
+    }
+
+    /// Runs `handler` with the zoom delta of each trackpad pinch over the node; a positive delta zooms in.
+    #[must_use]
+    fn pinch(self, handler: impl Fn(f64, &mut GestureEvent) + 'static) -> Self {
+        self.map_node(move |node| on::pinch(node, handler))
+    }
+
+    /// Runs `handler` with the angle in degrees of each trackpad rotation over the node; a positive angle turns counterclockwise.
+    #[must_use]
+    fn rotation(self, handler: impl Fn(f32, &mut GestureEvent) + 'static) -> Self {
+        self.map_node(move |node| on::rotation(node, handler))
+    }
+
+    /// Sets the mouse cursor shown while the pointer is over the node and over children that set none.
+    #[must_use]
+    fn cursor(self, cursor: impl Reactive<Cursor>) -> Self {
+        self.map_node(move |node| on::cursor(node, cursor))
+    }
+
+    /// Sets whether pointer hit tests and focus moves can land on the node; false lets pointer events pass through to what lies below.
+    #[must_use]
+    fn hittable(self, yes: bool) -> Self {
+        self.map_node(move |node| node.hittable(yes))
     }
 
     /// Runs `handler` for each screen-reader edit or value request on the node; it returns true when it handled the request.

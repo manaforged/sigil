@@ -82,11 +82,15 @@ impl NodeBuilder {
         let pending = self.pending_style();
         let atoms = pending.take_atoms();
         let images = pending.take_images();
+        let shaders = pending.take_shaders();
         let live = pending.take_live();
-        let this = if images.is_empty() {
+        let this = if images.is_empty() && shaders.is_empty() {
             self
         } else {
-            self.mutate(move |node| images.install(node))
+            self.mutate(move |node| {
+                images.install(node);
+                shaders.install(node);
+            })
         };
         let this = live.install(this);
         if atoms.is_empty() {

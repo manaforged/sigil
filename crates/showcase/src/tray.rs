@@ -117,16 +117,11 @@ fn tray(drop: Animator, open: Signal<Vec<usize>>) -> NodeBuilder {
                         .tabular_nums(true),
                 ),
         )
-        .child(
-            column()
-                .width(Length::Fill)
-                .gap(Space::Md)
-                .child(for_each(
-                    open,
-                    |index| *index,
-                    move |index| session(*index, open),
-                )),
-        )
+        .child(column().width(Length::Fill).gap(Space::Md).child(for_each(
+            open,
+            |index| *index,
+            move |index| session(*index, open),
+        )))
         .into()
 }
 
@@ -137,7 +132,12 @@ fn session(index: usize, open: Signal<Vec<usize>>) -> impl IntoNode + use<> {
         .width(Length::Fill)
         .gap(Space::Lg)
         .align_items(AlignItems::Center)
-        .transition(Transition::new().duration(SWAP).ease(Easing::CubicOut).layout())
+        .transition(
+            Transition::new()
+                .duration(SWAP)
+                .ease(Easing::CubicOut)
+                .layout(),
+        )
         .enter(Property::Opacity(0.0))
         .enter(Property::TranslateY(RISE))
         .exit(Property::Opacity(0.0))
@@ -149,9 +149,12 @@ fn session(index: usize, open: Signal<Vec<usize>>) -> impl IntoNode + use<> {
         )
         .child(text(task).text_role(TextRole::Body).grow(1.0))
         .child(
-            text(format!("{} min", session.map_or(0, |session| session.minutes)))
-                .text_role(TextRole::Body)
-                .tabular_nums(true),
+            text(format!(
+                "{} min",
+                session.map_or(0, |session| session.minutes)
+            ))
+            .text_role(TextRole::Body)
+            .tabular_nums(true),
         )
         .child(
             button("Done")

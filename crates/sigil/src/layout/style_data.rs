@@ -206,6 +206,8 @@ pub enum Position {
     Relative,
     /// The node leaves the flow and is placed by its insets.
     Absolute,
+    /// The node keeps its place in the flow and is held at its insets from the edges of the nearest scroll area while its parent is in view.
+    Sticky,
 }
 
 /// Main axis of a flex box.
@@ -344,6 +346,7 @@ pub struct StyleData {
     pub size: Axes<Length>,
     pub min_size: Axes<Length>,
     pub max_size: Axes<Length>,
+    pub aspect_ratio: Option<f32>,
     pub order: i32,
     pub box_sizing: BoxSizing,
     pub grid_template_columns: Vec<TrackSize>,
@@ -379,6 +382,7 @@ impl StyleData {
         size: Axes::splat(Length::Auto),
         min_size: Axes::splat(Length::Auto),
         max_size: Axes::splat(Length::Auto),
+        aspect_ratio: None,
         order: 0,
         box_sizing: BoxSizing::ContentBox,
         grid_template_columns: Vec::new(),

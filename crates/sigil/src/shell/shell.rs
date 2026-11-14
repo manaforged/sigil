@@ -19,6 +19,7 @@ use crate::shell::{WinitWindowHandle, waker::WakeEvent};
 mod a11y;
 mod attrs;
 mod commands;
+mod cursor;
 mod events;
 mod shell_impl;
 mod title_bar;
@@ -52,6 +53,7 @@ pub struct WinitShell {
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
     window_zooms: Vec<(WinitWindowHandle, f32)>,
+    window_cursors: Vec<(WinitWindowHandle, crate::events::Cursor)>,
     title_bars: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<TaggedEvent>,
@@ -122,6 +124,7 @@ impl WinitShell {
             windows: Vec::new(),
             window_scales: Vec::new(),
             window_zooms: Vec::new(),
+            window_cursors: Vec::new(),
             title_bars: Vec::new(),
             failed: Vec::new(),
             events: Vec::new(),
@@ -252,6 +255,7 @@ impl WinitShell {
         self.windows.retain(|(h, _)| *h != handle);
         self.window_scales.retain(|(h, _)| *h != handle);
         self.window_zooms.retain(|(h, _)| *h != handle);
+        self.window_cursors.retain(|(h, _)| *h != handle);
         self.title_bars.retain(|(h, _)| *h != handle);
         self.a11y_adapters.retain(|entry| entry.handle != handle);
         self.events.retain(|(h, _)| *h != handle);

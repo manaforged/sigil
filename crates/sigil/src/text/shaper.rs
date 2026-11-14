@@ -17,6 +17,7 @@ use skrifa::raw::types::Tag;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::text::font_settings::{AXES, Axes, FontSettings};
 use crate::text::glyph::{GlyphId, GlyphPos, ShapedRun};
 
 #[path = "shaper/classify.rs"]
@@ -28,9 +29,6 @@ mod variations;
 use classify_mod::warn_complex_without_feature;
 #[allow(unused_imports, reason = "intentional, reviewed trade-off")]
 pub(crate) use classify_mod::{Script, classify_segment_script};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct FeatureTag(pub [u8; 4]);
 
 #[doc(hidden)]
 #[derive(Clone)]
@@ -106,27 +104,31 @@ impl Font {
             .is_some()
     }
 
-    pub(crate) fn location(&self, weight: u16, size_px: f32) -> Location {
-        let settings = self.variation_settings(weight, size_px);
-        self.font_ref()
-            .axes()
-            .location(settings.iter().map(|(tag, value)| (Tag::new(tag), *value)))
+    pub(crate) fn location(&self, weight: u16, size_px: f32, axes: &Axes) -> Location {
+        let font = self.font_ref();
+        let collection = font.axes();
+        let snapped: SmallVec<[([u8; 4], f32); AXES]> = axes
+            .values()
+            .map(|(tag, value)| {
+                let axis = collection.get_by_tag(Tag::new(&tag));
+                (tag, variations::snap(axis.as_ref(), value))
+            })
+            .collect();
+        let settings = self.variations.settings_at(weight, size_px, &snapped);
+        collection.location(settings.iter().map(|(tag, value)| (Tag::new(tag), *value)))
     }
 
-    pub(crate) fn variation_settings(
-        &self,
-        weight: u16,
-        size_px: f32,
-    ) -> variations::VariationSettings {
-        self.variations.settings(weight, size_px)
-    }
-
-    pub(crate) fn variation_coords(&self, weight: u16, size_px: f32) -> Box<[i16]> {
-        self.location(weight, size_px)
+    pub(crate) fn coords(&self, weight: u16, size_px: f32, axes: &Axes) -> Box<[i16]> {
+        self.location(weight, size_px, axes)
             .coords()
             .iter()
             .map(|coord| coord.to_bits())
             .collect()
+    }
+
+    #[cfg(all(test, target_os = "macos"))]
+    pub(crate) fn variation_coords(&self, weight: u16, size_px: f32) -> Box<[i16]> {
+        self.coords(weight, size_px, &Axes::EMPTY)
     }
 
     #[must_use]
@@ -182,17 +184,21 @@ impl<'a> TextSegment<'a> {
 pub(crate) struct FaceStyle {
     pub(crate) size_px: f32,
     pub(crate) weight: u16,
-    pub(crate) features: SmallVec<[FeatureTag; 4]>,
+    pub(crate) font: FontSettings,
     pub(crate) letter_spacing_em: f32,
     pub(crate) cell_grid: bool,
 }
 
 impl FaceStyle {
+    pub(crate) fn location(&self, font: &Font) -> Location {
+        font.location(self.weight, self.size_px, &self.font.axes)
+    }
+
     pub(crate) fn regular(size_px: f32) -> Self {
         Self {
             size_px,
             weight: 400,
-            features: SmallVec::new(),
+            font: FontSettings::new(),
             letter_spacing_em: 0.0,
             cell_grid: false,
         }
@@ -240,7 +246,7 @@ impl<'a> Shaper<'a> {
 
     pub(crate) fn strut(&self, style: &FaceStyle) -> (f32, f32) {
         let size = Size::new(style.size_px.max(1.0));
-        let location = self.font.location(style.weight, style.size_px);
+        let location = style.location(self.font);
         let m = self
             .font_ref
             .metrics(size, LocationRef::new(location.coords()));
@@ -252,7 +258,7 @@ fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &FaceStyle) -> Sh
     let font_ref = font.font_ref();
     let charmap = font_ref.charmap();
     let size = Size::new(style.size_px.max(1.0));
-    let location = font.location(style.weight, style.size_px);
+    let location = style.location(font);
     let location_ref = LocationRef::new(location.coords());
     let metrics = GlyphMetrics::new(&font_ref, size, location_ref);
     let face_metrics = font_ref.metrics(size, location_ref);

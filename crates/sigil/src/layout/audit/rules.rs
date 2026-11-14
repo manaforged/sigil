@@ -17,7 +17,7 @@ fn in_flow(node: &Node) -> bool {
     node.extension::<ReactivePosition>().is_none()
         && node
             .extension::<LayoutStyle>()
-            .is_none_or(|style| style.data().position != Position::Absolute)
+            .is_none_or(|style| style.data().position == Position::Relative)
 }
 
 fn overflow(node: &Node) -> (Overflow, Overflow) {

@@ -3,6 +3,7 @@
 use ahash::AHashSet;
 
 use crate::Error;
+use crate::layout::aspect;
 use crate::layout::block::{BlockSolver, Position2};
 use crate::layout::flex::{CbSize, FlexSolver};
 use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
@@ -171,6 +172,9 @@ impl<'a> GridSolver<'a> {
         assigned_h: Option<f32>,
     ) -> Result<(), Error> {
         let frame = GridFrame::new(subtree.style(), border_w, origin);
+        let cb = Axes::new(border_w, cb_h);
+        let (_, assigned_h) =
+            aspect::assign(frame.style, &frame.edges, cb, (Some(border_w), assigned_h));
         let children: Vec<LocalId> = subtree.children().to_vec();
         let places = self.flow_children(&children, &frame);
         let row_h = self.layout_rows(&places, &frame, cb_h, assigned_h)?;
@@ -332,7 +336,8 @@ impl<'a> GridSolver<'a> {
         let cell = forest
             .refer(cid)
             .ok_or_else(|| Error::layout(format!("stale grid cell {cid:?}")))?;
-        let stretch = matches!(cell.style().size.height, Length::Auto);
+        let stretch =
+            matches!(cell.style().size.height, Length::Auto) && cell.style().aspect_ratio.is_none();
         let nested = MeasureScope::new(forest, self.scope.text(), self.scope.available());
         match cell.style().display {
             Display::Flex => FlexSolver::new(nested).solve_at_area(

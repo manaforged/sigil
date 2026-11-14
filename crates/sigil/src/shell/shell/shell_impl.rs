@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::app::WindowCommand;
-use crate::events::Event;
+use crate::events::{Cursor, Event};
 use crate::geometry::{PhysicalSize, Rect, Size};
 use crate::hal::Shell;
 use winit::dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize};
@@ -98,6 +98,11 @@ impl Shell for WinitShell {
                 WinitLogicalSize::new(at(rect.width), at(rect.height)),
             );
         }
+        Ok(())
+    }
+
+    fn set_cursor(&mut self, window: &Self::Window, cursor: Cursor) -> Result<(), Self::Error> {
+        self.show_cursor(*window, cursor);
         Ok(())
     }
 

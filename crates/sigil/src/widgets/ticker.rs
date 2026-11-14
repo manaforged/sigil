@@ -57,7 +57,9 @@ impl<T: 'static> TickerBuilder<T> {
             .text_value(shown)
             .layout(LayoutStyle::flex_row().justify_content(JustifyContent::End))
             .tabular_nums(true)
-            .child(for_each(places, Clone::clone, move |slot| place(slot, shown, spring)));
+            .child(for_each(places, Clone::clone, move |slot| {
+                place(slot, shown, spring)
+            }));
         self.frame.finish(line)
     }
 }
@@ -150,5 +152,7 @@ fn face_text(face: u8, at: Signal<f32>) -> TextBuilder {
                 .inset_left(0.0),
         )
     };
-    glyph.drive(Property::TranslateYPercent, move || (f32::from(face) - at.get()) * FACE_PERCENT)
+    glyph.drive(Property::TranslateYPercent, move || {
+        (f32::from(face) - at.get()) * FACE_PERCENT
+    })
 }

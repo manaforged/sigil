@@ -72,7 +72,11 @@ pub(crate) fn apply(config: &AppConfig) {
 
 pub(crate) fn refresh() {
     let pinned = PINNED.with(Cell::get);
-    let platform = if pinned.pinned() { UNSET } else { read_access() };
+    let platform = if pinned.pinned() {
+        UNSET
+    } else {
+        read_access()
+    };
     pinned.or(platform).apply();
 }
 

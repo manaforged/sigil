@@ -5,8 +5,8 @@ use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{BlendMode, LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::style_adapter::corner_radii_for;
-use crate::style::RenderStyle;
 use crate::style::atom::OPACITY_UNITS;
+use crate::style::{RenderStyle, Theme};
 
 use super::effects::content_bounds;
 use super::mask::LayerOrClip;
@@ -14,6 +14,35 @@ use super::{EmitWalk, Inherited};
 
 impl<'t> EmitWalk<'_, 't> {
     pub(super) fn push_filtered(
+        &mut self,
+        id: NodeId,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+        style: &RenderStyle,
+    ) {
+        let shaded = self.cx.get(id).and_then(|node| {
+            let theme = node.extension::<Theme>().unwrap_or(inherited.theme);
+            let shading = super::shader::layer(node, style, theme)?;
+            let rect = node.extension::<LayoutResult>().map(LayoutResult::rect)?;
+            Some((shading, content_bounds(self.cx, id).unwrap_or(rect)))
+        });
+        let Some((shading, content)) = shaded else {
+            self.push_css_filtered(id, inherited, clip, style);
+            return;
+        };
+        let scope = LayerScope {
+            clip: content.expand(1.0 + filter_reach(&style.filter.filters())),
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Shader(shading),
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+        };
+        self.nested(LayerOrClip::Layer(scope), |walk| {
+            walk.push_css_filtered(id, inherited, clip, style);
+        });
+    }
+
+    fn push_css_filtered(
         &mut self,
         id: NodeId,
         inherited: &Inherited<'t>,

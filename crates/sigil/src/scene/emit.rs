@@ -23,6 +23,7 @@ mod dashes;
 mod paint;
 mod runs;
 mod selection;
+mod shader;
 #[cfg(feature = "scene")]
 mod text_fill;
 use paint::{NodePaint, push_focus_ring, push_node};
@@ -356,7 +357,10 @@ impl<'t> EmitWalk<'_, 't> {
     }
 
     fn push_children(&mut self, node: &Node, inherited: &Inherited<'t>, clip: Option<Rect>) {
-        self.push_nodes(node.children().iter().copied(), inherited, clip);
+        match crate::layout::stack::stacked(self.cx, node) {
+            Some(order) => self.push_nodes(order, inherited, clip),
+            None => self.push_nodes(node.children().iter().copied(), inherited, clip),
+        }
     }
 
     fn push_nodes(
@@ -382,9 +386,7 @@ fn paint_key(node: &Node, inherited: &Inherited<'_>, paint: &NodePaint<'_>) -> u
         inherited.text_style.as_ref(),
     ) ^ emit_cache::content_key(node)
         ^ u64::from(paint.leaf)
-        ^ node
-            .extension::<CanvasPaint>()
-            .map_or(0, CanvasPaint::version)
+        ^ crate::scene::canvas::paint_version(node)
         ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
         ^ emit_cache::shadow_key(paint.text_shadows)
 }

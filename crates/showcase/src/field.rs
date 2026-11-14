@@ -75,8 +75,8 @@ pub fn app() -> impl IntoNode {
         .track_size(probe.size)
         .width(Length::Fill)
         .grow(1.0)
-    .accessible("The word sigil repeated; letters near the pointer are heavier")
-    .into();
+        .accessible("The word sigil repeated; letters near the pointer are heavier")
+        .into();
     column()
         .theme(theme())
         .background(PAPER)
@@ -147,10 +147,7 @@ fn paint(scene: &mut SceneBuilder, rect: Rect, centre: Point) {
             let core = near.powf(CORE);
             let ink = mix(INK.alpha((FAINT * 255.0) as u8), INK, (near * 3.0).min(1.0));
             let colour = mix(ink, SIGNAL, core);
-            let origin = Point::new(
-                rect.origin.x + x - widths[letter] / 2.0,
-                rect.origin.y + y,
-            );
+            let origin = Point::new(rect.origin.x + x - widths[letter] / 2.0, rect.origin.y + y);
             scene.draw_text(origin, WORD[letter], &style, colour);
         }
     }

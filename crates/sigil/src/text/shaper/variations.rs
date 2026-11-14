@@ -3,6 +3,8 @@ use smallvec::SmallVec;
 
 pub(super) type VariationSettings = SmallVec<[([u8; 4], f32); 8]>;
 
+const AXIS_STEPS: f32 = 4_096.0;
+
 #[derive(Debug, Clone)]
 pub(super) struct VariationModel {
     axes: Box<[Axis]>,
@@ -48,11 +50,28 @@ impl VariationModel {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn settings(&self, weight: u16, size_px: f32) -> VariationSettings {
-        let target_weight = f32::from(weight.clamp(1, 1000));
+        self.settings_at(weight, size_px, &[])
+    }
+
+    pub(super) fn settings_at(
+        &self,
+        weight: u16,
+        size_px: f32,
+        axes: &[([u8; 4], f32)],
+    ) -> VariationSettings {
+        let target_weight = axes
+            .iter()
+            .find(|axis| axis.0 == *b"wght")
+            .map_or_else(|| f32::from(weight), |axis| axis.1)
+            .clamp(1.0, 1000.0);
         let mut settings = self.hidden_axis_settings(target_weight);
         self.set_if_present(&mut settings, *b"wght", target_weight);
         self.set_if_present(&mut settings, *b"opsz", size_px.max(1.0));
+        for &(tag, value) in axes.iter().filter(|axis| axis.0 != *b"wght") {
+            self.set_if_present(&mut settings, tag, value);
+        }
         settings
     }
 
@@ -124,6 +143,17 @@ impl VariationModel {
             }
         }
     }
+}
+
+pub(super) fn snap(axis: Option<&skrifa::Axis>, value: f32) -> f32 {
+    let Some(range) = axis.map(|axis| axis.max_value() - axis.min_value()) else {
+        return value;
+    };
+    if range.is_nan() || range <= 0.0 {
+        return value;
+    }
+    let step = (range / AXIS_STEPS).log2().floor().min(0.0).exp2();
+    (value / step).round() * step
 }
 
 fn interpolate_axis(

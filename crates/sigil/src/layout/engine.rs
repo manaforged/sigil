@@ -33,6 +33,7 @@ pub struct LayoutEngine {
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
     scopes: SecondaryMap<slotmap::DefaultKey, Shift>,
     scopes_generation: u64,
+    stuck: SecondaryMap<slotmap::DefaultKey, sticky::Stuck>,
     text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
     prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
@@ -73,6 +74,7 @@ impl LayoutEngine {
             positions: SecondaryMap::new(),
             scopes: SecondaryMap::new(),
             scopes_generation: 0,
+            stuck: SecondaryMap::new(),
             text_sizes: SecondaryMap::new(),
             prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
@@ -303,6 +305,7 @@ impl LayoutEngine {
                 let _ = self.synced_version.remove(core_id.key());
                 let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
+                let _ = self.stuck.remove(core_id.key());
                 self.hidden.remove(&core_id);
                 self.gliding.remove(&core_id.key());
                 self.reactive_layout.remove(&core_id.key());
@@ -324,6 +327,7 @@ impl LayoutEngine {
         self.geometry_reactive.clear();
         self.positions.clear();
         self.scopes.clear();
+        self.stuck.clear();
         self.text_sizes.clear();
         self.prepared.clear();
         self.reactive_sigs.clear();
@@ -373,7 +377,9 @@ impl LayoutEngine {
             .flatten()
             .and_then(|node| node.extension::<crate::layout::ReactivePosition>())
             .map(|pos| pos.nest(under));
-        let shift = own.unwrap_or(under);
+        let shift = own
+            .or_else(|| self.sticky_scope(id, under))
+            .unwrap_or(under);
         self.scopes.insert(id.key(), shift);
         shift
     }
@@ -384,6 +390,10 @@ impl LayoutEngine {
             self.scopes.clear();
             self.scopes_generation = generation;
         }
+    }
+
+    fn style_of(&self, id: NodeId) -> Option<&crate::layout::StyleData> {
+        self.drive.style_for(self.handle(id).ok()?)
     }
 
     fn handle(&self, id: NodeId) -> Result<NodeHandle, Error> {
@@ -401,6 +411,7 @@ pub(crate) mod direction;
 mod incremental;
 mod measure;
 mod overlays;
+mod sticky;
 mod sync;
 mod viewport;
 

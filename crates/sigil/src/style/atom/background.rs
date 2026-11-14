@@ -8,7 +8,7 @@ type Atoms = SmallVec<[StyleAtom; 8]>;
 
 pub(crate) const NO_GRADIENT: StyleAtom = StyleAtom::Paint(PaintAtom::NoGradient);
 
-/// What fills a node's background: one color, or one gradient.
+/// What fills a node's background: one color, one gradient, or one `Shader`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Background(Fill);
@@ -17,6 +17,7 @@ pub struct Background(Fill);
 enum Fill {
     Color(ColorValue),
     Gradient(Gradient),
+    Shader(u64),
 }
 
 /// A linear, radial, or conic gradient with up to three color stops, made by `Background::linear`, `radial`, or `conic`.
@@ -56,6 +57,18 @@ impl Background {
         match self.0 {
             Fill::Color(color) => smallvec![StyleAtom::BackgroundColor(color), NO_GRADIENT],
             Fill::Gradient(gradient) => gradient.atoms(),
+            Fill::Shader(id) => smallvec![
+                StyleAtom::Paint(PaintAtom::NoColor),
+                NO_GRADIENT,
+                StyleAtom::Paint(PaintAtom::Shader(id)),
+            ],
+        }
+    }
+
+    pub(crate) const fn shader(self) -> Option<u64> {
+        match self.0 {
+            Fill::Shader(id) => Some(id),
+            Fill::Color(_) | Fill::Gradient(_) => None,
         }
     }
 }
@@ -163,5 +176,11 @@ impl From<Token> for Background {
 impl From<Gradient> for Background {
     fn from(gradient: Gradient) -> Self {
         Self(Fill::Gradient(gradient))
+    }
+}
+
+impl From<crate::scene::Shader> for Background {
+    fn from(shader: crate::scene::Shader) -> Self {
+        Self(Fill::Shader(crate::scene::shader::hand_off(shader)))
     }
 }

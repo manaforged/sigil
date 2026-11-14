@@ -2,13 +2,13 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::events::{
-    A11yEdit, DragPhase, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
-    ScrollEvent, Shortcut,
+    A11yEdit, Cursor, DragPhase, FileDropEvent, Gesture, GestureEvent, ImeEvent, KeyEvent,
+    PointerEvent, ScrollEvent, Shortcut,
 };
 use crate::kernel::Action;
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::widgets::interaction::{is_cancel, is_primary};
 
 use crate::events::EventHandlers;
@@ -260,6 +260,41 @@ pub(crate) fn pointer_drag(
             (*handler.borrow_mut())(phase, event);
         }
     })
+}
+
+pub(crate) fn pinch(
+    node: NodeBuilder,
+    handler: impl Fn(f64, &mut GestureEvent) + 'static,
+) -> NodeBuilder {
+    gesture(node, move |event| {
+        if let Gesture::Pinch(delta) = event.kind() {
+            handler(delta, event);
+        }
+    })
+}
+
+pub(crate) fn rotation(
+    node: NodeBuilder,
+    handler: impl Fn(f32, &mut GestureEvent) + 'static,
+) -> NodeBuilder {
+    gesture(node, move |event| {
+        if let Gesture::Rotate(degrees) = event.kind() {
+            handler(degrees, event);
+        }
+    })
+}
+
+#[cfg(window_host)]
+pub(crate) fn cursor(node: NodeBuilder, cursor: impl Reactive<Cursor>) -> NodeBuilder {
+    let cursor = crate::events::cursor::NodeCursor::new(cursor);
+    node.mutate(move |node| {
+        let _ = node.attach(cursor);
+    })
+}
+
+#[cfg(not(window_host))]
+pub(crate) fn cursor(node: NodeBuilder, _cursor: impl Reactive<Cursor>) -> NodeBuilder {
+    node
 }
 
 pub(crate) fn a11y_edit(

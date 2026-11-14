@@ -1,12 +1,14 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use crate::layout::aspect;
 use crate::layout::flex::CbSize;
 use crate::layout::flex_algorithm::{
-    FlexCtx, automatic_min_main, gap_along, item_cross_basis, item_main_basis, item_min_max_main,
+    Axis2, FlexCtx, automatic_min_main, gap_along, item_cross_basis, item_main_basis,
+    item_min_max_main,
 };
 use crate::layout::forest::{LocalId, NodeRef};
-use crate::layout::resolve::clamp;
-use crate::layout::style_data::{AlignItems, FlexWrap, StyleData};
+use crate::layout::resolve::{NodeEdges, clamp};
+use crate::layout::style_data::{AlignItems, FlexWrap, Length, StyleData};
 use smallvec::{SmallVec, smallvec};
 
 #[derive(Clone, Copy, Debug)]
@@ -45,12 +47,8 @@ impl FlexItem {
         };
         let style = node.style();
         let edges = node.edges(measured.cb.w);
-        let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges, false);
-        let cross_dim = ctx.axes.pick(style.size.height, style.size.width);
-        let fills_cross = stretches
-            && matches!(cross_dim, crate::layout::style_data::Length::Auto)
-            && matches!(style.align_self, None | Some(AlignItems::Stretch));
-        let (cross_resolved, was_auto) = if fills_cross {
+        let (basis, fills) = main_basis(&measured, node, &edges, (cb_main, cb_cross), stretches);
+        let (cross_resolved, was_auto) = if fills {
             (None, true)
         } else {
             item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges)
@@ -102,6 +100,41 @@ impl FlexItem {
     pub(crate) const fn outer_cross(&self) -> f32 {
         self.cross_size + self.margin_cross_start + self.margin_cross_end
     }
+}
+
+fn main_basis(
+    measured: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    edges: &NodeEdges,
+    (cb_main, cb_cross): (f32, f32),
+    stretches: bool,
+) -> (f32, bool) {
+    let style = node.style();
+    let axes = measured.axes;
+    let fills_cross = stretches
+        && matches!(axes.pick(style.size.height, style.size.width), Length::Auto)
+        && matches!(style.align_self, None | Some(AlignItems::Stretch));
+    let stretched = stretched_basis(style, axes, cb_cross, edges).filter(|_| fills_cross);
+    let basis = stretched
+        .unwrap_or_else(|| item_main_basis(measured, node, style, axes, cb_main, edges, false));
+    (basis, fills_cross)
+}
+
+fn stretched_basis(
+    style: &StyleData,
+    axes: Axis2,
+    cb_cross: f32,
+    edges: &NodeEdges,
+) -> Option<f32> {
+    let main = axes.pick(style.size.width, style.size.height);
+    if main != Length::Auto || style.flex_basis != Length::Auto {
+        return None;
+    }
+    let m = edges.margin.or_zero();
+    let margins = axes.pick(m.top + m.bottom, m.left + m.right);
+    let (min, max) = item_min_max_main(style, axes.cross(), cb_cross, edges);
+    let cross = clamp((cb_cross - margins).max(0.0), min, max);
+    aspect::derive(style, cross, edges, !axes.row)
 }
 
 #[derive(Debug, Default)]

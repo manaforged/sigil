@@ -200,11 +200,13 @@ fn assigned_size(
     let stretched = (style.stretch_width || ctx.solver.fills_width(node))
         && in_flow
         && (!probing || ctx.measures_height);
-    let assigned_w = ((!probing && sized) || stretched).then_some(w);
-    let assigned_h = (!probing
-        && (style.size.height != Length::Auto
-            || (in_flow && ctx.axes.row)
-            || style.flex_grow > 0.0))
+    let keeps_ratio = !probing && style.aspect_ratio.is_some();
+    let assigned_w = ((!probing && sized) || stretched || keeps_ratio).then_some(w);
+    let assigned_h = (keeps_ratio
+        || (!probing
+            && (style.size.height != Length::Auto
+                || (in_flow && ctx.axes.row)
+                || style.flex_grow > 0.0)))
         .then_some(h);
     (assigned_w, assigned_h)
 }

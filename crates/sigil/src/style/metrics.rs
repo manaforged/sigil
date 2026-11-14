@@ -275,7 +275,9 @@ impl Layer {
                         Token::Overlay.background(),
                         StyleAtom::BorderWidth(BORDER_WIDTH),
                         Token::OverlayBorder.border(),
-                        StyleAtom::Shadow(crate::style::atom::ShadowAtom::elevation(OVERLAY_SHADOW)),
+                        StyleAtom::Shadow(crate::style::atom::ShadowAtom::elevation(
+                            OVERLAY_SHADOW,
+                        )),
                         Radius::Md.atom(),
                     ]
                 }

@@ -3,8 +3,5 @@
 use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
-    sigil::run(
-        sigil_showcase::window("Beam"),
-        sigil_showcase::beam::app,
-    )
+    sigil::run(sigil_showcase::window("Beam"), sigil_showcase::beam::app)
 }

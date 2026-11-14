@@ -99,7 +99,9 @@ pub fn graded(values: &[f32]) -> impl IntoNode + use<> {
         values: ADJUSTMENTS
             .iter()
             .enumerate()
-            .map(|(index, adjustment)| signal(values.get(index).copied().unwrap_or(adjustment.rest)))
+            .map(|(index, adjustment)| {
+                signal(values.get(index).copied().unwrap_or(adjustment.rest))
+            })
             .collect(),
         monochrome: signal(false),
         grey: Animator::tween(0.0, Transition::new().duration(FADE).ease(Easing::CubicOut)),
@@ -146,10 +148,11 @@ fn stage(darkroom: &Darkroom) -> NodeBuilder {
 
 fn plate(darkroom: &Darkroom) -> NodeBuilder {
     let sun = Sun::new(LATITUDE, START_DAY);
-    let mut plate = canvas(move |scene, rect, theme| sky::paint(scene, rect, theme, sun, PLATE_HOUR))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .drive(Property::Grayscale, darkroom.grey.value());
+    let mut plate =
+        canvas(move |scene, rect, theme| sky::paint(scene, rect, theme, sun, PLATE_HOUR))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .drive(Property::Grayscale, darkroom.grey.value());
     for (adjustment, value) in ADJUSTMENTS.iter().zip(&darkroom.values) {
         plate = plate.drive(adjustment.property, *value);
     }
@@ -188,16 +191,18 @@ fn panel(darkroom: Darkroom) -> NodeBuilder {
                 ),
         )
         .child(
-            column().gap(Space::Md).children(
-                ADJUSTMENTS
-                    .iter()
-                    .zip(&darkroom.values)
-                    .map(|(adjustment, value)| {
-                        slider(*value, adjustment.low..=adjustment.high)
-                            .label(adjustment.label)
-                            .step(adjustment.step)
-                    }),
-            ),
+            column()
+                .gap(Space::Md)
+                .children(
+                    ADJUSTMENTS
+                        .iter()
+                        .zip(&darkroom.values)
+                        .map(|(adjustment, value)| {
+                            slider(*value, adjustment.low..=adjustment.high)
+                                .label(adjustment.label)
+                                .step(adjustment.step)
+                        }),
+                ),
         )
         .child(toggle(darkroom.monochrome).label("Monochrome"))
         .child(toggle(darkroom.vignette).label("Vignette"))

@@ -83,6 +83,18 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     Ok(())
 }
 
+pub(super) fn sync_cursor(
+    shell: &mut WinitShell,
+    window_handle: WinitWindowHandle,
+    cx: &Cx,
+    layout: &LayoutEngine,
+    router: &mut EventRouter,
+) {
+    if let Err(err) = shell.set_cursor(&window_handle, router.cursor(cx, layout)) {
+        tracing::warn!(target: "sigil::shell", error = %err, "cursor update failed");
+    }
+}
+
 pub(super) fn sync_ime(
     shell: &mut WinitShell,
     window_handle: WinitWindowHandle,

@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `provide(value)` and `context::<T>()` share a value with every component, handler and effect under an owner; the nearest provider wins.
+- `keyed(key, view)` mounts `view` again from scratch when `key` changes, which replays its enter animation and resets its local state.
+- `Widget::cursor(Cursor)` sets the pointer cursor over a node on the window host and in the browser. Links show `Cursor::Pointer` and enabled text inputs show `Cursor::Text` by default.
+- `Widget::hittable(false)` lets pointer events pass through any widget, such as a decorative overlay.
+- `Widget::pinch` and `Widget::rotation` deliver trackpad pinch and rotation gestures to the node under the pointer. `ResizeDirection` is also exported from `sigil::events`.
+- `aspect_ratio(ratio)` keeps a width-to-height ratio when one side is auto, in block, flex and grid layout.
+- `Position::Sticky` holds a node at its insets inside the nearest scroll area while its parent is in view, and paints it above its in-flow siblings.
+- `TextStyle::{axis, feature}` and `TextFace::{axis, feature, weight, family}` set continuous variable-font axes and OpenType features.
+- `Spans` and `rich(spans)` build one paragraph from styled runs that shape, wrap and select together and expose one accessible string.
+- `Shader::new(wgsl)` runs a WGSL `shade` function on the GPU: `.background(shader)` and `SceneBuilder::draw_shader` fill with it, and `Paint::filter_shader(shader)` composites a live subtree through it. `.var(index, value)` binds up to 8 numbers and `.color(index, color)` up to 4 colors. The CPU renderer and the terminal draw color 0 for a fill and the plain subtree for a filter. The [Shaders recipe](docs/guide/recipes.md#shaders) lists the WGSL contract.
 - Canvas authors can build every scene payload without the `kittest` feature: `GradientStop::new`, `Gradient::{new, repeat}`, `Stroke::new`, `DrawGradient::new`, `DrawPattern::new`, `DrawDecoration::new`, `stroked` on the box payloads, `Shadow::{kind, reach}`, `Transform3D::{IDENTITY, then, translate, rotate_x, rotate_y, rotate_z, perspective, around}`, and `SceneBuilder::{draw_pattern, draw_decoration, draw_text_shadow, composite}`.
 - `Canvas::redraw_on(source)` repaints a canvas when a signal, memo, or closure changes.
 - `Render::font(family, bytes, face)` in `sigil-kittest` renders an offscreen image with a custom font.

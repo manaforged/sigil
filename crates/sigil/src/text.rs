@@ -12,6 +12,7 @@ mod cache;
 mod engine;
 #[cfg(feature = "scene")]
 mod font_family;
+pub(crate) mod font_settings;
 #[cfg(all(feature = "scene", target_arch = "wasm32"))]
 mod font_url;
 #[cfg(scene_harness)]
@@ -27,6 +28,7 @@ pub(crate) mod outline;
 mod paragraph;
 #[cfg(feature = "scene")]
 mod script_fonts;
+mod spans;
 #[cfg(feature = "scene")]
 mod system_fonts;
 #[cfg(feature = "scene")]
@@ -64,6 +66,7 @@ pub(crate) use engine::OwnedTextEngine;
 #[cfg(scene_harness)]
 #[doc(hidden)]
 pub use engine::{FontCollection, OwnedTextEngine};
+pub(crate) use font_settings::FontSettings;
 #[cfg(all(feature = "scene", target_arch = "wasm32"))]
 #[doc(hidden)]
 pub use font_url::load_font_url;
@@ -83,6 +86,7 @@ pub use shaper::Font;
 #[cfg(scene_internal)]
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) use shaper::Font;
+pub use spans::Spans;
 #[cfg(feature = "scene")]
 pub(crate) use web_font::WebFont;
 #[cfg(scene_internal)]

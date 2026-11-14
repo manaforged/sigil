@@ -29,8 +29,12 @@ impl KeptKey {
         ) {
             return None;
         }
+        let mut scope = scope.clone();
+        if let LayerEffect::Shader(shading) = &mut scope.effect {
+            *shading = shading.still();
+        }
         Some(Self {
-            scope: scope.clone(),
+            scope,
             transform: target.state.current_transform(),
             clip: target.state.current_clip(),
             target: target.bounds,

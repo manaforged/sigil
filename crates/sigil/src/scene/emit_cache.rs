@@ -259,6 +259,7 @@ pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         #[cfg(feature = "kittest")]
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),
+        SceneCommand::Shader(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::Path(draw) => draw.shift(dx, dy),
         SceneCommand::DrawShadow { rect, .. } => {
             rect[0] += dx;

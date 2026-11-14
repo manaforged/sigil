@@ -129,6 +129,7 @@ static_reactive!(
     crate::widgets::Density,
     crate::widgets::DiffView,
     crate::widgets::Disclosure,
+    crate::events::Cursor,
 );
 
 impl Reactive<String> for &'static str {

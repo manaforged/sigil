@@ -14,9 +14,10 @@ use crate::scene::command::{
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::geometry::IDENTITY;
+use crate::scene::shader::{DrawShader, Shader};
 use crate::scene::shadow::Shadow;
 use crate::style::srgb::encode_byte;
-use crate::style::{Color, TextLineHeight, TextStyle};
+use crate::style::{Color, TextLineHeight, TextStyle, Theme};
 
 /// Appends drawing commands to a scene.
 #[derive(Debug, Default)]
@@ -93,6 +94,28 @@ impl SceneBuilder {
     /// Appends a vector path.
     pub fn draw_path(&mut self, draw: DrawPath) {
         self.commands.push(SceneCommand::Path(draw));
+    }
+
+    /// Runs `shader` over `rect`; inside a `canvas`, its theme colors follow the canvas theme.
+    pub fn draw_shader(&mut self, rect: Rect, shader: &Shader) {
+        let draw = shader.draw(
+            rect,
+            CornerRadii::ZERO,
+            crate::style::theme::fallback_theme(),
+        );
+        self.commands.push(SceneCommand::Shader(draw));
+    }
+
+    pub(crate) fn push_shader(&mut self, draw: DrawShader) {
+        self.commands.push(SceneCommand::Shader(draw));
+    }
+
+    pub(crate) fn theme_from(&mut self, start: usize, theme: &Theme) {
+        for command in self.commands.iter_mut().skip(start) {
+            if let SceneCommand::Shader(draw) = command {
+                draw.theme(theme);
+            }
+        }
     }
 
     /// Strokes a straight line segment from `from` to `to`.

@@ -337,6 +337,7 @@ const fn reborrow_ctx<'a>(
         layer_pipelines: &mut *ctx.layer_pipelines,
         filter_pipelines: &mut *ctx.filter_pipelines,
         projected_pipelines: &mut *ctx.projected_pipelines,
+        shader_programs: &mut *ctx.shader_programs,
         layer_pool: &mut *ctx.layer_pool,
         wash_cache: &mut *ctx.wash_cache,
         pending: &mut *ctx.pending,

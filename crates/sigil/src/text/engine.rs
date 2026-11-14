@@ -11,10 +11,11 @@ use crate::bidi;
 use crate::cache::Bounded;
 use crate::text::FaceSpec;
 use crate::text::cache::{CachedParagraph, ParagraphCache};
+use crate::text::font_settings::Axes;
 use crate::text::paragraph::{FaceTable, Paragraph, TextMetrics, face_table};
 #[cfg(test)]
 use crate::text::shaper::Script;
-use crate::text::shaper::{FaceStyle, FeatureTag, Font, Shaper};
+use crate::text::shaper::{FaceStyle, Font, Shaper};
 use smallvec::SmallVec;
 
 mod lines;
@@ -52,7 +53,7 @@ impl core::fmt::Debug for OwnedTextEngine {
     }
 }
 
-type FaceKey = (u32, SmallVec<[(u64, u16, u32); 8]>);
+type FaceKey = (u32, SmallVec<[(u64, u16, u32, Axes); 8]>);
 
 const FACE_TABLES_CAP: usize = 1_024;
 
@@ -264,7 +265,7 @@ impl OwnedTextEngine {
             size_px.to_bits(),
             faces
                 .iter()
-                .map(|face| (face.font.id(), face.weight, face.skew.to_bits()))
+                .map(|face| (face.font.id(), face.weight, face.skew.to_bits(), face.axes))
                 .collect(),
         );
         if let Some(hit) = self.face_tables.borrow().get(&key) {
@@ -323,14 +324,14 @@ impl OwnedTextEngine {
 }
 
 fn to_shaper_style(style: &TextStyle) -> FaceStyle {
+    let mut font = style.font_settings;
+    if style.tabular_nums {
+        font.features.set(*b"tnum", 1);
+    }
     FaceStyle {
         size_px: font_size_px(style),
         weight: style.font_weight,
-        features: if style.tabular_nums {
-            smallvec::smallvec![FeatureTag(*b"tnum")]
-        } else {
-            smallvec::SmallVec::new()
-        },
+        font,
         letter_spacing_em: finite_or(style.letter_spacing_em, 0.0),
         cell_grid: style
             .runs

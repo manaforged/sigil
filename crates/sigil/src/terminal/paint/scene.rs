@@ -159,6 +159,11 @@ impl CellWalk<'_> {
             }
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Path(draw) => self.path(draw),
+            SceneCommand::Shader(draw) => {
+                if self.wanted(draw.rect) {
+                    self.rect(&draw.fallback());
+                }
+            }
             SceneCommand::Decoration(draw) => {
                 if self.wanted(draw.band) {
                     self.decoration(draw);
@@ -201,7 +206,8 @@ impl CellWalk<'_> {
                     LayerEffect::Identity
                     | LayerEffect::Mask(_)
                     | LayerEffect::Filter(_)
-                    | LayerEffect::Backdrop(_) => IDENTITY,
+                    | LayerEffect::Backdrop(_)
+                    | LayerEffect::Shader(_) => IDENTITY,
                 });
             }
             SceneCommand::PopLayer => {

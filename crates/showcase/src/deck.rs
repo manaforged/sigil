@@ -110,11 +110,7 @@ fn face(words: &'static str, side: &'static str) -> NodeBuilder {
                 .height(Length::Fill)
                 .padding(Space::Lg)
                 .gap(Space::Md)
-                .child(
-                    text(side)
-                        .text_role(TextRole::Caption)
-                        .text_color(LINE),
-                )
+                .child(text(side).text_role(TextRole::Caption).text_color(LINE))
                 .child(divider(Orientation::Horizontal).border_color(LINE))
                 .child(text(words).text_role(TextRole::Title).text_color(INK)),
         )

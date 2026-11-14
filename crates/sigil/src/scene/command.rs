@@ -197,6 +197,9 @@ pub enum SceneCommand {
     Path(DrawPath),
     /// Draws an underline or a strikethrough.
     Decoration(DrawDecoration),
+    #[doc(hidden)]
+    /// Runs a `Shader` over a rounded rectangle.
+    Shader(crate::scene::shader::DrawShader),
 }
 
 impl SceneCommand {

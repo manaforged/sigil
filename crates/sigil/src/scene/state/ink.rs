@@ -49,6 +49,7 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
         SceneCommand::Image(draw) => draw.destination,
         SceneCommand::Path(draw) => draw.bounds.expand(1.0 / scale),
         SceneCommand::Decoration(draw) => draw.band.expand(draw.line_width * 2.0),
+        SceneCommand::Shader(draw) => draw.rect,
         SceneCommand::PushLayer(scope) => match scope.effect {
             LayerEffect::Transform(transform) => transform_rect(transform, scope.clip),
             LayerEffect::Projected { transform, .. } => {
@@ -57,7 +58,8 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             LayerEffect::Identity
             | LayerEffect::Mask(_)
             | LayerEffect::Filter(_)
-            | LayerEffect::Backdrop(_) => scope.clip,
+            | LayerEffect::Backdrop(_)
+            | LayerEffect::Shader(_) => scope.clip,
         },
         SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => return None,
         SceneCommand::PushTransform(_) | SceneCommand::PopTransform => return None,

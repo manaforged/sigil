@@ -32,8 +32,8 @@ mod mask;
 mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
-pub use color::{Color, ColorValue, GradientAxis};
 pub(crate) use color::direction;
+pub use color::{Color, ColorValue, GradientAxis};
 kittest_pub! {
     #[doc(hidden)]
     pub use filter::FilterAtom;
@@ -46,8 +46,8 @@ kittest_pub! {
     #[doc(hidden)]
     pub use gradient::{BorderStyle, GradientShape, PaintAtom, PaintStyle, StopSlot};
 }
-pub use gradient::{Conic, Radial, RadialExtent};
 pub(crate) use gradient::Geometry;
+pub use gradient::{Conic, Radial, RadialExtent};
 kittest_pub! {
     #[doc(hidden)]
     pub use mask::MaskAtom;
@@ -210,6 +210,7 @@ impl Default for RenderStyle {
                 positions: [None; 3],
                 clip_text: false,
                 image: None,
+                shader: None,
                 border: BorderStyle::Solid,
                 geometry: Geometry::default(),
             },
@@ -232,6 +233,7 @@ impl RenderStyle {
             && self.mask.kind.is_none()
             && self.filter.filters().is_empty()
             && self.filter.backdrop().is_empty()
+            && self.filter.shader.is_none()
     }
 }
 

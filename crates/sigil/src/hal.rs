@@ -1,3 +1,4 @@
+pub(crate) mod cursor;
 pub(crate) mod events;
 pub(crate) mod geometry;
 pub(crate) mod layout;

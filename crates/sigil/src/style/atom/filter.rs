@@ -121,6 +121,7 @@ pub(crate) enum FilterPart {
     DropShadow(Option<ShadowSpec>),
     TextShadow(TextShadows),
     Backdrop(BackdropPart, u16),
+    Shader(u64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -150,6 +151,7 @@ pub(crate) struct FilterStyle {
     drop: Option<ShadowSpec>,
     text: TextShadows,
     backdrop: [Option<u16>; 3],
+    pub(crate) shader: Option<u64>,
     pub(crate) drop_color: Option<Color>,
     pub(crate) text_color: Option<Color>,
 }
@@ -178,6 +180,7 @@ impl FilterStyle {
         drop: None,
         text: TextShadows::Unset,
         backdrop: [None; 3],
+        shader: None,
         drop_color: None,
         text_color: None,
     };
@@ -193,6 +196,7 @@ impl FilterStyle {
             FilterPart::HueRotate(degrees) => self.hue = Some(degrees),
             FilterPart::DropShadow(shadow) => self.drop = shadow,
             FilterPart::TextShadow(shadows) => self.text = shadows,
+            FilterPart::Shader(id) => self.shader = Some(id),
             FilterPart::Backdrop(part, units) => {
                 if let Some(slot) = self.backdrop.get_mut(part as usize) {
                     *slot = Some(units);

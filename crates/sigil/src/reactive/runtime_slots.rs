@@ -4,6 +4,7 @@ use core::panic::Location;
 use smallvec::SmallVec;
 
 use crate::reactive::arena::ArenaKey;
+use crate::reactive::context::Provided;
 
 pub(crate) type OwnerKey = ArenaKey<OwnerSlot>;
 pub(crate) type SignalKey = ArenaKey<SignalSlot>;
@@ -16,6 +17,7 @@ pub(crate) struct OwnerSlot {
     pub(crate) signals: Vec<SignalKey>,
     pub(crate) effects: Vec<EffectKey>,
     pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
+    pub(crate) context: Option<Box<Provided>>,
     #[cfg(feature = "kittest")]
     pub(crate) name: &'static str,
     #[cfg(feature = "kittest")]

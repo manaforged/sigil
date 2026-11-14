@@ -43,6 +43,7 @@ pub mod scale;
 #[cfg(not(feature = "kittest"))]
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) mod scale;
+pub(crate) mod shader_paint;
 pub(crate) mod size;
 pub(crate) mod state;
 pub(crate) mod strings;

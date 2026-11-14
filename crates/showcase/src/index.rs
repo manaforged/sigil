@@ -173,7 +173,11 @@ fn cover(active: Signal<usize>) -> NodeBuilder {
                         .gap(Space::Xs)
                         .padding_bottom(Space::Md)
                         .child(small(move || PARTS[active.get() % PARTS.len()].kind))
-                        .child(for_each(move || vec![active.get()], |at| *at, |at| note(*at))),
+                        .child(for_each(
+                            move || vec![active.get()],
+                            |at| *at,
+                            |at| note(*at),
+                        )),
                 ),
         )
         .into()
@@ -203,7 +207,12 @@ fn entry(at: usize, active: Signal<usize>) -> NodeBuilder {
         .padding_y(Space::Sm)
         .border_bottom(1)
         .border_color(Token::Border)
-        .transition(Transition::new().duration(GLIDE).ease(Easing::CubicOut).layout())
+        .transition(
+            Transition::new()
+                .duration(GLIDE)
+                .ease(Easing::CubicOut)
+                .layout(),
+        )
         .paint_when(chosen, |style| style.background(MARK))
         .track_hovered(hovered)
         .pointer_up(move |_| active.set(at))

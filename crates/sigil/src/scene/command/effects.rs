@@ -271,6 +271,9 @@ pub enum LayerEffect {
     Filter(Arc<[Filter]>),
     /// The pixels already painted under the layer's clip pass through each filter in order and draw before the layer, as in CSS `backdrop-filter`.
     Backdrop(Arc<[Filter]>),
+    #[doc(hidden)]
+    /// The layer is composited through a `Shader` that samples it.
+    Shader(crate::scene::shader::Shading),
 }
 
 /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.

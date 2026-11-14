@@ -101,6 +101,12 @@ impl LayoutStyle {
         self.mark(LayoutFields::MAX_WIDTH.with(LayoutFields::MAX_HEIGHT))
     }
 
+    /// Sets the width-to-height ratio that the node keeps when one side is set and the other is auto.
+    pub const fn aspect_ratio(mut self, ratio: f32) -> Self {
+        self.0.aspect_ratio = Some(ratio);
+        self.mark(LayoutFields::ASPECT_RATIO)
+    }
+
     /// Sets the flex basis of the node.
     pub fn flex_basis(mut self, basis: impl Into<Length>) -> Self {
         self.0.flex_basis = basis.into();

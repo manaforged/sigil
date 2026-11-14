@@ -76,7 +76,8 @@ impl Animator {
 
     /// Springs to the point in `points` nearest to where a `fling` would rest, starting at `velocity`; returns that point, or `None` when it picked none.
     pub fn fling_to(&self, velocity: f32, points: &[f32]) -> Option<f32> {
-        self.with_inner(|inner| inner.fling(velocity, points)).flatten()
+        self.with_inner(|inner| inner.fling(velocity, points))
+            .flatten()
     }
 
     /// Returns the current velocity in value units per second, without subscribing.

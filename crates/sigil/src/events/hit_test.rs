@@ -294,6 +294,10 @@ fn emit(
             emit_child(cx, child, below, cache, deferred);
         }
         cache.contexts.push((id, order));
+    } else if let Some(order) = crate::layout::stack::stacked(cx, node) {
+        for child in order {
+            emit_child(cx, child, below, cache, deferred);
+        }
     } else {
         for child in node.children().iter().copied() {
             emit_child(cx, child, below, cache, deferred);

@@ -157,6 +157,7 @@ fn push_container(
         }
         scene.draw_rect_for_node(id, draw, cell);
     }
+    super::shader::push_fill(scene, node.1, rect, style, paint.theme);
     super::background::push_image(scene, node, rect, style);
     if !super::dashes::push_styled_border(scene, id, rect, paint) {
         super::borders::push_side_borders(scene, id, rect, paint);

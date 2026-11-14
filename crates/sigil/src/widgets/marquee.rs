@@ -55,7 +55,11 @@ impl MarqueeBuilder {
             ));
         let strip = container()
             .role(Role::Marquee)
-            .layout(LayoutStyle::flex_row().fill_width().overflow(Overflow::Hidden))
+            .layout(
+                LayoutStyle::flex_row()
+                    .fill_width()
+                    .overflow(Overflow::Hidden),
+            )
             .track_size(viewport)
             .track_hovered(hovered)
             .child(track);

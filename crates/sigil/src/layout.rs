@@ -18,6 +18,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub mod audit;
 }
+mod aspect;
 mod block;
 mod block_collapse;
 mod block_size;
@@ -42,6 +43,7 @@ mod result;
 mod shift;
 pub(crate) mod snap;
 mod space;
+pub(crate) mod stack;
 pub(crate) mod style_adapter;
 mod style_data;
 #[cfg(feature = "scene")]

@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use crate::geometry::Rect;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
-use crate::reactive::{Reactive, Runtime, Signal, effect_named, signal};
+use crate::reactive::Reactive;
 use crate::scene::SceneBuilder;
-use crate::scene::canvas::{CanvasPaint, Recorder};
+use crate::scene::canvas::{CanvasPaint, Recorder, watch};
 use crate::style::Theme;
 use crate::widgets::{Framed, WidgetFrame};
 
@@ -49,16 +49,6 @@ impl CanvasBuilder {
         });
         frame.finish(node)
     }
-}
-
-fn watch(read: Box<dyn Fn()>) -> Signal<u64> {
-    let version = signal(0_u64);
-    effect_named("sigil-canvas::redraw", move || {
-        read();
-        version.update(|n| *n = n.wrapping_add(1));
-        Runtime::mark_frame_dirty();
-    });
-    version
 }
 
 impl Framed for CanvasBuilder {

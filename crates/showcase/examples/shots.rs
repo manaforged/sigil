@@ -8,7 +8,9 @@ use std::time::Duration;
 
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_showcase::{SIZE, almanac, beam, console, darkroom, deck, focus, gallery, index, kit, tray};
+use sigil_showcase::{
+    SIZE, almanac, beam, console, darkroom, deck, focus, gallery, index, kit, tray,
+};
 
 const SCALE: f32 = 2.0;
 const REVEAL_FRAMES: u32 = 4;

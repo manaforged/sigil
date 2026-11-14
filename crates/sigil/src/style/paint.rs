@@ -1,7 +1,7 @@
 use crate::animation::{Keyframes, KeyframesId, Transition};
 use crate::kernel::ImageSource;
 use crate::reactive::Reactive;
-use crate::scene::{BlendMode, Shadow};
+use crate::scene::{BlendMode, Shader, Shadow};
 use crate::style::atom::{
     Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, ShadowAtom, SpaceAtom,
 };
@@ -24,12 +24,10 @@ pub trait Paint: Sized {
     /// Returns the mutable style builder for this target.
     fn paint_mut(&mut self) -> &mut StateStyleBuilder;
 
-    /// Fills the background with a color or gradient, or a signal or closure of one.
+    /// Fills the background with a color, gradient, or `Shader`, or a signal or closure of a color or gradient.
     #[must_use]
     fn background<B: Into<Background> + 'static>(self, background: impl Reactive<B>) -> Self {
-        live(self, background, |fill| {
-            Into::<Background>::into(fill).atoms()
-        })
+        slot::background(self, background)
     }
 
     /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
@@ -170,6 +168,12 @@ pub trait Paint: Sized {
     }
 
     filters::filter_setters!();
+
+    /// Composites the node and its children through `shader`, which reads them with `layer(uv)`; input, focus, and hit testing are unchanged.
+    #[must_use]
+    fn filter_shader(self, shader: Shader) -> Self {
+        slot::filter_shader(self, shader)
+    }
 
     /// Sets the CSS mix-blend-mode.
     #[must_use]

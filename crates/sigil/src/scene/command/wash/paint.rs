@@ -187,7 +187,12 @@ fn star(
     let ox = cx.mul_add(SPECK_CELL, SPECK_CELL * rand(ix, iy, seed ^ 1));
     let oy = cy.mul_add(SPECK_CELL, SPECK_CELL * rand(ix, iy, seed ^ 2));
     let radius = SPECK_RADIUS_SPAN.mul_add(rand(ix, iy, seed ^ 3), SPECK_RADIUS);
-    let dot = 1.0 - smoothstep(radius - SPECK_SOFT, radius + SPECK_SOFT, (x - ox).hypot(y - oy));
+    let dot = 1.0
+        - smoothstep(
+            radius - SPECK_SOFT,
+            radius + SPECK_SOFT,
+            (x - ox).hypot(y - oy),
+        );
     if dot <= 0.0 || roll >= speck_limit(wash.specks, wash.body((ox, oy), centre).0) {
         return 0.0;
     }

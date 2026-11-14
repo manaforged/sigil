@@ -95,7 +95,10 @@ impl ScrollBuilder {
         let sizing = ViewportSizing::of(self.fit, self.layout_overrides.fills_height());
         let measured = sizing.measured(set.data());
         let width = self.layout_overrides.width_hint();
-        let height = self.layout_overrides.height_hint().unwrap_or_else(|| default_height(sizing));
+        let height = self
+            .layout_overrides
+            .height_hint()
+            .unwrap_or_else(|| default_height(sizing));
         let (viewport, viewport_height) = viewport_signals(width, height, measured);
 
         let max_scroll = memo(move || (extent.get() - viewport_height.get()).max(0.0));
@@ -141,10 +144,7 @@ const fn default_height(sizing: ViewportSizing) -> f32 {
     }
 }
 
-fn widen(
-    content: NodeBuilder,
-    scroll_x: Option<Signal<f32>>,
-) -> (NodeBuilder, Option<Horizontal>) {
+fn widen(content: NodeBuilder, scroll_x: Option<Signal<f32>>) -> (NodeBuilder, Option<Horizontal>) {
     let Some(scroll_x) = scroll_x else {
         return (content, None);
     };
@@ -158,7 +158,9 @@ fn widen(
 
 fn layer_position(vertical: ScrollAxis, sideways: Option<Horizontal>) -> Signal<Point> {
     memo(move || {
-        let x = sideways.map_or(0.0, |hs| -hs.scroll_x.get().clamp(0.0, hs.max.get()).round());
+        let x = sideways.map_or(0.0, |hs| {
+            -hs.scroll_x.get().clamp(0.0, hs.max.get()).round()
+        });
         let y = vertical.offset.get().clamp(0.0, vertical.max.get()).round();
         Point::new(x, -y)
     })

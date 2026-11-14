@@ -198,7 +198,14 @@ impl<'theme> StyleEngine<'theme> {
             }
             PaintAtom::NoColor => render.background_color = None,
             PaintAtom::ClipText => render.paint.clip_text = true,
-            PaintAtom::Image(id) => render.paint.image = Some(id),
+            PaintAtom::Image(id) => {
+                render.paint.image = Some(id);
+                render.paint.shader = None;
+            }
+            PaintAtom::Shader(id) => {
+                render.paint.shader = Some(id);
+                render.paint.image = None;
+            }
             PaintAtom::Border(style) => render.paint.border = style,
         }
     }

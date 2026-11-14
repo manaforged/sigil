@@ -90,7 +90,7 @@ pub mod node {
     pub use crate::kernel::{
         AccessibleName, Action, Cx, ImageBuilder, ImageSource, IntoNode, Live, Node, NodeBuilder,
         NodeId, ObjectFit, Role, Surface, SwitchBuilder, TextBuilder, TextContent, TopLayer,
-        announce, container, for_each, fragment, image, node, show, switch, text,
+        announce, container, for_each, fragment, image, keyed, node, rich, show, switch, text,
     };
 }
 /// Frame timing, counters, and profile output.
@@ -208,7 +208,7 @@ pub mod prelude {
     #[cfg(app_host)]
     pub use crate::app::open_url;
     pub use crate::events::{
-        Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut, ValueStep,
+        Cursor, Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut, ValueStep,
     };
     pub use crate::geometry::{Point, Rect, Size};
     #[cfg(feature = "scene")]
@@ -219,32 +219,35 @@ pub mod prelude {
     };
     pub use crate::node::{
         AccessibleName, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
-        fragment, image, node, show, switch, text,
+        fragment, image, keyed, node, rich, show, switch, text,
     };
-    pub use crate::reactive::{Reactive, Signal, Timer, effect, interval, memo, signal};
+    pub use crate::reactive::{
+        Reactive, Signal, Timer, context, effect, interval, memo, provide, signal,
+    };
     #[cfg(app_host)]
     pub use crate::run;
-    pub use crate::scene::{BlendMode, Shadow};
+    pub use crate::scene::{BlendMode, Shader, Shadow};
     pub use crate::style::{
         Background, ClipShape, Color, ControlSize, Elevation, FocusRing, FontFamily, Layer,
-        MaskImage, MaskSize, Paint, Radius, States, TextRole, Theme, Token, Tone,
+        MaskImage, MaskSize, Paint, Radius, States, TextFace, TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{Status, Task, spawn, task};
+    pub use crate::text::Spans;
     pub use crate::view::View;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::load_image;
     pub use crate::widgets::{
-        DragState, MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn, TableState,
-        TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge, breadcrumbs, button,
-        canvas, card, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
-        context_menu, date_field, diff, disclosure, divider, dot, dropdown, empty_state, field,
-        gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html, icon, kv_grid, kv_row,
-        link, list_row, log_view, markdown, markdown_edit, markdown_inline, marquee, math, menu,
-        menu_bar, mermaid, modal, notice_band, number_field, pagination, path, progress, radio_group,
-        range_slider, scroll, section_label, segmented, sidebar, skeleton, slider, spacer,
-        sparkline, spinner, splitter, stat, status_bar, stepper, surface, table, tabs, tag_input,
-        terminal, text_field, ticker, time_field, toast, toast_queue, toggle, tooltip, tree, vega,
-        virtual_list, words,
+        DragState, MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn,
+        TableState, TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge, breadcrumbs,
+        button, canvas, card, chart, checkbox, chip, code_edit, color_field, combobox,
+        command_menu, context_menu, date_field, diff, disclosure, divider, dot, dropdown,
+        empty_state, field, gauge, graphviz, heatmap, highlight, hint_bar, hint_overlay, html,
+        icon, kv_grid, kv_row, link, list_row, log_view, markdown, markdown_edit, markdown_inline,
+        marquee, math, menu, menu_bar, mermaid, modal, notice_band, number_field, pagination, path,
+        progress, radio_group, range_slider, scroll, section_label, segmented, sidebar, skeleton,
+        slider, spacer, sparkline, spinner, splitter, stat, status_bar, stepper, surface, table,
+        tabs, tag_input, terminal, text_field, ticker, time_field, toast, toast_queue, toggle,
+        tooltip, tree, vega, virtual_list, words,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

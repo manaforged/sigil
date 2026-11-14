@@ -81,11 +81,7 @@ pub fn frosted(blur: f32) -> impl IntoNode {
         .theme(theme)
         .width(Length::Fill)
         .height(Length::Fill)
-        .child(
-            canvas(stage)
-                .width(Length::Fill)
-                .height(Length::Fill),
-        )
+        .child(canvas(stage).width(Length::Fill).height(Length::Fill))
         .child(
             column()
                 .layout(overlay())
@@ -121,14 +117,17 @@ pub(crate) fn stage(scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
     for light in &LIGHTS {
         let centre = (light.at[0] * width, light.at[1] * height);
         let stops = vec![(0.0, light.color), (1.0, light.color.alpha(0))];
-        path(width.round().max(1.0) as u32, height.round().max(1.0) as u32)
-            .fill_radial(centre, light.reach * width, stops)
-            .move_to(0.0, 0.0)
-            .line_to(width, 0.0)
-            .line_to(width, height)
-            .line_to(0.0, height)
-            .close()
-            .draw(scene, rect, theme);
+        path(
+            width.round().max(1.0) as u32,
+            height.round().max(1.0) as u32,
+        )
+        .fill_radial(centre, light.reach * width, stops)
+        .move_to(0.0, 0.0)
+        .line_to(width, 0.0)
+        .line_to(width, height)
+        .line_to(0.0, height)
+        .close()
+        .draw(scene, rect, theme);
     }
     let (columns, rows) = ((width / SPECK_PITCH) as u32, (height / SPECK_PITCH) as u32);
     for row in 1..rows {
@@ -188,9 +187,15 @@ fn card(focus: Focus, blur: f32) -> NodeBuilder {
             row()
                 .gap(Space::Md)
                 .child(
-                    button(move || if focus.running.get() { "Pause" } else { "Start" })
-                        .primary()
-                        .activate(move || focus.running.update(|running| *running = !*running)),
+                    button(move || {
+                        if focus.running.get() {
+                            "Pause"
+                        } else {
+                            "Start"
+                        }
+                    })
+                    .primary()
+                    .activate(move || focus.running.update(|running| *running = !*running)),
                 )
                 .child(button("Reset").activate(move || {
                     focus.running.set(false);

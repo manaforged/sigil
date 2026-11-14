@@ -163,7 +163,12 @@ fn toast_row(queue: ToastQueue, entry: &ToastEntry) -> NodeBuilder {
                 .padding(Space::Md),
         )
         .class(SURFACE)
-        .transition(Transition::new().duration(MOTION).ease(Easing::CubicOut).layout())
+        .transition(
+            Transition::new()
+                .duration(MOTION)
+                .ease(Easing::CubicOut)
+                .layout(),
+        )
         .enter(Property::Opacity(0.0))
         .enter(Property::TranslateY(RISE))
         .exit(Property::Opacity(0.0))

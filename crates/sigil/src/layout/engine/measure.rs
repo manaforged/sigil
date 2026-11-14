@@ -142,7 +142,11 @@ impl LayoutEngine {
         let has_geometry_reactive = !self.geometry_reactive.is_empty();
         self.rescope(cx);
         for id in ids {
+            self.track_sticky(id);
             let _ = self.scope(cx, id);
+            if self.stick(cx, id) {
+                super::sticky::note_moved(cx, id);
+            }
             let Some(result) = self.fresh(id) else {
                 continue;
             };

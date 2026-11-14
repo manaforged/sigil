@@ -11,6 +11,7 @@ pub(crate) mod emit_cache;
 pub(crate) mod geometry;
 #[cfg(vector_paint)]
 pub(crate) mod path_raster;
+pub(crate) mod shader;
 pub(crate) mod shadow;
 #[cfg(scene_emit)]
 pub(crate) mod state;
@@ -59,4 +60,5 @@ kittest_pub! {
     #[doc(hidden)]
     pub use emit::emit_scene;
 }
+pub use shader::{DrawShader, Shader, Shading};
 pub use shadow::{Shadow, ShadowKind};

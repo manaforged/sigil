@@ -154,9 +154,7 @@ impl LayoutEngine {
 
     fn clear_hidden(&mut self, cx: &mut Cx, id: NodeId) {
         let hidden = self
-            .handle(id)
-            .ok()
-            .and_then(|handle| self.drive.style_for(handle))
+            .style_of(id)
             .is_some_and(|style| matches!(style.display, Display::None));
         if !hidden {
             return;
@@ -228,6 +226,7 @@ impl LayoutEngine {
             return Ok(());
         }
         self.sync_one_node(cx, id)?;
+        self.restick(cx);
         self.republish_bounds(cx);
         Ok(())
     }
