@@ -1,4 +1,4 @@
-use core::cell::RefCell;
+use core::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use slotmap::{SlotMap, new_key_type};
@@ -23,7 +23,6 @@ pub(crate) enum FrameSource {
 pub(crate) struct Sources {
     pub(crate) map: SlotMap<SourceId, FrameSource>,
     next_seq: u64,
-    pub(crate) test_clock: Option<Instant>,
 }
 
 impl Sources {
@@ -31,12 +30,7 @@ impl Sources {
         Self {
             map: SlotMap::with_key(),
             next_seq: 0,
-            test_clock: None,
         }
-    }
-
-    pub(crate) fn now(&self) -> Instant {
-        self.test_clock.unwrap_or_else(Instant::now)
     }
 
     pub(crate) const fn next_seq(&mut self) -> u64 {
@@ -51,6 +45,23 @@ thread_local! {
 
 pub(crate) fn with_sources<R>(change: impl FnOnce(&mut Sources) -> R) -> R {
     SOURCES.with(|cell| change(&mut cell.borrow_mut()))
+}
+
+thread_local! {
+    static TEST_CLOCK: Cell<Option<Instant>> = const { Cell::new(None) };
+}
+
+pub(crate) fn now() -> Instant {
+    TEST_CLOCK
+        .try_with(Cell::get)
+        .ok()
+        .flatten()
+        .unwrap_or_else(Instant::now)
+}
+
+#[cfg(feature = "test-clock")]
+pub(crate) fn set_test_clock(clock: Option<Instant>) {
+    let _ = TEST_CLOCK.try_with(|slot| slot.set(clock));
 }
 
 pub(crate) fn try_with_sources<R>(change: impl FnOnce(&mut Sources) -> R) -> Option<R> {

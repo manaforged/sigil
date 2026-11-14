@@ -5,7 +5,6 @@ use web_time::Instant;
 
 use crate::events::{PointerEvent, PointerPhase, PointerType};
 use crate::geometry::Point;
-use crate::reactive::frame::try_with_sources;
 
 const SAMPLES: usize = 8;
 const POINTERS: usize = 10;
@@ -148,9 +147,7 @@ thread_local! {
 }
 
 pub(crate) fn track(event: &mut PointerEvent) {
-    let Some(at) = try_with_sources(|sources| sources.now()) else {
-        return;
-    };
+    let at = crate::reactive::frame::now();
     let (key, phase) = ((event.kind, event.pointer_id), event.phase);
     let sample = Sample {
         at,

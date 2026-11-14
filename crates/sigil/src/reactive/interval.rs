@@ -47,7 +47,7 @@ fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) 
             seq: sources.next_seq(),
             owner,
             period,
-            next_fire: sources.now() + delay,
+            next_fire: crate::reactive::frame::now() + delay,
             callback,
         };
         Timer(sources.map.insert(FrameSource::Deadline(deadline)))
@@ -74,7 +74,7 @@ fn deadline_mut(sources: &mut Sources, id: SourceId) -> Option<&mut Deadline> {
 #[must_use = "shells can ignore the count; tests use it to assert that fires actually happened"]
 pub(crate) fn tick_intervals() -> usize {
     let (now, mut due) = with_sources(|sources| {
-        let now = sources.now();
+        let now = crate::reactive::frame::now();
         let due: Vec<(u64, SourceId, Owner)> = sources
             .map
             .iter()
@@ -156,19 +156,19 @@ kittest_pub! {
 /// Replaces system time with `clock` as the time that intervals read.
 #[cfg(feature = "test-clock")]
 pub fn __test_set_clock(clock: Instant) {
-    with_sources(|sources| sources.test_clock = Some(clock));
+    crate::reactive::frame::set_test_clock(Some(clock));
 }
 
 /// Moves the interval clock forward by `delta`.
 #[cfg(feature = "test-clock")]
 pub fn __test_advance_clock(delta: Duration) {
-    with_sources(|sources| sources.test_clock = Some(sources.now() + delta));
+    crate::reactive::frame::set_test_clock(Some(crate::reactive::frame::now() + delta));
 }
 
 /// Makes intervals read system time again.
 #[cfg(feature = "test-clock")]
 pub fn __test_clear_clock() {
-    with_sources(|sources| sources.test_clock = None);
+    crate::reactive::frame::set_test_clock(None);
 }
 
 #[cfg(test)]
