@@ -1,8 +1,9 @@
 use smallvec::SmallVec;
 
 use crate::style::image_paint::ImagePaints;
-use crate::style::live_paint::LivePaint;
-use crate::style::merge::{SlotSet, merge_classes};
+use crate::style::live_paint::{LivePaint, NO_STATE_PAINT};
+use crate::style::merge::SlotSet;
+use crate::style::overlay::merge_state;
 use crate::style::state::PerState;
 use crate::style::{Paint, StateSlot, StateStyleBuilder, StyleAtom, StyleOverlay};
 
@@ -10,6 +11,7 @@ use crate::style::{Paint, StateSlot, StateStyleBuilder, StyleAtom, StyleOverlay}
 pub(crate) struct Style {
     pub(crate) paint: StateStyleBuilder,
     states: PerState<SmallVec<[StyleAtom; 4]>>,
+    live_states: PerState<LivePaint>,
 }
 
 impl Style {
@@ -24,6 +26,7 @@ impl Style {
                 SmallVec::new_const(),
                 SmallVec::new_const(),
             ),
+            live_states: NO_STATE_PAINT,
         }
     }
 
@@ -40,15 +43,19 @@ impl Style {
     #[must_use]
     pub(crate) fn has_state_overlays(&self) -> bool {
         self.states.each().iter().any(|atoms| !atoms.is_empty())
+            || self.live_states.each().iter().any(|live| !live.is_empty())
     }
 
-    pub(crate) fn set_state(&mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) {
+    pub(crate) fn set_state(&mut self, slot: StateSlot, paint: StateStyleBuilder) {
+        let (atoms, _images, live) = paint.into_parts();
         *self.states.get_mut(slot) = atoms.into_iter().collect();
+        *self.live_states.get_mut(slot) = live;
     }
 
     #[must_use]
     pub(crate) fn take_state_overlay(&mut self) -> StyleOverlay {
         StyleOverlay::from_states(std::mem::take(&mut self.states))
+            .live(std::mem::take(&mut self.live_states))
     }
 
     pub(crate) fn take_atoms(&mut self) -> SmallVec<[StyleAtom; 16]> {
@@ -64,18 +71,24 @@ impl Style {
     }
 
     pub(crate) fn merge_under(&mut self, base: &Self) {
-        let caller_slots = SlotSet::of(self.paint.atoms());
-        for (caller_slot, base_slot) in self.states.each_mut().into_iter().zip(base.states.each()) {
-            let kept_base: SmallVec<[StyleAtom; 4]> = base_slot
+        let caller_slots = self.paint.slots();
+        let callers = self
+            .states
+            .each_mut()
+            .into_iter()
+            .zip(self.live_states.each_mut());
+        let bases = base.states.each().into_iter().zip(base.live_states.each());
+        for ((caller_atoms, caller_live), (base_atoms, base_live)) in callers.zip(bases) {
+            let mut atoms: SmallVec<[StyleAtom; 4]> = base_atoms
                 .iter()
                 .copied()
-                .filter(|atom| {
-                    caller_slots.is_empty() || !SlotSet::atom(*atom).overlaps(caller_slots)
-                })
+                .filter(|atom| !SlotSet::atom(*atom).overlaps(caller_slots))
                 .collect();
-            *caller_slot = merge_classes(&kept_base, caller_slot, 0)
-                .into_iter()
-                .collect();
+            let mut live = base_live.clone();
+            live.shadow(caller_slots);
+            merge_state(&mut atoms, &mut live, caller_atoms, caller_live);
+            *caller_atoms = atoms;
+            *caller_live = live;
         }
     }
 

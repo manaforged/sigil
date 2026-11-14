@@ -3,6 +3,7 @@ use smallvec::SmallVec;
 use crate::kernel::ImageSource;
 use crate::style::image_paint::ImagePaints;
 use crate::style::live_paint::LivePaint;
+use crate::style::merge::SlotSet;
 use crate::style::{Paint, StyleAtom};
 
 /// Builds the paint for one interaction state.
@@ -29,6 +30,9 @@ impl StateStyleBuilder {
     }
 
     pub(crate) fn push_atom(&mut self, atom: StyleAtom) {
+        if !self.live.is_empty() {
+            self.live.shadow(SlotSet::atom(atom));
+        }
         self.atoms.push(atom);
     }
 
@@ -37,10 +41,14 @@ impl StateStyleBuilder {
         A: IntoIterator<Item = StyleAtom>,
     {
         let Some(atoms) = now else {
-            self.live.push(read);
+            let slots = self.live.push(read);
+            self.atoms
+                .retain(|atom| !SlotSet::atom(*atom).overlaps(slots));
             return;
         };
-        self.atoms.extend(atoms);
+        for atom in atoms {
+            self.push_atom(atom);
+        }
     }
 
     pub(crate) fn push_image(&mut self, source: ImageSource) -> u64 {
@@ -60,8 +68,8 @@ impl StateStyleBuilder {
     }
 
     #[must_use]
-    pub(crate) fn atoms(&self) -> &[StyleAtom] {
-        &self.atoms
+    pub(crate) fn slots(&self) -> SlotSet {
+        SlotSet::of(&self.atoms).union(self.live.slots())
     }
 
     #[must_use]
@@ -81,13 +89,9 @@ impl Paint for StateStyleBuilder {
     }
 }
 
-pub(crate) fn build_state_atoms<F>(configure: F) -> SmallVec<[StyleAtom; 16]>
+pub(crate) fn build_state_atoms<F>(configure: F) -> StateStyleBuilder
 where
     F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
 {
-    let StateStyleBuilder {
-        mut atoms, live, ..
-    } = configure(StateStyleBuilder::new());
-    crate::reactive::untrack(|| atoms.extend(live.atoms()));
-    atoms
+    configure(StateStyleBuilder::new())
 }

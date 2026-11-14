@@ -375,3 +375,25 @@ fn top_layer_subtree_paints_after_later_siblings() {
          (accent at {accent_pos}, sibling at {sibling_pos})"
     );
 }
+
+#[test]
+fn later_static_background_replaces_reactive_one() {
+    Owner::scope("renderer_style_integration::last_setter", || {
+        let mut cx = Cx::new_root();
+        let tone = signal(Token::Surface);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+                .background(tone)
+                .background(Token::Accent),
+        );
+
+        layout(&mut cx, root);
+
+        let scene = emit_scene(&cx, root, None);
+        assert_eq!(
+            first_rect(&scene).unwrap().color(),
+            Theme::default().color(Token::Accent)
+        );
+    });
+}

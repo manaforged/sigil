@@ -20,7 +20,7 @@ use crate::style::{
     StyleState, StyleVariant, Theme, Tone, parse_classes,
 };
 
-static EMPTY_ATOMS: &[StyleAtom] = &[];
+pub(crate) static EMPTY_ATOMS: &[StyleAtom] = &[];
 
 pub(crate) enum ClassSource {
     Static(&'static [StyleAtom]),
@@ -152,18 +152,14 @@ pub(crate) fn paint_when(
 ) -> NodeBuilder {
     let (atoms, images, live) = paint.into_parts();
     let atoms = intern_atoms(atoms);
+    let active = active.into_signal();
     let node = if images.is_empty() {
         node
     } else {
         node.mutate(move |node| images.install(node))
     };
-    node.style_reactive(move || {
-        if active.read() {
-            live.over(atoms)
-        } else {
-            EMPTY_ATOMS
-        }
-    })
+    let node = node.style_reactive(move || if active.get() { atoms } else { EMPTY_ATOMS });
+    live.install_when(node, active)
 }
 
 pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {

@@ -95,6 +95,16 @@ impl<T> PerState<T> {
         ]
     }
 
+    pub(crate) fn into_each(self) -> [(StateSlot, T); 5] {
+        [
+            (StateSlot::Rest, self.rest),
+            (StateSlot::Focused, self.focused),
+            (StateSlot::Hovered, self.hovered),
+            (StateSlot::Pressed, self.pressed),
+            (StateSlot::Disabled, self.disabled),
+        ]
+    }
+
     pub(crate) const fn each_mut(&mut self) -> [&mut T; 5] {
         [
             &mut self.rest,

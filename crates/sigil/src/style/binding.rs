@@ -58,6 +58,7 @@ kittest_pub! {
         static_atoms: &'static [StyleAtom],
         dynamic_atoms: SmallVec<[StyleAtom; 16]>,
         reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
+        state_channels: SmallVec<[(StateSlot, ReactiveStyleAtoms); 1]>,
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
         state_overlay: Option<Box<StyleOverlay>>,
         animated_values: SmallVec<[Driven; 2]>,
@@ -75,6 +76,7 @@ impl core::fmt::Debug for StyleBinding {
             .field("static_atoms", &self.static_atoms)
             .field("dynamic_atoms", &self.dynamic_atoms)
             .field("reactive_channels", &self.reactive_channels.len())
+            .field("state_channels", &self.state_channels.len())
             .field(
                 "attached_animators",
                 &self.attached_animators.get().is_some(),
@@ -137,7 +139,10 @@ impl StyleBinding {
     kittest_pub! {
         #[doc(hidden)]
         pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
-            self.reactive_channels.iter().map(|atoms| atoms.get())
+            self.reactive_channels
+                .iter()
+                .chain(self.state_channels.iter().map(|(_, atoms)| atoms))
+                .map(|atoms| atoms.get())
         }
     }
 
@@ -235,6 +240,15 @@ impl StyleBinding {
             .copied()
             .chain(self.live_atoms())
             .chain(self.state_overlay_atoms().iter().copied())
+            .chain(self.state_live_atoms())
+    }
+
+    fn state_live_atoms(&self) -> impl Iterator<Item = StyleAtom> + '_ {
+        let slot = (!self.state_channels.is_empty()).then(|| self.interaction_slot());
+        self.state_channels
+            .iter()
+            .filter(move |(state, _)| Some(*state) == slot)
+            .flat_map(|(_, atoms)| atoms.get().iter().copied())
     }
 
     fn live_atoms(&self) -> impl Iterator<Item = StyleAtom> + '_ {
@@ -380,11 +394,17 @@ impl StyleBinding {
         self.reactive_channels.push(atoms);
         self.revision = self.revision.wrapping_add(1);
     }
+
+    pub(crate) fn add_state_reactive(&mut self, slot: StateSlot, atoms: ReactiveStyleAtoms) {
+        self.state_channels.push((slot, atoms));
+        self.revision = self.revision.wrapping_add(1);
+    }
 }
 
 impl PartialEq for StyleBinding {
     fn eq(&self, other: &Self) -> bool {
         let reactive_eq = self.reactive_channels.len() == other.reactive_channels.len()
+            && self.state_channels.len() == other.state_channels.len()
             && self
                 .reactive_channels()
                 .zip(other.reactive_channels())

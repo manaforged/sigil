@@ -5,6 +5,7 @@ use sigil::app::{FrameHooks, FrameInputHook, HostMode};
 use sigil::layout::{LayoutResult, LayoutStyle};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
+use sigil::scene::SceneCommand;
 use sigil::style::FocusRing;
 
 const VIEW: (f32, f32) = (400.0, 200.0);
@@ -125,5 +126,40 @@ fn theme_switch_does_not_typeset_a_formula_again() {
         frame(&mut host, None);
 
         assert_eq!(runs.get(), before);
+    });
+}
+
+#[test]
+fn rest_paint_follows_a_signal() {
+    Owner::scope("host_frame_updates::rest_live", || {
+        let on = signal(false);
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(
+            column().child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(80.0, 40.0))
+                    .rest(move |s| {
+                        s.background(move || {
+                            if on.get() {
+                                Token::Accent
+                            } else {
+                                Token::Surface
+                            }
+                        })
+                    }),
+            ),
+        );
+        frame(&mut host, None);
+        on.set(true);
+        frame(&mut host, None);
+        let accent = Theme::current().color(Token::Accent);
+        let scene = host.scene(VIEW).expect("scene");
+        assert!(
+            scene
+                .commands()
+                .iter()
+                .any(|c| matches!(c, SceneCommand::Rect(r) if r.color() == accent)),
+            "a reactive rest background must repaint when its signal changes",
+        );
     });
 }
