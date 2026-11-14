@@ -4,23 +4,12 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use sigil::animation::{Property, Transition};
-use sigil::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent, ValueStep};
+use sigil::events::{A11yEdit, DragPhase, KeyEvent, PointerEvent, ValueStep};
 use sigil::layout::{LayoutStyle, cols};
 use sigil::node::{Action, Cx, NodeId};
 use sigil::prelude::*;
 use sigil::style::{BORDER_WIDTH, Elevation, Metrics, StringKey};
 use sigil::widgets::{Framed, WidgetFrame};
-
-const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
-    (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
-    (NamedKey::ArrowUp, ValueStep::Unit(1.0)),
-    (NamedKey::ArrowLeft, ValueStep::Unit(-1.0)),
-    (NamedKey::ArrowDown, ValueStep::Unit(-1.0)),
-    (NamedKey::PageUp, ValueStep::Page(1.0)),
-    (NamedKey::PageDown, ValueStep::Page(-1.0)),
-    (NamedKey::Home, ValueStep::Start),
-    (NamedKey::End, ValueStep::End),
-];
 
 const PAGE_STEPS: f32 = 10.0;
 
@@ -338,7 +327,7 @@ fn attach_slider_events(
 ) -> NodeBuilder {
     let (key_change, drag_change) = (Rc::clone(&on_change), Rc::clone(&on_change));
     attach_slider_drag(node, rt, dragging, drag_change)
-        .step_keys(SLIDER_KEYS, move |step, event: &mut KeyEvent| {
+        .step_keys(ValueStep::SLIDER_KEYS, move |step, event: &mut KeyEvent| {
             if rt.is_disabled() {
                 return;
             }

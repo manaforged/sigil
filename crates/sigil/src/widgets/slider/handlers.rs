@@ -1,23 +1,12 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent, ValueStep};
+use crate::events::{A11yEdit, DragPhase, KeyEvent, PointerEvent, ValueStep};
 use crate::node::{NodeBuilder, NodeId};
 use crate::reactive::{Signal, signal};
 use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
-
-const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
-    (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
-    (NamedKey::ArrowUp, ValueStep::Unit(1.0)),
-    (NamedKey::ArrowLeft, ValueStep::Unit(-1.0)),
-    (NamedKey::ArrowDown, ValueStep::Unit(-1.0)),
-    (NamedKey::PageUp, ValueStep::Page(1.0)),
-    (NamedKey::PageDown, ValueStep::Page(-1.0)),
-    (NamedKey::Home, ValueStep::Start),
-    (NamedKey::End, ValueStep::End),
-];
 
 const PAGE_STEPS: f32 = 10.0;
 
@@ -46,7 +35,7 @@ pub(super) fn attach_key_handlers(
     on_change: ValueChange,
 ) -> NodeBuilder {
     let change = Rc::clone(&on_change);
-    node.step_keys(SLIDER_KEYS, move |step, event| {
+    node.step_keys(ValueStep::SLIDER_KEYS, move |step, event| {
         change_key(step, event, runtime, &change);
     })
     .a11y_edit(move |edit| handle_a11y_edit(edit, runtime, &on_change))

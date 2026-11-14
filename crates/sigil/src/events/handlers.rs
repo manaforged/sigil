@@ -1,7 +1,7 @@
 use crate::clipboard::Delivery;
 use crate::events::{
-    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent,
-    Shortcut,
+    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, NamedKey, PointerEvent, PointerPhase,
+    ScrollEvent, Shortcut,
 };
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::owner_by_id;
@@ -62,6 +62,20 @@ pub enum ValueStep {
     End,
 }
 
+impl ValueStep {
+    /// The keys a slider answers: the arrows, PageUp, PageDown, Home, and End.
+    pub const SLIDER_KEYS: [(NamedKey, Self); 8] = [
+        (NamedKey::ArrowRight, Self::Unit(1.0)),
+        (NamedKey::ArrowUp, Self::Unit(1.0)),
+        (NamedKey::ArrowLeft, Self::Unit(-1.0)),
+        (NamedKey::ArrowDown, Self::Unit(-1.0)),
+        (NamedKey::PageUp, Self::Page(1.0)),
+        (NamedKey::PageDown, Self::Page(-1.0)),
+        (NamedKey::Home, Self::Start),
+        (NamedKey::End, Self::End),
+    ];
+}
+
 /// An accessibility edit request dispatched to a widget handler.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
@@ -92,7 +106,7 @@ pub(crate) enum EventKind {
     PointerLeave,
     Scroll,
     Key,
-    Shortcut,
+    ScrollEvent, Shortcut,
     FocusIn,
     FocusOut,
     FileDrop,
