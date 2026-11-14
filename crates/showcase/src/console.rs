@@ -5,11 +5,10 @@ use sigil::events::DragPhase;
 use sigil::prelude::*;
 use sigil::scene::{DrawRect, SceneBuilder, Shadow};
 
-const FACE: Color = Color::rgb(222, 219, 212);
-const INK: Color = Color::rgb(24, 24, 24);
+use crate::sheet::{INK, PAPER, SIGNAL, label, theme};
+
 const CAP: Color = Color::rgb(30, 30, 32);
 const CROWN: Color = Color::rgb(48, 48, 51);
-const SIGNAL: Color = Color::rgb(255, 84, 0);
 const SCREEN: Color = Color::rgb(14, 17, 16);
 const TRACE: Color = Color::rgb(226, 240, 228);
 const HALO: Color = Color::rgba(226, 240, 228, 26);
@@ -39,7 +38,6 @@ const SWEEP: f32 = 1.5 * PI;
 const TRAVEL: f32 = 220.0;
 const DRIFT: f32 = 0.12;
 const READOUT: f32 = 22.0;
-const TRACKING: f32 = 0.16;
 const WHY: &str = "an engraved readout outside the type scale of an app";
 
 #[derive(Clone, Copy)]
@@ -137,7 +135,7 @@ pub fn still() -> impl IntoNode {
 fn board(deck: Deck) -> impl IntoNode {
     row()
         .theme(theme())
-        .background(FACE)
+        .background(PAPER)
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(Space::Xxxl)
@@ -145,14 +143,6 @@ fn board(deck: Deck) -> impl IntoNode {
         .align_items(AlignItems::Center)
         .child(scope(deck))
         .child(panel(deck))
-}
-
-fn theme() -> Theme {
-    Theme::light()
-        .token(Token::Surface, FACE)
-        .token(Token::OnSurface, INK)
-        .token(Token::Accent, SIGNAL)
-        .token(Token::AccentHover, SIGNAL)
 }
 
 fn scope(deck: Deck) -> impl IntoNode {
@@ -258,14 +248,6 @@ fn panel(deck: Deck) -> impl IntoNode {
         .child(transport(deck))
 }
 
-fn engraved(words: impl Into<TextContent>) -> impl IntoNode {
-    text(words)
-        .text_role(TextRole::Caption)
-        .font_family(FontFamily::Mono)
-        .letter_spacing(TRACKING)
-        .text_color(INK)
-}
-
 fn plate() -> impl IntoNode {
     row()
         .width(Length::Fill)
@@ -273,8 +255,8 @@ fn plate() -> impl IntoNode {
         .padding_bottom(Space::Sm)
         .border_bottom(1)
         .border_color(INK)
-        .child(engraved("SIGIL  /  HARMONOGRAPH"))
-        .child(engraved("MODEL 02"))
+        .child(label("SIGIL  /  HARMONOGRAPH"))
+        .child(label("MODEL 02"))
 }
 
 fn pair(left: Dial, right: Dial) -> impl IntoNode {
@@ -303,7 +285,7 @@ fn knob(dial: Dial) -> impl IntoNode {
                     }
                 }),
         )
-        .child(engraved(dial.name))
+        .child(label(dial.name))
         .child(
             text(move || format!("{:.2} {}", dial.reading(dial.set.get()), dial.unit))
                 .font_size(READOUT, WHY)
@@ -347,6 +329,6 @@ fn transport(deck: Deck) -> impl IntoNode {
         .gap(Space::Md)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
-        .child(engraved("DRAG A KNOB UP OR DOWN"))
+        .child(label("DRAG A KNOB UP OR DOWN"))
         .child(toggle(deck.running).label("Drift"))
 }

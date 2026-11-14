@@ -1,7 +1,7 @@
 //! Showcase apps that use only what a dependent crate can reach in `sigil-ui`.
 
 use sigil::layout::{LayoutStyle, Position};
-use sigil::prelude::{AppConfig, Length};
+use sigil::prelude::{AppConfig, FontFamily, Length};
 
 /// Sun and sky for one place, painted as a watercolour wash.
 pub mod almanac;
@@ -13,6 +13,8 @@ pub mod console;
 pub mod darkroom;
 /// Flashcards that turn over in 3D on a spring.
 pub mod deck;
+/// A field of letters whose weight follows the pointer.
+pub mod field;
 /// A pomodoro timer on frosted glass over stage lights.
 pub mod focus;
 /// A scrolling list of glowing cards that fade in as they come into view.
@@ -21,6 +23,8 @@ pub mod gallery;
 pub mod index;
 /// A marquee, a shimmering loading card, a toast stack and a bottom sheet.
 pub mod kit;
+/// The paper, ink, signal colour and faces shared by the figures of the sheet.
+pub mod sheet;
 /// A glass session tray that is dragged, flung, and snaps to its stops.
 pub mod tray;
 
@@ -34,6 +38,19 @@ pub const CANVAS: &str = "app";
 #[must_use]
 pub fn window(title: &str) -> AppConfig {
     AppConfig::new(title).size(SIZE[0], SIZE[1]).canvas(CANVAS)
+}
+
+/// The window of a showcase that loads `fonts` into their family slots.
+#[must_use]
+pub fn figure(
+    title: &str,
+    fonts: impl IntoIterator<Item = (FontFamily, &'static [u8])>,
+) -> AppConfig {
+    fonts
+        .into_iter()
+        .fold(window(title), |config, (family, bytes)| {
+            config.font(family, bytes, 0)
+        })
 }
 
 pub(crate) fn overlay() -> LayoutStyle {

@@ -3,9 +3,8 @@ use std::time::Duration;
 use sigil::node::TextBuilder;
 use sigil::prelude::*;
 
-const PAPER: Color = Color::rgb(243, 241, 235);
-const INK: Color = Color::rgb(12, 12, 12);
-const MARK: Color = Color::rgb(238, 205, 72);
+use crate::sheet::{INK, PAPER, SIGNAL as MARK};
+
 const HERO: f32 = 112.0;
 const HERO_LINE: f32 = 100.0;
 const NUMERAL: f32 = 88.0;

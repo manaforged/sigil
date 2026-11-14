@@ -4,7 +4,7 @@ use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
     sigil::run(
-        sigil_showcase::window("Console"),
+        sigil_showcase::figure("Console", sigil_showcase::sheet::fonts()),
         sigil_showcase::console::app,
     )
 }
