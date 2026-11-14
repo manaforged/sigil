@@ -13,6 +13,7 @@ pub(crate) mod links;
 pub(crate) mod pointer_dispatch;
 mod router;
 pub(crate) mod selection;
+mod velocity;
 mod selection_walk;
 #[cfg(feature = "desktop")]
 mod window_command;

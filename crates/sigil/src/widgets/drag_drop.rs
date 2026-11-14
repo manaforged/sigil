@@ -10,8 +10,6 @@ use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
 use crate::widgets::Widget;
 use crate::widgets::interaction::{is_cancel, is_primary};
 
-const DRAG_THRESHOLD_PX: f32 = 4.0;
-
 const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
 const GHOST_OFFSET: Point = Point::new(12.0, 10.0);
@@ -380,7 +378,7 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
             .armed
             .borrow()
             .as_ref()
-            .filter(|(down, _)| (at.x - down.x).hypot(at.y - down.y) >= DRAG_THRESHOLD_PX)
+            .filter(|(down, _)| event.passed_drag_threshold(*down))
             .map(|(_, payload)| payload.clone());
         if let Some(payload) = ready {
             state.armed.replace(None);

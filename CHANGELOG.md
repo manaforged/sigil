@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Paint::{backdrop_blur, backdrop_brightness, backdrop_saturate}` and the classes `backdrop-blur-*`, `backdrop-brightness-*`, and `backdrop-saturate-*` filter what is painted behind a node, inside its corners, like CSS `backdrop-filter`, on the wgpu and CPU renderers. The terminal host draws the node without the filter.
 - `Property::{BackdropBlur, BackdropBrightness, BackdropSaturate}` animate the backdrop filter with `.drive` and keyframes.
 - `LayerEffect::Backdrop`, and `Mask::new` and `LayerScope::layer_effect` without the `kittest` feature.
+- `PointerEvent::velocity()` returns the pointer speed in logical pixels per second over its last moves; it is zero after a pause, so a held release does not fling.
 
 ### Fixed
 

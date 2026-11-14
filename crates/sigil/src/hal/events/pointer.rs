@@ -128,6 +128,7 @@ pub struct PointerEvent {
     pub(crate) position: Point,
     pub(crate) window_position: Point,
     pub(crate) delta: Point,
+    pub(crate) velocity: Point,
     pub(crate) kind: PointerType,
     pub(crate) button: Option<MouseButton>,
     pub(crate) buttons: MouseButtons,
@@ -146,7 +147,8 @@ impl PointerEvent {
         Self {
             position,
             window_position: position,
-            delta: Point::new(0.0, 0.0),
+            delta: Point::ZERO,
+            velocity: Point::ZERO,
             kind: PointerType::Mouse,
             button: None,
             buttons: MouseButtons::empty(),
@@ -191,6 +193,12 @@ impl PointerEvent {
     #[must_use]
     pub const fn delta(&self) -> Point {
         self.delta
+    }
+
+    /// The pointer speed over its last few moves, in logical pixels per second.
+    #[must_use]
+    pub const fn velocity(&self) -> Point {
+        self.velocity
     }
 
     /// The device: mouse, touch, or pen.
@@ -282,6 +290,14 @@ impl PointerEvent {
         } else {
             self.flags &= !CAPTURED;
         }
+    }
+
+    pub(crate) const DRAG_THRESHOLD: f32 = 4.0;
+
+    #[must_use]
+    pub(crate) fn passed_drag_threshold(&self, origin: Point) -> bool {
+        let at = self.window_position;
+        (at.x - origin.x).hypot(at.y - origin.y) >= Self::DRAG_THRESHOLD
     }
 }
 

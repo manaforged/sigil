@@ -218,6 +218,7 @@ impl EventRouter {
     }
 
     fn route_pointer(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: PointerEvent) {
+        crate::events::velocity::track(&mut event);
         self.last_pointer = Some(event.clone());
         let global_position = event.position;
         if event.phase != PointerPhase::Down {
