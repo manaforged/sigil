@@ -548,8 +548,9 @@ pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use patterns::{
     CardBuilder, Disclosure, EmptyStateBuilder, HintOverlayBuilder, ListRowBuilder, RowTone,
-    SidebarBuilder, SkeletonBuilder, app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
-    kv_grid, list_row, notice_band, pagination, section_label, sidebar, skeleton, spacer, stepper,
+    SidebarBuilder, SkeletonBuilder, app_shell, avatar, badge, breadcrumbs, card, disclosure,
+    empty_state, hint_bar, hint_overlay, kv_grid, list_row, notice_band, pagination, section_label,
+    sidebar, skeleton, spacer, stepper,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};

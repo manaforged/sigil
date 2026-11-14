@@ -86,7 +86,7 @@ fn pattern_scene() -> CommandScene {
     builder.draw_pattern(
         DrawPattern::new(rect(112.0, 0.0), slash())
             .border_radius(CornerRadii::uniform(8.0))
-            .with_stroke(outside_stroke()),
+            .stroked(outside_stroke()),
     );
     builder.finish()
 }

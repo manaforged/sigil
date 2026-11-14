@@ -200,11 +200,11 @@ fn assert_array_close(actual_values: [f32; 4], expected_values: [f32; 4]) {
 }
 
 fn rect_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawRect {
-    DrawRect::new(rect, color()).with_stroke(stroke)
+    DrawRect::new(rect, color()).stroked(stroke)
 }
 
 fn gradient_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawGradient {
-    DrawGradient::new(rect, gradient()).with_stroke(stroke)
+    DrawGradient::new(rect, gradient()).stroked(stroke)
 }
 
 const fn stroke(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {

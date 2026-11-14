@@ -113,7 +113,7 @@ fn stroked(outline: Vec<PathCommand>, width: f32, length: f32, line: &Line) -> D
         join: StrokeJoin::Miter,
         dash,
     };
-    let mut draw = DrawPath::new(Arc::from(outline), IDENTITY, key).with_stroke(stroke);
+    let mut draw = DrawPath::new(Arc::from(outline), IDENTITY, key).stroked(stroke);
     draw.node = Some(line.node);
     draw.opacity = line.opacity;
     draw

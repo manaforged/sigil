@@ -32,12 +32,12 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
     let rect_stroke = solid_stroke(StrokeAlign::Centered, 2.0);
     let gradient_stroke = dashed_stroke(StrokeAlign::Inside, 4.0, 6.0);
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect_style(rect(0.0, 0.0)).with_stroke(rect_stroke));
+    builder.draw_rect(rect_style(rect(0.0, 0.0)).stroked(rect_stroke));
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0), gradient())
             .border_radius(CornerRadii::uniform(8.0))
             .opacity(9_000)
-            .with_stroke(gradient_stroke),
+            .stroked(gradient_stroke),
     );
     let scene = builder.finish();
 
@@ -53,7 +53,7 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
     let outside = solid_stroke(StrokeAlign::Outside, 5.0);
     let mut builder = SceneBuilder::new();
     builder.draw_rect(rect_style(rect(0.0, 0.0)));
-    builder.draw_rect(rect_style(rect(56.0, 0.0)).with_stroke(dashed_stroke(
+    builder.draw_rect(rect_style(rect(56.0, 0.0)).stroked(dashed_stroke(
         StrokeAlign::Inside,
         3.0,
         7.0,
@@ -61,7 +61,7 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
     builder.draw_gradient(
         DrawGradient::new(rect(112.0, 0.0), gradient())
             .border_radius(CornerRadii::uniform(10.0))
-            .with_stroke(outside),
+            .stroked(outside),
     );
     let scene = builder.finish();
 

@@ -290,10 +290,30 @@ fn hover_write_can_rebuild_a_nested_drop_target() {
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Down, 10.0, 10.0));
-        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Move, 30.0, 25.0));
-        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Move, 150.0, 20.0));
+        route(
+            &mut router,
+            &mut cx,
+            &layout,
+            pointer(PointerPhase::Down, 10.0, 10.0),
+        );
+        route(
+            &mut router,
+            &mut cx,
+            &layout,
+            pointer(PointerPhase::Move, 30.0, 25.0),
+        );
+        route(
+            &mut router,
+            &mut cx,
+            &layout,
+            pointer(PointerPhase::Move, 150.0, 20.0),
+        );
         assert!(cursor.peek().is_some(), "hover reached the target");
-        route(&mut router, &mut cx, &layout, pointer(PointerPhase::Up, 150.0, 20.0));
+        route(
+            &mut router,
+            &mut cx,
+            &layout,
+            pointer(PointerPhase::Up, 150.0, 20.0),
+        );
     });
 }

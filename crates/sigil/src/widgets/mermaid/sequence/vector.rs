@@ -67,7 +67,9 @@ impl Pens {
                 size,
             ))
             .child(layer(
-                self.boxes.fill_color(Token::Surface).stroke(Token::Border, thin),
+                self.boxes
+                    .fill_color(Token::Surface)
+                    .stroke(Token::Border, thin),
                 size,
             ))
             .child(layer(

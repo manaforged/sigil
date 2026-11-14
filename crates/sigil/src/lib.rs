@@ -119,6 +119,14 @@ pub mod tasks;
 #[cfg(feature = "terminal")]
 pub mod terminal;
 /// Text styling, measurement, hit testing, and grapheme column helpers.
+#[cfg_attr(
+    not(feature = "kittest"),
+    allow(
+        unused_imports,
+        unreachable_pub,
+        reason = "items are public only under kittest"
+    )
+)]
 pub mod text;
 mod view;
 /// The widget catalog.

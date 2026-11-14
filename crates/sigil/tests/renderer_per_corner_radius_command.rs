@@ -20,13 +20,13 @@ fn per_corner_radii_round_trip_with_strokes() {
     builder.draw_rect(
         DrawRect::new(rect(0.0, 0.0), color(24, 32, 48, 255))
             .border_radius(left_round)
-            .with_stroke(stroke),
+            .stroked(stroke),
     );
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0), gradient())
             .border_radius(CornerRadii::top(10.0))
             .opacity(9_000)
-            .with_stroke(stroke),
+            .stroked(stroke),
     );
     builder.draw_rect(DrawRect::new(rect(112.0, 0.0), color(8, 12, 20, 255)));
     let scene = builder.finish();

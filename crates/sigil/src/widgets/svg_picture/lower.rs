@@ -194,7 +194,7 @@ impl Walk {
                 join: native.join,
                 dash: native.dash,
             };
-            scene.draw_path(self.draw(outline(data), t).with_stroke(line));
+            scene.draw_path(self.draw(outline(data), t).stroked(line));
             return Ok(());
         }
         shape::stroked(data, stroke, t).map_or(Ok(()), |outlined| {

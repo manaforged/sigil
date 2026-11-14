@@ -85,7 +85,8 @@ impl PathBuilder {
         reason = "the argument list mirrors the upstream API contract"
     )]
     pub fn cubic_to(mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y));
+        self.cmds
+            .push(PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y));
         self
     }
 
@@ -210,7 +211,7 @@ impl PathBuilder {
             draw = draw.with_fill(self.rule, fill);
         }
         if let Some((color, width)) = stroke {
-            draw = draw.with_stroke(self.path_stroke(color, width));
+            draw = draw.stroked(self.path_stroke(color, width));
         }
         Some(draw)
     }

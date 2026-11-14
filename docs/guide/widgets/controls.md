@@ -29,7 +29,7 @@ Key options:
 
 Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
 
-`button(Icon::Close)` is a ghost button with a square hit area, named for the icon; `button("×").ghost().square()` does the same for a text glyph: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
+`button(Icon::X)` is a ghost button with a square hit area, named for the icon; `button("×").ghost().square()` does the same for a text glyph: the width equals the control height and the horizontal padding is zero. It has the button radius and the ghost hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain `.accessible("Play")` so the glyph gets an assistive name.
 
 ## checkbox
 

@@ -26,7 +26,9 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 `icon(Glyph::svg(source))` draws an SVG image instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
 
-`button(Icon::Close)` (see [Controls](controls.md)) is the interactive counterpart.
+`button(Icon::X)` (see [Controls](controls.md)) is the interactive counterpart.
+
+`sigil::icons::Icon` holds the bundled icons. Each variant is the Lucide name in camel case: `Icon::X` for `x`, `Icon::ChartColumn` for `chart-column`. `Icon::ALL` lists them and `Icon::name` returns the Lucide name.
 
 ## image
 

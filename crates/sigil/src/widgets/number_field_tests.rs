@@ -50,9 +50,18 @@ fn unsigned_rejects_minus_and_stays_at_zero() {
 #[test]
 fn wide_integers_round_trip() {
     let locale = Locale::default();
-    assert_eq!(u64::parse(&u64::MAX.render(&locale), &locale), Some(u64::MAX));
-    assert_eq!(i128::parse(&i128::MIN.render(&locale), &locale), Some(i128::MIN));
-    assert_eq!(u128::parse(&u128::MAX.render(&locale), &locale), Some(u128::MAX));
+    assert_eq!(
+        u64::parse(&u64::MAX.render(&locale), &locale),
+        Some(u64::MAX)
+    );
+    assert_eq!(
+        i128::parse(&i128::MIN.render(&locale), &locale),
+        Some(i128::MIN)
+    );
+    assert_eq!(
+        u128::parse(&u128::MAX.render(&locale), &locale),
+        Some(u128::MAX)
+    );
 }
 
 #[test]

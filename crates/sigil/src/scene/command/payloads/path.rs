@@ -243,7 +243,7 @@ impl DrawPath {
         self
     }
 
-    pub(crate) fn with_stroke(mut self, stroke: PathStroke) -> Self {
+    pub(crate) fn stroked(mut self, stroke: PathStroke) -> Self {
         self.stroke = Some(stroke);
         self.measured()
     }

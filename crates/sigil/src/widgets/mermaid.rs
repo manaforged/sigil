@@ -107,7 +107,7 @@ fn frame(view: &View, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
 fn frame(_: &View, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
     scrolled(drawn.node, drawn.width)
         .role(Role::Figure)
-        .label(diagram_name(source))
+        .accessible(diagram_name(source))
         .description(source.trim_end().to_string())
 }
 

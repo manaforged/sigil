@@ -121,7 +121,7 @@ impl SceneBuilder {
             width,
         );
         let key = outline_key(seed, &outline);
-        let draw = DrawPath::new(std::sync::Arc::from(outline), IDENTITY, key).with_stroke(stroke);
+        let draw = DrawPath::new(std::sync::Arc::from(outline), IDENTITY, key).stroked(stroke);
         self.draw_path(draw);
     }
 

@@ -5,11 +5,20 @@ mod slider;
 #[path = "story_10_layer2_parity/text_field.rs"]
 mod text_field;
 
-#[allow(unused_imports, reason = "a test crate that includes this file uses only the constructors")]
+#[allow(
+    unused_imports,
+    reason = "a test crate that includes this file uses only the constructors"
+)]
 pub use button::{CustomButtonBuilder, custom_button};
-#[allow(unused_imports, reason = "a test crate that includes this file uses only the constructors")]
+#[allow(
+    unused_imports,
+    reason = "a test crate that includes this file uses only the constructors"
+)]
 pub use slider::{CustomSliderBuilder, custom_slider};
-#[allow(unused_imports, reason = "a test crate that includes this file uses only the constructors")]
+#[allow(
+    unused_imports,
+    reason = "a test crate that includes this file uses only the constructors"
+)]
 pub use text_field::{CustomTextFieldBuilder, custom_text_field};
 
 use sigil::prelude::*;

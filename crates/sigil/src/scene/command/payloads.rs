@@ -243,7 +243,7 @@ impl DrawRect {
     kittest_pub! {
         /// Adds a stroke to the rectangle.
         #[doc(hidden)]
-        pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
+        pub const fn stroked(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);
             self
         }
@@ -336,7 +336,7 @@ impl DrawGradient {
     kittest_pub! {
         /// Adds a stroke to the gradient fill.
         #[doc(hidden)]
-        pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
+        pub const fn stroked(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);
             self
         }
@@ -399,7 +399,7 @@ impl DrawPattern {
     #[cfg(feature = "kittest")]
     /// Adds a stroke to the pattern fill.
     #[doc(hidden)]
-    pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
+    pub const fn stroked(mut self, stroke: Stroke) -> Self {
         self.stroke = Some(stroke);
         self
     }

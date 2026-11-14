@@ -5,7 +5,10 @@ use sigil::kernel::{Cx, container, fragment};
 #[test]
 fn button_role_and_name() {
     let mut cx = Cx::new_root();
-    let _ = container().role(Role::Button).accessible("Save").add(&mut cx);
+    let _ = container()
+        .role(Role::Button)
+        .accessible("Save")
+        .add(&mut cx);
 
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);

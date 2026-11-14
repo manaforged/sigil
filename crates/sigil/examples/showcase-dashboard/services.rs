@@ -20,7 +20,10 @@ pub(crate) fn panel(console: Console) -> NodeBuilder {
         .padding(Space::Md)
         .gap(Space::Md)
         .child(header(console))
-        .child(dropdown(console.env_filter, ENV_FILTER_LABELS.iter().copied()).accessible("Environment"))
+        .child(
+            dropdown(console.env_filter, ENV_FILTER_LABELS.iter().copied())
+                .accessible("Environment"),
+        )
         .child(cards(console))
 }
 
