@@ -99,8 +99,12 @@ impl CustomButtonBuilder {
                 "control padding",
             ))
             .align_items(AlignItems::Center)
-            .justify_content(JustifyContent::Center)
-            .shrink(0.0);
+            .justify_content(JustifyContent::Center);
+        let layout = if self.frame.fills_width() {
+            layout
+        } else {
+            layout.shrink(0.0)
+        };
         let disabled_bg = p.disabled_bg;
         let mut node = container()
             .role(Role::Button)
@@ -131,7 +135,7 @@ impl CustomButtonBuilder {
         if let Some(flag) = self.disabled {
             node = node.disabled(flag);
         }
-        let out = attach_button_content(node, self.label, self.pending, p.fg, m);
+        let out = attach_button_content(node, self.label, self.pending, self.variant, m);
         self.frame.finish(out)
     }
 }
@@ -180,11 +184,23 @@ const fn button_palette(variant: ButtonVariant) -> ButtonPalette {
     }
 }
 
+fn label_paint<P: Paint>(target: P, variant: ButtonVariant) -> P {
+    let solid_grid = matches!(variant, ButtonVariant::Solid) && Metrics::current().is_grid();
+    let target = target
+        .text_color(button_palette(variant).fg)
+        .font_weight(if solid_grid { 700 } else { 500 });
+    if solid_grid {
+        target
+    } else {
+        target.letter_spacing(-0.01)
+    }
+}
+
 fn attach_button_content(
     node: NodeBuilder,
     label: TextContent,
     pending: Option<Signal<bool>>,
-    fg: ColorValue,
+    variant: ButtonVariant,
     m: Metrics,
 ) -> NodeBuilder {
     match pending {
@@ -196,24 +212,20 @@ fn attach_button_content(
                     "control gap",
                 ));
             node.busy(busy).child(
-                container()
-                    .hittable(false)
-                    .layout(row)
-                    .text_color(fg)
-                    .children_reactive(move || {
+                label_paint(container().hittable(false).layout(row), variant).children_reactive(
+                    move || {
                         let mut parts = Vec::with_capacity(2);
                         if busy.get() {
                             parts.push(spinner().hittable(false));
                         }
                         parts.push(
-                            container().child(
-                                text(label.clone()).nowrap().text_color(fg).font_weight(500),
-                            ),
+                            container().child(label_paint(text(label.clone()).nowrap(), variant)),
                         );
                         parts
-                    }),
+                    },
+                ),
             )
         }
-        None => node.child(text(label).nowrap().text_color(fg).font_weight(500)),
+        None => node.child(label_paint(text(label).nowrap(), variant)),
     }
 }

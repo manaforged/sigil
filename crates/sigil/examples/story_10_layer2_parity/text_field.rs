@@ -28,6 +28,7 @@ struct FieldRuntime {
     change: TextCallback,
     submit: TextCallback,
     clipboard: Rc<dyn clipboard::Clipboard>,
+    clip_fail: Signal<bool>,
     text_style: Signal<TextStyle>,
     scroll_x: Signal<f32>,
     column: f32,
@@ -40,9 +41,22 @@ impl FieldRuntime {
     fn is_disabled(&self) -> bool {
         self.disabled.is_some_and(|flag| flag.peek())
     }
-    fn sync_value(&self) {
+    fn edit(&self, op: impl FnOnce(&TextState)) {
+        let before = self.state.value().peek();
+        op(&self.state);
         self.keep_caret_visible();
-        (self.change)(self.state.value().peek().as_str());
+        let after = self.state.value().peek();
+        if after != before {
+            (self.change)(after.as_str());
+        }
+    }
+    fn copy_selection(&self) -> bool {
+        let Some(selected) = self.state.selected_text() else {
+            return false;
+        };
+        let copied = self.clipboard.set(&selected).is_ok();
+        self.clip_fail.set(!copied);
+        copied
     }
     fn composed(&self, peek: bool) -> (String, usize) {
         let text = read_sig(self.state.value(), peek);
@@ -93,8 +107,7 @@ impl FieldRuntime {
             .chars()
             .filter(|ch| *ch != '\n' && *ch != '\r')
             .collect();
-        self.state.insert(&clean);
-        self.sync_value();
+        self.edit(|state| state.insert(&clean));
     }
     fn clear_preedit(&self) {
         if !self.preedit.peek().is_empty() {
@@ -135,8 +148,7 @@ impl FieldRuntime {
         match edit {
             A11yEdit::Text(text) => {
                 let clean: String = text.chars().filter(|ch| !ch.is_control()).collect();
-                self.state.replace(&clean);
-                self.sync_value();
+                self.edit(|state| state.replace(&clean));
                 true
             }
             A11yEdit::Select { anchor, focus } => {
@@ -172,7 +184,18 @@ pub struct CustomTextFieldBuilder {
     width: Option<f32>,
     on_change: Option<TextCallback>,
     on_submit: Option<TextCallback>,
+    clipboard: Option<Rc<dyn clipboard::Clipboard>>,
     frame: WidgetFrame,
+}
+
+fn chain(first: Option<TextCallback>, next: impl Fn(&str) + 'static) -> TextCallback {
+    let Some(first) = first else {
+        return Rc::new(next);
+    };
+    Rc::new(move |text: &str| {
+        first(text);
+        next(text);
+    })
 }
 
 /// Creates a custom single-line text field bound to `value`.
@@ -185,6 +208,7 @@ pub fn custom_text_field(value: impl Into<TextState>) -> CustomTextFieldBuilder 
         width: None,
         on_change: None,
         on_submit: None,
+        clipboard: None,
         frame: WidgetFrame::new(),
     }
 }
@@ -221,9 +245,13 @@ impl CustomTextFieldBuilder {
         self
     }
 
-    /// Marks the field invalid while `invalid` is true.
+    /// Marks the field invalid while `invalid` is true; each call adds a condition.
     pub fn invalid(mut self, invalid: impl Reactive<bool>) -> Self {
-        self.invalid = Some(invalid.into_signal());
+        let added = invalid.into_signal();
+        self.invalid = Some(match self.invalid {
+            Some(before) => memo(move || before.get() || added.get()),
+            None => added,
+        });
         self
     }
 
@@ -233,15 +261,21 @@ impl CustomTextFieldBuilder {
         self
     }
 
-    /// Calls `change` after each edit.
+    /// Calls `change` after each edit that changes the text; each call adds a callback.
     pub fn change(mut self, change: impl Fn(&str) + 'static) -> Self {
-        self.on_change = Some(Rc::new(change));
+        self.on_change = Some(chain(self.on_change.take(), change));
         self
     }
 
-    /// Calls `submit` when Enter is pressed inside the field.
+    /// Calls `submit` when Enter is pressed inside the field; each call adds a callback.
     pub fn submit(mut self, submit: impl Fn(&str) + 'static) -> Self {
-        self.on_submit = Some(Rc::new(submit));
+        self.on_submit = Some(chain(self.on_submit.take(), submit));
+        self
+    }
+
+    /// Replaces the installed clipboard that cut, copy, and paste use.
+    pub fn clipboard(mut self, clipboard: impl clipboard::Clipboard + 'static) -> Self {
+        self.clipboard = Some(Rc::new(clipboard));
         self
     }
 
@@ -251,7 +285,8 @@ impl CustomTextFieldBuilder {
             disabled: self.disabled,
             change: self.on_change.take().unwrap_or_else(|| Rc::new(|_| {})),
             submit: self.on_submit.take().unwrap_or_else(|| Rc::new(|_| {})),
-            clipboard: clipboard::current(),
+            clipboard: self.clipboard.take().unwrap_or_else(clipboard::current),
+            clip_fail: signal(false),
             text_style: signal(TextStyle::default()),
             scroll_x: signal(0.0),
             column: self.width.map_or(156.0, |w| (w - 26.0).max(0.0)),
@@ -266,7 +301,8 @@ impl CustomTextFieldBuilder {
             ph_str.clone()
         };
         let (anchor, displayed) = displayed_field_text(&rt, self.placeholder);
-        let invalid = self.invalid.unwrap_or_else(|| signal(false));
+        let (invalid_flag, clip_fail) = (self.invalid, rt.clip_fail);
+        let invalid = memo(move || invalid_flag.is_some_and(Signal::get) || clip_fail.get());
         let node = paint_custom_chrome(
             container()
                 .focusable(true)
@@ -465,40 +501,27 @@ fn field_caret_rects(rt: &FieldRuntime) -> Vec<NodeBuilder> {
 
 fn handle_named_key(key: NamedKey, mods: Modifiers, rt: &FieldRuntime) -> bool {
     let shift = mods.contains(Modifiers::SHIFT);
-    let word = mods.intersects(Modifiers::ALT | Modifiers::CTRL);
-    let mut edited = false;
+    let plain = mods.difference(Modifiers::SHIFT).is_empty();
+    let edge = cfg!(target_os = "macos") && mods.difference(Modifiers::SHIFT) == Modifiers::META;
+    let word = mods == Modifiers::ALT;
     match key {
-        NamedKey::ArrowLeft if mods.contains(Modifiers::META) => rt.move_edge(false, shift),
-        NamedKey::ArrowRight if mods.contains(Modifiers::META) => rt.move_edge(true, shift),
+        NamedKey::ArrowLeft | NamedKey::ArrowRight if edge => {
+            rt.move_edge(key == NamedKey::ArrowRight, shift);
+        }
         NamedKey::ArrowLeft if word => rt.state.move_word_left(),
         NamedKey::ArrowRight if word => rt.state.move_word_right(),
-        NamedKey::ArrowLeft => rt.state.move_by(false, shift),
-        NamedKey::ArrowRight => rt.state.move_by(true, shift),
-        NamedKey::Home | NamedKey::End => rt.move_edge(key == NamedKey::End, shift),
-        NamedKey::Backspace => {
-            if word {
-                rt.state.delete_word_backward();
-            } else {
-                rt.state.backspace();
-            }
-            edited = true;
+        NamedKey::ArrowLeft | NamedKey::ArrowRight if plain => {
+            rt.state.move_by(key == NamedKey::ArrowRight, shift);
         }
-        NamedKey::Delete => {
-            if word {
-                rt.state.delete_word_forward();
-            } else {
-                rt.state.delete_forward();
-            }
-            edited = true;
-        }
-        NamedKey::Enter => (rt.submit)(rt.state.value().peek().as_str()),
+        NamedKey::Home | NamedKey::End if plain => rt.move_edge(key == NamedKey::End, shift),
+        NamedKey::Backspace if word => rt.edit(TextState::delete_word_backward),
+        NamedKey::Delete if word => rt.edit(TextState::delete_word_forward),
+        NamedKey::Backspace if plain => rt.edit(TextState::backspace),
+        NamedKey::Delete if plain => rt.edit(TextState::delete_forward),
+        NamedKey::Enter if mods.is_empty() => (rt.submit)(rt.state.value().peek().as_str()),
         _ => return false,
     }
-    if edited {
-        rt.sync_value();
-    } else {
-        rt.keep_caret_visible();
-    }
+    rt.keep_caret_visible();
     true
 }
 
@@ -519,8 +542,7 @@ fn handle_char_key(event: &KeyEvent, ch: &str, rt: &FieldRuntime) -> bool {
                 return true;
             }
             "d" => {
-                rt.state.delete_word_forward();
-                rt.sync_value();
+                rt.edit(TextState::delete_word_forward);
                 return true;
             }
             _ => {}
@@ -534,8 +556,7 @@ fn handle_char_key(event: &KeyEvent, ch: &str, rt: &FieldRuntime) -> bool {
         && !typed.is_empty()
         && typed.chars().all(|c| !c.is_control())
     {
-        rt.state.insert(typed);
-        rt.sync_value();
+        rt.edit(|state| state.insert(typed));
         return true;
     }
     false
@@ -548,16 +569,11 @@ fn handle_cmd_char(ch: &str, shift: bool, rt: &FieldRuntime) -> bool {
             rt.keep_caret_visible();
         }
         "c" => {
-            if let Some(s) = rt.state.selected_text() {
-                let _ = rt.clipboard.set(&s);
-            }
+            rt.copy_selection();
         }
         "x" => {
-            if let Some(s) = rt.state.selected_text()
-                && rt.clipboard.set(&s).is_ok()
-            {
-                rt.state.backspace();
-                rt.sync_value();
+            if rt.copy_selection() {
+                rt.edit(TextState::backspace);
             }
         }
         "v" => {
@@ -565,20 +581,21 @@ fn handle_cmd_char(ch: &str, shift: bool, rt: &FieldRuntime) -> bool {
                 rt.insert_single_line(&t);
             }
         }
-        "w" => {
-            rt.state.delete_word_backward();
-            rt.sync_value();
-        }
-        "z" | "Z" | "y" => {
-            let changed = if ch == "z" && !shift {
-                rt.state.undo()
-            } else {
-                rt.state.redo()
-            };
-            if changed {
-                rt.sync_value();
-            }
-        }
+        "w" => rt.edit(TextState::delete_word_backward),
+        "u" => rt.edit(|state| {
+            state.extend(0);
+            state.backspace();
+        }),
+        "k" => rt.edit(|state| {
+            state.extend(state.value().peek().len());
+            state.delete_forward();
+        }),
+        "z" if !shift => rt.edit(|state| {
+            let _ = state.undo();
+        }),
+        "z" | "Z" | "y" => rt.edit(|state| {
+            let _ = state.redo();
+        }),
         _ => return false,
     }
     true

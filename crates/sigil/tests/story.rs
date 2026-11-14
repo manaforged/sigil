@@ -16,6 +16,8 @@ mod loading;
 #[path = "../examples/story-05-nav.rs"]
 #[allow(dead_code)]
 mod nav;
+#[path = "../examples/story_10_layer2_parity/parity_tests.rs"]
+mod parity;
 #[path = "../examples/story-10-layer2-parity.rs"]
 #[allow(dead_code, unreachable_pub)]
 mod story_10;
@@ -46,11 +48,15 @@ use sigil::events::{Event, Shortcut};
 use sigil::kernel::{NodeId, container};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::{Clip, DrawRect, SceneBuilder, SceneCommand};
+use sigil::scene::{
+    Clip, CommandScene, DrawRect, PathCommand, PathPaint, SceneBuilder, SceneCommand,
+};
 use sigil::tasks::AsyncRuntime;
 use sigil::terminal::cell_point;
 use sigil::widgets::{Framed, WidgetFrame};
 use sigil_kittest::{Harness, Query};
+
+use crate::widget_support::assert_approx;
 
 fn hosts(app: fn() -> Harness) -> impl Iterator<Item = Harness> {
     [false, true].into_iter().map(move |pixels| {
@@ -168,6 +174,59 @@ fn custom_rating_chains_widget_paint_states_and_field_on_both_hosts() {
             .click("3 of 4")
             .expect_text("Score: 5, Quality: 3");
     }
+    let mut ui = Harness::new(custom_widget::review_form).pixels(480, 320);
+    let ratings = ui.find_all(&Query::role(Role::Slider).name("Rating"));
+    let score = ratings
+        .first()
+        .and_then(sigil_kittest::Node::bounds)
+        .expect("the Score rating is laid out");
+    let first = rect_of(&mut ui, Role::Button, "1 of 5");
+    let second = rect_of(&mut ui, Role::Button, "2 of 5");
+    assert_approx(first.origin.x - score.origin.x, 12.0);
+    assert_approx(second.origin.x - (first.origin.x + first.width), 8.0);
+}
+
+fn rect_of(ui: &mut Harness, role: Role, name: &str) -> Rect {
+    ui.get((role, name)).bounds().expect("the node is laid out")
+}
+
+fn framed_rating() -> impl IntoNode {
+    let score = signal(3_u8);
+    let hovered = signal(false);
+    column()
+        .padding(Space::Md)
+        .background(Token::Surface)
+        .child(
+            custom_widget::rating(score)
+                .width(240.0)
+                .height(64.0)
+                .padding(Space::Lg)
+                .track_hovered(hovered)
+                .key(NamedKey::Home, move |event| {
+                    event.stop_propagation();
+                    score.set(1);
+                }),
+        )
+        .child(text(move || {
+            format!("Score: {}, Hovered: {}", score.get(), hovered.get())
+        }))
+}
+
+#[test]
+fn custom_rating_frame_applies_caller_size_padding_and_hooks() {
+    let mut ui = Harness::new(framed_rating).pixels(480, 320);
+    let rating = rect_of(&mut ui, Role::Slider, "Rating");
+    let first = rect_of(&mut ui, Role::Button, "1 of 5");
+    assert_approx(rating.width, 240.0);
+    assert_approx(rating.height, 64.0);
+    assert_approx(first.origin.x - rating.origin.x, 16.0);
+    let inset = Point::new(rating.origin.x + 4.0, rating.origin.y + 4.0);
+    ui.expect_text("Score: 3, Hovered: false")
+        .hover(&inset)
+        .expect_text("Score: 3, Hovered: true")
+        .click(&inset)
+        .press(NamedKey::Home)
+        .expect_text("Score: 1, Hovered: true");
 }
 
 const BASE_REST: Color = Color::rgb(12, 24, 36);
@@ -226,30 +285,19 @@ fn panel_rect_colors(ui: &mut Harness) -> Vec<Color> {
 }
 
 #[test]
-fn widget_frame_reports_sizes_and_fill_flags() {
-    let empty = WidgetFrame::new();
-    assert_eq!(empty.width(), None);
-    assert_eq!(empty.height(), None);
-    assert!(!empty.fills_width());
-    assert!(!empty.fills_height());
-
-    let sized = PanelButton::new(Rc::default()).width(96.0).height(36.0);
-    assert_eq!(sized.frame.width(), Some(Length::Px(96.0)));
-    assert_eq!(sized.frame.height(), Some(Length::Px(36.0)));
-
-    let filled = PanelButton::new(Rc::default()).fill_width().fill_height();
-    assert!(filled.frame.fills_width());
-    assert!(filled.frame.fills_height());
-}
-
-#[test]
 fn caller_hover_and_background_override_widget_defaults_on_pixel_host() {
     let hover_hits = Rc::new(Cell::new(0));
     let hover_counter = Rc::clone(&hover_hits);
     let mut hover_ui = Harness::new(move || {
-        PanelButton::new(Rc::clone(&hover_counter)).hover(|s| s.background(CALLER_HOVER))
+        PanelButton::new(Rc::clone(&hover_counter))
+            .width(96.0)
+            .height(36.0)
+            .hover(|s| s.background(CALLER_HOVER))
     })
     .pixels(480, 320);
+    let panel = rect_of(&mut hover_ui, Role::Button, "Panel");
+    assert_approx(panel.width, 96.0);
+    assert_approx(panel.height, 36.0);
     hover_ui.send([Event::pointer_move(Point::new(12.0, 12.0))]);
     let hover_colors = panel_rect_colors(&mut hover_ui);
     assert!(hover_colors.contains(&CALLER_HOVER));
@@ -319,10 +367,6 @@ fn shown(host: &mut Host, text: &str) -> Vec<(accesskit::NodeId, bool)> {
 
 #[test]
 fn layer2_parity_example_app_works_on_both_hosts() {
-    let _: fn(&'static str) -> story_10::CustomButtonBuilder = story_10::custom_button;
-    let _: fn(Signal<f32>, std::ops::RangeInclusive<f32>) -> story_10::CustomSliderBuilder =
-        story_10::custom_slider;
-    let _: fn(Signal<String>) -> story_10::CustomTextFieldBuilder = story_10::custom_text_field;
     for mut ui in hosts(|| Harness::new(story_10::app)) {
         ui.click("Save")
             .expect_text("Clicks: 1")
@@ -335,244 +379,145 @@ fn layer2_parity_example_app_works_on_both_hosts() {
     }
 }
 
-#[test]
-fn layer2_parity_custom_button_click_disabled_and_pending() {
-    for mut ui in hosts(|| {
-        Harness::new(|| {
-            let clicks = signal(0_u32);
-            let disabled = signal(false);
-            let pending = signal(false);
-            column()
-                .padding(Space::Md)
-                .gap(Space::Sm)
-                .background(Token::Surface)
-                .child(
-                    story_10::custom_button("Submit")
-                        .primary()
-                        .disabled(disabled)
-                        .pending(pending)
-                        .activate(move || clicks.update(|n| *n += 1)),
-                )
-                .child(
-                    story_10::custom_button("Toggle Disabled")
-                        .ghost()
-                        .activate(move || disabled.update(|flag| *flag = !*flag)),
-                )
-                .child(
-                    story_10::custom_button("Toggle Pending")
-                        .activate(move || pending.update(|flag| *flag = !*flag)),
-                )
-                .child(text(move || format!("Clicks: {}", clicks.get())))
-        })
-    }) {
-        ui.click("Submit").expect_text("Clicks: 1");
+const CHART: (f32, f32) = (320.0, 140.0);
 
-        ui.click("Toggle Disabled");
-        assert!(ui.get((Role::Button, "Submit")).is_disabled());
-        ui.click("Submit").expect_text("Clicks: 1");
-
-        ui.click("Toggle Disabled").click("Toggle Pending");
-        assert!(ui.get((Role::Button, "Submit")).is_disabled());
-        ui.click("Submit").expect_text("Clicks: 1");
-
-        ui.click("Toggle Pending")
-            .click("Submit")
-            .expect_text("Clicks: 2");
-    }
+#[derive(Debug)]
+struct Chart {
+    bars: Vec<Rect>,
+    line: Vec<f32>,
+    labels: Vec<String>,
 }
 
-#[test]
-fn layer2_parity_custom_slider_keys_and_a11y() {
-    for mut ui in hosts(|| {
-        Harness::new(|| {
-            let value = signal(50.0_f32);
-            let committed = signal(50.0_f32);
-            column()
-                .padding(Space::Md)
-                .gap(Space::Sm)
-                .background(Token::Surface)
-                .child(
-                    story_10::custom_slider(value, 0.0..=100.0)
-                        .step(5.0)
-                        .length(200.0)
-                        .label("Level")
-                        .change(move |next| committed.set(next)),
-                )
-                .child(text(move || {
-                    format!("Level: {:.0} ({:.0})", value.get(), committed.get())
-                }))
-        })
-    }) {
-        ui.click(&(Role::Slider, "Level"))
-            .press(NamedKey::ArrowRight)
-            .expect_text("Level: 55 (55)")
-            .press(NamedKey::ArrowLeft)
-            .expect_text("Level: 50 (50)")
-            .press(NamedKey::Home)
-            .expect_text("Level: 0 (0)")
-            .press(NamedKey::End)
-            .expect_text("Level: 100 (100)");
-
-        let slider_id = ui.host().focus().expect("slider focused");
-        for (action, data, expected) in [
-            (
-                Action::SetValue,
-                Some(accesskit::ActionData::NumericValue(40.0)),
-                "Level: 40 (40)",
-            ),
-            (Action::Increment, None, "Level: 45 (45)"),
-        ] {
-            ui.host().perform(
-                slider_id,
-                &ActionRequest {
-                    action,
-                    target_tree: TreeId::ROOT,
-                    target_node: accesskit::NodeId(0),
-                    data,
-                },
-            );
-            ui.settle().expect_text(expected);
-        }
-    }
+const fn same_rgb(a: Color, b: Color) -> bool {
+    a.r == b.r && a.g == b.g && a.b == b.b
 }
 
-#[test]
-fn layer2_parity_custom_slider_drag() {
-    let mut pixel = Harness::new(|| {
-        let value = signal(20.0_f32);
-        let committed = signal(20.0_f32);
-        column()
-            .padding(Space::Md)
-            .gap(Space::Sm)
-            .background(Token::Surface)
-            .child(
-                story_10::custom_slider(value, 0.0..=100.0)
-                    .step(5.0)
-                    .length(200.0)
-                    .label("Level")
-                    .change(move |next| committed.set(next)),
-            )
-            .child(text(move || format!("Committed: {:.0}", committed.get())))
-    })
-    .pixels(480, 320);
-
-    let bounds = pixel
-        .get((Role::Slider, "Level"))
-        .bounds()
-        .expect("slider bounds");
-    let mid_y = bounds.height.mul_add(0.5, bounds.origin.y);
-    let start = sigil::geometry::Point::new(bounds.width.mul_add(0.2, bounds.origin.x), mid_y);
-    let end = sigil::geometry::Point::new(bounds.width.mul_add(0.8, bounds.origin.x), mid_y);
-    pixel.drag(&start, &end).expect_text("Committed: 80");
+fn is_chart_clip(cmd: &SceneCommand) -> bool {
+    matches!(cmd, SceneCommand::PushClip(Clip::Rect(rect))
+        if (rect.width - CHART.0).abs() < 0.5 && (rect.height - CHART.1).abs() < 0.5)
 }
 
-#[test]
-fn layer2_parity_custom_text_field_editing_history_and_submit() {
-    for mut ui in hosts(|| {
-        Harness::new(|| {
-            let value = signal(String::new());
-            let submitted = signal(String::new());
-            column()
-                .padding(Space::Md)
-                .gap(Space::Sm)
-                .background(Token::Surface)
-                .child(
-                    story_10::custom_text_field(value)
-                        .placeholder("Query")
-                        .width(220.0)
-                        .submit(move |text| submitted.set(text.to_owned())),
-                )
-                .child(text(move || format!("Submitted: {}", submitted.get())))
-        })
-    }) {
-        ui.type_into("Query", "hello world");
-        assert_eq!(
-            ui.get((Role::TextInput, "Query")).value(),
-            Some("hello world")
-        );
-
-        ui.press(NamedKey::Backspace);
-        assert_eq!(
-            ui.get((Role::TextInput, "Query")).value(),
-            Some("hello worl")
-        );
-
-        ui.press(sigil::events::Shortcut::new(
-            NamedKey::Backspace,
-            Modifiers::ALT,
-        ));
-        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("hello "));
-
-        ui.press(sigil::events::Shortcut::ctrl(Key::character("a")))
-            .type_text("ada");
-        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
-
-        ui.press(sigil::events::Shortcut::ctrl(Key::character("z")));
-        assert_ne!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
-
-        ui.press(sigil::events::Shortcut::ctrl(Key::character("y")));
-        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("ada"));
-
-        ui.press(NamedKey::Enter).expect_text("Submitted: ada");
-
-        ui.host().route(
-            sigil::events::Event::key_down(Key::character("s"))
-                .modifiers(Modifiers::ALT)
-                .text(Some("ß".to_owned())),
-        );
-        ui.settle();
-        assert_eq!(ui.get((Role::TextInput, "Query")).value(), Some("adaß"));
-    }
-}
-
-#[test]
-fn layer2_parity_invalid_border_persists_while_focused() {
-    let red = Color::rgb(211, 47, 47);
-    for custom in [false, true] {
-        let mut ui = Harness::new(move || {
-            let value = signal(String::from("bad"));
-            let invalid = signal(true);
-            let root = column().padding(Space::Md).background(Token::Surface);
-            if custom {
-                root.child(
-                    story_10::custom_text_field(value)
-                        .placeholder("Email")
-                        .invalid(invalid),
-                )
-            } else {
-                root.child(text_field(value).placeholder("Email").invalid(invalid))
+fn chart_commands(scene: &CommandScene) -> Vec<&SceneCommand> {
+    let mut depth = 0_i32;
+    scene
+        .iter()
+        .skip_while(|cmd| !is_chart_clip(cmd))
+        .take_while(|cmd| {
+            match cmd {
+                SceneCommand::PushClip(_) => depth += 1,
+                SceneCommand::PopClip => depth -= 1,
+                _ => {}
             }
+            depth > 0
         })
-        .pixels(480, 120);
-        ui.click(&(Role::TextInput, "Email"));
-        let focused = ui.host().focus().expect("field focused");
-        let scene = ui.host().scene((480.0, 120.0)).expect("scene");
-        let stroke_color = scene.commands().iter().find_map(|cmd| match cmd {
-            SceneCommand::Rect(rect) if rect.node() == Some(focused) => {
-                rect.stroke().map(|s| s.color())
-            }
-            _ => None,
-        });
-        assert_eq!(
-            stroke_color,
-            Some(red),
-            "custom={custom}: focused invalid field must emit red border stroke"
-        );
+        .collect()
+}
+
+fn read_chart(ui: &mut Harness) -> Chart {
+    let accent = ui.host().theme().color(Token::Accent);
+    let scene = ui.host().scene((480.0, 320.0)).expect("scene");
+    let drawn = chart_commands(&scene);
+    assert!(
+        !drawn.is_empty(),
+        "the canvas clips to its 320 x 140 bounds"
+    );
+    let accent_line = |cmd: &&SceneCommand| match cmd {
+        SceneCommand::Path(path) => path
+            .stroke()
+            .filter(|stroke| matches!(stroke.paint(), PathPaint::Solid(c) if same_rgb(*c, accent)))
+            .map(|_| path.outline().to_vec()),
+        _ => None,
+    };
+    Chart {
+        bars: drawn
+            .iter()
+            .filter_map(|cmd| match cmd {
+                SceneCommand::Rect(bar) if same_rgb(bar.color(), accent) => Some(bar.rect()),
+                _ => None,
+            })
+            .collect(),
+        line: drawn
+            .iter()
+            .find_map(accent_line)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|step| match step {
+                PathCommand::MoveTo(_, y) | PathCommand::LineTo(_, y) => Some(y),
+                _ => None,
+            })
+            .collect(),
+        labels: drawn
+            .iter()
+            .filter_map(|cmd| match cmd {
+                SceneCommand::GlyphRun(run) => Some(run.text().to_owned()),
+                _ => None,
+            })
+            .collect(),
     }
 }
 
+fn assert_chart_shows(chart: &Chart, samples: &[f32]) {
+    assert_eq!(
+        chart.bars.len(),
+        samples.len(),
+        "one bar per sample: {chart:?}"
+    );
+    let peak = samples.iter().copied().fold(0.0_f32, f32::max);
+    let tallest = chart
+        .bars
+        .iter()
+        .map(|bar| bar.height)
+        .fold(0.0_f32, f32::max);
+    let floor = chart
+        .bars
+        .first()
+        .map_or(0.0, |bar| bar.origin.y + bar.height);
+    for (bar, sample) in chart.bars.iter().zip(samples) {
+        assert_approx(bar.height / tallest, sample / peak);
+        assert_approx(bar.origin.y + bar.height, floor);
+    }
+    assert!(
+        chart
+            .bars
+            .iter()
+            .zip(chart.bars.iter().skip(1))
+            .all(|(left, right)| left.origin.x < right.origin.x),
+        "bars run left to right in sample order: {chart:?}"
+    );
+    assert_eq!(
+        chart.line.len(),
+        samples.len(),
+        "one line point per sample: {chart:?}"
+    );
+    let highest = chart
+        .line
+        .iter()
+        .enumerate()
+        .min_by(|a, b| a.1.total_cmp(b.1));
+    let largest = samples.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1));
+    assert_eq!(highest.map(|(at, _)| at), largest.map(|(at, _)| at));
+    let label = format!("Peak {peak:.0}");
+    assert!(chart.labels.contains(&label), "{label:?} in {chart:?}");
+}
+
 #[test]
-fn canvas_chart_app_updates_samples_on_click() {
+fn canvas_chart_draws_one_accent_bar_and_point_per_sample() {
     for mut ui in hosts(|| Harness::new(story_11::app)) {
         ui.expect_text("Canvas Chart")
             .expect_text("Samples: 5")
             .click("Add sample")
             .expect_text("Samples: 6");
     }
+    let mut ui = Harness::new(story_11::app).pixels(480, 320);
+    let mut samples = vec![18.0_f32, 42.0, 29.0, 56.0, 38.0];
+    assert_chart_shows(&read_chart(&mut ui), &samples);
+    ui.click("Add sample");
+    samples.push(24.0);
+    assert_chart_shows(&read_chart(&mut ui), &samples);
 }
 
 #[test]
-fn scene_builder_records_commands_and_iterates() {
+fn scene_builder_records_nested_clip_transform_and_rect_in_order() {
     let origin = Point::new(0.0, 0.0);
     let rect = Rect::new(origin, 120.0, 80.0);
     let mut builder = SceneBuilder::new();
@@ -582,24 +527,26 @@ fn scene_builder_records_commands_and_iterates() {
         });
     });
     let scene = builder.finish();
-    assert!(!scene.is_empty());
-    assert_eq!(scene.len(), scene.commands().len());
-    assert!(
-        (&scene)
-            .into_iter()
-            .any(|cmd| matches!(cmd, SceneCommand::PushClip(_)))
-    );
-    assert!(
-        scene
-            .commands()
-            .iter()
-            .any(|cmd| matches!(cmd, SceneCommand::PushTransform(_)))
-    );
-    assert!(
-        scene
-            .commands()
-            .iter()
-            .any(|cmd| matches!(cmd, SceneCommand::Rect(_)))
+    let recorded: Vec<&str> = scene
+        .iter()
+        .map(|cmd| match cmd {
+            SceneCommand::PushClip(_) => "clip",
+            SceneCommand::PushTransform(_) => "transform",
+            SceneCommand::Rect(drawn) if drawn.color() == Color::WHITE => "white rect",
+            SceneCommand::PopTransform => "end transform",
+            SceneCommand::PopClip => "end clip",
+            _ => "other",
+        })
+        .collect();
+    assert_eq!(
+        recorded,
+        [
+            "clip",
+            "transform",
+            "white rect",
+            "end transform",
+            "end clip"
+        ]
     );
 }
 

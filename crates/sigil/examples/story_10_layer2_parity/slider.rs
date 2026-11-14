@@ -4,12 +4,25 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use sigil::animation::{Property, Transition};
-use sigil::events::{A11yEdit, DragPhase, Key, KeyEvent, KeyPhase, NamedKey, PointerEvent};
+use sigil::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent, ValueStep};
 use sigil::layout::{LayoutStyle, cols};
 use sigil::node::{Action, Cx, NodeId};
 use sigil::prelude::*;
 use sigil::style::{BORDER_WIDTH, Elevation, Metrics, StringKey};
 use sigil::widgets::{Framed, WidgetFrame};
+
+const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
+    (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
+    (NamedKey::ArrowUp, ValueStep::Unit(1.0)),
+    (NamedKey::ArrowLeft, ValueStep::Unit(-1.0)),
+    (NamedKey::ArrowDown, ValueStep::Unit(-1.0)),
+    (NamedKey::PageUp, ValueStep::Page(1.0)),
+    (NamedKey::PageDown, ValueStep::Page(-1.0)),
+    (NamedKey::Home, ValueStep::Start),
+    (NamedKey::End, ValueStep::End),
+];
+
+const PAGE_STEPS: f32 = 10.0;
 
 #[derive(Clone, Copy)]
 struct SliderRuntime {
@@ -42,7 +55,7 @@ impl SliderRuntime {
     }
     fn value_at(self, event: &PointerEvent) -> f32 {
         let w = event.target_size().width;
-        let extent = if w > 0.0 { w } else { 200.0 };
+        let extent = if w > 0.0 { w } else { 180.0 };
         self.quantize(
             self.span()
                 .mul_add((event.position().x / extent).clamp(0.0, 1.0), self.min),
@@ -137,11 +150,15 @@ impl CustomSliderBuilder {
         let on_change = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let (hovered, focused, pressed, dragging) =
             (signal(false), signal(false), signal(false), signal(false));
-        let name = self.label.map_or_else(
+        let name = self.label.clone().map_or_else(
             || AccessibleName::from(Theme::label(StringKey::Slider)),
             AccessibleName::from,
         );
-        let row = slider_row_layout(self.length);
+        let length = self.length.or_else(|| match self.frame.width() {
+            Some(Length::Px(px)) => Some(px),
+            _ => None,
+        });
+        let row = slider_row_layout(self.length, self.label.is_some());
         let extent = signal(Size::new(0.0, 0.0));
         let (filled, rest) = slider_track_parts(rt, extent, Metrics::current().track_size(6.0));
         let mut node = container()
@@ -173,24 +190,48 @@ impl CustomSliderBuilder {
         if let Some(disabled) = rt.disabled {
             node = node.disabled(disabled);
         }
-        self.frame
-            .finish(attach_slider_events(node, rt, dragging, on_change))
+        let slider = self
+            .frame
+            .finish(attach_slider_events(node, rt, dragging, on_change));
+        with_caption(slider, self.label, length)
     }
 }
 
-fn slider_row_layout(length: Option<f32>) -> LayoutStyle {
+fn with_caption(slider: NodeBuilder, caption: Option<String>, length: Option<f32>) -> NodeBuilder {
+    let Some(caption) = caption else {
+        return slider;
+    };
+    let base = LayoutStyle::flex_row();
+    let base = if length.is_some() {
+        base
+    } else {
+        base.fill_width()
+    };
+    container()
+        .layout(
+            base.gap(Space::raw(
+                Metrics::current().control_gap(ControlSize::Default),
+                "control gap",
+            ))
+            .align_items(AlignItems::Center),
+        )
+        .child(text(caption).nowrap())
+        .child(slider)
+}
+
+fn slider_row_layout(length: Option<f32>, captioned: bool) -> LayoutStyle {
     let h = if Metrics::current().is_grid() {
         rows(1.0)
     } else {
-        Length::from(28.0)
+        Length::from(24.0)
     };
-    let row = LayoutStyle::flex_row()
-        .height(h)
-        .align_items(AlignItems::Center);
+    let row = LayoutStyle::flex_row().height(h);
     match length {
         Some(px) => row.width(px),
+        None if captioned => row.grow(1.0).width(0.0),
         None => row.fill_width(),
     }
+    .align_items(AlignItems::Center)
 }
 
 fn slider_track_parts(
@@ -288,23 +329,20 @@ fn attach_slider_events(
 ) -> NodeBuilder {
     let (key_change, drag_change) = (Rc::clone(&on_change), Rc::clone(&on_change));
     attach_slider_drag(node, rt, dragging, drag_change)
-        .key_any(move |e: &mut KeyEvent| {
-            if e.phase() != KeyPhase::Down || !e.modifiers().is_empty() || rt.is_disabled() {
+        .step_keys(SLIDER_KEYS, move |step, event: &mut KeyEvent| {
+            if rt.is_disabled() {
                 return;
             }
-            let Key::Named(named) = e.key() else {
-                return;
-            };
-            let next = match named {
-                NamedKey::ArrowRight | NamedKey::ArrowUp => rt.quantize(rt.value.peek() + rt.step),
-                NamedKey::ArrowLeft | NamedKey::ArrowDown => rt.quantize(rt.value.peek() - rt.step),
-                NamedKey::PageUp => rt.quantize(rt.step.mul_add(10.0, rt.value.peek())),
-                NamedKey::PageDown => rt.quantize(rt.step.mul_add(-10.0, rt.value.peek())),
-                NamedKey::Home => rt.min,
-                NamedKey::End => rt.max,
+            let next = match step {
+                ValueStep::Unit(steps) => rt.quantize(rt.step.mul_add(steps, rt.value.peek())),
+                ValueStep::Page(pages) => {
+                    rt.quantize((rt.step * PAGE_STEPS).mul_add(pages, rt.value.peek()))
+                }
+                ValueStep::Start => rt.min,
+                ValueStep::End => rt.max,
                 _ => return,
             };
-            e.stop_propagation();
+            event.stop_propagation();
             rt.commit(next, &key_change);
         })
         .a11y_edit(move |edit| match edit {
