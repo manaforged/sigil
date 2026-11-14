@@ -10,12 +10,13 @@
 )]
 
 use crate::Error;
+use crate::layout::aspect;
 use crate::layout::flex::{CbSize, FlexSolver, Position2};
 use crate::layout::flex_lines::{FlexItem, collect_lines};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp};
 use crate::layout::style_data::{
-    AlignItems, Display, FlexDirection, FlexWrap, Length, Position, StyleData,
+    AlignItems, Axes, Display, FlexDirection, FlexWrap, Length, Position, StyleData,
 };
 
 mod absolute;
@@ -114,8 +115,12 @@ pub(crate) fn layout_root(
 ) -> Result<(), Error> {
     let style = node.style();
     let edges = node.edges(ctx.cb.w);
+    let filled = ctx.assigned_w.or_else(|| filled_width(ctx, node, &edges));
+    let cb = Axes::new(ctx.cb.w, ctx.cb.h);
+    let (assigned_w, assigned_h) = aspect::assign(style, &edges, cb, (filled, ctx.assigned_h));
     let ctx = &FlexCtx {
-        assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node, &edges)),
+        assigned_w,
+        assigned_h,
         ..*ctx
     };
     let m = edges.margin.or_zero();

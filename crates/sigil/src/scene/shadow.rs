@@ -1,19 +1,17 @@
 use crate::geometry::{Point, Rect};
-use crate::style::srgb;
+use crate::style::{Color, Elevation, srgb};
 
-kittest_pub! {
-    /// Whether a shadow falls outside or inside a shape.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-    pub enum ShadowKind {
-        /// Falls outside the shape, moved by the offset and grown by the spread.
-        #[default]
-        Outer,
-        /// Falls inside the shape's edge, where a positive spread makes it reach further in.
-        Inner,
-        /// A halo around the shape, painted like `Outer`; `Shadow::glow` makes one with no offset.
-        Glow,
-    }
+/// Whether a shadow falls outside or inside a shape.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum ShadowKind {
+    /// Falls outside the shape, moved by the offset and grown by the spread.
+    #[default]
+    Outer,
+    /// Falls inside the shape's edge, where a positive spread makes it reach further in.
+    Inner,
+    /// A halo around the shape, painted like `Outer`; `Shadow::glow` makes one with no offset.
+    Glow,
 }
 
 /// The offset, blur, spread, and color of a shadow.
@@ -64,31 +62,49 @@ impl Shadow {
         self.spread
     }
 
-    /// Creates a glow: a shadow of `color` with no offset.
+    /// Creates a glow of `color` with no offset; `blur` and `spread` come in the order of `new`, and the halo reaches `3 * blur + spread` logical pixels past the shape.
     #[must_use]
-    pub fn glow(color: crate::style::Color, spread: f32, blur: f32) -> Self {
+    pub fn glow(color: Color, blur: f32, spread: f32) -> Self {
         let [r, g, b] = srgb::decode_rgb(color);
         let c = [r, g, b, srgb::unit(color.a)];
         Self::new([0.0, 0.0], blur, spread, c).kind(ShadowKind::Glow)
     }
 
-    kittest_pub! {
-        /// Sets whether the shadow is outer, inner, or a glow.
-        #[must_use]
-        #[doc(hidden)]
-        pub const fn kind(mut self, kind: ShadowKind) -> Self {
-            self.kind = kind;
-            self
-        }
+    /// Sets whether the shadow is outer, inner, or a glow.
+    #[must_use]
+    pub const fn kind(mut self, kind: ShadowKind) -> Self {
+        self.kind = kind;
+        self
     }
 
     /// Returns whether the shadow is outer, inner, or a glow.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
     #[must_use]
     pub const fn shadow_kind(&self) -> ShadowKind {
         self.kind
     }
+
+    /// Returns how far the shadow paints past its shape before the offset, `3 * blur + |spread|` logical pixels.
+    #[must_use]
+    pub const fn reach(&self) -> f32 {
+        self.blur.mul_add(3.0, self.spread.abs())
+    }
+}
+
+impl From<Elevation> for Shadow {
+    fn from(elevation: Elevation) -> Self {
+        elevation_shadow(elevation)
+    }
+}
+
+pub(crate) const fn elevation_shadow(elevation: Elevation) -> Shadow {
+    let (offset_y, blur, spread, alpha) = match elevation {
+        Elevation::Sm => (1.0, 2.0, 0.0, 0.10),
+        Elevation::Base => (2.0, 4.0, 0.0, 0.12),
+        Elevation::Md => (4.0, 8.0, -1.0, 0.14),
+        Elevation::Lg => (8.0, 16.0, -2.0, 0.16),
+        Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
+    };
+    Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
 }
 
 pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
@@ -96,13 +112,13 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
         return surface;
     }
     let [offset_x, offset_y] = shadow.offset;
-    let outset = shadow.blur.mul_add(3.0, shadow.spread.abs());
+    let outset = shadow.reach();
     Rect::new(
         Point::new(
             surface.origin.x - outset + offset_x,
             surface.origin.y - outset + offset_y,
         ),
-        surface.width + outset * 2.0,
-        surface.height + outset * 2.0,
+        outset.mul_add(2.0, surface.width),
+        outset.mul_add(2.0, surface.height),
     )
 }

@@ -1,5 +1,6 @@
+use sigil::layout::{LayoutStyle, Orientation};
 use sigil::prelude::*;
-use sigil::widgets::{ColumnWidth, Orientation, TableColumn, TableState, TreeNode};
+use sigil::widgets::{ColumnWidth, TableColumn, TableState, TreeNode};
 
 use super::{painted, present, step};
 
@@ -154,11 +155,7 @@ fn bold_at(grid: &sigil::terminal::Grid, needle: &str) -> bool {
 
 #[test]
 fn the_active_segment_is_marked() {
-    let grid = painted(
-        || segmented(signal(1), vec!["Day".into(), "Week".into(), "Month".into()]),
-        40,
-        4,
-    );
+    let grid = painted(|| segmented(signal(1), ["Day", "Week", "Month"]), 40, 4);
     assert!(
         bold_at(&grid, "Week") && !bold_at(&grid, "Day"),
         "{}",
@@ -188,7 +185,7 @@ fn a_tree_chevron_sits_on_the_folder_row() {
 
 #[test]
 fn progress_draws_the_unfilled_track() {
-    let grid = super::painted(|| progress(signal(0.5_f32), 1.0), 40, 3);
+    let grid = super::painted(|| progress(signal(0.5_f32)), 40, 3);
     let bar = (0..grid.rows())
         .find(|row| super::solid(grid.row(*row)) > 0)
         .unwrap_or_else(|| panic!("no fill in:\n{}", grid.text()));
@@ -268,7 +265,7 @@ fn slider_and_progress_show_their_labels() {
         || {
             column()
                 .child(slider(signal(0.4), 0.0..=1.0).label("Volume"))
-                .child(progress(signal(0.5_f32), 1.0).label("Upload"))
+                .child(progress(signal(0.5_f32)).label("Upload"))
         },
         40,
         8,
@@ -303,7 +300,7 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
 fn a_canvas_half_cell_fill_paints_a_half_block() {
     let grid = present(
         || {
-            sigil::widgets::canvas(|scene, area| {
+            sigil::widgets::canvas(|scene, area, _theme| {
                 let cell = sigil::Host::CELL;
                 let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
                 scene.draw_rect(sigil::scene::DrawRect::new(
@@ -368,7 +365,7 @@ fn tabs_built_from_a_label_list_print_every_label() {
                         tabs()
                             .labels(shown.clone())
                             .active(signal(0))
-                            .label("Settings tabs"),
+                            .accessible("Settings tabs"),
                     )
             },
             60,

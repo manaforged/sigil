@@ -4,7 +4,7 @@ use crate::reactive::{Reactive, Signal, effect, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{StyleAtom, Token, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::button::{ButtonBuilder, button};
 use super::super::link::link;
@@ -68,7 +68,7 @@ pub fn pagination(page: Signal<usize>, pages: impl Reactive<usize>) -> NodeBuild
     });
     container()
         .role(Role::Navigation)
-        .label(theme_label(StringKey::Pagination))
+        .accessible(theme_label(StringKey::Pagination))
         .layout(row_layout())
         .child(
             button("‹")
@@ -129,7 +129,7 @@ pub fn breadcrumbs(
     let activate = std::rc::Rc::new(activate);
     container()
         .role(Role::Navigation)
-        .label(theme_label(StringKey::Breadcrumbs))
+        .accessible(theme_label(StringKey::Breadcrumbs))
         .layout(row_layout())
         .children_reactive(move || {
             let names = segments.get();

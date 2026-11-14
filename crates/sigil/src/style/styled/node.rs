@@ -6,15 +6,22 @@ pub(crate) fn attach_style(builder: NodeBuilder, mut style: Style) -> NodeBuilde
         return crate::widgets::wire(builder, StyleOverlay::default());
     }
     let images = style.take_images();
-    let builder = if images.is_empty() {
+    let shaders = style.take_shaders();
+    let builder = if images.is_empty() && shaders.is_empty() {
         builder
     } else {
-        builder.mutate(move |node| images.install(node))
+        builder.mutate(move |node| {
+            images.install(node);
+            shaders.install(node);
+        })
     };
     let builder = crate::widgets::wire(builder, style.take_state_overlay());
+    let live = style.take_live();
     let base_atoms = style.into_atoms();
-    if base_atoms.is_empty() {
-        return builder;
-    }
-    builder.class(ClassSource::Owned(Box::new(base_atoms)))
+    let builder = if base_atoms.is_empty() {
+        builder
+    } else {
+        builder.class(ClassSource::Owned(Box::new(base_atoms)))
+    };
+    live.install(builder)
 }

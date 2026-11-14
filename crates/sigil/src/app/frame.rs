@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
+use crate::geometry::Size;
 #[cfg(any(host, debug_assertions))]
 use crate::kernel::FrameDelta;
 use crate::reactive::{Runtime, tick_frame};
@@ -52,7 +53,7 @@ impl Frame {
 }
 
 /// Runs before layout and may return a new viewport.
-pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<(f32, f32)> + 'a>;
+pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host) -> Option<Size> + 'a>;
 
 /// Runs after layout.
 pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host) + 'a>;
@@ -71,7 +72,7 @@ pub struct FrameHooks<'a> {
 
 impl<'a> FrameHooks<'a> {
     /// Runs `input` before layout; a returned size replaces the viewport.
-    pub fn input(mut self, input: impl FnOnce(&mut Host) -> Option<(f32, f32)> + 'a) -> Self {
+    pub fn input(mut self, input: impl FnOnce(&mut Host) -> Option<Size> + 'a) -> Self {
         self.input = Some(Box::new(input));
         self
     }
@@ -109,24 +110,26 @@ impl Host {
 
 impl Host {
     /// Runs one frame: effects, layout, animation, and the paint hook.
-    pub fn frame(&mut self, mut viewport: (f32, f32), dt: f32, hooks: FrameHooks<'_>) -> Frame {
+    pub fn frame(&mut self, viewport: impl Into<Size>, dt: f32, hooks: FrameHooks<'_>) -> Frame {
         #[cfg(hot_patch)]
         self.remount_patched();
         #[cfg(feature = "terminal")]
         self.drop_cell_screen();
         let _env = self.enter();
         Runtime::begin_effect();
-        if let Some(next) = hooks.input.and_then(|input| input(self)) {
-            viewport = next;
-        }
+        let viewport = hooks
+            .input
+            .and_then(|input| input(self))
+            .unwrap_or_else(|| viewport.into());
         crate::reactive::run_dispatch_deferred();
         self.apply_pending_theme();
         #[cfg(feature = "dialog")]
         self.sync_dialogs();
         let (intervals, animating) = tick_frame(dt.min(MAX_ANIMATION_FRAME_SECS));
-        self.publish_viewport(viewport);
+        let raw = (viewport.width, viewport.height);
+        self.publish_viewport(raw);
         let exit = ExitOnUnwind(take_exit());
-        let layout = self.layout_phase(viewport, hooks.after_layout);
+        let layout = self.layout_phase(raw, hooks.after_layout);
         self.cx().flush_announcements();
         Runtime::begin_paint();
         let dirty = Runtime::frame_dirty();
@@ -145,9 +148,10 @@ impl Host {
         if let Some(paint) = hooks.paint {
             paint(self, &frame);
         }
+        frame.animating |= crate::animation::runtime::animating();
         #[cfg(debug_assertions)]
         if frame.layout.is_ok()
-            && !animating
+            && !frame.animating
             && (frame.delta.structure || !frame.delta.layout.is_empty())
         {
             self.report_flaws();

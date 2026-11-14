@@ -3,15 +3,15 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
-use sigil::geometry::Point;
+use sigil::events::{Event, MouseButtons, PointerPhase};
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::widgets::{SortDirection, SortKey, TableState};
+use sigil::widgets::{ColumnWidth, SortDirection, SortKey, TableState};
 use widget_support::{compute, rect_colors};
 
 const ROW_H: f32 = 20.0;
@@ -61,7 +61,7 @@ fn demo_state() -> TableState<Item> {
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
             SceneCommand::GlyphRun(d) => Some(d.text().to_owned()),

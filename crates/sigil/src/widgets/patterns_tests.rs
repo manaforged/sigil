@@ -19,10 +19,8 @@ fn shape<N: IntoNode>(name: &'static str, make: impl FnOnce() -> N) -> (Role, us
 #[test]
 fn pattern_roots_have_their_role_and_children() {
     assert_eq!(
-        shape("empty-state", || empty_state(
-            "No messages",
-            "Send a message to start."
-        )),
+        shape("empty-state", || empty_state("No messages")
+            .description("Send a message to start.")),
         (Role::Status, 2)
     );
     assert_eq!(shape("card", || card(kernel_container())).1, 1);
@@ -103,4 +101,70 @@ fn hint_overlay_records_entries() {
     assert_eq!(overlay.entries.len(), 3);
     assert_eq!(overlay.entries[0].0, "Ctrl+S");
     assert_eq!(overlay.entries[2].1, "Close");
+}
+
+#[test]
+fn app_shell_modal_wrapper_is_not_hittable_and_field_labels_color_input() {
+    use crate::style::Color;
+    use crate::widgets::color_field::color_field;
+    Owner::scope("app-shell-modal-and-color-field", || {
+        let mut cx = Cx::new_root();
+        let shell_id =
+            app_shell(container(), container(), container(), Some(container())).build(&mut cx);
+        let modal_wrap = cx.get(shell_id).expect("shell").children()[3];
+        assert!(!cx.get(modal_wrap).expect("modal wrap").a11y.hittable);
+
+        let field_id = field(
+            "Accent Color",
+            color_field(crate::reactive::signal(Color::rgb(0, 0, 0))),
+        )
+        .build(&mut cx);
+        let [label_id, control_id] = *cx.get(field_id).expect("field").children() else {
+            panic!("field produces label and control");
+        };
+        let input_id = cx.get(control_id).expect("color row").children()[1];
+        let input = cx.get(input_id).expect("inner text input");
+        assert_eq!(input.a11y.role, Role::TextInput);
+        assert_eq!(input.a11y.labelled_by, Some(label_id));
+        assert!(matches!(input.a11y.name, AccessibleName::None));
+    });
+}
+
+#[test]
+fn interactive_chip_is_named_and_field_labels_nested_editable_markdown() {
+    use crate::style::Tone;
+    use crate::widgets::chip::chip;
+    use crate::widgets::markdown_edit;
+    Owner::scope("chip-name-and-nested-markdown-field", || {
+        let mut cx = Cx::new_root();
+        let chip_id = chip("Filter", Tone::Info).activate(|| {}).build(&mut cx);
+        let chip_node = cx.get(chip_id).expect("chip");
+        assert_eq!(chip_node.a11y.role, Role::Button);
+        assert!(matches!(
+            &chip_node.a11y.name,
+            AccessibleName::Static(name) if name == "Filter"
+        ));
+
+        let field_id = field(
+            "Markdown",
+            markdown_edit(crate::reactive::signal(String::new())),
+        )
+        .build(&mut cx);
+        let [label_id, control_id] = *cx.get(field_id).expect("field").children() else {
+            panic!("field produces label and control");
+        };
+        let mut stack = vec![control_id];
+        let mut found = None;
+        while let Some(id) = stack.pop() {
+            let node = cx.get(id).expect("node");
+            if node.a11y.role == Role::TextInput {
+                found = Some(node);
+                break;
+            }
+            stack.extend(node.children().iter().copied());
+        }
+        let input = found.expect("nested markdown TextInput");
+        assert_eq!(input.a11y.labelled_by, Some(label_id));
+        assert!(matches!(input.a11y.name, AccessibleName::None));
+    });
 }

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use image::RgbaImage;
 use sigil::app::{DefaultFonts, TextTuning, default_fonts, set_text_tuning};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};

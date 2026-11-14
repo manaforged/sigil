@@ -43,6 +43,14 @@ impl From<Signal<String>> for AccessibleName {
     }
 }
 
+impl From<&crate::kernel::TextContent> for AccessibleName {
+    fn from(label: &crate::kernel::TextContent) -> Self {
+        label
+            .live()
+            .map_or_else(|| Self::Static(label.resolve()), Self::Derived)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct TextCursor {
     pub(crate) caret: Signal<usize>,
@@ -130,6 +138,8 @@ pub struct A11yDetail {
     pub position_in_set: Option<usize>,
     /// The number of items in the set that the node belongs to.
     pub size_of_set: Option<usize>,
+    /// True when the node and its subtree stay out of the accessibility tree, like `aria-hidden`.
+    pub hidden: bool,
 }
 
 thread_local! {
@@ -169,6 +179,7 @@ impl A11yDetail {
             column_index: None,
             position_in_set: None,
             size_of_set: None,
+            hidden: false,
         }
     }
 }

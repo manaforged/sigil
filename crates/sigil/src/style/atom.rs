@@ -1,5 +1,7 @@
 use super::Transform2D;
 use crate::layout::{AlignItems, Display, FlexWrap, JustifyContent, Overflow};
+use crate::scene::shadow::elevation_shadow;
+use crate::scene::{Shadow, ShadowKind};
 
 /// Sets the pixel size of one spacing step in style atoms.
 pub(crate) const SPACING_STEP: f32 = 4.0;
@@ -7,6 +9,14 @@ pub(crate) const SPACING_STEP: f32 = 4.0;
 pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
 pub(crate) const OPACITY_UNITS: f32 = 10_000.0;
+
+pub(crate) const fn bits(value: f32) -> u32 {
+    if value.is_nan() {
+        f32::NAN.to_bits()
+    } else {
+        (value + 0.0).to_bits()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Px(pub i16);
@@ -16,29 +26,28 @@ mod background;
 pub(crate) use background::NO_GRADIENT;
 mod clip;
 mod color;
+pub(crate) mod corners;
 mod filter;
 mod gradient;
 mod mask;
 mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
+pub(crate) use color::direction;
 pub use color::{Color, ColorValue, GradientAxis};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use color::{BgGradient, GradientStopKey};
-}
 kittest_pub! {
     #[doc(hidden)]
     pub use filter::FilterAtom;
 }
 pub(crate) use filter::{
-    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
-    shadow_color,
+    Amount, BackdropPart, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units,
+    hue_units, shadow_color,
 };
 kittest_pub! {
     #[doc(hidden)]
     pub use gradient::{BorderStyle, GradientShape, PaintAtom, PaintStyle, StopSlot};
 }
+pub(crate) use gradient::Geometry;
 pub use gradient::{Conic, Radial, RadialExtent};
 kittest_pub! {
     #[doc(hidden)]
@@ -88,13 +97,64 @@ pub enum Elevation {
 }
 
 kittest_pub! {
+    #[doc(hidden)]
+    /// A node shadow in a form that compares and hashes, with sRGB color bytes and the other values as `f32` bits.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct ShadowAtom {
+        rgb: [u8; 3],
+        kind: ShadowKind,
+        alpha: u32,
+        offset: [u32; 2],
+        blur: u32,
+        spread: u32,
+    }
+}
+
+impl ShadowAtom {
+    pub(crate) const fn elevation(elevation: Elevation) -> Self {
+        Self::pack(elevation_shadow(elevation), [0; 3])
+    }
+
+    const fn pack(shadow: Shadow, rgb: [u8; 3]) -> Self {
+        let [.., alpha] = shadow.color;
+        let [x, y] = shadow.offset;
+        Self {
+            rgb,
+            kind: shadow.kind,
+            alpha: bits(alpha),
+            offset: [bits(x), bits(y)],
+            blur: bits(shadow.blur),
+            spread: bits(shadow.spread),
+        }
+    }
+}
+
+impl From<Shadow> for ShadowAtom {
+    fn from(shadow: Shadow) -> Self {
+        let Color { r, g, b, .. } = shadow_color(shadow);
+        Self::pack(shadow, [r, g, b])
+    }
+}
+
+impl From<ShadowAtom> for Shadow {
+    fn from(atom: ShadowAtom) -> Self {
+        let [r, g, b] = atom.rgb.map(super::srgb::decode);
+        Self::new(
+            atom.offset.map(f32::from_bits),
+            f32::from_bits(atom.blur),
+            f32::from_bits(atom.spread),
+            [r, g, b, f32::from_bits(atom.alpha)],
+        )
+        .kind(atom.kind)
+    }
+}
+
+kittest_pub! {
     /// Holds the resolved paint properties of one node.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RenderStyle {
         /// The solid background color; `None` when a gradient or nothing fills the box.
         pub background_color: Option<Color>,
-        /// The linear background gradient; `None` when a solid color or nothing fills the box.
-        pub background_gradient: Option<BgGradient>,
         /// The text color, when a style atom sets one.
         pub text_color: Option<Color>,
         /// The corner radius in pixels, when a style atom sets one.
@@ -111,8 +171,8 @@ kittest_pub! {
         pub border_left: Option<i16>,
         /// The border color, when a style atom sets one.
         pub border_color: Option<Color>,
-        /// The shadow depth, when a style atom sets one.
-        pub shadow: Option<Elevation>,
+        /// The shadow that the node casts, when a style atom sets one.
+        pub shadow: Option<ShadowAtom>,
         /// The opacity in ten-thousandths, where 10000 is opaque and the default.
         pub opacity: u16,
         /// The 2D move, scale, and turn applied when the node paints; the default is the identity.
@@ -134,7 +194,6 @@ impl Default for RenderStyle {
     fn default() -> Self {
         Self {
             background_color: None,
-            background_gradient: None,
             text_color: None,
             border_radius: None,
             border_width: None,
@@ -152,7 +211,11 @@ impl Default for RenderStyle {
                 positions: [None; 3],
                 clip_text: false,
                 image: None,
+                shader: None,
                 border: BorderStyle::Solid,
+                geometry: Geometry::default(),
+                corners: [None; 4],
+                shape: crate::scene::CornerShape::Round,
             },
             clip_path: None,
             space: SpaceStyle::FLAT,
@@ -160,6 +223,20 @@ impl Default for RenderStyle {
             blend: crate::scene::BlendMode::Normal,
             filter: FilterStyle::NONE,
         }
+    }
+}
+
+impl RenderStyle {
+    pub(crate) fn preserves_3d(&self, clips: bool) -> bool {
+        self.space.preserve
+            && !clips
+            && f32::from(self.opacity) >= OPACITY_UNITS
+            && self.blend == crate::scene::BlendMode::Normal
+            && self.clip_path.is_none()
+            && self.mask.kind.is_none()
+            && self.filter.filters().is_empty()
+            && self.filter.backdrop().is_empty()
+            && self.filter.shader.is_none()
     }
 }
 
@@ -246,8 +323,6 @@ kittest_pub! {
         GridRows(u16),
         /// A solid background color, which replaces a background gradient.
         BackgroundColor(ColorValue),
-        /// A linear background gradient, which replaces a solid background color.
-        BackgroundGradient(BgGradient),
         /// The color of the text.
         TextColor(ColorValue),
         /// Fills the background with this step, 1 to 12, of the tone in scope.
@@ -274,10 +349,12 @@ kittest_pub! {
         BorderColor(ColorValue),
         /// Colors the border with this step, 1 to 12, of the tone in scope.
         BorderToneStep(u8),
-        /// The depth of the shadow that the node casts.
-        Shadow(Elevation),
+        /// The shadow that the node casts: a step of the elevation scale or a custom shadow such as a glow.
+        Shadow(ShadowAtom),
         /// The opacity in ten-thousandths, where 10000 is opaque.
         Opacity(u16),
+        /// The stacking index among siblings; higher paints later and is hit first.
+        ZIndex(i16),
         /// A 2D move, scale, and turn applied when the node paints.
         #[cfg(feature = "kittest")]
         Transform(Transform2D),
@@ -386,6 +463,11 @@ impl StyleAtom {
                     | Self::OverflowY(_)
             )
         }
+    }
+
+    #[must_use]
+    pub(crate) const fn restacks(self) -> bool {
+        matches!(self, Self::ZIndex(_))
     }
 
     #[must_use]

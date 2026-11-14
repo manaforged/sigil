@@ -18,7 +18,6 @@ use sigil::style::{
     Color, ColorValue, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
-use sigil::widgets::Layout;
 
 static APPLY_ATOMS: &[StyleAtom] = &[
     StyleAtom::BackgroundColor(ColorValue::Token(Token::Accent)),
@@ -169,9 +168,9 @@ fn state_style_resolve_1000_widgets(c: &mut Criterion) {
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
     let accent_theme = Theme::default()
-        .token("accent", Color::rgb(220, 38, 38))
-        .token("accent-hover", Color::rgb(185, 28, 28))
-        .token("on-accent", Color::rgb(255, 255, 255));
+        .token(Token::Accent, Color::rgb(220, 38, 38))
+        .token(Token::AccentHover, Color::rgb(185, 28, 28))
+        .token(Token::OnAccent, Color::rgb(255, 255, 255));
     let mut render_styles = vec![RenderStyle::default(); 10_000];
     let mut use_accent_theme = false;
 

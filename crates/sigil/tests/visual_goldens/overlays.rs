@@ -1,7 +1,6 @@
 use super::*;
 use sigil::layout::Position;
 use sigil::layout::Space;
-use sigil::widgets::Layout;
 
 #[test]
 fn modal_open() {

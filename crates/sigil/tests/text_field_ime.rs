@@ -7,12 +7,13 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::ImeEvent;
+use sigil::events::{Event, KeyPhase};
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
-use sigil::layout::text_geometry;
+use sigil::layout::{LayoutStyle, text_geometry};
 use sigil::prelude::*;
 use widget_support::{compute, find_text_node};
 

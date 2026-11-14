@@ -2,7 +2,8 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use sigil::Host;
-use sigil::events::Event;
+use sigil::app::HostMode;
+use sigil::events::{Event, MouseButtons, PointerPhase};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{CommandScene, GlyphRun};

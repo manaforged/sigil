@@ -8,7 +8,7 @@ use crate::kernel::{Cx, IntoNode, NodeId, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::rows;
 use crate::reactive::{Signal, effect_named, signal};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 use crate::widgets::{button, list_row, modal, text_field, virtual_list};
 
 use super::entries::{EntryKind, FileEntry, list, start_dir};
@@ -141,7 +141,7 @@ fn entry_list(picker: FilePicker) -> impl IntoNode {
         .row_height(rows(1.0))
         .viewport_height(rows(LIST_ROWS))
         .keyboard(true)
-        .cursor(cursor);
+        .active(cursor);
         let enter = picker.clone();
         let back = picker.clone();
         let id = container()

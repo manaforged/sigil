@@ -5,6 +5,7 @@ mod design_support;
 
 use design_support::{Ink, frame, ink, page, shadow_rows};
 use sigil::layout::audit::{Flaw, Issue};
+use sigil::layout::{LayoutStyle, Overflow};
 use sigil::prelude::*;
 use sigil::widgets::ButtonBuilder;
 use sigil_kittest::Harness;

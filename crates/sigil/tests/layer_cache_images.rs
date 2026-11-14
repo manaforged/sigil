@@ -5,11 +5,10 @@
 #![allow(clippy::cast_precision_loss, reason = "pixel sides are small")]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit};
+use sigil::kernel::ImageSource;
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::{
-    BlendMode, CommandScene, CornerRadii, DrawImage, DrawRect, Filter, LayerEffect, LayerScope,
-    SceneBuilder,
+    CommandScene, DrawImage, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder,
 };
 use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::headless_renderer;
@@ -44,28 +43,18 @@ fn solid(color: Color) -> ImageSource {
 
 fn scene(color: Color) -> CommandScene {
     let area = Rect::new(Point::new(0.0, 0.0), SIDE as f32, SIDE as f32);
-    let scope = LayerScope {
-        clip: area,
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Filter(vec![Filter::Brightness(1.0)].into()),
-        opacity: 1.0,
-        blend: BlendMode::default(),
-    };
+    let scope = LayerScope::new(area)
+        .layer_effect(LayerEffect::Filter(vec![Filter::Brightness(1.0)].into()));
     let mut scene = SceneBuilder::new();
     scene.composite(scope, |scene| {
         for at in 0..FILLER {
             let corner = Rect::new(Point::new(at as f32, 0.0), 1.0, 1.0);
             scene.draw_rect(DrawRect::new(corner, GRAY));
         }
-        scene.draw_image(DrawImage {
-            node: None,
-            source: solid(color),
-            fit: ObjectFit::Fill,
-            destination: Rect::new(Point::new(8.0, 8.0), 48.0, 48.0),
-            opacity: 10_000,
-            crop: None,
-            raster: None,
-        });
+        scene.draw_image(DrawImage::new(
+            solid(color),
+            Rect::new(Point::new(8.0, 8.0), 48.0, 48.0),
+        ));
     });
     scene.finish()
 }

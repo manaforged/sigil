@@ -1,23 +1,18 @@
-use crate::geometry::Rect;
-use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use crate::reactive::{Signal, memo, signal};
-use crate::style::Style;
+use crate::clipboard::{self, Clipboard};
+use crate::geometry::Rect;
+use crate::layout::Length;
+use crate::node::{Cx, IntoNode, NodeBuilder, NodeId, TextContent};
+use crate::reactive::{Reactive, Signal, memo, signal};
+use crate::text::TextStyle;
+use crate::widgets::shared::{TextInputProps, noop_change};
+use crate::widgets::{Framed, SubmitKey, TextState, Widget, WidgetFrame};
 
-use crate::widgets::interaction::InteractionState;
-
-use super::super::layout_ext::LayoutOverrides;
-use super::super::text_edit::{
-    MultilineConfig, SubmitKey, TextEditRuntime, TextState, build_multiline, noop_change,
-};
+use super::super::text_edit::{MultilineConfig, build_multiline};
 use super::adorn::{Adornments, FocusSlot, clear_button};
 use super::handlers::{TextFieldRuntime, attach_key_handlers};
 use super::render::{FieldInputs, build_base_node, field_layout};
-use crate::clipboard::{Clipboard, clipboard};
-
-use crate::widgets::shared::{TextInputProps, caller_style};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FieldMode {
@@ -28,19 +23,16 @@ enum FieldMode {
 /// Builder of a text input.
 #[must_use]
 pub struct TextFieldBuilder {
-    pub(super) input: TextInputProps,
     state: TextState,
+    input: TextInputProps,
     mode: FieldMode,
     multiline: MultilineConfig,
     caret_rect: Option<Signal<Option<Rect>>>,
-    pub(super) invalid: Option<Signal<bool>>,
-    pub(super) scroll_offset: Option<Signal<f32>>,
-    focus_trigger: Option<Signal<u64>>,
-    autofocus: bool,
-    pub(super) password: bool,
-    pub(super) reveal: Option<Signal<bool>>,
-    pub(super) style_accumulator: Style,
-    layout_overrides: LayoutOverrides,
+    invalid: Option<Signal<bool>>,
+    scroll_offset: Option<Signal<f32>>,
+    password: bool,
+    reveal: Option<Signal<bool>>,
+    frame: WidgetFrame,
     adorn: Adornments,
     clearable: bool,
     focus_target: FocusSlot,
@@ -49,19 +41,16 @@ pub struct TextFieldBuilder {
 impl core::fmt::Debug for TextFieldBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("TextFieldBuilder")
-            .field("input", &self.input)
             .field("state", &self.state)
+            .field("input", &self.input)
             .field("mode", &self.mode)
             .field("multiline", &self.multiline)
             .field("caret_rect", &self.caret_rect)
             .field("invalid", &self.invalid)
             .field("scroll_offset", &self.scroll_offset)
-            .field("focus_trigger", &self.focus_trigger)
-            .field("autofocus", &self.autofocus)
             .field("password", &self.password)
             .field("reveal", &self.reveal)
-            .field("style_accumulator", &self.style_accumulator)
-            .field("layout_overrides", &self.layout_overrides)
+            .field("frame", &self.frame)
             .field("clearable", &self.clearable)
             .finish_non_exhaustive()
     }
@@ -76,20 +65,18 @@ impl TextFieldBuilder {
     /// Creates an input over `input`.
     pub(crate) fn new(input: impl Into<TextState>) -> Self {
         let state = input.into();
+        let props = TextInputProps::new(state.value());
         Self {
-            input: TextInputProps::new(state.value()),
             state,
+            input: props,
             mode: FieldMode::SingleLine,
             multiline: MultilineConfig::default(),
             caret_rect: None,
             invalid: None,
             scroll_offset: None,
-            focus_trigger: None,
-            autofocus: false,
             password: false,
             reveal: None,
-            style_accumulator: Style::new(),
-            layout_overrides: LayoutOverrides::new(),
+            frame: WidgetFrame::new(),
             adorn: Adornments::default(),
             clearable: false,
             focus_target: FocusSlot::default(),
@@ -215,93 +202,72 @@ impl TextFieldBuilder {
     }
 
     fn runtime(&mut self, column: f32) -> TextFieldRuntime {
-        let input = TextEditRuntime::new(
-            self.state.clone(),
-            self.input.disabled,
-            self.input.change.take().unwrap_or_else(noop_change),
-            self.input.submit.take().unwrap_or_else(noop_change),
-            self.input.clipboard.take().unwrap_or_else(clipboard),
-            self.input.caret_visible.unwrap_or_else(|| signal(true)),
-            (0.0, 0.0),
-        )
-        .single_line(
-            column,
-            self.scroll_offset.unwrap_or_else(|| signal(0.0_f32)),
-        );
-        if let Some(rect) = self.caret_rect {
-            input.ime.report_caret_rect(rect);
-        }
         TextFieldRuntime {
-            input,
+            state: self.state.clone(),
+            disabled: self.input.disabled,
+            change: self.input.change.take().unwrap_or_else(noop_change),
+            submit: self.input.submit.take().unwrap_or_else(noop_change),
+            clipboard: self
+                .input
+                .clipboard
+                .take()
+                .unwrap_or_else(clipboard::current),
+            caret_visible: self.input.caret_visible.unwrap_or_else(|| signal(true)),
+            text_style: signal(TextStyle::default()),
+            scroll_x: self.scroll_offset.unwrap_or_else(|| signal(0.0_f32)),
+            column,
+            clip_fail: signal(false),
+            focused: signal(false),
+            preedit: signal(String::new()),
+            preedit_cursor: signal(None),
+            caret_rect: self.caret_rect,
             password: self.password,
             reveal: self.reveal.unwrap_or_else(|| signal(false)),
         }
     }
 
     pub(super) fn into_node_builder(mut self) -> NodeBuilder {
-        let overrides = std::mem::take(&mut self.layout_overrides);
         if self.mode == FieldMode::Multiline {
-            let node = build_multiline(
+            return build_multiline(
                 self.input,
                 self.state,
                 self.caret_rect,
                 self.multiline,
-                self.style_accumulator,
+                self.frame,
             );
-            return overrides.finish(node);
         }
-        let width = overrides.width_hint();
-        let runtime = self.runtime(super::selection::column_width(width));
-        let interaction = InteractionState::new(true).disabled(self.input.disabled);
-        let clip_fail = runtime.input.clip_fail;
-        let invalid = self.invalid;
-        let inputs = FieldInputs {
-            invalid: Some(memo(move || {
-                invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
-            })),
-            overlay: self.style_accumulator.take_state_overlay(),
-            width,
+        let width = match self.frame.width() {
+            Some(Length::Px(px)) => Some(px),
+            _ => None,
         };
+        let runtime = self.runtime(super::selection::column_width(width));
+        let clip_fail = runtime.clip_fail;
+        let invalid_flag = self.invalid;
+        let invalid = memo(move || invalid_flag.is_some_and(|flag| flag.get()) || clip_fail.get());
         let mut adorn = std::mem::take(&mut self.adorn);
+        let target = Rc::clone(&self.focus_target);
         if self.clearable {
-            adorn.clear = Some(clear_button(&runtime, Rc::clone(&self.focus_target)));
+            adorn.clear = Some(clear_button(&runtime, Rc::clone(&target)));
         }
         let node = build_base_node(
-            inputs,
+            FieldInputs { invalid, width },
             &self.input.placeholder,
-            interaction,
             runtime.clone(),
             adorn,
         );
-        let node = interaction.install(attach_key_handlers(node, &runtime));
-        let node = caller_style(node, self.style_accumulator);
-        overrides.finish(node.with(field_layout(width)))
+        let node = attach_key_handlers(node, &runtime).added(move |_, id| target.set(Some(id)));
+        self.frame.finish(node.layout(field_layout(width)))
     }
 }
 
-builder_impls!([] TextFieldBuilder: paint(style_accumulator), widget(focus = autofocus / focus_trigger), states(style_accumulator));
+impl Framed for TextFieldBuilder {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
 
 impl IntoNode for TextFieldBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        let focus_trigger = self.focus_trigger;
-        let autofocus = self.autofocus;
-        let target = Rc::clone(&self.focus_target);
-        let node = self.into_node_builder();
-        let node = if autofocus {
-            node.with(crate::events::focus::Autofocus)
-        } else {
-            node
-        };
-        let id = node.build(cx);
-        target.set(Some(id));
-        if autofocus {
-            id.focus();
-        }
-        if let Some(trigger) = focus_trigger {
-            crate::events::focus::focus_on_trigger(trigger, move || {
-                id.focus();
-            });
-        }
-        id
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.into_node_builder().build(cx)
     }
 }

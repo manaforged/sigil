@@ -145,11 +145,8 @@ impl GeneratedScene {
     }
 
     /// Copies the commands into a `CommandScene` for a renderer.
-    #[must_use]
     pub fn scene(&self) -> CommandScene {
-        CommandScene {
-            commands: self.commands.clone(),
-        }
+        CommandScene::from_commands(self.commands.clone())
     }
 
     /// The size of the render target in pixels: the viewport times the scale, rounded.

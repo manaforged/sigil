@@ -1,7 +1,6 @@
 use crate::geometry::{Point, Rect};
 use crate::scene::corner_radii::CornerRadii;
 
-#[cfg(feature = "kittest")]
 use super::stroke_band::StrokeBand;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -20,7 +19,6 @@ impl Trimmed {
         }
     }
 
-    #[cfg(feature = "kittest")]
     pub(crate) fn dash_origin(&self, original: Rect, band: Option<StrokeBand>) -> [f32; 2] {
         let Some((dash, band)) = band.and_then(|b| b.dash.map(|d| (d, b))) else {
             return [0.0, 0.0];
@@ -38,7 +36,6 @@ impl Trimmed {
     }
 }
 
-#[cfg(feature = "kittest")]
 const DASH_REACH_PAD: f32 = 4.0;
 
 pub(crate) fn trim_to_view(

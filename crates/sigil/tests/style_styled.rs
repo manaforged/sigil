@@ -21,7 +21,7 @@ use sigil::style::{
     Color, ColorValue, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight,
     TextStyle, Theme, Token,
 };
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use widget_support::compute;
 
 const VIEWPORT: Constraint = Constraint::fixed(200.0, 100.0);
@@ -62,7 +62,7 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
         Drive::Focus => router.set_focus(&mut cx, Some(root)),
     }
     emit_scene(&cx, root, None)
-        .commands
+        .into_commands()
         .into_iter()
         .filter_map(|command| match command {
             SceneCommand::Rect(rect) => Some(rect),
@@ -72,7 +72,7 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
 }
 
 fn colors(build: impl IntoNode, drive: Drive) -> Vec<Color> {
-    rects(build, drive).iter().map(|rect| rect.color).collect()
+    rects(build, drive).iter().map(DrawRect::color).collect()
 }
 
 fn rest_rect(build: impl IntoNode) -> DrawRect {
@@ -87,16 +87,16 @@ fn painted_opacity(build: impl IntoNode) -> Option<u16> {
     let root = cx.add(build);
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let mut layers = vec![1.0_f32];
-    for command in emit_scene(&cx, root, None).commands {
+    for command in emit_scene(&cx, root, None).commands() {
         let top = *layers.last().unwrap();
         match command {
-            SceneCommand::PushLayer(scope) => layers.push(top * scope.opacity),
+            SceneCommand::PushLayer(scope) => layers.push(top * scope.alpha()),
             SceneCommand::SaveLayer { opacity } => layers.push(top * opacity),
             SceneCommand::PopLayer | SceneCommand::RestoreLayer => {
                 layers.pop();
             }
             SceneCommand::Rect(rect) => {
-                let scaled = (f32::from(rect.opacity) * top).round();
+                let scaled = (rect.alpha() * 10_000.0 * top).round();
                 #[allow(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
@@ -125,9 +125,12 @@ fn default_impl_chains_correctly() {
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
     let all = rects(node, Drive::Rest);
-    assert_eq!(all[0].color, Theme::default().color(Token::Surface));
-    let child = all.iter().find(|rect| rect.color == A).expect("child rect");
-    assert_eq!(child.rect.origin.x, 16.0);
+    assert_eq!(all[0].color(), Theme::default().color(Token::Surface));
+    let child = all
+        .iter()
+        .find(|rect| rect.color() == A)
+        .expect("child rect");
+    assert_eq!(child.rect().origin.x, 16.0);
 }
 
 #[test]
@@ -157,9 +160,9 @@ fn hover_atoms_accumulate_within_closure() {
     let hovered = rects(node, Drive::Hover);
     let rect = hovered
         .iter()
-        .find(|rect| rect.color == A)
+        .find(|rect| rect.color() == A)
         .expect("hover bg");
-    assert_eq!(rect.border_radius.0[0], 6.0);
+    assert_eq!(rect.corner_radii()[0], 6.0);
 }
 
 #[test]
@@ -189,20 +192,23 @@ fn disabled_state_atoms_emit() {
 
 #[test]
 fn bg_accepts_rgba8() {
-    assert_eq!(rest_rect(pane().background(A)).color, A);
+    assert_eq!(rest_rect(pane().background(A)).color(), A);
 }
 
 #[test]
 fn bg_accepts_theme_token() {
     assert_eq!(
-        rest_rect(pane().background(Token::Surface)).color,
+        rest_rect(pane().background(Token::Surface)).color(),
         Theme::default().color(Token::Surface)
     );
 }
 
 #[test]
 fn bg_accepts_color_atom() {
-    assert_eq!(rest_rect(pane().background(ColorValue::Color(C))).color, C);
+    assert_eq!(
+        rest_rect(pane().background(ColorValue::Color(C))).color(),
+        C
+    );
 }
 
 #[test]
@@ -255,7 +261,7 @@ fn overflow_hidden_emits_both_axes() {
 fn rounded_presets_emit_distinct_radii() {
     for (radius, px) in [(Radius::Sm, 2.0), (Radius::Md, 6.0), (Radius::Lg, 8.0)] {
         let rect = rest_rect(pane().background(A).radius(radius));
-        assert_eq!(rect.border_radius.0[0], px, "{radius:?}");
+        assert_eq!(rect.corner_radii()[0], px, "{radius:?}");
     }
 }
 
@@ -286,9 +292,9 @@ fn state_builder_implements_styled_within_closure() {
     let color = Theme::default().color(Token::SurfaceHover);
     let rect = hovered
         .iter()
-        .find(|rect| rect.color == color)
+        .find(|rect| rect.color() == color)
         .expect("hover bg");
-    assert_eq!(rect.border_radius.0[0], 8.0);
+    assert_eq!(rect.corner_radii()[0], 8.0);
 }
 
 #[test]

@@ -114,6 +114,7 @@ const SEMANTIC_TOKENS: &[Token] = &[
     Token::Ring,
     Token::Overlay,
     Token::OverlayBorder,
+    Token::Selection,
 ];
 
 fn colors(out: &mut String, theme: &Theme, indent: &str) -> fmt::Result {

@@ -1,6 +1,7 @@
 #![cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
 #![allow(clippy::expect_used)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 

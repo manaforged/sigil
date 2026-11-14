@@ -1,3 +1,4 @@
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::widgets::{Log, log_view};

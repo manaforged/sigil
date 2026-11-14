@@ -4,16 +4,18 @@ use crate::events::NamedKey;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, FlexWrap, LayoutStyle, Space};
 use crate::reactive::{Reactive, Signal, effect};
+use crate::style::Style;
 use crate::style::Tone;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::ActiveTheme;
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Layout, Widget};
 
 use super::button::button;
 use super::chip::chip;
 use super::combobox::{Combobox, combobox};
 use super::icon::DISMISS_GLYPH;
+use super::shared::caller_style;
 
 /// Builder of a tag input.
 #[must_use]
@@ -21,6 +23,7 @@ pub struct TagInputBuilder<T: 'static> {
     options: Vec<T>,
     selected: Signal<Vec<T>>,
     state: Combobox,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -44,21 +47,21 @@ impl<T: 'static> core::fmt::Debug for TagInputBuilder<T> {
 ///
 /// fn labels() -> impl IntoNode {
 ///     let chosen = signal(vec!["bug".to_owned()]);
-///     field("Labels", tag_input(["bug", "docs", "feature"].map(String::from), chosen))
+///     field("Labels", tag_input(chosen, ["bug", "docs", "feature"]))
 /// }
 /// ```
-pub fn tag_input<T>(
-    options: impl IntoIterator<Item = T>,
-    selected: Signal<Vec<T>>,
-) -> TagInputBuilder<T>
+pub fn tag_input<T, I, S>(selected: Signal<Vec<T>>, options: I) -> TagInputBuilder<T>
 where
     T: Clone + PartialEq + Display + 'static,
+    I: IntoIterator<Item = S>,
+    S: Into<T>,
 {
-    let options: Vec<T> = options.into_iter().collect();
+    let options: Vec<T> = options.into_iter().map(Into::into).collect();
     TagInputBuilder {
-        state: Combobox::new(options.iter().map(ToString::to_string).collect()),
+        state: Combobox::new(options.iter().map(ToString::to_string)),
         options,
         selected,
+        style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -81,6 +84,7 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
             options,
             selected,
             state,
+            style_accumulator,
             ..
         } = self;
         let (placeholder, disabled) = (state.placeholder_text(), state.disabled_flag());
@@ -108,12 +112,13 @@ impl<T: Clone + PartialEq + Display + 'static> TagInputBuilder<T> {
         let group = if placeholder.peek().is_empty() {
             group
         } else {
-            group.label(placeholder)
+            group.accessible(placeholder)
         };
-        group
+        let node = group
             .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
             .child(tags(selected, disabled))
-            .child(input)
+            .child(input);
+        caller_style(node, style_accumulator)
     }
 }
 
@@ -169,4 +174,4 @@ where
         })
 }
 
-builder_impls!([T: Clone + PartialEq + Display + 'static] TagInputBuilder<T>: widget, node);
+builder_impls!([T: Clone + PartialEq + Display + 'static] TagInputBuilder<T>: paint(style_accumulator), widget, node);

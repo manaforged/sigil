@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::scene::geometry::KAPPA;
 use crate::style::{BORDER_WIDTH, Token, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::vector::{PathBuilder, path};
 
 use super::canvas::{DOWN, LEFT, RIGHT, UP, bits};
@@ -217,7 +217,7 @@ fn fills(grid: &[Vec<char>], size: (f32, f32)) -> PathBuilder {
             _ => node,
         };
     }
-    node.fill(Token::OnSurfaceMuted)
+    node.fill_color(Token::OnSurfaceMuted)
 }
 
 fn arrow(node: PathBuilder, x0: f32, y0: f32, dir: u8) -> PathBuilder {

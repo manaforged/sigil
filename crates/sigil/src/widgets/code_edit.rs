@@ -13,14 +13,16 @@ use std::rc::Rc;
 
 use crate::events::KeyEvent;
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use crate::layout::snap::{CellForm, line};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, effect, memo, signal};
-use crate::style::{StyleOverlay, Token, Tone, space};
+use crate::style::{Style, StyleOverlay, Token, Tone, space};
 
-use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_state};
+use super::shared::{
+    FIELD_VARIANT, caller_style, disabled_a11y, disabled_now, reactive_style_state,
+};
 use crate::widgets::interaction::InteractionState;
 use scroll::{first_row, follow_caret, scroll_body, wheel};
 
@@ -148,6 +150,7 @@ pub struct CodeEditBuilder {
     on_key: Option<KeyHandler>,
     disabled: Option<Signal<bool>>,
     row_h: Option<f32>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -179,6 +182,7 @@ pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> C
         on_key: None,
         disabled: None,
         row_h: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -236,16 +240,17 @@ impl CodeEditBuilder {
         let row_h = self.row_h.unwrap_or_else(|| line(18.0));
         let traps_tab = self.on_key.is_some();
         let on_key = self.on_key.unwrap_or_else(|| Rc::new(|_| {}));
-        let scroll_y = signal(0.0_f32);
-        let viewport = signal((0.0_f32, DEFAULT_VIEWPORT_H));
-        let interaction = InteractionState::new(true);
-        let disabled = self.disabled;
+        let (scroll_y, viewport) = (
+            signal(0.0_f32),
+            signal(crate::geometry::Size::new(0.0_f32, DEFAULT_VIEWPORT_H)),
+        );
+        let (interaction, disabled) = (InteractionState::new(true), self.disabled);
         let start = memo(move || first_row(scroll_y.get(), lines.get().len(), row_h));
         effect(move || follow_caret(scroll_y, self.caret, lines, viewport, row_h));
-        let runtime = editing::runtime(model, self.disabled);
+        let runtime = editing::runtime(model, disabled);
         let node = field_chrome(container(), interaction, disabled)
             .role(Role::TextInput)
-            .label(theme_label(StringKey::CodeEditor))
+            .accessible(theme_label(StringKey::CodeEditor))
             .with(Direction::Ltr)
             .focusable(true)
             .traps_tab(traps_tab)
@@ -256,7 +261,7 @@ impl CodeEditBuilder {
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
-            .size_reactive(viewport)
+            .track_size(viewport)
             .scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
             .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
@@ -274,7 +279,8 @@ impl CodeEditBuilder {
                 row_h,
             ));
         let node = editing::attach(a11y::expose(node, &runtime), &runtime, viewport, row_h);
-        interaction.observe_style(disabled_a11y(node, disabled))
+        let node = interaction.observe_style(disabled_a11y(node, disabled));
+        caller_style(node, self.style_accumulator)
     }
 }
 
@@ -312,7 +318,7 @@ struct EditSurface {
     gutter: Option<GutterMarks>,
     diagnostics: Option<Diagnostics>,
     start: Signal<usize>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     caret_shown: Signal<bool>,
 }
 
@@ -323,4 +329,4 @@ struct LineWindow {
     row_h: f32,
 }
 
-builder_impls!([] CodeEditBuilder: widget, node);
+builder_impls!([] CodeEditBuilder: paint(style_accumulator), widget, node);

@@ -12,7 +12,7 @@ use crate::style::{
     ClassSource, Color, ColorValue, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
     StyleVariant, Token, Tone, space,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Activate, RELEASE_ENTER, press};
 
@@ -117,7 +117,7 @@ fn tab_label(label: String, selected: Signal<bool>) -> TextBuilder {
 fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
     container()
         .role(Role::Button)
-        .label(AccessibleName::Static(theme_string_once(
+        .accessible(AccessibleName::Static(theme_string_once(
             StringKey::CloseTab,
         )))
         .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
@@ -204,7 +204,7 @@ pub(super) fn build_tab(
     let mut node = press(
         tab_frame(chrome, interaction, selected, user_overlay)
             .role(Role::Tab)
-            .label(label.clone())
+            .accessible(label.clone())
             .selected(selected),
         interaction,
         None,

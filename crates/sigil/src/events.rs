@@ -4,6 +4,9 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 pub(crate) mod builder_ext;
+#[cfg(window_host)]
+mod cursor;
+mod drop;
 pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
@@ -13,16 +16,19 @@ pub(crate) mod pointer_dispatch;
 mod router;
 pub(crate) mod selection;
 mod selection_walk;
+mod velocity;
 #[cfg(feature = "desktop")]
 mod window_command;
 
 pub(crate) use builder_ext::{event_methods, handler_methods, mutate_handlers, with_handlers};
+pub use drop::DropEvent;
 pub use focus::FocusDirection;
 pub(crate) use focus::ScrollReveal;
 pub(crate) use focus::focus_from_keyboard;
 pub(crate) use focus::note_focus_source;
 pub(crate) use handlers::EventHandlers;
-pub(crate) use handlers::{A11yEdit, dispatch};
+pub(crate) use handlers::dispatch;
+pub use handlers::{A11yEdit, DragPhase, ValueStep};
 #[cfg(not(feature = "kittest"))]
 pub(crate) use router::EventRouter;
 #[cfg(feature = "kittest")]
@@ -42,6 +48,7 @@ pub fn invoke_node(
     pointer_dispatch::invoke_node(cx, layout, target, false);
 }
 
+pub use crate::hal::cursor::{CursorIcon, ResizeDirection};
 pub(crate) use crate::hal::events::ClickConfig;
 pub use crate::hal::events::{
     Event, FileDropEvent, FileDropPhase, Gesture, GestureEvent, ImeEvent, Key, KeyEvent, KeyPhase,

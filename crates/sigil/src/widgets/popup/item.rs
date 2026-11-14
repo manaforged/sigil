@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::vector::path;
 
@@ -36,7 +36,7 @@ impl ItemSlots {
 pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder {
     let disabled = slots.disabled;
     let mut row = container()
-        .label(slots.label.clone())
+        .accessible(slots.label.clone())
         .layout({
             let metrics = Metrics::current();
             LayoutStyle::flex_row()

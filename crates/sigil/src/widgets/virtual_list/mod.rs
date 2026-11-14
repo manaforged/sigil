@@ -55,7 +55,7 @@ struct BuildAxes {
     scroll_x: Option<ScrollAxis>,
     focused_row: Signal<usize>,
     selection_state: Signal<Selection>,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     tops: Option<measure::Tops>,
     keys: Option<measure::Keys>,
     content: Signal<f32>,
@@ -233,9 +233,9 @@ where
         self
     }
 
-    /// Sets the fixed height of each row in px.
-    pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.row_height = length.into_px();
+    /// Sets the fixed height of each row.
+    pub fn row_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.row_height = crate::layout::px_or_zero(length);
         self
     }
 
@@ -245,9 +245,9 @@ where
         self
     }
 
-    /// Sets the height in px assumed for a row not yet measured; the default is the row height.
-    pub fn estimate(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.estimate = Some(length.into_px());
+    /// Sets the height assumed for a row not yet measured; the default is the row height.
+    pub fn estimate(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.estimate = crate::layout::positive_px(length);
         self
     }
 
@@ -258,9 +258,9 @@ where
         self
     }
 
-    /// Sets the height of the list in px when it does not fill its parent; the default is 480.
-    pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
-        self.viewport_height = length.into_px();
+    /// Sets the height of the list when it does not fill its parent; the default is 480.
+    pub fn viewport_height(mut self, length: impl Into<crate::layout::Length>) -> Self {
+        self.viewport_height = crate::layout::px_or_zero(length);
         self
     }
 
@@ -303,11 +303,11 @@ where
         self
     }
 
-    /// Binds the index of the focused row to `cursor` and keeps that row in view.
-    pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
-        self.focused_row = Some(cursor);
+    /// Binds the index of the active, keyboard-focused row to `active` and keeps that row in view.
+    pub const fn active(mut self, active: Signal<usize>) -> Self {
+        self.focused_row = Some(active);
         if self.follow.is_none() {
-            self.follow = Some(cursor);
+            self.follow = Some(active);
         }
         self
     }

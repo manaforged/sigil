@@ -12,12 +12,12 @@
 )]
 
 use sigil::geometry::{Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit, container};
+use sigil::kernel::{ImageSource, container};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::scene::{
-    CommandScene, CornerRadii, DrawGradient, DrawImage, DrawRect, GradientStop, LayerEffect,
-    LayerScope, LinearGradient, Mask, MaskMode, SceneBuilder,
+    CommandScene, DrawGradient, DrawImage, DrawRect, GradientStop, LayerEffect, LayerScope,
+    LinearGradient, Mask, MaskMode, SceneBuilder,
 };
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
@@ -84,38 +84,26 @@ fn half_opaque_image() -> ImageSource {
 
 fn image_mask(rect: Rect) -> Mask {
     let mut scene = SceneBuilder::new();
-    scene.draw_image(DrawImage {
-        node: None,
-        source: half_opaque_image(),
-        fit: ObjectFit::Fill,
-        destination: rect,
-        opacity: 10_000,
-        crop: None,
-        raster: None,
-    });
+    scene.draw_image(DrawImage::new(half_opaque_image(), rect));
     Mask::new(MaskMode::Alpha, scene.finish())
 }
 
 fn masked_red(scene: &mut SceneBuilder, rect: Rect, mask: Mask) {
-    let scope = LayerScope {
-        clip: rect,
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Mask(mask),
-        opacity: 1.0,
-        blend: sigil::scene::BlendMode::Normal,
-    };
+    let scope = LayerScope::new(rect).layer_effect(LayerEffect::Mask(mask));
     scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
 }
 
 fn masked(mask: fn(Rect) -> Mask) -> impl IntoNode {
-    let paint = canvas(move |scene: &mut SceneBuilder, rect: Rect| {
-        let below = Rect::new(
-            Point::new(rect.origin.x, rect.origin.y + GAP),
-            rect.width,
-            rect.height - GAP,
-        );
-        masked_red(scene, below, mask(below));
-    })
+    let paint = canvas(
+        move |scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
+            let below = Rect::new(
+                Point::new(rect.origin.x, rect.origin.y + GAP),
+                rect.width,
+                rect.height - GAP,
+            );
+            masked_red(scene, below, mask(below));
+        },
+    )
     .width(SIDE as f32)
     .height(SIDE as f32);
     sized(paint, SIDE as f32)
@@ -133,7 +121,7 @@ fn image_masked() -> impl IntoNode {
     masked(image_mask)
 }
 
-fn overlap(scene: &mut SceneBuilder, rect: Rect) {
+fn overlap(scene: &mut SceneBuilder, rect: Rect, _theme: &Theme) {
     let (x, y) = (rect.origin.x, rect.origin.y);
     scene.layer(0.5, |scene| {
         scene.draw_rect(DrawRect::new(
@@ -228,7 +216,7 @@ fn an_alpha_gradient_mask_fades_the_content_from_left_to_right() {
 }
 
 fn white_to_black() -> impl IntoNode {
-    let paint = canvas(|scene: &mut SceneBuilder, rect: Rect| {
+    let paint = canvas(|scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
         scene.draw_gradient(ramp(rect, rgba(255, 255, 255, 255), rgba(0, 0, 0, 255)));
     })
     .width(SIDE as f32)

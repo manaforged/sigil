@@ -11,7 +11,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 
 const ROOT_WIDTH: f32 = 1280.0;

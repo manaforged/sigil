@@ -2,22 +2,17 @@ use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use crate::kernel::Action;
-
 use crate::events::PointerEvent;
-use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container};
-use crate::layout::Orientation;
-use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
-use crate::reactive::{Reactive, Signal};
-use crate::style::Style;
-use crate::style::strings::StringKey;
-use crate::widgets::Layout;
-use crate::widgets::interaction::InteractionState;
+use crate::layout::{AlignItems, LayoutStyle, Length, Orientation, cols, rows};
+use crate::node::{
+    AccessibleName, Action, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container,
+};
+use crate::reactive::{Reactive, Signal, signal};
+use crate::style::{Metrics, Paint, Radius, States, StringKey, Token};
+use crate::widgets::shared::accessible_name_or;
+use crate::widgets::{Framed, Widget, WidgetFrame};
 
-use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::{accessible_name_or, caller_style, control, disabled_now};
-use super::handlers::{Grip, attach_key_handlers, attach_pointer_drag};
+use super::handlers::{Grip, ThumbSignals, attach_key_handlers, attach_pointer_drag};
 use super::thumb::Thumb;
 use super::track::{slider_thumb, track};
 
@@ -51,10 +46,9 @@ pub struct SliderBuilder<T = f32> {
     value: PhantomData<fn() -> T>,
     runtime: SliderRuntime,
     on_change: Option<ValueChange>,
-    label: Option<String>,
+    label: Option<TextContent>,
     marks: Vec<String>,
-    style_accumulator: Style,
-    layout_overrides: LayoutOverrides,
+    frame: WidgetFrame,
 }
 
 impl<T> core::fmt::Debug for SliderBuilder<T> {
@@ -63,8 +57,7 @@ impl<T> core::fmt::Debug for SliderBuilder<T> {
             .field("runtime", &self.runtime)
             .field("label", &self.label)
             .field("marks", &self.marks)
-            .field("style_accumulator", &self.style_accumulator)
-            .field("layout_overrides", &self.layout_overrides)
+            .field("frame", &self.frame)
             .finish_non_exhaustive()
     }
 }
@@ -134,8 +127,7 @@ impl<T> SliderBuilder<T> {
             on_change: None,
             label: None,
             marks: Vec::new(),
-            style_accumulator: Style::new(),
-            layout_overrides: LayoutOverrides::new(),
+            frame: WidgetFrame::new(),
         }
     }
 
@@ -146,7 +138,7 @@ impl<T> SliderBuilder<T> {
     }
 
     /// Sets the accessible name and shows it as a caption.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -188,34 +180,74 @@ impl<T> SliderBuilder<T> {
 
     fn root(mut self) -> NodeBuilder {
         let runtime = self.runtime;
+        let explicit_len = runtime.length.or_else(|| match self.frame.width() {
+            Some(Length::Px(px)) => Some(px),
+            _ => None,
+        });
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
-        let style = std::mem::take(&mut self.style_accumulator);
         let dragged = match runtime.value {
             Thumb::Start(range) | Thumb::End(range) => {
-                super::range::range_root(runtime, range, self.label.as_deref(), &on_change)
+                super::range::range_root(runtime, range, self.label.as_ref(), &on_change)
             }
-            Thumb::Only(_) => {
-                let mut root = control(slider_node(&self), runtime.disabled).active();
-                let interaction = root.interaction();
-                let root = slider_parts(root, runtime, interaction);
-                let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
-                let grip = Grip::new(interaction);
-                attach_pointer_drag(keyed, runtime, [grip.clone(), grip], Rc::clone(&on_change))
-            }
+            Thumb::Only(_) => single_root(&self, runtime, Rc::clone(&on_change)),
         };
-        let mut node = caller_style(dragged, style);
+        let mut node = self.frame.finish(dragged);
         if let Some(caption) = self.label {
-            node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
+            node = super::caption::with_caption(node, caption, runtime.orientation, explicit_len);
         }
-        if self.marks.is_empty() || runtime.orientation == Orientation::Vertical {
-            node
-        } else {
-            super::marks::with_marks(node, runtime, self.marks, on_change)
+        if !self.marks.is_empty() && runtime.orientation != Orientation::Vertical {
+            let marks_rt = SliderRuntime {
+                length: explicit_len,
+                ..runtime
+            };
+            node = super::marks::with_marks(node, marks_rt, self.marks, on_change);
         }
+        node
     }
 }
 
-builder_impls!([T: 'static] SliderBuilder<T>: paint(style_accumulator), widget, states(style_accumulator), node);
+impl<T: 'static> Framed for SliderBuilder<T> {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl<T: 'static> IntoNode for SliderBuilder<T> {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.root().build(cx)
+    }
+}
+
+fn single_root<T>(
+    builder: &SliderBuilder<T>,
+    runtime: SliderRuntime,
+    on_change: ValueChange,
+) -> NodeBuilder {
+    let signals = ThumbSignals::new();
+    let extent = signal(crate::geometry::Size::ZERO);
+    let root = control_frame(slider_node(builder), runtime.disabled)
+        .focusable(true)
+        .track_size(extent)
+        .track_hovered(signals.hovered)
+        .track_focused(signals.focused)
+        .track_pressed(signals.pressed);
+    let root = slider_parts(root, runtime, extent, signals);
+    let keyed = attach_key_handlers(root, runtime, Rc::clone(&on_change));
+    let grip = Grip::new(signals.dragging);
+    attach_pointer_drag(keyed, runtime, [grip.clone(), grip], on_change)
+}
+
+pub(super) fn control_frame(node: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
+    let node = node
+        .radius(Radius::Md)
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
+        .disabled_paint(|s| s.opacity(0.5));
+    match disabled {
+        Some(flag) => node.disabled(flag),
+        None => node,
+    }
+}
 
 impl SliderRange {
     pub(super) fn span(self) -> f32 {
@@ -225,7 +257,7 @@ impl SliderRange {
 
 impl SliderRuntime {
     pub(super) fn disabled(self) -> bool {
-        disabled_now(self.disabled)
+        self.disabled.is_some_and(Signal::peek)
     }
 
     fn step_size(self) -> f32 {
@@ -268,27 +300,35 @@ impl SliderRuntime {
         Self { value, ..self }
     }
 
-    pub(super) fn nudge(self, steps: f32) {
-        let delta = self.step_size() * steps;
-        self.value.set(self.quantize(self.value.peek() + delta));
+    pub(super) fn nudged(self, steps: f32) -> f32 {
+        self.quantize(self.step_size().mul_add(steps, self.value.peek()))
+    }
+
+    pub(super) fn commit(self, next: f32, on_change: &ValueChange) {
+        let before = self.value.peek();
+        self.value.set(next);
+        self.report(before, on_change);
+    }
+
+    pub(super) fn report(self, before: f32, on_change: &ValueChange) {
+        let after = self.value.peek();
+        if after.to_bits() != before.to_bits() {
+            on_change(after);
+        }
     }
 }
 
 fn slider_node<T>(builder: &SliderBuilder<T>) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
-    let label = builder.label.clone().map(TextContent::Static);
-    slider_semantics(
-        runtime,
-        accessible_name_or(label.as_ref(), StringKey::Slider),
-    )
-    .layout(layout)
+    let name = accessible_name_or(builder.label.as_ref(), StringKey::Slider);
+    slider_semantics(runtime, name).layout(layout)
 }
 
 pub(super) fn slider_semantics(runtime: SliderRuntime, name: AccessibleName) -> NodeBuilder {
     container()
         .role(Role::Slider)
-        .label(name)
+        .accessible(name)
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value.signal(), runtime.range.min, runtime.range.max)
@@ -298,18 +338,19 @@ pub(super) fn slider_semantics(runtime: SliderRuntime, name: AccessibleName) -> 
 fn slider_parts(
     root: NodeBuilder,
     runtime: SliderRuntime,
-    interaction: InteractionState,
+    extent: Signal<crate::geometry::Size>,
+    signals: ThumbSignals,
 ) -> NodeBuilder {
-    let thumb = slider_thumb(interaction, runtime.disabled, runtime.glass);
+    let thumb = slider_thumb(signals, runtime.disabled, runtime.glass);
     match runtime.orientation {
         Orientation::Horizontal => root
-            .child(track(runtime, true))
+            .child(track(runtime, extent, true))
             .child(thumb)
-            .child(track(runtime, false)),
+            .child(track(runtime, extent, false)),
         Orientation::Vertical => root
-            .child(track(runtime, false))
+            .child(track(runtime, extent, false))
             .child(thumb)
-            .child(track(runtime, true)),
+            .child(track(runtime, extent, true)),
     }
 }
 
@@ -318,10 +359,15 @@ pub(super) fn slider_layout(
     length: Option<f32>,
     captioned: bool,
 ) -> LayoutStyle {
+    let grid = Metrics::current().is_grid();
     match orientation {
         Orientation::Horizontal => {
-            let base = LayoutStyle::flex_row()
-                .height(CellForm::new(Length::from(HORIZONTAL_HEIGHT), rows(1.0)).pick());
+            let height = if grid {
+                rows(1.0)
+            } else {
+                Length::from(HORIZONTAL_HEIGHT)
+            };
+            let base = LayoutStyle::flex_row().height(height);
             let base = match length {
                 Some(px) => base.width(px),
                 None if captioned => base.grow(1.0).width(0.0),
@@ -330,8 +376,12 @@ pub(super) fn slider_layout(
             base.align_items(AlignItems::Center)
         }
         Orientation::Vertical => {
-            let base = LayoutStyle::flex_column()
-                .width(CellForm::new(Length::from(VERTICAL_WIDTH), cols(1.0)).pick());
+            let width = if grid {
+                cols(1.0)
+            } else {
+                Length::from(VERTICAL_WIDTH)
+            };
+            let base = LayoutStyle::flex_column().width(width);
             let base = match length {
                 Some(px) => base.height(px),
                 None => base.fill_height(),

@@ -1,6 +1,6 @@
 use super::color_key;
 use crate::style::StyleAtom;
-use crate::style::atom::{Amount, FilterAtom, FilterPart, ShadowSpec, TextShadows};
+use crate::style::atom::{Amount, BackdropPart, FilterAtom, FilterPart, ShadowSpec, TextShadows};
 
 const BLURS: [(&str, u16); 8] = [
     ("none", 0),
@@ -57,9 +57,11 @@ pub(super) fn parse_filter_token(token: &str) -> Option<StyleAtom> {
     if let Some(degrees) = token.strip_prefix("hue-rotate-") {
         return part(FilterPart::HueRotate(degrees.parse::<i16>().ok()?));
     }
+    if let Some(rest) = token.strip_prefix("backdrop-") {
+        return backdrop(rest).and_then(part);
+    }
     if let Some(size) = token.strip_prefix("blur-") {
-        let (_, px) = BLURS.iter().find(|(name, _)| *name == size)?;
-        return part(FilterPart::Blur(px * 16));
+        return blur(size).map(FilterPart::Blur).and_then(part);
     }
     if let Some(rest) = token.strip_prefix("drop-shadow-") {
         return drop_shadow(rest);
@@ -68,6 +70,28 @@ pub(super) fn parse_filter_token(token: &str) -> Option<StyleAtom> {
         return text_shadow(rest);
     }
     amount(token).and_then(part)
+}
+
+fn blur(size: &str) -> Option<u16> {
+    BLURS
+        .iter()
+        .find(|(name, _)| *name == size)
+        .map(|(_, px)| px * 16)
+}
+
+fn backdrop(rest: &str) -> Option<FilterPart> {
+    if let Some(size) = rest.strip_prefix("blur-") {
+        return blur(size).map(|units| FilterPart::Backdrop(BackdropPart::Blur, units));
+    }
+    let FilterPart::Amount(kind, percent) = amount(rest)? else {
+        return None;
+    };
+    let part = match kind {
+        Amount::Brightness => BackdropPart::Brightness,
+        Amount::Saturate => BackdropPart::Saturate,
+        _ => return None,
+    };
+    Some(FilterPart::Backdrop(part, percent))
 }
 
 fn amount(token: &str) -> Option<FilterPart> {

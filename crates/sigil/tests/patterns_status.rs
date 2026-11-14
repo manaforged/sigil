@@ -41,7 +41,11 @@ fn a_skeleton_reads_as_loading_until_the_content_arrives() {
             column()
                 .gap(Space::Sm)
                 .child(button("Load").activate(move || loading.set(false)))
-                .child(show(loading, || skeleton(3), || text("Report ready")))
+                .child(show(
+                    loading,
+                    || skeleton().lines(3),
+                    || text("Report ready"),
+                ))
         });
         ui.settle();
         assert_eq!(
@@ -150,7 +154,7 @@ fn a_stepper_marks_done_and_current_steps() {
             column()
                 .gap(Space::Sm)
                 .child(button("Continue").activate(move || step.update(|n| *n += 1)))
-                .child(stepper(["Cart", "Shipping", "Pay"], step))
+                .child(stepper(step, ["Cart", "Shipping", "Pay"]))
         })
         .size(60, 8);
         ui.settle();

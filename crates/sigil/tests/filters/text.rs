@@ -30,10 +30,13 @@ fn label(scene: &mut SceneBuilder, rect: Rect, shadows: &[Shadow]) {
 fn shadowed(shadows: Vec<Shadow>) -> Vec<(&'static str, image::RgbaImage)> {
     frames_of(move || {
         let shadows = shadows.clone();
-        let paint =
-            canvas(move |scene: &mut SceneBuilder, rect: Rect| label(scene, rect, &shadows))
-                .width(SIDE as f32)
-                .height(SIDE as f32);
+        let paint = canvas(
+            move |scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
+                label(scene, rect, &shadows);
+            },
+        )
+        .width(SIDE as f32)
+        .height(SIDE as f32);
         container()
             .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32))
             .child(paint)

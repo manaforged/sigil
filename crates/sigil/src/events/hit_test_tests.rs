@@ -1,6 +1,6 @@
 use crate::animation::Easing;
 use crate::kernel::{Cx, NodeId};
-use crate::layout::LayoutEngine;
+use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,7 +9,7 @@ use crate::animation::Property;
 use crate::animation::runtime::tick;
 use crate::events::EventRouter;
 use crate::events::{Event, MouseButton, MouseButtons, PointerEvent, PointerPhase};
-use crate::geometry::Point;
+use crate::geometry::{Constraint, Point};
 use crate::prelude::*;
 use crate::style::Transform2D;
 

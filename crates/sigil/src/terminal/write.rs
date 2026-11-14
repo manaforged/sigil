@@ -7,7 +7,7 @@ use crossterm::style::{
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
-use crate::terminal::caps::{Capabilities, ColorDepth, Cursor, Erase};
+use crate::terminal::caps::{Capabilities, ColorDepth, CursorStyle, Erase};
 use crate::terminal::colour::paint;
 use crate::terminal::paint::Link;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
@@ -97,7 +97,7 @@ pub(crate) fn cursor(
     if !caret {
         return queue!(out, cursor::Hide, cursor::MoveTo(clip(col), clip(row)));
     }
-    if caps.cursor == Cursor::Bar {
+    if caps.cursor_style == CursorStyle::Bar {
         queue!(out, cursor::SetCursorStyle::SteadyBar)?;
     }
     queue!(out, cursor::MoveTo(clip(col), clip(row)), cursor::Show)

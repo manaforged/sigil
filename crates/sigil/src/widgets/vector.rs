@@ -12,24 +12,25 @@ use crate::scene::command::{
 };
 use crate::scene::geometry::IDENTITY;
 use crate::style::{Color, ColorValue, Theme};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
 
 mod key;
 mod paint;
 mod values;
 
-pub(crate) use crate::scene::command::PathCmd;
+pub(crate) use crate::scene::command::PathCommand;
 pub(crate) use values::PathFill;
 
 type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 
 /// Builder of a vector path.
 #[derive(Debug)]
+#[must_use]
 pub struct PathBuilder {
     width: u32,
     height: u32,
-    cmds: Vec<PathCmd>,
+    cmds: Vec<PathCommand>,
     fill: Option<PathFill>,
     stroke: Option<(ColorValue, f32)>,
     rule: FillRule,
@@ -42,7 +43,6 @@ pub struct PathBuilder {
 }
 
 /// A vector path.
-#[must_use]
 pub const fn path(width: u32, height: u32) -> PathBuilder {
     PathBuilder {
         width,
@@ -62,23 +62,20 @@ pub const fn path(width: u32, height: u32) -> PathBuilder {
 
 impl PathBuilder {
     /// Starts a new subpath at this point.
-    #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::MoveTo(x, y));
+        self.cmds.push(PathCommand::MoveTo(x, y));
         self
     }
 
     /// Adds a straight line to this point.
-    #[must_use]
     pub fn line_to(mut self, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::LineTo(x, y));
+        self.cmds.push(PathCommand::LineTo(x, y));
         self
     }
 
     /// Adds a quadratic curve to this point.
-    #[must_use]
     pub fn quad_to(mut self, cx: f32, cy: f32, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::QuadTo(cx, cy, x, y));
+        self.cmds.push(PathCommand::QuadTo(cx, cy, x, y));
         self
     }
 
@@ -87,28 +84,25 @@ impl PathBuilder {
         clippy::too_many_arguments,
         reason = "the argument list mirrors the upstream API contract"
     )]
-    #[must_use]
     pub fn cubic_to(mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y));
+        self.cmds
+            .push(PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y));
         self
     }
 
     /// Closes the current subpath.
-    #[must_use]
     pub fn close(mut self) -> Self {
-        self.cmds.push(PathCmd::Close);
+        self.cmds.push(PathCommand::Close);
         self
     }
 
-    /// Sets a solid fill.
-    #[must_use]
-    pub fn fill(mut self, color: impl Into<ColorValue>) -> Self {
+    /// Sets a solid fill color.
+    pub fn fill_color(mut self, color: impl Into<ColorValue>) -> Self {
         self.fill = Some(PathFill::Solid(color.into()));
         self
     }
 
     /// Sets a linear gradient fill.
-    #[must_use]
     pub fn fill_linear(
         mut self,
         start: (f32, f32),
@@ -120,7 +114,6 @@ impl PathBuilder {
     }
 
     /// Sets a radial gradient fill.
-    #[must_use]
     pub fn fill_radial(
         mut self,
         center: (f32, f32),
@@ -136,49 +129,42 @@ impl PathBuilder {
     }
 
     /// Fills with the even-odd rule instead of nonzero.
-    #[must_use]
     pub const fn even_odd(mut self) -> Self {
         self.rule = FillRule::EvenOdd;
         self
     }
 
     /// Strokes the path in `color` with a line of `width`.
-    #[must_use]
     pub fn stroke(mut self, color: impl Into<ColorValue>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }
 
     /// Sets the shape of the stroke's open ends.
-    #[must_use]
     pub const fn cap(mut self, cap: StrokeCap) -> Self {
         self.cap = Some(cap);
         self
     }
 
     /// Sets the shape where stroke segments meet.
-    #[must_use]
     pub const fn join(mut self, join: StrokeJoin) -> Self {
         self.join = Some(join);
         self
     }
 
     /// Dashes the stroke with alternating on and off lengths.
-    #[must_use]
     pub fn dash(mut self, lengths: &[f32]) -> Self {
         self.dash = lengths.to_vec();
         self
     }
 
     /// Keeps the stroke width when the path scales.
-    #[must_use]
     pub const fn non_scaling_stroke(mut self) -> Self {
         self.non_scaling = true;
         self
     }
 
     /// Scales the path to fill its box.
-    #[must_use]
     pub fn fit(self) -> Self {
         #[allow(
             clippy::cast_precision_loss,
@@ -189,7 +175,6 @@ impl PathBuilder {
     }
 
     /// Scales the path from this view size to its box.
-    #[must_use]
     pub fn fit_size(self, logical: f32) -> Self {
         self.fit_box(logical, logical)
     }
@@ -201,12 +186,14 @@ impl PathBuilder {
 
     /// Record a vector path into a `canvas` scene.
     pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
-        if let Some(draw) = self.draw_path(destination, theme) {
+        if let Some(draw) = self.build_path(destination, theme) {
             scene.draw_path(draw);
         }
     }
 
-    fn draw_path(&self, destination: Rect, theme: &Theme) -> Option<DrawPath> {
+    /// Resolves and builds a [`DrawPath`] command for `destination` using `theme`.
+    #[must_use]
+    pub fn build_path(&self, destination: Rect, theme: &Theme) -> Option<DrawPath> {
         if self.cmds.is_empty() || (self.fill.is_none() && self.stroke.is_none()) {
             return None;
         }
@@ -218,13 +205,13 @@ impl PathBuilder {
         } else {
             (Arc::from(self.cmds.as_slice()), view, None)
         };
-        let mut draw = DrawPath::new(outline, transform, key);
+        let mut draw = DrawPath::keyed(outline, transform, key);
         if let Some(fill) = fill {
             let fill = baked.map_or_else(|| fill.clone(), |frame| paint::map(&fill, frame));
-            draw = draw.with_fill(self.rule, fill);
+            draw = draw.filled(self.rule, fill);
         }
         if let Some((color, width)) = stroke {
-            draw = draw.with_stroke(self.path_stroke(color, width));
+            draw = draw.stroked(self.path_stroke(color, width));
         }
         Some(draw)
     }
@@ -241,6 +228,7 @@ impl PathBuilder {
             cap: self.cap.unwrap_or(cap),
             join: self.join.unwrap_or(join),
             dash: self.dash.iter().copied().collect(),
+            trim: [0.0, 1.0],
         }
     }
 
@@ -264,7 +252,7 @@ impl PathBuilder {
             .as_ref()
             .is_none_or(|(at, seen, _)| *at != rect || *seen != stamp);
         if fresh {
-            *last = self.draw_path(rect, theme).map(|draw| (rect, stamp, draw));
+            *last = self.build_path(rect, theme).map(|draw| (rect, stamp, draw));
         }
         if let Some((_, _, draw)) = last.as_ref() {
             scene.draw_path(draw.clone());

@@ -3,9 +3,9 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::prelude::TextBuilder;
+use sigil::node::TextBuilder;
 use sigil::prelude::*;
-use sigil::widgets::{ChartBuilder, IconBuilder};
+use sigil::widgets::{ChartBuilder, IconBuilder, PathBuilder};
 
 const BLUE: Color = Color {
     r: 90,
@@ -27,7 +27,7 @@ pub(crate) fn label_demo() -> TextBuilder {
 }
 
 pub(crate) fn icon_demo() -> IconBuilder {
-    icon("▲").tone(Tone::Warning).label("Alert")
+    icon("▲").tone(Tone::Warning).accessible("Alert")
 }
 
 pub(crate) fn image_rgba_demo() -> NodeBuilder {
@@ -50,7 +50,7 @@ pub(crate) fn path_demo() -> PathBuilder {
         .line_to(12.0, 4.0)
         .line_to(20.0, 20.0)
         .close()
-        .fill(BLUE)
+        .fill_color(BLUE)
         .fit()
 }
 
@@ -69,7 +69,9 @@ pub(crate) fn notice_band_demo() -> NodeBuilder {
 }
 
 pub(crate) fn empty_state_demo() -> NodeBuilder {
-    empty_state("No results", "Try a different search term.")
+    empty_state("No results")
+        .description("Try a different search term.")
+        .into()
 }
 
 pub(crate) fn hint_bar_demo() -> NodeBuilder {

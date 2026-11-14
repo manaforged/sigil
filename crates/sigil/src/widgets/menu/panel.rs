@@ -3,11 +3,10 @@ use std::rc::Rc;
 
 use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role};
-use crate::layout::PopupSide;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::reactive::{Owner, Signal, is_live, memo, owner_by_id, signal};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Widget;
+use crate::widgets::{Side, Widget};
 
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
@@ -81,13 +80,15 @@ pub(super) fn panel_layout(top: f32, left: f32, width: f32, height: f32) -> Layo
 pub(super) fn menu_panel(
     rows: Vec<Row>,
     close: Rc<dyn Fn()>,
-    side: PopupSide,
+    side: Option<Side>,
     host: Option<Owner>,
 ) -> NodeBuilder {
     let rows = Rc::new(rows);
     let cursor = signal(usize::MAX);
     let commit = commit_fn(Rc::clone(&rows), Rc::clone(&close), host);
-    let mut panel = popup::popup(Role::Menu, side).focusable(true);
+    let mut panel = popup::popup(Role::Menu, side)
+        .focusable(true)
+        .focus_ring(signal(false));
     for (index, row) in rows.iter().enumerate() {
         panel = match row {
             Row::Item(item) => panel.child(build_item(item, index, cursor, Rc::clone(&commit))),

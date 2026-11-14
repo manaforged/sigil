@@ -142,7 +142,11 @@ impl LayoutEngine {
         let has_geometry_reactive = !self.geometry_reactive.is_empty();
         self.rescope(cx);
         for id in ids {
+            self.track_sticky(id);
             let _ = self.scope(cx, id);
+            if self.stick(cx, id) {
+                super::sticky::note_moved(cx, id);
+            }
             let Some(result) = self.fresh(id) else {
                 continue;
             };
@@ -152,19 +156,19 @@ impl LayoutEngine {
                 continue;
             }
             let rect = result.rect();
-            let node = cx
-                .get_mut_untracked(id)
-                .ok_or_else(|| Error::node_missing(id))?;
+            let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
             if let Some(size) = node.extension::<crate::layout::SizeReactive>() {
-                self.republished |= size.publish((rect.width, rect.height));
+                self.republished |=
+                    size.publish(crate::geometry::Size::new(rect.width, rect.height));
             }
-            if let Some(bounds) = node.extension::<crate::layout::BoundsReactive>() {
-                self.republished |= bounds.publish(rect);
-            }
+            self.republished |= crate::layout::reactive_position::publish_geometry(cx, node, rect);
             if unchanged {
                 continue;
             }
-            let _ = node.attach_untracked(result);
+            let target = cx
+                .get_mut_untracked(id)
+                .ok_or_else(|| Error::node_missing(id))?;
+            let _ = target.attach_untracked(result);
             cx.delta.record(id, DeltaKind::Layout);
             self.published_result.insert(id.key(), result);
         }
@@ -177,14 +181,11 @@ impl LayoutEngine {
                 let Some(node) = cx.get(NodeId::from_key(*key)) else {
                     continue;
                 };
-                let (Some(bounds), Some(result)) = (
-                    node.extension::<crate::layout::BoundsReactive>(),
-                    node.extension::<LayoutResult>(),
-                ) else {
+                let Some(result) = node.extension::<LayoutResult>() else {
                     continue;
                 };
-                let rect = result.rect();
-                self.republished |= bounds.publish(rect);
+                self.republished |=
+                    crate::layout::reactive_position::publish_geometry(cx, node, result.rect());
             }
         });
     }

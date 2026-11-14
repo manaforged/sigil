@@ -2,10 +2,10 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::events::{Event, KeyPhase, PointerPhase};
 use sigil::events::{MouseButton, MouseButtons};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::AccessibleName;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
@@ -76,7 +76,7 @@ fn frame_click(
 fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
     compute(cx, root, VIEWPORT, stub_text_measure());
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
         .count()
@@ -104,10 +104,10 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
 
     let scene = emit_scene(cx, root, None);
     let trigger_rects: Vec<_> = scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::Rect(rect) if rect.rect == trigger_rect => Some(rect),
+            SceneCommand::Rect(rect) if rect.rect() == trigger_rect => Some(rect),
             _ => None,
         })
         .collect();
@@ -119,10 +119,10 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
     let stroke = trigger_rects
         .first()
         .expect("one trigger surface")
-        .stroke
+        .stroke()
         .expect("the trigger surface must paint a real border");
-    assert!((stroke.width - 1.0).abs() < f32::EPSILON);
-    assert_eq!(stroke.align, StrokeAlign::Inside);
+    assert!((stroke.width() - 1.0).abs() < f32::EPSILON);
+    assert_eq!(stroke.align(), StrokeAlign::Inside);
 }
 
 #[test]
@@ -237,10 +237,7 @@ fn trigger_reopens_after_selecting_an_option() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
             selected,
-            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"],
         ));
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
@@ -274,10 +271,7 @@ fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
             selected,
-            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"],
         ));
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
@@ -324,7 +318,7 @@ fn compact_dropdown_keeps_its_label_and_popup_anchor() {
                 signal(0_usize),
                 vec!["Local".to_owned(), "Remote".to_owned()],
             )
-            .label("Backend")
+            .accessible("Backend")
             .width(132.0)
             .height(28.0),
         );

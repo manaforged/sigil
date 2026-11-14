@@ -2,11 +2,12 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string;
 use std::rc::Rc;
 
+use crate::geometry::Point;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal, effect, memo, signal};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::menu::PANEL_INSET;
 use super::super::menu::{MenuItem, menu};
@@ -31,7 +32,7 @@ pub(super) type RowActivate<Row> = Rc<dyn Fn(&Row)>;
 
 pub(super) struct TableChrome<Row: 'static> {
     pub context: Signal<Option<OpenContext>>,
-    pub bounds: Signal<(f32, f32, f32, f32)>,
+    pub bounds: Signal<crate::geometry::Rect>,
     pub row_menu: Option<RowMenu<Row>>,
     pub row_activate: Option<RowActivate<Row>>,
     pub host: Option<Owner>,
@@ -58,7 +59,7 @@ impl<Row: 'static> TableChrome<Row> {
     ) -> Self {
         Self {
             context: signal(None),
-            bounds: signal((0.0, 0.0, 0.0, 0.0)),
+            bounds: signal(crate::geometry::Rect::default()),
             row_menu,
             row_activate,
             host: Owner::current(),
@@ -116,7 +117,13 @@ fn build_context_menu<Row: 'static>(
     if items.is_empty() {
         return Vec::new();
     }
-    let (left, top, width, height) = chrome.bounds.get();
+    let bounds = chrome.bounds.get();
+    let (left, top, width, height) = (
+        bounds.origin.x,
+        bounds.origin.y,
+        bounds.width,
+        bounds.height,
+    );
     let menu_width = width.min(200.0);
     let item_height = Metrics::current().control_height(ControlSize::Default);
     let menu_height = items
@@ -136,8 +143,8 @@ fn build_context_menu<Row: 'static>(
         panel = panel.host(host);
     }
     let mut panel = panel
-        .label(theme_string(StringKey::TableMenu))
-        .anchor(x, y)
+        .accessible(theme_string(StringKey::TableMenu))
+        .at(Point::new(x, y))
         .width(menu_width);
     for item in items {
         panel = panel.item(item);

@@ -7,7 +7,7 @@ use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::scene::{SceneCommand, StrokeAlign, StrokeStyle, emit_scene};
 use sigil::style::{Paint, Theme, Token};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::{TEXT_MEASURE, capture, close};
 
 const SIZE: u32 = 64;
@@ -33,17 +33,17 @@ fn border_class_emits_inside_stroke_command() {
 
     let scene = emit_scene(&cx, root, None);
     let stroke = scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Rect(rect) => rect.stroke,
+            SceneCommand::Rect(rect) => rect.stroke(),
             _ => None,
         })
         .expect("bordered container must emit a stroked rect");
-    assert!((stroke.width - 2.0).abs() < f32::EPSILON);
-    assert_eq!(stroke.align, StrokeAlign::Inside);
-    assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
+    assert!((stroke.width() - 2.0).abs() < f32::EPSILON);
+    assert_eq!(stroke.align(), StrokeAlign::Inside);
+    assert_eq!(stroke.style(), StrokeStyle::Solid);
+    assert_eq!(stroke.color(), Theme::default().color(Token::Accent));
 }
 
 #[test]

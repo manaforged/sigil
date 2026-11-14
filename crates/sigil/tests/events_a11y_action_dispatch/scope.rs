@@ -1,6 +1,5 @@
 use super::*;
 use sigil::geometry::Point;
-use sigil::widgets::Layout;
 
 fn scoped_tree_with_outside_sibling(
     cx: &mut Cx,

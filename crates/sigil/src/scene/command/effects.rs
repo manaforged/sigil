@@ -8,11 +8,8 @@ use crate::scene::shadow::Shadow;
 use super::transform3d::Transform3D;
 use super::{CommandScene, SceneCommand};
 
-kittest_pub! {
-    /// A 2D affine transform as two rows of three values.
-    #[doc(hidden)]
-    pub type Transform = [[f32; 3]; 2];
-}
+/// A 2D affine transform as two rows of three values.
+pub type Transform = [[f32; 3]; 2];
 
 kittest_pub! {
     /// How a renderer colors a sprite.
@@ -70,36 +67,110 @@ impl SpriteSource {
     }
 }
 
-kittest_pub! {
-    /// The line style of a text decoration.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum DecorationKind {
-        /// A straight line under the text.
-        Underline,
-        /// A straight line through the middle of the text.
-        Strikethrough,
-        #[cfg(cpu_paint)]
-        /// A sine wave under the text.
-        WavyUnderline,
-    }
+/// The line style of a text decoration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DecorationKind {
+    /// A straight line under the text.
+    Underline,
+    /// A straight line through the middle of the text.
+    Strikethrough,
+    #[cfg(cpu_paint)]
+    /// A sine wave under the text.
+    WavyUnderline,
 }
 
-kittest_pub! {
-    /// The bounds and effects of a composite layer.
+/// The bounds and effects of a composite layer.
+#[derive(Clone, Debug, PartialEq)]
+#[must_use]
+pub struct LayerScope {
+    pub(crate) clip: Rect,
+    pub(crate) clip_radii: CornerRadii,
+    pub(crate) effect: LayerEffect,
+    pub(crate) opacity: f32,
+    pub(crate) blend: BlendMode,
+}
+
+impl LayerScope {
+    /// Creates an opaque normal-blended layer clipped to `clip`.
+    pub const fn new(clip: Rect) -> Self {
+        Self {
+            clip,
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Identity,
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+        }
+    }
+
+    /// Sets the four corner radii of the layer clip.
+    pub const fn radii(mut self, radii: [f32; 4]) -> Self {
+        self.clip_radii = CornerRadii(radii);
+        self
+    }
+
+    /// Sets the layer opacity from 0 to 1.
+    pub const fn opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// Sets how the layer composites with its backdrop.
+    pub const fn blend(mut self, blend: BlendMode) -> Self {
+        self.blend = blend;
+        self
+    }
+
+    /// Returns the rectangle bounding the layer.
+    #[must_use]
+    pub const fn clip(&self) -> Rect {
+        self.clip
+    }
+
+    /// Returns the four corner radii of the layer clip.
+    #[must_use]
+    pub const fn clip_radii(&self) -> [f32; 4] {
+        self.clip_radii.0
+    }
+
+    /// Returns the layer opacity from 0 to 1.
+    #[must_use]
+    pub const fn alpha(&self) -> f32 {
+        self.opacity
+    }
+
+    /// Returns the layer blend mode.
+    #[must_use]
+    pub const fn blend_mode(&self) -> BlendMode {
+        self.blend
+    }
+
+    /// Sets the transform, mask, or filters applied to the layer.
+    pub fn layer_effect(mut self, effect: LayerEffect) -> Self {
+        self.effect = effect;
+        self
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Sets the corner radii of the layer clip.
     #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct LayerScope {
-        /// The rectangle that bounds the layer; pixels outside it are not drawn.
-        pub clip: Rect,
-        /// The corner radii of `clip`; zero keeps square corners.
-        pub clip_radii: CornerRadii,
-        /// The transform, mask, or filters the layer is drawn through.
-        pub effect: LayerEffect,
-        /// The opacity the layer is composited at, from 0 to 1.
-        pub opacity: f32,
-        /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
-        pub blend: BlendMode,
+    pub const fn border_radius(mut self, radii: CornerRadii) -> Self {
+        self.clip_radii = radii;
+        self
+    }
+
+    #[cfg(feature = "kittest")]
+    /// Returns the raw corner radii of the layer clip.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn border_radius_raw(&self) -> CornerRadii {
+        self.clip_radii
+    }
+
+    /// Returns the transform, mask, or filters applied to the layer.
+    #[must_use]
+    pub const fn effect(&self) -> &LayerEffect {
+        &self.effect
     }
 }
 
@@ -179,57 +250,56 @@ impl BlendMode {
     ];
 }
 
-kittest_pub! {
-    /// An effect applied to a composite layer.
+/// An effect applied to a composite layer.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum LayerEffect {
+    /// No effect; the layer is drawn as its commands paint it.
+    Identity,
+    /// The layer is drawn through a 2D affine transform.
+    Transform(Transform),
+    /// The layer is drawn as a CSS 3D plane through a perspective transform.
+    Projected {
+        /// The full transform from layer space to the parent's space.
+        transform: Transform3D,
+        /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
+        hide_backface: bool,
+    },
+    /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
+    Mask(Mask),
+    /// The layer's pixels pass through each filter in order, as in CSS `filter`.
+    Filter(Arc<[Filter]>),
+    /// The pixels already painted under the layer's clip pass through each filter in order and draw before the layer, as in CSS `backdrop-filter`.
+    Backdrop(Arc<[Filter]>),
     #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub enum LayerEffect {
-        /// No effect; the layer is drawn as its commands paint it.
-        Identity,
-        /// The layer is drawn through a 2D affine transform.
-        Transform(Transform),
-        /// The layer is drawn as a CSS 3D plane through a perspective transform.
-        Projected {
-            /// The full transform from layer space to the parent's space.
-            transform: Transform3D,
-            /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
-            hide_backface: bool,
-        },
-        /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
-        Mask(Mask),
-        /// The layer's pixels pass through each filter in order, as in CSS `filter`.
-        Filter(Arc<[Filter]>),
-    }
+    /// The layer is composited through a `Shader` that samples it.
+    Shader(crate::scene::shader::Shading),
 }
 
-kittest_pub! {
-    /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    #[non_exhaustive]
-    pub enum Filter {
-        /// A Gaussian blur whose standard deviation is this many logical pixels.
-        Blur(f32),
-        /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
-        DropShadow(Shadow),
-        /// Multiplies each color channel by the amount.
-        Brightness(f32),
-        /// Scales each color channel away from mid-gray by the amount.
-        Contrast(f32),
-        /// Mixes toward the luminance gray by the amount, clamped to 1.
-        Grayscale(f32),
-        /// Rotates the hue by this many degrees.
-        HueRotate(f32),
-        /// Mixes toward the inverted color by the amount, clamped to 1.
-        Invert(f32),
-        #[cfg(feature = "kittest")]
-        /// Multiplies alpha by the amount, clamped to 1.
-        Opacity(f32),
-        /// Scales saturation by the amount.
-        Saturate(f32),
-        /// Mixes toward sepia by the amount, clamped to 1.
-        Sepia(f32),
-    }
+/// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum Filter {
+    /// A Gaussian blur whose standard deviation is this many logical pixels.
+    Blur(f32),
+    /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
+    DropShadow(Shadow),
+    /// Multiplies each color channel by the amount.
+    Brightness(f32),
+    /// Scales each color channel away from mid-gray by the amount.
+    Contrast(f32),
+    /// Mixes toward the luminance gray by the amount, clamped to 1.
+    Grayscale(f32),
+    /// Rotates the hue by this many degrees.
+    HueRotate(f32),
+    /// Mixes toward the inverted color by the amount, clamped to 1.
+    Invert(f32),
+    /// Multiplies alpha by the amount, clamped to 1.
+    Opacity(f32),
+    /// Scales saturation by the amount.
+    Saturate(f32),
+    /// Mixes toward sepia by the amount, clamped to 1.
+    Sepia(f32),
 }
 
 #[cfg(vector_paint)]
@@ -254,39 +324,44 @@ pub(crate) fn filter_reach(filters: &[Filter]) -> f32 {
         .sum()
 }
 
-kittest_pub! {
-    /// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-    pub enum MaskMode {
-        /// The mask's alpha.
-        #[default]
-        Alpha,
-        /// The mask's luminance times its alpha.
-        Luminance,
-    }
+/// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MaskMode {
+    /// The mask's alpha.
+    #[default]
+    Alpha,
+    /// The mask's luminance times its alpha.
+    Luminance,
 }
 
-kittest_pub! {
-    /// Drawing commands whose alpha or luminance scales a layer's pixels.
-    #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct Mask {
-        pub(crate) mode: MaskMode,
-        pub(crate) commands: Arc<[SceneCommand]>,
-    }
+/// Drawing commands whose alpha or luminance scales a layer's pixels.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mask {
+    pub(crate) mode: MaskMode,
+    pub(crate) commands: Arc<[SceneCommand]>,
 }
 
 impl Mask {
-    kittest_pub! {
-        /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
-        #[must_use]
-        pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
-            Self {
-                mode,
-                commands: scene.commands.into(),
-            }
+    /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
+    #[must_use]
+    pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
+        Self {
+            mode,
+            commands: scene.commands.into(),
         }
+    }
+
+    /// Returns which channel of the mask scales the layer's pixels.
+    #[must_use]
+    pub const fn mode(&self) -> MaskMode {
+        self.mode
+    }
+
+    /// Returns the commands that draw the mask, in the coordinates of the layer's children.
+    #[must_use]
+    pub fn commands(&self) -> &[SceneCommand] {
+        &self.commands
     }
 }
 

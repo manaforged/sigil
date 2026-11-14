@@ -8,8 +8,8 @@ use crate::reactive::{Signal, memo, signal, timeout};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
 use crate::style::{ControlSize, Paint, Radius, Token, Tone, space};
+use crate::widgets::Widget;
 use crate::widgets::{ButtonBuilder, button};
-use crate::widgets::{Layout, Widget};
 
 use super::{Drawn, diagram_name, fit, lightbox, scrolled};
 
@@ -41,7 +41,7 @@ impl Chrome {
         let lightbox = expandable.then(|| lightbox::lightbox(self.open, &drawn.source, &name));
         let mut root = container()
             .role(Role::Figure)
-            .label(name)
+            .accessible(name)
             .description(source.trim_end().to_string())
             .layout(LayoutStyle::flex_column().fill_width())
             .hittable(true)

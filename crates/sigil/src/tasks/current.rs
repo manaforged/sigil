@@ -45,7 +45,7 @@ pub(crate) fn scope_parts(caller: &'static str) -> Option<(Owner, SpawnParts)> {
 }
 
 impl<T: Send + 'static> Signal<T> {
-    /// Returns a handle that writes this signal from another thread.
+    /// Returns a handle that writes this signal from another thread; it panics before `AsyncRuntime::install_current`.
     #[must_use]
     #[track_caller]
     pub fn writer(self) -> SignalWriter<T> {
@@ -67,7 +67,7 @@ pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {
     parts
 }
 
-/// Starts async work that runs once.
+/// Starts `future` now and runs it once, returning its status; the work is cancelled when the calling scope ends.
 #[must_use]
 #[track_caller]
 pub fn spawn<T, E, F>(future: F) -> Signal<crate::tasks::Status<T, E>>

@@ -280,6 +280,22 @@ pub enum Action {
     ShowContextMenu,
 }
 
+impl Role {
+    pub(crate) const fn is_text_entry(self) -> bool {
+        matches!(
+            self,
+            Self::TextInput
+                | Self::MultilineTextInput
+                | Self::SearchInput
+                | Self::EmailInput
+                | Self::NumberInput
+                | Self::PasswordInput
+                | Self::PhoneNumberInput
+                | Self::UrlInput
+        )
+    }
+}
+
 impl Action {
     pub(crate) const fn native(self) -> accesskit::Action {
         match self {

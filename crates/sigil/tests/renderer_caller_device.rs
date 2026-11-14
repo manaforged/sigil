@@ -23,14 +23,14 @@ fn ordering_scene() -> CommandScene {
             rect(0.0, 0.0, VIEWPORT.0, VIEWPORT.1),
             color(220, 30, 30, 255),
         )
-        .opacity(10_000),
+        .opacity(1.0),
     );
     builder.draw_rect(
         DrawRect::new(
             rect(0.0, 0.0, VIEWPORT.0, VIEWPORT.1 / 2.0),
             color(30, 30, 220, 255),
         )
-        .opacity(10_000),
+        .opacity(1.0),
     );
     builder.finish()
 }

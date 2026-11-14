@@ -1,5 +1,5 @@
 use super::*;
-use sigil::widgets::Layout;
+use sigil::geometry::Point;
 
 fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (NodeId, NodeId) {
     let root = cx.add(
@@ -66,7 +66,7 @@ fn hidden_target_is_rejected_before_layout_recomputes() {
 fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
     Owner::scope("sigil_a11y::scrolled_out_of_view", || {
         let mut cx = Cx::new_root();
-        let pos = signal((10.0_f32, 10.0_f32));
+        let pos = signal(Point::new(10.0, 10.0));
         let activated = Rc::new(Cell::new(false));
         let activated_w = Rc::clone(&activated);
         let root = cx.add(
@@ -76,7 +76,7 @@ fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
                     container()
                         .focusable(true)
                         .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                        .position_reactive(pos)
+                        .offset(pos)
                         .pointer_up(move |_| activated_w.set(true)),
                 ),
         );
@@ -88,7 +88,7 @@ fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
             "sanity: on-screen node is a valid click target before scrolling"
         );
 
-        pos.set((5000.0, 5000.0));
+        pos.set(Point::new(5000.0, 5000.0));
         layout
             .compute(&mut cx, root, Constraint::fixed(200.0, 200.0))
             .expect("recompute after scroll must succeed");

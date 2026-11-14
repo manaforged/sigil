@@ -8,11 +8,10 @@
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::ImageSource;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::scene::{
-    CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
-};
+use sigil::scene::{DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder};
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
@@ -30,7 +29,7 @@ const INK: Color = Color {
     a: 255,
 };
 
-fn hairline(scene: &mut SceneBuilder, rect: Rect) {
+fn hairline(scene: &mut SceneBuilder, rect: Rect, _theme: &Theme) {
     let at = Point::new(rect.origin.x + 10.5, rect.origin.y + 2.0);
     scene.draw_rect(DrawRect::new(Rect::new(at, 1.0, 16.0), INK));
 }
@@ -42,7 +41,7 @@ fn hairline_and_text() -> impl IntoNode {
         .child(text("Sigil device scale"))
 }
 
-fn shapes(scene: &mut SceneBuilder, rect: Rect) {
+fn shapes(scene: &mut SceneBuilder, rect: Rect, _theme: &Theme) {
     let card = Rect::new(rect.origin, 32.0, 32.0);
     let rounded = DrawRect::new(
         card,
@@ -53,7 +52,7 @@ fn shapes(scene: &mut SceneBuilder, rect: Rect) {
             a: 255,
         },
     );
-    scene.draw_rect(rounded.border_radius(CornerRadii::uniform(8.0)));
+    scene.draw_rect(rounded.radius(8.0));
     let rect = Rect::new(Point::new(rect.origin.x + 36.0, rect.origin.y), 24.0, 32.0);
     let end = Point::new(rect.origin.x + rect.width, rect.origin.y);
     let stops = vec![

@@ -6,7 +6,7 @@ The package is `sigil-ui` because `sigil` is taken on crates.io. The library nam
 
 ## Status
 
-0.1 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
+0.2 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Install
 
@@ -61,6 +61,7 @@ An embed host. You own the window and the GPU:
 
 ```rust
 use sigil::Host;
+use sigil::app::HostMode;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 
@@ -146,7 +147,7 @@ Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, 
 
 ## Limits
 
-- `signal`, `derived`, and `effect` panic outside `Owner::scope`. `run` opens that scope. An embed host that uses signals must call `Owner::scope`.
+- `signal`, `memo`, and `effect` panic outside `Owner::scope`. `run` opens that scope. An embed host that uses signals must call `Owner::scope`.
 - `run` does not place a native view in a `surface(key)` hole.
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
 - `markdown`, `html`, `mermaid`, and the SVG parser reject sources larger than 1 MiB.

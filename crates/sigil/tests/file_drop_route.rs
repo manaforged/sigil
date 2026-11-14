@@ -1,5 +1,6 @@
 use sigil::events::{Event, FileDropEvent, FileDropPhase};
 use sigil::geometry::Point;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil_kittest::Harness;

@@ -7,6 +7,16 @@ pub(super) struct QuadBez {
     pub p2: [f32; 2],
 }
 
+impl QuadBez {
+    pub(super) const FLOATS: usize = 6;
+
+    pub(super) const fn floats(self) -> [f32; Self::FLOATS] {
+        [
+            self.p0[0], self.p0[1], self.p1[0], self.p1[1], self.p2[0], self.p2[1],
+        ]
+    }
+}
+
 #[inline]
 pub(super) fn line_to_quad(p0: [f32; 2], p2: [f32; 2]) -> QuadBez {
     QuadBez {

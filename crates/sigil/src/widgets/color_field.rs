@@ -6,10 +6,11 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols};
 use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StyleAtom, Theme, Tone,
+    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StateStyleBuilder, States, StyleAtom,
+    Theme, Tone,
 };
+use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
 
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
 #[derive(Debug)]
@@ -52,26 +53,14 @@ impl ColorFieldBuilder {
     }
 }
 
-impl Sealed for ColorFieldBuilder {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.layout_overrides.edit(edit),
-            focus => self.field = self.field.map(move |field| field.edit(NodeEdit(focus))),
-        }
-        self
-    }
-
-    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.field = self.field.map(move |field| field.map_target(f));
-        self
+impl Paint for ColorFieldBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.field.paint_mut()
     }
 }
 
-impl StateTarget for ColorFieldBuilder {
-    fn set_state(mut self, state: StatePaint) -> Self {
-        self.field = self.field.map(move |field| field.set_state(state));
-        self
-    }
+impl States for ColorFieldBuilder {
+    crate::style::state_methods!(map field);
 }
 
 impl Widget for ColorFieldBuilder {
@@ -79,6 +68,9 @@ impl Widget for ColorFieldBuilder {
         self.layout_overrides.node_hook(f);
         self
     }
+
+    crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
+    crate::widgets::forward_control_methods!(map field);
 }
 
 impl IntoNode for ColorFieldBuilder {

@@ -1,12 +1,14 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId, TopLayer};
+use crate::layout::stack::{Stack, stacked};
 use crate::layout::{LayoutEngine, LayoutResult};
 use crate::style::StyleBinding;
+use crate::style::projection::{in_context, planes, requests_3d};
 use smallvec::SmallVec;
 
 #[path = "hit_test/projection.rs"]
 mod projection;
-use projection::{node_transform, to_local};
+use projection::{Step, descend, node_transform};
 
 #[cfg(test)]
 #[path = "hit_test_tests.rs"]
@@ -20,9 +22,10 @@ type HitItems = SmallVec<[HitItem; 64]>;
 pub(crate) struct HitTestCache {
     cx_generation: u64,
     layout_generation: u64,
-    transform_generation: u64,
+    hit_generation: u64,
     items: HitItems,
     transforms: SmallVec<[HitTransform; 64]>,
+    contexts: Vec<(NodeId, Stack)>,
     query: u64,
     transformed: bool,
     pub(super) visual_transforms: bool,
@@ -39,8 +42,9 @@ struct HitItem {
 struct HitTransform {
     parent: Option<usize>,
     transformed: bool,
+    linked: bool,
     query: u64,
-    position: Option<Point>,
+    step: Step,
 }
 
 impl Default for HitTestCache {
@@ -48,9 +52,10 @@ impl Default for HitTestCache {
         Self {
             cx_generation: u64::MAX,
             layout_generation: u64::MAX,
-            transform_generation: u64::MAX,
+            hit_generation: u64::MAX,
             items: HitItems::new(),
             transforms: SmallVec::new(),
+            contexts: Vec::new(),
             query: 0,
             transformed: false,
             visual_transforms: true,
@@ -73,26 +78,31 @@ impl HitTestCache {
     fn refresh(&mut self, cx: &Cx, layout: &LayoutEngine) {
         let cx_generation = cx.mutation_generation();
         let layout_generation = layout.generation();
-        let transform_generation = crate::style::binding::transform_generation();
+        let hit_generation = crate::style::binding::hit_generation();
         if self.cx_generation == cx_generation
             && self.layout_generation == layout_generation
-            && self.transform_generation == transform_generation
+            && self.hit_generation == hit_generation
+            && self
+                .contexts
+                .iter()
+                .all(|(id, order)| planes(cx, *id) == *order)
         {
             return;
         }
         let _refresh = crate::profile::span(crate::profile::Phase::HitRefresh);
         self.items.clear();
         self.transforms.clear();
+        self.contexts.clear();
         let mut deferred: NodePath = cx.roots().iter().copied().collect();
         let mut next = 0;
         while let Some(id) = deferred.get(next).copied() {
             next += 1;
-            emit(cx, id, None, self, &mut deferred);
+            emit(cx, id, (None, false), self, &mut deferred);
         }
         self.transformed = self.transforms.iter().any(|item| item.transformed);
         self.cx_generation = cx_generation;
         self.layout_generation = layout_generation;
-        self.transform_generation = transform_generation;
+        self.hit_generation = hit_generation;
     }
 
     pub(super) const fn uses_transforms(&self) -> bool {
@@ -139,14 +149,14 @@ impl HitTestCache {
     fn position_at(&mut self, cx: &Cx, target: usize, position: Point) -> Option<Point> {
         let mut chain = SmallVec::<[usize; 64]>::new();
         let mut current = Some(target);
-        let mut local = Some(position);
+        let mut step = (Some(position), Some(position));
         while let Some(index) = current {
             let item = self
                 .transforms
                 .get(index)
                 .expect("ancestor index belongs to the cache");
             if item.query == self.query {
-                local = item.position;
+                step = item.step;
                 break;
             }
             chain.push(index);
@@ -158,18 +168,11 @@ impl HitTestCache {
                 .get_mut(index)
                 .expect("ancestor index belongs to the cache");
             let item = self.items.get(index).expect("ancestor has a hit item");
-            if transform.transformed
-                && let Some(rect) = item.rect
-                && let Some(binding) = cx
-                    .get(item.id)
-                    .and_then(|node| node.extension::<StyleBinding>())
-            {
-                local = local.and_then(|point| to_local(cx, item.id, binding, rect, point));
-            }
+            step = descend(cx, item.id, (transform.transformed, transform.linked), step);
             transform.query = self.query;
-            transform.position = local;
+            transform.step = step;
         }
-        local
+        step.1
     }
 }
 
@@ -259,7 +262,7 @@ fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
 fn emit(
     cx: &Cx,
     id: NodeId,
-    parent: Option<usize>,
+    (parent, linked): (Option<usize>, bool),
     cache: &mut HitTestCache,
     deferred: &mut NodePath,
 ) {
@@ -279,18 +282,42 @@ fn emit(
             && node
                 .extension::<StyleBinding>()
                 .is_some_and(StyleBinding::may_transform),
+        linked,
         query: 0,
-        position: None,
+        step: (None, None),
     });
-    for child in node.children().iter().copied() {
-        if cx
-            .get(child)
-            .is_some_and(|child_node| child_node.extension::<TopLayer>().is_some())
-        {
-            deferred.push(child);
-        } else {
-            emit(cx, child, Some(index), cache, deferred);
+    let below = (Some(index), requests_3d(node));
+    if below.1 {
+        let order = planes(cx, id);
+        for child in order.iter().copied() {
+            emit_child(cx, child, below, cache, deferred);
         }
+        cache.contexts.push((id, order));
+    } else if let Some(order) = stacked(cx, node) {
+        for child in order {
+            emit_child(cx, child, below, cache, deferred);
+        }
+    } else {
+        for child in node.children().iter().copied() {
+            emit_child(cx, child, below, cache, deferred);
+        }
+    }
+}
+
+fn emit_child(
+    cx: &Cx,
+    child: NodeId,
+    below: (Option<usize>, bool),
+    cache: &mut HitTestCache,
+    deferred: &mut NodePath,
+) {
+    if cx
+        .get(child)
+        .is_some_and(|child_node| child_node.extension::<TopLayer>().is_some())
+    {
+        deferred.push(child);
+    } else {
+        emit(cx, child, below, cache, deferred);
     }
 }
 
@@ -326,17 +353,16 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
         Point::new(right, bottom),
         Point::new(rect.origin.x, bottom),
     ]);
+    let mut covered = false;
     for id in transform_chain(cx, target) {
-        let Some(node) = cx.get(id) else {
-            continue;
-        };
-        if let Some(binding) = node.extension::<StyleBinding>()
-            && binding.may_transform()
-            && let Some(result) = node.extension::<crate::layout::LayoutResult>()
-            && let Some(transform) = node_transform(cx, id, binding, result.rect())
+        let context = in_context(cx, id);
+        if !covered
+            && (context || moves(cx, id))
+            && let Some(transform) = node_transform(cx, id)
         {
             corners = transform.polygon(&corners);
         }
+        covered = context;
     }
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
     for corner in &corners {
@@ -351,16 +377,17 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
     Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0)
 }
 
-pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Option<Point> {
+pub(super) fn local_position(cx: &Cx, target: NodeId, point: Point) -> Option<Point> {
     let chain = transform_chain(cx, target);
+    let mut step = (Some(point), Some(point));
     for id in chain.into_iter().rev() {
-        let node = cx.get(id)?;
-        if let Some(binding) = node.extension::<StyleBinding>()
-            && binding.may_transform()
-            && let Some(result) = node.extension::<crate::layout::LayoutResult>()
-        {
-            point = to_local(cx, id, binding, result.rect(), point)?;
-        }
+        step = descend(cx, id, (moves(cx, id), true), step);
     }
-    Some(point)
+    step.1
+}
+
+fn moves(cx: &Cx, id: NodeId) -> bool {
+    cx.get(id)
+        .and_then(|node| node.extension::<StyleBinding>())
+        .is_some_and(StyleBinding::may_transform)
 }

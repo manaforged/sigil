@@ -7,6 +7,7 @@ use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::scene::canvas::CanvasPaint;
+use crate::style::projection::in_context;
 use crate::style::text_identity::DiscreteTextStyle;
 use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
 
@@ -14,7 +15,7 @@ use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{BlendMode, CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
 use crate::scene::shadow::Shadow;
-use crate::scene::style_adapter::{corner_radii_for, render_style_for};
+use crate::scene::style_adapter::render_style_for;
 
 mod background;
 mod borders;
@@ -22,6 +23,7 @@ mod dashes;
 mod paint;
 mod runs;
 mod selection;
+mod shader;
 #[cfg(feature = "scene")]
 mod text_fill;
 use paint::{NodePaint, push_focus_ring, push_node};
@@ -50,7 +52,6 @@ const VIEW_OVERSCAN: f32 = 64.0;
 kittest_pub! {
     /// Emits the draw commands under `root`, skipping nodes outside `clip`.
     #[doc(hidden)]
-    #[must_use]
     pub fn emit_scene(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
         let selection = crate::events::selection::ranges(cx);
         let mut track = SpanTrack::off();
@@ -219,7 +220,10 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         }
         let theme = node.extension::<Theme>().unwrap_or(inherited.theme);
-        if node.extension::<StyleBinding>().is_none() && outside_clip(node, clip) {
+        if node.extension::<StyleBinding>().is_none()
+            && outside_clip(node, clip)
+            && !in_context(self.cx, id)
+        {
             self.defer_top_layer(node, || {
                 let style = render_style_for(node, theme, inherited.text_color);
                 child_inherited(node, inherited, &style)
@@ -230,15 +234,21 @@ impl<'t> EmitWalk<'_, 't> {
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
             || style.opacity < 10_000
-            || style.blend != BlendMode::Normal)
+            || style.blend != BlendMode::Normal
+            || style.space.preserve
+            || in_context(self.cx, id))
             && node.extension::<LayoutResult>().is_some();
         let cut = style.clip_path.is_some() && node.extension::<LayoutResult>().is_some();
-        if style.opacity > 0 && layered {
-            self.push_effect(id, inherited, clip, style);
-        } else if style.opacity > 0 && (cut || !outside_clip(node, clip)) {
-            self.push_masked(id, inherited, clip, style);
-        } else {
+        let painted = layered || cut || !outside_clip(node, clip);
+        if style.opacity == 0 || !painted {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
+            return;
+        }
+        self.push_backdrop(id, &style);
+        if layered {
+            self.push_effect(id, inherited, clip, style);
+        } else {
+            self.push_masked(id, inherited, clip, style);
         }
     }
 
@@ -255,7 +265,8 @@ impl<'t> EmitWalk<'_, 't> {
         let child_context = child_inherited(node, inherited, style);
         let theme = child_context.theme;
         if let Some(result) = node.extension::<LayoutResult>() {
-            let rect = result.rect();
+            let morph = crate::animation::runtime::layout_motion::box_rect(node, result.rect());
+            let rect = morph.unwrap_or_else(|| result.rect());
             let paint = NodePaint {
                 style,
                 theme,
@@ -269,14 +280,18 @@ impl<'t> EmitWalk<'_, 't> {
             let inherit = paint_key(node, inherited, &paint);
             let selected = paint.selected.is_some();
             let key = (self.cx.instance_id(), id);
-            if selected || !emit_cache::replay(self.scene, key, node, rect, inherit) {
+            let fresh = selected || morph.is_some();
+            if fresh || !emit_cache::replay(self.scene, key, node, rect, inherit) {
                 let start = self.scene.command_len();
                 self.record_node(id, node, rect, &paint);
-                if !selected {
+                if !fresh {
                     emit_cache::store(key, node, rect, inherit, self.scene.copy_from(start));
                 }
             }
-            if result.clips() {
+            if style.space.preserve {
+                return;
+            }
+            if result.clips() || morph.is_some() {
                 self.emit_clipped_children(node, &child_context, clip, rect, style);
                 return;
             }
@@ -316,7 +331,7 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         };
         let inner = inner.expand(1.0);
-        let clip_radii = corner_radii_for(style.border_radius);
+        let clip_radii = style.paint.radii();
         let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
         let track = &mut *self.track;
         let body = |scene: &mut SceneBuilder| {
@@ -344,7 +359,19 @@ impl<'t> EmitWalk<'_, 't> {
     }
 
     fn push_children(&mut self, node: &Node, inherited: &Inherited<'t>, clip: Option<Rect>) {
-        for child in node.children().iter().copied() {
+        match crate::layout::stack::stacked(self.cx, node) {
+            Some(order) => self.push_nodes(order, inherited, clip),
+            None => self.push_nodes(node.children().iter().copied(), inherited, clip),
+        }
+    }
+
+    fn push_nodes(
+        &mut self,
+        nodes: impl IntoIterator<Item = NodeId>,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+    ) {
+        for child in nodes {
             if self.cx.get(child).is_some_and(is_top_layer) {
                 self.deferred.push((child, inherited.clone(), None));
             } else {
@@ -361,9 +388,7 @@ fn paint_key(node: &Node, inherited: &Inherited<'_>, paint: &NodePaint<'_>) -> u
         inherited.text_style.as_ref(),
     ) ^ emit_cache::content_key(node)
         ^ u64::from(paint.leaf)
-        ^ node
-            .extension::<CanvasPaint>()
-            .map_or(0, CanvasPaint::version)
+        ^ crate::scene::canvas::paint_version(node)
         ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
         ^ emit_cache::shadow_key(paint.text_shadows)
 }
@@ -421,8 +446,7 @@ fn child_inherited<'t>(
                     emit_cache::theme_key(theme, u64::from(node.version())),
                 )
             });
-    let text_fill =
-        TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
+    let text_fill = TextFill::of(node, style).map_or_else(|| inherited.text_fill.clone(), Some);
     let text_shadows = if style.filter.inherits_text_shadows() {
         inherited.text_shadows.clone()
     } else {

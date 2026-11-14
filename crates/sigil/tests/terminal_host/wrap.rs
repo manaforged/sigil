@@ -1,6 +1,5 @@
 use super::*;
 use sigil::layout::Space;
-use sigil::widgets::Layout;
 
 #[test]
 fn wrapped_label_fills_the_container_width() {
@@ -95,7 +94,8 @@ fn wrapped_label_inside_flex_row_band_wraps() {
 #[test]
 fn grow_fill_does_not_clip_row_labels() {
     use sigil::kernel::{container, node};
-    use sigil::prelude::{AlignItems, LayoutStyle, Orientation, divider};
+    use sigil::layout::LayoutStyle;
+    use sigil::prelude::{AlignItems, Orientation, divider};
     let grid = present(
         || {
             container()

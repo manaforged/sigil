@@ -1,9 +1,10 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Orientation, Paint, Radius, Space,
-    TextContent, Token, Tone, button, column, container, divider, dropdown, field, kv_grid, memo,
-    number_field, progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
+    AlignItems, ControlSize, Icon, NodeBuilder, Orientation, Paint, Radius, Space, TextContent,
+    Token, Tone, button, column, container, divider, dropdown, field, kv_grid, memo, number_field,
+    progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
+use sigil::style::FontFamily;
 
 use super::data::{
     CANARY_STEP, HEALTH_PATH, INSPECTOR_WIDTH, Job, LOG_HEIGHT, LogLine, Region, SURGE_MAX,
@@ -56,9 +57,9 @@ fn header(console: Console) -> NodeBuilder {
                 .text_color(Token::OnSurfaceMuted),
         )
         .child(
-            progress(progress_value, 1.0)
+            progress(progress_value)
                 .tone(Tone::Primary)
-                .label("Rollout"),
+                .accessible("Rollout"),
         )
         .child(actions(console))
 }
@@ -159,17 +160,17 @@ fn log_line(line: LogLine) -> NodeBuilder {
 }
 
 fn form(rollout: Rollout) -> NodeBuilder {
-    let regions = Region::ALL
-        .iter()
-        .map(|region| region.label().to_owned())
-        .collect();
     let canary = rollout.canary;
     column()
         .fill_width()
         .gap(Space::Md)
         .child(field(
             "Target region",
-            dropdown(rollout.region, regions).label("Target region"),
+            dropdown(
+                rollout.region,
+                Region::ALL.iter().map(|region| region.label()),
+            )
+            .accessible("Target region"),
         ))
         .child(field(
             "Canary percent",

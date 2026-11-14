@@ -45,7 +45,7 @@ A component is a function that returns `impl IntoNode`; signals it creates belon
 
 ## Lists and conditions
 
-`for_each` renders one row per item and keeps a row's node while its key stays. `show` swaps two branches on a condition.
+`for_each` renders one row per item and keeps a row's node while its key stays. `show` swaps two branches on a condition. In `for_each(items, key, render)`, `items` is a reactive `Vec<T>` with `T: 'static`, `key` is `Fn(&T) -> K` with `K: Clone + Eq + Hash + 'static`, and `render` is `Fn(&T) -> impl IntoNode`. When `items` is a signal, a `memo`, or a plain `Vec`, `T` must also be `Clone`; a closure that returns the `Vec` needs no `Clone`.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -80,6 +80,7 @@ Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes throu
 
 ```rust,no_run
 # use sigil::prelude::*;
+# use sigil::style::{Elevation, FontFamily};
 # let _ = {
 container()
     .padding(Space::Lg)
@@ -142,9 +143,9 @@ Shared metrics:
 | Disabled | opacity | 50 % |
 | Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider |
-| Controls | `Metrics::current()` | `control_height`, `control_padding`, `control_gap` per `Size` |
+| Controls | `Metrics::current()`, `Theme::metrics()` | `control_height`, `control_padding`, `control_gap` per `Size` |
 
-A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
+A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. `Theme::metrics()` returns the host metrics of one theme, with its radii and control heights. On a character grid, control heights, padding, and gaps are one cell.
 
 A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `Theme::apply` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
 

@@ -48,9 +48,7 @@ impl SceneState {
         match command {
             SceneCommand::PushClip(clip) => self.push_clip(clip.bounds()),
             SceneCommand::PopClip => self.pop_clip(),
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(transform) => self.push_transform(*transform),
-            #[cfg(scene_paint)]
             SceneCommand::PopTransform => self.pop_transform(),
             #[cfg(host)]
             SceneCommand::SaveLayer { opacity } => self

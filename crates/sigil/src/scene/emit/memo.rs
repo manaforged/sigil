@@ -12,6 +12,7 @@ use crate::layout::LayoutResult;
 use crate::scene::canvas::CanvasPaint;
 use crate::scene::command::{CommandScene, SceneCommand};
 use crate::scene::emit_cache;
+use crate::style::shader_paint::ShaderPaints;
 use crate::style::{FocusRing, StyleBinding};
 
 #[cfg(terminal_host)]
@@ -385,6 +386,7 @@ fn watches(node: &Node) -> bool {
     node.extension::<StyleBinding>()
         .is_some_and(StyleBinding::has_reactive)
         || node.extension::<CanvasPaint>().is_some()
+        || node.extension::<ShaderPaints>().is_some()
         || node.extension::<FocusRing>().is_some()
 }
 
@@ -398,8 +400,7 @@ fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {
         emit_cache::slot_tag(node),
         animated,
         binding.map_or(0, channels_key),
-        node.extension::<CanvasPaint>()
-            .map_or(0, CanvasPaint::version),
+        crate::scene::canvas::paint_version(node),
         node.extension::<FocusRing>()
             .is_some_and(FocusRing::visible),
     )

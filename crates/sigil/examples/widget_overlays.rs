@@ -40,8 +40,8 @@ pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
 
 pub(crate) fn menu_demo(open: Signal<bool>) -> impl IntoNode {
     menu(open)
-        .label("Edit")
-        .anchor(16.0, 16.0)
+        .accessible("Edit")
+        .at(Point::new(16.0, 16.0))
         .item(MenuItem::new("Undo").hint("Ctrl+Z").activate(|| {}))
         .item(MenuItem::new("Redo").disabled(true))
         .separator()
@@ -59,8 +59,8 @@ pub(crate) fn menu_bar_demo() -> impl IntoNode {
     )
 }
 
-pub(crate) fn command_menu_demo() -> impl IntoNode {
-    command_menu()
+pub(crate) fn command_menu_demo(open: Signal<bool>) -> impl IntoNode {
+    command_menu(open)
         .item(MenuItem::new("Refresh").activate(|| {}))
         .item(MenuItem::new("Open settings").activate(|| {}))
         .item(MenuItem::new("Publish").disabled(true))
@@ -124,7 +124,7 @@ fn build() -> impl IntoNode {
                     .child(menu_demo(signal(false)))
                     .child(tooltip_demo()),
             )
-            .child(command_menu_demo())
+            .child(command_menu_demo(signal(false)))
             .child(hint_overlay_demo())
             .child(toast_demo(false))
             .child(toast_queue_demo(false)),

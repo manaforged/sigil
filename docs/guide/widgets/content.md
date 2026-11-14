@@ -4,7 +4,7 @@ Text, icons, images, vector paths, and charts: the leaf nodes that paint content
 
 ## text
 
-`text(source) -> TextBuilder` is the one text node. `source` is `impl Into<TextContent>`: a `&str` or `String` (static), a `Signal<T: Display>` (live), or a closure `Fn() -> String` that re-runs when the signals it reads change. `.nowrap()` keeps it on one line.
+`text(source) -> TextBuilder` is the one text node. `source` is `impl Into<TextContent>`: a `&str`, `&String`, `String`, or `Cow<'_, str>` (static), a `Signal<T: Display>` (live), or a closure `Fn() -> S` where `S: Into<String>` (such as `String` or `&str`) that re-runs when the signals it reads change. `.nowrap()` keeps it on one line.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -14,19 +14,21 @@ text(move || format!("Count: {}", count.get())).nowrap();
 # };
 ```
 
-`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)`, `.text_color(Token::OnSurfaceMuted)`.
+`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.accessible(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.accessible_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)` (`sigil::style::FontFamily`), `.text_color(Token::OnSurfaceMuted)`.
 
 ## icon
 
 `icon(glyph) -> IconBuilder`. A glyph centered in a fixed box; `Role::Image` when labeled, `Role::GenericContainer` otherwise.
 
 - `.tone(Tone)`: glyph color.
-- `.size(Size)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
-- `.label(name)`: assistive name; always set it when the icon stands alone.
+- `.size(ControlSize)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
+- `.accessible(name)`: assistive name; always set it when the icon stands alone.
 
 `icon(Glyph::svg(source))` draws an SVG image instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
 
-`button(Icon::Close)` (see [Controls](controls.md)) is the interactive counterpart.
+`button(Icon::X)` (see [Controls](controls.md)) is the interactive counterpart.
+
+`sigil::icons::Icon`, also in `sigil::prelude`, holds the bundled icons. Each variant is the Lucide name in camel case: `Icon::X` for `x`, `Icon::ChartColumn` for `chart-column`. `Icon::ALL` lists them and `Icon::name` returns the Lucide name.
 
 ## image
 
@@ -34,7 +36,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 `ImageSource::from_rgba8(width, height, rgba: Vec<u8>) -> Option<ImageSource>` takes raw RGBA8 and returns `None` on bad input. `ImageSource::decode(encoded: &[u8]) -> Option<ImageSource>` decodes PNG, JPEG, and other formats through the `image` crate and requires the `image-decode` feature.
 
-Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
+Builder options: `.accessible(text)` (accessibility name), `.accessibility_hidden(true)` for a decorative image, `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
 
 ## load_image
 
@@ -55,7 +57,7 @@ path(16, 16)
 # };
 ```
 
-Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill` and `stroke` take a `Color` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
+Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill_color(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill_color` and `stroke` take a `Color` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
 
 ## chart
 
@@ -69,9 +71,48 @@ Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with 
 
 Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure. A signal or closure source draws the chart again when it changes. The node is `Role::Figure` labeled "Chart".
 
+## stat
+
+`stat(label, value) -> StatBuilder`. A KPI tile in card chrome showing a label and a large value, with optional:
+
+- `.delta(change, tone)`: change line below the value in `Tone`.
+- `.caption(text)`: muted caption below the value and delta.
+- `.trend(values)`: `impl Reactive<Vec<f32>>` sparkline at the bottom of the tile.
+- `.range(low, high)`: fixes the bottom and top of the trend sparkline.
+- `.tone(Tone)`: sets the color of the value text and trend sparkline.
+
+## sparkline
+
+`sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder`. A compact inline trend graph.
+
+- `.mark(SparkMark)`: `SparkMark::Block` (default, one value per cell) or `SparkMark::Braille` (two values per cell).
+- `.fill(SparkFill)`: `SparkFill::Solid` (default) or `SparkFill::Shade` (shaded cells below the top edge).
+- `.range(low, high)`: sets the value bounds; defaults to the data bounds and 0.
+- `.tone(Tone)` / `.tones(iter)`: base tone (default `Tone::Primary`) or per-value `Option<Tone>`.
+- `.rows(usize)`: height in rows (default 1).
+
+## canvas
+
+`canvas(paint: impl Fn(&mut SceneBuilder, Rect, &Theme) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `sigil::scene::SceneBuilder` inside the laid-out `Rect`. The `&Theme` is the active theme, so `theme.color(token)` resolves a token to a color. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal changes. `CanvasBuilder` takes the `Paint`, `States`, and `Widget` methods.
+
+- `rect` is the laid-out box of the canvas in logical px, in the same coordinates as the rest of the scene. It is not local to the canvas: its origin is the top-left corner of the canvas, so offset each primitive by `rect.origin`. Drawing outside `rect` is clipped.
+- To redraw after the data changes, read the data with `peek` inside the closure and bump the `.redraw_on` signal, such as `version.update(|n| *n += 1)`. The example `story-11-canvas-chart` does this.
+- To draw a vector path, build it with `path(width, height)` and the commands in [path](#path), then call `.draw(scene, rect, theme)`. The path's viewbox maps onto `rect`. `.build_path(rect, theme)` returns the `Option<DrawPath>` instead, for `scene.draw_path(draw)`; it is `None` when the path has no commands or no paint.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+canvas(|scene, rect, theme| {
+    scene.fill_rect(rect, theme.color(Token::Accent));
+})
+.width(120.0)
+.height(48.0);
+# };
+```
+
 ## Small content helpers
 
-These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
+These helpers paint fixed content. They are in `sigil::prelude` and `sigil::widgets`: `section_label(title)`, `empty_state(title)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
 
 ## States, keys, and accessibility
 
@@ -79,13 +120,13 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 
 | Widget | Role | Name source |
 | --- | --- | --- |
-| `text` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
-| `icon` | `Image` with `.label()`, else `GenericContainer` | `.label(name)` |
-| `image` | Image node | `.alt(text)` |
+| `text` | `Label` (change it with `.role()`) | The text, or `.accessible(name)` |
+| `icon` | `Image` with `.accessible()`, else `GenericContainer` | `.accessible(name)` |
+| `image` | Image node | `.accessible(text)` |
 | `path` | Image node | None |
 | `chart` | `Figure` | "Chart" |
 | `avatar` | `Image` | The initials |
-| `empty_state` | `Status` | The title and body text |
+| `empty_state` | `Status` | The title |
 | `notice_band` | `Alert` for the error and warn tones, else `Status` | "Error", "Warning", "Success", or "Notice"; the body is the text child |
 
 ## Terminal notes

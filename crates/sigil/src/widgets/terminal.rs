@@ -3,7 +3,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{LayoutStyle, rows};
 use crate::reactive::{Signal, signal};
 use crate::style::Token;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::virtual_list::virtual_list;
 
@@ -32,6 +32,7 @@ fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
         .class(Token::Surface.background())
         .key_any(move |event: &mut KeyEvent| {
             if on_key(event) {
+                event.prevent_default();
                 event.stop_propagation();
             }
         })

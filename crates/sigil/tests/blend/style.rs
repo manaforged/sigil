@@ -1,3 +1,4 @@
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::scene::BlendMode;
 use sigil_kittest::Harness;

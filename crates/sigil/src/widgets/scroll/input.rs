@@ -1,13 +1,12 @@
 use std::cell::Cell;
 
 use crate::events::selection::drag_active;
-use crate::events::{KeyEvent, NamedKey, ScrollDelta, ScrollEvent};
+use crate::events::{KeyEvent, NamedKey, ScrollDelta, ScrollEvent, ValueStep};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, effect, untrack};
 use crate::widgets::Widget;
 
 use super::SCROLL_LINE;
-use crate::widgets::interaction::{ValueStep, step_keys};
 
 const SCROLL_KEYS: [(NamedKey, ValueStep); 6] = [
     (NamedKey::ArrowDown, ValueStep::Unit(1.0)),
@@ -35,7 +34,7 @@ pub(super) fn bind(
     max: Signal<f32>,
     height: Signal<f32>,
 ) -> NodeBuilder {
-    step_keys(root, &SCROLL_KEYS, move |kind, event| {
+    root.step_keys(SCROLL_KEYS, move |kind, event| {
         travel(kind, event, scroll_y, max.peek(), height.peek());
     })
     .scroll(move |event| {

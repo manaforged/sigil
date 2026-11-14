@@ -1,7 +1,7 @@
 use crate::geometry::Constraint;
 use crate::kernel::{Cx, NodeId};
 use crate::style::TextStyle;
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use std::collections::BTreeSet;
@@ -18,6 +18,7 @@ use measure::Pass;
 
 type TextProbe = (Option<u32>, u32, u32);
 
+#[doc(hidden)]
 pub struct LayoutEngine {
     drive: LayoutDrive,
     core_to_handle: SecondaryMap<slotmap::DefaultKey, NodeHandle>,
@@ -32,6 +33,7 @@ pub struct LayoutEngine {
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
     scopes: SecondaryMap<slotmap::DefaultKey, Shift>,
     scopes_generation: u64,
+    stuck: SecondaryMap<slotmap::DefaultKey, sticky::Stuck>,
     text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
     prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
@@ -39,6 +41,8 @@ pub struct LayoutEngine {
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     hidden: AHashSet<NodeId>,
+    gliding:
+        AHashMap<slotmap::DefaultKey, Option<crate::animation::runtime::layout_motion::Placed>>,
     last_reactive_sig: u64,
     republished: bool,
 }
@@ -71,6 +75,7 @@ impl LayoutEngine {
             positions: SecondaryMap::new(),
             scopes: SecondaryMap::new(),
             scopes_generation: 0,
+            stuck: SecondaryMap::new(),
             text_sizes: SecondaryMap::new(),
             prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
@@ -78,6 +83,7 @@ impl LayoutEngine {
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
             hidden: AHashSet::new(),
+            gliding: AHashMap::new(),
             last_reactive_sig: 0,
             republished: false,
         }
@@ -227,6 +233,8 @@ impl LayoutEngine {
     fn finish(&mut self, cx: &mut Cx, cache_key: LayoutCacheKey) {
         let _finish = crate::profile::span(crate::profile::Phase::LayoutFinish);
         cx.clear_dirty();
+        let resized = self.resized(cache_key);
+        self.glide(cx, resized);
         let unsized_labels: SmallVec<[NodeId; 8]> = self
             .reactive_layout
             .iter()
@@ -252,6 +260,27 @@ impl LayoutEngine {
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
     }
 
+    fn glide(&mut self, cx: &Cx, resized: bool) {
+        use crate::animation::runtime::layout_motion::{Placed, glide};
+        for (key, last) in &mut self.gliding {
+            let id = NodeId::from_key(*key);
+            let placed = Placed::of(cx, &self.published_result, id);
+            let from = std::mem::replace(last, placed);
+            if let Some(to) = placed.filter(|_| !resized) {
+                glide(cx, id, from, to);
+            }
+        }
+        crate::animation::runtime::shared::settle(cx);
+    }
+
+    fn track_glide(&mut self, id: NodeId, node: &crate::kernel::Node) {
+        if crate::animation::runtime::layout_motion::opted_in(node) {
+            self.gliding.entry(id.key()).or_insert(None);
+        } else if !self.gliding.is_empty() {
+            self.gliding.remove(&id.key());
+        }
+    }
+
     pub fn gc(&mut self, cx: &Cx) -> Result<(), Error> {
         let stale: Vec<_> = self
             .core_to_handle
@@ -275,7 +304,9 @@ impl LayoutEngine {
                 let _ = self.synced_version.remove(core_id.key());
                 let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
+                let _ = self.stuck.remove(core_id.key());
                 self.hidden.remove(&core_id);
+                self.gliding.remove(&core_id.key());
                 self.reactive_layout.remove(&core_id.key());
                 self.geometry_reactive.remove(&core_id.key());
             }
@@ -290,10 +321,12 @@ impl LayoutEngine {
         self.popup_offsets.clear();
         self.core_to_handle.clear();
         self.hidden.clear();
+        self.gliding.clear();
         self.reactive_layout.clear();
         self.geometry_reactive.clear();
         self.positions.clear();
         self.scopes.clear();
+        self.stuck.clear();
         self.text_sizes.clear();
         self.prepared.clear();
         self.reactive_sigs.clear();
@@ -301,6 +334,7 @@ impl LayoutEngine {
     }
 
     fn track_reactive(&mut self, id: NodeId, node: &crate::kernel::Node) {
+        self.track_glide(id, node);
         if node.has_unversioned_layout() {
             self.reactive_layout.insert(id.key());
             self.reactive_sigs
@@ -311,6 +345,9 @@ impl LayoutEngine {
         }
         if node.extension::<crate::layout::SizeReactive>().is_some()
             || node.extension::<crate::layout::BoundsReactive>().is_some()
+            || node
+                .extension::<crate::layout::PositionReactive>()
+                .is_some()
         {
             self.geometry_reactive.insert(id.key());
         } else {
@@ -336,7 +373,9 @@ impl LayoutEngine {
             .flatten()
             .and_then(|node| node.extension::<crate::layout::ReactivePosition>())
             .map(|pos| pos.nest(under));
-        let shift = own.unwrap_or(under);
+        let shift = own
+            .or_else(|| self.sticky_scope(id, under))
+            .unwrap_or(under);
         self.scopes.insert(id.key(), shift);
         shift
     }
@@ -347,6 +386,10 @@ impl LayoutEngine {
             self.scopes.clear();
             self.scopes_generation = generation;
         }
+    }
+
+    fn style_of(&self, id: NodeId) -> Option<&crate::layout::StyleData> {
+        self.drive.style_for(self.handle(id).ok()?)
     }
 
     fn handle(&self, id: NodeId) -> Result<NodeHandle, Error> {
@@ -364,10 +407,11 @@ pub(crate) mod direction;
 mod incremental;
 mod measure;
 mod overlays;
+mod sticky;
 mod sync;
 mod viewport;
 
-pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
+pub(crate) use viewport::{Popup, ViewportOverlay};
 
 fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
     crate::profile::count(crate::profile::Counter::LayoutFull, 1);

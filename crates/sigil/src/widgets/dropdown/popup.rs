@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::CellForm;
-use crate::layout::{IntoPxExt as _, rows};
+use crate::layout::{px_or_zero, rows};
 use crate::reactive::{Signal, memo};
 use crate::style::{StyleAtom, Token};
 use crate::widgets::Widget;
@@ -17,7 +17,7 @@ const TRIGGER_HEIGHT: f32 = 32.0;
 const TRIGGER_ROWS: f32 = 3.0;
 
 pub(super) fn trigger_height() -> f32 {
-    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).into_px()).pick()
+    CellForm::new(TRIGGER_HEIGHT, px_or_zero(rows(TRIGGER_ROWS))).pick()
 }
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 

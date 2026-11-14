@@ -23,7 +23,9 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
         .gap(Space::None)
         .children_reactive(move || {
             let Some(file) = ws.active() else {
-                return vec![empty_state("No symbols", "Open a source file.")];
+                return vec![NodeBuilder::from(
+                    empty_state("No symbols").description("Open a source file."),
+                )];
             };
             let symbols: Vec<Symbol> = SYMBOLS
                 .iter()
@@ -31,7 +33,9 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
                 .filter(|symbol| symbol.file == file)
                 .collect();
             if symbols.is_empty() {
-                return vec![empty_state("No symbols", "This file has no outline.")];
+                return vec![NodeBuilder::from(
+                    empty_state("No symbols").description("This file has no outline."),
+                )];
             }
             let line = ws.buffer(file).caret.get().0;
             let here = current_symbol(&symbols, line);

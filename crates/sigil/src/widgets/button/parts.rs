@@ -1,10 +1,8 @@
-use crate::animation::runtime::presets;
-use crate::kernel::{TextBuilder, TextContent, text};
-use crate::layout::Space;
-use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
+use crate::animation::Transition;
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Space};
+use crate::node::{NodeBuilder, TextBuilder, TextContent, text};
 use crate::style::{
-    BORDER_WIDTH, ColorValue, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
-    StyleVariant, Tone,
+    BORDER_WIDTH, Color, ColorValue, Elevation, Metrics, Paint, Radius, States, Token, Tone,
 };
 use crate::widgets::Widget;
 
@@ -18,7 +16,7 @@ pub(super) enum ButtonWidth {
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
     let layout = LayoutStyle::flex_row()
         .height(height)
-        .padding_x(Space::px(padding_x))
+        .padding_x(Space::raw(padding_x, "control padding"))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center);
     match width {
@@ -28,43 +26,113 @@ pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> 
     }
 }
 
-pub(super) static BUTTON_TRANSITION_ATOMS: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+#[derive(Clone, Copy)]
+struct ButtonPalette {
+    border: ColorValue,
+    rest_bg: Option<Token>,
+    rest_fg: ColorValue,
+    hover_bg: Token,
+    pressed_bg: Token,
+    disabled_bg: Option<Token>,
+    shadow: Option<Elevation>,
+}
 
-pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    StyleAtom::BorderToneStep(6),
-];
+impl ButtonPalette {
+    const fn of(fill: ButtonFill, tone: Tone) -> Self {
+        match fill {
+            ButtonFill::Solid => Self {
+                border: ColorValue::Color(Color::TRANSPARENT),
+                rest_bg: Some(tone.step(9)),
+                rest_fg: ColorValue::Token(Token::OnSolid),
+                hover_bg: tone.step(10),
+                pressed_bg: tone.step(11),
+                disabled_bg: Some(tone.step(8)),
+                shadow: Some(Elevation::Sm),
+            },
+            ButtonFill::Soft => Self {
+                border: ColorValue::Token(tone.step(6)),
+                rest_bg: Some(tone.step(4)),
+                rest_fg: ColorValue::Token(tone.step(11)),
+                hover_bg: tone.step(5),
+                pressed_bg: tone.step(6),
+                disabled_bg: Some(tone.step(2)),
+                shadow: None,
+            },
+            ButtonFill::Outline => Self {
+                border: ColorValue::Token(tone.step(6)),
+                rest_bg: None,
+                rest_fg: ColorValue::Token(tone.step(11)),
+                hover_bg: tone.step(4),
+                pressed_bg: tone.step(5),
+                disabled_bg: None,
+                shadow: None,
+            },
+            ButtonFill::Ghost => Self {
+                border: ColorValue::Color(Color::TRANSPARENT),
+                rest_bg: None,
+                rest_fg: ColorValue::Token(tone.step(11)),
+                hover_bg: tone.step(4),
+                pressed_bg: tone.step(5),
+                disabled_bg: None,
+                shadow: None,
+            },
+        }
+    }
+}
 
-const CLEAR_BORDER: StyleAtom =
-    StyleAtom::BorderColor(ColorValue::Color(crate::scene::command::fills::TRANSPARENT));
+pub(super) fn style_button(node: NodeBuilder, fill: ButtonFill, tone: Tone) -> NodeBuilder {
+    let palette = ButtonPalette::of(fill, tone);
+    let mut node = node
+        .tone_scope(tone)
+        .radius(Radius::Lg)
+        .transition(Transition::smooth())
+        .border_width(BORDER_WIDTH)
+        .border_color(palette.border)
+        .text_color(palette.rest_fg);
+    if let Some(bg) = palette.rest_bg {
+        node = node.background(bg);
+    }
+    if let Some(elevation) = palette.shadow {
+        node = node.shadow(elevation);
+    }
+    node.focus(move |s| s.background(palette.hover_bg))
+        .hover(move |s| s.background(palette.hover_bg))
+        .pressed(move |s| s.background(palette.pressed_bg))
+        .disabled_paint(move |s| {
+            let s = s.opacity(0.5);
+            match palette.disabled_bg {
+                Some(bg) => s.background(bg),
+                None => s,
+            }
+        })
+}
 
-pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
-
-pub(super) static SOLID_FRAME: &[StyleAtom] = &[
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    CLEAR_BORDER,
-    StyleAtom::Shadow(Elevation::Sm),
-];
-
-pub(super) static LABEL_TEXT_SOLID: &[StyleAtom] = &[
-    StyleAtom::FgOnSolid,
-    StyleAtom::FontWeight(500),
-    StyleAtom::LetterSpacing(-10),
-];
-static LABEL_TEXT_SOLID_CELL: &[StyleAtom] = &[StyleAtom::FgOnSolid, StyleAtom::FontWeight(700)];
-pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
-    StyleAtom::FgToneStep(11),
-    StyleAtom::FontWeight(500),
-    StyleAtom::LetterSpacing(-10),
-];
+pub(super) fn apply_label_paint<P: Paint>(target: P, fill: ButtonFill, tone: Tone) -> P {
+    let grid = Metrics::current().is_grid();
+    let (color, weight) = match fill {
+        ButtonFill::Solid => (
+            ColorValue::Token(Token::OnSolid),
+            if grid { 700 } else { 500 },
+        ),
+        ButtonFill::Soft | ButtonFill::Ghost | ButtonFill::Outline => {
+            (ColorValue::Token(tone.step(11)), 500)
+        }
+    };
+    let target = target.text_color(color).font_weight(weight);
+    if fill == ButtonFill::Solid && grid {
+        target
+    } else {
+        target.letter_spacing(-0.01)
+    }
+}
 
 pub(super) fn label_node(
     label: TextContent,
     tone: Tone,
-    atoms: &'static [StyleAtom],
+    fill: ButtonFill,
     compact: bool,
 ) -> TextBuilder {
-    let node = text(label).nowrap().tone_scope(tone).class(atoms);
+    let node = apply_label_paint(text(label).nowrap().tone_scope(tone), fill, tone);
     if compact { node.class("text-xs") } else { node }
 }
 
@@ -74,23 +142,4 @@ pub(super) enum ButtonFill {
     Soft,
     Ghost,
     Outline,
-}
-
-impl ButtonFill {
-    pub(super) const fn variant(self) -> StyleVariant {
-        match self {
-            Self::Solid => SOLID_VARIANT,
-            Self::Soft => SOFT_VARIANT,
-            Self::Ghost | Self::Outline => GHOST_VARIANT,
-        }
-    }
-
-    pub(super) fn label_atoms(self) -> &'static [StyleAtom] {
-        match self {
-            Self::Solid => {
-                crate::layout::snap::CellForm::new(LABEL_TEXT_SOLID, LABEL_TEXT_SOLID_CELL).pick()
-            }
-            Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
-        }
-    }
 }

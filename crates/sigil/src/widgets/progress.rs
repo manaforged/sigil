@@ -1,16 +1,15 @@
 use crate::layout::Space;
 
 use super::layout_ext::LayoutOverrides;
-use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, caller_style};
-use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
+use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, accessible_name_or, caller_style};
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::{Signal, memo};
+use crate::reactive::{Reactive, Signal, memo};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
-use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 const INDETERMINATE_RATIO: f32 = 0.30;
 const CELL_RULE_THICKNESS: f32 = 1.0;
@@ -26,30 +25,34 @@ pub struct ProgressBuilder {
     max: f32,
     indeterminate: bool,
     tone: Tone,
-    name: Option<AccessibleName>,
     caption: Option<TextContent>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
-/// A progress bar.
-pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
-    ProgressBuilder::new(value, max)
+/// A progress bar of `value` against a maximum of 1.0.
+pub fn progress(value: impl Reactive<f32>) -> ProgressBuilder {
+    ProgressBuilder::new(value.into_signal())
 }
 
 impl ProgressBuilder {
-    /// Creates a bar that shows `value` as a fraction of `max`.
-    pub(crate) fn new(value: Signal<f32>, max: f32) -> Self {
+    /// Creates a bar that shows `value` as a fraction of 1.0.
+    pub(crate) const fn new(value: Signal<f32>) -> Self {
         Self {
             value,
-            max: max.max(f32::EPSILON),
+            max: 1.0,
             indeterminate: false,
             tone: Tone::Primary,
-            name: None,
             caption: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
+    }
+
+    /// Sets the value at which the bar is full, at least `f32::EPSILON`; the default is 1.0.
+    pub const fn max(mut self, max: f32) -> Self {
+        self.max = max.max(f32::EPSILON);
+        self
     }
 
     /// Draws a fixed segment that moves along the track as `value` goes from 0.0 to 1.0.
@@ -64,15 +67,9 @@ impl ProgressBuilder {
         self
     }
 
-    /// Sets the accessible name and shows it as a caption before the bar.
-    pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
-        let name = name.into();
-        self.caption = match &name {
-            AccessibleName::None => None,
-            AccessibleName::Static(value) => Some(TextContent::from(value.clone())),
-            AccessibleName::Derived(value) => Some(TextContent::from(*value)),
-        };
-        self.name = Some(name);
+    /// Sets the text shown before the bar, which is also the accessible name.
+    pub fn label(mut self, label: impl Into<TextContent>) -> Self {
+        self.caption = Some(label.into());
         self
     }
 
@@ -88,12 +85,10 @@ impl ProgressBuilder {
             determinate_fill(value, max, track_h, self.tone)
         };
 
-        let name = self
-            .name
-            .unwrap_or_else(|| AccessibleName::Derived(theme_label(StringKey::Progress)));
+        let name = accessible_name_or(self.caption.as_ref(), StringKey::Progress);
         let node = container()
             .role(Role::ProgressIndicator)
-            .label(name)
+            .accessible(name)
             .value(value, 0.0, max)
             .layout(if self.caption.is_some() {
                 LayoutStyle::flex_row()

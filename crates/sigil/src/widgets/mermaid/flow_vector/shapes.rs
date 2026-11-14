@@ -11,7 +11,7 @@ pub(super) fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathBui
             node = shape(node, entry.shape, *area);
         }
     }
-    node.fill(Token::Surface)
+    node.fill_color(Token::Surface)
         .stroke(Token::Border, f32::from(BORDER_WIDTH))
 }
 
@@ -26,7 +26,7 @@ pub(super) fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathBuild
             }
         }
     }
-    node.fill(Token::OnSurface)
+    node.fill_color(Token::OnSurface)
 }
 
 fn shape(node: PathBuilder, shape: NodeShape, area: Area) -> PathBuilder {

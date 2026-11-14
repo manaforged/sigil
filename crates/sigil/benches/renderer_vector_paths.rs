@@ -17,7 +17,7 @@
 use std::time::Instant;
 
 use sigil::geometry::{Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit};
+use sigil::kernel::ImageSource;
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::{CommandScene, DrawImage, SceneBuilder, SceneCommand};
 use sigil::style::{Color, Rgba, Theme};
@@ -106,15 +106,7 @@ impl Shape {
         for index in 0..self.cols * self.rows {
             let rect = self.rect(index);
             let tile = crop(&rgba, width, rect);
-            scene.draw_image(DrawImage {
-                node: None,
-                source: tile,
-                fit: ObjectFit::Fill,
-                destination: rect,
-                opacity: 10_000,
-                crop: None,
-                raster: None,
-            });
+            scene.draw_image(DrawImage::new(tile, rect));
         }
         scene.finish()
     }
@@ -192,12 +184,7 @@ fn report(name: &str, list: &[Sample]) {
 fn run(renderer: &mut WgpuRenderer, shape: Shape) {
     let vector = shape.vector(0);
     let scenes = [
-        (
-            "floor",
-            vec![CommandScene {
-                commands: Vec::new(),
-            }],
-        ),
+        ("floor", vec![CommandScene::default()]),
         ("bitmap", vec![shape.bitmap(&vector)]),
         ("vector", vec![vector]),
         (
@@ -206,7 +193,7 @@ fn run(renderer: &mut WgpuRenderer, shape: Shape) {
         ),
     ];
     let paths = scenes[2].1[0]
-        .commands
+        .commands()
         .iter()
         .filter(|c| matches!(c, SceneCommand::Path(_)))
         .count();

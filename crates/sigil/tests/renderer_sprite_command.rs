@@ -56,7 +56,7 @@ fn assert_sprite_command_shape(scene: &CommandScene) {
         SceneCommand::Sprite(mono),
         SceneCommand::Sprite(subpixel),
         SceneCommand::Sprite(poly),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected three sprite draw commands");
     };

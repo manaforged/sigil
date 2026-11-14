@@ -1,52 +1,49 @@
 use crate::kernel::ImageSource;
-use crate::style::atom::{MaskAtom, MaskPart, PaintAtom, StopSlot};
-use crate::style::{MaskImage, Style, StyleAtom};
+use crate::reactive::Reactive;
+use crate::scene::Shader;
+use crate::scene::shader::claim;
+use crate::style::atom::{FilterAtom, FilterPart, MaskAtom, MaskPart, PaintAtom, StopSlot};
+use crate::style::{Background, MaskImage, Paint, StyleAtom};
 
-mod sealed {
-    use crate::style::Style;
-
-    #[allow(unnameable_types, reason = "sealed")]
-    #[derive(Debug)]
-    pub struct StyleSlot<'a>(pub(crate) &'a mut Style);
-
-    #[allow(unnameable_types, reason = "sealed")]
-    pub trait PaintTarget: Sized {
-        fn style_slot(&mut self) -> StyleSlot<'_>;
-    }
-}
-
-pub(crate) use sealed::{PaintTarget, StyleSlot};
-
-pub(super) fn push<T: PaintTarget>(mut target: T, atom: StyleAtom) -> T {
-    target.style_slot().0.push_atom(atom);
+pub(super) fn push<T: Paint>(mut target: T, atom: StyleAtom) -> T {
+    target.paint_mut().push_atom(atom);
     target
 }
 
-pub(super) fn paint<T: PaintTarget>(target: T, atom: PaintAtom) -> T {
+pub(super) fn live<T, V, A>(mut target: T, value: impl Reactive<V>, atoms: fn(V) -> A) -> T
+where
+    T: Paint,
+    V: 'static,
+    A: IntoIterator<Item = StyleAtom> + 'static,
+{
+    let now = value.try_static().map(atoms);
+    target
+        .paint_mut()
+        .push_live(now, move || atoms(value.read()));
+    target
+}
+
+pub(super) fn paint<T: Paint>(target: T, atom: PaintAtom) -> T {
     push(target, StyleAtom::Paint(atom))
 }
 
-pub(super) fn mask<T: PaintTarget>(target: T, part: MaskPart) -> T {
+pub(super) fn mask<T: Paint>(target: T, part: MaskPart) -> T {
     push(target, StyleAtom::Mask(MaskAtom(part)))
 }
 
-pub(super) fn mask_stops<T: PaintTarget>(target: T, from: u8, to: u8) -> T {
+pub(super) fn mask_stops<T: Paint>(target: T, from: u8, to: u8) -> T {
     let target = mask(target, MaskPart::Stop(None, StopSlot::From, from));
     mask(target, MaskPart::Stop(None, StopSlot::To, to))
 }
 
-pub(super) fn image<T: PaintTarget>(
-    mut target: T,
-    source: ImageSource,
-    atom: fn(u64) -> StyleAtom,
-) -> T {
-    let slot = target.style_slot();
-    let id = slot.0.push_image(source);
-    slot.0.push_atom(atom(id));
+pub(super) fn image<T: Paint>(mut target: T, source: ImageSource, atom: fn(u64) -> StyleAtom) -> T {
+    let slot = target.paint_mut();
+    let id = slot.push_image(source);
+    slot.push_atom(atom(id));
     target
 }
 
-pub(super) fn mask_image<T: PaintTarget>(target: T, image: MaskImage) -> T {
+pub(super) fn mask_image<T: Paint>(target: T, image: MaskImage) -> T {
     let part = match image {
         MaskImage::Linear(degrees) => MaskPart::Linear(degrees),
         MaskImage::Radial(radial) => MaskPart::Radial(radial),
@@ -60,8 +57,27 @@ pub(super) fn mask_image<T: PaintTarget>(target: T, image: MaskImage) -> T {
     mask(target, part)
 }
 
-impl PaintTarget for Style {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(self)
+pub(super) fn background<T, B>(mut target: T, value: impl Reactive<B>) -> T
+where
+    T: Paint,
+    B: Into<Background> + 'static,
+{
+    let Some(fill) = value.try_static().map(Into::<Background>::into) else {
+        return live(target, value, |fill| Into::<Background>::into(fill).atoms());
+    };
+    let slot = target.paint_mut();
+    if let Some(shader) = fill.shader().and_then(claim) {
+        slot.push_shader(shader);
     }
+    for atom in fill.atoms() {
+        slot.push_atom(atom);
+    }
+    target
+}
+
+pub(super) fn filter_shader<T: Paint>(mut target: T, shader: Shader) -> T {
+    let slot = target.paint_mut();
+    let id = slot.push_shader(shader);
+    slot.push_atom(StyleAtom::Filter(FilterAtom(FilterPart::Shader(id))));
+    target
 }

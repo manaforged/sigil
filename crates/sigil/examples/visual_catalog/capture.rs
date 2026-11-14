@@ -1,5 +1,6 @@
 use sigil::Error;
 use sigil::Host;
+use sigil::app::HostMode;
 use sigil::events::{Event, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
 use sigil::prelude::*;

@@ -1,5 +1,5 @@
 use crate::animation::Motion;
-use crate::reactive::frame::{FrameSource, SourceId, Sources, with_sources};
+use crate::reactive::frame::{FrameSource, SourceId, Sources, try_with_sources, with_sources};
 use crate::reactive::{Runtime, Signal, batch};
 
 use crate::animation::runtime::{AnimationConfig, MotionPrefs};
@@ -9,29 +9,33 @@ pub(crate) struct AnimatorId(SourceId);
 
 pub(crate) struct AnimatorSource {
     signal: Signal<f32>,
+    active: Option<Signal<bool>>,
     motion: Motion,
 }
 
-pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> AnimatorId {
+pub(crate) fn register_config(
+    signal: Signal<f32>,
+    active: Option<Signal<bool>>,
+    config: AnimationConfig,
+) -> AnimatorId {
     let initial = signal.try_peek().unwrap_or_default();
-    let motion = match config {
-        AnimationConfig::Spring { preset } => Motion::spring(initial, preset),
-        AnimationConfig::Tween {
-            ms,
-            easing,
-            delay_ms,
-        } => Motion::tween(initial, ms, easing, delay_ms),
-        AnimationConfig::Playback { end, cycle } => Motion::playback(end, cycle),
-    };
-    register(signal, motion)
+    register(signal, active, Motion::configured(initial, 0.0, config))
 }
 
-pub(crate) fn register(signal: Signal<f32>, motion: Motion) -> AnimatorId {
+pub(crate) fn register(
+    signal: Signal<f32>,
+    active: Option<Signal<bool>>,
+    motion: Motion,
+) -> AnimatorId {
     assert!(
         signal.try_peek().is_none_or(f32::is_finite),
         "animation value must be finite"
     );
-    let source = FrameSource::Animator(AnimatorSource { signal, motion });
+    let source = FrameSource::Animator(AnimatorSource {
+        signal,
+        active,
+        motion,
+    });
     AnimatorId(with_sources(|sources| sources.map.insert(source)))
 }
 
@@ -60,40 +64,50 @@ fn retain_animators(mut keep: impl FnMut(&mut AnimatorSource) -> bool) {
 
 impl AnimatorId {
     pub(crate) fn finish(self) {
-        self.update(|entry| entry.motion.finish());
+        self.update(Motion::finish);
     }
 
-    fn update(self, change: impl FnOnce(&mut AnimatorSource)) {
+    pub(crate) fn update<R>(self, change: impl FnOnce(&mut Motion) -> R) -> Option<R> {
         batch(|| {
             with_sources(|sources| {
-                let Some(entry) = animator_mut(sources, self.0) else {
-                    return;
-                };
-                change(entry);
+                let entry = animator_mut(sources, self.0)?;
+                let out = change(&mut entry.motion);
                 if MotionPrefs::reduced() && !entry.motion.is_settled() {
                     entry.motion.finish();
+                }
+                if let Some(active) = entry.active {
+                    active.try_set(!entry.motion.is_settled());
                 }
                 if !entry.signal.try_set(entry.motion.value()) {
                     sources.map.remove(self.0);
                 }
                 Runtime::mark_frame_dirty();
-            });
-        });
+                Some(out)
+            })
+        })
     }
 
     pub(crate) fn deregister(self) {
-        with_sources(|sources| {
+        let _ = try_with_sources(|sources| {
             sources.map.remove(self.0);
         });
     }
 
-    pub(crate) fn retarget(self, value: f32) {
+    pub(crate) fn retarget(self, value: f32, config: AnimationConfig) {
         batch(|| {
             with_sources(|sources| {
                 if let Some(entry) = animator_mut(sources, self.0) {
+                    entry.motion.resume(config);
                     entry.motion.retarget(value);
                     Runtime::mark_frame_dirty();
-                    if entry.motion.is_settled() && !entry.signal.try_set(entry.motion.value()) {
+                    let settled = entry.motion.is_settled();
+                    if settled {
+                        entry.motion.finish();
+                    }
+                    if let Some(active) = entry.active {
+                        active.try_set(!settled);
+                    }
+                    if settled && !entry.signal.try_set(entry.motion.value()) {
                         sources.map.remove(self.0);
                     }
                 }
@@ -107,7 +121,14 @@ impl AnimatorId {
         })
     }
 
-    #[cfg(feature = "kittest")]
+    pub(crate) fn velocity(self) -> f32 {
+        try_with_sources(|sources| {
+            animator_mut(sources, self.0).map_or(0.0, |entry| entry.motion.velocity())
+        })
+        .unwrap_or_default()
+    }
+
+    #[cfg(test)]
     pub(crate) fn peek_value(self) -> Option<f32> {
         with_sources(|sources| animator_mut(sources, self.0).map(|entry| entry.motion.value()))
     }
@@ -118,6 +139,9 @@ pub(crate) fn finish_all() {
     batch(|| {
         retain_animators(|entry| {
             entry.motion.finish();
+            if let Some(active) = entry.active {
+                active.try_set(false);
+            }
             entry.signal.try_set(entry.motion.value())
         });
         Runtime::mark_frame_dirty();
@@ -137,6 +161,11 @@ kittest_pub! {
                 }
                 entry.motion.tick(dt);
                 Runtime::mark_frame_dirty();
+                if entry.motion.is_settled()
+                    && let Some(active) = entry.active
+                {
+                    active.try_set(false);
+                }
                 entry.signal.try_set(entry.motion.value())
             });
         });

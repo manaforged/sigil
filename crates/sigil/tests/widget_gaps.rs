@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::widgets::TreeNode;
@@ -137,7 +138,7 @@ fn tab_content_fills_the_space_below_the_strip() {
             .child(tabs().tab("One", || {
                 container()
                     .role(Role::Group)
-                    .label("body")
+                    .accessible("body")
                     .layout(LayoutStyle::block().fill())
             }))
     })

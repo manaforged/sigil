@@ -5,7 +5,7 @@ use resvg::usvg::{self, LineCap, LineJoin, Transform};
 use smallvec::SmallVec;
 
 use crate::fnv::mix_f32;
-use crate::scene::command::{PathCmd, StrokeCap, StrokeJoin, Transform as SceneTransform};
+use crate::scene::command::{PathCommand, StrokeCap, StrokeJoin, Transform as SceneTransform};
 
 const DEFAULT_MITER: f32 = 4.0;
 const RESOLUTION: f32 = 4.0;
@@ -17,14 +17,14 @@ pub(super) struct Native {
     pub(super) dash: SmallVec<[f32; 4]>,
 }
 
-pub(super) fn outline(path: &Path) -> Arc<[PathCmd]> {
+pub(super) fn outline(path: &Path) -> Arc<[PathCommand]> {
     path.segments()
         .map(|segment| match segment {
-            PathSegment::MoveTo(p) => PathCmd::MoveTo(p.x, p.y),
-            PathSegment::LineTo(p) => PathCmd::LineTo(p.x, p.y),
-            PathSegment::QuadTo(c, p) => PathCmd::QuadTo(c.x, c.y, p.x, p.y),
-            PathSegment::CubicTo(a, b, p) => PathCmd::CubicTo(a.x, a.y, b.x, b.y, p.x, p.y),
-            PathSegment::Close => PathCmd::Close,
+            PathSegment::MoveTo(p) => PathCommand::MoveTo(p.x, p.y),
+            PathSegment::LineTo(p) => PathCommand::LineTo(p.x, p.y),
+            PathSegment::QuadTo(c, p) => PathCommand::QuadTo(c.x, c.y, p.x, p.y),
+            PathSegment::CubicTo(a, b, p) => PathCommand::CubicTo(a.x, a.y, b.x, b.y, p.x, p.y),
+            PathSegment::Close => PathCommand::Close,
         })
         .collect()
 }

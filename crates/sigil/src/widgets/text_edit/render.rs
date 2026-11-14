@@ -7,7 +7,7 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, frag
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{
-    CaretGeometry, IntoPxExt as _, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
+    CaretGeometry, LayoutStyle, Overflow, Position, TextStyleCapture, px_or_zero, rows,
     with_text_geometry,
 };
 use crate::reactive::{Owner, Signal, effect, interval, memo, signal};
@@ -15,7 +15,7 @@ use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
     Token, space,
 };
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::{InteractionState, is_primary};
 
@@ -65,7 +65,7 @@ pub(super) fn build_base_node(
             }
         })
         .role(Role::TextInput)
-        .label(accessible_label(placeholder_str.as_str()))
+        .accessible(accessible_label(placeholder_str.as_str()))
         .text_value(value)
         .text_cursor(runtime.caret, runtime.selection)
         .placeholder(placeholder_str)
@@ -82,7 +82,7 @@ pub(super) fn build_base_node(
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).into_px()).pick())
+        .height(CellForm::new(160.0, px_or_zero(rows(DEFAULT_ROWS))).pick())
         .min_size(0.0, 0.0)
         .padding(Space::px(1.0))
 }
@@ -96,17 +96,17 @@ fn edit_inner(
     let moved = runtime.clone();
     let scroll_y = runtime.scroll_into_view();
     let (padding_x, padding_y) = runtime.content_padding;
-    let offset = memo(move || (0.0, padding_y - scroll_y.get()));
+    let offset = memo(move || crate::geometry::Point::new(0.0, padding_y - scroll_y.get()));
     let text_box = container()
         .hittable(false)
         .layout(LayoutStyle::block().min_size(0.0, 0.0))
-        .size_reactive(runtime.content_size)
-        .position_reactive(offset)
+        .track_size(runtime.content_size)
+        .offset(offset)
         .child(selection_layer(runtime))
         .child(caret_layer(runtime, interaction))
         .child(lines);
     let content_size = runtime.content_size;
-    let extent = memo(move || padding_y.mul_add(2.0, content_size.get().1));
+    let extent = memo(move || padding_y.mul_add(2.0, content_size.get().height));
     let body = container()
         .layout(
             LayoutStyle::block()
@@ -124,7 +124,7 @@ fn edit_inner(
                 .min_size(0.0, 0.0)
                 .overflow_y(Overflow::Hidden),
         )
-        .size_reactive(runtime.viewport_size)
+        .track_size(runtime.viewport_size)
         .class(Radius::Sm.atom());
     if chrome {
         viewport.class(Token::Surface.background())
@@ -145,21 +145,21 @@ const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
 
 /// Whether a focused caret is lit: it blinks, and stays lit for a beat after `moved` changes.
 pub(in crate::widgets) fn blink(
-    interaction: InteractionState,
-    moved: impl Fn() + 'static,
+    focused: Signal<bool>,
+    mut moved: impl FnMut() + 'static,
 ) -> Signal<bool> {
     let lit = signal(true);
     let held = std::rc::Rc::new(std::cell::Cell::new(false));
     let mark_held = held.clone();
     effect(move || {
         moved();
-        interaction.focused().with(|_| ());
+        let is_focused = focused.get();
         mark_held.set(true);
-        lit.set(true);
+        lit.set(is_focused);
     });
-    if Owner::current().is_some() {
+    if !crate::animation::runtime::MotionPrefs::reduced() && Owner::current().is_some() {
         interval(BLINK, move || {
-            if interaction.focused().peek() && !held.replace(false) {
+            if focused.peek() && !held.replace(false) {
                 lit.set(!lit.peek());
             }
         });
@@ -171,7 +171,7 @@ fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> Node
     let value = runtime.value;
     let caret = runtime.caret;
     let caret_visible = runtime.caret_visible;
-    let lit = blink(interaction, move || {
+    let lit = blink(interaction.focused(), move || {
         value.with(|_| ());
         caret.with(|_| ());
     });
@@ -197,8 +197,7 @@ pub(in crate::widgets) fn overlay_rect(x: f32, top: f32, width: f32, height: f32
             .position(Position::Absolute)
             .inset_left(x)
             .inset_top(top)
-            .width(width)
-            .height(height),
+            .fixed_size(width, height),
     )
 }
 
@@ -319,13 +318,13 @@ impl TextEditRuntime {
             let buffer = runtime.value.get();
             let byte = runtime.caret.get().min(buffer.len());
             let pos = runtime.caret_geometry(&buffer, byte).unwrap_or_default();
-            let window = viewport_size.get().1;
+            let window = viewport_size.get().height;
             if window <= 0.0 {
                 return;
             }
             let visible = padding_y.mul_add(-2.0, window);
             let max_scroll =
-                (padding_y.mul_add(2.0, runtime.content_size.get().1) - window).max(0.0);
+                (padding_y.mul_add(2.0, runtime.content_size.get().height) - window).max(0.0);
             let cur = scroll_y.peek();
             let span = if pos.height > visible {
                 ((pos.top + padding_y, pos.height), window)

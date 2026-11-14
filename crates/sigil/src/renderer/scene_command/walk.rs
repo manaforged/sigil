@@ -20,13 +20,16 @@ use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::renderer::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
 use crate::renderer::scene_paint::ScenePipeline;
+use crate::renderer::shader_paint::{ShaderInstance, ShaderPrograms};
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::vector_pass::VectorPass;
 use crate::renderer::wash_cache::WashCache;
 pub(crate) use crate::scene::command::effects::transform_rect;
+use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
+use crate::scene::shader::ShaderKey;
 
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -46,6 +49,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
     pub(crate) filter_pipelines: &'a mut Vec<FilterPipeline>,
     pub(crate) projected_pipelines: &'a mut Vec<ProjectedPipeline>,
+    pub(crate) shader_programs: &'a mut ShaderPrograms,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
     pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
@@ -65,6 +69,8 @@ pub(crate) struct WalkPending {
     pub(super) runs: Vec<QueuedRun>,
     pub(super) raster: Vec<QuadInstance>,
     pub(super) raster_groups: Vec<QuadGroup>,
+    pub(super) shaders: Vec<ShaderInstance>,
+    pub(super) shader_key: Option<ShaderKey>,
 }
 
 impl WalkPending {
@@ -78,6 +84,8 @@ impl WalkPending {
         self.runs.clear();
         self.raster.clear();
         self.raster_groups.clear();
+        self.shaders.clear();
+        self.shader_key = None;
     }
 }
 
@@ -174,15 +182,18 @@ impl<'a> SceneWalk<'a> {
                 None => self.queue_glyph_run(draw),
             },
             SceneCommand::Rect(draw) => self.queue_rect(draw),
+            SceneCommand::Rects(rects) => rects.iter().for_each(|draw| self.queue_rect(draw)),
             SceneCommand::Gradient(draw) => self.queue_gradient(draw),
             SceneCommand::Pattern(draw) => self.queue_pattern(draw),
             SceneCommand::DrawShadow {
                 rect,
                 radii,
+                shape,
                 shadow,
-            } => self.queue_shadow(*rect, *radii, *shadow),
+            } => self.queue_shadow(*rect, (CornerRadii(*radii), *shape), *shadow),
             SceneCommand::Decoration(draw) => self.queue_decoration(draw),
             SceneCommand::Path(draw) => self.queue_path(draw),
+            SceneCommand::Shader(draw) => self.queue_shader(draw),
             _ => {}
         }
     }
@@ -203,6 +214,9 @@ impl<'a> SceneWalk<'a> {
         if keep != Batch::Path {
             self.flush_paths();
         }
+        if keep != Batch::Shader {
+            self.flush_shaders();
+        }
     }
 
     pub(super) fn finish(&mut self) {
@@ -216,6 +230,7 @@ impl<'a> SceneWalk<'a> {
         self.flush_shadows();
         self.flush_decorations();
         self.flush_paths();
+        self.flush_shaders();
     }
 
     fn glyphs_under(&self, rect: Rect) -> bool {

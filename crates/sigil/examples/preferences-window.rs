@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::layout::FlexWrap;
 use sigil::prelude::*;
 
 const SECTIONS: &[&str] = &["Account", "Appearance", "Notifications"];
@@ -135,7 +136,6 @@ fn half(child: impl IntoNode + 'static) -> NodeBuilder {
 }
 
 fn account(prefs: Prefs) -> NodeBuilder {
-    let languages = LANGUAGES.iter().map(|s| String::from(*s)).collect();
     page_column()
         .child(text("Account").font_size(18.0, "example layout"))
         .child(
@@ -161,7 +161,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
         )
         .child(field(
             "Language",
-            dropdown(prefs.language, languages).label("Language"),
+            dropdown(prefs.language, LANGUAGES.iter().copied()).accessible("Language"),
         ))
 }
 

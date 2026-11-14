@@ -17,7 +17,7 @@ fn area() -> Rect {
 }
 
 fn label(text: &str, ink: Color, style: TextStyle, tone: Option<Tone>) -> SceneCommand {
-    let run = GlyphRun::new(area(), text, ink, style, 1.0).with_cell(TextFlow::Wrap, tone);
+    let run = GlyphRun::unshaped(area(), text, ink, style, 1.0).with_cell(TextFlow::Wrap, tone);
     SceneCommand::GlyphRun(run)
 }
 

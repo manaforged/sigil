@@ -87,7 +87,7 @@ fn sync_outward(model: EditModel, runtime: &TextEditRuntime) {
 pub(super) fn attach(
     node: NodeBuilder,
     runtime: &TextEditRuntime,
-    viewport: Signal<(f32, f32)>,
+    viewport: Signal<crate::geometry::Size>,
     row_h: f32,
 ) -> NodeBuilder {
     let (edge, line) = (runtime.clone(), runtime.clone());
@@ -97,7 +97,7 @@ pub(super) fn attach(
             move_caret(event, &edge, |edit| move_line(edit, target, extend));
         }),
         line: Some(Rc::new(move |event, step: LineStep, extend| {
-            let rows = step.rows(viewport.peek().1, row_h);
+            let rows = step.rows(viewport.peek().height, row_h);
             move_caret(event, &line, |edit| {
                 move_line(edit, LineMove::Rows(rows), extend);
             });

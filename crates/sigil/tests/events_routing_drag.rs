@@ -10,7 +10,7 @@ use sigil::geometry::{Constraint, Point};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 
 use routing_helpers::route_event;
 
@@ -31,7 +31,7 @@ fn node_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
 #[allow(clippy::too_many_lines)]
 fn dragging_a_position_reactive_node_moves_its_box() {
     Owner::scope("events_routing_drag", || {
-        let pos = signal((100.0_f32, 100.0_f32));
+        let pos = signal(Point::new(100.0, 100.0));
 
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -40,7 +40,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
                 .child(
                     container()
                         .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
-                        .position_reactive(pos)
+                        .offset(pos)
                         .pointer_down(move |ev| {
                             ev.capture_pointer();
                             ev.stop_propagation();
@@ -49,8 +49,8 @@ fn dragging_a_position_reactive_node_moves_its_box() {
                             if !ev.is_captured() {
                                 return;
                             }
-                            let (x, y) = pos.peek();
-                            pos.set((x + ev.delta().x, y + ev.delta().y));
+                            let p = pos.peek();
+                            pos.set(Point::new(p.x + ev.delta().x, p.y + ev.delta().y));
                             ev.stop_propagation();
                         }),
                 ),
@@ -90,7 +90,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
 
         assert_eq!(
             pos.peek(),
-            (150.0, 125.0),
+            Point::new(150.0, 125.0),
             "captured moves accumulated both deltas into the position signal",
         );
 

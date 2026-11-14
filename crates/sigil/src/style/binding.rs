@@ -4,15 +4,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use smallvec::SmallVec;
 
-static TRANSFORM_GENERATION: AtomicU64 = AtomicU64::new(0);
+static HIT_GENERATION: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) fn bump_transform_generation() {
-    TRANSFORM_GENERATION.fetch_add(1, Ordering::Relaxed);
+pub(crate) fn bump_hit_generation() {
+    HIT_GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
 #[must_use]
-pub(crate) fn transform_generation() -> u64 {
-    TRANSFORM_GENERATION.load(Ordering::Relaxed)
+pub(crate) fn hit_generation() -> u64 {
+    HIT_GENERATION.load(Ordering::Relaxed)
 }
 
 use crate::animation::Property;
@@ -42,6 +42,7 @@ const FLAG_TRANSFORM: u8 = 1 << 0;
 const FLAG_ANIMATE: u8 = 1 << 1;
 const FLAG_HIDES: u8 = 1 << 2;
 const FLAG_OVERLAY_HIDES: u8 = 1 << 3;
+const FLAG_STACK: u8 = 1 << 4;
 
 const fn is_animation_atom(atom: StyleAtom) -> bool {
     matches!(atom, StyleAtom::Transition(_) | StyleAtom::Animation(_))
@@ -58,10 +59,12 @@ kittest_pub! {
         static_atoms: &'static [StyleAtom],
         dynamic_atoms: SmallVec<[StyleAtom; 16]>,
         reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
+        state_channels: SmallVec<[(StateSlot, ReactiveStyleAtoms); 1]>,
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
+        glide: OnceCell<Box<crate::animation::runtime::layout_motion::Glide>>,
         state_overlay: Option<Box<StyleOverlay>>,
         animated_values: SmallVec<[Driven; 2]>,
-        state_overlay_slot: Option<ReactiveStateSlot>,
+        state_overlay_slots: SmallVec<[ReactiveStateSlot; 1]>,
         widget_channels: Option<usize>,
         user_slots: SlotSet,
         revision: u32,
@@ -75,13 +78,14 @@ impl core::fmt::Debug for StyleBinding {
             .field("static_atoms", &self.static_atoms)
             .field("dynamic_atoms", &self.dynamic_atoms)
             .field("reactive_channels", &self.reactive_channels.len())
+            .field("state_channels", &self.state_channels.len())
             .field(
                 "attached_animators",
                 &self.attached_animators.get().is_some(),
             )
             .field("animated_values", &self.animated_values)
             .field("state_overlay", &self.state_overlay.is_some())
-            .field("state_overlay_slot", &self.state_overlay_slot.is_some())
+            .field("state_overlay_slots", &self.state_overlay_slots.len())
             .field("widget_channels", &self.widget_channels)
             .field("user_slots", &self.user_slots)
             .finish_non_exhaustive()
@@ -137,7 +141,10 @@ impl StyleBinding {
     kittest_pub! {
         #[doc(hidden)]
         pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
-            self.reactive_channels.iter().map(|atoms| atoms.get())
+            self.reactive_channels
+                .iter()
+                .chain(self.state_channels.iter().map(|(_, atoms)| atoms))
+                .map(|atoms| atoms.get())
         }
     }
 
@@ -152,7 +159,7 @@ impl StyleBinding {
         #[doc(hidden)]
         pub fn has_reactive(&self) -> bool {
             !self.reactive_channels.is_empty()
-                || self.state_overlay_slot.is_some()
+                || !self.state_overlay_slots.is_empty()
                 || self.attached_animators.get().is_some()
                 || !self.animated_values.is_empty()
                 || self.has_transition()
@@ -186,10 +193,16 @@ impl StyleBinding {
             if is_display_none_atom(atom) {
                 flags |= FLAG_HIDES;
             }
+            if atom.restacks() {
+                flags |= FLAG_STACK;
+            }
         }
         if let Some(overlay) = self.state_overlay.as_deref() {
             if overlay.may_transform() {
                 flags |= FLAG_TRANSFORM;
+            }
+            if overlay.any(StyleAtom::restacks) {
+                flags |= FLAG_STACK;
             }
             if overlay.any(is_animation_atom) {
                 flags |= FLAG_ANIMATE;
@@ -206,6 +219,20 @@ impl StyleBinding {
             flags |= FLAG_TRANSFORM;
         }
         self.flags = flags;
+    }
+
+    pub(crate) fn z_index(&self) -> i16 {
+        let live = || {
+            self.reactive_channels()
+                .any(|atoms| atoms.iter().copied().any(StyleAtom::restacks))
+        };
+        if (self.flags & FLAG_STACK) == 0 && !live() {
+            return 0;
+        }
+        self.cascade().fold(0, |z, atom| match atom {
+            StyleAtom::ZIndex(index) => index,
+            _ => z,
+        })
     }
 
     pub(crate) fn has_transition(&self) -> bool {
@@ -235,6 +262,15 @@ impl StyleBinding {
             .copied()
             .chain(self.live_atoms())
             .chain(self.state_overlay_atoms().iter().copied())
+            .chain(self.state_live_atoms())
+    }
+
+    fn state_live_atoms(&self) -> impl Iterator<Item = StyleAtom> + '_ {
+        let slot = (!self.state_channels.is_empty()).then(|| self.interaction_slot());
+        self.state_channels
+            .iter()
+            .filter(move |(state, _)| Some(*state) == slot)
+            .flat_map(|(_, atoms)| atoms.get().iter().copied())
     }
 
     fn live_atoms(&self) -> impl Iterator<Item = StyleAtom> + '_ {
@@ -278,9 +314,15 @@ impl StyleBinding {
         self.replace_owned(kept);
     }
 
+    pub(crate) const fn glide(
+        &self,
+    ) -> &OnceCell<Box<crate::animation::runtime::layout_motion::Glide>> {
+        &self.glide
+    }
+
     #[must_use]
     pub(crate) fn animator_overlay(&self) -> Option<&dyn AnimatorOverlay> {
-        if self.animated_values.is_empty() {
+        if self.animated_values.is_empty() && self.glide.get().is_none() {
             self.attached_animators.get().map(Box::as_ref)
         } else {
             Some(self)
@@ -327,9 +369,13 @@ impl StyleBinding {
 
     #[must_use]
     pub(crate) fn interaction_slot(&self) -> StateSlot {
-        self.state_overlay_slot
-            .as_ref()
-            .map_or(StateSlot::Rest, |cell| cell.get())
+        let mut slots = self.state_overlay_slots.iter().map(|cell| cell.get());
+        let first = slots.next().unwrap_or(StateSlot::Rest);
+        if slots.any(|slot| slot == StateSlot::Disabled) {
+            StateSlot::Disabled
+        } else {
+            first
+        }
     }
 
     #[must_use]
@@ -349,7 +395,13 @@ impl StyleBinding {
             None => Box::new(overlay),
         };
         self.state_overlay = Some(merged);
-        self.state_overlay_slot = Some(slot);
+        if !self
+            .state_overlay_slots
+            .iter()
+            .any(|known| Rc::ptr_eq(known, &slot))
+        {
+            self.state_overlay_slots.push(slot);
+        }
         self.recompute_may_transform();
     }
 
@@ -370,11 +422,17 @@ impl StyleBinding {
         self.reactive_channels.push(atoms);
         self.revision = self.revision.wrapping_add(1);
     }
+
+    pub(crate) fn add_state_reactive(&mut self, slot: StateSlot, atoms: ReactiveStyleAtoms) {
+        self.state_channels.push((slot, atoms));
+        self.revision = self.revision.wrapping_add(1);
+    }
 }
 
 impl PartialEq for StyleBinding {
     fn eq(&self, other: &Self) -> bool {
         let reactive_eq = self.reactive_channels.len() == other.reactive_channels.len()
+            && self.state_channels.len() == other.state_channels.len()
             && self
                 .reactive_channels()
                 .zip(other.reactive_channels())
@@ -391,10 +449,15 @@ impl Eq for StyleBinding {}
 
 impl AnimatorOverlay for StyleBinding {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
-        self.animated_values
-            .iter()
-            .rev()
-            .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
+        self.glide
+            .get()
+            .and_then(|glide| glide.value_for(kind))
+            .or_else(|| {
+                self.animated_values
+                    .iter()
+                    .rev()
+                    .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
+            })
             .or_else(|| {
                 self.attached_animators
                     .get()
@@ -408,17 +471,23 @@ impl AnimatorOverlay for StyleBinding {
             .and_then(|overlay| overlay.value_for_color(kind))
     }
 
+    fn layout_offset(&self) -> Option<[f32; 2]> {
+        self.glide.get().and_then(|glide| glide.offset())
+    }
+
     fn cache_key(&self) -> u64 {
         use core::hash::{Hash as _, Hasher as _};
         let base = self
             .attached_animators
             .get()
             .map_or(0, |overlay| overlay.cache_key());
-        if self.animated_values.is_empty() {
+        let glide = self.glide.get().and_then(|glide| glide.bits());
+        if self.animated_values.is_empty() && glide.is_none() {
             return base;
         }
         let mut hasher = ahash::AHasher::default();
         base.hash(&mut hasher);
+        glide.hash(&mut hasher);
         for entry in &self.animated_values {
             let prop = (entry.property)(entry.value.peek());
             core::mem::discriminant(&prop).hash(&mut hasher);

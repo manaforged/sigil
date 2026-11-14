@@ -26,6 +26,7 @@ pub struct TextStyle {
     pub(crate) tabular_nums: bool,
     pub(crate) decoration: crate::style::TextDecoration,
     pub(crate) runs: Option<TextRuns>,
+    pub(crate) font_settings: crate::text::FontSettings,
 }
 
 /// The overrides of one styled run of text.
@@ -48,6 +49,9 @@ pub struct TextFace {
     pub(crate) dim: bool,
     pub(crate) square: bool,
     pub(crate) link: Option<std::sync::Arc<str>>,
+    pub(crate) font_settings: crate::text::FontSettings,
+    pub(crate) weight: Option<u16>,
+    pub(crate) family: Option<std::sync::Arc<str>>,
 }
 
 impl TextFace {
@@ -67,6 +71,9 @@ impl TextFace {
             dim: false,
             square: false,
             link: None,
+            font_settings: crate::text::FontSettings::new(),
+            weight: None,
+            family: None,
         }
     }
 
@@ -81,6 +88,34 @@ impl TextFace {
     #[must_use]
     pub const fn italic(mut self, italic: bool) -> Self {
         self.italic = italic;
+        self
+    }
+
+    /// Sets a variable-font axis of the run, such as `wdth` or `slnt`, in the axis's own units.
+    #[must_use]
+    pub fn axis(mut self, tag: &str, value: f32) -> Self {
+        self.font_settings.axis(tag, value);
+        self
+    }
+
+    /// Sets an OpenType feature of the run, such as `ss01` or `liga`, where 0 turns it off.
+    #[must_use]
+    pub fn feature(mut self, tag: &str, value: u16) -> Self {
+        self.font_settings.feature(tag, value);
+        self
+    }
+
+    /// Sets the font weight of the run from 1 to 1000.
+    #[must_use]
+    pub fn weight(mut self, weight: impl Into<Option<u16>>) -> Self {
+        self.weight = weight.into();
+        self
+    }
+
+    /// Sets the font family of the run.
+    #[must_use]
+    pub fn family(mut self, family: impl Into<Option<std::sync::Arc<str>>>) -> Self {
+        self.family = family.into();
         self
     }
 
@@ -152,6 +187,50 @@ impl TextFace {
     pub fn link(mut self, link: impl Into<Option<std::sync::Arc<str>>>) -> Self {
         self.link = link.into();
         self
+    }
+}
+
+impl TextFace {
+    /// Returns whether the run is bold.
+    #[must_use]
+    pub const fn is_bold(&self) -> bool {
+        self.bold
+    }
+
+    /// Returns whether the run is italic.
+    #[must_use]
+    pub const fn is_italic(&self) -> bool {
+        self.italic
+    }
+
+    /// Returns whether the run uses the `mono` font family.
+    #[must_use]
+    pub const fn is_mono(&self) -> bool {
+        self.mono
+    }
+
+    /// Returns whether a line is drawn through the run.
+    #[must_use]
+    pub const fn is_strike(&self) -> bool {
+        self.strike
+    }
+
+    /// Returns whether a line is drawn under the run.
+    #[must_use]
+    pub const fn is_underline(&self) -> bool {
+        self.underline
+    }
+
+    /// Returns whether the run is drawn fainter than surrounding text.
+    #[must_use]
+    pub const fn is_dim(&self) -> bool {
+        self.dim
+    }
+
+    /// Returns whether this is a terminal cell background on a fixed character grid.
+    #[must_use]
+    pub const fn is_square(&self) -> bool {
+        self.square
     }
 }
 
@@ -234,14 +313,24 @@ impl TextRuns {
 
     /// Returns the family of `face`, or `base` when it sets none.
     #[must_use]
-    pub const fn family<'a>(face: &TextFace, base: &'a str) -> &'a str {
-        if face.mono { "mono" } else { base }
+    pub fn family<'a>(face: &'a TextFace, base: &'a str) -> &'a str {
+        match &face.family {
+            Some(family) => family,
+            None if face.mono => "mono",
+            None => base,
+        }
     }
 
     /// Returns the weight of `face`, or `base` when it sets none.
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
-        if face.bold && base < 700 { 700 } else { base }
+        match face.weight {
+            Some(weight) if weight < 1 => 1,
+            Some(weight) if weight > 1000 => 1000,
+            Some(weight) => weight,
+            None if face.bold && base < 700 => 700,
+            None => base,
+        }
     }
 }
 
@@ -310,6 +399,20 @@ impl TextStyle {
         self
     }
 
+    /// Sets a variable-font axis such as `wdth`, `opsz`, `slnt`, or `wght` in the axis's own units.
+    #[must_use]
+    pub fn axis(mut self, tag: &str, value: f32) -> Self {
+        self.font_settings.axis(tag, value);
+        self
+    }
+
+    /// Sets an OpenType feature such as `ss01`, `calt`, or `liga`, where 0 turns it off.
+    #[must_use]
+    pub fn feature(mut self, tag: &str, value: u16) -> Self {
+        self.font_settings.feature(tag, value);
+        self
+    }
+
     /// Sets the underline or strike line.
     #[must_use]
     pub const fn decoration(mut self, decoration: crate::style::TextDecoration) -> Self {
@@ -324,36 +427,58 @@ impl TextStyle {
         self
     }
 
-    /// The font size in pixels.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the font family name.
+    #[must_use]
+    pub fn family(&self) -> &str {
+        &self.font_family
+    }
+
+    /// Returns the font size in pixels.
     #[must_use]
     pub const fn size_px(&self) -> f32 {
         self.font_size
     }
 
-    /// The font weight from 1 to 1000.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the font weight from 1 to 1000.
     #[must_use]
     pub const fn weight(&self) -> u16 {
         self.font_weight
     }
 
-    /// The line height.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns whether the text is italic.
+    #[must_use]
+    pub const fn is_italic(&self) -> bool {
+        self.italic
+    }
+
+    /// Returns the line height.
     #[must_use]
     pub const fn height(&self) -> TextLineHeight {
         self.line_height
     }
 
-    /// The extra space between letters, in ems.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
+    /// Returns the extra space between letters, as a fraction of the font size.
     #[must_use]
     pub const fn spacing_em(&self) -> f32 {
         self.letter_spacing_em
+    }
+
+    /// Returns whether digits all take the same width.
+    #[must_use]
+    pub const fn is_tabular_nums(&self) -> bool {
+        self.tabular_nums
+    }
+
+    /// Returns the underline or strike line.
+    #[must_use]
+    pub const fn text_decoration(&self) -> crate::style::TextDecoration {
+        self.decoration
+    }
+
+    /// Returns the styled runs that override this style over byte ranges.
+    #[must_use]
+    pub const fn text_runs(&self) -> Option<&TextRuns> {
+        self.runs.as_ref()
     }
 }
 
@@ -363,6 +488,7 @@ impl Default for TextStyle {
             font_family: String::from("system-ui"),
             font_size: 14.0,
             font_weight: 400,
+            font_settings: crate::text::FontSettings::new(),
             italic: false,
             line_height: TextLineHeight::default(),
             letter_spacing_em: 0.0,

@@ -7,7 +7,7 @@ use sigil::events::*;
 use sigil::geometry::Constraint;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 use routing_helpers::{compute_layout, route_event};
 

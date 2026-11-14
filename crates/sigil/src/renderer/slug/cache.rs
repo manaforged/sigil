@@ -26,7 +26,7 @@ impl GlyphKey {
 
 pub(super) struct CachedGlyph {
     pub band_data: BandData,
-    pub slot: u32,
+    pub offset: u32,
 }
 
 #[derive(Default)]
@@ -34,6 +34,7 @@ pub(super) struct GlyphCache {
     pub(super) map: AHashMap<GlyphKey, CachedGlyph>,
     empty: AHashSet<GlyphKey>,
     pub(super) generation: u64,
+    pub(super) floats: u32,
 }
 
 impl GlyphCache {
@@ -46,12 +47,19 @@ impl GlyphCache {
     }
 
     pub(super) fn insert(&mut self, key: GlyphKey, band_data: BandData) {
-        let slot = self.map.get(&key).map_or_else(
-            || u32::try_from(self.map.len()).unwrap_or(u32::MAX),
-            |existing| existing.slot,
-        );
-        self.map.insert(key, CachedGlyph { band_data, slot });
+        let len = band_data.data.len();
+        let offset = match self.map.get(&key) {
+            Some(existing) if existing.band_data.data.len() == len => existing.offset,
+            _ => self.allocate(len),
+        };
+        self.map.insert(key, CachedGlyph { band_data, offset });
         self.generation = self.generation.wrapping_add(1);
+    }
+
+    fn allocate(&mut self, len: usize) -> u32 {
+        let offset = self.floats;
+        self.floats = offset.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+        offset
     }
 }
 

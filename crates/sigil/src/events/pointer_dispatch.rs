@@ -58,6 +58,7 @@ pub(crate) fn dispatch_synthetic_target(
 ) {
     let mut event = source.clone();
     event.phase = phase;
+    crate::events::velocity::track(&mut event);
     dispatch_pointer_target(cx, target, &mut event, source.position);
 }
 

@@ -3,7 +3,7 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
-use crate::reactive::diagnostic::{disposed_signal, no_scope};
+use crate::reactive::diagnostic::disposed_signal;
 use crate::reactive::runtime::{
     OwnerKey, RuntimeState, SignalKey, SignalSlot, runtime_id, with_rt,
 };
@@ -110,8 +110,7 @@ impl<T: 'static> core::fmt::Debug for Signal<T> {
 #[track_caller]
 pub fn signal<T: 'static>(initial: T) -> Signal<T> {
     let location = Location::caller();
-    let owner =
-        with_rt(RuntimeState::active_owner).unwrap_or_else(|| no_scope("signal()", location));
+    let owner = with_rt(|rt| rt.scoped_owner("signal()", location));
     signal_in(initial, owner, location)
 }
 
@@ -161,7 +160,7 @@ impl<T: Clone + 'static> Signal<T> {
         })
     }
 
-    /// Returns the get.
+    /// Reads a clone of the value and subscribes the active effect or memo.
     #[inline]
     #[track_caller]
     #[must_use]
@@ -169,7 +168,7 @@ impl<T: Clone + 'static> Signal<T> {
         self.read("get", true)
     }
 
-    /// Returns the peek.
+    /// Reads a clone of the value without subscribing.
     #[inline]
     #[track_caller]
     #[must_use]
@@ -177,10 +176,10 @@ impl<T: Clone + 'static> Signal<T> {
         self.read("peek", false)
     }
 
-    /// Reads the value without tracking, or `None` once its owner is disposed.
+    /// Reads a clone of the value without subscribing, or None once disposed.
     #[inline]
     #[must_use]
-    pub(crate) fn try_peek(self) -> Option<T> {
+    pub fn try_peek(self) -> Option<T> {
         self.try_peek_with(T::clone)
     }
 
@@ -223,6 +222,13 @@ fn track_key(rt: &mut RuntimeState, key: SignalKey) {
 }
 
 impl<T: 'static> Signal<T> {
+    /// Returns whether this signal's owner is still live.
+    #[inline]
+    #[must_use]
+    pub fn is_alive(self) -> bool {
+        with_rt(|rt| rt.signals.contains(self.key))
+    }
+
     #[track_caller]
     pub(crate) fn track(self) {
         let caller = Location::caller();

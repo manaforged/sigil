@@ -24,8 +24,8 @@ fn mount_bar(make: impl Fn() -> sigil::widgets::ProgressBuilder + 'static) -> Gr
 fn painted_toned(value: f32, tone: Option<Tone>) -> Grid {
     mount_bar(move || {
         tone.map_or_else(
-            || progress(signal(value), 100.0),
-            |tone| progress(signal(value), 100.0).tone(tone),
+            || progress(signal(value)).max(100.0),
+            |tone| progress(signal(value)).max(100.0).tone(tone),
         )
     })
 }
@@ -35,7 +35,7 @@ fn painted(value: f32) -> Grid {
 }
 
 fn painted_indeterminate(phase: f32) -> Grid {
-    mount_bar(move || progress(signal(phase), 1.0).indeterminate())
+    mount_bar(move || progress(signal(phase)).indeterminate())
 }
 
 fn row(grid: &Grid) -> Vec<(String, Ink)> {

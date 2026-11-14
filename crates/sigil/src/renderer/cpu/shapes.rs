@@ -173,7 +173,7 @@ pub(super) fn blit_in(
 }
 
 pub(super) fn opacity_of(opacity: u16, layer: f32) -> f32 {
-    (f32::from(opacity) / 10_000.0 * layer).clamp(0.0, 1.0)
+    (crate::scene::command::opacity::from_basis(opacity) * layer).clamp(0.0, 1.0)
 }
 
 pub(super) fn fill(target: &mut Pixmap, path: &Path, paint: &Paint<'_>, brush: &Brush<'_>) {

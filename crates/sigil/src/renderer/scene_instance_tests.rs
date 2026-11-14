@@ -2,7 +2,7 @@ use crate::geometry::{Constraint, Point, Rect};
 use crate::kernel::*;
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::style::Color;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,
@@ -173,7 +173,15 @@ fn inner_shadow_expansion_stays_on_surface_rect() {
 #[test]
 fn draw_shadow_instance_carries_surface_and_expanded_rects() {
     let shadow = Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4]);
-    let inst = draw_shadow_instance(rect(), CornerRadii::top(5.0), shadow, 0.5);
+    let inst = draw_shadow_instance(
+        rect(),
+        (
+            CornerRadii::top(5.0),
+            crate::scene::command::CornerShape::Round,
+        ),
+        shadow,
+        0.5,
+    );
 
     assert_array_close(inst.rect, [-11.0, -10.0, 74.0, 74.0]);
     assert_array_close(inst.surface_rect, [0.0, 0.0, 48.0, 48.0]);
@@ -186,7 +194,15 @@ fn draw_shadow_instance_carries_surface_and_expanded_rects() {
 #[test]
 fn draw_inner_shadow_instance_encodes_kind_and_surface_quad() {
     let shadow = Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4]).kind(ShadowKind::Inner);
-    let inst = draw_shadow_instance(rect(), CornerRadii::top(5.0), shadow, 0.5);
+    let inst = draw_shadow_instance(
+        rect(),
+        (
+            CornerRadii::top(5.0),
+            crate::scene::command::CornerShape::Round,
+        ),
+        shadow,
+        0.5,
+    );
 
     assert_array_close(inst.rect, [0.0, 0.0, 48.0, 48.0]);
     assert_array_close(inst.surface_rect, [0.0, 0.0, 48.0, 48.0]);
@@ -200,11 +216,11 @@ fn assert_array_close(actual_values: [f32; 4], expected_values: [f32; 4]) {
 }
 
 fn rect_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawRect {
-    DrawRect::new(rect, color()).stroke(stroke)
+    DrawRect::new(rect, color()).stroked(stroke)
 }
 
 fn gradient_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawGradient {
-    DrawGradient::new(rect, gradient()).stroke(stroke)
+    DrawGradient::new(rect, gradient()).stroked(stroke)
 }
 
 const fn stroke(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {

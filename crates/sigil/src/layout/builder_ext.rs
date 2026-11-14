@@ -1,5 +1,5 @@
 use crate::kernel::{Node, NodeBuilder, container};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::layout::{LayoutStyle, Space, TrackSize};
 use crate::style::{Metrics, StyleBinding};
@@ -29,16 +29,60 @@ pub fn grid(columns: impl Into<Vec<TrackSize>>) -> NodeBuilder {
 }
 
 macro_rules! layout_setters {
-    ($($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+    (@trait $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
         $($(#[$doc])* #[must_use] fn $name(self $(, $arg: $ty)*) -> Self {
-            self.layout($crate::layout::LayoutStyle::default().$name($($arg),*))
+            let style = $crate::layout::LayoutStyle::default().$name($($arg),*);
+            self.map_node(move |node| {
+                node.mutate(move |n| $crate::layout::builder_ext::install_layout(n, &style))
+            })
+        })*
+    };
+    (@edit $call:tt $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $($crate::layout::builder_ext::layout_setters!(@edit_one $call $name($($arg: $ty),*));)*
+    };
+    (@edit_one ($($path:tt)+) $name:ident($($arg:ident: $ty:ty),*)) => {
+        fn $name(mut self $(, $arg: $ty)*) -> Self {
+            self.$($path)+($crate::widgets::LayoutEdit::Merge(
+                $crate::layout::LayoutStyle::default().$name($($arg),*),
+            ));
+            self
+        }
+    };
+    (@kernel $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $(fn $name(mut self $(, $arg: $ty)*) -> Self {
+            let style = $crate::layout::LayoutStyle::default().$name($($arg),*);
+            self.node = self.node.mutate(move |n| {
+                $crate::layout::builder_ext::install_layout(n, &style)
+            });
+            self
+        })*
+    };
+    (@forward $field:ident $($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
+        $(fn $name(mut self $(, $arg: $ty)*) -> Self {
+            self.$field = self.$field.map(move |inner| {
+                $crate::widgets::Widget::$name(inner $(, $arg)*)
+            });
+            self
         })*
     };
 }
 
 macro_rules! layout_methods {
     () => {
+        $crate::layout::builder_ext::layout_methods!(@emit @trait);
+    };
+    (edit $($path:tt)+) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @edit ($($path)+));
+    };
+    (kernel) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @kernel);
+    };
+    (forward $field:ident) => {
+        $crate::layout::builder_ext::layout_methods!(@emit @forward $field);
+    };
+    (@emit $($prefix:tt)*) => {
         $crate::layout::builder_ext::layout_setters! {
+            $($prefix)*
             /// Sets the space between the node's children.
             gap(gap: impl Into<$crate::layout::Space>);
             /// Sets the space inside the node's edges.
@@ -59,6 +103,8 @@ macro_rules! layout_methods {
             fill();
             /// Sets the node's flex shrink factor.
             shrink(factor: f32);
+            /// Sets the width-to-height ratio that the node keeps when one side is set and the other is auto.
+            aspect_ratio(ratio: f32);
             /// Sets the node's size along the main axis before it grows or shrinks.
             flex_basis(basis: impl Into<$crate::layout::Length>);
             /// Sets the space inside the node's left and right edges.
@@ -97,15 +143,15 @@ macro_rules! layout_methods {
             overflow_x(overflow: $crate::layout::Overflow);
             /// Sets what happens to content that is higher than the node.
             overflow_y(overflow: $crate::layout::Overflow);
-            /// Sets the distance from each edge of the parent for an absolute node.
+            /// Sets the distance from each edge of the parent for an absolute node, or of the scroll area for a sticky node.
             inset(inset: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's top edge for an absolute node.
+            /// Sets the distance from the parent's top edge for an absolute node, or from the scroll area's top edge for a sticky node.
             inset_top(top: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's right edge for an absolute node.
+            /// Sets the distance from the parent's right edge for an absolute node, or from the scroll area's right edge for a sticky node.
             inset_right(right: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's bottom edge for an absolute node.
+            /// Sets the distance from the parent's bottom edge for an absolute node, or from the scroll area's bottom edge for a sticky node.
             inset_bottom(bottom: impl Into<$crate::layout::Length>);
-            /// Sets the distance from the parent's left edge for an absolute node.
+            /// Sets the distance from the parent's left edge for an absolute node, or from the scroll area's left edge for a sticky node.
             inset_left(left: impl Into<$crate::layout::Length>);
             /// Sets whether the node is placed in the flow or at its insets.
             position(position: $crate::layout::Position);
@@ -120,9 +166,9 @@ macro_rules! layout_methods {
             /// Sets how the node is placed across its parent's main axis.
             align_self(align_self: $crate::layout::AlignItems);
             /// Sets the node's grid column tracks.
-            grid_columns(columns: Vec<$crate::layout::TrackSize>);
+            grid_columns(columns: impl Into<Vec<$crate::layout::TrackSize>>);
             /// Sets the node's grid row tracks.
-            grid_rows(rows: Vec<$crate::layout::TrackSize>);
+            grid_rows(rows: impl Into<Vec<$crate::layout::TrackSize>>);
             /// Sets how many grid columns the node spans.
             grid_column_span(span: u16);
             /// Sets how many grid rows the node spans.

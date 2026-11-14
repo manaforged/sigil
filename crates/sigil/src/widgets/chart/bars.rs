@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length};
 use crate::style::{Radius, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::vector::{PathBuilder, path};
 use super::axis::format_tick;
@@ -159,7 +159,7 @@ impl Cell<'_> {
             LayoutStyle::block().fill_height().min_size(MIN_BAR, 0.0)
         };
         container()
-            .label(caption)
+            .accessible(caption)
             .layout(layout.grow(grow).flex_basis(Length::Px(0.0)))
             .class([Radius::Sm.atom(), self.hue.background()])
             .tone_scope(self.hue.tone)

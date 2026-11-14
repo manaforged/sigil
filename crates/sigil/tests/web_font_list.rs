@@ -1,4 +1,5 @@
-use sigil::text::{WebFont, WebFontScript, set_web_fallbacks, web_fallbacks};
+use sigil::app::{WebFont, WebFontScript};
+use sigil::text::{set_web_fallbacks, web_fallbacks};
 
 #[test]
 fn the_web_font_list_is_pinned_and_replaceable() {

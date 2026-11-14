@@ -1,6 +1,6 @@
 use crate::animation::Property;
-use crate::kernel::{DeltaKind, Node};
-use crate::reactive::{Runtime, Signal, effect_named};
+use crate::kernel::{DeltaKind, Node, NodeTag};
+use crate::reactive::{Reactive, Runtime, Signal, effect_named, memo, untrack};
 
 use crate::style::merge::SlotSet;
 use crate::style::{
@@ -17,6 +17,16 @@ pub(super) fn install_animation(
         property(0.0).refuse("Widget::drive");
         return;
     };
+    let mut last = 0.0_f32;
+    let value = memo(move || {
+        let next = value.get();
+        if next.is_finite() {
+            last = next;
+        } else {
+            tracing::warn!(target: "sigil::animation", value = next, "ignored a non-finite driven style value");
+        }
+        last
+    });
     if let Some(binding) = node.extension_mut::<StyleBinding>() {
         binding.bind_animation(property, value);
     } else {
@@ -27,10 +37,7 @@ pub(super) fn install_animation(
     let tag = node.tag();
     let delta = DeltaKind::layout_if(kind.affects_layout());
     effect_named("sigil-style::animation", move || {
-        assert!(
-            value.get().is_finite(),
-            "animated style values must be finite"
-        );
+        let _ = value.get();
         if let Some(tag) = tag {
             tag.record(delta);
         }
@@ -45,17 +52,26 @@ pub(super) fn install_tone(node: &mut Node, tone: Tone) {
 
 pub(super) fn install_state_overlay(
     node: &mut Node,
-    overlay: StyleOverlay,
+    mut overlay: StyleOverlay,
     slot: ReactiveStateSlot,
 ) {
     debug_assert_not_fragment(node, "state_overlay");
-    if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
-        binding.set_state_overlay(overlay, slot);
-        return;
+    let live = overlay.take_live();
+    let tag = node.tag();
+    if node.get_extension_mut_untracked::<StyleBinding>().is_none() {
+        let _previous = node.attach_untracked(StyleBinding::default());
     }
-    let mut binding = StyleBinding::default();
+    let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() else {
+        return;
+    };
     binding.set_state_overlay(overlay, slot);
-    let _previous = node.attach_untracked(binding);
+    for (state, paint) in live.into_each() {
+        for read in paint.reads() {
+            let reactive = StyleReactiveEffect::new();
+            binding.add_state_reactive(state, reactive.atoms());
+            drive_reactive(tag, &reactive, read);
+        }
+    }
 }
 
 pub(super) fn install_class(node: &mut Node, source: ClassSource) {
@@ -79,8 +95,26 @@ fn debug_assert_not_fragment(node: &Node, op: &'static str) {
     );
 }
 
-pub(super) fn install_theme(node: &mut Node, theme: Theme) {
+pub(super) fn install_theme(node: &mut Node, theme: impl Reactive<Theme>) {
     debug_assert_not_fragment(node, "theme");
+    let initial = untrack(|| theme.read());
+    attach_theme(node, initial.clone());
+    let Some(tag) = node.tag() else {
+        return;
+    };
+    let mut last = initial;
+    effect_named("sigil-style::theme", move || {
+        let next = theme.read();
+        if next != last {
+            last = next.clone();
+            tag.queue_edit(move |target| attach_theme(target, next));
+            tag.record(DeltaKind::Layout);
+            Runtime::mark_frame_dirty();
+        }
+    });
+}
+
+fn attach_theme(node: &mut Node, theme: Theme) {
     let _previous = node.attach(theme);
     crate::scene::emit_cache::theme_changed();
 }
@@ -91,6 +125,15 @@ pub(super) fn install_focus_ring(node: &mut Node, ring: FocusRing) {
         current.merge(ring);
     } else {
         let _previous = node.attach(ring);
+    }
+}
+
+pub(super) fn install_default_focus_ring(node: &mut Node, visible: Signal<bool>) {
+    debug_assert_not_fragment(node, "focus_ring");
+    if let Some(current) = node.extension_mut::<FocusRing>() {
+        current.set_default_visible(visible);
+    } else {
+        let _previous = node.attach(FocusRing::from(visible));
     }
 }
 
@@ -106,11 +149,17 @@ where
     } else {
         let _previous = node.attach(StyleBinding::reactive_atoms(atoms));
     }
+    drive_reactive(node.tag(), &reactive, f);
+    let _previous = node.attach(reactive);
+}
 
+fn drive_reactive<F>(tag: Option<NodeTag>, reactive: &StyleReactiveEffect, f: F)
+where
+    F: Fn() -> &'static [StyleAtom] + 'static,
+{
     let effect_state = reactive.clone();
     let current = reactive.atoms();
-    let tag = node.tag();
-    crate::reactive::effect_named("sigil-style::style_reactive", move || {
+    effect_named("sigil-style::style_reactive", move || {
         let next = f();
         let previous = current.get();
         effect_state.set_slice(next);
@@ -121,9 +170,9 @@ where
                 .iter()
                 .chain(next)
                 .copied()
-                .any(StyleAtom::may_transform)
+                .any(|atom| atom.may_transform() || atom.restacks())
             {
-                crate::style::binding::bump_transform_generation();
+                crate::style::binding::bump_hit_generation();
             }
             let layout = previous
                 .iter()
@@ -132,7 +181,6 @@ where
             tag.record(DeltaKind::layout_if(layout));
         }
     });
-    let _previous = node.attach(reactive);
 }
 
 fn binding_from_source(source: ClassSource) -> StyleBinding {

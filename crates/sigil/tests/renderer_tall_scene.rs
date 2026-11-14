@@ -48,7 +48,7 @@ fn pass_heavy_scene() -> CommandScene {
     for row in 0..DRAWS {
         let rect = rect(0.0, row as f32, VIEWPORT.0, 1.0);
         if row % 2 == 0 {
-            builder.draw_rect(DrawRect::new(rect, color(240, 30, 30, 255)).opacity(u16::MAX));
+            builder.draw_rect(DrawRect::new(rect, color(240, 30, 30, 255)).opacity(1.0));
         } else {
             builder.draw_gradient(
                 DrawGradient::new(
@@ -62,7 +62,7 @@ fn pass_heavy_scene() -> CommandScene {
                         ],
                     ),
                 )
-                .opacity(u16::MAX),
+                .opacity(1.0),
             );
         }
     }

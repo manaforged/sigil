@@ -98,18 +98,32 @@ impl Transform2D {
         }
     }
 
+    pub(crate) const fn apply_space(&mut self, atom: super::SpaceAtom) {
+        match atom {
+            super::SpaceAtom::TranslateX(px) => self.translation[0] = px,
+            super::SpaceAtom::TranslateY(px) => self.translation[1] = px,
+            super::SpaceAtom::ScaleX(factor) => self.scale[0] = factor,
+            super::SpaceAtom::ScaleY(factor) => self.scale[1] = factor,
+            super::SpaceAtom::Rotate(radians) => self.rotation = radians,
+            super::SpaceAtom::TransformOrigin(origin) => self.origin = origin,
+            super::SpaceAtom::RotateX(_)
+            | super::SpaceAtom::RotateY(_)
+            | super::SpaceAtom::RotateZ(_)
+            | super::SpaceAtom::TranslateZ(_)
+            | super::SpaceAtom::Perspective(_)
+            | super::SpaceAtom::PerspectiveOrigin(_)
+            | super::SpaceAtom::Backface(_)
+            | super::SpaceAtom::Preserve3d(_) => {}
+        }
+    }
+
     /// Sets the point the transform turns around.
     #[cfg(feature = "kittest")]
     #[doc(hidden)]
     #[must_use]
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "origin fractions are validated and encoded in ten-thousandths"
-    )]
     pub fn origin(mut self, x: f32, y: f32) -> Self {
         assert!((0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y));
-        self.origin = [(x * 10_000.0).round() as u16, (y * 10_000.0).round() as u16];
+        self.origin = [x, y].map(super::paint::units::fraction_units);
         self
     }
 
@@ -129,6 +143,7 @@ impl Transform2D {
     pub(crate) fn overlay(self, overlay: &dyn AnimatorOverlay) -> Self {
         let value = |kind| overlay.value_for(kind).or_else(|| self.value(kind));
         let get = |kind| value(kind).unwrap_or_default();
+        let [glide_x, glide_y] = overlay.layout_offset().unwrap_or_default();
         Self {
             shift: [
                 shift_units(get(NumericAtomKind::TranslateXFraction)),
@@ -137,8 +152,8 @@ impl Transform2D {
             ..self
         }
         .translate(
-            get(NumericAtomKind::TranslateX),
-            get(NumericAtomKind::TranslateY),
+            get(NumericAtomKind::TranslateX) + glide_x,
+            get(NumericAtomKind::TranslateY) + glide_y,
         )
         .scale(get(NumericAtomKind::ScaleX), get(NumericAtomKind::ScaleY))
         .rotate(get(NumericAtomKind::Rotation))
@@ -185,16 +200,17 @@ impl Transform2D {
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
-        #[cfg(feature = "kittest")]
-        let transform = binding.cascade().fold(Self::IDENTITY, |transform, atom| {
-            if let super::StyleAtom::Transform(value) = atom {
-                value
-            } else {
+        let transform = binding
+            .cascade()
+            .fold(Self::IDENTITY, |mut transform, atom| {
+                match atom {
+                    #[cfg(feature = "kittest")]
+                    super::StyleAtom::Transform(value) => return value,
+                    super::StyleAtom::Space(space) => transform.apply_space(space),
+                    _ => {}
+                }
                 transform
-            }
-        });
-        #[cfg(not(feature = "kittest"))]
-        let transform = Self::IDENTITY;
+            });
         binding
             .animator_overlay()
             .map_or(transform, |overlay| transform.overlay(overlay))

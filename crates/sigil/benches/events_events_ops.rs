@@ -17,7 +17,6 @@ use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil::layout::{LayoutEngine, LayoutStyle, Length, Position, TextMeasure};
 use sigil::prelude::Widget;
 use sigil::style::TextStyle;
-use sigil::widgets::Layout;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(1_000, false);
@@ -180,12 +179,10 @@ fn wide_tree_with_shortcut(
     let mut root_builder = container().layout(LayoutStyle::block().fixed_size(240.0, 240.0));
     for index in 0..count {
         let child = if index + 1 == count {
-            wide_child(index, false)
-                .keyboard_shortcut(shortcut.clone())
-                .key(shortcut.clone(), {
-                    let hits = Rc::clone(hits);
-                    move |_| hits.set(hits.get() + 1)
-                })
+            wide_child(index, false).shortcut(shortcut.clone(), {
+                let hits = Rc::clone(hits);
+                move |_| hits.set(hits.get() + 1)
+            })
         } else {
             wide_child(index, false)
         };

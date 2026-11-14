@@ -15,7 +15,7 @@ use crossterm::terminal::{
 };
 use crossterm::{cursor, execute, queue};
 
-use crate::terminal::caps::{Capabilities, Cursor, Keyboard};
+use crate::terminal::caps::{Capabilities, CursorStyle, Keyboard};
 use crate::terminal::mouse::{MOUSE_OFF, MouseTracking};
 use crate::terminal::notify;
 use crate::terminal::screen::Screen;
@@ -81,7 +81,7 @@ impl Term {
         let (caps, measured) = Capabilities::measure((!inline).then_some(ProbeRow::Fixed));
         calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
-        BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);
+        BAR_CURSOR.store(caps.cursor_style == CursorStyle::Bar, Ordering::Relaxed);
         enter_modes(inline)?;
         core::mem::forget(guard);
         LIVE.with(|live| live.set(true));

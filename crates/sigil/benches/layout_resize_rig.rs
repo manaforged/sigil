@@ -4,7 +4,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::IntoNode;
 use sigil::kernel::{Cx, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use std::hint::black_box;
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);

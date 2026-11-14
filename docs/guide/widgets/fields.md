@@ -27,6 +27,7 @@ Key options:
 - `.clipboard(impl Clipboard)`: inject a clipboard; defaults to the installed handle (see [Plumbing](plumbing.md#clipboard)).
 - `.password()`: masks the glyphs with `*`; the signal stays plaintext.
 - `.reveal(Signal<bool>)`: shows the plaintext while true.
+- `.clearable()`: adds a clear button while the field is non-empty.
 - `.autofocus()`: focus this field when it mounts.
 - `.focus_when(Signal<u64>)`: bump the signal to focus this field after it mounts.
 - `.caret_visible(Signal<bool>)` / `.scroll_offset(Signal<f32>)`: bind the caret visibility and scroll offset signals.
@@ -49,7 +50,7 @@ Editing keys add: Arrow Up/Down, PageUp/PageDown, Alt+Left/Right (or Alt+B/F) fo
 
 ## number_field
 
-`number_field(Signal<T>, RangeInclusive<T>)` where `T` is `i32`, `i64`, `usize`, `f32`, or `f64`. A text field that parses and clamps:
+`number_field(Signal<T>, RangeInclusive<T>)` where `T` is any built-in integer or float type, such as `u8`, `i32`, `usize`, or `f64`. A text field that parses and clamps:
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -77,39 +78,40 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## tag_input
 
-`tag_input(options, Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options`; Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
+`tag_input(selected: Signal<Vec<T>>, options: impl IntoIterator<Item = impl Into<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(impl Into<String>)`, which also names the group for assistive technology, and `.disabled(impl Reactive<bool>)`.
 
 ## combobox
 
-`combobox(Combobox) -> NodeBuilder`. An editable text field with a filterable popup list. Unlike the other builders, the state is a standalone object you construct first:
+`combobox(Combobox) -> NodeBuilder`. An editable text field with a filterable popup list. Unlike the other builders, the state is a standalone object you construct first with `Combobox::new(impl IntoIterator<Item = impl Into<String>>)`:
 
 ```rust,no_run
 # use sigil::prelude::*;
+# use sigil::widgets::Combobox;
 # let _ = {
-let state = Combobox::new(vec!["Rust".into(), "Go".into(), "Zig".into()])
+let state = Combobox::new(["Rust", "Go", "Zig"])
     .placeholder("Language");
 combobox(state);
 # };
 ```
 
-`Combobox` holds the option list, the query, the selection, the popup open flag, and the cursor. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_cursor(delta)`. `.disabled(impl Reactive<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
+`Combobox` holds the option list, the query, the selection, the popup open flag, and the active row. Read it back with `.query()`, `.selected()` / `.selected_option()`, `.selected_signal()`, and `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`, `.edit_query(text)`, and `.move_active(delta)`. `.disabled(impl Reactive<bool>)` disables the text field. `.filtered()` returns the visible `(index, label)` pairs, a case-insensitive substring match.
 
-Typing opens the popup and clears the selection unless the text equals the committed label. Arrow Down opens or moves the cursor, Arrow Up moves it, Enter commits the cursor row, Escape closes. The popup also closes when the text field loses focus. The popup caps at eight 28 px rows and scrolls past that. Committing bumps a session signal that rebuilds the field so the label repaints.
+Typing opens the popup and clears the selection unless the text equals the committed label. Arrow Down opens or moves the active row, Arrow Up moves it, Enter commits the active row, Escape closes. The popup also closes when the text field loses focus. The popup caps at eight 28 px rows and scrolls past that. Committing bumps a session signal that rebuilds the field so the label repaints.
 
 ## dropdown
 
-`dropdown(Signal<usize>, Vec<String>)`. A trigger button plus a popup list. Pick by index, not free text.
+`dropdown(Signal<usize>, impl IntoIterator<Item = impl Into<String>>)`. A trigger button plus a popup list. Pick by index, not free text.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 let choice = signal(0_usize);
-dropdown(choice, vec!["Small".into(), "Large".into()])
+dropdown(choice, ["Small", "Large"])
     .change(|i| tracing::info!(i, "picked"));
 # };
 ```
 
-`.label()` names the control for accessibility (default "Dropdown"); `.disabled(impl Reactive<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
+`.accessible()` names the control for accessibility (default "Dropdown"); `.disabled(impl Reactive<bool>)`, `.width(px)`, `.height(px)` (default 32), and `.change(Fn(usize))`, which runs after the signal writes.
 
 Enter opens or commits, Escape closes, the arrows move the cursor, and pointer enter moves it too. `focus_out` on the root closes the popup. The popup is a `TopLayer` list of `Role::ListBoxOption` rows capped at six visible options; longer lists scroll inside the popup.
 
@@ -127,7 +129,7 @@ The visual catalog captures each field in the states in the table. Invalid comes
 | `field(..).error(..)` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
 | `text_field(..).multiline()` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
 | `number_field`, `date_field`, `color_field` | default, hover, pressed, focused, disabled, invalid | As `text_field` | `TextInput` | As `text_field` |
-| `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |
+| `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.accessible()`, else "Dropdown" |
 | `combobox` | default, hover, pressed, focused, disabled, open | Typing, Arrow keys, Enter, Escape | `ComboBox`, popup `ListBox` | The placeholder, else "Combobox" |
 
 `field` labels its control: the control is `labelled_by` the visible label, so assistive technology and `Harness::type_into("Name", ..)` find it by that text.

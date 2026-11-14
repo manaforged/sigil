@@ -6,10 +6,11 @@ use crate::kernel::NodeBuilder;
 use crate::widgets::Widget;
 
 use super::super::TextEdit;
-use super::{TextEditRuntime, edit_value, move_caret};
+use super::keymap::Edit;
+use super::{TextEditRuntime, move_caret};
 
 type KeyCommand = fn(&mut KeyEvent, &TextEditRuntime);
-type Edit = fn(&mut TextEdit);
+pub(in crate::widgets) type KeyBinding<R> = (&'static str, Modifiers, fn(&mut KeyEvent, &R));
 
 pub(in crate::widgets) fn clipboard_keys(
     node: NodeBuilder,
@@ -25,36 +26,24 @@ pub(in crate::widgets) fn clipboard_keys(
             move_caret(event, edit, TextEdit::select_all);
         }),
     ];
-    command_keys(node, runtime, &commands)
+    bind_command_keys(node, runtime, &commands)
 }
 
 pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let commands: [(&str, Modifiers, KeyCommand); 2] = [
-        ("Z", Modifiers::SHIFT, |event, edit| {
-            history(event, edit, TextEdit::redo);
-        }),
-        ("z", Modifiers::empty(), |event, edit| {
-            history(event, edit, TextEdit::undo);
-        }),
-    ];
-    let node = command_keys(node, &runtime, &commands);
-    let node = TERMINAL_UNDO.iter().fold(node, |node, key| {
-        let runtime = runtime.clone();
-        node.key(Shortcut::ctrl(Key::character(*key)), move |event| {
-            history(event, &runtime, TextEdit::undo);
-        })
-    });
-    node.key(Shortcut::ctrl(Key::character("y")), move |event| {
-        history(event, &runtime, TextEdit::redo);
-    })
+    bind_history_keys(
+        node,
+        runtime,
+        |event, edit| history(event, edit, TextEdit::undo),
+        |event, edit| history(event, edit, TextEdit::redo),
+    )
 }
 
 const TERMINAL_UNDO: [&str; 3] = ["_", "-", "7"];
 
-fn command_keys(
+pub(in crate::widgets) fn bind_command_keys<R: Clone + 'static>(
     mut node: NodeBuilder,
-    runtime: &TextEditRuntime,
-    commands: &[(&str, Modifiers, KeyCommand)],
+    runtime: &R,
+    commands: &[KeyBinding<R>],
 ) -> NodeBuilder {
     for modifiers in command_modifiers() {
         for &(key, extra, command) in commands {
@@ -64,6 +53,28 @@ fn command_keys(
         }
     }
     node
+}
+
+pub(in crate::widgets) fn bind_history_keys<R: Clone + 'static>(
+    node: NodeBuilder,
+    runtime: R,
+    undo: fn(&mut KeyEvent, &R),
+    redo: fn(&mut KeyEvent, &R),
+) -> NodeBuilder {
+    let commands: [KeyBinding<R>; 2] = [
+        ("Z", Modifiers::SHIFT, redo),
+        ("z", Modifiers::empty(), undo),
+    ];
+    let node = bind_command_keys(node, &runtime, &commands);
+    let node = TERMINAL_UNDO.iter().fold(node, |node, key| {
+        let rt = runtime.clone();
+        node.key(Shortcut::ctrl(Key::character(*key)), move |event| {
+            undo(event, &rt);
+        })
+    });
+    node.key(Shortcut::ctrl(Key::character("y")), move |event| {
+        redo(event, &runtime);
+    })
 }
 
 fn command_modifiers() -> impl Iterator<Item = Modifiers> {
@@ -86,20 +97,6 @@ pub(in crate::widgets) fn word_keys(
         let runtime = runtime.clone();
         node = node.key(shortcut, move |event| move_caret(event, &runtime, edit));
     }
-    let deletions: [(Shortcut, Edit); 5] = [
-        (
-            alt(NamedKey::Backspace.into()),
-            TextEdit::delete_word_backward,
-        ),
-        (Shortcut::ctrl(ch("w")), TextEdit::delete_word_backward),
-        (alt(ch("d")), TextEdit::delete_word_forward),
-        (Shortcut::ctrl(ch("u")), TextEdit::delete_to_line_start),
-        (Shortcut::ctrl(ch("k")), TextEdit::delete_to_line_end),
-    ];
-    for (shortcut, edit) in deletions {
-        let runtime = runtime.clone();
-        node = node.key(shortcut, move |event| edit_value(event, &runtime, edit));
-    }
     node
 }
 
@@ -119,6 +116,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let state = runtime.edit_mut();
     if let Some(text) = state.selected_text() {
+        event.prevent_default();
         event.stop_propagation();
         runtime
             .clip_fail
@@ -186,13 +184,7 @@ pub(in crate::widgets) fn attach_a11y_edit(
 impl TextEditRuntime {
     fn insert_pasted(&self, text: &str) {
         let mut state = self.edit_mut();
-        let normalised = if self.column.is_some() {
-            text.chars()
-                .filter(|ch| *ch != '\n' && *ch != '\r')
-                .collect()
-        } else {
-            text.replace("\r\n", "\n").replace('\r', "\n")
-        };
+        let normalised = text.replace("\r\n", "\n").replace('\r', "\n");
         state.insert_str(&normalised);
         self.sync_value(&state);
     }
@@ -204,12 +196,7 @@ impl TextEditRuntime {
         let mut state = self.edit_mut();
         match edit {
             A11yEdit::Text(text) => {
-                if self.column.is_some() {
-                    let line: String = text.chars().filter(|ch| !ch.is_control()).collect();
-                    state.replace(&line);
-                } else {
-                    state.replace(text);
-                }
+                state.replace(text);
                 self.sync_value(&state);
             }
             A11yEdit::Select { anchor, focus } => {
@@ -217,7 +204,7 @@ impl TextEditRuntime {
                 state.extend_to(*focus);
                 self.commit(&state);
             }
-            A11yEdit::Number(_) => return false,
+            A11yEdit::Increment | A11yEdit::Decrement | _ => return false,
         }
         true
     }

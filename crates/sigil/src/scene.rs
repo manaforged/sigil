@@ -11,6 +11,7 @@ pub(crate) mod emit_cache;
 pub(crate) mod geometry;
 #[cfg(vector_paint)]
 pub(crate) mod path_raster;
+pub(crate) mod shader;
 pub(crate) mod shadow;
 #[cfg(scene_emit)]
 pub(crate) mod state;
@@ -30,24 +31,21 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
-pub use command::{BlendMode, CommandScene, GlyphRun, StrokeCap, StrokeJoin, Wash};
+pub use command::{
+    BlendMode, CellBorder, Clip, ColorSpace, CommandScene, CornerShape, DecorationKind,
+    DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, FillRule, Filter,
+    GlyphRun, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, Mask, MaskMode,
+    PathCommand, PathPaint, PathStroke, PatternKind, SceneCommand, Stroke, StrokeAlign, StrokeCap,
+    StrokeJoin, StrokeStyle, TextFlow, Transform, Transform3D, Wash,
+};
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{
-        Clip, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath,
-        DrawPattern, DrawRect, Filter, Gradient, GradientKind, GradientStop, LayerEffect,
-        LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SceneCommand,
-        Stroke, StrokeAlign, StrokeStyle, Transform, Transform3D,
-    };
+    pub use command::LinearGradient;
 }
 kittest_pub! {
     #[doc(hidden)]
     #[cfg(scene_paint)]
     pub use command::{DrawSprite, SpriteKind, SpriteSource};
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use command::{CellBorder, TextFlow};
 }
 kittest_pub! {
     #[doc(hidden)]
@@ -62,8 +60,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use emit::emit_scene;
 }
-pub use shadow::Shadow;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use shadow::ShadowKind;
-}
+pub use shader::Shader;
+#[doc(hidden)]
+pub use shader::{DrawShader, Shading};
+pub use shadow::{Shadow, ShadowKind};

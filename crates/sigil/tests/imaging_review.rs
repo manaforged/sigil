@@ -8,6 +8,8 @@
 #![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 
 use sigil::geometry::PhysicalSize;
+use sigil::layout::LayoutStyle;
+use sigil::node::TextBuilder;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::style::{Background, ClipShape, GradientAxis, Radial, Rgba, Transform2D};

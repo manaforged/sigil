@@ -4,6 +4,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::Host;
+use sigil::app::HostMode;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil_kittest::Harness;

@@ -17,7 +17,7 @@ fn open() -> (Harness, Signal<Vec<String>>) {
         export.set(Some(labels));
         column().child(field(
             "Labels",
-            tag_input(OPTIONS.map(String::from), labels).placeholder("Add a label"),
+            tag_input(labels, OPTIONS.map(String::from)).placeholder("Add a label"),
         ))
     })
     .size(48, 16);
@@ -87,7 +87,7 @@ fn typing_a_whole_option_adds_it_and_clears_the_input() {
 fn a_disabled_tag_input_disables_its_remove_buttons() {
     let mut ui = Harness::new(|| {
         column().child(
-            tag_input(OPTIONS.map(String::from), signal(vec!["bug".to_owned()])).disabled(true),
+            tag_input(signal(vec!["bug".to_owned()]), OPTIONS.map(String::from)).disabled(true),
         )
     })
     .size(48, 16);

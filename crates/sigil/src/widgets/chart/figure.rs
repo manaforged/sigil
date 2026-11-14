@@ -19,7 +19,7 @@ pub(super) struct Look {
 pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
     container()
         .role(Role::Figure)
-        .label(theme_label(StringKey::Chart))
+        .accessible(theme_label(StringKey::Chart))
         .class([
             Radius::Md.atom(),
             StyleAtom::BorderWidth(BORDER_WIDTH),

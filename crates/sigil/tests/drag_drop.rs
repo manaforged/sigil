@@ -4,15 +4,16 @@
 use crate::widget_support;
 
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::events::{Event, MouseButtons, PointerPhase};
+use sigil::geometry::{Constraint, Point};
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
+use sigil::widgets::{DragState, drag_ghost};
 use widget_support::{compute, rect_colors};
 
 const WIDTH: f32 = 640.0;
@@ -21,7 +22,7 @@ const VIEWPORT: Constraint = Constraint::fixed(WIDTH, HEIGHT);
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
             SceneCommand::GlyphRun(d) => Some(d.text().to_owned()),
@@ -67,7 +68,7 @@ fn demo_tree(
 ) -> impl IntoNode {
     let on_drop = {
         let drops = Rc::clone(drops);
-        move |payload: String| drops.borrow_mut().push(payload)
+        move |event: sigil::events::DropEvent<String>| drops.borrow_mut().push(event.into_value())
     };
     let count_down = {
         let downs = Rc::clone(downs);

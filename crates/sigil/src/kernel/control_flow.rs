@@ -29,7 +29,7 @@ where
 
 /// One child per item, reconciled by key; `render` runs once for each new key.
 pub fn for_each<T, K, N>(
-    items: Signal<Vec<T>>,
+    items: impl Reactive<Vec<T>>,
     key: impl Fn(&T) -> K + 'static,
     render: impl Fn(&T) -> N + 'static,
 ) -> NodeBuilder
@@ -48,6 +48,19 @@ where
                 })
                 .collect::<Vec<_>>()
         })
+    })
+}
+
+/// Mounts `view(&key)` and mounts it again from scratch each time `key` changes.
+pub fn keyed<K, N>(key: impl Reactive<K>, view: impl Fn(&K) -> N + 'static) -> NodeBuilder
+where
+    K: Clone + Eq + Hash + 'static,
+    N: IntoNode + 'static,
+{
+    fragment().keyed_children_unmounted(move |mounted| {
+        let current = key.read();
+        let child = (!mounted(&current)).then(|| view(&current));
+        [(current, child)]
     })
 }
 

@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use super::Easing;
+use super::{Easing, Spring};
 use crate::animation::runtime::presets;
-use crate::animation::runtime::registry::timing;
+use crate::animation::runtime::registry::{intern, timing, with_layout};
 use crate::style::{MillisU16, StyleAtom, TransitionId};
 
 /// The properties a node animates when its style changes, with the duration, easing, and delay.
@@ -19,6 +19,16 @@ impl Transition {
     /// Transitions colors, opacity, and transform over 150 ms, like Tailwind `transition`.
     pub const fn new() -> Self {
         Self::preset(presets::TRANSITION)
+    }
+
+    /// Transitions colors, opacity, and transform on the smooth spring used by interactive controls.
+    pub const fn smooth() -> Self {
+        Self::preset(presets::SMOOTH)
+    }
+
+    /// Transitions every animatable property on `spring` physics; `duration`, `ease`, and `delay` do not apply.
+    pub fn spring(spring: Spring) -> Self {
+        Self::preset(intern(spring))
     }
 
     /// Transitions every animatable property over 150 ms, like Tailwind `transition-all`.
@@ -59,13 +69,37 @@ impl Transition {
         self
     }
 
-    pub(crate) fn atoms(self) -> [StyleAtom; 4] {
+    /// Also morphs the node from its old place and size to its new ones when layout moves or resizes it, like Motion `layout`.
+    pub const fn layout(mut self) -> Self {
+        self.id = with_layout(self.id);
+        self
+    }
+
+    pub(crate) const fn timing(self) -> (u16, Easing, u16) {
         let (ms, easing, delay_ms) = timing(self.id);
+        (
+            match self.duration {
+                Some(duration) => duration.0,
+                None => ms,
+            },
+            match self.easing {
+                Some(override_easing) => override_easing,
+                None => easing,
+            },
+            match self.delay {
+                Some(delay) => delay.0,
+                None => delay_ms,
+            },
+        )
+    }
+
+    pub(crate) const fn atoms(self) -> [StyleAtom; 4] {
+        let (ms, easing, delay_ms) = self.timing();
         [
             StyleAtom::Transition(self.id),
-            StyleAtom::TransitionDuration(self.duration.unwrap_or(MillisU16(ms))),
-            StyleAtom::TransitionEase(self.easing.unwrap_or(easing)),
-            StyleAtom::TransitionDelay(self.delay.unwrap_or(MillisU16(delay_ms))),
+            StyleAtom::TransitionDuration(MillisU16(ms)),
+            StyleAtom::TransitionEase(easing),
+            StyleAtom::TransitionDelay(MillisU16(delay_ms)),
         ]
     }
 

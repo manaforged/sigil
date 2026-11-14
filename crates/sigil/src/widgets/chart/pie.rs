@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token, Tone};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::vector::{PathBuilder, path};
 use super::PERCENT;
@@ -162,7 +162,7 @@ fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathBuilder {
     };
     shape
         .close()
-        .fill(hue.color())
+        .fill_color(hue.color())
         .stroke(Token::Surface, EDGE)
         .non_scaling_stroke()
         .layout(layer_layout())

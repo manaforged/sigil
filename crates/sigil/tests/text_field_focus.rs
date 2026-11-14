@@ -2,10 +2,12 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::events::{Event, KeyPhase};
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use widget_support::compute;
 
@@ -110,8 +112,7 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(320.0, 120.0))
-                .keyboard_shortcut(Shortcut::plain(Key::character("/")))
-                .key(Shortcut::plain(Key::character("/")), move |_| {
+                .shortcut(Shortcut::plain(Key::character("/")), move |_| {
                     trigger.set(trigger.peek() + 1);
                 })
                 .child(text_field(value).focus_when(trigger)),

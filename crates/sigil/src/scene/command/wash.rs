@@ -139,6 +139,20 @@ impl Wash {
         self
     }
 
+    /// Returns the paper color under the pigments.
+    #[must_use]
+    pub const fn paper(&self) -> Color {
+        self.paper
+    }
+
+    /// Returns the pigments added with `pigment`, in order.
+    #[must_use]
+    pub fn pigments(&self) -> &[Color] {
+        self.pigments
+            .split_at_checked(usize::from(self.count))
+            .map_or(self.pigments.as_slice(), |(added, _)| added)
+    }
+
     /// Returns this wash with its values in range.
     #[must_use]
     pub const fn normalized(mut self) -> Self {

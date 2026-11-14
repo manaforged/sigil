@@ -38,7 +38,7 @@ pub(super) fn render<K: Clone + Eq + Hash + 'static>(
     let click_row = row.clone();
     item.into_node_builder()
         .role(Role::TreeItem)
-        .label(accessible_name(&node.label))
+        .accessible(accessible_name(&node.label))
         .selected(signal(row.selected))
         .mutate(move |built| built.a11y.level = Some(level))
         .action(Action::Click)

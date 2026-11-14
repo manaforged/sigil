@@ -3,12 +3,12 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
+use crate::widgets::Widget;
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
-use super::shared::accessible_name;
+use super::shared::{accessible_name, caller_style};
 
 const TOP_BAR_HEIGHT: f32 = space(12);
 const AVATAR_PX: f32 = space(7);
@@ -52,6 +52,7 @@ pub fn app_shell(
         root = root.child(
             container()
                 .role(Role::GenericContainer)
+                .hittable(false)
                 .layout(
                     LayoutStyle::flex_column()
                         .position(Position::Absolute)
@@ -68,13 +69,16 @@ fn chrome_section(
     chrome: &'static [StyleAtom],
     child: impl IntoNode + 'static,
 ) -> NodeBuilder {
+    let band = LayoutStyle::flex_row().fill_width();
+    let band = if crate::layout::snap::cell().is_some() {
+        band.min_size(0.0, height)
+    } else {
+        band.height(height)
+    };
     container()
         .role(Role::GenericContainer)
         .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(height)
-                .shrink(0.0)
+            band.shrink(0.0)
                 .padding_x(Space::Sm)
                 .gap(Space::Sm)
                 .align_items(AlignItems::Center),
@@ -117,6 +121,7 @@ static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 #[must_use]
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -129,6 +134,7 @@ impl HintOverlayBuilder {
             .collect();
         Self {
             entries,
+            style_accumulator: Style::new(),
             layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
         }
     }
@@ -142,7 +148,7 @@ impl HintOverlayBuilder {
     fn root(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .label(theme_label(StringKey::KeyboardShortcuts))
+            .accessible(theme_label(StringKey::KeyboardShortcuts))
             .layout(
                 LayoutStyle::flex_column()
                     .padding(Space::Md)
@@ -167,11 +173,11 @@ impl HintOverlayBuilder {
                     .child(text(desc)),
             );
         }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 
-builder_impls!([] HintOverlayBuilder: widget, node);
+builder_impls!([] HintOverlayBuilder: paint(style_accumulator), widget, node);
 
 /// An overlay that lists key bindings.
 pub fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder {
@@ -185,31 +191,84 @@ pub fn spacer() -> NodeBuilder {
         .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
 }
 
-/// A placeholder for empty content.
-pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
-    let title: TextContent = title.into();
-    let name = accessible_name(&title);
-    container()
-        .role(Role::Status)
-        .label(name)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .padding(Space::Xxxl)
-                .gap(Space::Md)
-                .align_items(AlignItems::Center),
-        )
-        .child(
-            text(title)
-                .class("text-lg font-medium")
-                .class(Token::OnSurface.text()),
-        )
-        .child(
-            text(body)
-                .class("text-sm")
-                .class(Tone::Neutral.step(11).text()),
-        )
+/// Builder of a placeholder for empty content.
+#[must_use]
+pub struct EmptyStateBuilder {
+    title: TextContent,
+    description: Option<TextContent>,
+    action: Option<Box<dyn IntoNode>>,
+    style_accumulator: Style,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
+
+impl core::fmt::Debug for EmptyStateBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("EmptyStateBuilder")
+            .field("title", &self.title)
+            .field("description", &self.description)
+            .field("action", &self.action.is_some())
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish()
+    }
+}
+
+/// A placeholder for empty content headed by `title`, which is also its accessible name.
+pub fn empty_state(title: impl Into<TextContent>) -> EmptyStateBuilder {
+    EmptyStateBuilder {
+        title: title.into(),
+        description: None,
+        action: None,
+        style_accumulator: Style::new(),
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
+    }
+}
+
+impl EmptyStateBuilder {
+    /// Sets the muted text shown below the title.
+    pub fn description(mut self, description: impl Into<TextContent>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    /// Sets the node shown below the description, such as a button.
+    pub fn action(mut self, action: impl IntoNode + 'static) -> Self {
+        self.action = Some(Box::new(action));
+        self
+    }
+
+    fn root(self) -> NodeBuilder {
+        let name = accessible_name(&self.title);
+        let mut root = container()
+            .role(Role::Status)
+            .accessible(name)
+            .layout(
+                LayoutStyle::flex_column()
+                    .fill_width()
+                    .padding(Space::Xxxl)
+                    .gap(Space::Md)
+                    .align_items(AlignItems::Center),
+            )
+            .child(
+                text(self.title)
+                    .class("text-lg font-medium")
+                    .class(Token::OnSurface.text()),
+            );
+        if let Some(description) = self.description {
+            root = root.child(
+                text(description)
+                    .class("text-sm")
+                    .class(Tone::Neutral.step(11).text()),
+            );
+        }
+        if let Some(action) = self.action {
+            root = root.child(action);
+        }
+        caller_style(root, self.style_accumulator)
+    }
+}
+
+builder_impls!([] EmptyStateBuilder: paint(style_accumulator), widget, node);
 
 /// A section heading row.
 pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
@@ -218,6 +277,7 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
+                .shrink(0.0)
                 .padding_x(Space::Sm),
         )
         .child(
@@ -234,6 +294,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
+                .shrink(0.0)
                 .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
@@ -256,7 +317,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let name = accessible_name(&content);
     container()
         .role(Role::Image)
-        .label(name)
+        .accessible(name)
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(AVATAR_PX, AVATAR_PX)
@@ -287,7 +348,7 @@ pub use list_row::{Disclosure, ListRowBuilder, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
 pub use navigation::{breadcrumbs, pagination};
 pub use sidebar::{SidebarBuilder, sidebar};
-pub use status::{badge, skeleton, stepper};
+pub use status::{SkeletonBuilder, badge, skeleton, stepper};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

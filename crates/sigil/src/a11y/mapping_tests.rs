@@ -1,5 +1,6 @@
 use super::{TreeScope, tree, tree_scoped};
 use crate::kernel::{Cx, announce, container, text};
+use crate::widgets::Widget;
 
 fn spoken(update: &accesskit::TreeUpdate) -> Vec<Option<String>> {
     update
@@ -16,7 +17,7 @@ fn a_keyboard_shortcut_is_exposed_as_its_display_text() {
         let mut cx = Cx::new_root();
         let save = crate::events::Shortcut::primary(crate::events::Key::character("s"));
         let label = save.label();
-        let _ = cx.add(container().keyboard_shortcut(save));
+        let _ = cx.add(container().accessible_shortcut(save));
         let update = tree(&cx, None, &|_| None);
         assert!(
             update
@@ -58,7 +59,7 @@ fn the_reading_scope_keeps_a_status_nested_in_plain_containers() {
         let mut cx = Cx::new_root();
         let status = container()
             .role(crate::kernel::Role::Status)
-            .label("saving");
+            .accessible("saving");
         let _ = cx.add(container().child(container().child(status)));
         let full = tree(&cx, None, &|_| None);
         let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
@@ -73,7 +74,7 @@ fn the_reading_scope_names_only_children_it_emits() {
         let mut cx = Cx::new_root();
         let status = container()
             .role(crate::kernel::Role::Status)
-            .label("saving");
+            .accessible("saving");
         let _ = cx.add(
             container()
                 .child(text("plain"))
@@ -100,7 +101,7 @@ fn the_reading_scope_emits_only_live_nodes_and_the_ancestors_that_hold_them() {
         let mut cx = Cx::new_root();
         let status = container()
             .role(crate::kernel::Role::Status)
-            .label("saving");
+            .accessible("saving");
         let _ = cx.add(
             container()
                 .child(text("star one"))

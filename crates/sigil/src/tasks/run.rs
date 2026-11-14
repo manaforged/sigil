@@ -15,7 +15,7 @@ struct TaskRun {
     handle: Option<TaskHandle>,
 }
 
-/// Async work that runs again on `run` and cancels its previous run.
+/// Async work that stays idle until `run` or `autostart` starts it; each start cancels the run before it.
 pub struct Task<T: 'static, E: 'static> {
     status: Signal<Status<T, E>>,
     start: Signal<Start<T, E>>,
@@ -40,7 +40,7 @@ impl<T: 'static, E: 'static> Clone for Task<T, E> {
 
 impl<T: 'static, E: 'static> Copy for Task<T, E> {}
 
-/// Creates a task that runs the future from `make`; only the newest run sets the status.
+/// Creates a task that stays `Status::Idle` until `Task::run` or `Task::autostart`; only the newest run sets the status.
 #[must_use]
 #[track_caller]
 pub fn task<T, E, F, Fut>(make: F) -> Task<T, E>
@@ -72,7 +72,7 @@ where
 }
 
 impl<T: 'static, E: 'static> Task<T, E> {
-    /// Starts the task again.
+    /// Starts the task now, cancelling a run in progress; it stops when the creating scope ends.
     pub fn run(self) {
         let id = self.retire();
         let handle = (self.start.peek())(self.status, self.current, id);
@@ -85,7 +85,14 @@ impl<T: 'static, E: 'static> Task<T, E> {
         self.current.update(|run| *run = TaskRun { id, handle });
     }
 
-    /// Cancels the task.
+    /// Starts the task now and returns it, for work that begins when the component mounts.
+    #[must_use]
+    pub fn autostart(self) -> Self {
+        self.run();
+        self
+    }
+
+    /// Cancels a run in progress; a `Status::Pending` status returns to `Status::Idle`.
     pub fn cancel(self) {
         let id = self.retire();
         self.current

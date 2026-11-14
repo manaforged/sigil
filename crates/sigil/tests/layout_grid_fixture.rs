@@ -6,7 +6,7 @@ use sigil::geometry::Constraint;
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::{LayoutResult, TrackSize, *};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 use stub::stub_engine;
 

@@ -2,7 +2,7 @@
 
 ## Node tree
 
-The internal `kernel` module owns the UI tree. `Cx` is the tree context. `NodeId` is stable until the node is removed.
+The internal `kernel` module owns the UI tree, and `sigil::node` exports its public types. `Cx` is the tree context. `NodeId` is stable until the node is removed.
 
 `children_reactive` remounts children by index. A length change rebuilds the list. `children_keyed` remounts by key: a matching key keeps its `NodeId`. The new builder for a kept key is dropped, so a dummy `container()` is enough. First key wins on duplicates. `for_each` and `show` are `children_keyed` on a `fragment`.
 
@@ -16,7 +16,7 @@ The internal `LayoutEngine::compute(cx, root, available)` runs in the Layout pha
 
 ## Text
 
-The internal `text` module shapes and measures. HarfRust handles complex shaping, skrifa loads fonts, and bidirectional text resolves through `unicode-bidi`. Font fallback selects a face for each run.
+The `text` module shapes and measures. Shaping is internal; `sigil::text` exports `TextStyle`, `measure_text`, and the caret and hit-test types. HarfRust handles complex shaping, skrifa loads fonts, and bidirectional text resolves through `unicode-bidi`. Font fallback selects a face for each run.
 
 ## Scene
 

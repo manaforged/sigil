@@ -21,13 +21,19 @@ fn area() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 320.0, 96.0)
 }
 
+fn push_command(scene: &mut CommandScene, command: SceneCommand) {
+    scene.commands.push(command);
+}
+
+fn extend_scene(scene: &mut CommandScene, other: CommandScene) {
+    scene.commands.extend(other.commands);
+}
+
 fn scene(rects: &[(f32, f32, Color)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), 16.0, 8.0);
-        scene
-            .commands
-            .push(SceneCommand::Rect(DrawRect::new(rect, *color)));
+        push_command(&mut scene, SceneCommand::Rect(DrawRect::new(rect, *color)));
     }
     scene
 }
@@ -162,19 +168,18 @@ fn changing_more_than_half_a_large_scene_repaints_whole() {
 
 fn layered(effect: crate::scene::command::LayerEffect, color: Color) -> CommandScene {
     let mut layer = CommandScene::default();
-    layer
-        .commands
-        .push(SceneCommand::PushLayer(crate::scene::command::LayerScope {
+    push_command(
+        &mut layer,
+        SceneCommand::PushLayer(crate::scene::command::LayerScope {
             clip: area(),
             clip_radii: crate::scene::corner_radii::CornerRadii::default(),
             effect,
             opacity: 1.0,
             blend: crate::scene::BlendMode::Normal,
-        }));
-    layer
-        .commands
-        .extend(scene(&[(80.0, 40.0, color)]).commands);
-    layer.commands.push(SceneCommand::PopLayer);
+        }),
+    );
+    extend_scene(&mut layer, scene(&[(80.0, 40.0, color)]));
+    push_command(&mut layer, SceneCommand::PopLayer);
     layer
 }
 
@@ -212,14 +217,10 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
 
 fn clipped(clip: Rect, inside: Color) -> CommandScene {
     let mut clipped = CommandScene::default();
-    clipped.commands.push(SceneCommand::PushClip(clip.into()));
-    clipped
-        .commands
-        .extend(scene(&[(80.0, 40.0, inside)]).commands);
-    clipped.commands.push(SceneCommand::PopClip);
-    clipped
-        .commands
-        .extend(scene(&[(240.0, 80.0, RED)]).commands);
+    push_command(&mut clipped, SceneCommand::PushClip(clip.into()));
+    extend_scene(&mut clipped, scene(&[(80.0, 40.0, inside)]));
+    push_command(&mut clipped, SceneCommand::PopClip);
+    extend_scene(&mut clipped, scene(&[(240.0, 80.0, RED)]));
     clipped
 }
 
@@ -248,10 +249,10 @@ fn cell_of_point(x: f32, y: f32) -> Rect {
 
 fn group(opacity: f32) -> CommandScene {
     let mut group = CommandScene::default();
-    group.commands.push(SceneCommand::SaveLayer { opacity });
-    group.commands.extend(scene(&[(80.0, 40.0, RED)]).commands);
-    group.commands.push(SceneCommand::RestoreLayer);
-    group.commands.extend(scene(&[(240.0, 80.0, RED)]).commands);
+    push_command(&mut group, SceneCommand::SaveLayer { opacity });
+    extend_scene(&mut group, scene(&[(80.0, 40.0, RED)]));
+    push_command(&mut group, SceneCommand::RestoreLayer);
+    extend_scene(&mut group, scene(&[(240.0, 80.0, RED)]));
     group
 }
 
@@ -265,12 +266,12 @@ fn a_faded_group_damages_only_its_children() {
 
 fn moved(offset: f32) -> CommandScene {
     let mut moved = CommandScene::default();
-    moved.commands.push(SceneCommand::PushTransform([
-        [1.0, 0.0, offset],
-        [0.0, 1.0, 0.0],
-    ]));
-    moved.commands.extend(scene(&[(80.0, 40.0, RED)]).commands);
-    moved.commands.push(SceneCommand::PopTransform);
+    push_command(
+        &mut moved,
+        SceneCommand::PushTransform([[1.0, 0.0, offset], [0.0, 1.0, 0.0]]),
+    );
+    extend_scene(&mut moved, scene(&[(80.0, 40.0, RED)]));
+    push_command(&mut moved, SceneCommand::PopTransform);
     moved
 }
 

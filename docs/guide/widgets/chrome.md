@@ -28,15 +28,48 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## tabs
 
-`tabs().tab(label, component)` adds one tab per call. Each component builds once when the tabs mount; a hidden tab keeps its state. `.active(Signal<usize>)` binds the selected index. `.labels(iter)` adds tabs without panels, for a strip that drives content elsewhere. The strip is a `Role::TabList`; each tab activates on click or Enter. The active tab label is semibold in the surface text color; other labels are medium weight in gray step 11. The bare strip also gives the active tab a pressed surface, and the line strip an accent underline. The pane sits 8 px (`space(2)`) below the strip.
+`tabs().tab(label, content)` adds one tab per call. `content` is a closure that returns the panel node (`FnOnce() -> impl IntoNode`), such as `.tab("Code", || text("Code view"))`. Each closure runs once when the tabs mount; a hidden tab keeps its state. `.active(Signal<usize>)` binds the selected index. `.labels(iter)` adds tabs without panels, for a strip that drives content elsewhere. The strip is a `Role::TabList`; each tab activates on click or Enter. The active tab label is semibold in the surface text color; other labels are medium weight in gray step 11. The bare strip also gives the active tab a pressed surface, and the line strip an accent underline. The pane sits 8 px (`space(2)`) below the strip.
 
 - `.line()` / `.pill()`: strip chrome; default is bare.
-- `.label(name)`: assistive name for the list.
+- `.accessible(name)`: assistive name for the list.
 - `.disabled(&[usize])`: disable specific indices.
 - `.justify_list(JustifyContent)`: strip alignment.
 - `.reorderable(true)` + `.order(Signal<Vec<usize>>)`: drag to reorder; the order signal holds the permutation.
 - `.closeable(true)` + `.close(Fn(usize))`: per-tab close buttons; the handler owns removing the label.
 - `.into_container()`: build as a container node.
+
+## segmented
+
+`segmented(active: Signal<usize>, labels: impl IntoIterator<Item = impl Into<String>>) -> SegmentedBuilder`. A framed row of mutually exclusive options where one is active; `.accessible(name)` sets the accessible name of the group.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+let active = signal(0_usize);
+segmented(active, ["Code", "Diff", "Docs"]).accessible("View");
+# };
+```
+
+## tree
+
+`tree(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K>` where `K: Clone + Eq + Hash + 'static`. A virtualized hierarchical list for explorers and outlines. Build nodes with `TreeNode::new(id, label)`:
+
+- `TreeNode::new(id, label)` chains `.leading(glyph)`, `.status(text, tone)`, `.detail(text)`, `.tone(RowTone)`, `.child(node)`, and `.children(iter)`.
+- `TreeBuilder` chains `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(Fn(&K))`, `.accessible(name)`, and `.indent(px)`.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+let nodes = vec![
+    TreeNode::new("src", "src").children([TreeNode::new("lib", "lib.rs")]),
+];
+tree(nodes).accessible("Files");
+# };
+```
+
+## context_menu
+
+`context_menu(target: impl IntoNode + 'static, items: impl Fn() -> Vec<MenuItem> + 'static) -> NodeBuilder`. Wraps `target` and opens a menu of `items()` at the pointer on right-click.
 
 ## splitter
 
@@ -62,7 +95,7 @@ splitter(Orientation::Horizontal)
 
 ## scroll
 
-`scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
+`scroll(content: impl Into<NodeBuilder>)` measures the content itself (`Widget::track_size`). `.extent(impl Reactive<f32>)` sets the total content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
 - `.scroll_y(Signal<f32>)`: expose the scroll offset.
@@ -80,26 +113,26 @@ Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and a
 
 ## Small composites
 
-Small composites in `sigil::widgets`:
+Small composites, in `sigil::prelude` and `sigil::widgets`:
 
 - `field(label, control)`: label stacked over a control with a 4 px gap. `.error(reactive)` shows the error text under a text, number, or color field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)`: a row at least 28 px tall. The key is a muted 16-column cell that ellipsizes. The value starts 12 px after it and fills the rest, so values in a stack align.
 - `kv_grid([(key, value)])`: a stack of `kv_row`s with a 1 px divider between rows; values render monospace.
-- `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
-- The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
+- `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. `.selected(impl Reactive<bool>)` accepts a `bool`, signal, or closure; a selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
+- The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` (`impl Reactive<Disclosure>`) is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
 - `section_label(title)`: a small muted heading for groups.
-- `empty_state(title, body)`: centered `Role::Status` placeholder.
-- `notice_band(body, tone)`: a full-width tinted status strip.
+- `empty_state(title: impl Into<TextContent>)`: centered `Role::Status` placeholder named by its title. `.description(text)` adds muted text below the title, and `.action(node)` adds a node, such as a button, below that.
+- `notice_band(body: impl Into<TextContent>, tone: Tone)`: a full-width tinted status strip.
 - `hint_bar(keys, right)`: left key hints and a right accent label.
 - `avatar(initials)`: a 28 px accent circle; the initials become the accessible name.
 - `hint_overlay(hints)`: a popup-surface list of shortcut rows with 8 px gaps.
 - `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
-- `badge(count, tone)`: a small count pill that hides at zero and reads `99+` past 99.
-- `skeleton(lines)`: muted placeholder bars with `Role::Status` named "Loading".
+- `badge(count: impl Reactive<usize>, tone: Tone)`: a small count pill that hides at zero and reads `99+` past 99.
+- `skeleton()`: muted placeholder bars with `Role::Status` named "Loading". `.lines(n)` sets the number of bars (default 3).
 - `pagination(page, pages)`: previous, page, and next buttons over a zero-based `Signal<usize>`. More than seven pages collapse around the current page, and the page moves into range when `pages` shrinks.
 - `breadcrumbs(segments, activate)`: a path whose segments before the last are links that run `activate(index)`.
-- `stepper(steps, current)`: numbered steps; the ones before `current` show a check mark.
+- `stepper(current: impl Reactive<usize>, steps: impl IntoIterator<Item = impl Into<String>>)`: numbered steps; the ones before `current` show a check mark.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.
 
@@ -110,7 +143,7 @@ The visual catalog captures these states. The frame widgets (`card`, `surface`, 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `menu_bar` | default, hover, pressed, open | Enter or Space on a trigger; the open panel uses the list keys in [Overlays](overlays.md#keyboard-in-lists) | Triggers are `Button` | The trigger label |
-| `tabs` | default, hover, pressed, focused, disabled, selected | Tab enters the active tab only; Left, Right, Home, and End move focus between tabs and select the tab; Enter activates | `TabList`, tabs `Tab` | `.label()` for the list, else "Tabs"; each tab uses its label |
+| `tabs` | default, hover, pressed, focused, disabled, selected | Tab enters the active tab only; Left, Right, Home, and End move focus between tabs and select the tab; Enter activates | `TabList`, tabs `Tab` | `.accessible()` for the list, else "Tabs"; each tab uses its label |
 | `splitter` | default, hover, pressed, focused | Arrow keys move the handle by 16 px; Home and End move it to the minimum and maximum | Handles are `Splitter` with a value: the size of the pane before the handle | "Resize panes" |
 | `scroll` | default, hover | Wheel, scrollbar drag; when focused, arrow keys, Page Up, Page Down, Home, and End. The area is a Tab stop only when its content overflows | `ScrollView` | None |
 | `sidebar` | static | none | `Navigation` | None |

@@ -111,6 +111,18 @@ impl Selection {
     }
 }
 
+impl Default for Selection {
+    fn default() -> Self {
+        Self::new(SelectionMode::Single)
+    }
+}
+
+impl From<SelectionMode> for Selection {
+    fn from(mode: SelectionMode) -> Self {
+        Self::new(mode)
+    }
+}
+
 impl SelectionRuntime {
     pub(super) const fn new(state: Signal<Selection>) -> Self {
         Self { state }

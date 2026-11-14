@@ -9,7 +9,7 @@ use std::hint::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::profile;
 use sigil::reactive::Owner;
@@ -48,7 +48,7 @@ fn layout_then_emit(c: &mut Criterion) {
                 }
                 {
                     let _emit = profile::span(sigil::profile::Phase::Emit);
-                    black_box(emit_scene(
+                    let _ = black_box(emit_scene(
                         &cx,
                         root,
                         Some(Rect::new(Point::new(0.0, 0.0), 1280.0, 800.0)),

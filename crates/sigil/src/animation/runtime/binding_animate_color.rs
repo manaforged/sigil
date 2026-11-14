@@ -2,7 +2,7 @@ use crate::reactive::signal;
 use crate::style::srgb::byte;
 use crate::style::{Color, ColorAtomKind};
 
-use crate::animation::runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, SignalAnimator};
 
 use super::binding_animate::AttachedColorAnimator;
 
@@ -63,7 +63,7 @@ pub(crate) fn build_color_entry(
     AttachedColorAnimator {
         kind,
         channels,
-        animators: channels.map(|channel| Animator::new(channel, config)),
+        animators: channels.map(|channel| SignalAnimator::new(channel, config)),
         last_target: initial,
     }
 }

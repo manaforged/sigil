@@ -2,6 +2,7 @@
 
 use std::rc::Rc;
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::widgets::virtual_list;
@@ -36,7 +37,7 @@ fn prepending_items_keeps_the_top_visible_item_in_place() {
                 virtual_list(items, |_, id: &u64| {
                     container()
                         .role(Role::ListItem)
-                        .label(format!("item {id}"))
+                        .accessible(format!("item {id}"))
                         .layout(
                             LayoutStyle::block()
                                 .fill_width()

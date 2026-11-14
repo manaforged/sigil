@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::Disclosure;
 
 pub(crate) struct Repo {
     name: &'static str,

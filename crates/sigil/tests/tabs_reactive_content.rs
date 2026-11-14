@@ -5,9 +5,10 @@
     clippy::shadow_unrelated
 )]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::AccessibleName;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 
@@ -45,12 +46,12 @@ fn every_tab_stays_mounted_and_only_the_active_one_shows() {
                 .active(active)
                 .tab("A", || {
                     container()
-                        .label("panel-0")
+                        .accessible("panel-0")
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
                 })
                 .tab("B", || {
                     container()
-                        .label("panel-1")
+                        .accessible("panel-1")
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
                 }),
         );

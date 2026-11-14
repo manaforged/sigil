@@ -2,6 +2,7 @@
 
 use crate::widget_support;
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -13,7 +14,7 @@ fn progress_has_progress_indicator_role() {
     sigil::reactive::Owner::scope("sigil-progress-role", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(value, 100.0));
+        let root = cx.add(progress(value).max(100.0));
         let node = cx.get(root).unwrap();
         assert_eq!(node.a11y.role, Role::ProgressIndicator);
     });
@@ -24,7 +25,7 @@ fn progress_aria_value_reflects_signal() {
     sigil::reactive::Owner::scope("sigil-progress-aria-value", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(value, 100.0));
+        let root = cx.add(progress(value).max(100.0));
         let node = cx.get(root).unwrap();
         assert_eq!(node.a11y.value_min, Some(0.0));
         assert_eq!(node.a11y.value_max, Some(100.0));
@@ -38,7 +39,7 @@ fn progress_aria_value_updates_reactively() {
     sigil::reactive::Owner::scope("sigil-progress-aria-reactive", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(value, 100.0));
+        let root = cx.add(progress(value).max(100.0));
 
         value.set(75.0);
         let node = cx.get(root).unwrap();
@@ -52,7 +53,7 @@ fn progress_track_emits_border_strong_color() {
     sigil::reactive::Owner::scope("sigil-progress-track-color", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(value, 100.0));
+        let root = cx.add(progress(value).max(100.0));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
@@ -72,7 +73,7 @@ fn progress_fill_emits_accent_color() {
     sigil::reactive::Owner::scope("sigil-progress-fill-color", || {
         let value = signal(60.0_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(value, 100.0));
+        let root = cx.add(progress(value).max(100.0));
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))
@@ -92,7 +93,7 @@ fn progress_indeterminate_emits_accent_fill() {
     sigil::reactive::Owner::scope("sigil-progress-indeterminate-color", || {
         let phase = signal(0.5_f32);
         let mut cx = Cx::new_root();
-        let root = cx.add(progress(phase, 1.0).indeterminate());
+        let root = cx.add(progress(phase).indeterminate());
         let mut layout = LayoutEngine::new(stub_text_measure());
         layout
             .compute(&mut cx, root, Constraint::fixed(640.0, 480.0))

@@ -1,4 +1,5 @@
 use sigil::prelude::*;
+use sigil::style::FontFamily;
 
 use super::facts::{DIAGNOSTICS, OUTPUT, PROMPT, Problem, severity_icon, severity_tone};
 use super::state::{BottomTab, Workspace};
@@ -84,7 +85,7 @@ pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
         .child(
             panel
                 .active(ws.bottom)
-                .label("Panel")
+                .accessible("Panel")
                 .line()
                 .justify_list(JustifyContent::Start),
         )

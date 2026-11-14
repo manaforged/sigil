@@ -3,7 +3,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::style::ControlSize;
 use crate::style::{StyleAtom, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::caller_style;
@@ -19,13 +19,13 @@ pub struct DotBuilder {
 }
 
 /// A status dot.
-pub fn dot(tone: Tone) -> DotBuilder {
+pub const fn dot(tone: Tone) -> DotBuilder {
     DotBuilder::new(tone)
 }
 
 impl DotBuilder {
     /// Creates a status dot in `tone` at `ControlSize::Compact`.
-    pub(crate) fn new(tone: Tone) -> Self {
+    pub(crate) const fn new(tone: Tone) -> Self {
         Self {
             tone,
             size: ControlSize::Compact,

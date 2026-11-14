@@ -3,16 +3,16 @@ use core::hash::Hash;
 
 use super::Matcher;
 
-/// What a list cursor does at the end of the list.
+/// What the active row does when it moves past the end of the list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CursorEdge {
-    /// The cursor stops at the first and the last row.
+pub enum ListEdge {
+    /// The active row stops at the first and the last row.
     Clamp,
-    /// The cursor moves from the last row to the first, and back.
+    /// The active row moves from the last row to the first, and back.
     Wrap,
 }
 
-/// The cursor, selection, expansion, and query of a list.
+/// The active row, scroll, expansion, and query of a list.
 #[non_exhaustive]
 pub struct ListState<K: Clone + Eq + Hash + 'static = String> {
     pub(crate) cursor: Signal<usize>,
@@ -65,9 +65,9 @@ impl<K: Clone + Eq + Hash + 'static> ListState<K> {
         }
     }
 
-    /// Returns the signal of the cursor row index.
+    /// Returns the signal of the active row index.
     #[must_use]
-    pub const fn cursor(self) -> Signal<usize> {
+    pub const fn active(self) -> Signal<usize> {
         self.cursor
     }
 
@@ -95,23 +95,23 @@ impl<K: Clone + Eq + Hash + 'static> ListState<K> {
         self.caret
     }
 
-    /// Returns the cursor index clamped to `len`.
+    /// Returns the active row index clamped to `len`.
     #[must_use]
     pub fn at(self, len: usize) -> usize {
         self.cursor.peek().min(len.saturating_sub(1))
     }
 
-    /// Moves the cursor by `delta`.
-    pub fn shift(self, delta: isize, len: usize, edge: CursorEdge) {
+    /// Moves the active row by `delta`.
+    pub fn shift(self, delta: isize, len: usize, edge: ListEdge) {
         let at = self.at(len);
         let next = match edge {
-            CursorEdge::Clamp => at.saturating_add_signed(delta).min(len.saturating_sub(1)),
-            CursorEdge::Wrap => wrap(at, delta, len),
+            ListEdge::Clamp => at.saturating_add_signed(delta).min(len.saturating_sub(1)),
+            ListEdge::Wrap => wrap(at, delta, len),
         };
         self.cursor.set(next);
     }
 
-    /// Moves the cursor to `index`.
+    /// Moves the active row to `index`.
     pub fn move_to(self, index: usize) {
         self.cursor.set(index);
     }

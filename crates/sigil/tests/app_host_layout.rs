@@ -5,7 +5,7 @@ use sigil::kernel::HostMode;
 use sigil::kernel::{Surface, container, text};
 use sigil::layout::LayoutStyle;
 use sigil::style::{Paint, Token, Tone, ToneContext};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 #[test]
 fn host_root_is_none_until_build() {
@@ -100,7 +100,7 @@ fn host_paint_skips_surface_children() {
     {
         let scene = host.scene((80.0, 24.0)).unwrap();
         let rects = scene
-            .commands
+            .commands()
             .iter()
             .filter(|command| matches!(command, sigil::scene::SceneCommand::Rect(_)))
             .count();

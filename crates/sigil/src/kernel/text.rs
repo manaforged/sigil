@@ -8,7 +8,7 @@ use crate::kernel::NodeBuilder;
 use crate::kernel::component::NodePatch;
 use crate::kernel::hooks::NodeHooks;
 use crate::kernel::{A11yProps, Cx, DeltaKind, IntoNode, NodeId, NodeType};
-use crate::style::{PaintTarget, StyleSlot};
+use crate::style::{Paint, StateStyleBuilder};
 
 /// Static, signal, or computed text.
 #[derive(Clone)]
@@ -99,6 +99,18 @@ impl From<String> for TextContent {
     }
 }
 
+impl From<&String> for TextContent {
+    fn from(value: &String) -> Self {
+        Self::Static(value.clone())
+    }
+}
+
+impl From<std::borrow::Cow<'_, str>> for TextContent {
+    fn from(value: std::borrow::Cow<'_, str>) -> Self {
+        Self::Static(value.into_owned())
+    }
+}
+
 impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
     fn from(value: Signal<T>) -> Self {
         if let Some(text) = (&value as &dyn std::any::Any).downcast_ref::<Signal<String>>() {
@@ -108,9 +120,13 @@ impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
     }
 }
 
-impl<F: Fn() -> String + 'static> From<F> for TextContent {
+impl<F, S> From<F> for TextContent
+where
+    F: Fn() -> S + 'static,
+    S: Into<String>,
+{
     fn from(value: F) -> Self {
-        Self::Compute(Rc::new(value))
+        Self::Compute(Rc::new(move || value().into()))
     }
 }
 
@@ -137,6 +153,12 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
         node: NodeBuilder::from_parts(kind, a11y, Vec::new()),
         hooks: NodeHooks::default(),
     }
+}
+
+/// Creates a text node from spans that shape, wrap, and select as one paragraph.
+pub fn rich(spans: crate::text::Spans) -> TextBuilder {
+    let (body, runs) = spans.into_parts();
+    text(body).runs(runs)
 }
 
 impl TextBuilder {
@@ -180,9 +202,9 @@ impl TextBuilder {
     }
 }
 
-impl PaintTarget for TextBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        self.node.style_slot()
+impl Paint for TextBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.node.paint_mut()
     }
 }
 

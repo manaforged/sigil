@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use super::Color;
 use crate::scene::Shadow;
 use crate::scene::command::Filter;
-use crate::style::NumericAtomKind;
+use crate::style::NumericAtomKind as K;
 use crate::style::srgb::{decode_rgb, encode, unit};
 
 mod motion;
@@ -88,14 +88,10 @@ impl ShadowSpec {
         },
     };
 
-    fn part(self, kind: NumericAtomKind) -> f32 {
+    fn part(self, kind: K) -> f32 {
         match kind {
-            NumericAtomKind::DropShadowX | NumericAtomKind::TextShadowX => {
-                f32::from(self.offset[0]) / SUB
-            }
-            NumericAtomKind::DropShadowY | NumericAtomKind::TextShadowY => {
-                f32::from(self.offset[1]) / SUB
-            }
+            K::DropShadowX | K::TextShadowX => f32::from(self.offset[0]) / SUB,
+            K::DropShadowY | K::TextShadowY => f32::from(self.offset[1]) / SUB,
             _ => f32::from(self.blur) / SUB,
         }
     }
@@ -124,6 +120,15 @@ pub(crate) enum FilterPart {
     HueRotate(i16),
     DropShadow(Option<ShadowSpec>),
     TextShadow(TextShadows),
+    Backdrop(BackdropPart, u16),
+    Shader(u64),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum BackdropPart {
+    Blur,
+    Brightness,
+    Saturate,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -145,8 +150,22 @@ pub(crate) struct FilterStyle {
     hue: Option<i16>,
     drop: Option<ShadowSpec>,
     text: TextShadows,
+    backdrop: [Option<u16>; 3],
+    pub(crate) shader: Option<u64>,
     pub(crate) drop_color: Option<Color>,
     pub(crate) text_color: Option<Color>,
+}
+
+type BackdropFilter = (K, fn(f32) -> Filter);
+
+const BACKDROP: [BackdropFilter; 3] = [
+    (K::BackdropBlur, Filter::Blur),
+    (K::BackdropBrightness, Filter::Brightness),
+    (K::BackdropSaturate, Filter::Saturate),
+];
+
+fn backdrop_index(kind: K) -> Option<usize> {
+    BACKDROP.iter().position(|(owner, _)| *owner == kind)
 }
 
 impl Amount {
@@ -162,6 +181,8 @@ impl FilterStyle {
         hue: None,
         drop: None,
         text: TextShadows::Unset,
+        backdrop: [None; 3],
+        shader: None,
         drop_color: None,
         text_color: None,
     };
@@ -177,6 +198,47 @@ impl FilterStyle {
             FilterPart::HueRotate(degrees) => self.hue = Some(degrees),
             FilterPart::DropShadow(shadow) => self.drop = shadow,
             FilterPart::TextShadow(shadows) => self.text = shadows,
+            FilterPart::Shader(id) => self.shader = Some(id),
+            FilterPart::Backdrop(part, units) => {
+                if let Some(slot) = self.backdrop.get_mut(part as usize) {
+                    *slot = Some(units);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn backdrop(&self) -> SmallVec<[Filter; 4]> {
+        BACKDROP
+            .iter()
+            .filter_map(|(kind, make)| self.backdrop_value(*kind).map(make))
+            .collect()
+    }
+
+    pub(crate) fn backdrop_value(&self, kind: K) -> Option<f32> {
+        let units = self
+            .backdrop
+            .get(backdrop_index(kind)?)
+            .copied()
+            .flatten()?;
+        match kind {
+            K::BackdropBlur => (units > 0).then(|| f32::from(units) / SUB),
+            _ => Some(f32::from(units) / 100.0),
+        }
+    }
+
+    pub(crate) fn overlay_backdrop(&mut self, shown: &dyn Fn(K, bool) -> Option<f32>) {
+        for (kind, _) in BACKDROP {
+            let present = self.backdrop_value(kind).is_some();
+            let Some(value) = shown(kind, present) else {
+                continue;
+            };
+            let units = match kind {
+                K::BackdropBlur => blur_units(value),
+                _ => Amount::units(value),
+            };
+            if let Some(slot) = backdrop_index(kind).and_then(|at| self.backdrop.get_mut(at)) {
+                *slot = Some(units);
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 use sigil::geometry::PhysicalSize;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::style::Rgba;
@@ -22,7 +23,7 @@ fn square_in_padded_box() -> impl IntoNode {
         .line_to(view, view)
         .line_to(0.0, view)
         .close()
-        .fill(INK)
+        .fill_color(INK)
         .layout(LayoutStyle::block().fixed_size(SQUARE as f32, SQUARE as f32));
     container()
         .layout(LayoutStyle::flex_column().padding(Space::raw(OUTER, "test fixture")))

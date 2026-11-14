@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::app::HostMode;
 use crate::events::{Event, PointerPhase};
 use crate::prelude::*;
 use crate::terminal::Screen;

@@ -24,34 +24,28 @@ impl<T: 'static> core::fmt::Debug for EventChannel<T> {
 }
 
 impl<T: Clone + 'static> EventChannel<T> {
-    kittest_pub! {
-        /// Creates an event channel with no subscribers.
-        #[must_use]
-        #[doc(hidden)]
-        pub fn new() -> Self {
-            Self {
-                inner: Rc::new(RefCell::new(ChannelInner {
-                    next: 0,
-                    subs: Vec::new(),
-                })),
-            }
+    /// Creates an event channel with no subscribers.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            inner: Rc::new(RefCell::new(ChannelInner {
+                next: 0,
+                subs: Vec::new(),
+            })),
         }
     }
 
-    kittest_pub! {
-        /// Sends `value` to each subscriber.
-        #[doc(hidden)]
-        pub fn emit(&self, value: T) {
-            let subs: Vec<Rc<dyn Fn(T)>> = self
-                .inner
-                .borrow()
-                .subs
-                .iter()
-                .map(|(_, f)| Rc::clone(f))
-                .collect();
-            for f in subs {
-                f(value.clone());
-            }
+    /// Sends `event` to each subscriber.
+    pub fn emit(&self, event: T) {
+        let subs: Vec<Rc<dyn Fn(T)>> = self
+            .inner
+            .borrow()
+            .subs
+            .iter()
+            .map(|(_, f)| Rc::clone(f))
+            .collect();
+        for f in subs {
+            f(event.clone());
         }
     }
 
@@ -65,7 +59,13 @@ impl<T: Clone + 'static> EventChannel<T> {
             inner.subs.push((id, Rc::new(f)));
             id
         };
-        if with_rt(|rt| rt.has_active_owner()) {
+        #[cfg(event_channel)]
+        let has_owner = with_rt(|rt| rt.has_active_owner());
+        #[cfg(not(event_channel))]
+        let has_owner = with_rt(|rt| {
+            rt.current_owner.is_some() || rt.lazy_effect_owner.is_some() || rt.deferred_at.is_some()
+        });
+        if has_owner {
             let inner = Rc::clone(&self.inner);
             cleanup(move || remove_sub(&inner, id));
         }

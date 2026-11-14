@@ -35,10 +35,10 @@ fn submit_screen_walks_basic_command_scene() {
 }
 
 fn assert_basic_command_shape(scene: &CommandScene) {
-    let [SceneCommand::Rect(draw)] = scene.commands.as_slice() else {
+    let [SceneCommand::Rect(draw)] = scene.commands() else {
         panic!("expected one rect draw command");
     };
-    assert_eq!(draw.rect, rect(24.0, 16.0, 172.0, 48.0));
+    assert_eq!(draw.rect(), rect(24.0, 16.0, 172.0, 48.0));
 }
 
 fn basic_scene() -> CommandScene {

@@ -2,7 +2,7 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::print_stdout, clippy::doc_markdown, clippy::too_many_lines)]
 
-use sigil::layout::Position;
+use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
 
 use sigil_kittest::{Harness, InteractionMode};

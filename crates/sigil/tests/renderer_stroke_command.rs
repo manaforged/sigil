@@ -14,7 +14,7 @@ fn stroke_constructs_with_public_fields() {
     let stroke = solid_stroke(StrokeAlign::Centered, 2.0);
 
     assert_eq!(
-        stroke.color,
+        stroke.color(),
         Color {
             r: 26,
             g: 51,
@@ -22,9 +22,9 @@ fn stroke_constructs_with_public_fields() {
             a: 230,
         }
     );
-    assert!((stroke.width - 2.0).abs() < 1e-6);
-    assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.align, StrokeAlign::Centered);
+    assert!((stroke.width() - 2.0).abs() < 1e-6);
+    assert_eq!(stroke.style(), StrokeStyle::Solid);
+    assert_eq!(stroke.align(), StrokeAlign::Centered);
 }
 
 #[test]
@@ -32,21 +32,20 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
     let rect_stroke = solid_stroke(StrokeAlign::Centered, 2.0);
     let gradient_stroke = dashed_stroke(StrokeAlign::Inside, 4.0, 6.0);
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect_style(rect(0.0, 0.0)).stroke(rect_stroke));
+    builder.draw_rect(rect_style(rect(0.0, 0.0)).stroked(rect_stroke));
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0), gradient())
             .border_radius(CornerRadii::uniform(8.0))
-            .opacity(9_000)
-            .stroke(gradient_stroke),
+            .opacity(0.90)
+            .stroked(gradient_stroke),
     );
     let scene = builder.finish();
 
-    let [SceneCommand::Rect(rect), SceneCommand::Gradient(gradient)] = scene.commands.as_slice()
-    else {
+    let [SceneCommand::Rect(rect), SceneCommand::Gradient(gradient)] = scene.commands() else {
         unreachable!("scene should contain one rect and one gradient");
     };
-    assert_eq!(rect.stroke, Some(rect_stroke));
-    assert_eq!(gradient.stroke, Some(gradient_stroke));
+    assert_eq!(rect.stroke(), Some(rect_stroke));
+    assert_eq!(gradient.stroke(), Some(gradient_stroke));
 }
 
 #[test]
@@ -54,7 +53,7 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
     let outside = solid_stroke(StrokeAlign::Outside, 5.0);
     let mut builder = SceneBuilder::new();
     builder.draw_rect(rect_style(rect(0.0, 0.0)));
-    builder.draw_rect(rect_style(rect(56.0, 0.0)).stroke(dashed_stroke(
+    builder.draw_rect(rect_style(rect(56.0, 0.0)).stroked(dashed_stroke(
         StrokeAlign::Inside,
         3.0,
         7.0,
@@ -62,7 +61,7 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
     builder.draw_gradient(
         DrawGradient::new(rect(112.0, 0.0), gradient())
             .border_radius(CornerRadii::uniform(10.0))
-            .stroke(outside),
+            .stroked(outside),
     );
     let scene = builder.finish();
 
@@ -70,16 +69,16 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
         SceneCommand::Rect(zero),
         SceneCommand::Rect(dashed),
         SceneCommand::Gradient(grad),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         unreachable!("scene should contain three stroke cases");
     };
-    assert_eq!(zero.stroke, None);
+    assert_eq!(zero.stroke(), None);
     assert_eq!(
-        dashed.stroke,
+        dashed.stroke(),
         Some(dashed_stroke(StrokeAlign::Inside, 3.0, 7.0))
     );
-    assert_eq!(grad.stroke, Some(outside));
+    assert_eq!(grad.stroke(), Some(outside));
 }
 
 const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
@@ -87,31 +86,31 @@ const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
 }
 
 const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {
-    Stroke {
-        color: Color {
+    Stroke::new(
+        Color {
             r: 26,
             g: 51,
             b: 77,
             a: 230,
         },
         width,
-        style: StrokeStyle::Solid,
+        StrokeStyle::Solid,
         align,
-    }
+    )
 }
 
 const fn dashed_stroke(align: StrokeAlign, width: f32, gap: f32) -> Stroke {
-    Stroke {
-        color: Color {
+    Stroke::new(
+        Color {
             r: 179,
             g: 153,
             b: 51,
             a: 255,
         },
         width,
-        style: StrokeStyle::Dashed(gap),
+        StrokeStyle::Dashed(gap),
         align,
-    }
+    )
 }
 
 fn gradient() -> LinearGradient {

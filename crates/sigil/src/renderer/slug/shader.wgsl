@@ -9,11 +9,10 @@ struct SurfaceParams {
 @group(0) @binding(0) var<uniform>       surface: SurfaceParams;
 @group(0) @binding(1) var<storage, read> atlas:   array<f32>;
 
-const BANDS:           u32 = 16u;
-const MAX_CURVES:      u32 = 32u;
-const FLOATS_PER_BAND: u32 = 193u;
-const HBAND_FLOATS:    u32 = BANDS * FLOATS_PER_BAND;
-const CROSSING_CODES:  u32 = 0x2E74u;
+override BANDS:              u32;
+override BAND_HEADER_FLOATS: u32;
+override CURVE_FLOATS:       u32;
+const CROSSING_CODES:        u32 = 0x2E74u;
 
 struct VertexOutput {
     @builtin(position)              clip_pos:     vec4<f32>,
@@ -91,9 +90,12 @@ fn quad_coverage(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: 
     let code  = (CROSSING_CODES >> shift) & 3u;
     if code == 0u { return; }
 
+    let disc = y1 * y1 - y0 * y2;
+    if disc < 0.0 { return; }
+
     let a    = y0 - 2.0 * y1 + y2;
     let b    = y0 - y1;
-    let d    = sqrt(max(b * b - a * y0, 0.0));
+    let d    = sqrt(disc);
     let far  = select(b - d, b + d, b >= 0.0);
     let near = y0 / select(far, 1.0, far == 0.0);
     let wide = far / select(a, 1.0, a == 0.0);
@@ -112,11 +114,13 @@ fn rotate(v: vec2<f32>) -> vec2<f32> {
     return vec2(v.y, -v.x);
 }
 
-fn band_coverage(base: u32, sample: vec2<f32>, px: vec2<f32>, do_rotate: bool) -> RayHit {
-    let count = min(u32(atlas[base]), MAX_CURVES);
+fn band_coverage(glyph: u32, band: u32, sample: vec2<f32>, px: vec2<f32>, do_rotate: bool) -> RayHit {
+    let entry = glyph + band * BAND_HEADER_FLOATS;
+    let start = glyph + u32(atlas[entry]);
+    let count = u32(atlas[entry + 1u]);
     var hit = RayHit(0.0, 0.0, 1e9);
     for (var i = 0u; i < count; i++) {
-        let o  = base + 1u + i * 6u;
+        let o  = start + i * CURVE_FLOATS;
         var p0 = vec2(atlas[o],      atlas[o + 1u]);
         var p1 = vec2(atlas[o + 2u], atlas[o + 3u]);
         var p2 = vec2(atlas[o + 4u], atlas[o + 5u]);
@@ -141,12 +145,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let h = in.glyph_height * sharpen;
 
     let hband = min(u32(uy * f32(BANDS)), BANDS - 1u);
-    let hx = band_coverage(in.atlas_offset + hband * FLOATS_PER_BAND, in.uv, vec2(w, h), false);
+    let hx = band_coverage(in.atlas_offset, hband, in.uv, vec2(w, h), false);
 
-    let vband = min(u32(ux * f32(BANDS)), BANDS - 1u);
-    let vy = band_coverage(
-        in.atlas_offset + HBAND_FLOATS + vband * FLOATS_PER_BAND,
-        rotate(in.uv), vec2(h, w), true);
+    let vband = BANDS + min(u32(ux * f32(BANDS)), BANDS - 1u);
+    let vy = band_coverage(in.atlas_offset, vband, rotate(in.uv), vec2(h, w), true);
 
     let wh = select(0.0, hx.weight, hx.dist <= 1.0);
     let wv = select(0.0, vy.weight, vy.dist <= 1.0);

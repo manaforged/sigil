@@ -11,15 +11,7 @@ fn engine() -> OwnedTextEngine {
 }
 
 fn caret_x(p: &sigil::text::Paragraph, byte: usize, affinity: TextAffinity) -> f32 {
-    p.caret_rect(
-        HitPosition {
-            byte_index: byte,
-            affinity,
-        },
-        1.0,
-    )
-    .origin
-    .x
+    p.caret_rect(HitPosition::new(byte, affinity), 1.0).origin.x
 }
 
 #[test]
@@ -75,14 +67,8 @@ fn selection_across_a_mixed_line_emits_one_rect_per_visual_run() {
     let p = e.layout_paragraph(text, None).unwrap();
     let full = text.len();
     let rects = p.selection_rects(
-        HitPosition {
-            byte_index: 0,
-            affinity: TextAffinity::Downstream,
-        },
-        HitPosition {
-            byte_index: full,
-            affinity: TextAffinity::Upstream,
-        },
+        HitPosition::downstream(0),
+        HitPosition::new(full, TextAffinity::Upstream),
     );
     assert!(!rects.is_empty(), "a non-empty selection must paint");
     let total: f32 = rects.iter().map(|r| r.width).sum();

@@ -19,6 +19,7 @@ impl UploadCapacities {
             matches!(
                 command,
                 SceneCommand::Rect(_)
+                    | SceneCommand::Rects(_)
                     | SceneCommand::Gradient(_)
                     | SceneCommand::Pattern(_)
                     | SceneCommand::DrawShadow { .. }

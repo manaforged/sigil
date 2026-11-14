@@ -128,7 +128,7 @@ impl Inbox {
         self.settle();
         let apply = apply.elapsed();
         let emit_start = Instant::now();
-        black_box(self.host.emit(VIEW));
+        let _ = black_box(self.host.emit(VIEW));
         let drawn = emit_start.elapsed();
         let access_start = Instant::now();
         black_box(self.host.accessibility_tree());

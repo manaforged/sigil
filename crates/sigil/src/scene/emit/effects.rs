@@ -4,10 +4,11 @@ use crate::layout::LayoutResult;
 use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::atom::SpaceStyle;
-use crate::style::projection::projection;
+use crate::style::atom::{OPACITY_UNITS, SpaceStyle};
+use crate::style::projection::{node_plane, planes, preserves, projection};
 use crate::style::{FocusRing, Metrics, RenderStyle, StyleAtom, StyleBinding, Transform2D};
 
+use super::mask::LayerOrClip;
 use super::{EmitWalk, Inherited, child_inherited, is_display_none, is_top_layer};
 
 impl<'t> EmitWalk<'_, 't> {
@@ -25,44 +26,38 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         };
         let rect = result.rect();
+        let preserve = style.preserves_3d(result.clips());
         let reach = filter_reach(&style.filter.filters());
         let content = content_bounds(self.cx, id)
             .unwrap_or(rect)
             .expand(1.0 + reach);
         let (effect, screen) = layer_effect(self.cx, id, &style, rect, content);
-        let flat = style.transform.is_identity() && style.space.is_flat();
-        let Some(bounds) = visible_bounds(content, clip, screen, flat) else {
-            self.defer_top_layer(node, || child_inherited(node, inherited, &style));
-            return;
-        };
-        let opacity = f32::from(style.opacity) / 10_000.0;
-        style.opacity = 10_000;
-        let blend = std::mem::take(&mut style.blend);
-        style.transform = Transform2D::IDENTITY;
-        style.space = SpaceStyle::FLAT;
-        let cx = self.cx;
-        let deferred = &mut *self.deferred;
-        let selection = self.selection;
-        let track = &mut *self.track;
-        self.scene.composite(
-            LayerScope {
+        let flat =
+            style.transform.is_identity() && !matches!(effect, LayerEffect::Projected { .. });
+        let nested = preserve.then(|| child_inherited(node, inherited, &style));
+        if let Some(bounds) = visible_bounds(content, clip, screen, flat) {
+            let scope = LayerScope {
                 clip: bounds,
                 clip_radii: CornerRadii::ZERO,
                 effect,
-                opacity,
-                blend,
-            },
-            |scene| {
-                EmitWalk {
-                    scene,
-                    cx,
-                    deferred,
-                    selection,
-                    track,
-                }
-                .push_masked(id, inherited, None, style);
-            },
-        );
+                opacity: f32::from(style.opacity) / OPACITY_UNITS,
+                blend: std::mem::take(&mut style.blend),
+            };
+            style.opacity = 10_000;
+            style.transform = Transform2D::IDENTITY;
+            style.space = SpaceStyle {
+                preserve,
+                ..SpaceStyle::FLAT
+            };
+            self.nested(LayerOrClip::Layer(scope), |walk| {
+                walk.push_masked(id, inherited, None, style);
+            });
+        } else if nested.is_none() {
+            self.defer_top_layer(node, || child_inherited(node, inherited, &style));
+        }
+        if let Some(nested) = nested {
+            self.push_nodes(planes(self.cx, id), &nested, clip);
+        }
     }
 }
 
@@ -115,19 +110,19 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
         return None;
     }
     let result = node.extension::<LayoutResult>()?;
-    let mut bounds = result.rect();
-    if let Some(elevation) = node.extension::<StyleBinding>().and_then(|binding| {
+    let mut bounds = crate::animation::runtime::layout_motion::paint_bounds(node, result.rect());
+    if let Some(shadow) = node.extension::<StyleBinding>().and_then(|binding| {
         binding
             .cascade()
             .filter_map(|atom| match atom {
-                StyleAtom::Shadow(elevation) => Some(elevation),
+                StyleAtom::Shadow(shadow) => Some(shadow),
                 _ => None,
             })
             .last()
     }) {
         bounds = bounds.union(crate::scene::shadow::expanded_shadow_rect(
             result.rect(),
-            super::paint::elevation_shadow(elevation),
+            shadow.into(),
         ));
     }
     if let Some(ring) = node.extension::<FocusRing>().filter(|ring| ring.visible()) {
@@ -136,7 +131,7 @@ pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
                 + ring.stroke_width(Metrics::current()).max(0.0),
         ));
     }
-    if !result.clips() {
+    if !result.clips() && !preserves(cx, id) {
         for child in node.children() {
             if let Some(child_bounds) = transformed_bounds(cx, *child) {
                 bounds = bounds.union(child_bounds);
@@ -152,14 +147,16 @@ fn transformed_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
         return None;
     }
     let bounds = content_bounds(cx, id)?;
-    let rect = node.extension::<LayoutResult>()?.rect();
-    let Some(binding) = node.extension::<StyleBinding>() else {
-        return Some(bounds);
-    };
-    let flat = Transform2D::for_binding(binding);
-    let space = SpaceStyle::for_binding(binding);
-    match projection(cx, id, (flat, &space), rect) {
+    let mut screen = match node_plane(cx, id) {
         Some((transform, _)) => transform.bounds(bounds),
-        None => Some(transform_rect(flat.matrix(rect), bounds)),
+        None => Some(bounds),
+    };
+    if preserves(cx, id) {
+        for child in node.children() {
+            if let Some(plane) = transformed_bounds(cx, *child) {
+                screen = Some(screen.map_or(plane, |screen| screen.union(plane)));
+            }
+        }
     }
+    screen
 }

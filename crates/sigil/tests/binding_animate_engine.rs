@@ -6,6 +6,7 @@ use sigil::animation::{MotionPrefs, presets, tick};
 use sigil::events::{Event, EventRouter};
 use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{SceneCommand, emit_scene};
@@ -24,16 +25,16 @@ const VIEWPORT: Constraint = Constraint::fixed(640.0, 480.0);
 fn first_rect_opacity(cx: &Cx, root: NodeId) -> u16 {
     let scene = emit_scene(cx, root, None);
     let mut opacities = vec![1.0_f32];
-    for cmd in &scene.commands {
+    for cmd in scene.commands() {
         let opacity = opacities.last().copied().expect("root opacity");
         match cmd {
-            SceneCommand::PushLayer(scope) => opacities.push(opacity * scope.opacity),
+            SceneCommand::PushLayer(scope) => opacities.push(opacity * scope.alpha()),
             SceneCommand::SaveLayer { opacity: layer } => opacities.push(opacity * layer),
             SceneCommand::PopLayer | SceneCommand::RestoreLayer => {
                 opacities.pop();
             }
             SceneCommand::Rect(rect) => {
-                return (f32::from(rect.opacity) * opacity)
+                return (rect.alpha() * 10_000.0 * opacity)
                     .round()
                     .clamp(0.0, 10000.0) as u16;
             }

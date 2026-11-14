@@ -64,6 +64,10 @@ pub fn is_grid() -> bool {
     crate::style::cell_size().is_some()
 }
 
+pub(crate) fn is_entered() -> bool {
+    ENTERED.with(Cell::get)
+}
+
 type Swap<T> = fn(T) -> T;
 
 fn swap<T: Default>(field: &mut T, swap: Swap<T>) {

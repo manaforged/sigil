@@ -1,4 +1,4 @@
-use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
+use crate::style::atom::{PaintAtom, StopSlot, corners};
 use crate::style::{
     AnimatorOverlay, Color, ColorAtomKind, ColorValue, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Tone,
@@ -38,6 +38,9 @@ impl<'theme> StyleEngine<'theme> {
     }
 
     pub(crate) fn overlay_render(overlay: &dyn AnimatorOverlay, render: &mut RenderStyle) {
+        if let Some(value) = overlay.value_for(NumericAtomKind::BorderRadius) {
+            round_all(render, encode_px(value).0);
+        }
         render.transform = render.transform.overlay(overlay);
         render.space.overlay(overlay);
         render.filter.overlay(overlay);
@@ -45,9 +48,6 @@ impl<'theme> StyleEngine<'theme> {
         render.mask.overlay(overlay);
         if let Some(value) = overlay.value_for(NumericAtomKind::Opacity) {
             render.opacity = encode_opacity(value);
-        }
-        if let Some(value) = overlay.value_for(NumericAtomKind::BorderRadius) {
-            render.border_radius = Some(encode_px(value).0);
         }
         if let Some(color) = overlay.value_for_color(ColorAtomKind::Background) {
             render.background_color = Some(color);
@@ -93,19 +93,16 @@ impl<'theme> StyleEngine<'theme> {
     fn apply_atom(self, atom: StyleAtom, render: &mut RenderStyle) {
         match atom {
             StyleAtom::BackgroundColor(color) => {
-                fill(render, Some(self.resolve_color(color)), None);
+                render.background_color = Some(self.resolve_color(color));
             }
-            StyleAtom::BackgroundGradient(gradient) => fill(render, None, Some(gradient)),
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
-            StyleAtom::BgToneStep(step) => fill(render, Some(self.tone_step(step)), None),
+            StyleAtom::BgToneStep(step) => render.background_color = Some(self.tone_step(step)),
             StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
             StyleAtom::FgOnSolid => {
                 render.text_color = Some(self.theme.scale(self.tone).on_solid);
             }
-            StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
-            StyleAtom::Radius(radius) => {
-                render.border_radius = Some(super::metrics::radius_px(radius));
-            }
+            StyleAtom::BorderRadius(px) => round_all(render, px),
+            StyleAtom::Radius(radius) => round_all(render, self.theme.metrics.radius_i16(radius)),
             StyleAtom::BorderWidth(width) => render.border_width = Some(width),
             StyleAtom::BorderTop(width) => render.border_top = Some(width),
             StyleAtom::BorderRight(width) => render.border_right = Some(width),
@@ -115,6 +112,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
+            StyleAtom::ZIndex(_) => {}
             #[cfg(feature = "kittest")]
             StyleAtom::Transform(transform) => render.transform = transform,
             StyleAtom::PaddingAll(_)
@@ -166,7 +164,10 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::Animation(_) => {}
             StyleAtom::Paint(paint) => self.apply_paint(paint, render),
             StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
-            StyleAtom::Space(atom) => render.space.apply(atom),
+            StyleAtom::Space(atom) => {
+                render.transform.apply_space(atom);
+                render.space.apply(atom);
+            }
             StyleAtom::Mask(atom) => render.mask.apply(atom.0),
             StyleAtom::MixBlend(mode) => render.blend = mode,
             StyleAtom::Filter(atom) => render.filter.apply(atom.0),
@@ -194,17 +195,30 @@ impl<'theme> StyleEngine<'theme> {
             PaintAtom::StopAt(slot, percent) => {
                 set_stop(&mut render.paint.positions, slot, Some(percent));
             }
-            PaintAtom::NoColor => fill(render, None, None),
+            PaintAtom::NoColor => render.background_color = None,
             PaintAtom::ClipText => render.paint.clip_text = true,
-            PaintAtom::Image(id) => render.paint.image = Some(id),
+            PaintAtom::Image(id) => {
+                render.paint.image = Some(id);
+                render.paint.shader = None;
+            }
+            PaintAtom::Shader(id) => {
+                render.paint.shader = Some(id);
+                render.paint.image = None;
+            }
             PaintAtom::Border(style) => render.paint.border = style,
+            PaintAtom::CornerShape(shape) => render.paint.shape = shape,
+            PaintAtom::Corners(mask, radius) => {
+                render
+                    .paint
+                    .round(mask, self.theme.metrics.radius_i16(radius));
+            }
         }
     }
 }
 
-const fn fill(render: &mut RenderStyle, color: Option<Color>, gradient: Option<BgGradient>) {
-    render.background_color = color;
-    render.background_gradient = gradient;
+fn round_all(render: &mut RenderStyle, px: i16) {
+    render.border_radius = Some(px);
+    render.paint.round(corners::ALL, px);
 }
 
 fn set_stop<T>(stops: &mut [Option<T>; 3], slot: StopSlot, value: Option<T>) {
@@ -288,7 +302,6 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::GridColumns(_)
         | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)
@@ -301,6 +314,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
+        | StyleAtom::ZIndex(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)

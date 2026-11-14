@@ -1,4 +1,4 @@
-use sigil::layout::Position;
+use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::style::Transform2D;
@@ -17,7 +17,7 @@ fn accessibility_bounds_follow_a_scaled_and_moved_parent() {
                         .scale(2.0, 2.0),
                 )
                 .child(
-                    container().role(Role::Image).label("shape").layout(
+                    container().role(Role::Image).accessible("shape").layout(
                         LayoutStyle::block()
                             .position(Position::Absolute)
                             .inset_left(10.0)

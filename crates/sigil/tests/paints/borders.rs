@@ -1,3 +1,4 @@
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 
 use super::{INK, SCALE, SURFACES, Shot, WHITE, distance, page, shoot};

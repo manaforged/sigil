@@ -9,7 +9,7 @@ use crate::reactive::{Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{FocusRing, StyleAtom, Token, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::drag::axis_drag;
 use super::super::interaction::InteractionState;
@@ -97,7 +97,7 @@ fn header_cell<Row: 'static>(
     let override_px = state.column_layout().peek().widths.get(id).copied();
     let cell = container()
         .role(Role::ColumnHeader)
-        .label(column.title().to_owned())
+        .accessible(column.title().to_owned())
         .column_index(def_index + 1 + usize::from(spec.select))
         .hittable(true)
         .layout(column.cell_layout(override_px, spec.height, None))
@@ -125,7 +125,7 @@ fn resize_handle<Row: 'static>(
 ) -> NodeBuilder {
     let handle = container()
         .role(Role::Splitter)
-        .label(theme_fill_once(StringKey::ResizeColumn, &[&column]))
+        .accessible(theme_fill_once(StringKey::ResizeColumn, &[&column]))
         .hittable(true)
         .layout(
             LayoutStyle::block()

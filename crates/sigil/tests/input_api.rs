@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use sigil::ErrorKind;
 use sigil::events::{Event, Gesture, GestureEvent, Key, Modifiers, ScrollPhase, Shortcut};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 

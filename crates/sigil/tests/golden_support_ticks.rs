@@ -1,9 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::animation::SpringPreset;
-use sigil::animation::{Animator, MotionPrefs, active_count, tick};
+use std::time::Duration;
+
+use sigil::animation::{Animator, Easing, MotionPrefs, Spring, Transition, active_count, tick};
 use sigil::prelude::*;
-use sigil::reactive::{Owner, signal};
+use sigil::reactive::Owner;
 
 use sigil_kittest::{InteractionMode, SETTLE_SAFETY_CAP};
 
@@ -25,10 +26,14 @@ fn drive_in_harness(mode: InteractionMode) {
 fn after_frames_calls_tick_exactly_n_times() {
     Owner::scope("after_frames_calls_tick_exactly_n_times", || {
         MotionPrefs::set(false);
-        let value = signal(0.0_f32);
-        let mut anim = Animator::tween(value, 10_000, sigil::animation::Easing::Linear);
+        let anim = Animator::tween(
+            0.0_f32,
+            Transition::new()
+                .duration(Duration::from_millis(10_000))
+                .ease(Easing::Linear),
+        );
         anim.target(1.0);
-        let before = value.peek();
+        let before = anim.value().peek();
         assert!(
             (before - 0.0).abs() < f32::EPSILON,
             "tween must not advance before any tick (got {before})",
@@ -39,7 +44,7 @@ fn after_frames_calls_tick_exactly_n_times() {
             dt: DT_60HZ,
         });
 
-        let after = value.peek();
+        let after = anim.value().peek();
         let expected = 6.0 * DT_60HZ / 10.0;
         let delta = (after - expected).abs();
         assert!(
@@ -47,7 +52,10 @@ fn after_frames_calls_tick_exactly_n_times() {
             "after 6 ticks expected ≈ {expected}, got {after} (delta {delta}). \
              Harness did not tick exactly 6 times.",
         );
-        assert!(!anim.settled(), "tween should not have settled in 6 ticks");
+        assert!(
+            anim.active().peek(),
+            "tween should not have settled in 6 ticks"
+        );
     });
 }
 
@@ -55,8 +63,7 @@ fn after_frames_calls_tick_exactly_n_times() {
 fn after_frames_with_u32_max_stops_when_settled() {
     Owner::scope("after_frames_with_u32_max_stops_when_settled", || {
         MotionPrefs::set(false);
-        let value = signal(0.0_f32);
-        let mut anim = Animator::spring(value, SpringPreset::Stiff);
+        let anim = Animator::spring(0.0_f32, Spring::STIFF);
         anim.target(1.0);
         assert_eq!(active_count(), 1);
 
@@ -66,11 +73,11 @@ fn after_frames_with_u32_max_stops_when_settled() {
         });
 
         assert!(
-            anim.settled(),
+            !anim.active().peek(),
             "Stiff spring should settle well within the safety cap; \
-             got settled={} value={}",
-            anim.settled(),
-            anim.value(),
+             got active={} value={}",
+            anim.active().peek(),
+            anim.value().peek(),
         );
         assert_eq!(
             active_count(),
@@ -85,8 +92,12 @@ fn after_frames_safety_cap_panics_on_runaway() {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         Owner::scope("after_frames_safety_cap_panics_on_runaway", || {
             MotionPrefs::set(false);
-            let value = signal(0.0_f32);
-            let mut anim = Animator::tween(value, 60_000, sigil::animation::Easing::Linear);
+            let anim = Animator::tween(
+                0.0_f32,
+                Transition::new()
+                    .duration(Duration::from_millis(60_000))
+                    .ease(Easing::Linear),
+            );
             anim.target(1.0);
             assert_eq!(active_count(), 1);
 

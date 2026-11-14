@@ -14,9 +14,10 @@
 use std::f32::consts::PI;
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::scene::{CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};
+use sigil::scene::{DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
@@ -53,16 +54,10 @@ fn turned(radians: f32) -> Transform3D {
 }
 
 fn record(scene: &mut SceneBuilder, transform: Transform3D, hide_backface: bool) {
-    let scope = LayerScope {
-        clip: card(),
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Projected {
-            transform,
-            hide_backface,
-        },
-        opacity: 1.0,
-        blend: sigil::scene::BlendMode::Normal,
-    };
+    let scope = LayerScope::new(card()).layer_effect(LayerEffect::Projected {
+        transform,
+        hide_backface,
+    });
     scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(card(), INK)));
 }
 
@@ -70,7 +65,7 @@ fn card_canvas(radians: f32, hide_backface: bool) -> impl Fn() -> NodeBuilder {
     move || {
         let side = VIEW as f32;
         container().child(
-            canvas(move |scene, _| record(scene, turned(radians), hide_backface))
+            canvas(move |scene, _, _| record(scene, turned(radians), hide_backface))
                 .layout(LayoutStyle::block().width(side).height(side)),
         )
     }

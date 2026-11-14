@@ -53,12 +53,15 @@ fn widget_renders_visible_stack_and_hides_overflow() {
         queue.warning("two");
         let mut cx = Cx::new_root();
         let root = cx.add(toast_queue(queue));
+        let list = cx.first_child(root).expect("list");
         cx.flush_reactive_children();
-        assert_eq!(cx.child_count(root), 2, "one node per visible toast");
+        assert_eq!(cx.child_count(list), 2, "one node per visible toast");
+        crate::animation::runtime::MotionPrefs::set(true);
         for n in 3..=6 {
             queue.info(format!("toast {n}"));
         }
         cx.flush_reactive_children();
-        assert_eq!(cx.child_count(root), MAX_VISIBLE, "overflow not drawn");
+        assert_eq!(cx.child_count(list), MAX_VISIBLE, "overflow not drawn");
+        crate::animation::runtime::MotionPrefs::set(false);
     });
 }

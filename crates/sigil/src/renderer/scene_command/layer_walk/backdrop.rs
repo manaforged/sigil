@@ -14,7 +14,7 @@ use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, transform_rect};
 use crate::renderer::scene_paint::PaintCtx;
-use crate::scene::command::BlendMode;
+use crate::scene::command::{BlendMode, LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Rgba;
 
@@ -23,9 +23,20 @@ use super::{LayerTarget, local_rect, render_nodes};
 pub(super) struct BackdropCopy {
     pub(super) handle: LayerHandle,
     origin: [f32; 2],
+    pub(super) extent: (u32, u32),
 }
 
 impl BackdropCopy {
+    pub(super) fn rect(&self, scale: f32) -> Rect {
+        let [x, y] = self.origin;
+        let (width, height) = self.extent;
+        Rect::new(
+            Point::new(x / scale, y / scale),
+            width as f32 / scale,
+            height as f32 / scale,
+        )
+    }
+
     pub(super) const fn backdrop(&self, mode: BlendMode) -> Backdrop<'_> {
         Backdrop {
             view: &self.handle.view,
@@ -40,26 +51,39 @@ pub(super) fn copy(
     target: &LayerTarget,
     request: &CompositeRequest<'_>,
 ) -> Option<BackdropCopy> {
-    let texture = target.view.texture();
-    if !texture.usage().contains(wgpu::TextureUsages::COPY_SRC) {
-        return None;
-    }
     let drawn = transform_rect(request.transform, request.dest);
     let area = match target.state.current_clip() {
         Some(clip) => drawn.intersection(local_rect(clip, target.bounds.origin))?,
         None => drawn,
     };
+    copy_area(ctx, target, area, false)
+}
+
+pub(super) fn copy_area(
+    ctx: &mut WalkCtx<'_>,
+    target: &LayerTarget,
+    area: Rect,
+    clear: bool,
+) -> Option<BackdropCopy> {
+    let texture = target.view.texture();
+    if !texture.usage().contains(wgpu::TextureUsages::COPY_SRC) {
+        return None;
+    }
     let window = pixel_window(area, ctx.scale, (texture.width(), texture.height()))?;
     let handle = ctx
         .layer_pool
         .get_or_insert_with(Default::default)
         .acquire(ctx.device, window.2, window.3, texture.format())
         .ok()?;
+    if clear {
+        ctx.encoder.clear(&handle.view, Rgba::TRANSPARENT);
+    }
     ctx.encoder
         .copy_region(texture, handle.view.texture(), window);
     Some(BackdropCopy {
         handle,
         origin: [window.0 as f32, window.1 as f32],
+        extent: (window.2, window.3),
     })
 }
 
@@ -77,10 +101,16 @@ fn pixel_window(
 }
 
 pub(super) fn needs_isolation(commands: &[SceneCommand], view: &wgpu::TextureView) -> bool {
-    !view.texture().usage().contains(wgpu::TextureUsages::COPY_SRC)
-        && commands.iter().any(|command| {
-            matches!(command, SceneCommand::PushLayer(scope) if scope.blend != BlendMode::Normal)
-        })
+    let reads_backdrop = |scope: &LayerScope| {
+        scope.blend != BlendMode::Normal || matches!(scope.effect, LayerEffect::Backdrop(_))
+    };
+    !view
+        .texture()
+        .usage()
+        .contains(wgpu::TextureUsages::COPY_SRC)
+        && commands.iter().any(
+            |command| matches!(command, SceneCommand::PushLayer(scope) if reads_backdrop(scope)),
+        )
 }
 
 pub(super) fn render_isolated(

@@ -8,9 +8,9 @@ use crate::widget_support;
 use scene_support::color;
 use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutResult;
+use sigil::layout::{LayoutResult, LayoutStyle};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use widget_support::{compute, rect_colors};
@@ -88,6 +88,24 @@ fn button_styled_hover_populates_state_slot() {
 }
 
 #[test]
+fn disabled_button_paints_disabled_style_over_hover() {
+    Owner::scope("widget-styled-button-disabled-hover", || {
+        let colors = painted(
+            button("Run")
+                .hover(|s| s.background(A))
+                .disabled_paint(|s| s.background(B))
+                .map_node(|n| n.disabled(true)),
+            Drive::Hover,
+        );
+        assert!(
+            !colors.contains(&A),
+            "a disabled button must not paint hover, got {colors:?}"
+        );
+        assert_paints(&colors, B, "disabled button");
+    });
+}
+
+#[test]
 fn button_styled_accepts_full_compile_surface() {
     Owner::scope("widget-styled-button-compile", || {
         let build = || {
@@ -132,7 +150,7 @@ fn checkbox_styled_hover_populates_state_slot() {
 fn dropdown_styled_emits_on_trigger_accumulator() {
     Owner::scope("widget-styled-dropdown-bg", || {
         let build = |px: f32| {
-            dropdown(signal(0_usize), vec!["a".into(), "b".into()])
+            dropdown(signal(0_usize), ["a", "b"])
                 .background(A)
                 .layout(LayoutStyle::default().width(px))
         };
@@ -149,7 +167,7 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
 #[test]
 fn dropdown_styled_pressed_populates_state_slot() {
     Owner::scope("widget-styled-dropdown-pressed", || {
-        let build = dropdown(signal(0_usize), vec!["a".into()]).pressed(|s| s.background(A));
+        let build = dropdown(signal(0_usize), ["a"]).pressed(|s| s.background(A));
         assert_paints(&painted(build, Drive::Press), A, "dropdown pressed");
     });
 }
@@ -188,7 +206,7 @@ fn slider_accepts_styled_surface() {
 #[test]
 fn progress_accepts_styled_surface() {
     Owner::scope("widget-styled-progress", || {
-        let build = progress(signal(0.75_f32), 1.0).background(A);
+        let build = progress(signal(0.75_f32)).background(A);
         assert_paints(&painted(build, Drive::Rest), A, "progress bg");
     });
 }
@@ -230,7 +248,7 @@ fn tabs_accepts_styled_surface() {
             tabs()
                 .active(signal(0_usize))
                 .labels(["A", "B"])
-                .label("Settings sections")
+                .accessible("Settings sections")
                 .background(A)
                 .hover(|s| s.background(B))
         };
@@ -252,7 +270,7 @@ fn scroll_accepts_styled_surface() {
 fn menu_accepts_styled_surface() {
     Owner::scope("widget-styled-menu-surface", || {
         let build = menu(signal(true))
-            .label("File menu")
+            .accessible("File menu")
             .item(MenuItem::new("New"))
             .item(MenuItem::new("Save").hint("Ctrl+S"))
             .separator()
@@ -270,7 +288,7 @@ fn layout_override_sizes_every_widget_root() {
         let value = signal(0.5_f32);
         let widths = [
             ("card", width(card(text("x")).layout(wide()))),
-            ("progress", width(progress(value, 1.0).layout(wide()))),
+            ("progress", width(progress(value).layout(wide()))),
             ("gauge", width(gauge(value).layout(wide()))),
             ("slider", width(slider(value, 0.0..=1.0).layout(wide()))),
             ("scroll", width(scroll(container()).layout(wide()))),

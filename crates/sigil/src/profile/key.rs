@@ -185,6 +185,8 @@ named!(
     GpuSharedUploadWrites => "gpu.shared_upload_writes",
     GpuSharedUploadBytes => "gpu.shared_upload_bytes",
     GpuCompositePipelines => "gpu.pipeline.composite.created",
+    GpuShaderPipelines => "gpu.pipeline.shader.created",
+    GpuShaderDraws => "gpu.shader.draws",
     AllocLayerTextures => "alloc.layer.textures",
     AllocLayerBytes => "alloc.layer.bytes",
     AllocUploadBuffers => "alloc.upload.buffers",

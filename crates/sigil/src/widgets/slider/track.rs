@@ -1,165 +1,103 @@
-use crate::animation::runtime::presets;
-use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::snap::{self, CellForm};
-use crate::layout::{LayoutStyle, cols, rows};
-use crate::reactive::Signal;
-use crate::style::intern::{KEYED_CAP, Keyed, keyed};
+use crate::animation::{Property, Transition};
+use crate::layout::{LayoutStyle, Orientation, cols, rows};
+use crate::node::{NodeBuilder, container, text};
+use crate::reactive::{Signal, memo};
 use crate::style::{
-    BORDER_WIDTH, BgGradient, Color, ColorValue, Elevation, GradientAxis, GradientStopKey,
-    StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
+    BORDER_WIDTH, Background, Color, Elevation, GradientAxis, Metrics, Paint, Radius, Token, Tone,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
-use crate::widgets::interaction::InteractionState;
-
-use super::super::shared::binary_style_state;
 use super::builder::SliderRuntime;
-use crate::layout::Orientation;
-
-static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+use super::handlers::ThumbSignals;
 
 const THUMB_SIZE: f32 = 16.0;
 const TRACK_THICKNESS: f32 = 6.0;
 const CELL_THUMB: &str = "●";
 
-type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
-
-const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
-    StyleAtom::BackgroundGradient(BgGradient::new(GradientAxis::TopToBottom, stops))
-}
-
-const THUMB_BORDER: StyleAtom = StyleAtom::BorderWidth(BORDER_WIDTH);
-
-static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static TRACK_FILL: &[StyleAtom] = &[Token::Accent.background()];
-static CELL_THUMB_ATOMS: &[StyleAtom] = &[Token::Accent.text()];
-static THUMB_REST: &[StyleAtom] = &[
-    Token::OnAccent.background(),
-    THUMB_BORDER,
-    Token::Accent.border(),
-    StyleAtom::Shadow(Elevation::Sm),
-];
-static THUMB_HOVER: &[StyleAtom] = &[
-    Token::OnAccent.background(),
-    THUMB_BORDER,
-    Token::AccentHover.border(),
-    StyleAtom::Shadow(Elevation::Sm),
-];
-static THUMB_DISABLED: &[StyleAtom] = &[
-    Token::OnAccent.background(),
-    THUMB_BORDER,
-    Tone::Neutral.step(8).border(),
-];
-
-static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, ColorValue::Color(Color::rgba(148, 163, 184, 66))),
-    GradientStopKey::new(500, ColorValue::Color(Color::rgba(148, 163, 184, 30))),
-    GradientStopKey::new(1000, ColorValue::Color(Color::rgba(148, 163, 184, 46))),
-];
-static GLASS_FILL_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, Token::AccentHover.color()),
-    GradientStopKey::new(1000, Token::Accent.color()),
-];
-static GLASS_THUMB_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, ColorValue::Color(Color::rgba(255, 255, 255, 250))),
-    GradientStopKey::new(500, ColorValue::Color(Color::rgba(240, 243, 248, 235))),
-    GradientStopKey::new(1000, ColorValue::Color(Color::rgba(214, 219, 230, 240))),
-];
-static GLASS_TRACK_REST: &[StyleAtom] = &[
-    vertical_gradient(GLASS_TRACK_STOPS),
-    THUMB_BORDER,
-    StyleAtom::BorderColor(ColorValue::Color(Color::rgba(148, 163, 184, 90))),
-];
-static GLASS_TRACK_FILL: &[StyleAtom] = &[vertical_gradient(GLASS_FILL_STOPS)];
-const GLASS_THUMB_BG: StyleAtom = vertical_gradient(GLASS_THUMB_STOPS);
-static GLASS_THUMB_REST: &[StyleAtom] = &[
-    GLASS_THUMB_BG,
-    THUMB_BORDER,
-    StyleAtom::BorderColor(ColorValue::Color(Color::rgba(255, 255, 255, 140))),
-    StyleAtom::Shadow(Elevation::Md),
-];
-static GLASS_THUMB_HOVER: &[StyleAtom] = &[
-    GLASS_THUMB_BG,
-    THUMB_BORDER,
-    StyleAtom::BorderColor(ColorValue::Color(Color::rgba(255, 255, 255, 190))),
-    StyleAtom::Shadow(Elevation::Md),
-];
-static GLASS_THUMB_DISABLED: &[StyleAtom] = &[
-    GLASS_THUMB_BG,
-    THUMB_BORDER,
-    StyleAtom::BorderColor(ColorValue::Color(Color::rgba(255, 255, 255, 60))),
-];
-
-pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
+pub(super) fn track(
+    runtime: SliderRuntime,
+    extent: Signal<crate::geometry::Size>,
+    filled: bool,
+) -> NodeBuilder {
     if filled {
-        segment(runtime, true, Some(Box::new(move || runtime.ratio())))
+        segment(
+            runtime,
+            extent,
+            true,
+            Some(Box::new(move || runtime.ratio())),
+        )
     } else {
-        segment(runtime, false, None)
+        segment(runtime, extent, false, None)
     }
 }
 
 pub(super) fn segment(
     runtime: SliderRuntime,
+    extent: Signal<crate::geometry::Size>,
     filled: bool,
     ratio: Option<Box<dyn Fn() -> f32>>,
 ) -> NodeBuilder {
-    let layout = if ratio.is_some() {
-        LayoutStyle::block()
-    } else {
-        LayoutStyle::block().grow(1.0)
-    };
-    let thickness = snap::track(TRACK_THICKNESS);
-    let layout = match runtime.orientation {
-        Orientation::Horizontal => layout.height(thickness),
-        Orientation::Vertical => layout.width(thickness),
-    };
-    let class = match (filled, runtime.glass) {
-        (true, true) => GLASS_TRACK_FILL,
-        (true, false) => TRACK_FILL,
-        (false, true) => GLASS_TRACK_REST,
-        (false, false) => TRACK_REST,
-    };
-    let node = container()
-        .hittable(false)
-        .layout(layout)
-        .style(Style::new().radius_px(3))
-        .class(class);
-    match ratio {
-        Some(ratio) => node.style_reactive(move || cached_fill_atoms(runtime.orientation, ratio())),
-        None => node,
+    let thickness = Metrics::current().track_size(TRACK_THICKNESS);
+    ratio.map_or_else(
+        || {
+            let layout = match runtime.orientation {
+                Orientation::Horizontal => LayoutStyle::block().grow(1.0).height(thickness),
+                Orientation::Vertical => LayoutStyle::block().grow(1.0).width(thickness),
+            };
+            styled_segment(runtime.glass, filled).layout(layout)
+        },
+        |ratio| match runtime.orientation {
+            Orientation::Horizontal => {
+                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().width);
+                styled_segment(runtime.glass, filled)
+                    .layout(LayoutStyle::block().height(thickness))
+                    .drive(Property::Width, px)
+            }
+            Orientation::Vertical => {
+                let px = memo(move || ratio().clamp(0.0, 1.0) * extent.get().height);
+                styled_segment(runtime.glass, filled)
+                    .layout(LayoutStyle::block().width(thickness))
+                    .drive(Property::Height, px)
+            }
+        },
+    )
+}
+
+fn styled_segment(glass: bool, filled: bool) -> NodeBuilder {
+    let base = container().hittable(false).radius(Radius::Full);
+    match (filled, glass) {
+        (true, true) => base.background(
+            Background::linear(GradientAxis::TopToBottom)
+                .start(Token::AccentHover)
+                .end(Token::Accent),
+        ),
+        (true, false) => base.background(Token::Accent),
+        (false, true) => base
+            .background(
+                Background::linear(GradientAxis::TopToBottom)
+                    .start(Color::rgba(148, 163, 184, 66))
+                    .middle(Color::rgba(148, 163, 184, 30))
+                    .end(Color::rgba(148, 163, 184, 46)),
+            )
+            .border_width(BORDER_WIDTH)
+            .border_color(Color::rgba(148, 163, 184, 90)),
+        (false, false) => base.background(Tone::Neutral.step(4)),
     }
 }
 
-fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAtom] {
-    static CACHE: Keyed<(bool, i16)> = Keyed::new();
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as i16;
-    let key = (orientation == Orientation::Vertical, scaled);
-    keyed(&CACHE, KEYED_CAP, key, || {
-        let kind = crate::style::atom::ATOM_FRACTION;
-        vec![match orientation {
-            Orientation::Horizontal => StyleAtom::Width(kind, scaled),
-            Orientation::Vertical => StyleAtom::Height(kind, scaled),
-        }]
-    })
-}
-
 pub(super) fn slider_thumb(
-    interaction: InteractionState,
+    signals: ThumbSignals,
     disabled: Option<Signal<bool>>,
     glass: bool,
 ) -> NodeBuilder {
-    CellForm::<ThumbForm>::new(window_thumb, cell_thumb).pick()(interaction, disabled, glass)
+    if Metrics::current().is_grid() {
+        cell_thumb()
+    } else {
+        window_thumb(signals, disabled, glass)
+    }
 }
 
-fn cell_thumb(
-    _interaction: InteractionState,
-    _disabled: Option<Signal<bool>>,
-    _glass: bool,
-) -> NodeBuilder {
+fn cell_thumb() -> NodeBuilder {
     container()
         .hittable(false)
         .layout(
@@ -168,47 +106,50 @@ fn cell_thumb(
                 .height(rows(1.0))
                 .shrink(0.0),
         )
-        .class(CELL_THUMB_ATOMS)
+        .text_color(Token::Accent)
         .child(text(CELL_THUMB).hittable(false))
 }
 
-fn window_thumb(
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    glass: bool,
-) -> NodeBuilder {
-    container()
+fn window_thumb(signals: ThumbSignals, disabled: Option<Signal<bool>>, glass: bool) -> NodeBuilder {
+    let active = memo(move || {
+        (signals.hovered.get()
+            || signals.focused.get()
+            || signals.pressed.get()
+            || signals.dragging.get())
+            && !disabled.is_some_and(Signal::get)
+    });
+    let node = container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
-        .style(Style::new().radius_px(8))
-        .class(SLIDER_THUMB_ANIM_BASE)
-        .style_reactive(move || {
-            slider_thumb_variant(glass).state(binary_style_state(interaction, disabled))
-        })
-}
-
-const fn slider_thumb_variant(glass: bool) -> StyleVariant {
+        .radius(Radius::Lg)
+        .transition(Transition::smooth())
+        .border_width(BORDER_WIDTH);
     if glass {
-        StyleVariant::new(
-            GLASS_THUMB_REST,
-            StateStyle::new(
-                GLASS_THUMB_REST,
-                GLASS_THUMB_HOVER,
-                GLASS_THUMB_HOVER,
-                GLASS_THUMB_HOVER,
-                GLASS_THUMB_DISABLED,
-            ),
-        )
+        let node = node
+            .background(
+                Background::linear(GradientAxis::TopToBottom)
+                    .start(Color::rgba(255, 255, 255, 250))
+                    .middle(Color::rgba(240, 243, 248, 235))
+                    .end(Color::rgba(214, 219, 230, 240)),
+            )
+            .border_color(Color::rgba(255, 255, 255, 140))
+            .paint_when(active, |s| s.border_color(Color::rgba(255, 255, 255, 190)));
+        match disabled {
+            Some(flag) => node
+                .paint_when(memo(move || !flag.get()), |s| s.shadow(Elevation::Md))
+                .paint_when(flag, |s| s.border_color(Color::rgba(255, 255, 255, 60))),
+            None => node.shadow(Elevation::Md),
+        }
     } else {
-        StyleVariant::new(
-            THUMB_REST,
-            StateStyle::new(
-                THUMB_REST,
-                THUMB_HOVER,
-                THUMB_HOVER,
-                THUMB_HOVER,
-                THUMB_DISABLED,
-            ),
-        )
+        let node = node
+            .background(Token::OnAccent)
+            .border_color(Token::Accent)
+            .paint_when(active, |s| s.border_color(Token::AccentHover));
+        match disabled {
+            Some(flag) => node
+                .paint_when(memo(move || !flag.get()), |s| s.shadow(Elevation::Sm))
+                .paint_when(flag, |s| s.border_color(Tone::Neutral.step(8))),
+            None => node.shadow(Elevation::Sm),
+        }
     }
 }

@@ -61,15 +61,18 @@ fn assert_pattern_command_shape(scene: &CommandScene) {
         SceneCommand::Pattern(slash_draw),
         SceneCommand::Pattern(checker_draw),
         SceneCommand::Pattern(stroked_draw),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected three pattern draw commands");
     };
 
-    assert_eq!(slash_draw.pattern, slash());
-    assert!(matches!(checker_draw.pattern, PatternKind::Checker { .. }));
-    assert_eq!(stroked_draw.pattern, slash());
-    assert_eq!(stroked_draw.stroke, Some(outside_stroke()));
+    assert_eq!(slash_draw.pattern(), slash());
+    assert!(matches!(
+        checker_draw.pattern(),
+        PatternKind::Checker { .. }
+    ));
+    assert_eq!(stroked_draw.pattern(), slash());
+    assert_eq!(stroked_draw.stroke(), Some(outside_stroke()));
 }
 
 fn pattern_scene() -> CommandScene {
@@ -83,7 +86,7 @@ fn pattern_scene() -> CommandScene {
     builder.draw_pattern(
         DrawPattern::new(rect(112.0, 0.0), slash())
             .border_radius(CornerRadii::uniform(8.0))
-            .stroke(outside_stroke()),
+            .stroked(outside_stroke()),
     );
     builder.finish()
 }
@@ -105,17 +108,17 @@ const fn checker() -> PatternKind {
 }
 
 const fn outside_stroke() -> Stroke {
-    Stroke {
-        color: Color {
+    Stroke::new(
+        Color {
             r: 255,
             g: 255,
             b: 255,
             a: 255,
         },
-        width: 4.0,
-        style: StrokeStyle::Solid,
-        align: StrokeAlign::Outside,
-    }
+        4.0,
+        StrokeStyle::Solid,
+        StrokeAlign::Outside,
+    )
 }
 
 const fn rect(x: f32, y: f32) -> Rect {

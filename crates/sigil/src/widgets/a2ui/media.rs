@@ -1,7 +1,7 @@
 use crate::kernel::{ImageSource, NodeBuilder, ObjectFit, image};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::render::note;
 use super::spec::ImageSize;
@@ -56,5 +56,5 @@ pub(super) fn picture(url: &str, alt: String, size: ImageSize, fit: ObjectFit) -
         return note(format!("[{name}]"));
     };
     let layout = layout(&source, size);
-    image(source).alt(alt).fit(fit).layout(layout).into()
+    image(source).accessible(alt).fit(fit).layout(layout).into()
 }

@@ -1,26 +1,27 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::marker::PhantomData;
 use std::rc::Rc;
 
-use crate::events::{MouseButtons, PointerEvent};
+use crate::events::{DropEvent, MouseButtons, PointerEvent};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{NodeBuilder, container};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
 use crate::widgets::Widget;
 use crate::widgets::interaction::{is_cancel, is_primary};
 
-const DRAG_THRESHOLD_PX: f32 = 4.0;
-
 const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
-const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
+const GHOST_OFFSET: Point = Point::new(12.0, 10.0);
 
-type Armed<T> = Rc<RefCell<Option<((f32, f32), T)>>>;
+type Armed<T> = Rc<RefCell<Option<(Point, T)>>>;
 type Accepts<T> = Rc<dyn Fn(&T) -> bool>;
-type OnDrop<T> = Rc<dyn Fn(T)>;
+type OnDrop<T> = Rc<dyn Fn(DropEvent<T>)>;
+type HoverCursorSlot = Rc<Cell<Option<Signal<Option<Point>>>>>;
 
 /// Shared state of one drag interaction.
 pub struct DragState<T: 'static> {
-    position: Signal<(f32, f32)>,
+    position: Signal<Point>,
     payload: Signal<Option<T>>,
     targets: Rc<RefCell<DropRegistry<T>>>,
     armed: Armed<T>,
@@ -42,10 +43,54 @@ struct DropRegistry<T: 'static> {
 
 struct DropTarget<T: 'static> {
     id: usize,
-    bounds: Signal<(f32, f32, f32, f32)>,
+    bounds: Signal<Rect>,
     highlight: Signal<bool>,
+    hover_cursor: HoverCursorSlot,
     accepts: Accepts<T>,
     on_drop: OnDrop<T>,
+}
+
+impl<T: 'static> Clone for DropTarget<T> {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            bounds: self.bounds,
+            highlight: self.highlight,
+            hover_cursor: Rc::clone(&self.hover_cursor),
+            accepts: Rc::clone(&self.accepts),
+            on_drop: Rc::clone(&self.on_drop),
+        }
+    }
+}
+
+struct DropStateEntry<T: 'static> {
+    registry: *const RefCell<DropRegistry<T>>,
+    hover_cursor: Option<HoverCursorSlot>,
+    cursor: Option<Signal<Option<Point>>>,
+}
+
+struct DropNodeExt<T: 'static> {
+    entries: Vec<DropStateEntry<T>>,
+    guards: Vec<TargetGuard<T>>,
+    marker: PhantomData<fn() -> T>,
+}
+
+impl<T: 'static> DropNodeExt<T> {
+    fn entry_mut(&mut self, registry: *const RefCell<DropRegistry<T>>) -> &mut DropStateEntry<T> {
+        let idx = self
+            .entries
+            .iter()
+            .position(|entry| core::ptr::eq(entry.registry, registry))
+            .unwrap_or_else(|| {
+                self.entries.push(DropStateEntry {
+                    registry,
+                    hover_cursor: None,
+                    cursor: None,
+                });
+                self.entries.len() - 1
+            });
+        self.entries.get_mut(idx).unwrap_or_else(|| unreachable!())
+    }
 }
 
 struct TargetGuard<T: 'static> {
@@ -77,7 +122,7 @@ impl<T: Clone + 'static> DragState<T> {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            position: signal((0.0, 0.0)),
+            position: signal(Point::ZERO),
             payload: signal(None),
             targets: Rc::new(RefCell::new(DropRegistry {
                 targets: Vec::new(),
@@ -95,7 +140,7 @@ impl<T: Clone + 'static> DragState<T> {
 
     /// The last pointer position of a drag, in window coordinates.
     #[must_use]
-    pub fn position(&self) -> (f32, f32) {
+    pub fn position(&self) -> Point {
         self.position.try_peek().unwrap_or_default()
     }
 
@@ -110,64 +155,70 @@ impl<T: Clone + 'static> DragState<T> {
         self.end();
     }
 
-    fn begin(&self, payload: T, at: (f32, f32)) {
+    fn begin(&self, payload: T, at: Point) {
         self.payload.set_always(Some(payload));
         self.position.set(at);
         self.update_hover(at);
     }
 
-    fn settle(&self, at: (f32, f32)) {
+    fn snapshot(&self) -> Vec<DropTarget<T>> {
+        self.targets
+            .borrow()
+            .targets
+            .iter()
+            .rev()
+            .cloned()
+            .collect()
+    }
+
+    fn settle(&self, at: Point) {
         let drop = self.payload().and_then(|payload| {
-            self.targets
-                .borrow()
-                .targets
-                .iter()
-                .rev()
+            self.snapshot()
+                .into_iter()
                 .find(|target| contains(target.bounds.peek(), at) && (target.accepts)(&payload))
-                .map(|target| (Rc::clone(&target.on_drop), payload))
+                .map(|target| {
+                    let bounds = target.bounds.peek();
+                    (
+                        target.on_drop,
+                        DropEvent::new(payload, at, local_point(bounds, at), bounds),
+                    )
+                })
         });
         self.end();
-        if let Some((on_drop, payload)) = drop {
-            on_drop(payload);
+        if let Some((on_drop, event)) = drop {
+            on_drop(event);
         }
     }
 
     fn end(&self) {
         self.payload.set_always(None);
-        self.update_hover((0.0, 0.0));
+        self.update_hover(Point::ZERO);
     }
 
-    fn update_hover(&self, at: (f32, f32)) {
+    fn update_hover(&self, at: Point) {
         let payload = self.payload();
-        let registry = self.targets.borrow();
         let mut claimed = false;
-        for target in registry.targets.iter().rev() {
+        for target in self.snapshot() {
+            let bounds = target.bounds.peek();
             let hover = !claimed
                 && payload
                     .as_ref()
-                    .is_some_and(|p| contains(target.bounds.peek(), at) && (target.accepts)(p));
+                    .is_some_and(|p| contains(bounds, at) && (target.accepts)(p));
             claimed |= hover;
-            set_flag(target.highlight, hover);
+            let custom = target.hover_cursor.get();
+            let _ = target.highlight.try_set(hover && custom.is_none());
+            if let Some(cursor) = custom {
+                let _ = cursor.try_set(hover.then(|| local_point(bounds, at)));
+            }
         }
     }
 
-    fn register(
-        &self,
-        bounds: Signal<(f32, f32, f32, f32)>,
-        highlight: Signal<bool>,
-        accepts: Accepts<T>,
-        on_drop: OnDrop<T>,
-    ) -> TargetGuard<T> {
+    fn register(&self, mut target: DropTarget<T>) -> TargetGuard<T> {
         let mut registry = self.targets.borrow_mut();
         let id = registry.next_id;
         registry.next_id += 1;
-        registry.targets.push(DropTarget {
-            id,
-            bounds,
-            highlight,
-            accepts,
-            on_drop,
-        });
+        target.id = id;
+        registry.targets.push(target);
         TargetGuard {
             registry: Rc::clone(&self.targets),
             id,
@@ -195,18 +246,60 @@ pub(crate) fn target<T: Clone + 'static>(
     node: NodeBuilder,
     state: DragState<T>,
     accepts: impl Fn(&T) -> bool + 'static,
-    on_drop: impl Fn(T) + 'static,
+    on_drop: impl Fn(DropEvent<T>) + 'static,
 ) -> NodeBuilder {
-    let bounds = signal((0.0, 0.0, 0.0, 0.0));
+    let bounds = signal(Rect::default());
     let highlight = signal(false);
-    let guard = state.register(bounds, highlight, Rc::new(accepts), Rc::new(on_drop));
+    let hover_cursor = Rc::new(Cell::new(None));
+    let registry_ptr = Rc::as_ptr(&state.targets);
+    let guard = state.register(DropTarget {
+        id: 0,
+        bounds,
+        highlight,
+        hover_cursor: Rc::clone(&hover_cursor),
+        accepts: Rc::new(accepts),
+        on_drop: Rc::new(on_drop),
+    });
     node.pointer_move(drive(state.clone()))
         .pointer_up(release(state))
-        .bounds_reactive(bounds)
+        .track_bounds(bounds)
         .class_when(highlight, DROP_TARGET_CLASS)
         .mutate(move |node| {
-            let _ = node.attach(guard);
+            let ext = node_drop_ext::<T>(node);
+            let entry = ext.entry_mut(registry_ptr);
+            if let Some(cursor) = entry.cursor {
+                hover_cursor.set(Some(cursor));
+            }
+            entry.hover_cursor = Some(hover_cursor);
+            ext.guards.push(guard);
         })
+}
+
+pub(crate) fn hover<T: Clone + 'static>(
+    node: NodeBuilder,
+    state: &DragState<T>,
+    local_cursor: Signal<Option<Point>>,
+) -> NodeBuilder {
+    let registry_ptr = Rc::as_ptr(&state.targets);
+    node.mutate(move |node| {
+        let entry = node_drop_ext::<T>(node).entry_mut(registry_ptr);
+        entry.cursor = Some(local_cursor);
+        if let Some(slot) = &entry.hover_cursor {
+            slot.set(Some(local_cursor));
+        }
+    })
+}
+
+fn node_drop_ext<T: 'static>(node: &mut crate::kernel::Node) -> &mut DropNodeExt<T> {
+    if node.extension::<DropNodeExt<T>>().is_none() {
+        let _ = node.attach(DropNodeExt::<T> {
+            entries: Vec::new(),
+            guards: Vec::new(),
+            marker: PhantomData,
+        });
+    }
+    node.extension_mut::<DropNodeExt<T>>()
+        .unwrap_or_else(|| unreachable!())
 }
 
 /// Returns a node that shows `render` of the dragged payload beside the pointer, and nothing when no drag is active.
@@ -217,12 +310,12 @@ where
 {
     let pos_state = state.clone();
     let pos = memo(move || {
-        let (x, y) = pos_state.position.get();
-        (x + GHOST_OFFSET.0, y + GHOST_OFFSET.1)
+        let at = pos_state.position.get();
+        Point::new(at.x + GHOST_OFFSET.x, at.y + GHOST_OFFSET.y)
     });
     container()
         .hittable(false)
-        .position_reactive(pos)
+        .offset(pos)
         .children_reactive(move || ghost_content(&state, &render))
 }
 
@@ -254,8 +347,9 @@ fn arm<T: Clone + 'static>(
 ) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
         if is_primary(event) {
-            let at = (event.window_position.x, event.window_position.y);
-            state.armed.replace(Some((at, payload.clone())));
+            state
+                .armed
+                .replace(Some((event.window_position, payload.clone())));
             event.capture_pointer();
         }
     }
@@ -263,7 +357,7 @@ fn arm<T: Clone + 'static>(
 
 fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
-        let at = (event.window_position.x, event.window_position.y);
+        let at = event.window_position;
         if state.is_active() {
             if !event.is_captured() {
                 if !event.buttons.contains(MouseButtons::LEFT) {
@@ -284,7 +378,7 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
             .armed
             .borrow()
             .as_ref()
-            .filter(|(down, _)| (at.0 - down.0).hypot(at.1 - down.1) >= DRAG_THRESHOLD_PX)
+            .filter(|(down, _)| event.passed_drag_threshold(*down))
             .map(|(_, payload)| payload.clone());
         if let Some(payload) = ready {
             state.armed.replace(None);
@@ -307,19 +401,19 @@ fn release<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent
         if cancelled {
             state.end();
         } else {
-            state.settle((event.window_position.x, event.window_position.y));
+            state.settle(event.window_position);
         }
         event.stop_propagation();
     }
 }
 
-fn contains(bounds: (f32, f32, f32, f32), at: (f32, f32)) -> bool {
-    let (x, y, w, h) = bounds;
-    at.0 >= x && at.0 < x + w && at.1 >= y && at.1 < y + h
+fn local_point(bounds: Rect, at: Point) -> Point {
+    Point::new(at.x - bounds.origin.x, at.y - bounds.origin.y)
 }
 
-fn set_flag(flag: Signal<bool>, next: bool) {
-    if flag.peek() != next {
-        flag.set(next);
-    }
+fn contains(bounds: Rect, at: Point) -> bool {
+    at.x >= bounds.origin.x
+        && at.x < bounds.origin.x + bounds.width
+        && at.y >= bounds.origin.y
+        && at.y < bounds.origin.y + bounds.height
 }

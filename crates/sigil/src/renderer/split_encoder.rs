@@ -13,6 +13,7 @@ use crate::renderer::scene_instance::MAX_GRADIENT_STOPS;
 use crate::renderer::scene_instance::{
     FillInstance, GpuStop, RectInstance, SceneUniforms, ShadowInstance,
 };
+use crate::renderer::shader_paint::ShaderInstance;
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
 use crate::scene::command::{MAX_PIGMENTS, PatternKind};
 use crate::style::Rgba;
@@ -82,6 +83,9 @@ impl SplitEncoder {
         for command in commands {
             match command {
                 SceneCommand::Rect(_) => vertices += size_of::<RectInstance>() as u64,
+                SceneCommand::Rects(rects) => {
+                    vertices += (rects.len() * size_of::<RectInstance>()) as u64;
+                }
                 SceneCommand::Gradient(draw) => {
                     let stops = draw.gradient.stops.len().clamp(1, MAX_GRADIENT_STOPS);
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
@@ -90,7 +94,6 @@ impl SplitEncoder {
                 SceneCommand::Pattern(draw) => {
                     let stops = match draw.pattern {
                         PatternKind::Wash(_) => MAX_PIGMENTS + 1,
-                        #[cfg(feature = "kittest")]
                         _ => 1,
                     };
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
@@ -98,6 +101,10 @@ impl SplitEncoder {
                 }
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,
                 SceneCommand::Decoration(_) => vertices += size_of::<DecorationInstance>() as u64,
+                SceneCommand::Shader(_) => {
+                    vertices += size_of::<ShaderInstance>() as u64;
+                    uniforms += self.uniform_alignment;
+                }
                 command if command.is_image() => {
                     vertices += size_of::<QuadInstance>() as u64;
                     uniforms += self.uniform_alignment;

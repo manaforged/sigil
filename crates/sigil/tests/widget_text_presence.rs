@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil_kittest::FakeMeasure;
@@ -18,7 +19,7 @@ fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> 
             .compute(&mut cx, root, Constraint::fixed(width, 400.0))
             .expect("layout computes");
         found = emit_scene(&cx, root, None)
-            .commands
+            .commands()
             .iter()
             .filter_map(|c| match c {
                 SceneCommand::GlyphRun(g) if g.rect().width > 0.5 && g.rect().height > 0.5 => {
@@ -48,10 +49,7 @@ fn dropdown_paints_its_selected_option() {
         assert_paints(width, "Banana", || {
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
-                .child(dropdown(
-                    signal(0_usize),
-                    vec!["Banana".into(), "Cherry".into()],
-                ))
+                .child(dropdown(signal(0_usize), ["Banana", "Cherry"]))
         });
     }
 }
@@ -100,7 +98,7 @@ fn text_survives_the_equal_columns_idiom() {
             }
             container()
                 .layout(LayoutStyle::flex_row().fill_width().gap(Space::Sm))
-                .child(cell(dropdown(signal(0_usize), vec!["Banana".into()])))
+                .child(cell(dropdown(signal(0_usize), ["Banana"])))
                 .child(cell(button("Save")))
         });
         for needle in ["Banana", "Save"] {

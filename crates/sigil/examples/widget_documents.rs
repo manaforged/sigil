@@ -4,7 +4,7 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::DiffBuilder;
+use sigil::widgets::{DiffBuilder, DiffView};
 
 const PATCH: &str = "--- a/src/app.rs\n+++ b/src/app.rs\n@@ -1,3 +1,3 @@\n fn main() {\n-    old();\n+    fresh();\n }";
 const QUADRANTS: &str = "iVBORw0KGgoAAAANSUhEUgAAAGAAAAAwCAYAAADuFn/PAAAAeklEQVR42u3SQQ0AQAgDQYQh7MTihVPBo8k8VkAzrene5PpNdAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAFA+oD0AwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcNAHChr0hrUljjwAAAAASUVORK5CYII=";

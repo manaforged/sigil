@@ -42,7 +42,7 @@ fn toast_queue_row(state: State) -> NodeBuilder {
 }
 
 fn command_menu_row(_state: State) -> NodeBuilder {
-    node(crate::widget_overlays::command_menu_demo())
+    node(crate::widget_overlays::command_menu_demo(signal(true)))
 }
 
 fn hint_overlay_row(_state: State) -> NodeBuilder {

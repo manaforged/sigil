@@ -12,6 +12,7 @@ use crate::layout::forest::{
 use crate::layout::measure::TextMeasure;
 use crate::layout::style_data::{Axes, Display, Overflow, StyleData};
 
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ResolvedBox {
     pub x: f32,
@@ -20,9 +21,11 @@ pub struct ResolvedBox {
     pub h: f32,
 }
 
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct NodeHandle(LocalId);
 
+#[doc(hidden)]
 pub struct LayoutDrive {
     forest: LayoutForest,
     text: Box<dyn TextMeasure>,

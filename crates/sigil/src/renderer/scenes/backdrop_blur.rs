@@ -5,7 +5,6 @@ use crate::style::Rgba;
 use super::helpers::{DARK, rect};
 use crate::scene::{CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder};
 
-#[must_use]
 pub fn backdrop_blur() -> (CommandScene, (f32, f32), Rgba) {
     let viewport = (1024.0, 360.0);
     let mut scene = SceneBuilder::new();

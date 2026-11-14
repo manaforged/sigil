@@ -8,7 +8,7 @@ use sigil::layout::{LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Paint;
 
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::{capture, close};
 
 const SIZE: u32 = 32;
@@ -60,10 +60,10 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
 
     let scene = emit_scene(&cx, root, None);
     let carried = scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Image(draw) => Some(draw.source.clone()),
+            SceneCommand::Image(draw) => Some(draw.source().clone()),
             _ => None,
         })
         .expect("image node must emit a DrawImage command");

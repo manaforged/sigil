@@ -1,10 +1,9 @@
 use super::*;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 #[test]
 fn fill_sets_root_dimensions_to_fill() {
     use crate::layout::Length;
-    use crate::widgets::Widget;
     Owner::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
@@ -24,7 +23,6 @@ fn fill_sets_root_dimensions_to_fill() {
 fn fill_tracks_parent_pane_measured_size() {
     use crate::geometry::Constraint;
     use crate::layout::LayoutStyle;
-    use crate::widgets::Widget;
 
     Owner::scope("sigil-virtual-list-viewport-fill-layout", || {
         let mut cx = Cx::new_root();

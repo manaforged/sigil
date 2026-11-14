@@ -104,6 +104,7 @@ impl From<f32> for Length {
     }
 }
 
+#[doc(hidden)]
 #[allow(
     clippy::derive_partial_eq_without_eq,
     reason = "intentional, reviewed trade-off"
@@ -133,6 +134,7 @@ impl<T: Copy> Axes<T> {
     }
 }
 
+#[doc(hidden)]
 #[allow(
     clippy::derive_partial_eq_without_eq,
     reason = "intentional, reviewed trade-off"
@@ -204,6 +206,8 @@ pub enum Position {
     Relative,
     /// The node leaves the flow and is placed by its insets.
     Absolute,
+    /// The node keeps its place in the flow and is held at its insets from the edges of the nearest scroll area while its parent is in view.
+    Sticky,
 }
 
 /// Main axis of a flex box.
@@ -270,24 +274,18 @@ pub enum AlignItems {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AlignContent {
     /// Lines pack at the start of the cross axis.
-    #[cfg(feature = "kittest")]
     Start,
     /// Lines pack at the end of the cross axis.
-    #[cfg(feature = "kittest")]
     End,
     /// Lines pack in the middle of the cross axis.
-    #[cfg(feature = "kittest")]
     Center,
     /// Each line grows by an equal share of the free space on the cross axis.
     Stretch,
     /// Free space goes between lines, with none at the two ends.
-    #[cfg(feature = "kittest")]
     SpaceBetween,
     /// Each line gets equal free space on both sides, so each end gets half a gap.
-    #[cfg(feature = "kittest")]
     SpaceAround,
     /// Free space is equal between lines and at the two ends.
-    #[cfg(feature = "kittest")]
     SpaceEvenly,
 }
 
@@ -315,6 +313,7 @@ pub enum TrackSize {
     MinMax(f32, f32),
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleData {
     pub display: Display,
@@ -338,6 +337,7 @@ pub struct StyleData {
     pub size: Axes<Length>,
     pub min_size: Axes<Length>,
     pub max_size: Axes<Length>,
+    pub aspect_ratio: Option<f32>,
     pub order: i32,
     pub box_sizing: BoxSizing,
     pub grid_template_columns: Vec<TrackSize>,
@@ -373,6 +373,7 @@ impl StyleData {
         size: Axes::splat(Length::Auto),
         min_size: Axes::splat(Length::Auto),
         max_size: Axes::splat(Length::Auto),
+        aspect_ratio: None,
         order: 0,
         box_sizing: BoxSizing::ContentBox,
         grid_template_columns: Vec::new(),

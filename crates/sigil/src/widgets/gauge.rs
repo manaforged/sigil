@@ -4,11 +4,11 @@ use super::layout_ext::LayoutOverrides;
 use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, accessible_name_or, caller_style};
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 const TRACK_WIDTH: f32 = 160.0;
 const GAUGE_GAP: f32 = space(2);
@@ -26,13 +26,13 @@ pub struct GaugeBuilder {
 }
 
 /// A labelled meter bar that shows a value against a maximum.
-pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
-    GaugeBuilder::new(value)
+pub fn gauge(value: impl Reactive<f32>) -> GaugeBuilder {
+    GaugeBuilder::new(value.into_signal())
 }
 
 impl GaugeBuilder {
     /// Creates a gauge of `value` against a maximum of 1.0.
-    pub(crate) fn new(value: Signal<f32>) -> Self {
+    pub(crate) const fn new(value: Signal<f32>) -> Self {
         Self {
             value,
             max: 1.0,
@@ -69,7 +69,7 @@ impl GaugeBuilder {
         let (value, max, warn) = (self.value, self.max, self.warn_threshold);
         let mut node = container()
             .role(Role::ProgressIndicator)
-            .label(accessible_name_or(self.label.as_ref(), StringKey::Gauge))
+            .accessible(accessible_name_or(self.label.as_ref(), StringKey::Gauge))
             .value(value, 0.0, max)
             .layout(
                 LayoutStyle::flex_row()

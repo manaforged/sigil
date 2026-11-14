@@ -3,9 +3,7 @@ use std::time::{Duration, Instant};
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::CpuRenderer;
-use sigil::scene::{
-    CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D,
-};
+use sigil::scene::{CommandScene, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};
 use sigil::style::Rgba;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
 use sigil_kittest::parity::{Frame, cpu_rgba};
@@ -64,13 +62,7 @@ fn scene(cards: Cards) -> CommandScene {
             ((index / COLUMNS) as f32).mul_add(PITCH, 5.0),
         );
         let rect = Rect::new(at, SIDE, SIDE);
-        let scope = LayerScope {
-            clip: rect,
-            clip_radii: CornerRadii::ZERO,
-            effect: effect(cards, rect),
-            opacity: 1.0,
-            blend: sigil::scene::BlendMode::Normal,
-        };
+        let scope = LayerScope::new(rect).layer_effect(effect(cards, rect));
         scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, INK)));
     }
     scene.finish()

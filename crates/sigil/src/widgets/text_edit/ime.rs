@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::ImeEvent;
 use crate::geometry::{Point, Rect};
-use crate::hal::{HitPosition, TextAffinity};
+use crate::hal::HitPosition;
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
@@ -38,16 +38,22 @@ impl ImeState {
 
     pub(in crate::widgets) fn composing_caret(&self, value: &str, caret: usize) -> (String, usize) {
         let preedit = self.preedit.get();
-        let base = value.floor_char_boundary(caret);
-        if preedit.is_empty() {
-            return (value.to_owned(), base);
-        }
-        let offset = self
-            .preedit_cursor
-            .get()
-            .map_or(preedit.len(), |(_, end)| preedit.floor_char_boundary(end));
-        (splice_preedit(value, base, &preedit), base + offset)
+        compose_caret(value, caret, &preedit, self.preedit_cursor.get())
     }
+}
+
+pub(in crate::widgets) fn compose_caret(
+    value: &str,
+    caret: usize,
+    preedit: &str,
+    cursor: Option<(usize, usize)>,
+) -> (String, usize) {
+    let base = value.floor_char_boundary(caret);
+    if preedit.is_empty() {
+        return (value.to_owned(), base);
+    }
+    let offset = cursor.map_or(preedit.len(), |(_, end)| preedit.floor_char_boundary(end));
+    (splice_preedit(value, base, preedit), base + offset)
 }
 
 pub(in crate::widgets) fn attach_ime_handlers(
@@ -148,20 +154,12 @@ impl TextEditRuntime {
             let width = rt.geometry_width();
             let style = rt.text_style.get();
             let rect = with_text_geometry(|engine| {
-                let pos = engine.caret(
-                    &composed,
-                    &style,
-                    width,
-                    HitPosition {
-                        byte_index: cursor,
-                        affinity: TextAffinity::Downstream,
-                    },
-                );
-                CaretGeometry {
-                    x: (pos.x + padding_x - rt.scroll_x.get()).max(0.0),
-                    top: pos.top + padding_y - rt.scroll_y.get(),
-                    height: pos.height,
-                }
+                let pos = engine.caret(&composed, &style, width, HitPosition::downstream(cursor));
+                CaretGeometry::new(
+                    (pos.x + padding_x).max(0.0),
+                    pos.top + padding_y - rt.scroll_y.get(),
+                    pos.height,
+                )
             });
             publish(&anchor, caret_rect, rect);
         });

@@ -14,15 +14,17 @@ mod stream;
 mod table;
 mod table_data;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, rich, text};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, memo};
-use crate::style::{Radius, Token, Tone as ChartTone, space};
-use crate::widgets::{Layout, Widget};
+use crate::style::{Radius, Style, Token, Tone as ChartTone, space};
+use crate::widgets::Widget;
+
+use super::shared::caller_style;
 use std::rc::Rc;
 
 use parse::Block;
@@ -31,7 +33,8 @@ use render::TokenTone;
 const MAX_MATH_BYTES: usize = 512;
 
 /// Rendered markdown.
-pub fn markdown(source: Signal<String>) -> NodeBuilder {
+pub fn markdown(source: impl Reactive<String>) -> NodeBuilder {
+    let source = source.into_signal();
     let mut stream = stream::Stream::default();
     let blocks = memo(move || source.with(|body| stream.update(body)));
     frame().children_keyed(move || {
@@ -49,8 +52,7 @@ pub fn markdown(source: Signal<String>) -> NodeBuilder {
 
 /// One wrapped paragraph with inline markdown spans.
 pub fn markdown_inline(source: &str) -> TextBuilder {
-    let body = inline::styled(&parse::parse_inlines(source));
-    text(body.text).runs(body.runs)
+    rich(inline::styled(&parse::parse_inlines(source)))
 }
 
 struct KeyedBlock(Rc<Block>, bool);
@@ -91,6 +93,7 @@ fn frame() -> NodeBuilder {
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -99,6 +102,7 @@ pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
     MarkdownEditBuilder {
         source,
         disabled: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -121,7 +125,7 @@ impl MarkdownEditBuilder {
             None => editor,
         };
         let fit = CellForm::new(0.0, 1.0).pick();
-        container()
+        let node = container()
             .layout(LayoutStyle::flex_row().fill_width().grow(1.0))
             .child(
                 splitter(Orientation::Horizontal)
@@ -131,11 +135,12 @@ impl MarkdownEditBuilder {
                     .grow(fit)
                     .commit()
                     .grow(fit),
-            )
+            );
+        caller_style(node, self.style_accumulator)
     }
 }
 
-builder_impls!([] MarkdownEditBuilder: widget, node);
+builder_impls!([] MarkdownEditBuilder: paint(style_accumulator), widget, node);
 
 fn block_node(block: Block) -> NodeBuilder {
     styled_block(block, TokenTone(Token::OnSurface))
@@ -203,7 +208,7 @@ fn image_node(alt: &str, src: &str) -> NodeBuilder {
     {
         return container().child(
             crate::kernel::image(source)
-                .alt(alt.to_string())
+                .accessible(alt.to_string())
                 .fit(crate::kernel::ObjectFit::Contain)
                 .layout(LayoutStyle::block().width(width).height(height)),
         );

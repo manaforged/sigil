@@ -1,5 +1,4 @@
 use super::*;
-use sigil::widgets::Layout;
 
 #[test]
 fn focus_action_moves_router_focus_to_the_target_node() {

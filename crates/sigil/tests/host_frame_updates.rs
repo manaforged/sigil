@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::Host;
-use sigil::app::{FrameHooks, FrameInputHook};
-use sigil::layout::LayoutResult;
+use sigil::app::{FrameHooks, FrameInputHook, HostMode};
+use sigil::layout::{LayoutResult, LayoutStyle};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
+use sigil::scene::SceneCommand;
 use sigil::style::FocusRing;
 
 const VIEW: (f32, f32) = (400.0, 200.0);
@@ -74,7 +75,7 @@ fn input_hook_viewport_sizes_the_same_frame() {
     Owner::scope("host_frame_updates::input_viewport", || {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(column().layout(LayoutStyle::flex_column().fill_width().fill_height()));
-        frame(&mut host, Some(Box::new(|_| Some((640.0, 90.0)))));
+        frame(&mut host, Some(Box::new(|_| Some(Size::new(640.0, 90.0)))));
 
         let root = host.root().expect("mounted");
         let rect = host
@@ -125,5 +126,40 @@ fn theme_switch_does_not_typeset_a_formula_again() {
         frame(&mut host, None);
 
         assert_eq!(runs.get(), before);
+    });
+}
+
+#[test]
+fn rest_paint_follows_a_signal() {
+    Owner::scope("host_frame_updates::rest_live", || {
+        let on = signal(false);
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(
+            column().child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(80.0, 40.0))
+                    .rest(move |s| {
+                        s.background(move || {
+                            if on.get() {
+                                Token::Accent
+                            } else {
+                                Token::Surface
+                            }
+                        })
+                    }),
+            ),
+        );
+        frame(&mut host, None);
+        on.set(true);
+        frame(&mut host, None);
+        let accent = Theme::current().color(Token::Accent);
+        let scene = host.scene(VIEW).expect("scene");
+        assert!(
+            scene
+                .commands()
+                .iter()
+                .any(|c| matches!(c, SceneCommand::Rect(r) if r.color() == accent)),
+            "a reactive rest background must repaint when its signal changes",
+        );
     });
 }

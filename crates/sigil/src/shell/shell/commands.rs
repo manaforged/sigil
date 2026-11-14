@@ -87,7 +87,7 @@ const fn winit_level(level: WindowLevel) -> winit::window::WindowLevel {
     }
 }
 
-const fn winit_direction(direction: ResizeDirection) -> winit::window::ResizeDirection {
+pub(super) const fn winit_direction(direction: ResizeDirection) -> winit::window::ResizeDirection {
     match direction {
         ResizeDirection::East => winit::window::ResizeDirection::East,
         ResizeDirection::North => winit::window::ResizeDirection::North,

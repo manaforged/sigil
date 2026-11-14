@@ -1,5 +1,6 @@
 use super::*;
 use sigil::events::EventRouter;
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::style::FocusRing;
@@ -134,7 +135,7 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
 
         let scene = emit_scene(&cx, root, None);
         let placeholder = scene
-            .commands
+            .commands()
             .iter()
             .find_map(|command| match command {
                 SceneCommand::GlyphRun(run) if run.text() == "Add note" => Some(run),

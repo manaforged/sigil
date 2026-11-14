@@ -3,7 +3,7 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 
 use crate::animation::runtime::motion_prefs::MotionPrefs;
-use crate::animation::runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, SignalAnimator};
 use crate::animation::{Keyframes, KeyframesId};
 use crate::reactive::{Signal, signal};
 use crate::style::{Color, ColorAtomKind, ColorValue, NumericAtomKind, StyleAtom, StyleEngine};
@@ -11,7 +11,7 @@ use crate::style::{Color, ColorAtomKind, ColorValue, NumericAtomKind, StyleAtom,
 struct Playing {
     id: KeyframesId,
     keyframes: Arc<Keyframes>,
-    animator: Animator,
+    animator: SignalAnimator,
 }
 
 pub(crate) struct Player {
@@ -63,10 +63,11 @@ impl Player {
         let config = AnimationConfig::Playback {
             end: keyframes.end(),
             cycle: keyframes.cycle(),
+            delay: keyframes.delay_secs(),
         };
         Some(Playing {
             id,
-            animator: Animator::new(self.time, config),
+            animator: SignalAnimator::new(self.time, config),
             keyframes,
         })
     }

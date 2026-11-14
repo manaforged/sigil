@@ -5,8 +5,10 @@ use std::rc::Rc;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, memo};
-use crate::style::Tone;
-use crate::widgets::Layout;
+use crate::style::{Style, Tone};
+use crate::widgets::Widget;
+
+use super::shared::caller_style;
 
 mod glyphs;
 
@@ -56,6 +58,7 @@ struct SparkShape {
 pub struct SparklineBuilder {
     values: Rc<dyn Reactive<Vec<f32>>>,
     shape: SparkShape,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -80,6 +83,7 @@ pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
             fill: SparkFill::Solid,
             rows: 1,
         },
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -206,18 +210,19 @@ impl SparklineBuilder {
         let label_shape = shape.clone();
         let theme = ActiveTheme::capture();
         let description = memo(move || values.with(|values| label_shape.describe(values, theme)));
-        container()
+        let node = container()
             .role(Role::Image)
-            .label(theme_label(StringKey::Sparkline))
+            .accessible(theme_label(StringKey::Sparkline))
             .mutate(move |target| {
                 target.a11y.description = Some(AccessibleName::Derived(description));
             })
             .layout(LayoutStyle::flex_column())
-            .children_reactive(move || values.with(|values| shape.lines(values)))
+            .children_reactive(move || values.with(|values| shape.lines(values)));
+        caller_style(node, self.style_accumulator)
     }
 }
 
-builder_impls!([] SparklineBuilder: widget, node);
+builder_impls!([] SparklineBuilder: paint(style_accumulator), widget, node);
 
 #[cfg(test)]
 #[path = "sparkline_tests.rs"]

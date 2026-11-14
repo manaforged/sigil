@@ -6,7 +6,7 @@ use crate::events_support::routing_helpers;
 use sigil::events::*;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 use routing_helpers::{abs_rect, compute_layout};
 

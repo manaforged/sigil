@@ -16,9 +16,12 @@ use super::shadow::blur;
 use super::shapes::{decode, encode, encode_byte, unit};
 
 pub(super) fn filter(layer: &mut Pixmap, effect: &LayerEffect, scale: f32) {
-    let Some(filters) = LayerFilters::of(effect) else {
-        return;
-    };
+    if let Some(filters) = LayerFilters::of(effect) {
+        run(layer, &filters, scale);
+    }
+}
+
+pub(super) fn run(layer: &mut Pixmap, filters: &LayerFilters, scale: f32) {
     for step in filters.steps() {
         match *step {
             [Filter::Blur(sigma)] => blur(layer, sigma * scale),

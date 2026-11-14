@@ -28,7 +28,10 @@ impl SceneState {
                 let reach = filter_reach(filters).min(MAX_BLUR_REACH);
                 self.target_clip(scope, visible.expand(reach))
             }
-            LayerEffect::Identity | LayerEffect::Mask(_) => self.target_clip(scope, visible),
+            LayerEffect::Identity
+            | LayerEffect::Mask(_)
+            | LayerEffect::Backdrop(_)
+            | LayerEffect::Shader(_) => self.target_clip(scope, visible),
             LayerEffect::Projected { .. } => Some(scope.clip),
         }
     }
@@ -55,7 +58,6 @@ impl SceneState {
     pub(crate) const fn draws(command: &SceneCommand) -> bool {
         match command {
             SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => false,
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => false,
             #[cfg(host)]
             SceneCommand::SaveLayer { .. } => false,

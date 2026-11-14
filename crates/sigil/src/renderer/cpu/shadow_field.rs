@@ -2,6 +2,7 @@ use std::f32::consts::{FRAC_1_SQRT_2, TAU};
 
 use crate::geometry::smoothstep;
 use crate::renderer::shadow_paint::ShadowKind;
+use crate::scene::command::corner_shape::{corner_distance, corner_reach};
 
 const SHARP_SIGMA: f32 = 0.01;
 const SAMPLES: u8 = 4;
@@ -18,6 +19,7 @@ pub(super) struct ShadowField {
     pub(super) spread: f32,
     pub(super) kind: ShadowKind,
     pub(super) unit: f32,
+    pub(super) code: f32,
 }
 
 impl ShadowField {
@@ -27,7 +29,7 @@ impl ShadowField {
         if self.kind != ShadowKind::Inner {
             return self.body(shifted, self.spread);
         }
-        let distance = sdf(local, self.half, self.radii, 0.0);
+        let distance = sdf(local, self.half, (self.radii, self.code), 0.0);
         let edge = 1.0 - smoothstep(-0.5, 0.5, distance);
         if edge <= 0.0 {
             return 0.0;
@@ -41,11 +43,11 @@ impl ShadowField {
             (self.half.1 + spread).max(0.0),
         );
         if self.sigma <= SHARP_SIGMA * self.unit {
-            let d = sdf(p, half, self.radii, spread);
+            let d = sdf(p, half, (self.radii, self.code), spread);
             let aa = 0.5 * self.unit;
             return 1.0 - smoothstep(-aa, aa, d);
         }
-        blurred(p, self.sigma, self.radii, half, spread)
+        blurred(p, self.sigma, (self.radii, self.code), half, spread)
     }
 }
 
@@ -69,12 +71,15 @@ fn corner_radius(p: Vec2, radii: [f32; 4]) -> f32 {
     }
 }
 
-fn sdf(p: Vec2, half: Vec2, radii: [f32; 4], spread: f32) -> f32 {
+fn sdf(p: Vec2, half: Vec2, (radii, code): ([f32; 4], f32), spread: f32) -> f32 {
     let radius = (corner_radius(p, radii) + spread).max(0.0);
     let q = (
         p.0.abs() - half.0.max(0.0) + radius,
         p.1.abs() - half.1.max(0.0) + radius,
     );
+    if code != 0.0 && radius > 0.0 && q.0.min(q.1) > 0.0 {
+        return radius * corner_distance([q.0 / radius, q.1 / radius], code);
+    }
     let outside = q.0.max(0.0).hypot(q.1.max(0.0));
     outside + q.0.max(q.1).min(0.0) - radius
 }
@@ -83,16 +88,26 @@ fn gaussian(x: f32, sigma: f32) -> f32 {
     (-(x * x) / (2.0 * sigma * sigma)).exp() / (TAU.sqrt() * sigma)
 }
 
-fn row(x: f32, y: f32, sigma: f32, radius: f32, half: Vec2) -> f32 {
+fn reach(radius: f32, dy: f32, code: f32) -> f32 {
+    if code == 0.0 {
+        return dy.mul_add(-dy, radius * radius).max(0.0).sqrt();
+    }
+    if radius <= 0.0 {
+        return 0.0;
+    }
+    radius * corner_reach(dy.abs() / radius, code)
+}
+
+fn row(x: f32, (y, code): (f32, f32), sigma: f32, radius: f32, half: Vec2) -> f32 {
     let dy = (half.1 - radius - y.abs()).min(0.0);
-    let curved = half.0 - radius + dy.mul_add(-dy, radius * radius).max(0.0).sqrt();
+    let curved = half.0 - radius + reach(radius, dy, code);
     let k = FRAC_1_SQRT_2 / sigma;
     let low = 0.5f32.mul_add(erf((x - curved) * k), 0.5);
     let high = 0.5f32.mul_add(erf((x + curved) * k), 0.5);
     high - low
 }
 
-fn blurred(p: Vec2, sigma: f32, radii: [f32; 4], half: Vec2, spread: f32) -> f32 {
+fn blurred(p: Vec2, sigma: f32, (radii, code): ([f32; 4], f32), half: Vec2, spread: f32) -> f32 {
     let (low, high) = (p.1 - half.1, p.1 + half.1);
     let start = (-3.0 * sigma).max(low).min(high);
     let end = (3.0 * sigma).max(low).min(high);
@@ -102,7 +117,8 @@ fn blurred(p: Vec2, sigma: f32, radii: [f32; 4], half: Vec2, spread: f32) -> f32
     for _ in 0..SAMPLES {
         let sample = (p.0, p.1 - y);
         let radius = (corner_radius(sample, radii) + spread).max(0.0);
-        sum = (row(p.0, sample.1, sigma, radius, half) * gaussian(y, sigma)).mul_add(step, sum);
+        sum = (row(p.0, (sample.1, code), sigma, radius, half) * gaussian(y, sigma))
+            .mul_add(step, sum);
         y += step;
     }
     sum.clamp(0.0, 1.0)

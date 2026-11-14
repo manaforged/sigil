@@ -1,0 +1,22 @@
+[package]
+name = "sigil-showcase"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Showcase apps built on the public API of sigil-ui."
+publish = false
+
+[lib]
+name = "sigil_showcase"
+
+[dependencies]
+sigil-ui = { path = "../sigil", version = "0.2.0", default-features = false, features = ["desktop"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+sigil-kittest = { path = "../kittest" }

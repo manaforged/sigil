@@ -91,7 +91,7 @@ fn drag_past_threshold_activates_and_survives_leaving_the_source() {
         );
         assert!(state.is_active(), "25 px of travel starts the session");
         assert_eq!(state.payload().as_deref(), Some("task-7"));
-        assert_eq!(state.position(), (30.0, 25.0));
+        assert_eq!(state.position(), Point::new(30.0, 25.0));
 
         route(
             &mut router,
@@ -100,7 +100,7 @@ fn drag_past_threshold_activates_and_survives_leaving_the_source() {
             pointer(PointerPhase::Move, 500.0, 300.0),
         );
         assert!(state.is_active());
-        assert_eq!(state.position(), (500.0, 300.0));
+        assert_eq!(state.position(), Point::new(500.0, 300.0));
 
         route(
             &mut router,

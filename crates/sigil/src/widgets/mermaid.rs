@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
 use crate::reactive::{Reactive, signal};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 pub(super) use crate::widgets::scrolled_diagram as scrolled;
 use crate::widgets::{bound_source, frame_source, lines_extent};
@@ -107,7 +107,7 @@ fn frame(view: &View, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
 fn frame(_: &View, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
     scrolled(drawn.node, drawn.width)
         .role(Role::Figure)
-        .label(diagram_name(source))
+        .accessible(diagram_name(source))
         .description(source.trim_end().to_string())
 }
 
@@ -146,7 +146,7 @@ fn text_figure(source: &str) -> NodeBuilder {
     Horizontal::new(signal(extent), None)
         .wrap(form.pick()(col, &lines))
         .role(Role::Figure)
-        .label(diagram_name(source))
+        .accessible(diagram_name(source))
         .description(bound_source(source).trim_end().to_string())
 }
 

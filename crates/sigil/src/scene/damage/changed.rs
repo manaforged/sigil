@@ -9,7 +9,6 @@ use crate::scene::{LayerEffect, LayerScope, SceneCommand};
 enum ChangeBound {
     Nothing,
     Rect(Option<Rect>),
-    #[cfg(scene_paint)]
     Full,
 }
 
@@ -37,7 +36,6 @@ pub(super) fn changed_ink(
         }
         if marked {
             let ink = match structural_ink(commands, index, &state, &layers, (area, scale)) {
-                #[cfg(scene_paint)]
                 Some(ChangeBound::Full) => return None,
                 Some(ChangeBound::Rect(rect)) => rect,
                 Some(ChangeBound::Nothing) => None,
@@ -63,9 +61,7 @@ const fn scope_edge(command: &SceneCommand) -> Option<bool> {
     match command {
         SceneCommand::PushClip(_) | SceneCommand::PushLayer(_) => Some(true),
         SceneCommand::PopClip | SceneCommand::PopLayer => Some(false),
-        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) => Some(true),
-        #[cfg(scene_paint)]
         SceneCommand::PopTransform => Some(false),
         #[cfg(host)]
         SceneCommand::SaveLayer { .. } => Some(true),
@@ -96,11 +92,10 @@ fn structural_ink(
             let children = commands.get(index + 1..end).unwrap_or_default();
             ChangeBound::Rect(state.draw_bounds(children, area, scale))
         }
-        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) => ChangeBound::Full,
-        SceneCommand::PopClip | SceneCommand::PopLayer => ChangeBound::Nothing,
-        #[cfg(scene_paint)]
-        SceneCommand::PopTransform => ChangeBound::Nothing,
+        SceneCommand::PopClip | SceneCommand::PopLayer | SceneCommand::PopTransform => {
+            ChangeBound::Nothing
+        }
         #[cfg(terminal_host)]
         SceneCommand::RestoreLayer => ChangeBound::Nothing,
         _ => return None,
@@ -148,7 +143,7 @@ pub(crate) fn command_ink(
     let moved = layers.iter().find(|layer| {
         matches!(
             layer.effect,
-            LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+            LayerEffect::Transform(_) | LayerEffect::Projected { .. } | LayerEffect::Shader(_)
         )
     });
     let rect = match moved {

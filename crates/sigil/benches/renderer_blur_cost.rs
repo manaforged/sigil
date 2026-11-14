@@ -13,8 +13,7 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
-    CommandScene, CornerRadii, DrawGradient, GradientStop, LayerEffect, LayerScope, LinearGradient,
-    SceneBuilder,
+    CommandScene, DrawGradient, GradientStop, LayerEffect, LayerScope, LinearGradient, SceneBuilder,
 };
 use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::shared_device;
@@ -198,13 +197,7 @@ fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
 fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, sigma: f32) {
     use sigil::geometry::{Point, Rect};
     let clip = Rect::new(Point::new(x, y), w, h);
-    scene.push_layer(LayerScope {
-        clip,
-        clip_radii: CornerRadii::ZERO,
-        effect: blur_effect(sigma),
-        opacity: 1.0,
-        blend: sigil::scene::BlendMode::Normal,
-    });
+    scene.push_layer(LayerScope::new(clip).layer_effect(blur_effect(sigma)));
     scene.fill_rect(clip, rgba(240, 240, 250, 220));
     scene.pop_layer();
 }

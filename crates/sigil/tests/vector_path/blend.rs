@@ -12,16 +12,18 @@ const WHITE: Color = Color {
 };
 
 fn half_covered_square() -> impl IntoNode {
-    canvas(|scene: &mut SceneBuilder, rect: sigil::geometry::Rect| {
-        path(SIDE, SIDE)
-            .move_to(10.5, 10.5)
-            .line_to(20.5, 10.5)
-            .line_to(20.5, 20.5)
-            .line_to(10.5, 20.5)
-            .close()
-            .fill(WHITE)
-            .draw(scene, rect, &Theme::light());
-    })
+    canvas(
+        |scene: &mut SceneBuilder, rect: sigil::geometry::Rect, theme: &Theme| {
+            path(SIDE, SIDE)
+                .move_to(10.5, 10.5)
+                .line_to(20.5, 10.5)
+                .line_to(20.5, 20.5)
+                .line_to(10.5, 20.5)
+                .close()
+                .fill_color(WHITE)
+                .draw(scene, rect, theme);
+        },
+    )
     .width(SIDE as f32)
     .height(SIDE as f32)
 }

@@ -43,10 +43,7 @@ impl<T> CellForm<T> {
 }
 
 pub(crate) fn track(value: f32) -> f32 {
-    let Some(cell) = cell() else {
-        return value;
-    };
-    (value / cell).round().max(1.0) * cell
+    crate::style::Metrics::current().track_size(value)
 }
 
 pub(crate) fn gap(value: f32) -> f32 {

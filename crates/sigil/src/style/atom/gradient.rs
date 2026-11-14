@@ -1,4 +1,8 @@
-use super::{Color, ColorValue, GradientAxis};
+use std::hash::{Hash, Hasher};
+use std::mem::Discriminant;
+
+use super::{Color, ColorValue, GradientAxis, bits, direction};
+use crate::style::diagnostic::Seen;
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
@@ -179,8 +183,14 @@ kittest_pub! {
         ClipText,
         /// A tiled background image, by image id.
         Image(u64),
+        /// A background shader, by shader id.
+        Shader(u64),
         /// How the line of the border is drawn: solid, dashed, or dotted.
         Border(BorderStyle),
+        /// The radius of the corners in a bit mask, clockwise from the top left.
+        Corners(u8, crate::style::Radius),
+        /// The curve of every corner.
+        CornerShape(crate::scene::CornerShape),
     }
 }
 
@@ -198,8 +208,110 @@ kittest_pub! {
         pub clip_text: bool,
         /// The id of the tiled background image, when one is set.
         pub image: Option<u64>,
+        /// The id of the background shader, when one is set.
+        pub shader: Option<u64>,
         /// How the line of the border is drawn; the default is solid.
         pub border: BorderStyle,
+        pub(crate) geometry: Geometry,
+        pub(crate) corners: [Option<i16>; 4],
+        pub(crate) shape: crate::scene::CornerShape,
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Geometry {
+    angle: Option<f32>,
+    center: [Option<f32>; 2],
+}
+
+impl Geometry {
+    pub(crate) fn angle(self, degrees: f32) -> f32 {
+        self.angle.unwrap_or(degrees)
+    }
+
+    pub(crate) fn direction(self, axis: GradientAxis) -> [f32; 2] {
+        self.angle.map_or_else(|| axis.heading().1, direction)
+    }
+
+    pub(crate) fn center(self, at: [u8; 2]) -> [f32; 2] {
+        let [x, y] = self.center;
+        [
+            x.unwrap_or_else(|| f32::from(at[0])),
+            y.unwrap_or_else(|| f32::from(at[1])),
+        ]
+    }
+
+    fn overlay(&mut self, shape: GradientShape, overlay: &dyn AnimatorOverlay) {
+        let Self {
+            angle,
+            center: [x, y],
+        } = self;
+        for (kind, slot) in [
+            (NumericAtomKind::GradientAngle, angle),
+            (NumericAtomKind::GradientCenterX, x),
+            (NumericAtomKind::GradientCenterY, y),
+        ] {
+            let Some(value) = overlay.value_for(kind) else {
+                continue;
+            };
+            if shape.value(kind).is_some() {
+                *slot = Some(value);
+            } else if REFUSED.first((kind, std::mem::discriminant(&shape))) {
+                tracing::warn!(
+                    target: "sigil::animation",
+                    ?kind,
+                    ?shape,
+                    "this property has no meaning on this gradient and was ignored"
+                );
+            }
+        }
+    }
+
+    const fn key(self) -> [u32; 3] {
+        let [x, y] = self.center;
+        [slot_key(self.angle), slot_key(x), slot_key(y)]
+    }
+}
+
+const fn slot_key(value: Option<f32>) -> u32 {
+    match value {
+        Some(value) => bits(value),
+        None => u32::MAX,
+    }
+}
+
+impl PartialEq for Geometry {
+    fn eq(&self, other: &Self) -> bool {
+        self.key() == other.key()
+    }
+}
+
+impl Eq for Geometry {}
+
+impl Hash for Geometry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.key().hash(state);
+    }
+}
+
+static REFUSED: Seen<(NumericAtomKind, Discriminant<GradientShape>)> = Seen::new();
+
+impl GradientShape {
+    fn value(self, kind: NumericAtomKind) -> Option<f32> {
+        use NumericAtomKind as K;
+        match (self, kind) {
+            (Self::Linear(axis), K::GradientAngle) => Some(axis.heading().0),
+            (Self::Conic(conic), K::GradientAngle) => Some(f32::from(conic.from)),
+            (
+                Self::Radial(Radial { at: [at, _], .. }) | Self::Conic(Conic { at: [at, _], .. }),
+                K::GradientCenterX,
+            )
+            | (
+                Self::Radial(Radial { at: [_, at], .. }) | Self::Conic(Conic { at: [_, at], .. }),
+                K::GradientCenterY,
+            ) => Some(f32::from(at)),
+            _ => None,
+        }
     }
 }
 
@@ -249,7 +361,12 @@ impl PaintStyle {
     }
 
     pub(crate) fn value(&self, kind: NumericAtomKind) -> Option<f32> {
-        let index = STOPS.iter().position(|(owner, _)| *owner == kind)?;
+        if let Some(px) = self.corner(kind) {
+            return Some(px);
+        }
+        let Some(index) = STOPS.iter().position(|(owner, _)| *owner == kind) else {
+            return self.gradient.and_then(|shape| shape.value(kind));
+        };
         let position = self.positions.get(index).copied().flatten();
         self.drawn(index)
             .then(|| position.map_or_else(|| kind.initial(), f32::from))
@@ -277,6 +394,7 @@ impl PaintStyle {
     }
 
     pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
+        self.overlay_corners(overlay);
         let shown = [0, 1, 2].map(|index| self.drawn(index));
         let slots = self.stops.iter_mut().zip(self.positions.iter_mut());
         for ((stop, position), ((numeric, color), drawn)) in slots.zip(STOPS.into_iter().zip(shown))
@@ -290,6 +408,9 @@ impl PaintStyle {
             if let Some(percent) = overlay.value_for(numeric) {
                 *position = Some(percent_units(percent));
             }
+        }
+        if let Some(shape) = self.gradient {
+            self.geometry.overlay(shape, overlay);
         }
     }
 }

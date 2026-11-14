@@ -10,9 +10,9 @@ use crate::scene::command::{
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
-use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
+use crate::scene::style_adapter::{focus_ring_for, text_style_for};
 use crate::style::atom::BorderStyle;
-use crate::style::{Color, Elevation, RenderStyle, TextDecoration, TextStyle, Theme, Tone};
+use crate::style::{Color, RenderStyle, TextDecoration, TextStyle, Theme, Tone};
 
 pub(super) fn push_focus_ring(
     scene: &mut SceneBuilder,
@@ -30,17 +30,13 @@ pub(super) fn push_focus_ring(
         offset.mul_add(2.0, rect.width),
         offset.mul_add(2.0, rect.height),
     );
-    let radii = CornerRadii(
-        corner_radii_for(paint.style.border_radius)
-            .0
-            .map(|radius| radius + offset),
-    );
+    let radii = CornerRadii(paint.style.paint.radii().0.map(|radius| radius + offset));
     scene.draw_rect_for_node(
         id,
         DrawRect::new(ring_rect, TRANSPARENT)
             .border_radius(radii)
-            .opacity(ring.opacity)
-            .stroke(Stroke {
+            .opacity(crate::scene::command::opacity::from_basis(ring.opacity))
+            .stroked(Stroke {
                 color: ring.color,
                 width: ring.width,
                 style: StrokeStyle::Solid,
@@ -83,7 +79,13 @@ impl NodePaint<'_> {
             rect,
             widths,
             color: super::borders::border_color(self.style, self.theme),
-            rounded: self.style.border_radius.is_some_and(|radius| radius > 0),
+            rounded: self
+                .style
+                .paint
+                .corners
+                .iter()
+                .flatten()
+                .any(|radius| *radius > 0),
         })
     }
 }
@@ -109,7 +111,7 @@ fn push_text_decoration(
     let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
     scene.draw_decoration(
         DrawDecoration::new(kind, band, color)
-            .opacity(opacity)
+            .opacity(crate::scene::command::opacity::from_basis(opacity))
             .line_width(thickness),
     );
 }
@@ -121,9 +123,9 @@ fn push_container(
     paint: &NodePaint<'_>,
 ) {
     let (id, style) = (node.0, paint.style);
-    let radii = corner_radii_for(style.border_radius);
-    if let Some(elevation) = style.shadow {
-        scene.draw_shadow(rect, radii, elevation_shadow(elevation));
+    let radii = style.paint.radii();
+    if let Some(shadow) = style.shadow {
+        scene.shaped_shadow(rect, radii.0, style.paint.shape, shadow.into());
     }
     let styled = style.paint.border != BorderStyle::Solid;
     let stroke = super::borders::border_stroke(style, paint.theme).filter(|_| !styled);
@@ -131,32 +133,36 @@ fn push_container(
     if stroke.is_some() {
         cell.border = paint.border(rect);
     }
-    let fill = super::background::fill(rect, style, paint.theme).filter(|_| !style.paint.clip_text);
+    let fill = super::background::fill(rect, style).filter(|_| !style.paint.clip_text);
     if let Some(fill) = fill {
         if let Some(color) = style.background_color {
             scene.draw_rect(
                 DrawRect::new(rect, color)
                     .border_radius(radii)
-                    .opacity(style.opacity),
+                    .shape(style.paint.shape)
+                    .opacity(crate::scene::command::opacity::from_basis(style.opacity)),
             );
         }
         let mut draw = DrawGradient::new(rect, fill)
             .border_radius(radii)
-            .opacity(style.opacity);
+            .shape(style.paint.shape)
+            .opacity(crate::scene::command::opacity::from_basis(style.opacity));
         if let Some(stroke) = stroke {
-            draw = draw.stroke(stroke);
+            draw = draw.stroked(stroke);
         }
         scene.draw_gradient_for_node(id, draw, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
         let background = style.background_color.unwrap_or(TRANSPARENT);
         let mut draw = DrawRect::new(rect, background)
             .border_radius(radii)
-            .opacity(style.opacity);
+            .shape(style.paint.shape)
+            .opacity(crate::scene::command::opacity::from_basis(style.opacity));
         if let Some(stroke) = stroke {
-            draw = draw.stroke(stroke);
+            draw = draw.stroked(stroke);
         }
         scene.draw_rect_for_node(id, draw, cell);
     }
+    super::shader::push_fill(scene, node.1, rect, style, paint.theme);
     super::background::push_image(scene, node, rect, style);
     if !super::dashes::push_styled_border(scene, id, rect, paint) {
         super::borders::push_side_borders(scene, id, rect, paint);
@@ -223,7 +229,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             },
         );
     }
-    let clip = super::background::fill(rect, style, paint.theme)
+    let clip = super::background::fill(rect, style)
         .filter(|_| style.paint.clip_text)
         .or_else(|| paint.text_fill.cloned());
     let color = clip.as_ref().map_or(color, text_color);
@@ -327,14 +333,3 @@ fn push_color_glyphs(scene: &mut SceneBuilder, id: NodeId, run: &GlyphRun, opaci
 
 #[cfg(not(feature = "scene"))]
 const fn push_color_glyphs(_: &mut SceneBuilder, _: NodeId, _: &GlyphRun, _: u16) {}
-
-pub(super) const fn elevation_shadow(elevation: Elevation) -> Shadow {
-    let (offset_y, blur, spread, alpha) = match elevation {
-        Elevation::Sm => (1.0, 2.0, 0.0, 0.10),
-        Elevation::Base => (2.0, 4.0, 0.0, 0.12),
-        Elevation::Md => (4.0, 8.0, -1.0, 0.14),
-        Elevation::Lg => (8.0, 16.0, -2.0, 0.16),
-        Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
-    };
-    Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
-}

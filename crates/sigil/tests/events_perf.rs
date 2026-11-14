@@ -1,7 +1,7 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use sigil::geometry::Point;
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -138,12 +138,10 @@ fn semantic_shortcut_scan_1000_nodes_does_not_allocate() {
     let mut root_builder = container().layout(LayoutStyle::block().fixed_size(240.0, 240.0));
     for index in 0..1_000 {
         let child = if index == 999 {
-            wide_child(index)
-                .keyboard_shortcut(shortcut.clone())
-                .key(shortcut.clone(), {
-                    let hits = Rc::clone(&hits);
-                    move |_| hits.set(hits.get() + 1)
-                })
+            wide_child(index).shortcut(shortcut.clone(), {
+                let hits = Rc::clone(&hits);
+                move |_| hits.set(hits.get() + 1)
+            })
         } else {
             wide_child(index)
         };

@@ -3,6 +3,7 @@
 use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::geometry::Rect;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::widgets::DragState;
@@ -25,14 +26,16 @@ fn drag_rows(first: f32, release_below: bool) -> (Option<(u32, u32)>, bool) {
             col.child(
                 container()
                     .role(Role::ListItem)
-                    .label(format!("row {id}"))
+                    .accessible(format!("row {id}"))
                     .layout(LayoutStyle::block().fill_width().height(28.0))
                     .child(text(format!("row {id}")))
                     .drag_source(drag.clone(), id)
                     .drop_target(
                         drag.clone(),
                         move |from: &u32| *from != id,
-                        move |from| dropped.set(Some((from, id))),
+                        move |event: sigil::events::DropEvent<u32>| {
+                            dropped.set(Some((event.into_value(), id)));
+                        },
                     ),
             )
         })

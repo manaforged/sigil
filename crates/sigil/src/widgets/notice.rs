@@ -6,7 +6,7 @@ use crate::reactive::memo;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::icon::CHECK_GLYPH;
 
@@ -30,7 +30,7 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let body: TextContent = body.into();
     let band = container()
         .role(role)
-        .label(announced(name, &body))
+        .accessible(announced(name, &body))
         .tone_scope(tone);
     let band = CellForm::<fn(NodeBuilder, Tone) -> NodeBuilder>::new(
         |node, _| {

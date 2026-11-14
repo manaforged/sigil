@@ -8,7 +8,7 @@ use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, signal};
 use crate::style::Theme;
 use crate::style::render_style_for;
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 fn find(cx: &Cx, root: NodeId, role: Role, label: &str) -> NodeId {
     let mut found = None;
@@ -30,14 +30,14 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
     ] {
         Owner::scope("tabs-chrome", || {
             let mut cx = Cx::new_root();
-            let strip = chrome(tabs().labels(["A", "B"])).label("test");
+            let strip = chrome(tabs().labels(["A", "B"])).accessible("test");
             let root = cx.add(
                 container()
                     .layout(LayoutStyle::flex_column().fill())
                     .child(strip)
                     .child(
                         container()
-                            .label("body")
+                            .accessible("body")
                             .layout(LayoutStyle::block().height(100.0)),
                     ),
             );

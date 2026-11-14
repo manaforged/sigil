@@ -1,4 +1,6 @@
-use crate::animation::{Easing, SpringPreset};
+use std::sync::{Mutex, PoisonError};
+
+use crate::animation::{Easing, Spring};
 use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, TransitionId};
 
 use crate::animation::runtime::config::AnimationConfig;
@@ -30,6 +32,66 @@ kittest_pub! {
     }
 }
 
+pub(crate) const TWEEN_MS: u16 = 150;
+
+const SPRING_BASE: u16 = 0x8000;
+
+const LAYOUT: u16 = 0x4000;
+
+pub(crate) const fn with_layout(id: TransitionId) -> TransitionId {
+    TransitionId(id.0 | LAYOUT)
+}
+
+const fn timed(id: TransitionId) -> TransitionId {
+    TransitionId(id.0 & !LAYOUT)
+}
+
+const SPRING_PRESETS: [TransitionId; 5] = [
+    presets::SMOOTH,
+    presets::GENTLE,
+    presets::SNAPPY,
+    presets::BOUNCY,
+    presets::STIFF,
+];
+
+static SPRINGS: Mutex<Vec<Spring>> = Mutex::new(Vec::new());
+
+pub(crate) fn intern(spring: Spring) -> TransitionId {
+    let wanted = Some(AnimationConfig::Spring(spring));
+    if let Some(id) = SPRING_PRESETS.into_iter().find(|id| config(*id) == wanted) {
+        return id;
+    }
+    let mut springs = SPRINGS.lock().unwrap_or_else(PoisonError::into_inner);
+    let index = springs
+        .iter()
+        .position(|held| *held == spring)
+        .unwrap_or_else(|| {
+            springs.push(spring);
+            springs.len() - 1
+        });
+    let id = u16::try_from(index)
+        .ok()
+        .filter(|index| *index < LAYOUT)
+        .and_then(|index| SPRING_BASE.checked_add(index));
+    if id.is_none() {
+        springs.truncate(index);
+    }
+    drop(springs);
+    id.map_or_else(
+        || {
+            tracing::warn!(target: "sigil::animation", "too many distinct transition springs; using the smooth spring");
+            presets::SMOOTH
+        },
+        TransitionId,
+    )
+}
+
+fn interned(id: TransitionId) -> Option<AnimationConfig> {
+    let index = usize::from(timed(id).0.checked_sub(SPRING_BASE)?);
+    let springs = SPRINGS.lock().unwrap_or_else(PoisonError::into_inner);
+    springs.get(index).copied().map(AnimationConfig::Spring)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Transitioned {
     All,
@@ -41,7 +103,7 @@ pub(crate) enum Transitioned {
 
 impl Transitioned {
     pub(crate) const fn of(id: TransitionId) -> Self {
-        match id {
+        match timed(id) {
             presets::TRANSITION => Self::Paint,
             presets::COLORS => Self::Colors,
             presets::OPACITY => Self::Opacity,
@@ -88,12 +150,12 @@ impl Transitioned {
 
 #[must_use]
 pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
-    let preset = match id {
-        presets::SMOOTH => SpringPreset::Smooth,
-        presets::GENTLE => SpringPreset::Gentle,
-        presets::SNAPPY => SpringPreset::Snappy,
-        presets::BOUNCY => SpringPreset::Bouncy,
-        presets::STIFF => SpringPreset::Stiff,
+    let spring = match timed(id) {
+        presets::SMOOTH => Spring::SMOOTH,
+        presets::GENTLE => Spring::GENTLE,
+        presets::SNAPPY => Spring::SNAPPY,
+        presets::BOUNCY => Spring::BOUNCY,
+        presets::STIFF => Spring::STIFF,
         presets::FAST => return Some(cubic_in_out(120)),
         presets::DEFAULT => return Some(cubic_in_out(200)),
         presets::SLOW => return Some(cubic_in_out(320)),
@@ -103,14 +165,14 @@ pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
         | presets::TRANSFORM
         | presets::ALL => {
             return Some(AnimationConfig::Tween {
-                ms: 150,
+                ms: TWEEN_MS,
                 easing: Easing::IN_OUT,
                 delay_ms: 0,
             });
         }
         _ => return None,
     };
-    Some(AnimationConfig::Spring { preset })
+    Some(AnimationConfig::Spring(spring))
 }
 
 pub(crate) const fn timing(id: TransitionId) -> (u16, Easing, u16) {
@@ -132,12 +194,41 @@ const fn cubic_in_out(ms: u16) -> AnimationConfig {
     }
 }
 
+fn transition_id(atoms: impl IntoIterator<Item = StyleAtom>) -> Option<TransitionId> {
+    atoms
+        .into_iter()
+        .filter_map(|atom| match atom {
+            StyleAtom::Transition(id) => Some(id),
+            _ => None,
+        })
+        .last()
+}
+
+pub(crate) fn glides(atoms: impl IntoIterator<Item = StyleAtom>) -> bool {
+    transition_id(atoms).is_some_and(|id| id.0 & LAYOUT != 0)
+}
+
+fn glide_config(atoms: &[StyleAtom]) -> Option<AnimationConfig> {
+    glides(atoms.iter().copied())
+        .then(|| transition_config(atoms))
+        .flatten()
+        .map(|(config, _)| config)
+}
+
+pub(crate) fn morph_config(atoms: &[StyleAtom], shared: bool) -> Option<AnimationConfig> {
+    glide_config(atoms).or_else(|| {
+        shared.then(|| {
+            transition_config(atoms)
+                .map_or(AnimationConfig::Spring(Spring::SMOOTH), |(config, _)| {
+                    config
+                })
+        })
+    })
+}
+
 pub(crate) fn transition_config(atoms: &[StyleAtom]) -> Option<(AnimationConfig, Transitioned)> {
-    let id = atoms.iter().rev().find_map(|atom| match atom {
-        StyleAtom::Transition(id) => Some(*id),
-        _ => None,
-    })?;
-    let mut config = config(id)?;
+    let id = transition_id(atoms.iter().copied())?;
+    let mut config = config(id).or_else(|| interned(id))?;
     if let AnimationConfig::Tween {
         ms,
         easing,

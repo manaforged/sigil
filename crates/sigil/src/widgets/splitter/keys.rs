@@ -1,9 +1,9 @@
-use crate::events::NamedKey;
+use crate::events::{NamedKey, ValueStep};
 use crate::kernel::NodeBuilder;
 use crate::reactive::memo;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::widgets::interaction::{ValueStep, step_keys};
+use crate::widgets::Widget;
 
 use super::drag::SplitterState;
 use crate::layout::Orientation;
@@ -24,7 +24,7 @@ pub(super) fn install_handle_keys(
     };
     let node = node
         .focusable(true)
-        .label(theme_label(StringKey::ResizePanes))
+        .accessible(theme_label(StringKey::ResizePanes))
         .value(value, min, max)
         .value_step(KEY_STEP);
     resize_keys(node, (back, forward), move |step| {
@@ -47,7 +47,7 @@ pub(in crate::widgets) fn resize_keys(
         (NamedKey::Home, ValueStep::Start),
         (NamedKey::End, ValueStep::End),
     ];
-    step_keys(node, &keys, move |step, event| {
+    node.step_keys(keys, move |step, event| {
         step_by(match step {
             ValueStep::Unit(sign) | ValueStep::Page(sign) => sign * KEY_STEP,
             ValueStep::Start => f32::NEG_INFINITY,

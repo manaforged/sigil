@@ -34,6 +34,7 @@ impl AppConfig {
             inline: false,
             frame_interval: FRAME_INTERVAL,
             reduced_motion: None,
+            reduced_transparency: None,
             double_click_time: None,
             double_click_distance: None,
             task_workers: crate::tasks::TaskWorkers::Auto,

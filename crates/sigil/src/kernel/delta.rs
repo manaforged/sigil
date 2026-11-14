@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{AHashMap, AHashSet};
 
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, Node, NodeId};
 
 static DELTA_EPOCH: AtomicU64 = AtomicU64::new(1);
 
@@ -38,8 +38,11 @@ pub struct NodeTag {
     id: NodeId,
 }
 
+type PendingEdits = AHashMap<u64, Vec<(NodeId, Box<dyn FnOnce(&mut Node)>)>>;
+
 thread_local! {
     static PENDING: RefCell<AHashMap<u64, FrameDelta>> = RefCell::new(AHashMap::new());
+    static PENDING_EDITS: RefCell<PendingEdits> = RefCell::new(AHashMap::new());
 }
 
 impl FrameDelta {
@@ -82,10 +85,20 @@ impl NodeTag {
                 .record(self.id, kind);
         });
     }
+
+    pub(crate) fn queue_edit(self, edit: impl FnOnce(&mut Node) + 'static) {
+        let _ = PENDING_EDITS.try_with(|cell| {
+            cell.borrow_mut()
+                .entry(self.cx)
+                .or_default()
+                .push((self.id, Box::new(edit)));
+        });
+    }
 }
 
 pub(crate) fn discard_pending(cx: u64) {
     let _ = PENDING.try_with(|cell| cell.borrow_mut().remove(&cx));
+    let _ = PENDING_EDITS.try_with(|cell| cell.borrow_mut().remove(&cx));
 }
 
 impl Cx {
@@ -97,7 +110,23 @@ impl Cx {
             ^ self.mutation_generation()
     }
 
+    pub(crate) fn apply_pending_edits(&mut self) {
+        let Some(edits) = PENDING_EDITS
+            .try_with(|cell| cell.borrow_mut().remove(&self.instance_id()))
+            .ok()
+            .flatten()
+        else {
+            return;
+        };
+        for (id, edit) in edits {
+            if let Some(node) = self.get_mut(id) {
+                edit(node);
+            }
+        }
+    }
+
     pub(crate) fn take_delta(&mut self) -> FrameDelta {
+        self.apply_pending_edits();
         let spare = self.spare_delta.take().unwrap_or_default();
         let mut delta = std::mem::replace(&mut self.delta, spare);
         if let Some(pending) = PENDING.with(|cell| cell.borrow_mut().remove(&self.instance_id())) {

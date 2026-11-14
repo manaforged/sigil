@@ -1,10 +1,13 @@
 use std::rc::Rc;
 
-use sigil::geometry::{Point, Rect, Size};
+use sigil::app::{DefaultFonts, default_fonts};
+use sigil::geometry::{Constraint, Point, Rect, Size};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;
+use sigil::renderer::{GlobalTextState, lock_global_text_state};
 use sigil::scene::emit_scene;
+use sigil::style::FontFamily;
 
 use crate::gpu::{self, render_scene_to_image};
 use crate::interaction::{self, drive_state};
@@ -29,6 +32,7 @@ impl Harness {
             hit: (0.0, 0.0),
             measure: Rc::new(real_text_measure),
             focus_first: false,
+            fonts: None,
         }
     }
 }
@@ -43,6 +47,7 @@ pub struct Render<B> {
     hit: (f32, f32),
     measure: MeasureFn,
     focus_first: bool,
+    fonts: Option<DefaultFonts>,
 }
 
 impl<B> std::fmt::Debug for Render<B> {
@@ -53,6 +58,7 @@ impl<B> std::fmt::Debug for Render<B> {
             .field("scale", &self.scale)
             .field("hit", &self.hit)
             .field("focus_first", &self.focus_first)
+            .field("fonts", &self.fonts.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -99,6 +105,12 @@ impl<B> Render<B> {
         self
     }
 
+    /// Replaces the face of `family` with face `face` of the font file `bytes` for this render, as `AppConfig::font` does.
+    pub fn font(mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) -> Self {
+        self.fonts.get_or_insert_default().set(family, bytes, face);
+        self
+    }
+
     fn target(&self) -> Extent {
         let logical = self.size.map(crate::extent_f32);
         let physical = self.scale.map_or(self.size, |scale| {
@@ -124,6 +136,7 @@ impl<B: IntoNode> Render<B> {
             hit,
             measure,
             focus_first,
+            fonts,
             ..
         } = self;
         let drive = Drive {
@@ -131,6 +144,7 @@ impl<B: IntoNode> Render<B> {
             hit,
             focus_first,
         };
+        let _fonts = FontScope::load(fonts.as_ref());
         capture(build, target, measure(), drive, settle)
     }
 }
@@ -143,6 +157,7 @@ where
     /// Renders `frames` hover frames `dt` seconds apart, side by side.
     pub fn filmstrip(self, frames: u32, dt: f32) -> Rendered {
         let target = self.target();
+        let _fonts = FontScope::load(self.fonts.as_ref());
         let mut images = Vec::new();
         for index in 0..frames.max(1) {
             let mode = if index == 0 {
@@ -182,6 +197,25 @@ fn stitch_horizontal(frames: &[image::RgbaImage], size_px: [u32; 2]) -> image::R
         x_offset += i64::from(frame_w) + i64::from(FILMSTRIP_GAP_PX);
     }
     out
+}
+
+struct FontScope {
+    _text: GlobalTextState,
+}
+
+impl FontScope {
+    fn load(fonts: Option<&DefaultFonts>) -> Option<Self> {
+        let fonts = fonts?;
+        let text = lock_global_text_state();
+        default_fonts(fonts.clone());
+        Some(Self { _text: text })
+    }
+}
+
+impl Drop for FontScope {
+    fn drop(&mut self) {
+        default_fonts(DefaultFonts::default());
+    }
 }
 
 #[derive(Clone, Copy)]

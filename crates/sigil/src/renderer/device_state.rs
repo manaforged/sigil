@@ -11,6 +11,7 @@ use crate::renderer::quad_paint::AtlasPipeline;
 use crate::renderer::scene_command::KeptLayers;
 use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
+use crate::renderer::shader_paint::ShaderPrograms;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::split_encoder::GpuTimer;
@@ -37,6 +38,7 @@ pub(crate) struct PipelineCache {
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) filter_pipelines: Vec<FilterPipeline>,
     pub(crate) projected_pipelines: Vec<ProjectedPipeline>,
+    pub(crate) shader_programs: ShaderPrograms,
     pub(crate) layer_pool: Option<LayerPool>,
     pub(crate) wash_cache: WashCache,
     pub(crate) pending: WalkPending,
@@ -56,6 +58,7 @@ impl Default for PipelineCache {
             layer_pipelines: Vec::new(),
             filter_pipelines: Vec::new(),
             projected_pipelines: Vec::new(),
+            shader_programs: ShaderPrograms::default(),
             layer_pool: Some(LayerPool::new()),
             wash_cache: WashCache::default(),
             pending: WalkPending::default(),

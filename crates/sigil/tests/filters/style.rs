@@ -1,3 +1,5 @@
+use sigil::layout::LayoutStyle;
+use sigil::node::TextBuilder;
 use sigil::prelude::*;
 use sigil::scene::{Filter, Shadow};
 

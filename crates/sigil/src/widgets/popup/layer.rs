@@ -19,6 +19,10 @@ pub(crate) enum PopupAnchor {
     Popup(Popup),
 }
 
+pub(crate) fn float(node: NodeBuilder, popup: Popup) -> NodeBuilder {
+    node.with(TopLayer).with(ViewportOverlay).with(popup)
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct PopupLayer {
     pub(crate) show: Signal<bool>,
@@ -46,7 +50,7 @@ impl PopupLayer {
             PopupAnchor::Inline => node,
             PopupAnchor::Viewport => node.with(ViewportOverlay),
             PopupAnchor::Top => node.with(TopLayer).with(ViewportOverlay),
-            PopupAnchor::Popup(popup) => node.with(TopLayer).with(ViewportOverlay).with(popup),
+            PopupAnchor::Popup(popup) => float(node, popup),
         };
         let node = node.style_reactive(move || shown(show));
         if self.trap {
@@ -90,6 +94,7 @@ impl PopupLayer {
 pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
     node.key(NamedKey::Escape, |event| {
         if close_popup() {
+            event.prevent_default();
             event.stop_propagation();
         }
     })

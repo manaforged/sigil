@@ -4,6 +4,7 @@ use windows_core as _;
 mod appearance;
 #[cfg(feature = "audio")]
 pub(crate) mod audio;
+pub(crate) mod backdrop;
 #[cfg(any(native_commands, global_hotkey))]
 mod bridge;
 mod cell_text;
@@ -69,9 +70,11 @@ pub use crate::text::load_font_url;
 #[doc(hidden)]
 pub use crate::text::web_fallbacks;
 #[cfg(feature = "scene")]
-pub use crate::text::{WebFont, WebFontScript};
+#[doc(inline)]
+pub use crate::text::web_font::{WebFont, WebFontScript};
 #[cfg(feature = "audio")]
 pub use audio::Player;
+pub use backdrop::system_backdrop;
 #[cfg(feature = "terminal")]
 pub(crate) use cell_text::cell_glyph;
 #[cfg(feature = "terminal")]
@@ -91,13 +94,14 @@ kittest_pub! {
     #[doc(hidden)]
     pub use cell_text::CellWidth;
 }
+pub use crate::kernel::HostMode;
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
 pub use frame::{Frame, FrameHooks, FrameInputHook, FrameLayoutHook, FramePaintHook};
-pub(crate) use host_env::HostCaps;
+pub(crate) use host_env::{HostCaps, is_entered};
 pub use host_env::{is_grid, viewport_size};
 #[cfg(feature = "desktop")]
 pub(crate) use launch::launch;

@@ -6,11 +6,11 @@ use std::rc::Rc;
 
 use harfrust::{
     Direction, Feature, FontRef as HrFontRef, GlyphBuffer, Script as HrScript, ShapeOptions,
-    ShapePlan, ShaperInstance, Tag, UnicodeBuffer, Variation, script as hr_script,
+    ShapePlan, ShapePlanKey, ShaperInstance, Tag, UnicodeBuffer, script as hr_script,
 };
 use skrifa::FontRef;
 use skrifa::MetadataProvider;
-use skrifa::instance::{LocationRef, Size};
+use skrifa::instance::{Location, LocationRef, Size};
 use smallvec::SmallVec;
 
 use crate::text::glyph::{GlyphId, GlyphPos, ShapedRun};
@@ -40,35 +40,29 @@ pub(crate) fn shape_full(
     }
     let bytes = font.bytes_arc();
     let hr_font = HrFontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
-    let instance = shaper_instance(&hr_font, style, font);
+    let location = style.location(font);
+    let instance = ShaperInstance::from_coords(&hr_font, location.coords().iter().copied());
     let hr_shaper = font
         .tables(&hr_font)
         .shaper(&hr_font)
         .instance(Some(&instance))
         .build();
 
-    let script = classify_segment_script(segment);
-    let hr_script = map_script(script);
-    let direction = if segment.level & 1 == 1 {
-        Direction::RightToLeft
-    } else {
-        Direction::LeftToRight
-    };
+    let script = map_script(classify_segment_script(segment));
+    let direction = direction_of(segment.level);
 
     let mut buffer = SCRATCH.with_borrow_mut(Option::take).unwrap_or_default();
     buffer.push_str(segment.text);
     buffer.set_direction(direction);
-    buffer.set_script(hr_script);
+    buffer.set_script(script);
 
     let features = build_features(style);
-    let key = ShapeKey {
-        id: font.id(),
-        index: font.face_index(),
-        script: hr_script,
-        direction,
-        features: features.iter().map(|feature| feature.tag).collect(),
-    };
-    let plan = plan(&hr_shaper, &key, &features);
+    let plan = plan(
+        &hr_shaper,
+        (font.id(), font.face_index()),
+        (script, direction),
+        (&instance, features.as_slice()),
+    );
     let options = ShapeOptions::new()
         .plan(Some(&plan))
         .point_size(Some(style.size_px))
@@ -79,7 +73,7 @@ pub(crate) fn shape_full(
         return None;
     }
 
-    let run = scaled_run(&glyphs_buf, bytes.as_slice(), style, font);
+    let run = scaled_run(&glyphs_buf, bytes.as_slice(), style, (font, &location));
     recycle(glyphs_buf);
     run
 }
@@ -88,11 +82,10 @@ fn scaled_run(
     glyphs: &GlyphBuffer,
     bytes: &[u8],
     style: &FaceStyle,
-    font: &Font,
+    (font, location): (&Font, &Location),
 ) -> Option<ShapedRun> {
     let skrifa_font = FontRef::from_index(bytes, font.face_index()).ok()?;
     let size = Size::new(style.size_px.max(1.0));
-    let location = font.location(style.weight, style.size_px);
     let face_metrics = skrifa_font.metrics(size, LocationRef::new(location.coords()));
     let upem = f32::from(face_metrics.units_per_em);
     let scale = if upem > 0.0 {
@@ -103,48 +96,52 @@ fn scaled_run(
     Some(build_glyph_run(glyphs, scale, &face_metrics))
 }
 
+const fn direction_of(level: u8) -> Direction {
+    if level & 1 == 1 {
+        Direction::RightToLeft
+    } else {
+        Direction::LeftToRight
+    }
+}
+
 fn recycle(glyphs: GlyphBuffer) {
     SCRATCH.with_borrow_mut(|slot| *slot = Some(glyphs.clear()));
 }
 
-fn shaper_instance(font_ref: &HrFontRef<'_>, style: &FaceStyle, font: &Font) -> ShaperInstance {
-    let settings = font.variation_settings(style.weight, style.size_px);
-    ShaperInstance::from_variations(
-        font_ref,
-        settings.iter().map(|(tag, value)| Variation {
-            tag: Tag::new(tag),
-            value: *value,
-        }),
-    )
-}
+const PLANS_PER_FACE: usize = 16;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-struct ShapeKey {
-    id: u64,
-    index: u32,
-    script: HrScript,
-    direction: Direction,
-    features: SmallVec<[Tag; 4]>,
-}
+type PlanFace = (u64, u32);
 
 thread_local! {
     static SCRATCH: RefCell<Option<UnicodeBuffer>> = const { RefCell::new(None) };
-    static PLANS: RefCell<HashMap<ShapeKey, Rc<ShapePlan>>> = RefCell::new(HashMap::new());
+    static PLANS: RefCell<HashMap<PlanFace, Vec<Rc<ShapePlan>>>> = RefCell::new(HashMap::new());
 }
 
-fn plan(shaper: &harfrust::Shaper<'_>, key: &ShapeKey, features: &[Feature]) -> Rc<ShapePlan> {
+fn plan(
+    shaper: &harfrust::Shaper<'_>,
+    face: PlanFace,
+    (script, direction): (HrScript, Direction),
+    (instance, features): (&ShaperInstance, &[Feature]),
+) -> Rc<ShapePlan> {
+    let key = ShapePlanKey::new(Some(script), direction)
+        .instance(Some(instance))
+        .features(features);
     PLANS.with_borrow_mut(|plans| {
-        if let Some(plan) = plans.get(key) {
+        let known = plans.entry(face).or_default();
+        if let Some(plan) = known.iter().find(|plan| key.matches(plan)) {
             return Rc::clone(plan);
         }
         let plan = Rc::new(ShapePlan::new(
             shaper,
-            key.direction,
-            Some(key.script),
+            direction,
+            Some(script),
             None,
             features,
         ));
-        plans.insert(key.clone(), Rc::clone(&plan));
+        if known.len() >= PLANS_PER_FACE {
+            known.remove(0);
+        }
+        known.push(Rc::clone(&plan));
         plan
     })
 }
@@ -165,9 +162,10 @@ const fn map_script(script: Script) -> HrScript {
 
 fn build_features(style: &FaceStyle) -> SmallVec<[harfrust::Feature; 4]> {
     style
+        .font
         .features
         .iter()
-        .map(|tag| harfrust::Feature::new(harfrust::Tag::new(&tag.0), 1, ..))
+        .map(|(tag, value)| Feature::new(Tag::new(&tag), u32::from(value), ..))
         .collect()
 }
 

@@ -1,4 +1,4 @@
-use sigil::layout::Length;
+use sigil::layout::{LayoutStyle, Length};
 use sigil::prelude::*;
 use sigil::testing::cx;
 use sigil::widgets::{TextFieldBuilder, text_field};

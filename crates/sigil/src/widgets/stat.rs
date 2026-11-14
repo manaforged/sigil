@@ -4,11 +4,11 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::Reactive;
-use crate::style::{StyleAtom, Token, Tone};
-use crate::widgets::Layout;
+use crate::style::{Style, StyleAtom, Token, Tone};
+use crate::widgets::Widget;
 
 use super::patterns::card;
-use super::shared::accessible_name;
+use super::shared::{accessible_name, caller_style};
 use super::sparkline::sparkline;
 
 /// Builds a stat.
@@ -21,6 +21,7 @@ pub struct StatBuilder {
     trend: Option<Rc<dyn Reactive<Vec<f32>>>>,
     range: Option<(f32, f32)>,
     tone: Option<Tone>,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -48,6 +49,7 @@ pub fn stat(label: impl Into<TextContent>, value: impl Into<TextContent>) -> Sta
         trend: None,
         range: None,
         tone: None,
+        style_accumulator: Style::new(),
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
@@ -95,7 +97,7 @@ impl StatBuilder {
         };
         let mut body = container()
             .role(Role::Group)
-            .label(name)
+            .accessible(name)
             .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
             .child(caption_text(
                 self.label,
@@ -124,7 +126,7 @@ impl StatBuilder {
                 None => line,
             });
         }
-        card(body).into_node_builder()
+        caller_style(card(body).into_node_builder(), self.style_accumulator)
     }
 }
 
@@ -138,4 +140,4 @@ impl From<StatBuilder> for NodeBuilder {
     }
 }
 
-builder_impls!([] StatBuilder: widget, node(pub));
+builder_impls!([] StatBuilder: paint(style_accumulator), widget, node(pub));

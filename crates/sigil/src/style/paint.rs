@@ -1,28 +1,34 @@
 use crate::animation::{Keyframes, KeyframesId, Transition};
 use crate::kernel::ImageSource;
-use crate::scene::{BlendMode, Shadow};
-use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom};
+use crate::reactive::Reactive;
+use crate::scene::{BlendMode, Shader, Shadow};
+use crate::style::atom::{
+    Amount, BackdropPart, Backface, BorderStyle, MaskPart, PaintAtom, ShadowAtom, SpaceAtom,
+    corners,
+};
 use crate::style::engine::encode_px;
 use crate::style::{
-    Background, ClipShape, ColorValue, Elevation, FontFamily, Layer, MaskImage, MaskSize, Radius,
-    StyleAtom, TextDecoration, TextRole,
+    Background, ClipShape, ColorValue, FontFamily, Layer, MaskImage, MaskSize, Radius,
+    StateStyleBuilder, StyleAtom, TextDecoration, TextRole,
 };
 
 mod filters;
 mod slot;
 mod space;
-mod units;
+pub(super) mod units;
 
-pub(crate) use slot::{PaintTarget, StyleSlot};
-use slot::{mask, paint, push};
+use slot::{live, mask, paint, push};
 use units::{fraction_units, letter_spacing_units, opacity_units};
 
 /// Typed paint on nodes, text, widget builders, and state closures.
-pub trait Paint: PaintTarget {
-    /// Fills the background with a color or a gradient.
+pub trait Paint: Sized {
+    /// Returns the mutable style builder for this target.
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder;
+
+    /// Fills the background with a color, gradient, or `Shader`, or a signal or closure of a color or gradient.
     #[must_use]
-    fn background(self, background: impl Into<Background>) -> Self {
-        background.into().atoms().into_iter().fold(self, push)
+    fn background<B: Into<Background> + 'static>(self, background: impl Reactive<B>) -> Self {
+        slot::background(self, background)
     }
 
     /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
@@ -35,6 +41,12 @@ pub trait Paint: PaintTarget {
     #[must_use]
     fn background_image(self, image: ImageSource) -> Self {
         slot::image(self, image, |id| StyleAtom::Paint(PaintAtom::Image(id)))
+    }
+
+    /// Sets the curve of every corner of the fill, border, and shadow, like CSS `corner-shape`.
+    #[must_use]
+    fn corner_shape(self, shape: crate::scene::CornerShape) -> Self {
+        paint(self, PaintAtom::CornerShape(shape))
     }
 
     /// Draws a solid border, like Tailwind `border-solid`.
@@ -55,16 +67,16 @@ pub trait Paint: PaintTarget {
         paint(self, PaintAtom::Border(BorderStyle::Dotted))
     }
 
-    /// Sets the color of the text.
+    /// Sets the color of the text from a color or token, or a signal or closure of one.
     #[must_use]
-    fn text_color(self, color: impl Into<ColorValue>) -> Self {
-        push(self, StyleAtom::TextColor(color.into()))
+    fn text_color<C: Into<ColorValue> + 'static>(self, color: impl Reactive<C>) -> Self {
+        live(self, color, |value| [StyleAtom::TextColor(value.into())])
     }
 
-    /// Sets the color of the border.
+    /// Sets the color of the border from a color or token, or a signal or closure of one.
     #[must_use]
-    fn border_color(self, color: impl Into<ColorValue>) -> Self {
-        push(self, StyleAtom::BorderColor(color.into()))
+    fn border_color<C: Into<ColorValue> + 'static>(self, color: impl Reactive<C>) -> Self {
+        live(self, color, |value| [StyleAtom::BorderColor(value.into())])
     }
 
     /// Sets the width of the border on all four sides in pixels.
@@ -101,6 +113,30 @@ pub trait Paint: PaintTarget {
     #[must_use]
     fn radius(self, radius: Radius) -> Self {
         push(self, StyleAtom::Radius(radius))
+    }
+
+    /// Sets the radius of the top left and top right corners, like Tailwind `rounded-t-*`.
+    #[must_use]
+    fn radius_top(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::TOP, radius))
+    }
+
+    /// Sets the radius of the top right and bottom right corners, like Tailwind `rounded-r-*`.
+    #[must_use]
+    fn radius_right(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::RIGHT, radius))
+    }
+
+    /// Sets the radius of the bottom right and bottom left corners, like Tailwind `rounded-b-*`.
+    #[must_use]
+    fn radius_bottom(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::BOTTOM, radius))
+    }
+
+    /// Sets the radius of the top left and bottom left corners, like Tailwind `rounded-l-*`.
+    #[must_use]
+    fn radius_left(self, radius: Radius) -> Self {
+        paint(self, PaintAtom::Corners(corners::LEFT, radius))
     }
 
     /// Clips the node and its children to `shape`, like CSS `clip-path`.
@@ -149,10 +185,10 @@ pub trait Paint: PaintTarget {
             .fold(self, |target, atom| push(target, *atom))
     }
 
-    /// Sets the shadow to a step of the elevation scale.
+    /// Sets the shadow to a step of the elevation scale or to a custom `Shadow`, such as `Shadow::glow`.
     #[must_use]
-    fn shadow(self, elevation: Elevation) -> Self {
-        push(self, StyleAtom::Shadow(elevation))
+    fn shadow(self, shadow: impl Into<Shadow>) -> Self {
+        push(self, StyleAtom::Shadow(ShadowAtom::from(shadow.into())))
     }
 
     /// Sets the opacity from 0.0 (clear) to 1.0 (opaque).
@@ -162,7 +198,19 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Opacity(opacity_units(value)))
     }
 
+    /// Sets the stacking index among siblings, where a higher index paints later and is hit first; the default is 0.
+    #[must_use]
+    fn z_index(self, index: impl Reactive<i16>) -> Self {
+        live(self, index, |z| [StyleAtom::ZIndex(z)])
+    }
+
     filters::filter_setters!();
+
+    /// Composites the node and its children through `shader`, which reads them with `layer(uv)`; input, focus, and hit testing are unchanged.
+    #[must_use]
+    fn filter_shader(self, shader: Shader) -> Self {
+        slot::filter_shader(self, shader)
+    }
 
     /// Sets the CSS mix-blend-mode.
     #[must_use]
@@ -254,5 +302,3 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Animation(KeyframesId::new(keyframes)))
     }
 }
-
-impl<T: PaintTarget> Paint for T {}

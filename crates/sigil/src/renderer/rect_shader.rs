@@ -24,6 +24,7 @@ struct RectVertexOut {
     @location(5) stroke_params: vec4<f32>,
     @location(6) stroke_meta: vec4<f32>,
     @location(7) dash_origin: vec2<f32>,
+    @location(8) @interpolate(flat) shape: f32,
 };
 
 @vertex
@@ -52,6 +53,7 @@ fn vs_main(v: VertexIn, inst: RectInstance) -> RectVertexOut {
     out.stroke_params = inst.stroke_params;
     out.stroke_meta = inst.stroke_meta;
     out.dash_origin = inst.params.zw;
+    out.shape = inst.xform_y.w;
     return out;
 }
 
@@ -69,7 +71,7 @@ fn vs_main(v: VertexIn, inst: RectInstance) -> RectVertexOut {
 
 @fragment
 fn fs_main(in: RectVertexOut) -> @location(0) vec4<f32> {
-    let d = rounded_rect_sdf(in.local, in.half_size, in.corner_radii);
+    let d = shaped_rect_sdf(in.local, in.half_size, in.corner_radii, in.shape);
     let aa = max(fwidth(d) * 0.5, 0.0001);
     let coverage = edge_coverage(d, aa);
     let fill = vec4<f32>(in.color.rgb, in.color.a * in.opacity * coverage);

@@ -141,12 +141,8 @@ impl CellWalk<'_> {
             return;
         }
         match command {
-            SceneCommand::Rect(draw) => {
-                let caret = self.paint.marks.caret(draw.node);
-                if caret || self.wanted(reach(draw.rect, draw.border)) {
-                    self.rect(draw);
-                }
-            }
+            SceneCommand::Rect(draw) => self.rect_command(draw),
+            SceneCommand::Rects(draws) => draws.iter().for_each(|draw| self.rect_command(draw)),
             SceneCommand::Gradient(draw) => {
                 if self.wanted(reach(draw.rect, draw.border)) {
                     self.gradient(draw);
@@ -159,6 +155,11 @@ impl CellWalk<'_> {
             }
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Path(draw) => self.path(draw),
+            SceneCommand::Shader(draw) => {
+                if self.wanted(draw.rect) {
+                    self.rect(&draw.fallback());
+                }
+            }
             SceneCommand::Decoration(draw) => {
                 if self.wanted(draw.band) {
                     self.decoration(draw);
@@ -172,7 +173,6 @@ impl CellWalk<'_> {
             | SceneCommand::PopLayer => {}
             #[cfg(feature = "kittest")]
             SceneCommand::Sprite(_) => {}
-            #[cfg(scene_paint)]
             SceneCommand::PushTransform(_) | SceneCommand::PopTransform => {}
             #[cfg(host)]
             SceneCommand::SaveLayer { .. } => {}
@@ -199,9 +199,11 @@ impl CellWalk<'_> {
                 self.state.push_transform(match scope.effect {
                     LayerEffect::Transform(transform) => transform,
                     LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
-                    LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => {
-                        IDENTITY
-                    }
+                    LayerEffect::Identity
+                    | LayerEffect::Mask(_)
+                    | LayerEffect::Filter(_)
+                    | LayerEffect::Backdrop(_)
+                    | LayerEffect::Shader(_) => IDENTITY,
                 });
             }
             SceneCommand::PopLayer => {
@@ -309,6 +311,13 @@ impl CellWalk<'_> {
         }
     }
 
+    fn rect_command(&mut self, draw: &DrawRect) {
+        let caret = self.paint.marks.caret(draw.node);
+        if caret || self.wanted(reach(draw.rect, draw.border)) {
+            self.rect(draw);
+        }
+    }
+
     fn gradient(&mut self, draw: &DrawGradient) {
         let flat = gradient_flat(&draw.gradient.normalized());
         let draw_rect = DrawRect {
@@ -316,6 +325,7 @@ impl CellWalk<'_> {
             rect: draw.rect,
             color: flat,
             border_radius: draw.border_radius,
+            shape: draw.shape,
             opacity: draw.opacity,
             stroke: draw.stroke,
             tone: draw.tone,

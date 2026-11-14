@@ -117,12 +117,45 @@ fn dark_built_in_accent_unaffected_by_token_first_resolution() {
 fn runtime_token_rebinding_accent_wins_over_builtin() {
     let gold = Color::rgb(0xE8, 0xC0, 0x60);
     let navy = Color::rgb(0x0D, 0x12, 0x20);
-    let t = Theme::dark().token("accent", gold).token("on-accent", navy);
+    let t = Theme::dark()
+        .token(crate::style::Token::Accent, gold)
+        .token(crate::style::Token::OnAccent, navy);
     assert_eq!(t.color(ColorValue::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
     assert_ne!(t.color(ColorValue::parse("accent")), Theme::dark().accent);
+}
+
+#[test]
+fn custom_token_and_backdrop_and_metrics_builders() {
+    let brand = Color::rgb(0x11, 0x22, 0x33);
+    let accent = Color::rgb(0x44, 0x55, 0x66);
+    let theme = Theme::for_backdrop(crate::style::Backdrop::Dark)
+        .token(crate::style::Token::Custom("brand"), brand)
+        .token(crate::style::Token::Custom("accent"), accent)
+        .control_height(ControlSize::Compact, 20.0)
+        .radius(Radius::Md, 12.0);
+    assert_eq!(theme.surface, Theme::dark().surface);
+    assert_eq!(
+        Theme::for_backdrop(crate::style::Backdrop::Light).surface,
+        Theme::light().surface
+    );
+    assert_eq!(theme.color(crate::style::Token::Custom("brand")), brand);
+    assert_eq!(theme.color(ColorValue::Custom("brand")), brand);
+    assert_eq!(theme.color(crate::style::Token::Custom("accent")), accent);
+    assert_eq!(theme.color(crate::style::Token::Accent), accent);
+    assert_eq!(
+        theme
+            .metrics()
+            .control_height(ControlSize::Compact)
+            .to_bits(),
+        20.0_f32.to_bits()
+    );
+    assert_eq!(
+        theme.metrics().radius(Radius::Md).to_bits(),
+        12.0_f32.to_bits()
+    );
 }
 
 #[test]

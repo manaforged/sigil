@@ -1,17 +1,34 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
+use crate::style::FontFamily;
 use crate::text::shaper::Font;
 
 pub(crate) type SansWeight = (u16, Arc<Vec<u8>>, u32);
 
+#[doc(hidden)]
 #[derive(Clone, Default)]
 pub struct DefaultFonts {
     pub sans: Option<(Arc<Vec<u8>>, u32)>,
     pub sans_weights: Vec<SansWeight>,
     pub mono: Option<(Arc<Vec<u8>>, u32)>,
+    pub serif: Option<(Arc<Vec<u8>>, u32)>,
     pub icon: Option<(Arc<Vec<u8>>, u32)>,
     pub display: Option<(Arc<Vec<u8>>, u32)>,
+}
+
+impl DefaultFonts {
+    /// Replaces the face of `family` with face `face` of the font file `bytes`.
+    pub fn set(&mut self, family: FontFamily, bytes: impl Into<Vec<u8>>, face: u32) {
+        let slot = match family {
+            FontFamily::Sans => &mut self.sans,
+            FontFamily::Mono => &mut self.mono,
+            FontFamily::Serif => &mut self.serif,
+            FontFamily::Icon => &mut self.icon,
+            FontFamily::Display => &mut self.display,
+        };
+        *slot = Some((Arc::new(bytes.into()), face));
+    }
 }
 
 impl core::fmt::Debug for DefaultFonts {
@@ -63,6 +80,7 @@ pub(crate) fn wake_font_listeners() {
 }
 
 #[cfg(host)]
+#[doc(hidden)]
 pub fn default_fonts(fonts: DefaultFonts) {
     if let Ok(mut guard) = DEFAULT_FONTS.write() {
         *guard = DefaultFontSource::Custom(fonts);

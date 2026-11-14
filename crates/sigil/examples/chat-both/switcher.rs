@@ -1,6 +1,6 @@
 use super::Chat;
 use sigil::prelude::*;
-use sigil::widgets::ModalBuilder;
+use sigil::widgets::{ModalBuilder, fuzzy_score};
 
 #[derive(Clone, Copy)]
 pub(super) struct Picker {

@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
-use crate::style::atom::{Amount, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot};
+use crate::style::atom::{
+    Amount, BackdropPart, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot, corners,
+};
 use crate::style::diagnostic::Seen;
 
 /// Identifies a component's style.
@@ -64,6 +66,9 @@ fn insert_atom(
     let mut expanded = SmallVec::<[(ResolvedSlot, StyleAtom); 4]>::new();
     expand_atom(atom, &mut expanded);
     for (slot, expanded_atom) in expanded {
+        for longhand in longhands(slot) {
+            merged.retain(|(existing, _atom)| *existing != longhand);
+        }
         if let Some((_existing_slot, existing_atom)) = merged
             .iter_mut()
             .find(|(existing, _atom)| *existing == slot)
@@ -78,9 +83,33 @@ fn insert_atom(
     }
 }
 
+const fn corner_slot(index: u32) -> ResolvedSlot {
+    match index {
+        0 => ResolvedSlot::RadiusTopLeft,
+        1 => ResolvedSlot::RadiusTopRight,
+        2 => ResolvedSlot::RadiusBottomRight,
+        _ => ResolvedSlot::RadiusBottomLeft,
+    }
+}
+
+fn longhands(slot: ResolvedSlot) -> impl Iterator<Item = ResolvedSlot> {
+    let count = if slot == ResolvedSlot::BorderRadius {
+        4
+    } else {
+        0
+    };
+    (0..count).map(corner_slot)
+}
+
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     use ResolvedSlot as S;
     use StyleAtom as A;
+    if let A::Paint(PaintAtom::Corners(mask, radius)) = atom {
+        return out.extend(corners::each(mask).map(|index| {
+            let corner = A::Paint(PaintAtom::Corners(1 << index, radius));
+            (slot(corner), corner)
+        }));
+    }
     let (px, sides): (i16, &[S]) = match atom {
         A::PaddingAll(px) => (
             px,
@@ -152,9 +181,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::FlexShrink(_) => ResolvedSlot::FlexShrink,
         StyleAtom::GridColumns(_) => ResolvedSlot::GridColumns,
         StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
-        StyleAtom::BackgroundColor(_)
-        | StyleAtom::BgToneStep(_)
-        | StyleAtom::BackgroundGradient(_) => ResolvedSlot::BackgroundColor,
+        StyleAtom::BackgroundColor(_) | StyleAtom::BgToneStep(_) => ResolvedSlot::BackgroundColor,
         StyleAtom::TextColor(_) | StyleAtom::FgToneStep(_) | StyleAtom::FgOnSolid => {
             ResolvedSlot::TextColor
         }
@@ -167,6 +194,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
+        StyleAtom::ZIndex(_) => ResolvedSlot::ZIndex,
         #[cfg(feature = "kittest")]
         StyleAtom::Transform(_) => ResolvedSlot::Transform,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
@@ -207,6 +235,10 @@ const fn filter_slot(part: FilterPart) -> ResolvedSlot {
         FilterPart::HueRotate(_) => ResolvedSlot::HueRotate,
         FilterPart::DropShadow(_) => ResolvedSlot::DropShadow,
         FilterPart::TextShadow(_) => ResolvedSlot::TextShadow,
+        FilterPart::Backdrop(BackdropPart::Blur, _) => ResolvedSlot::BackdropBlur,
+        FilterPart::Backdrop(BackdropPart::Brightness, _) => ResolvedSlot::BackdropBrightness,
+        FilterPart::Backdrop(BackdropPart::Saturate, _) => ResolvedSlot::BackdropSaturate,
+        FilterPart::Shader(_) => ResolvedSlot::FilterShader,
     }
 }
 
@@ -231,20 +263,27 @@ const fn mask_slot(part: MaskPart) -> ResolvedSlot {
 
 const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
     match atom {
+        SpaceAtom::TranslateX(_) => ResolvedSlot::TranslateX,
+        SpaceAtom::TranslateY(_) => ResolvedSlot::TranslateY,
+        SpaceAtom::ScaleX(_) => ResolvedSlot::ScaleX,
+        SpaceAtom::ScaleY(_) => ResolvedSlot::ScaleY,
+        SpaceAtom::Rotate(_) => ResolvedSlot::Rotate,
         SpaceAtom::RotateX(_) => ResolvedSlot::RotateX,
         SpaceAtom::RotateY(_) => ResolvedSlot::RotateY,
         SpaceAtom::RotateZ(_) => ResolvedSlot::RotateZ,
         SpaceAtom::TranslateZ(_) => ResolvedSlot::TranslateZ,
         SpaceAtom::Perspective(_) => ResolvedSlot::Perspective,
         SpaceAtom::PerspectiveOrigin(_) => ResolvedSlot::PerspectiveOrigin,
+        SpaceAtom::TransformOrigin(_) => ResolvedSlot::TransformOrigin,
         SpaceAtom::Backface(_) => ResolvedSlot::Backface,
+        SpaceAtom::Preserve3d(_) => ResolvedSlot::Preserve3d,
     }
 }
 
 const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
     match atom {
         PaintAtom::Gradient(_) | PaintAtom::NoGradient => ResolvedSlot::BackgroundGradient,
-        PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
+        PaintAtom::Image(_) | PaintAtom::Shader(_) => ResolvedSlot::BackgroundImage,
         PaintAtom::NoColor => ResolvedSlot::BackgroundColor,
         PaintAtom::Stop(slot, _) | PaintAtom::NoStop(slot) => match slot {
             StopSlot::From => ResolvedSlot::GradientFrom,
@@ -256,6 +295,8 @@ const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
         PaintAtom::StopAt(StopSlot::To, _) => ResolvedSlot::GradientToPosition,
         PaintAtom::ClipText => ResolvedSlot::BackgroundClip,
         PaintAtom::Border(_) => ResolvedSlot::BorderStyle,
+        PaintAtom::CornerShape(_) => ResolvedSlot::CornerShape,
+        PaintAtom::Corners(mask, _) => corner_slot(mask.trailing_zeros()),
     }
 }
 
@@ -325,7 +366,13 @@ pub(crate) enum ResolvedSlot {
     GradientToPosition,
     BackgroundClip,
     BorderStyle,
+    CornerShape,
     ClipPath,
+    TranslateX,
+    TranslateY,
+    ScaleX,
+    ScaleY,
+    Rotate,
     RotateX,
     RotateY,
     RotateZ,
@@ -333,6 +380,7 @@ pub(crate) enum ResolvedSlot {
     Perspective,
     PerspectiveOrigin,
     Backface,
+    Preserve3d,
     MaskImage,
     MaskFrom,
     MaskTo,
@@ -354,6 +402,16 @@ pub(crate) enum ResolvedSlot {
     HueRotate,
     DropShadow,
     TextShadow,
+    BackdropBlur,
+    BackdropBrightness,
+    BackdropSaturate,
+    FilterShader,
     DropShadowColor,
     TextShadowColor,
+    ZIndex,
+    TransformOrigin,
+    RadiusTopLeft,
+    RadiusTopRight,
+    RadiusBottomRight,
+    RadiusBottomLeft,
 }

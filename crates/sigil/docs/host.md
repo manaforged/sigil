@@ -4,6 +4,7 @@ One widget tree without a window: mount it, route events to it, lay it out, and 
 
 ```rust,no_run
 use sigil::Host;
+use sigil::app::HostMode;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 

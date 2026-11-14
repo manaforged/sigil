@@ -29,6 +29,6 @@ fn root(det: Signal<f32>, phase: Signal<f32>) -> NodeBuilder {
         .gap(Space::Xl)
         .padding(Space::Xxl)
         .background(Token::Surface)
-        .child(card(progress(det, 100.0)).title("Determinate (60 / 100)"))
-        .child(card(progress(phase, 1.0).indeterminate()).title("Indeterminate"))
+        .child(card(progress(det).max(100.0)).title("Determinate (60 / 100)"))
+        .child(card(progress(phase).indeterminate()).title("Indeterminate"))
 }

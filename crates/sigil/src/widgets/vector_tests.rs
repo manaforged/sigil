@@ -15,8 +15,8 @@ fn box16() -> Rect {
 fn empty_path_draws_nothing() {
     assert!(
         path(16, 16)
-            .fill(Color::rgb(0, 0, 0))
-            .draw_path(box16(), &Theme::light())
+            .fill_color(Color::rgb(0, 0, 0))
+            .build_path(box16(), &Theme::light())
             .is_none()
     );
 }
@@ -32,7 +32,7 @@ fn path_key_distinguishes_gradient_fills() {
     let (red, blue) = (Color::rgb(255, 0, 0), Color::rgb(0, 0, 255));
     let a = diagonal().fill_linear((0.0, 0.0), (16.0, 0.0), vec![(0.0, red), (1.0, blue)]);
     let b = diagonal().fill_linear((0.0, 0.0), (16.0, 0.0), vec![(0.0, blue), (1.0, red)]);
-    let key = |node: &PathBuilder| node.draw_path(box16(), &Theme::light()).unwrap().key;
+    let key = |node: &PathBuilder| node.build_path(box16(), &Theme::light()).unwrap().key;
     assert_ne!(
         key(&a),
         key(&b),

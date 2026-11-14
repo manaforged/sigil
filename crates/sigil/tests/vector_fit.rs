@@ -2,7 +2,7 @@
 
 use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::FakeMeasure;
 
@@ -17,7 +17,7 @@ fn a_fitted_path_keeps_its_aspect_ratio() {
                     .move_to(0.0, 0.0)
                     .line_to(960.0, 220.0)
                     .close()
-                    .fill(Tone::Primary.step(9))
+                    .fill_color(Tone::Primary.step(9))
                     .fit(),
             ),
     );

@@ -1,5 +1,4 @@
 use super::*;
-use sigil::widgets::Layout;
 
 #[test]
 fn hidden_reveal_materializes_never_synced_subtree() {

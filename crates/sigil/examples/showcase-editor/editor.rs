@@ -29,7 +29,7 @@ fn tab_strip(ws: Workspace) -> impl IntoNode {
     tabs()
         .labels(labels)
         .active(ws.active_tab)
-        .label("Open editors")
+        .accessible("Open editors")
         .closeable(true)
         .close(move |index| ws.close_tab(index))
         .line()
@@ -140,10 +140,9 @@ fn body(ws: Workspace, file: FileId) -> NodeBuilder {
 
 fn no_editor() -> NodeBuilder {
     let hint = Command::OpenFile.hint().unwrap_or_default();
-    empty_state(
-        "No open editors",
-        format!("Open a file from the explorer or press {hint}."),
-    )
+    empty_state("No open editors")
+        .description(format!("Open a file from the explorer or press {hint}."))
+        .into()
 }
 
 pub(crate) fn editor(ws: Workspace) -> NodeBuilder {

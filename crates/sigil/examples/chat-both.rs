@@ -5,7 +5,7 @@
 
 use sigil::ErrorKind;
 use sigil::prelude::*;
-use sigil::tasks::sleep;
+use sigil::tasks::{SignalWriter, sleep};
 use sigil::widgets::TextFieldBuilder;
 use std::time::Duration;
 

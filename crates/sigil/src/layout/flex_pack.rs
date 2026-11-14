@@ -1,5 +1,4 @@
 use crate::Error;
-use crate::layout::IntoPxExt as _;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::flex_algorithm::{FlexCtx, layout_item_subtree};
 use crate::layout::forest::{ComputedBox, NodeRef};
@@ -84,7 +83,9 @@ fn container_ok(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
 fn zero_lp(value: Length) -> bool {
     match value {
         Length::Px(px) | Length::Percent(px) => px == 0.0,
-        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => value.into_px() == 0.0,
+        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => {
+            crate::layout::px_or_zero(value) == 0.0
+        }
         Length::Auto | Length::Fill => false,
     }
 }

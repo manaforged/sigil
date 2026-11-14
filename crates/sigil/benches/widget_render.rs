@@ -22,7 +22,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
 use sigil::events::EventRouter;
 use sigil::events::{Event, MouseButton, MouseButtons, PointerPhase};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
@@ -207,12 +207,12 @@ fn build_slider() -> impl IntoNode {
 
 fn build_dropdown() -> impl IntoNode {
     let sel = signal(0_usize);
-    dropdown(sel, vec!["Easy".into(), "Normal".into(), "Hard".into()])
+    dropdown(sel, ["Easy", "Normal", "Hard"])
 }
 
 fn build_progress() -> impl IntoNode {
     let v = signal(50.0_f32);
-    progress(v, 100.0).height(24.0)
+    progress(v).max(100.0).height(24.0)
 }
 
 fn build_panel() -> impl IntoNode {

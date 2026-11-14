@@ -14,6 +14,7 @@ use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::scene::command::Filter;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::shader::Shading;
 use crate::style::Rgba;
 
 use super::kept::KeptKey;
@@ -40,7 +41,9 @@ enum LayerReason {
     Blur,
     Filter,
     Blend,
+    Backdrop,
     Transform,
+    Shader,
     Other,
 }
 
@@ -55,7 +58,9 @@ impl LayerReason {
             Self::Blur => "blur",
             Self::Filter => "filter",
             Self::Blend => "blend",
+            Self::Backdrop => "backdrop",
             Self::Transform => "transform",
+            Self::Shader => "shader",
             Self::Other => "other",
         };
         crate::profile::attribute(
@@ -75,6 +80,8 @@ impl LayerReason {
             }
             LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
+            LayerEffect::Backdrop(_) => Self::Backdrop,
+            LayerEffect::Shader(_) => Self::Shader,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
             LayerEffect::Identity if scope.opacity < 1.0 => Self::Opacity,
             LayerEffect::Identity => Self::Other,
@@ -91,8 +98,10 @@ pub(super) struct LayerPlan<'n> {
     clip_radii: CornerRadii,
     transform: Transform,
     filters: Option<LayerFilters>,
+    backdrop: Option<LayerFilters>,
     mask: Option<MaskSource<'n>>,
     projection: Option<Transform3D>,
+    shading: Option<Shading>,
     blend: BlendMode,
 }
 
@@ -131,44 +140,63 @@ pub(super) fn restored(
     }
 }
 
+fn moved_plan<'n>(scope: &LayerScope, target: &LayerTarget, scale: f32) -> Option<LayerPlan<'n>> {
+    let (bounds, content, round, clip_radii, transform, projection) = match scope.effect {
+        LayerEffect::Projected { .. } => {
+            let frame = ProjectedFrame::new(&target.state, scope, target.bounds, scale)?;
+            let bounds = frame.bounds;
+            (
+                bounds,
+                frame.content,
+                bounds,
+                CornerRadii::ZERO,
+                IDENTITY,
+                Some(frame.composite),
+            )
+        }
+        LayerEffect::Transform(effect) => {
+            let frame = target
+                .state
+                .transform_frame(scope, effect, target.bounds, scale)?;
+            let (clip, radii) = (frame.scope.clip, frame.scope.clip_radii);
+            (
+                frame.bounds,
+                frame.content,
+                clip,
+                radii,
+                frame.composite,
+                None,
+            )
+        }
+        _ => return None,
+    };
+    Some(LayerPlan {
+        reason: LayerReason::Transform,
+        dest: bounds,
+        state: SceneState::new(Some(bounds), content, 1.0),
+        round,
+        opacity: scope.opacity,
+        clip_radii,
+        transform,
+        filters: None,
+        backdrop: None,
+        mask: None,
+        projection,
+        shading: None,
+        blend: scope.blend,
+    })
+}
+
 pub(super) fn layer_plan<'n>(
     scope: &LayerScope,
     target: &LayerTarget,
     scale: f32,
 ) -> Option<LayerPlan<'n>> {
-    if let LayerEffect::Projected { .. } = scope.effect {
-        let frame = ProjectedFrame::new(&target.state, scope, target.bounds, scale)?;
-        return Some(LayerPlan {
-            reason: LayerReason::Transform,
-            dest: frame.bounds,
-            state: SceneState::new(Some(frame.bounds), frame.content, 1.0),
-            round: frame.bounds,
-            opacity: scope.opacity,
-            clip_radii: CornerRadii::ZERO,
-            transform: IDENTITY,
-            filters: None,
-            mask: None,
-            projection: Some(frame.composite),
-            blend: scope.blend,
-        });
-    }
-    if let LayerEffect::Transform(effect) = scope.effect {
-        let frame = target
-            .state
-            .transform_frame(scope, effect, target.bounds, scale)?;
-        return Some(LayerPlan {
-            reason: LayerReason::Transform,
-            dest: frame.bounds,
-            state: SceneState::new(Some(frame.bounds), frame.content, 1.0),
-            round: frame.scope.clip,
-            opacity: scope.opacity,
-            clip_radii: frame.scope.clip_radii,
-            transform: frame.composite,
-            filters: None,
-            mask: None,
-            projection: None,
-            blend: scope.blend,
-        });
+    if matches!(
+        scope.effect,
+        LayerEffect::Projected { .. } | LayerEffect::Transform(_)
+    ) {
+        return moved_plan(scope, target, scale);
     }
     let bounds = target.state.layer_bounds(scope, target.bounds)?;
     let transform = target.state.current_transform();
@@ -181,8 +209,13 @@ pub(super) fn layer_plan<'n>(
         clip_radii: scope.clip_radii,
         transform: IDENTITY,
         filters: LayerFilters::of(&scope.effect),
+        backdrop: LayerFilters::behind(&scope.effect),
         mask: None,
         projection: None,
+        shading: match scope.effect {
+            LayerEffect::Shader(shading) => Some(shading),
+            _ => None,
+        },
         blend: scope.blend,
     })
 }
@@ -203,8 +236,10 @@ pub(super) fn group_plan<'n>(
         clip_radii: CornerRadii::ZERO,
         transform: IDENTITY,
         filters: None,
+        backdrop: None,
         mask: None,
         projection: None,
+        shading: None,
         blend: BlendMode::Normal,
     })
 }
@@ -274,7 +309,7 @@ fn filtered_view(
     let pipeline = pipeline_for(
         ctx.filter_pipelines,
         ctx.device,
-        LAYER_FORMAT,
+        handle.format,
         (FilterPipeline::format, FilterPipeline::new),
     );
     let src = PassSrc {

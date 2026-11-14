@@ -27,6 +27,7 @@ mod grid;
 pub(crate) mod image_paint;
 mod install;
 pub(crate) mod intern;
+pub(crate) mod live_paint;
 pub(crate) mod locale;
 pub(crate) mod merge;
 pub(crate) mod metrics;
@@ -36,24 +37,25 @@ pub(crate) mod palette;
 pub(crate) mod parser;
 pub(crate) mod reactive;
 pub(crate) mod resolve;
-mod text_scale;
-kittest_pub! {
-    /// The color scales of the default themes.
-    #[doc(hidden)]
-    pub mod scale;
-}
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
+pub mod scale;
+#[cfg(not(feature = "kittest"))]
+#[allow(unused_imports, reason = "public only under kittest")]
+pub(crate) mod scale;
+pub(crate) mod shader_paint;
 pub(crate) mod size;
 pub(crate) mod state;
 pub(crate) mod strings;
 pub(crate) mod struct_api;
 pub(crate) mod styled;
 pub(crate) mod text_identity;
+mod text_scale;
 pub(crate) mod text_style;
 pub(crate) mod theme;
 pub(crate) mod token;
 pub(crate) mod tone;
 pub(crate) mod variant;
-pub(crate) mod variant_kit;
 
 pub(crate) use animator_overlay::AnimatorOverlay;
 pub(crate) use animator_overlay::NumericAtomKind;
@@ -68,9 +70,8 @@ pub use atom::{
 kittest_pub! {
     #[doc(hidden)]
     pub use atom::{
-        Backface, BgGradient, BorderStyle, FilterAtom, GradientShape, GradientStopKey, MaskAtom,
-        MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, StopSlot, StyleAtom,
-        TransitionId,
+        Backface, BorderStyle, FilterAtom, GradientShape, MaskAtom, MillisU16, PaintAtom,
+        PaintStyle, RenderStyle, ShadowAtom, SpaceAtom, SpaceStyle, StopSlot, StyleAtom, TransitionId,
     };
 }
 pub(crate) use binding::ReactiveStateSlot;
@@ -103,7 +104,6 @@ pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
 pub(crate) use metrics::{DIMMED, DISABLED_OPACITY, ICON_SIZE};
 pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;
-pub(crate) use paint::{PaintTarget, StyleSlot};
 pub(crate) use parser::parse_class_string;
 #[cfg(any(test, fuzzing))]
 pub(crate) use parser::parse_stateful_token;
@@ -126,18 +126,72 @@ pub use strings::{StringKey, Strings};
 pub(crate) use struct_api::Style;
 pub use styled::StateStyleBuilder;
 pub use styled::States;
+
+macro_rules! state_methods {
+    (style $($access:tt)+) => {
+        $crate::style::state_methods!(@each style ($($access)+),
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (forward $field:ident) => {
+        $crate::style::state_methods!(@each forward $field,
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (map $field:ident) => {
+        $crate::style::state_methods!(@each map $field,
+            rest => Rest,
+            hover => Hovered,
+            focus => Focused,
+            pressed => Pressed,
+            disabled_paint => Disabled,
+        );
+    };
+    (@each $mode:ident $arg:tt, $($method:ident => $slot:ident),* $(,)?) => {
+        $(
+            fn $method<F>(mut self, configure: F) -> Self
+            where
+                F: FnOnce($crate::style::StateStyleBuilder) -> $crate::style::StateStyleBuilder,
+            {
+                $crate::style::state_methods!(@body $mode $arg, self, $method, $slot, configure);
+                self
+            }
+        )*
+    };
+    (@body style ($($access:tt)+), $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$($access)+.set_state(
+            $crate::style::StateSlot::$slot,
+            $crate::style::styled::state::build_state_atoms($configure),
+        );
+    };
+    (@body forward $field:ident, $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$field = $self.$field.$method($configure);
+    };
+    (@body map $field:ident, $self:ident, $method:ident, $slot:ident, $configure:ident) => {
+        $self.$field = $self.$field.map(move |inner| inner.$method($configure));
+    };
+}
+
+pub(crate) use state_methods;
 pub(crate) use styled::node::attach_style;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
 pub use text_style::{TextFace, TextLineHeight, TextRun, TextRuns};
-pub use theme::{Theme, ThemeValue};
+pub use theme::{Backdrop, Theme};
 pub use token::Token;
 pub use tone::Tone;
 kittest_pub! {
     #[doc(hidden)]
     pub use tone::ToneContext;
 }
-pub(crate) use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
 /// Gives the fill color for selected text.
 pub(crate) const SELECTION_FILL: Color = Color {

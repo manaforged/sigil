@@ -8,6 +8,7 @@ use crate::text::OwnedTextEngine;
 
 use crate::layout::{CaretGeometry, TextMeasure};
 
+#[doc(hidden)]
 #[derive(Debug)]
 pub struct TextEngineMeasure {
     engine: Rc<OwnedTextEngine>,

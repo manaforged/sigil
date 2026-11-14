@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::FakeMeasure;
 
@@ -9,7 +10,7 @@ const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(7.0, 16.0);
 
 struct NativeLineGeometry;
 
-impl sigil::layout::TextMeasure for NativeLineGeometry {
+impl sigil::text::TextMeasure for NativeLineGeometry {
     fn measure(
         &self,
         _content: &TextContent,
@@ -25,10 +26,7 @@ impl sigil::layout::TextMeasure for NativeLineGeometry {
         _width: Option<f32>,
         _point: sigil::geometry::Point,
     ) -> sigil::text::HitPosition {
-        sigil::text::HitPosition {
-            byte_index: 0,
-            affinity: sigil::text::TextAffinity::Downstream,
-        }
+        sigil::text::HitPosition::downstream(0)
     }
 
     fn caret(
@@ -37,12 +35,8 @@ impl sigil::layout::TextMeasure for NativeLineGeometry {
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
         _position: sigil::text::HitPosition,
-    ) -> sigil::layout::CaretGeometry {
-        sigil::layout::CaretGeometry {
-            x: 0.0,
-            top: 0.0,
-            height: 19.2,
-        }
+    ) -> sigil::text::CaretGeometry {
+        sigil::text::CaretGeometry::new(0.0, 0.0, 19.2)
     }
 
     fn selection_rects(
@@ -173,7 +167,7 @@ fn form_row_of_widgets_is_sound_at_every_width() {
         assert_sound("form row", width, || {
             columns(vec![
                 labeled_field("text_field", text_field(signal(String::from("hello")))),
-                labeled_field("dropdown", dropdown(signal(0_usize), vec!["Banana".into()])),
+                labeled_field("dropdown", dropdown(signal(0_usize), ["Banana"])),
                 labeled_field("slider", slider(signal(0.5_f32), 0.0..=1.0)),
             ])
         });
@@ -191,7 +185,7 @@ fn stacked_widgets_are_sound_at_every_width() {
                         .gap(Space::Sm)
                         .padding(Space::Lg),
                 )
-                .child(labeled_field("progress", progress(signal(0.5_f32), 1.0)))
+                .child(labeled_field("progress", progress(signal(0.5_f32))))
                 .child(labeled_field("toggle", toggle(signal(true))))
                 .child(labeled_field("button", button("Save")))
                 .child(labeled_field(
@@ -236,7 +230,7 @@ fn long_content_stays_inside_its_widget() {
                     "menu",
                     dropdown(
                         signal(0_usize),
-                        vec!["an option label considerably wider than the control".into()],
+                        ["an option label considerably wider than the control"],
                     ),
                 ),
             ])
@@ -254,10 +248,10 @@ fn scrolled_content_is_sound_at_every_width() {
                     "field",
                     text_field(signal(String::from("hi"))),
                 ))
-                .child(labeled_field("bar", progress(signal(0.5_f32), 1.0)))
+                .child(labeled_field("bar", progress(signal(0.5_f32))))
                 .child(columns(vec![
-                    labeled_field("left", progress(signal(0.25_f32), 1.0)),
-                    labeled_field("right", progress(signal(0.75_f32), 1.0)),
+                    labeled_field("left", progress(signal(0.25_f32))),
+                    labeled_field("right", progress(signal(0.75_f32))),
                 ]));
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
@@ -271,8 +265,8 @@ fn layout_re_resolves_when_the_container_resizes() {
     sigil::reactive::Owner::scope("layout-invariants-resize", || {
         let mut cx = Cx::new_root();
         let root = cx.add(columns(vec![
-            labeled_field("a", progress(signal(0.5_f32), 1.0)),
-            labeled_field("b", progress(signal(0.5_f32), 1.0)),
+            labeled_field("a", progress(signal(0.5_f32))),
+            labeled_field("b", progress(signal(0.5_f32))),
         ]));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
 

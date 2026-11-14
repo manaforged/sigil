@@ -1,13 +1,15 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::events::{
-    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut,
+    A11yEdit, CursorIcon, DragPhase, FileDropEvent, Gesture, GestureEvent, ImeEvent, KeyEvent,
+    PointerEvent, ScrollEvent, Shortcut,
 };
 use crate::kernel::Action;
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
+use crate::widgets::interaction::{is_cancel, is_primary};
 
 use crate::events::EventHandlers;
 use crate::events::handlers::{EventKind, Handler, Phase};
@@ -56,8 +58,6 @@ macro_rules! handler_methods {
             @keyed
             /// Runs `h` when a key event matching `shortcut` reaches the node.
             key => Key, Bubble,
-            /// Runs `h` when the key combination `shortcut` reaches the node.
-            shortcut => Shortcut, Bubble,
             /// Runs `h` for a key event matching `shortcut` before the node's children see it.
             key_capture => Key, Capture,
         }
@@ -122,6 +122,27 @@ pub(crate) use event_methods;
 
 handler_methods!(implement);
 
+pub(crate) fn shortcut<H>(node: NodeBuilder, shortcut: Shortcut, h: H) -> NodeBuilder
+where
+    H: Fn(&mut KeyEvent) + 'static,
+{
+    let a11y_shortcut = shortcut.clone();
+    with_handlers(
+        node.mutate(move |node| node.a11y.keyboard_shortcut = Some(a11y_shortcut)),
+        move |handlers| {
+            handlers.push(
+                EventKind::Shortcut,
+                Phase::Bubble,
+                Handler::Key(Some(shortcut), Box::new(h)),
+            );
+        },
+    )
+}
+
+pub(crate) fn accessible_shortcut(node: NodeBuilder, shortcut: Shortcut) -> NodeBuilder {
+    node.mutate(move |node| node.a11y.keyboard_shortcut = Some(shortcut))
+}
+
 pub(crate) fn pointer_up<H>(node: NodeBuilder, h: H) -> NodeBuilder
 where
     H: Fn(&mut PointerEvent) + 'static,
@@ -151,8 +172,137 @@ where
 }
 
 pub(crate) fn ime_caret(node: NodeBuilder, anchor: Rc<Cell<Option<CaretGeometry>>>) -> NodeBuilder {
+    caret_anchor(node, move || anchor.get())
+}
+
+pub(crate) fn ime_caret_signal(
+    node: NodeBuilder,
+    caret: Signal<Option<CaretGeometry>>,
+) -> NodeBuilder {
+    caret_anchor(node, move || caret.get())
+}
+
+fn caret_anchor(
+    node: NodeBuilder,
+    read: impl Fn() -> Option<CaretGeometry> + 'static,
+) -> NodeBuilder {
     node.mutate(move |node| {
-        node.attach(CaretAnchorExt(anchor));
+        node.attach(CaretAnchorExt(Box::new(read)));
+    })
+}
+
+pub(crate) fn track_hovered(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
+    let node = pointer_enter(node, move |_| {
+        let _ = out.try_set(true);
+    });
+    pointer_leave(node, move |_| {
+        let _ = out.try_set(false);
+    })
+}
+
+pub(crate) fn track_focused(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
+    let node = focus_in(node, move || {
+        let _ = out.try_set(true);
+    });
+    focus_out(node, move || {
+        let _ = out.try_set(false);
+    })
+}
+
+pub(crate) fn track_pressed(node: NodeBuilder, out: Signal<bool>) -> NodeBuilder {
+    let node = pointer_down(node, move |event| {
+        if is_primary(event) {
+            let _ = out.try_set(true);
+        }
+    });
+    let node = pointer_leave(node, move |_| {
+        let _ = out.try_set(false);
+    });
+    track_release(node, move |event| {
+        if is_primary(event) || is_cancel(event) {
+            let _ = out.try_set(false);
+        }
+    })
+}
+
+pub(crate) fn pointer_drag(
+    node: NodeBuilder,
+    handler: impl FnMut(DragPhase, &mut PointerEvent) + 'static,
+) -> NodeBuilder {
+    let active = Rc::new(Cell::new(false));
+    let handler = Rc::new(RefCell::new(handler));
+    let (down_active, move_active) = (Rc::clone(&active), Rc::clone(&active));
+    let (down_handler, move_handler) = (Rc::clone(&handler), Rc::clone(&handler));
+    let node = pointer_down(node, move |event| {
+        if !is_primary(event) {
+            return;
+        }
+        (*down_handler.borrow_mut())(DragPhase::Start, event);
+        if !event.default_prevented() {
+            down_active.set(true);
+            event.capture_pointer();
+        }
+    });
+    let node = pointer_move(node, move |event| {
+        if move_active.get() && event.is_captured() {
+            (*move_handler.borrow_mut())(DragPhase::Move, event);
+        }
+    });
+    track_release(node, move |event| {
+        let cancel = is_cancel(event);
+        if (is_primary(event) || cancel) && active.get() {
+            active.set(false);
+            let phase = if cancel {
+                DragPhase::Cancel
+            } else {
+                DragPhase::End
+            };
+            (*handler.borrow_mut())(phase, event);
+        }
+    })
+}
+
+pub(crate) fn pinch(
+    node: NodeBuilder,
+    handler: impl Fn(f64, &mut GestureEvent) + 'static,
+) -> NodeBuilder {
+    gesture(node, move |event| {
+        if let Gesture::Pinch(delta) = event.kind() {
+            handler(delta, event);
+        }
+    })
+}
+
+pub(crate) fn rotation(
+    node: NodeBuilder,
+    handler: impl Fn(f32, &mut GestureEvent) + 'static,
+) -> NodeBuilder {
+    gesture(node, move |event| {
+        if let Gesture::Rotate(degrees) = event.kind() {
+            handler(degrees, event);
+        }
+    })
+}
+
+#[cfg(window_host)]
+pub(crate) fn cursor(node: NodeBuilder, cursor: impl Reactive<CursorIcon>) -> NodeBuilder {
+    let cursor = crate::events::cursor::NodeCursor::new(cursor);
+    node.mutate(move |node| {
+        let _ = node.attach(cursor);
+    })
+}
+
+#[cfg(not(window_host))]
+pub(crate) fn cursor(node: NodeBuilder, _cursor: impl Reactive<CursorIcon>) -> NodeBuilder {
+    node
+}
+
+pub(crate) fn a11y_edit(
+    node: NodeBuilder,
+    handler: impl Fn(&A11yEdit) -> bool + 'static,
+) -> NodeBuilder {
+    with_handlers(node, move |handlers| {
+        handlers.set_a11y_edit(Box::new(handler));
     })
 }
 

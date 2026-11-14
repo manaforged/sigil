@@ -12,14 +12,14 @@ use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 use std::hint::black_box;
 
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();
     let runs = scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
             SceneCommand::GlyphRun(draw) => Some(draw),

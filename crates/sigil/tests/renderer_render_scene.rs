@@ -35,7 +35,7 @@ fn render_command_scene_paints_nested_clip() {
     let scene = nested_clip_scene();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::PushClip(_),
             SceneCommand::PushClip(_),
@@ -58,7 +58,7 @@ fn render_command_scene_paints_save_layer_with_opacity() {
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::SaveLayer { opacity },
             SceneCommand::Rect(_),
@@ -80,7 +80,7 @@ fn render_command_scene_transform_affects_descendants() {
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::PushTransform(t),
             SceneCommand::Rect(_),

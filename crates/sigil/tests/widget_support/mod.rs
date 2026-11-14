@@ -22,10 +22,10 @@ pub(crate) fn compute(
 
 pub(crate) fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Color> {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
-            SceneCommand::Rect(r) => Some(r.color),
+            SceneCommand::Rect(r) => Some(r.color()),
             _ => None,
         })
         .collect()

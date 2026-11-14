@@ -5847,6 +5847,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sigil-showcase"
+version = "0.2.0"
+dependencies = [
+ "sigil-kittest",
+ "sigil-ui",
+]
+
+[[package]]
 name = "sigil-sign"
 version = "0.2.0"
 dependencies = [

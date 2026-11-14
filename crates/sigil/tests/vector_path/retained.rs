@@ -28,7 +28,7 @@ fn wedge(tip: (f32, f32)) -> PathBuilder {
         .line_to(0.0, 60.0)
         .line_to(tip.0, tip.1)
         .close()
-        .fill(Token::OnSurface)
+        .fill_color(Token::OnSurface)
 }
 
 const fn frame(scene: &CommandScene) -> Frame<'_> {

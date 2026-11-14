@@ -15,7 +15,7 @@ fn hit_test_samples_monotonically_increase_with_x() {
     let para = e.layout_paragraph(text, None).unwrap();
     let hits: Vec<_> = [0.0_f32, 15.0, 30.0, 45.0, 60.0, 99_999.0]
         .iter()
-        .map(|&x| para.hit_test(x, 0.0).byte_index)
+        .map(|&x| para.hit_test(x, 0.0).byte_index())
         .collect();
     for w in hits.windows(2) {
         assert!(
@@ -31,7 +31,7 @@ fn hit_test_empty_string_does_not_panic() {
     let e = engine();
     let para = e.layout_paragraph("", None).unwrap();
     let pos = para.hit_test(0.0, 0.0);
-    assert_eq!(pos.byte_index, 0, "empty string hit should return byte 0");
+    assert_eq!(pos.byte_index(), 0, "empty string hit should return byte 0");
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn hit_test_far_right_returns_end_of_text() {
     let para = e.layout_paragraph(text, None).unwrap();
     let pos = para.hit_test(99_999.0, 0.0);
     assert_eq!(
-        pos.byte_index,
+        pos.byte_index(),
         text.len(),
         "far-right hit should snap to text end"
     );
@@ -58,16 +58,16 @@ fn hit_test_middle_lands_between_endpoints() {
     let mid = para.hit_test(para.width() / 2.0, 0.0);
 
     assert!(
-        mid.byte_index > start.byte_index,
+        mid.byte_index() > start.byte_index(),
         "mid ({}) should be past start ({})",
-        mid.byte_index,
-        start.byte_index
+        mid.byte_index(),
+        start.byte_index()
     );
     assert!(
-        mid.byte_index < end.byte_index,
+        mid.byte_index() < end.byte_index(),
         "mid ({}) should be before end ({})",
-        mid.byte_index,
-        end.byte_index
+        mid.byte_index(),
+        end.byte_index()
     );
 }
 
@@ -80,9 +80,9 @@ fn hit_test_multibyte_utf8_index_is_char_boundary() {
     for frac in [0.0_f32, 0.2, 0.4, 0.6, 0.8, 1.0] {
         let pos = para.hit_test(width * frac, 0.0);
         assert!(
-            text.is_char_boundary(pos.byte_index),
+            text.is_char_boundary(pos.byte_index()),
             "byte_index {} is not a UTF-8 char boundary in {:?}",
-            pos.byte_index,
+            pos.byte_index(),
             text
         );
     }
@@ -93,24 +93,9 @@ fn hit_right_half_of_interior_multibyte_lands_after_it() {
     let e = engine();
     let text = "aébc";
     let para = e.layout_paragraph(text, None).unwrap();
-    let x_start = para
-        .caret_rect(
-            HitPosition {
-                byte_index: 1,
-                affinity: TextAffinity::Downstream,
-            },
-            1.0,
-        )
-        .origin
-        .x;
+    let x_start = para.caret_rect(HitPosition::downstream(1), 1.0).origin.x;
     let x_end = para
-        .caret_rect(
-            HitPosition {
-                byte_index: 3,
-                affinity: TextAffinity::Upstream,
-            },
-            1.0,
-        )
+        .caret_rect(HitPosition::new(3, TextAffinity::Upstream), 1.0)
         .origin
         .x;
     #[allow(clippy::suboptimal_flops)]
@@ -118,14 +103,15 @@ fn hit_right_half_of_interior_multibyte_lands_after_it() {
 
     let hit = para.hit_test(right_of_e, 0.0);
     assert!(
-        text.is_char_boundary(hit.byte_index),
+        text.is_char_boundary(hit.byte_index()),
         "hit byte {} is mid-codepoint in {text:?}",
-        hit.byte_index
+        hit.byte_index()
     );
     assert_eq!(
-        hit.byte_index, 3,
+        hit.byte_index(),
+        3,
         "right half of interior 'é' must place the caret after it (byte 3), got {}",
-        hit.byte_index
+        hit.byte_index()
     );
 }
 
@@ -133,10 +119,7 @@ fn hit_right_half_of_interior_multibyte_lands_after_it() {
 fn caret_rect_at_origin_has_positive_height() {
     let e = engine();
     let para = e.layout_paragraph("Hello", None).unwrap();
-    let pos = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
+    let pos = HitPosition::downstream(0);
     let rect = para.caret_rect(pos, 1.0);
     assert!(rect.height > 0.0, "caret height should be positive");
 }
@@ -145,10 +128,7 @@ fn caret_rect_at_origin_has_positive_height() {
 fn caret_rect_width_matches_requested_caret_width() {
     let e = engine();
     let para = e.layout_paragraph("Hello", None).unwrap();
-    let pos = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
+    let pos = HitPosition::downstream(0);
 
     let narrow = para.caret_rect(pos, 1.0);
     let wide = para.caret_rect(pos, 4.0);
@@ -177,14 +157,8 @@ fn caret_at_end_is_to_the_right_of_start() {
     let text = "Hello";
     let para = e.layout_paragraph(text, None).unwrap();
 
-    let start_pos = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let end_pos = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let start_pos = HitPosition::downstream(0);
+    let end_pos = HitPosition::new(text.len(), TextAffinity::Upstream);
 
     let start_rect = para.caret_rect(start_pos, 1.0);
     let end_rect = para.caret_rect(end_pos, 1.0);
@@ -201,10 +175,7 @@ fn caret_at_end_is_to_the_right_of_start() {
 fn collapsed_selection_returns_no_rects() {
     let e = engine();
     let para = e.layout_paragraph("Hello", None).unwrap();
-    let pos = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
+    let pos = HitPosition::downstream(0);
     let rects = para.selection_rects(pos, pos);
     assert!(
         rects.is_empty(),
@@ -219,14 +190,8 @@ fn full_selection_returns_at_least_one_rect() {
     let text = "Hello world";
     let para = e.layout_paragraph(text, None).unwrap();
 
-    let anchor = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let focus = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let anchor = HitPosition::downstream(0);
+    let focus = HitPosition::new(text.len(), TextAffinity::Upstream);
 
     let rects = para.selection_rects(anchor, focus);
     assert!(
@@ -241,14 +206,8 @@ fn selection_rect_has_positive_area() {
     let text = "Hello";
     let para = e.layout_paragraph(text, None).unwrap();
 
-    let anchor = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let focus = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let anchor = HitPosition::downstream(0);
+    let focus = HitPosition::new(text.len(), TextAffinity::Upstream);
 
     let rects = para.selection_rects(anchor, focus);
     for r in &rects {
@@ -262,14 +221,8 @@ fn reversed_selection_produces_rects() {
     let e = engine();
     let text = "Hello world";
     let para = e.layout_paragraph(text, None).unwrap();
-    let start = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let end = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let start = HitPosition::downstream(0);
+    let end = HitPosition::new(text.len(), TextAffinity::Upstream);
 
     let forward = para.selection_rects(start, end);
     let backward = para.selection_rects(end, start);
@@ -297,14 +250,8 @@ fn wrapped_selection_returns_multiple_rects() {
         "need at least 2 lines for this test"
     );
 
-    let anchor = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let focus = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let anchor = HitPosition::downstream(0);
+    let focus = HitPosition::new(text.len(), TextAffinity::Upstream);
     let rects = para.selection_rects(anchor, focus);
 
     assert!(
@@ -327,14 +274,8 @@ fn selection_rects_cover_expected_extent() {
     let text = "Hello world";
     let para = e.layout_paragraph(text, None).unwrap();
 
-    let anchor = HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    };
-    let focus = HitPosition {
-        byte_index: text.len(),
-        affinity: TextAffinity::Upstream,
-    };
+    let anchor = HitPosition::downstream(0);
+    let focus = HitPosition::new(text.len(), TextAffinity::Upstream);
     let rects = para.selection_rects(anchor, focus);
 
     assert!(!rects.is_empty());
@@ -376,9 +317,9 @@ fn hit_test_then_caret_rect_stays_on_screen_over_a_reordered_bidi_line() {
         let x = para.width() * frac;
         let pos = para.hit_test(x, 0.0);
         assert!(
-            text.is_char_boundary(pos.byte_index),
+            text.is_char_boundary(pos.byte_index()),
             "hit_test byte_index {} is not a UTF-8 char boundary in {text:?} at x={x}",
-            pos.byte_index,
+            pos.byte_index(),
         );
         let rect = para.caret_rect(pos, 1.0);
         assert!(

@@ -15,15 +15,9 @@ fn caret_x(
     byte_index: usize,
     affinity: sigil::text::TextAffinity,
 ) -> f32 {
-    p.caret_rect(
-        sigil::text::HitPosition {
-            byte_index,
-            affinity,
-        },
-        1.0,
-    )
-    .origin
-    .x
+    p.caret_rect(sigil::text::HitPosition::new(byte_index, affinity), 1.0)
+        .origin
+        .x
 }
 
 #[test]
@@ -62,19 +56,19 @@ fn pure_rtl_multiword_paragraph_reverses_visual_word_order() {
     let word_b_start = u32::try_from(WORD_A.len() + 1).unwrap();
     let leftmost_hit = p.hit_test(0.0, 0.0);
     assert!(
-        leftmost_hit.byte_index >= word_b_start as usize,
+        leftmost_hit.byte_index() >= word_b_start as usize,
         "leftmost x must land in word B (visually first in an RTL paragraph), \
          got byte_index {} (word B starts at {word_b_start})",
-        leftmost_hit.byte_index,
+        leftmost_hit.byte_index(),
     );
 
     let word_a_end = u32::try_from(WORD_A.len()).unwrap();
     let rightmost_hit = p.hit_test(p.width() - 1.0, 0.0);
     assert!(
-        rightmost_hit.byte_index <= word_a_end as usize,
+        rightmost_hit.byte_index() <= word_a_end as usize,
         "rightmost x must land in word A (visually last in an RTL paragraph), \
          got byte_index {} (word A ends at {word_a_end})",
-        rightmost_hit.byte_index,
+        rightmost_hit.byte_index(),
     );
 
     let caret_leftmost = p.caret_rect(leftmost_hit, 1.0);
@@ -131,9 +125,9 @@ fn three_plus_wrapped_mixed_direction_lines_with_trailing_spaces_do_not_panic() 
         for frac in [0.0_f32, 0.5, 1.0] {
             let pos = p.hit_test(p.width() * frac, y);
             assert!(
-                text.is_char_boundary(pos.byte_index),
+                text.is_char_boundary(pos.byte_index()),
                 "hit_test byte_index {} is not a UTF-8 char boundary at line {line}, frac {frac}",
-                pos.byte_index,
+                pos.byte_index(),
             );
             let rect = p.caret_rect(pos, 1.0);
             assert!(

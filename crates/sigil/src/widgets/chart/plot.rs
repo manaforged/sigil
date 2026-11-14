@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
 use crate::layout::{JustifyContent, LayoutStyle, Length};
 use crate::style::{Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::axis::{Gutter, axis_width, category_axis, crowded, legend, title, x_axis, y_axis};
 use super::bars::{self, Bars};

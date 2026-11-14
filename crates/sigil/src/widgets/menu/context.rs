@@ -7,7 +7,7 @@ use crate::reactive::{Owner, Signal, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string;
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::popup::{PANEL_INSET, PANEL_WIDTH, PopupAnchor, PopupLayer};
 use super::builder::{MenuItem, menu};
@@ -82,11 +82,11 @@ fn anchored_menu(
         }
     };
     let mut panel = menu(open)
-        .label(theme_string(StringKey::ContextMenu))
-        .anchor(
+        .accessible(theme_string(StringKey::ContextMenu))
+        .at((
             fit(x, viewport.width, PANEL_WIDTH),
             fit(y, viewport.height, height),
-        );
+        ));
     if let Some(host) = host {
         panel = panel.host(host);
     }

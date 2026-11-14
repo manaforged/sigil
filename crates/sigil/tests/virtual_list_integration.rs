@@ -1,15 +1,15 @@
 #![allow(clippy::panic, clippy::trivially_copy_pass_by_ref, clippy::unwrap_used)]
 
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::events::{Event, KeyPhase};
 use sigil::prelude::*;
 use sigil::widgets::{Selection, SelectionMode, virtual_list};
 use sigil_kittest::stub_text_measure;
@@ -70,7 +70,7 @@ fn keyboard_navigation_end_to_end() {
                 .viewport_width(320.0)
                 .keyboard(true)
                 .scroll_y(scroll_y)
-                .cursor(focused_row),
+                .active(focused_row),
         );
         let layout = compute_layout(&mut cx, root, Constraint::fixed(320.0, 96.0));
         let mut router = EventRouter::new();
@@ -180,7 +180,7 @@ fn build_recording_list(scroll_y: Signal<f32>, rendered: Rc<RefCell<Vec<usize>>>
 fn row(index: usize, _item: &usize) -> NodeBuilder {
     container()
         .role(Role::ListItem)
-        .label(format!("Row {index}"))
+        .accessible(format!("Row {index}"))
         .layout(LayoutStyle::flex_row().fixed_size(320.0, ROW_HEIGHT))
         .child(container().layout(LayoutStyle::block().fixed_size(80.0, ROW_HEIGHT)))
         .child(container().layout(LayoutStyle::block().fixed_size(160.0, ROW_HEIGHT)))

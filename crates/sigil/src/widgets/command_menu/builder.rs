@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use crate::kernel::NodeBuilder;
+use crate::reactive::Signal;
 use crate::style::Style;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
 use super::nav::{PaletteEntry, SubmitObserver};
-use crate::widgets::{Edit, MenuItem, NodeEdit, Sealed, Widget};
+use crate::widgets::{MenuItem, Widget};
 
 #[derive(Default)]
 pub(super) struct LevelDef {
@@ -71,9 +72,9 @@ impl SubmenuBuilder {
 }
 
 /// A command palette; `layout`, `width`, and `height` size each level panel, and `map_node` changes the root.
-#[derive(Default)]
 #[must_use]
 pub struct CommandMenuBuilder {
+    pub(super) open: Signal<bool>,
     pub(super) level: LevelDef,
     pub(super) on_submit: Option<SubmitObserver>,
     pub(super) on_cancel: Option<Activate>,
@@ -86,6 +87,7 @@ pub struct CommandMenuBuilder {
 impl core::fmt::Debug for CommandMenuBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CommandMenuBuilder")
+            .field("open", &self.open)
             .field("placeholder", &self.placeholder)
             .field("style_accumulator", &self.style_accumulator)
             .field("panel_layout", &self.panel_layout)
@@ -94,9 +96,18 @@ impl core::fmt::Debug for CommandMenuBuilder {
     }
 }
 
-/// A command palette.
-pub fn command_menu() -> CommandMenuBuilder {
-    CommandMenuBuilder::default()
+/// A command palette shown over the app while `open` is true.
+pub fn command_menu(open: Signal<bool>) -> CommandMenuBuilder {
+    CommandMenuBuilder {
+        open,
+        level: LevelDef::default(),
+        on_submit: None,
+        on_cancel: None,
+        placeholder: String::new(),
+        style_accumulator: Style::new(),
+        panel_layout: LayoutOverrides::new(),
+        layout_overrides: LayoutOverrides::new(),
+    }
 }
 
 impl CommandMenuBuilder {
@@ -114,7 +125,7 @@ impl CommandMenuBuilder {
         self
     }
 
-    /// Runs `cb` when the user closes the palette while the top level is shown.
+    /// Runs `cb` when the user closes the palette with Escape while the top level is shown.
     pub fn cancel(mut self, cb: impl Fn() + 'static) -> Self {
         self.on_cancel = Some(Rc::new(cb));
         self
@@ -123,25 +134,11 @@ impl CommandMenuBuilder {
 
 builder_impls!([] CommandMenuBuilder: paint(style_accumulator), node);
 
-impl Sealed for CommandMenuBuilder {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.panel_layout.edit(edit),
-            other => self
-                .layout_overrides
-                .node_hook(move |node| other.apply(node)),
-        }
-        self
-    }
-
-    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.map_node(f)
-    }
-}
-
 impl Widget for CommandMenuBuilder {
     fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
         self.layout_overrides.node_hook(f);
         self
     }
+
+    crate::widgets::widget_layout_methods!(@edit panel_layout.edit);
 }

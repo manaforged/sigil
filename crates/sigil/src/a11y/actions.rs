@@ -33,10 +33,12 @@ pub(crate) fn apply(
 }
 
 fn adjust_value(cx: &Cx, target: NodeId, increase: bool) {
-    if dispatch(cx, target, |handlers| {
-        handlers.invoke_value_adjustment(increase)
-    }) == Some(true)
-    {
+    let edit = if increase {
+        A11yEdit::Increment
+    } else {
+        A11yEdit::Decrement
+    };
+    if dispatch(cx, target, |handlers| handlers.invoke_a11y_edit(&edit)) == Some(true) {
         return;
     }
     let Some(node) = cx.get(target) else {
@@ -96,7 +98,7 @@ fn edit(cx: &Cx, target: NodeId, data: Option<&ActionData>) {
                 signal.set(text);
             }
         }
-        A11yEdit::Select { .. } => {}
+        A11yEdit::Increment | A11yEdit::Decrement | A11yEdit::Select { .. } => {}
     }
 }
 

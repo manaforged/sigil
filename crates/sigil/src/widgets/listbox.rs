@@ -12,7 +12,7 @@ mod nav;
 mod selection;
 mod state;
 
-pub use state::{CursorEdge, ListState};
+pub use state::{ListEdge, ListState};
 
 pub(crate) use filter::Matcher;
 pub(crate) use nav::{LIST, Move, RADIO_GROUP, RowSource, TAB_LIST, TREE};
@@ -83,6 +83,7 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     })
     .key(NamedKey::Escape, move |event| {
         if escape.is_open() {
+            event.prevent_default();
             event.stop_propagation();
             escape.close();
         }

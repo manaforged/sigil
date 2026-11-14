@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
 use crate::events::PointerEvent;
+use crate::geometry::Point;
 use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, NodeId, container};
-use crate::layout::PopupSide;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal};
 use crate::style::Style;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PANEL_WIDTH, PopupAnchor, PopupLayer};
@@ -90,13 +90,12 @@ pub struct MenuBuilder {
     open: Signal<bool>,
     host: Option<Owner>,
     rows: Vec<Row>,
-    label: Option<String>,
-    anchor: Option<(f32, f32)>,
+    anchor: Option<Point>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
-/// A popup menu.
+/// A popup menu named by the theme's menu string until `.accessible()` (`Widget`) names it.
 pub fn menu(open: Signal<bool>) -> MenuBuilder {
     MenuBuilder::new(open)
 }
@@ -108,17 +107,10 @@ impl MenuBuilder {
             open,
             host: Owner::current(),
             rows: Vec::new(),
-            label: None,
             anchor: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    /// Sets the accessible name; the default is the menu string of the theme.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
-        self.label = Some(label.into());
-        self
     }
 
     /// Runs item actions under `owner` while it is live; the default is the current owner.
@@ -127,9 +119,9 @@ impl MenuBuilder {
         self
     }
 
-    /// Places the top-left corner of the panel at `(x, y)` px in a layer that fills the parent.
-    pub const fn anchor(mut self, x: f32, y: f32) -> Self {
-        self.anchor = Some((x, y));
+    /// Places the top-left corner of the panel at `point` in a layer that fills the parent.
+    pub fn at(mut self, point: impl Into<Point>) -> Self {
+        self.anchor = Some(point.into());
         self
     }
 
@@ -149,30 +141,30 @@ impl MenuBuilder {
         let open = self.open;
         let height = panel_height(&self.rows);
         let width = self.layout_overrides.width_hint().unwrap_or(PANEL_WIDTH);
-        let (layout, placement) = match self.anchor {
-            Some((x, y)) => (
-                LayoutStyle::block()
-                    .position(Position::Absolute)
-                    .inset_top(0.0)
-                    .inset_left(0.0)
-                    .fill_width()
-                    .fill_height(),
-                panel_layout(y, x, width, height),
-            ),
-            None => (
-                LayoutStyle::block().width(width).height(height),
-                panel_layout(0.0, 0.0, width, height),
-            ),
-        };
+        let (layout, placement) = self.anchor.map_or_else(
+            || {
+                (
+                    LayoutStyle::block().width(width).height(height),
+                    panel_layout(0.0, 0.0, width, height),
+                )
+            },
+            |point| {
+                (
+                    LayoutStyle::block()
+                        .position(Position::Absolute)
+                        .inset_top(0.0)
+                        .inset_left(0.0)
+                        .fill_width()
+                        .fill_height(),
+                    panel_layout(point.y, point.x, width, height),
+                )
+            },
+        );
         let overrides = std::mem::take(&mut self.layout_overrides);
-        let menu_label = self
-            .label
-            .unwrap_or_else(|| theme_string_once(StringKey::Menu));
-
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
-        let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
+        let panel = menu_panel(self.rows, close, None, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
-            .label(menu_label)
+            .accessible(theme_string_once(StringKey::Menu))
             .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);

@@ -12,41 +12,32 @@ use crate::kernel::{Node, NodeId, ObjectFit};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{DrawImage, Gradient, GradientKind, GradientStop};
-use crate::style::atom::{GradientShape, PaintStyle};
+use crate::style::atom::{Geometry, GradientShape, PaintStyle};
 use crate::style::image_paint::lookup;
-use crate::style::{
-    BgGradient, Conic, GradientAxis, Radial, RadialExtent, RenderStyle, StyleEngine, Theme,
-};
+use crate::style::{Conic, Radial, RadialExtent, RenderStyle};
 
 const MAX_TILES: usize = 4096;
 
-pub(super) fn fill(rect: Rect, style: &RenderStyle, theme: &Theme) -> Option<Gradient> {
-    if let Some(spec) = style.background_gradient {
-        return Some(legacy(rect, spec, theme));
-    }
+pub(super) fn fill(rect: Rect, style: &RenderStyle) -> Option<Gradient> {
     let shape = style.paint.gradient?;
     let stops = tailwind_stops(&style.paint);
+    let driven = style.paint.geometry;
     let (kind, repeat) = match shape {
-        GradientShape::Linear(axis) => (linear(rect, axis), false),
-        GradientShape::Radial(radial) => (self::radial(rect, radial), radial.repeating),
-        GradientShape::Conic(conic) => (self::conic(rect, conic), conic.repeating),
+        GradientShape::Linear(axis) => (linear(rect, driven.direction(axis)), false),
+        GradientShape::Radial(radial) => (
+            ellipse(rect, radial, driven.center(radial.at)),
+            radial.repeating,
+        ),
+        GradientShape::Conic(conic) => (
+            sweep(
+                rect,
+                driven.center(conic.at),
+                driven.angle(f32::from(conic.from)),
+            ),
+            conic.repeating,
+        ),
     };
     Some(Gradient::new(kind, stops).repeat(repeat))
-}
-
-fn legacy(rect: Rect, spec: BgGradient, theme: &Theme) -> Gradient {
-    let engine = StyleEngine::new(theme);
-    let stops: Vec<GradientStop> = spec
-        .stops
-        .iter()
-        .map(|stop| {
-            GradientStop::new(
-                f32::from(stop.offset) / 1000.0,
-                engine.resolve_color(stop.color),
-            )
-        })
-        .collect();
-    Gradient::new(linear(rect, spec.axis), stops)
 }
 
 fn tailwind_stops(paint: &PaintStyle) -> Vec<GradientStop> {
@@ -65,31 +56,30 @@ fn tailwind_stops(paint: &PaintStyle) -> Vec<GradientStop> {
     }
 }
 
-fn linear(rect: Rect, axis: GradientAxis) -> GradientKind {
-    let (left, top) = (rect.origin.x, rect.origin.y);
-    let (right, bottom) = (left + rect.width, top + rect.height);
-    let (mid_x, mid_y) = (left + rect.width / 2.0, top + rect.height / 2.0);
-    let (start, end) = match axis {
-        GradientAxis::TopToBottom => ((mid_x, top), (mid_x, bottom)),
-        GradientAxis::BottomToTop => ((mid_x, bottom), (mid_x, top)),
-        GradientAxis::LeftToRight => ((left, mid_y), (right, mid_y)),
-        GradientAxis::RightToLeft => ((right, mid_y), (left, mid_y)),
-    };
+pub(super) fn linear(rect: Rect, [dx, dy]: [f32; 2]) -> GradientKind {
+    let half = (rect.width * dx)
+        .abs()
+        .mul_add(0.5, (rect.height * dy).abs() * 0.5);
+    let center = center_of(rect, [50.0, 50.0]);
     GradientKind::Linear {
-        start: Point::new(start.0, start.1),
-        end: Point::new(end.0, end.1),
+        start: Point::new(dx.mul_add(-half, center.x), dy.mul_add(-half, center.y)),
+        end: Point::new(dx.mul_add(half, center.x), dy.mul_add(half, center.y)),
     }
 }
 
-fn center_of(rect: Rect, [x, y]: [u8; 2]) -> Point {
+fn center_of(rect: Rect, [x, y]: [f32; 2]) -> Point {
     Point::new(
-        rect.width.mul_add(f32::from(x) / 100.0, rect.origin.x),
-        rect.height.mul_add(f32::from(y) / 100.0, rect.origin.y),
+        rect.width.mul_add(x / 100.0, rect.origin.x),
+        rect.height.mul_add(y / 100.0, rect.origin.y),
     )
 }
 
 pub(super) fn radial(rect: Rect, radial: Radial) -> GradientKind {
-    let center = center_of(rect, radial.at);
+    ellipse(rect, radial, Geometry::default().center(radial.at))
+}
+
+fn ellipse(rect: Rect, radial: Radial, at: [f32; 2]) -> GradientKind {
+    let center = center_of(rect, at);
     let dx = [
         center.x - rect.origin.x,
         rect.origin.x + rect.width - center.x,
@@ -114,9 +104,17 @@ pub(super) fn radial(rect: Rect, radial: Radial) -> GradientKind {
 }
 
 pub(super) fn conic(rect: Rect, conic: Conic) -> GradientKind {
+    sweep(
+        rect,
+        Geometry::default().center(conic.at),
+        f32::from(conic.from),
+    )
+}
+
+fn sweep(rect: Rect, at: [f32; 2], angle: f32) -> GradientKind {
     GradientKind::Conic {
-        center: center_of(rect, conic.at),
-        angle: f32::from(conic.from),
+        center: center_of(rect, at),
+        angle,
     }
 }
 

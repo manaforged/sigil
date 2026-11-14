@@ -27,7 +27,7 @@ pub(crate) fn gauge_demo() -> impl IntoNode {
 }
 
 pub(crate) fn progress_demo() -> impl IntoNode {
-    progress(signal(60.0), 100.0)
+    progress(signal(60.0)).max(100.0)
 }
 
 pub(crate) fn spinner_demo() -> NodeBuilder {

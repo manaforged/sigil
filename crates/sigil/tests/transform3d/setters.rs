@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::geometry::Point;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 

@@ -17,7 +17,7 @@ pub(crate) fn parse(input: &str) -> Option<Theme> {
     for (name, value) in tokens {
         let hex = value.as_str()?;
         let color: Color = hex.parse().ok()?;
-        theme = theme.token(name, color);
+        theme = theme.token_by_name(name, color);
     }
     if let Some(value) = doc.get("direction") {
         theme.direction = Direction::from_name(value.as_str()?)?;

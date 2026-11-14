@@ -5,11 +5,11 @@ use crate::kernel::{IntoNode, NodeBuilder, Role};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
-use crate::style::{Radius, Tone, space};
-use crate::widgets::Layout;
+use crate::style::{Radius, Style, Tone, space};
+use crate::widgets::Widget;
 
 use super::super::dot::dot;
-use super::super::shared::Activate;
+use super::super::shared::{Activate, accessible_name, caller_style};
 use super::chip_class;
 
 /// Builder of a chip.
@@ -21,6 +21,7 @@ pub struct ChipBuilder {
     activate: Option<Activate>,
     leading: Option<Box<dyn IntoNode>>,
     dot: bool,
+    style_accumulator: Style,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
@@ -45,6 +46,7 @@ impl ChipBuilder {
             activate: None,
             leading: None,
             dot: false,
+            style_accumulator: Style::new(),
             layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
         }
     }
@@ -93,6 +95,9 @@ impl ChipBuilder {
             .class("text-xs font-medium")
             .class(Radius::Full.atom())
             .class(chip_class(self.tone));
+        if activate.is_some() {
+            node = node.accessible(accessible_name(&self.label));
+        }
         if self.dot {
             node = match self.tone_signal {
                 Some(tone) => node
@@ -107,11 +112,12 @@ impl ChipBuilder {
         if let Some(activate) = activate {
             node = node.activate_with(activate);
         }
-        match self.tone_signal {
+        let node = match self.tone_signal {
             Some(tone) => node.style_reactive(move || chip_class(tone.get())),
             None => node,
-        }
+        };
+        caller_style(node, self.style_accumulator)
     }
 }
 
-builder_impls!([] ChipBuilder: widget, node(pub));
+builder_impls!([] ChipBuilder: paint(style_accumulator), states(style_accumulator), widget, node(pub));

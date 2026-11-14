@@ -5,7 +5,7 @@ use sigil::layout::LayoutStyle;
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Owner, signal};
 use sigil::scene::CommandScene;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 const VIEW: (f32, f32) = (320.0, 160.0);
 
@@ -220,11 +220,11 @@ fn a_host_with_nothing_mounted_reports_the_last_scene_gone() {
         let mut shown = Host::new(HostMode::Cell);
         shown.mount(|| container().child(text("before")));
         let before = shown.scene(VIEW).expect("scene");
-        assert!(!before.commands.is_empty());
+        assert!(!before.is_empty());
         let mut empty = Host::new(HostMode::Cell);
         let delta = sigil::testing::take_delta(empty.cx());
         let (scene, diff) = sigil::testing::emit_since(&mut empty, VIEW, &delta, &before);
-        assert!(scene.commands.is_empty());
+        assert!(scene.is_empty());
         assert!(!diff.unchanged(), "an emptied scene reported no change");
     });
 }

@@ -1,4 +1,4 @@
-/// Run blocking work, such as a subprocess or a file read, inside a `task` or `spawn` future without stalling a runtime worker.
+/// Runs blocking work, such as a subprocess or a file read, on the blocking pool from a `task` or `spawn` future without stalling a runtime worker.
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn blocking<T, F>(f: F) -> T
 where

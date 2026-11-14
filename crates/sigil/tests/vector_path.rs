@@ -12,6 +12,7 @@
 )]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJoin};
@@ -94,9 +95,11 @@ fn small_diagonal() -> PathBuilder {
 }
 
 fn diagonal_canvas() -> impl IntoNode {
-    canvas(|scene: &mut SceneBuilder, rect: Rect| diagonal().draw(scene, rect, &Theme::light()))
-        .width(SIDE as f32)
-        .height(SIDE as f32)
+    canvas(|scene: &mut SceneBuilder, rect: Rect, theme: &Theme| {
+        diagonal().draw(scene, rect, theme);
+    })
+    .width(SIDE as f32)
+    .height(SIDE as f32)
 }
 
 fn fitted_diagonal() -> impl IntoNode {
@@ -104,11 +107,11 @@ fn fitted_diagonal() -> impl IntoNode {
 }
 
 fn zoomed_diagonal() -> impl IntoNode {
-    canvas(|scene: &mut SceneBuilder, _rect: Rect| {
+    canvas(|scene: &mut SceneBuilder, _rect: Rect, theme: &Theme| {
         let zoom = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0]];
         scene.transform(zoom, |scene| {
             let destination = Rect::new(Point::new(0.0, 0.0), 15.0, 15.0);
-            small_diagonal().draw(scene, destination, &Theme::light());
+            small_diagonal().draw(scene, destination, theme);
         });
     })
     .width(SIDE as f32)
@@ -210,12 +213,12 @@ fn star(node: PathBuilder) -> PathBuilder {
             node.line_to(next_x, next_y)
         })
         .close()
-        .fill(INK)
+        .fill_color(INK)
 }
 
 fn shape_canvas(shape: fn() -> PathBuilder) -> impl IntoNode {
-    canvas(move |scene: &mut SceneBuilder, rect: Rect| {
-        shape().draw(scene, rect, &Theme::light());
+    canvas(move |scene: &mut SceneBuilder, rect: Rect, theme: &Theme| {
+        shape().draw(scene, rect, theme);
     })
     .width(80.0)
     .height(80.0)
@@ -285,7 +288,7 @@ fn a_path_node_emits_vector_commands_not_a_bitmap() {
     let mut ui = Harness::new(path_scene).pixels(120, 80).scale(SCALE);
     let scene: CommandScene = ui.host().emit((120.0, 80.0));
     let bitmaps: Vec<&SceneCommand> = scene
-        .commands
+        .commands()
         .iter()
         .filter(|command| matches!(command, SceneCommand::Image(_) | SceneCommand::Sprite(_)))
         .collect();

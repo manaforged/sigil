@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil_kittest::FakeMeasure;
 
@@ -29,7 +30,7 @@ fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) 
 #[test]
 fn progress_fills_its_parent_by_default() {
     for parent in [100.0_f32, 244.0, 600.0] {
-        let got = widget_width(parent, || progress(signal(0.5_f32), 1.0));
+        let got = widget_width(parent, || progress(signal(0.5_f32)));
         assert!(
             (got - parent).abs() < 0.5,
             "progress should fill a {parent}px parent, got {got}",
@@ -39,7 +40,7 @@ fn progress_fills_its_parent_by_default() {
 
 #[test]
 fn progress_width_pins_an_explicit_extent() {
-    let sized = widget_width(600.0, || progress(signal(0.5_f32), 1.0).width(100.0));
+    let sized = widget_width(600.0, || progress(signal(0.5_f32)).width(100.0));
     assert!(
         (sized - 100.0).abs() < 0.5,
         "progress.width(100) should measure 100 inside a 600px parent, got {sized}",

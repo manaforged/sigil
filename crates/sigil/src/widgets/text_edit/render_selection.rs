@@ -4,7 +4,7 @@ use crate::kernel::{NodeBuilder, fragment};
 use crate::layout::LayoutStyle;
 use crate::layout::with_text_geometry;
 use crate::style::{ColorValue, SELECTION_FILL, StyleAtom};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::TextEditRuntime;
 

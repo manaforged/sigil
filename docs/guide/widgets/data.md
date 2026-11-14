@@ -31,7 +31,7 @@ Key options:
 - `.measured()`: each row lays out at the list width and reports its height. The heights go into one cache keyed by the row key (or the index without `key_by`). A row that has not laid out yet uses `.estimate(len)` (default: the row height). The cache clears when the row width changes, and drops the keys of removed rows when the items change. `follow_row` and `follow_end` keep the tail pinned while rows grow and measurements replace estimates. When the list is scrolled up, a height change above the first visible row moves the scroll offset by the same amount, so the visible rows stay still. The host lays out again in the same frame when a measured size changes, so a new height never paints at the old offset.
 - `.selection(SelectionMode)` / `.selected(Signal<Selection>)`: `None`, `Single`, `Multi`, `Extend`. Pass `signal(Selection::new(mode))` to `.selected(sel)` to share and inspect the state object (`contains`, `indices`, `select`, `toggle`, `extend`, `clear`); `.change(Fn(usize))` is a convenience effect over the first selected index.
 - `.scroll_y(Signal<f32>)` / `.scroll_x(scroll_x, max, width)`: bind scroll to external signals.
-- `.cursor(Signal<usize>)`: the keyboard-focused row. Arrow keys write it, and the list keeps that row in view unless `.follow_row` names another target.
+- `.active(Signal<usize>)`: the active (keyboard-focused) row. Arrow keys write it, and the list keeps that row in view unless `.follow_row` names another target.
 - `.content_height(Signal<f32>)` / `.max_scroll(Signal<f32>)`: the list writes its content height and its largest scroll offset (content height minus the viewport) to these signals. Both use the same scroll model as the list: measured tops, variable heights, or fixed rows. To page from outside the list, write `scroll_y` clamped to `0.0..=max_scroll`. To jump to the tail, write `max_scroll`.
 - `.initial_scroll(anchor)` (`ScrollAnchor::Top`, `Bottom`, or a row index): initial position.
 - `.follow_end(bool)`: start at the end and keep the view pinned to the last row while rows grow, until the user scrolls up (chat/log behavior).
@@ -71,7 +71,7 @@ table(state).striped().fill_height();
 - `.cell(Fn(&Row) -> impl IntoNode)`: the cell content; a column without it renders an empty `Role::GridCell`.
 - `.editable(text, commit)`: edits the cell in place. `text(&Row) -> String` fills the editor and `commit(&mut Row, String)` writes the result into the table's rows. Double-click or Enter on a row starts, Enter commits, Escape cancels, and Tab and Shift-Tab move between editable cells. With `TableState::identified`, an open edit follows its row when the app calls `replace_rows`.
 
-`TableState<Row>` is the live model:
+`TableState<Row>` is the live model (it is `Clone`, whereas `Signal`, `TextState`, and `Combobox` are `Copy`):
 
 - `TableState::new(rows, columns)`: index-based selection.
 - `TableState::identified(rows, columns)`: selection tracks `Identifiable::id` (`Clone + Eq + Hash`; implemented for `Arc<Row>` too), so `replace_rows` keeps the same logical rows selected.
@@ -80,7 +80,7 @@ table(state).striped().fill_height();
 - `sort_key() -> Signal<Option<SortKey>>`, `cycle_sort(id)`, `sort(id, SortDirection)`; `quick_filter() -> Signal<String>` drives the `.filterable` predicates.
 - Column chrome: `visible_columns()`, `move_column(from, to)`, `hide_column(id)`/`show_column(id)`/`show_all_columns()`, `pin_column_width(id, px)`/`clear_column_width(id)`, `reset_columns()`, `column_width(id)`.
 
-`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_y(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column), `.end_reached(rows, Fn())` (as on `virtual_list`).
+`table` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.fill_height()` (takes the height of the parent), `.density(impl Reactive<Density>)` (accepts `Density` or `Signal<Density>`; sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_y(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column), `.end_reached(rows, Fn())` (as on `virtual_list`).
 
 The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
 

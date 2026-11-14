@@ -8,6 +8,7 @@ use crate::reactive::{Signal, batch, signal};
 use crate::style::TextStyle;
 use crate::widgets::Widget;
 
+pub(in crate::widgets) use super::super::shared::noop_change;
 use super::super::shared::{TextChange, disabled_now};
 use super::TextEdit;
 use super::builder::SubmitKey;
@@ -23,9 +24,10 @@ mod navigation;
 #[path = "state.rs"]
 mod state;
 pub(in crate::widgets) use commands::{
-    attach_a11y_edit, clipboard_keys, history_keys, submit_text, word_keys,
+    attach_a11y_edit, bind_command_keys, bind_history_keys, clipboard_keys, history_keys,
+    submit_text, word_keys,
 };
-pub(in crate::widgets) use keymap::{KeyProfile, LineStep, edit_keys};
+pub(in crate::widgets) use keymap::{KeyProfile, LineStep, delete_keys, edit_keys};
 use navigation::{move_vertical, move_visual_edge};
 pub use state::TextState;
 
@@ -42,15 +44,13 @@ pub(in crate::widgets) struct TextEditRuntime {
     pub(in crate::widgets) selection: Signal<Option<usize>>,
     pub(in crate::widgets) ime: ImeState,
     pub(in crate::widgets) text_style: Signal<TextStyle>,
-    pub(in crate::widgets) content_size: Signal<(f32, f32)>,
-    pub(in crate::widgets) viewport_size: Signal<(f32, f32)>,
+    pub(in crate::widgets) content_size: Signal<crate::geometry::Size>,
+    pub(in crate::widgets) viewport_size: Signal<crate::geometry::Size>,
     pub(in crate::widgets) scroll_y: Signal<f32>,
     pub(in crate::widgets) content_padding: (f32, f32),
     pub(in crate::widgets) preferred_x: Rc<Cell<Option<f32>>>,
     pub(in crate::widgets) caret_affinity: Signal<TextAffinity>,
     pub(in crate::widgets) anchor_affinity: Signal<TextAffinity>,
-    pub(in crate::widgets) scroll_x: Signal<f32>,
-    pub(in crate::widgets) column: Option<f32>,
     pub(in crate::widgets) clip_fail: Signal<bool>,
 }
 
@@ -80,27 +80,15 @@ impl TextEditRuntime {
             selection: state.selection,
             ime: ImeState::new(),
             text_style: signal(TextStyle::default()),
-            content_size: signal((0.0, 0.0)),
-            viewport_size: signal((0.0, 0.0)),
+            content_size: signal(crate::geometry::Size::ZERO),
+            viewport_size: signal(crate::geometry::Size::ZERO),
             scroll_y: signal(0.0),
             content_padding,
             preferred_x: state.preferred_x,
             caret_affinity: signal(TextAffinity::Downstream),
             anchor_affinity: signal(TextAffinity::Downstream),
-            scroll_x: signal(0.0),
-            column: None,
             clip_fail: signal(false),
         }
-    }
-
-    pub(in crate::widgets) const fn single_line(
-        mut self,
-        column: f32,
-        scroll_x: Signal<f32>,
-    ) -> Self {
-        self.column = Some(column);
-        self.scroll_x = scroll_x;
-        self
     }
 
     pub(in crate::widgets) fn disabled(&self) -> bool {
@@ -112,9 +100,6 @@ impl TextEditRuntime {
     }
 
     pub(in crate::widgets) fn commit(&self, state: &TextEdit) {
-        if let Some(column) = self.column {
-            self.update_scroll(state, column);
-        }
         self.preferred_x.set(None);
         self.caret_affinity.set(TextAffinity::Downstream);
         self.caret_visible.set(true);
@@ -128,32 +113,41 @@ impl TextEditRuntime {
 
     pub(in crate::widgets) fn sync_value(&self, state: &TextEdit) {
         batch(|| {
-            write_value(self.value, state.as_str());
-            (self.change)(state.as_str());
+            let changed = self
+                .value
+                .try_peek_with(|current| current.as_str() != state.as_str())
+                .unwrap_or(true);
+            if changed {
+                write_value(self.value, state.as_str());
+                (self.change)(state.as_str());
+            }
             self.commit(state);
         });
     }
+}
 
-    fn typed_text(&self, text: &str) -> Option<String> {
-        if self.column.is_some() {
-            return (!text.is_empty() && !text.chars().any(char::is_control))
-                .then(|| text.to_owned());
-        }
-        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+pub(in crate::widgets) fn typed_event_text(event: &KeyEvent, multiline: bool) -> Option<String> {
+    if event
+        .modifiers()
+        .intersects(Modifiers::CTRL | Modifiers::META)
+    {
+        return None;
+    }
+    let raw = event.text()?;
+    if multiline {
+        let text = raw.replace("\r\n", "\n").replace('\r', "\n");
         let printable = text
             .chars()
             .all(|ch| !ch.is_control() || matches!(ch, '\t' | '\n'));
         (printable && !text.is_empty() && text != "\n").then_some(text)
+    } else {
+        (!raw.is_empty() && raw.chars().all(|ch| !ch.is_control())).then(|| raw.to_owned())
     }
 }
 
 #[cfg(test)]
 #[path = "handlers_tests.rs"]
 mod tests;
-
-pub(in crate::widgets) fn noop_change() -> TextChange {
-    Rc::new(|_| {})
-}
 
 pub(super) fn attach_key_handlers(
     node: NodeBuilder,
@@ -206,20 +200,14 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
         event.stop_propagation();
         return;
     }
-    if event.modifiers.contains(Modifiers::CTRL) || event.modifiers.contains(Modifiers::META) {
-        return;
-    }
-    let Some(text) = event
-        .text
-        .as_deref()
-        .and_then(|text| runtime.typed_text(text))
-    else {
+    let Some(text) = typed_event_text(event, true) else {
         return;
     };
     let mut edit = runtime.edit_mut();
     edit.insert_str(&text);
     runtime.sync_value(&edit);
     event.stop_propagation();
+    event.prevent_default();
 }
 
 pub(in crate::widgets) fn edit_value(
@@ -232,13 +220,8 @@ pub(in crate::widgets) fn edit_value(
         return;
     }
     let mut state = runtime.edit_mut();
-    let before = state.len();
     edit(&mut state);
-    if state.len() == before {
-        runtime.commit(&state);
-    } else {
-        runtime.sync_value(&state);
-    }
+    runtime.sync_value(&state);
 }
 
 pub(in crate::widgets) fn move_caret(

@@ -1,8 +1,6 @@
 use sigil::geometry::{Point, Rect};
-use sigil::kernel::{ImageSource, ObjectFit};
-use sigil::scene::{
-    CornerRadii, DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand, shape_glyph_run,
-};
+use sigil::kernel::ImageSource;
+use sigil::scene::{DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand, shape_glyph_run};
 use sigil::style::{Color, Rgba, TextStyle};
 
 use super::GeneratedScene;
@@ -64,13 +62,12 @@ pub fn layer_depth(depth: usize, blur: bool) -> GeneratedScene {
         } else {
             LayerEffect::Identity
         };
-        commands.push(SceneCommand::PushLayer(LayerScope {
-            clip: rect(0.0, 0.0, 128.0, 128.0),
-            clip_radii: CornerRadii::uniform(4.0),
-            effect,
-            opacity: 0.99,
-            blend: sigil::scene::BlendMode::Normal,
-        }));
+        commands.push(SceneCommand::PushLayer(
+            LayerScope::new(rect(0.0, 0.0, 128.0, 128.0))
+                .radii([4.0; 4])
+                .layer_effect(effect)
+                .opacity(0.99),
+        ));
         commands.push(SceneCommand::SaveLayer { opacity: 0.99 });
     }
     commands.push(fill(rect(16.0, 16.0, 96.0, 96.0)));
@@ -116,20 +113,15 @@ pub fn unique_images(count: u32, side: u32) -> GeneratedScene {
         let Some(source) = ImageSource::from_rgba8(side, side, rgba) else {
             continue;
         };
-        commands.push(SceneCommand::Image(DrawImage {
-            node: None,
+        commands.push(SceneCommand::Image(DrawImage::new(
             source,
-            fit: ObjectFit::Fill,
-            destination: rect(
+            rect(
                 (i % 64) as f32 * 8.0,
                 ((i / 64) % 64) as f32 * 8.0,
                 8.0,
                 8.0,
             ),
-            opacity: 10_000,
-            crop: None,
-            raster: None,
-        }));
+        )));
     }
     scene(commands, (512.0, 512.0), 1.0)
 }

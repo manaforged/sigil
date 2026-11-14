@@ -2,18 +2,15 @@ use std::ops::RangeInclusive;
 
 use crate::reactive::Signal;
 use crate::style::Theme;
+use crate::style::locale::Locale;
 
 use super::field::{FieldParser, ParsedField, parsed_controls};
 
-/// Number types that `number_field` accepts.
+/// Number types that `number_field` accepts: every built-in integer and float type.
 pub trait NumericKind: Copy + PartialOrd + 'static + private::Sealed {}
 
-impl<T: private::Sealed> NumericKind for T {}
-
 mod private {
-    use std::ops::RangeInclusive;
-
-    use crate::style::locale::Locale;
+    use super::{Locale, RangeInclusive};
 
     #[allow(unnameable_types, reason = "sealed")]
     pub trait Sealed: Copy + PartialOrd + 'static {
@@ -24,26 +21,30 @@ mod private {
         #[must_use]
         fn clamp_to(self, range: &RangeInclusive<Self>) -> Self;
     }
-
-    macro_rules! impl_numeric {
-        ($keep:expr => $($t:ty),+) => {$(
-            impl Sealed for $t {
-                fn parse(input: &str, locale: &Locale) -> Option<Self> {
-                    locale.normalize_number(input)?.parse::<Self>().ok().filter($keep)
-                }
-                fn render(self, locale: &Locale) -> String {
-                    locale.localize_number(&self.to_string())
-                }
-                fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
-                    self.clamp(*range.start(), *range.end())
-                }
-            }
-        )+};
-    }
-
-    impl_numeric!(|_: &Self| true => i32, i64, usize);
-    impl_numeric!(|v: &Self| v.is_finite() => f32, f64);
 }
+
+macro_rules! impl_numeric {
+    ($keep:expr => $($t:ty),+) => {$(
+        impl private::Sealed for $t {
+            fn parse(input: &str, locale: &Locale) -> Option<Self> {
+                locale.normalize_number(input)?.parse::<Self>().ok().filter($keep)
+            }
+            fn render(self, locale: &Locale) -> String {
+                locale.localize_number(&self.to_string())
+            }
+            fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
+                let (start, end) = (*range.start(), *range.end());
+                let (low, high) = if end < start { (end, start) } else { (start, end) };
+                self.max(low).min(high)
+            }
+        }
+
+        impl NumericKind for $t {}
+    )+};
+}
+
+impl_numeric!(|_: &Self| true => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+impl_numeric!(|v: &Self| v.is_finite() => f32, f64);
 
 struct NumberParser<T>(RangeInclusive<T>);
 

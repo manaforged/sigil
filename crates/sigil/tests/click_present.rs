@@ -3,6 +3,8 @@
 use std::time::Instant;
 
 use sigil::Host;
+use sigil::app::HostMode;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::profile::FRAME_BUDGET_NS;
 use sigil::reactive::Owner;

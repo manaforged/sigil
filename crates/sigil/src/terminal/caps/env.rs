@@ -17,11 +17,7 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             keyboard: keyboard(keys),
             hyperlinks: modern,
             underline_styles: known.is_some_and(Known::underline_styles),
-            borders: match glyphs {
-                Glyphs::Ascii => Borders::Ascii,
-                Glyphs::Console => Borders::Light,
-                Glyphs::Unicode => Borders::Rounded,
-            },
+            borders: borders(glyphs),
             glyphs,
             ambiguous: if flag(env, "SIGIL_AMBIGUOUS_WIDE") {
                 Ambiguous::Wide
@@ -33,7 +29,11 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             } else {
                 Erase::Background
             },
-            cursor: if modern { Cursor::Bar } else { Cursor::Block },
+            cursor_style: if modern {
+                CursorStyle::Bar
+            } else {
+                CursorStyle::Block
+            },
             sync: sync.unwrap_or(true),
             clipboard: if cfg!(target_os = "macos") && env("SSH_TTY").is_none() {
                 ClipRoute::Pbcopy
@@ -48,6 +48,14 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
         },
         #[cfg(unix)]
         ask: questions(env, (sync, keys), color, known),
+    }
+}
+
+const fn borders(glyphs: Glyphs) -> Borders {
+    match glyphs {
+        Glyphs::Ascii => Borders::Ascii,
+        Glyphs::Console => Borders::Light,
+        Glyphs::Unicode => Borders::Rounded,
     }
 }
 

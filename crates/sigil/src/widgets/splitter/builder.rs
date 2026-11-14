@@ -10,7 +10,7 @@ use super::pane::{build_pane, shares_free_space};
 use super::pane_builder::PaneBuilder;
 use crate::layout::Orientation;
 use crate::style::States;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
@@ -68,7 +68,7 @@ impl core::fmt::Debug for SplitterBuilder {
 }
 
 /// Resizable panes.
-pub fn splitter(orientation: Orientation) -> SplitterBuilder {
+pub const fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
         orientation,
         panes: Vec::new(),
@@ -241,21 +241,21 @@ fn fit_to_bounds(
     orientation: Orientation,
     count: usize,
 ) -> NodeBuilder {
-    let bounds = crate::reactive::signal((0.0, 0.0, 0.0, 0.0));
+    let bounds = crate::reactive::signal(crate::geometry::Rect::default());
     #[allow(
         clippy::cast_precision_loss,
         reason = "a splitter has a handful of panes"
     )]
-    let handles = HANDLE_PX * count.saturating_sub(1) as f32;
+    let handles = handle_px() * count.saturating_sub(1) as f32;
     crate::reactive::effect(move || {
-        let (_, _, width, height) = bounds.get();
+        let rect = bounds.get();
         let along = match orientation {
-            Orientation::Horizontal => width,
-            Orientation::Vertical => height,
+            Orientation::Horizontal => rect.width,
+            Orientation::Vertical => rect.height,
         };
         state.fit(along - handles);
     });
-    root.bounds_reactive(bounds)
+    root.track_bounds(bounds)
 }
 
 fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterState) -> NodeBuilder {
@@ -274,10 +274,15 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
     )
 }
 
+pub(in crate::widgets) fn handle_px() -> f32 {
+    crate::layout::snap::track(HANDLE_PX)
+}
+
 fn handle_layout(orientation: Orientation) -> LayoutStyle {
+    let extent = handle_px();
     let style = match orientation {
-        Orientation::Horizontal => LayoutStyle::flex_row().width(HANDLE_PX),
-        Orientation::Vertical => LayoutStyle::flex_column().height(HANDLE_PX),
+        Orientation::Horizontal => LayoutStyle::flex_row().width(extent),
+        Orientation::Vertical => LayoutStyle::flex_column().height(extent),
     };
     style
         .shrink(0.0)

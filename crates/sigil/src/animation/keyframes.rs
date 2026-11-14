@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
 use super::Easing;
+use super::runtime::registry::TWEEN_MS;
 use crate::style::{ColorAtomKind, ColorValue};
 
 mod property;
@@ -19,6 +20,7 @@ kittest_pub! {
 #[must_use]
 pub struct Keyframes {
     duration: Duration,
+    delay: Duration,
     easing: Easing,
     iterations: Option<u32>,
     reverse: bool,
@@ -34,6 +36,7 @@ impl Keyframes {
     pub const fn new(duration: Duration) -> Self {
         Self {
             duration,
+            delay: Duration::ZERO,
             easing: CSS_EASE,
             iterations: Some(1),
             reverse: false,
@@ -65,6 +68,12 @@ impl Keyframes {
         self
     }
 
+    /// Holds the start value for `delay` before the first pass, like `animation-delay` with `animation-fill-mode: backwards`.
+    pub const fn delay(mut self, delay: Duration) -> Self {
+        self.delay = delay;
+        self
+    }
+
     /// Sets the number of passes; the default is 1.
     pub const fn iterations(mut self, count: u32) -> Self {
         self.iterations = Some(count);
@@ -87,6 +96,13 @@ impl Keyframes {
     pub const fn alternate(mut self) -> Self {
         self.alternate = true;
         self
+    }
+
+    /// Fades in from transparent over 150 ms, like tailwindcss-animate `animate-in fade-in`.
+    pub fn fade() -> Self {
+        Self::new(Duration::from_millis(u64::from(TWEEN_MS)))
+            .keyframe(0.0, Property::Opacity(0.0))
+            .keyframe(1.0, Property::Opacity(1.0))
     }
 
     /// The Tailwind `animate-spin` animation.
@@ -137,6 +153,10 @@ impl Keyframes {
         self.iterations.map(|count| f64::from(count) * pass)
     }
 
+    pub(crate) const fn delay_secs(&self) -> f64 {
+        self.delay.as_secs_f64()
+    }
+
     pub(crate) fn cycle(&self) -> f64 {
         2.0 * self.duration.as_secs_f64()
     }
@@ -180,9 +200,10 @@ fn unit(offset: f32) -> f32 {
 }
 
 impl Keyframes {
-    const fn timing(&self) -> (Duration, Easing, Option<u32>, bool, bool) {
+    const fn timing(&self) -> (Duration, Duration, Easing, Option<u32>, bool, bool) {
         (
             self.duration,
+            self.delay,
             self.easing,
             self.iterations,
             self.reverse,

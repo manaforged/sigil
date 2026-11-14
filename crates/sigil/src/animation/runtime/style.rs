@@ -11,7 +11,7 @@ use crate::animation::runtime::binding_animate_color::{
 use crate::animation::runtime::playback::{Player, animation};
 use crate::animation::runtime::registry::{Transitioned, transition_config};
 use crate::animation::runtime::targets::{Change, Targets, targets};
-use crate::animation::runtime::{AnimationConfig, Animator};
+use crate::animation::runtime::{AnimationConfig, SignalAnimator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Runtime, Signal, effect_named, owner_by_id, signal};
 use crate::style::{
@@ -142,7 +142,7 @@ impl StyleAnimator {
     }
 }
 
-fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
+pub(crate) fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
     let Some(tag) = tag else {
         return;
     };
@@ -279,7 +279,7 @@ fn update_numeric(
         } else {
             let value = signal(from);
             record_on(tag, &[value], DeltaKind::layout_if(kind.affects_layout()));
-            let mut animator = Animator::new(value, config);
+            let mut animator = SignalAnimator::new(value, config);
             animator.target(to);
             entries.push(AttachedAnimator {
                 kind,
@@ -352,9 +352,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     if binding.animator_overlay().is_none() && !binding.has_transition() {
         return;
     }
-    let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
-        .find_map(|ancestor| cx.get(ancestor)?.extension::<Theme>())
-        .unwrap_or_else(crate::style::theme::fallback_theme);
+    let theme = theme_at(cx, id);
     let tone = node
         .extension::<ToneContext>()
         .copied()
@@ -364,6 +362,12 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     owner_by_id(node.owner, || {
         binding.update_animations(theme, tone, inherited_text, node.tag());
     });
+}
+
+pub(crate) fn theme_at(cx: &Cx, id: NodeId) -> &Theme {
+    std::iter::successors(Some(id), |&at| cx.parent(at))
+        .find_map(|ancestor| cx.get(ancestor)?.extension::<Theme>())
+        .unwrap_or_else(crate::style::theme::fallback_theme)
 }
 
 fn transition_cache_key(state: &State) -> u64 {

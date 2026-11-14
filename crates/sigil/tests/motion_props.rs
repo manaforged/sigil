@@ -17,6 +17,7 @@ use std::time::Duration;
 
 use sigil::animation::{Easing, Keyframes, Property};
 use sigil::app::FrameHooks;
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{Filter, LayerEffect, SceneCommand, Shadow};
@@ -118,10 +119,10 @@ pub(crate) fn start(ui: &mut Harness, flag: Signal<bool>) {
 pub(crate) fn filters(ui: &mut Harness) -> Vec<Filter> {
     let scene = ui.host().emit(VIEW);
     scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::PushLayer(scope) => match &scope.effect {
+            SceneCommand::PushLayer(scope) => match scope.effect() {
                 LayerEffect::Filter(list) => Some(list.to_vec()),
                 _ => None,
             },
@@ -133,14 +134,14 @@ pub(crate) fn filters(ui: &mut Harness) -> Vec<Filter> {
 pub(crate) fn stops(ui: &mut Harness) -> Vec<(f32, Color)> {
     let scene = ui.host().emit(VIEW);
     scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
             SceneCommand::Gradient(fill) => Some(
-                fill.gradient
-                    .stops
+                fill.gradient()
+                    .stops()
                     .iter()
-                    .map(|stop| (stop.offset, stop.color))
+                    .map(|stop| (stop.offset(), stop.color()))
                     .collect(),
             ),
             _ => None,
@@ -173,23 +174,23 @@ fn project(rows: &[[f32; 4]; 4], x: f32, y: f32) -> f32 {
 pub(crate) fn width_ratio(ui: &mut Harness) -> f32 {
     let scene = ui.host().emit(VIEW);
     let mut rows = None;
-    for command in &scene.commands {
+    for command in scene.commands() {
         match command {
-            SceneCommand::PushLayer(scope) if matrix(&scope.effect).is_some() => {
-                rows = matrix(&scope.effect);
+            SceneCommand::PushLayer(scope) if matrix(scope.effect()).is_some() => {
+                rows = matrix(scope.effect());
             }
-            SceneCommand::Rect(rect) if (rect.rect.width - SIDE).abs() < 0.5 => {
+            SceneCommand::Rect(rect) if (rect.rect().width - SIDE).abs() < 0.5 => {
                 let Some(rows) = rows else {
                     return 1.0;
                 };
-                let (left, top) = (rect.rect.origin.x, rect.rect.origin.y);
+                let (left, top) = (rect.rect().origin.x, rect.rect().origin.y);
                 let middle = top + SIDE / 2.0;
                 return (project(&rows, left + SIDE, middle) - project(&rows, left, middle)) / SIDE;
             }
             _ => {}
         }
     }
-    panic!("the square was not painted: {:?}", scene.commands);
+    panic!("the square was not painted: {:?}", scene.commands());
 }
 
 #[track_caller]

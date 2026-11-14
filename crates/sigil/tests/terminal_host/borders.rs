@@ -1,7 +1,6 @@
 use super::*;
 use sigil::layout::Space;
 use sigil::prelude::Radius;
-use sigil::widgets::Layout;
 
 fn boxed(rounded: bool) -> String {
     present(
@@ -80,7 +79,7 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
     sigil::reactive::Owner::scope("terminal-fills", || {
         let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(|| {
-            sigil::widgets::canvas(|scene, area| {
+            sigil::widgets::canvas(|scene, area, _theme| {
                 let rect = sigil::geometry::Rect::new(
                     sigil::geometry::Point::new(area.origin.x + 4.0, area.origin.y + 4.0),
                     120.0,

@@ -59,7 +59,7 @@ fn assert_icon_command_shape(scene: &CommandScene) {
         SceneCommand::Sprite(search),
         SceneCommand::Sprite(arrow),
         SceneCommand::Sprite(close),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
         panic!("expected five icon draw commands");
     };

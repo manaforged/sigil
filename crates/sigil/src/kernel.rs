@@ -19,7 +19,7 @@ macro_rules! shared_node_methods {
         }
 
         /// Sets the accessible name of the node.
-        pub fn label(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
+        pub fn accessible(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
             self$(.$field)*.a11y.name = name.into();
             self
         }
@@ -28,6 +28,14 @@ macro_rules! shared_node_methods {
         pub fn description(mut self, description: impl Into<String>) -> Self {
             self$(.$field)*.a11y.description =
                 Some($crate::kernel::AccessibleName::Static(description.into()));
+            self
+        }
+
+        /// Sets whether the node and its subtree stay out of the accessibility tree, like `aria-hidden`.
+        pub fn accessibility_hidden(mut self, yes: bool) -> Self {
+            if self$(.$field)*.a11y.hidden != yes {
+                self$(.$field)*.a11y.hidden = yes;
+            }
             self
         }
 
@@ -44,12 +52,6 @@ macro_rules! shared_node_methods {
         /// Sets the tab order: lower indexes come first, and a negative index skips the node.
         pub fn tab_index(mut self, index: i32) -> Self {
             self$(.$field)*.a11y.tab_index = Some(index);
-            self
-        }
-
-        /// Sets the shortcut that the node reports to assistive technology.
-        pub fn keyboard_shortcut(mut self, shortcut: impl Into<$crate::events::Shortcut>) -> Self {
-            self$(.$field)*.a11y.keyboard_shortcut = Some(shortcut.into());
             self
         }
 
@@ -105,7 +107,7 @@ pub(crate) use component::WithCx;
 pub use component::WithCx;
 pub(crate) use component::into_node_builder;
 pub use component::{IntoNode, node};
-pub use control_flow::{SwitchBuilder, for_each, show, switch};
+pub use control_flow::{SwitchBuilder, for_each, keyed, show, switch};
 pub use cx::{Cx, HostMode};
 pub use delta::{DeltaKind, FrameDelta, NodeTag};
 pub use id::NodeId;
@@ -124,4 +126,4 @@ pub use reactive_children::schedule_keyed_rebuild;
 pub(crate) use reactive_children::schedule_keyed_rebuild_at;
 pub(crate) use semantics::TextCursor;
 pub use semantics::{A11yDetail, A11yProps, AccessibleName, FocusScopeKind};
-pub use text::{TextBuilder, TextContent, text};
+pub use text::{TextBuilder, TextContent, rich, text};

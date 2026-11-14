@@ -4,7 +4,7 @@ use std::ops::Range;
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Length, Overflow};
 use crate::style::{BORDER_WIDTH, Paint, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::highlight::{byte_marks, text_runs};
 
 use super::model::{DiffCell, DiffRow};

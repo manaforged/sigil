@@ -1,4 +1,4 @@
-use super::PathCmd;
+use super::PathCommand;
 use crate::scene::command::PathPaint;
 use crate::style::Color;
 
@@ -14,23 +14,8 @@ fn mix_rgba(hash: &mut u64, color: Color) {
     *hash = crate::fnv::mix(*hash, crate::fnv::rgba(color));
 }
 
-fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {
-    mix(hash, tag);
-    for value in values {
-        mix_f32(hash, *value);
-    }
-}
-
-pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
-    match cmd {
-        PathCmd::MoveTo(x, y) => mix_tagged(hash, 1, &[x, y]),
-        PathCmd::LineTo(x, y) => mix_tagged(hash, 2, &[x, y]),
-        PathCmd::QuadTo(cx, cy, x, y) => mix_tagged(hash, 3, &[cx, cy, x, y]),
-        PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
-            mix_tagged(hash, 4, &[c1x, c1y, c2x, c2y, x, y]);
-        }
-        PathCmd::Close => mix(hash, 5),
-    }
+pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCommand) {
+    *hash = crate::scene::command::hash_path_cmd(*hash, cmd);
 }
 
 pub(super) fn mix_stroke(hash: &mut u64, stroke: Option<(Color, f32)>) {

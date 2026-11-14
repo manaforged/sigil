@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
 
-use super::{ResolvedSlot, expand_atom};
+use super::{ResolvedSlot, expand_atom, longhands};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub(crate) struct SlotSet(u128);
@@ -19,9 +19,9 @@ impl SlotSet {
     pub(crate) fn atom(atom: StyleAtom) -> Self {
         let mut expanded = SmallVec::<[(ResolvedSlot, StyleAtom); 4]>::new();
         expand_atom(atom, &mut expanded);
-        expanded
-            .iter()
-            .fold(Self::EMPTY, |set, (slot, _)| set.with(*slot))
+        expanded.iter().fold(Self::EMPTY, |set, (slot, _)| {
+            longhands(*slot).fold(set.with(*slot), Self::with)
+        })
     }
 
     pub(crate) const fn with(self, slot: ResolvedSlot) -> Self {

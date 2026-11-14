@@ -8,7 +8,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, cols};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::inline::note_mark;
 use super::parse::{Block, Inline, Note};
@@ -150,5 +150,5 @@ pub(super) fn math(source: &str) -> NodeBuilder {
     container()
         .role(Role::Math)
         .layout(LayoutStyle::block().fill_width())
-        .child(crate::widgets::math::block(source))
+        .child(super::super::math::block(source))
 }

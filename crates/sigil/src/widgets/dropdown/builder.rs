@@ -5,12 +5,12 @@ use std::rc::Rc;
 use crate::animation::runtime::presets;
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, IntoPxExt as _, JustifyContent, LayoutStyle, Overflow, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow, px_or_zero, rows};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{
     BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -48,7 +48,6 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
-    label: String,
     disabled: Option<Signal<bool>>,
     on_change: Option<IndexChange>,
     style_accumulator: Style,
@@ -60,7 +59,6 @@ impl core::fmt::Debug for DropdownBuilder {
         f.debug_struct("DropdownBuilder")
             .field("selected", &self.selected)
             .field("options", &self.options)
-            .field("label", &self.label)
             .field("disabled", &self.disabled)
             .field("style_accumulator", &self.style_accumulator)
             .field("layout_overrides", &self.layout_overrides)
@@ -68,9 +66,12 @@ impl core::fmt::Debug for DropdownBuilder {
     }
 }
 
-/// A select box.
-pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {
-    DropdownBuilder::new(selected, options)
+/// A select box named "Dropdown" until `.accessible()` (`Widget`) names it.
+pub fn dropdown(
+    selected: Signal<usize>,
+    options: impl IntoIterator<Item = impl Into<String>>,
+) -> DropdownBuilder {
+    DropdownBuilder::new(selected, options.into_iter().map(Into::into).collect())
 }
 
 impl DropdownBuilder {
@@ -79,18 +80,11 @@ impl DropdownBuilder {
         Self {
             selected,
             options,
-            label: "Dropdown".to_owned(),
             disabled: None,
             on_change: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    /// Sets the accessible name; the default is "Dropdown".
-    pub fn label(mut self, label: impl Into<String>) -> Self {
-        self.label = label.into();
-        self
     }
 
     /// Disables the select box while `disabled` is true.
@@ -136,7 +130,7 @@ impl DropdownBuilder {
             user_overlay,
         );
         let (popup_options, popup_on_change) = (Rc::clone(&options), Rc::clone(&on_change));
-        let root = dropdown_root(ctx, Rc::clone(&options), self.label, on_change)
+        let root = dropdown_root(ctx, Rc::clone(&options), on_change)
             .child(trigger)
             .children_reactive(move || {
                 if ctx.open.get() {
@@ -151,12 +145,7 @@ impl DropdownBuilder {
 
 builder_impls!([] DropdownBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
-fn dropdown_root(
-    ctx: OptionCtx,
-    options: Rc<Vec<String>>,
-    label: String,
-    on_change: IndexChange,
-) -> NodeBuilder {
+fn dropdown_root(ctx: OptionCtx, options: Rc<Vec<String>>, on_change: IndexChange) -> NodeBuilder {
     let root_layout = LayoutStyle::block()
         .fill_width()
         .height(ctx.trigger_height)
@@ -165,7 +154,7 @@ fn dropdown_root(
         container()
             .role(Role::ComboBox)
             .expanded(ctx.open)
-            .label(label)
+            .accessible("Dropdown")
             .layout(root_layout),
         DropdownModel {
             ctx,
@@ -216,7 +205,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).into_px()).pick())
+                .height(CellForm::new(LABEL_HEIGHT, px_or_zero(rows(1.0))).pick())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

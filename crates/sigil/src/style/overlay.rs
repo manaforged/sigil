@@ -1,5 +1,7 @@
 use smallvec::SmallVec;
 
+use crate::style::live_paint::{LivePaint, NO_STATE_PAINT};
+use crate::style::merge::SlotSet;
 use crate::style::state::PerState;
 use crate::style::{StateSlot, StyleAtom};
 
@@ -7,6 +9,7 @@ use crate::style::{StateSlot, StyleAtom};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct StyleOverlay {
     slots: PerState<SmallVec<[StyleAtom; 4]>>,
+    live: PerState<LivePaint>,
 }
 
 impl StyleOverlay {
@@ -32,20 +35,34 @@ impl StyleOverlay {
 
     #[must_use]
     pub(crate) const fn from_states(slots: PerState<SmallVec<[StyleAtom; 4]>>) -> Self {
-        Self { slots }
+        Self {
+            slots,
+            live: NO_STATE_PAINT,
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn live(mut self, live: PerState<LivePaint>) -> Self {
+        self.live = live;
+        self
+    }
+
+    pub(crate) fn take_live(&mut self) -> PerState<LivePaint> {
+        std::mem::take(&mut self.live)
     }
 
     /// Returns whether this style overlay is empty.
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
         self.slots.each().iter().all(|atoms| atoms.is_empty())
+            && self.live.each().iter().all(|live| live.is_empty())
     }
 
     pub(crate) fn merge(&mut self, other: &Self) {
-        for (into, from) in self.slots.each_mut().into_iter().zip(other.slots.each()) {
-            *into = crate::style::merge_classes(into, from, 0)
-                .into_iter()
-                .collect();
+        let into = self.slots.each_mut().into_iter().zip(self.live.each_mut());
+        let from = other.slots.each().into_iter().zip(other.live.each());
+        for ((into_atoms, into_live), (from_atoms, from_live)) in into.zip(from) {
+            merge_state(into_atoms, into_live, from_atoms, from_live);
         }
     }
 
@@ -64,6 +81,21 @@ impl StyleOverlay {
     pub(crate) fn may_transform(&self) -> bool {
         self.any(StyleAtom::may_transform)
     }
+}
+
+pub(crate) fn merge_state(
+    atoms: &mut SmallVec<[StyleAtom; 4]>,
+    live: &mut LivePaint,
+    over: &[StyleAtom],
+    over_live: &LivePaint,
+) {
+    live.shadow(SlotSet::of(over));
+    let shadowed = over_live.slots();
+    *atoms = crate::style::merge_classes(atoms, over, 0)
+        .into_iter()
+        .filter(|atom| !SlotSet::atom(*atom).overlaps(shadowed))
+        .collect();
+    live.append(over_live);
 }
 
 #[cfg(test)]

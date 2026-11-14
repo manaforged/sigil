@@ -5,7 +5,7 @@ use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::{Paint, Token};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 20.0);
@@ -19,7 +19,7 @@ fn layout(cx: &mut Cx, root: NodeId) {
 
 fn glyph_runs(scene: &sigil::scene::CommandScene) -> usize {
     scene
-        .commands
+        .commands()
         .iter()
         .filter(|cmd| matches!(cmd, SceneCommand::GlyphRun(_)))
         .count()
@@ -87,8 +87,8 @@ fn second_emit_matches_first() {
     let a = emit_scene(&cx, root, clip);
     let b = emit_scene(&cx, root, clip);
     assert_eq!(
-        a.commands.len(),
-        b.commands.len(),
+        a.len(),
+        b.len(),
         "cached emit must keep the same command count"
     );
 }

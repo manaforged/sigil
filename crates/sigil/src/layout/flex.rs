@@ -106,7 +106,8 @@ impl<'a> FlexSolver<'a> {
         cb: CbSize,
         origin: Position2,
     ) -> Result<(), Error> {
-        let assigned = (Some(cb.w), (cb.h > 0.0).then_some(cb.h));
+        let free = cb.h > 0.0 && !crate::layout::aspect::sizes_height(subtree.style());
+        let assigned = (Some(cb.w), free.then_some(cb.h));
         self.solve_with(subtree, cb, origin, assigned)
     }
 

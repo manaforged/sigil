@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 
 const OBLIQUE_SKEW: f32 = 0.2;
 
+#[doc(hidden)]
 pub struct FontCollection {
     sans: FontFaces,
     mono: FontFaces,
@@ -52,7 +53,10 @@ impl Default for FontCollection {
                     .and_then(|f| face(f.mono.as_ref()))
                     .unwrap_or_else(load_mono_font),
             ),
-            serif: None,
+            serif: over
+                .as_ref()
+                .and_then(|f| face(f.serif.as_ref()))
+                .map(FontFaces::new),
             display: over
                 .as_ref()
                 .and_then(|f| face(f.display.as_ref()))

@@ -1,7 +1,5 @@
 use smallvec::{SmallVec, smallvec};
 
-#[cfg(feature = "kittest")]
-use super::BgGradient;
 use super::gradient::percent as percent_of;
 use super::{Color, ColorValue, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot};
 use crate::style::{StyleAtom, Token};
@@ -10,7 +8,7 @@ type Atoms = SmallVec<[StyleAtom; 8]>;
 
 pub(crate) const NO_GRADIENT: StyleAtom = StyleAtom::Paint(PaintAtom::NoGradient);
 
-/// What fills a node's background: one color, or one gradient.
+/// What fills a node's background: one color, one gradient, or one `Shader`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Background(Fill);
@@ -18,9 +16,8 @@ pub struct Background(Fill);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Fill {
     Color(ColorValue),
-    #[cfg(feature = "kittest")]
-    Stops(BgGradient),
     Gradient(Gradient),
+    Shader(u64),
 }
 
 /// A linear, radial, or conic gradient with up to three color stops, made by `Background::linear`, `radial`, or `conic`.
@@ -59,11 +56,19 @@ impl Background {
     pub(crate) fn atoms(self) -> Atoms {
         match self.0 {
             Fill::Color(color) => smallvec![StyleAtom::BackgroundColor(color), NO_GRADIENT],
-            #[cfg(feature = "kittest")]
-            Fill::Stops(gradient) => {
-                smallvec![StyleAtom::BackgroundGradient(gradient), NO_GRADIENT]
-            }
             Fill::Gradient(gradient) => gradient.atoms(),
+            Fill::Shader(id) => smallvec![
+                StyleAtom::Paint(PaintAtom::NoColor),
+                NO_GRADIENT,
+                StyleAtom::Paint(PaintAtom::Shader(id)),
+            ],
+        }
+    }
+
+    pub(crate) const fn shader(self) -> Option<u64> {
+        match self.0 {
+            Fill::Shader(id) => Some(id),
+            Fill::Color(_) | Fill::Gradient(_) => None,
         }
     }
 }
@@ -168,15 +173,14 @@ impl From<Token> for Background {
     }
 }
 
-#[cfg(feature = "kittest")]
-impl From<BgGradient> for Background {
-    fn from(gradient: BgGradient) -> Self {
-        Self(Fill::Stops(gradient))
-    }
-}
-
 impl From<Gradient> for Background {
     fn from(gradient: Gradient) -> Self {
         Self(Fill::Gradient(gradient))
+    }
+}
+
+impl From<crate::scene::Shader> for Background {
+    fn from(shader: crate::scene::Shader) -> Self {
+        Self(Fill::Shader(crate::scene::shader::hand_off(shader)))
     }
 }

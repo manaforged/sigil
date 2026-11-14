@@ -1,10 +1,9 @@
 use super::install::{
-    install_animation, install_class, install_focus_ring, install_reactive, install_state_overlay,
-    install_theme, install_tone,
+    install_animation, install_class, install_default_focus_ring, install_focus_ring,
+    install_reactive, install_state_overlay, install_theme, install_tone,
 };
-use super::presence::install_presence;
-use crate::animation::Property;
-use crate::animation::runtime::AnimationConfig;
+use super::presence::{Edge, install_motion, install_presence};
+use crate::animation::{Property, Transition};
 use crate::kernel::{NodeBuilder, TextBuilder};
 use crate::reactive::{Reactive, Signal};
 use crate::widgets::Widget;
@@ -16,11 +15,11 @@ use std::rc::Rc;
 use crate::style::class_parse::intern_atoms;
 use crate::style::styled::StateStyleBuilder;
 use crate::style::{
-    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
+    FocusRing, Paint, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
     StyleState, StyleVariant, Theme, Tone, parse_classes,
 };
 
-static EMPTY_ATOMS: &[StyleAtom] = &[];
+pub(crate) static EMPTY_ATOMS: &[StyleAtom] = &[];
 
 pub(crate) enum ClassSource {
     Static(&'static [StyleAtom]),
@@ -80,13 +79,20 @@ impl NodeBuilder {
     }
 
     pub(crate) fn flush_paint(mut self) -> Self {
-        let atoms = self.pending_style().take_atoms();
-        let images = self.pending_style().take_images();
-        let this = if images.is_empty() {
+        let pending = self.pending_style();
+        let atoms = pending.take_atoms();
+        let images = pending.take_images();
+        let shaders = pending.take_shaders();
+        let live = pending.take_live();
+        let this = if images.is_empty() && shaders.is_empty() {
             self
         } else {
-            self.mutate(move |node| images.install(node))
+            self.mutate(move |node| {
+                images.install(node);
+                shaders.install(node);
+            })
         };
+        let this = live.install(this);
         if atoms.is_empty() {
             return this;
         }
@@ -108,7 +114,7 @@ impl TextBuilder {
     }
 }
 
-pub(crate) fn theme(node: NodeBuilder, theme: Theme) -> NodeBuilder {
+pub(crate) fn theme(node: NodeBuilder, theme: impl Reactive<Theme>) -> NodeBuilder {
     node.mutate(move |node| install_theme(node, theme))
 }
 
@@ -120,20 +126,31 @@ pub(crate) fn focus_ring(node: NodeBuilder, ring: FocusRing) -> NodeBuilder {
     node.mutate(move |node| install_focus_ring(node, ring))
 }
 
+pub(crate) fn default_focus_ring(node: NodeBuilder, visible: Signal<bool>) -> NodeBuilder {
+    node.mutate(move |node| install_default_focus_ring(node, visible))
+}
+
 pub(crate) fn presence(
     node: NodeBuilder,
     shown: Signal<bool>,
-    config: AnimationConfig,
+    transition: Transition,
 ) -> NodeBuilder {
+    node.transition(transition)
+        .flush_paint()
+        .mutate(move |node| install_presence(node, shown))
+}
+
+pub(crate) fn motion(node: NodeBuilder, edge: Edge, property: Property) -> NodeBuilder {
     node.flush_paint()
-        .mutate(move |node| install_presence(node, shown, config))
+        .mutate(move |node| install_motion(node, edge, property))
 }
 
 pub(crate) fn drive(
     node: NodeBuilder,
     property: fn(f32) -> Property,
-    value: Signal<f32>,
+    value: impl Reactive<f32>,
 ) -> NodeBuilder {
+    let value = value.into_signal();
     node.mutate(move |node| install_animation(node, property, value))
 }
 
@@ -142,14 +159,16 @@ pub(crate) fn paint_when(
     active: impl Reactive<bool> + 'static,
     paint: StateStyleBuilder,
 ) -> NodeBuilder {
-    let (atoms, images) = paint.into_parts();
+    let (atoms, images, live) = paint.into_parts();
     let atoms = intern_atoms(atoms);
+    let active = active.into_signal();
     let node = if images.is_empty() {
         node
     } else {
         node.mutate(move |node| images.install(node))
     };
-    node.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
+    let node = node.style_reactive(move || if active.get() { atoms } else { EMPTY_ATOMS });
+    live.install_when(node, active)
 }
 
 pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {
@@ -158,12 +177,16 @@ pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -
 }
 
 impl NodeBuilder {
-    pub(crate) fn style(self, style: Style) -> Self {
-        crate::style::styled::node::attach_style(self.flush_paint(), style)
+    pub(crate) fn style(self, mut style: Style) -> Self {
+        let mut this = self.flush_paint();
+        if let Some(base) = this.take_style() {
+            style.merge_under(&base);
+        }
+        crate::style::styled::node::attach_style(this, style)
     }
 
     pub(crate) fn seal_style(self) -> Self {
-        self.mutate(|node| {
+        self.flush_paint().mutate(|node| {
             if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
                 binding.seal();
             }
@@ -186,10 +209,14 @@ impl NodeBuilder {
     {
         let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
         let cell_for_closure = Rc::clone(&slot_cell);
+        let restacks = overlay.any(StyleAtom::restacks);
         self.class(variant.base())
             .style_reactive(move || {
                 let state = state_fn();
-                cell_for_closure.set(state.slot());
+                let slot = state.slot();
+                if cell_for_closure.replace(slot) != slot && restacks {
+                    crate::style::binding::bump_hit_generation();
+                }
                 variant.state(state)
             })
             .state_overlay(overlay, slot_cell)

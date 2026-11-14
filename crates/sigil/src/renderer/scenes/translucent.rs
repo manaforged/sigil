@@ -4,7 +4,6 @@ use crate::style::Rgba;
 
 use super::helpers::{draw_fill, linear_gradient, rect};
 
-#[must_use]
 pub fn translucent() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(

@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::kernel::TextBuilder;
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::scene::{Clip, SceneCommand};
 
@@ -29,7 +30,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
         let scene = sigil::scene::emit_scene(&cx, root, None);
         let mut clip: Option<sigil::geometry::Rect> = None;
         let mut hit = None;
-        for command in &scene.commands {
+        for command in scene.commands() {
             match command {
                 SceneCommand::PushClip(Clip::Rect(push)) => clip = Some(*push),
                 SceneCommand::PopClip => clip = None,

@@ -6,8 +6,9 @@ use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
-use crate::style::{TextRuns, TextStyle};
+use crate::style::{TextFace, TextRuns, TextStyle};
 use crate::text::FaceSpec;
+use crate::text::font_settings::{Axes, FontSettings};
 use crate::text::glyph::ShapedRun;
 use crate::text::shaper::{FaceStyle, Font, Script};
 
@@ -121,10 +122,37 @@ fn hard_break(start: usize, len: usize) -> ShapedSegment {
     }
 }
 
-type Piece<'a> = (usize, usize, &'a str, u16, bool);
+struct Piece<'a> {
+    range: Range<usize>,
+    family: &'a str,
+    weight: u16,
+    italic: bool,
+    font: FontSettings,
+}
+
+impl<'a> Piece<'a> {
+    const fn base(range: Range<usize>, style: &'a TextStyle) -> Self {
+        Self {
+            range,
+            family: style.font_family.as_str(),
+            weight: style.font_weight,
+            italic: style.italic,
+            font: FontSettings::new(),
+        }
+    }
+
+    fn run(range: Range<usize>, face: &'a TextFace, style: &'a TextStyle) -> Self {
+        Self {
+            range,
+            family: TextRuns::family(face, &style.font_family),
+            weight: TextRuns::weight(face, style.font_weight),
+            italic: style.italic || face.italic,
+            font: face.font_settings,
+        }
+    }
+}
 
 fn pieces<'a>(text: &str, style: &'a TextStyle) -> SmallVec<[Piece<'a>; 4]> {
-    let base = (style.font_family.as_str(), style.font_weight, style.italic);
     let mut out = SmallVec::new();
     let mut at = 0;
     for run in style.runs.iter().flat_map(|runs| runs.0.iter()) {
@@ -138,20 +166,68 @@ fn pieces<'a>(text: &str, style: &'a TextStyle) -> SmallVec<[Piece<'a>; 4]> {
             continue;
         }
         if start > at {
-            out.push((at, start, base.0, base.1, base.2));
+            out.push(Piece::base(at..start, style));
         }
-        let family = TextRuns::family(&run.face, base.0);
-        let weight = TextRuns::weight(&run.face, base.1);
-        out.push((start, end, family, weight, base.2 || run.face.italic));
+        out.push(Piece::run(start..end, &run.face, style));
         at = end;
     }
     if at < text.len() || out.is_empty() {
-        out.push((at, text.len(), base.0, base.1, base.2));
+        out.push(Piece::base(at..text.len(), style));
     }
     out
 }
 
-type Chain<'a> = (&'a str, u16, bool, u16, Arc<[Font]>);
+struct Chain<'a> {
+    family: &'a str,
+    weight: u16,
+    italic: bool,
+    axes: Axes,
+    slot: u16,
+    fonts: Arc<[Font]>,
+}
+
+#[derive(Default)]
+struct Faces<'a> {
+    chains: SmallVec<[Chain<'a>; 2]>,
+    specs: SmallVec<[FaceSpec; 8]>,
+}
+
+impl<'a> Faces<'a> {
+    fn chain(
+        &mut self,
+        fonts: &FontCollection,
+        (piece, axes): (&Piece<'a>, Axes),
+        chain_of: &mut impl FnMut(&Font, u16) -> Arc<[Font]>,
+    ) -> (u16, Arc<[Font]>) {
+        let known = self.chains.iter().find(|chain| {
+            chain.family == piece.family
+                && chain.weight == piece.weight
+                && chain.italic == piece.italic
+                && chain.axes == axes
+        });
+        if let Some(chain) = known {
+            return (chain.slot, chain.fonts.clone());
+        }
+        let (primary, skew) = fonts.select_face(piece.family, piece.weight, piece.italic);
+        let chain = chain_of(primary, piece.weight);
+        let slot = u16::try_from(self.specs.len()).unwrap_or(u16::MAX);
+        self.specs.extend(chain.iter().map(|face| FaceSpec {
+            font: face.clone(),
+            weight: piece.weight,
+            skew,
+            axes,
+        }));
+        self.chains.push(Chain {
+            family: piece.family,
+            weight: piece.weight,
+            italic: piece.italic,
+            axes,
+            slot,
+            fonts: chain.clone(),
+        });
+        (slot, chain)
+    }
+}
 
 pub(super) fn style_spans(
     fonts: &FontCollection,
@@ -160,39 +236,25 @@ pub(super) fn style_spans(
     shaper: &FaceStyle,
     chain_of: &mut impl FnMut(&Font, u16) -> Arc<[Font]>,
 ) -> (SmallVec<[ShapeSpan; 2]>, SmallVec<[FaceSpec; 8]>) {
-    let mut chains = SmallVec::<[Chain<'_>; 2]>::new();
-    let mut faces = SmallVec::<[FaceSpec; 8]>::new();
+    let mut faces = Faces::default();
     let mut spans = SmallVec::<[ShapeSpan; 2]>::new();
-    for (start, end, family, weight, italic) in pieces(text, style) {
-        let known = chains
-            .iter()
-            .find(|entry| entry.0 == family && entry.1 == weight && entry.2 == italic)
-            .map(|entry| (entry.3, entry.4.clone()));
-        let (slot, chain) = known.unwrap_or_else(|| {
-            let (primary, skew) = fonts.select_face(family, weight, italic);
-            let chain = chain_of(primary, weight);
-            let slot = u16::try_from(faces.len()).unwrap_or(u16::MAX);
-            faces.extend(chain.iter().map(|font| FaceSpec {
-                font: font.clone(),
-                weight,
-                skew,
-            }));
-            chains.push((family, weight, italic, slot, chain.clone()));
-            (slot, chain)
-        });
+    for piece in pieces(text, style) {
+        let font = piece.font.over(shaper.font);
+        let (slot, chain) = faces.chain(fonts, (&piece, font.axes), chain_of);
         let face_style = FaceStyle {
-            weight,
+            weight: piece.weight,
+            font,
             ..shaper.clone()
         };
         let key = SpanKey::new(&chain, &face_style);
         spans.push(ShapeSpan {
-            start,
-            end,
+            start: piece.range.start,
+            end: piece.range.end,
             chain,
             style: face_style,
             key,
             slot,
         });
     }
-    (spans, faces)
+    (spans, faces.specs)
 }

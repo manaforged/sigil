@@ -8,6 +8,7 @@ use crate::layout::{
     style_data::{Axes, Display, Edges, TrackSize},
 };
 
+#[doc(hidden)]
 pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     for atom in atoms {
         apply_style_atom(*atom, style);
@@ -77,12 +78,12 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         StyleAtom::BorderColor(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Radius(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
+        | StyleAtom::ZIndex(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
         | StyleAtom::FontItalic(_)

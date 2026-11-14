@@ -1,5 +1,6 @@
 use super::*;
 use sigil::events::EventRouter;
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil_kittest::Harness;
@@ -107,7 +108,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         assert!(checked_colors.contains(&theme.color(Token::Accent)));
         assert!(
             emit_scene(&cx, root, None)
-                .commands
+                .commands()
                 .iter()
                 .any(|command| matches!(command, SceneCommand::Path(_))),
             "checked scene must draw the vector check mark"
@@ -319,7 +320,7 @@ fn a_stat_with_a_signal_label_is_named_by_that_label() {
 #[test]
 fn an_empty_state_with_a_signal_title_is_named_by_that_title() {
     named_by_its_signal_label(Role::Status, ["No stock", "No orders"], |title| {
-        empty_state(title, "Nothing here yet")
+        empty_state(title).description("Nothing here yet")
     });
 }
 

@@ -1,17 +1,23 @@
 use unicode_segmentation::UnicodeSegmentation;
 
-pub(crate) fn byte_at_col(text: &str, col: usize) -> usize {
+/// Returns the UTF-8 byte offset of grapheme column `col` in `text`, clamping to `text.len()`.
+#[must_use]
+pub fn byte_at_col(text: &str, col: usize) -> usize {
     text.grapheme_indices(true)
         .nth(col)
         .map_or(text.len(), |(index, _)| index)
 }
 
-pub(crate) fn col_at_byte(text: &str, byte: usize) -> usize {
+/// Returns the grapheme column index at UTF-8 byte offset `byte` in `text`.
+#[must_use]
+pub fn col_at_byte(text: &str, byte: usize) -> usize {
     let byte = clamp_to_len_boundary(text, byte);
     text[..byte].graphemes(true).count()
 }
 
-pub(crate) fn col_count(text: &str) -> usize {
+/// Returns the number of extended grapheme clusters in `text`.
+#[must_use]
+pub fn col_count(text: &str) -> usize {
     text.graphemes(true).count()
 }
 

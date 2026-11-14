@@ -1,14 +1,8 @@
+use super::Theme;
 use super::mix::{alpha_mix, ramp_accent};
-use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
 use crate::style::srgb;
 use crate::style::{Color, ColorValue, Token};
-
-impl From<Color> for ThemeValue {
-    fn from(color: Color) -> Self {
-        Self::Color(color)
-    }
-}
 
 const SCRIM: Color = Color {
     r: 0,
@@ -35,22 +29,31 @@ impl Theme {
             .unwrap_or_else(|| self.missing_color(name))
     }
 
-    /// Sets the token `name`, built-in or custom, to `value`.
+    /// Sets `token`, built-in or custom, to `color`.
     #[must_use]
-    pub fn token(mut self, name: &str, value: impl Into<ThemeValue>) -> Self {
-        let value = value.into();
-        if let (Some(token), ThemeValue::Color(color)) = (Token::from_name(name), value) {
-            self.sync_runtime_color(token, color);
+    pub fn token(mut self, token: Token, color: Color) -> Self {
+        let token = token.canonical();
+        self.sync_runtime_color(token, color);
+        self.tokens.overrides.insert(token, color);
+        self
+    }
+
+    /// Sets the token `name`, built-in or custom, to `color`.
+    #[must_use]
+    #[cfg(app_host)]
+    pub(crate) fn token_by_name(mut self, name: &str, color: Color) -> Self {
+        if let Some(token) = Token::from_name(name) {
+            return self.token(token, color);
         }
-        self.tokens.overrides.insert(name, value);
+        self.tokens.overrides.insert_name(name, color);
         self
     }
 
     /// Fill the theme table layer from static data.
     #[must_use]
-    pub(crate) fn theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
-        for (name, value) in tokens {
-            self.tokens.theme.insert(name, *value);
+    pub(crate) fn theme_tokens(mut self, tokens: &phf::Map<&'static str, Color>) -> Self {
+        for (name, color) in tokens {
+            self.tokens.theme.insert_name(name, *color);
         }
         self
     }
@@ -91,7 +94,7 @@ impl Theme {
         let ColorValue::Token(token) = key else {
             return None;
         };
-        Some(match token {
+        Some(match token.canonical() {
             Token::Accent | Token::Ring => self.accent,
             Token::AccentHover => self.accent_hover,
             Token::OnAccent => self.on_accent,
@@ -109,7 +112,9 @@ impl Theme {
             Token::OnSurfaceMuted | Token::Placeholder => self.gray.step(11),
             Token::OnSolid => self.on_solid,
             Token::Scrim => SCRIM,
+            Token::Selection => crate::style::SELECTION_FILL,
             Token::Step(role, step) => self.scale(role).step(step),
+            Token::Custom(_) => return None,
         })
     }
 

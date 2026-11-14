@@ -108,6 +108,18 @@ impl From<String> for Key {
     }
 }
 
+impl From<&str> for Key {
+    fn from(value: &str) -> Self {
+        Self::Character(value.to_owned())
+    }
+}
+
+impl From<char> for Key {
+    fn from(value: char) -> Self {
+        Self::Character(value.to_string())
+    }
+}
+
 impl PartialEq<Key> for &Key {
     fn eq(&self, other: &Key) -> bool {
         **self == *other
@@ -129,6 +141,32 @@ impl PartialEq<NamedKey> for Key {
 impl PartialEq<NamedKey> for &Key {
     fn eq(&self, other: &NamedKey) -> bool {
         matches!(*self, Key::Named(named) if named == other)
+    }
+}
+
+impl PartialEq<&str> for Key {
+    fn eq(&self, other: &&str) -> bool {
+        matches!(self, Self::Character(text) if text == other)
+    }
+}
+
+impl PartialEq<&str> for &Key {
+    fn eq(&self, other: &&str) -> bool {
+        **self == *other
+    }
+}
+
+impl PartialEq<char> for Key {
+    fn eq(&self, other: &char) -> bool {
+        let mut buf = [0_u8; 4];
+        let other = other.encode_utf8(&mut buf);
+        matches!(self, Self::Character(text) if text == other)
+    }
+}
+
+impl PartialEq<char> for &Key {
+    fn eq(&self, other: &char) -> bool {
+        **self == *other
     }
 }
 
@@ -289,6 +327,7 @@ pub struct KeyEvent {
     pub(crate) phase: KeyPhase,
     pub(crate) text: Option<String>,
     propagation_stopped: bool,
+    default_prevented: bool,
 }
 
 impl KeyEvent {
@@ -301,7 +340,19 @@ impl KeyEvent {
             phase,
             text: None,
             propagation_stopped: false,
+            default_prevented: false,
         }
+    }
+
+    /// Marks the event so built-in host defaults are skipped.
+    pub const fn prevent_default(&mut self) {
+        self.default_prevented = true;
+    }
+
+    /// Returns whether default handling was prevented on this event.
+    #[must_use]
+    pub const fn default_prevented(&self) -> bool {
+        self.default_prevented
     }
 
     /// The key by its meaning: a named key or the text that it types.
@@ -467,6 +518,8 @@ pub enum WindowEvent {
     Destroyed,
     /// The window became fully hidden (`true`) or visible again (`false`).
     Occluded(bool),
+    /// The operating system switched between dark and light appearance.
+    BackdropChanged(crate::style::Backdrop),
 }
 
 const fn normalize_modifiers(modifiers: Modifiers) -> Modifiers {

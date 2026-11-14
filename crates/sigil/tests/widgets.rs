@@ -8,7 +8,7 @@
 
 use crate::widget_support;
 
-use sigil::events::PhysicalKey;
+use sigil::events::{KeyPhase, MouseButtons, PhysicalKey, PointerPhase};
 use sigil::kernel::{Cx, NodeId};
 use sigil_kittest::FakeMeasure;
 use std::cell::{Cell, RefCell};
@@ -62,10 +62,10 @@ fn type_char_owned(ch: String, physical: PhysicalKey) -> Event {
 
 fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Color) -> f32 {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Rect(rect) if rect.color == color => Some(rect.rect.origin.x),
+            SceneCommand::Rect(rect) if rect.color() == color => Some(rect.rect().origin.x),
             _ => None,
         })
         .expect("rect with requested color exists")

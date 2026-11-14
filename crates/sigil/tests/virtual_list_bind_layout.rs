@@ -1,17 +1,19 @@
 #![allow(clippy::unwrap_used)]
 
+use sigil::geometry::Constraint;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
 use sigil::scene::{SceneCommand, emit_scene};
+use sigil::style::FontFamily;
 use sigil_kittest::FakeMeasure;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
 fn glyph_runs(cx: &Cx, root: NodeId) -> usize {
     emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
         .count()
@@ -320,7 +322,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));
-        for c in emit_scene(&cx, root, None).commands {
+        for c in emit_scene(&cx, root, None).commands() {
             if let SceneCommand::GlyphRun(d) = c
                 && d.text().contains("token")
             {

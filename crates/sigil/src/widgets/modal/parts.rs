@@ -6,7 +6,7 @@ use crate::reactive::Signal;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Paint, Token};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::button::button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};

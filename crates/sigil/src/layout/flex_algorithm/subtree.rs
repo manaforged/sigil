@@ -64,7 +64,12 @@ pub(crate) fn layout_item_subtree(
             let nested =
                 crate::layout::forest::MeasureScope::new(forest, scope.text(), scope.available());
             let pre = block_origin(style, origin, w);
-            crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)?;
+            crate::layout::grid::GridSolver::new(nested).solve_at_assigned(
+                node,
+                (w, h),
+                pre,
+                assigned_h,
+            )?;
         }
         Display::Block | Display::None => {
             dispatch_block_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))?;
@@ -195,11 +200,13 @@ fn assigned_size(
     let stretched = (style.stretch_width || ctx.solver.fills_width(node))
         && in_flow
         && (!probing || ctx.measures_height);
-    let assigned_w = ((!probing && sized) || stretched).then_some(w);
-    let assigned_h = (!probing
-        && (style.size.height != Length::Auto
-            || (in_flow && ctx.axes.row)
-            || style.flex_grow > 0.0))
+    let keeps_ratio = !probing && style.aspect_ratio.is_some();
+    let assigned_w = ((!probing && sized) || stretched || keeps_ratio).then_some(w);
+    let assigned_h = (keeps_ratio
+        || (!probing
+            && (style.size.height != Length::Auto
+                || (in_flow && ctx.axes.row)
+                || style.flex_grow > 0.0)))
         .then_some(h);
     (assigned_w, assigned_h)
 }

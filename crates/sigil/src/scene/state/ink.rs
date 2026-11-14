@@ -24,10 +24,7 @@ pub(crate) fn invert(transform: Transform) -> Option<Transform> {
 }
 
 pub(crate) fn shadow_reach(shadow: &Shadow) -> f32 {
-    shadow.blur.mul_add(
-        3.0,
-        shadow.spread.abs() + shadow.offset[0].abs().max(shadow.offset[1].abs()),
-    )
+    shadow.reach() + shadow.offset[0].abs().max(shadow.offset[1].abs())
 }
 
 pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
@@ -38,6 +35,13 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             let ink = stroked(draw.rect, draw.stroke);
             draw.border.map_or(ink, |border| ink.union(border.rect))
         }
+        SceneCommand::Rects(draws) => draws
+            .iter()
+            .map(|draw| {
+                let ink = stroked(draw.rect, draw.stroke);
+                draw.border.map_or(ink, |border| ink.union(border.rect))
+            })
+            .reduce(Rect::union)?,
         SceneCommand::Gradient(draw) => {
             let ink = stroked(draw.rect, draw.stroke);
             draw.border.map_or(ink, |border| ink.union(border.rect))
@@ -52,15 +56,19 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
         SceneCommand::Image(draw) => draw.destination,
         SceneCommand::Path(draw) => draw.bounds.expand(1.0 / scale),
         SceneCommand::Decoration(draw) => draw.band.expand(draw.line_width * 2.0),
+        SceneCommand::Shader(draw) => draw.rect,
         SceneCommand::PushLayer(scope) => match scope.effect {
             LayerEffect::Transform(transform) => transform_rect(transform, scope.clip),
             LayerEffect::Projected { transform, .. } => {
                 transform.bounds(scope.clip).unwrap_or(scope.clip)
             }
-            LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => scope.clip,
+            LayerEffect::Identity
+            | LayerEffect::Mask(_)
+            | LayerEffect::Filter(_)
+            | LayerEffect::Backdrop(_)
+            | LayerEffect::Shader(_) => scope.clip,
         },
         SceneCommand::PushClip(_) | SceneCommand::PopClip | SceneCommand::PopLayer => return None,
-        #[cfg(scene_paint)]
         SceneCommand::PushTransform(_) | SceneCommand::PopTransform => return None,
         #[cfg(host)]
         SceneCommand::SaveLayer { .. } => return None,

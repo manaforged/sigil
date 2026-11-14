@@ -1,12 +1,12 @@
 use crate::layout::Space;
 use std::rc::Rc;
 
-use crate::kernel::{IntoNode, NodeBuilder, container};
+use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, Signal, memo, signal};
 use crate::style::{Radius, Style, Token, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::caller_style;
@@ -35,7 +35,7 @@ pub struct TabsBuilder {
     labels: Vec<String>,
     label_source: Option<Box<dyn Fn() -> Vec<String>>>,
     disabled: Vec<usize>,
-    aria_label: String,
+    aria_label: Option<AccessibleName>,
     style_accumulator: Style,
     contents: Vec<Box<dyn IntoNode>>,
     reorderable: bool,
@@ -71,7 +71,7 @@ pub fn tabs() -> TabsBuilder {
         labels: Vec::new(),
         label_source: None,
         disabled: Vec::new(),
-        aria_label: String::new(),
+        aria_label: None,
         style_accumulator: Style::new(),
         contents: Vec::new(),
         reorderable: false,
@@ -132,8 +132,8 @@ impl TabsBuilder {
     }
 
     /// Sets the accessible name of the tab list.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
-        self.aria_label = label.into();
+    pub fn accessible(mut self, label: impl Into<AccessibleName>) -> Self {
+        self.aria_label = Some(label.into());
         self
     }
 
@@ -188,7 +188,7 @@ impl TabsBuilder {
         let tab_list = apply_chrome(
             self.chrome,
             self.list_justify,
-            build_tab_list(labels, &self.aria_label, spec),
+            build_tab_list(labels, self.aria_label, spec),
         );
         let root = if self.contents.is_empty() {
             tab_list

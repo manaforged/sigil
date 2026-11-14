@@ -11,7 +11,7 @@ use crate::reactive::{Signal, memo};
 use crate::style::{
     ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, Tone, space,
 };
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -26,7 +26,6 @@ use super::shared::{
 pub struct ToggleBuilder {
     on: Signal<bool>,
     label: Option<TextContent>,
-    accessible: Option<String>,
     disabled: Option<Signal<bool>>,
     on_change: Option<BoolChange>,
     layout_overrides: LayoutOverrides,
@@ -38,7 +37,6 @@ impl core::fmt::Debug for ToggleBuilder {
         f.debug_struct("ToggleBuilder")
             .field("on", &self.on)
             .field("label", &self.label)
-            .field("accessible", &self.accessible)
             .field("disabled", &self.disabled)
             .field("layout_overrides", &self.layout_overrides)
             .field("style", &self.style)
@@ -99,18 +97,11 @@ impl ToggleBuilder {
         Self {
             on,
             label: None,
-            accessible: None,
             disabled: None,
             on_change: None,
             layout_overrides: LayoutOverrides::new(),
             style: Style::new(),
         }
-    }
-
-    /// Sets the accessible name; it takes priority over the label.
-    pub fn accessible(mut self, name: impl Into<String>) -> Self {
-        self.accessible = Some(name.into());
-        self
     }
 
     /// Shows `label` after the switch and uses it as the accessible name.
@@ -136,14 +127,10 @@ impl ToggleBuilder {
         let style = std::mem::take(&mut self.style);
         let on = self.on;
         let disabled = self.disabled;
-        let accessible = self.accessible.map(TextContent::Static);
         let mut node = control(
             container()
                 .role(Role::Switch)
-                .label(accessible_name_or(
-                    accessible.as_ref().or(self.label.as_ref()),
-                    StringKey::Toggle,
-                ))
+                .accessible(accessible_name_or(self.label.as_ref(), StringKey::Toggle))
                 .checked(on)
                 .layout(toggle_layout(self.label.is_some())),
             disabled,

@@ -1,14 +1,19 @@
+use std::time::Duration;
+
+use crate::animation::{Easing, Keyframes, Property};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Space};
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::{Layout, Widget};
+use crate::style::{Background, GradientAxis, Paint, Radius, Style, StyleAtom, Token, Tone, space};
+use crate::widgets::Widget;
+use crate::widgets::layout_ext::LayoutOverrides;
 
 use super::super::chip::chip;
 use super::super::icon::CHECK_GLYPH;
+use super::super::shared::caller_style;
 
 const BADGE_MAX: usize = 99;
 const MARKER_PX: f32 = space(6);
@@ -43,43 +48,121 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
         .children_reactive(move || {
             shown.get().then(|| {
                 chip(move || shown_text.get(), tone)
-                    .map_node(move |node| node.role(Role::Status).label(shown_text))
+                    .map_node(move |node| node.role(Role::Status).accessible(shown_text))
             })
         })
 }
 
-static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(4).background()];
+const BAR_FILL: Token = Token::BorderStrong;
+const SHINE_FILL: Token = Token::OnSurface;
+const BAR_OPACITY: u16 = 3_500;
+const SHINE_PERIOD: Duration = Duration::from_millis(1600);
+const SHINE_BAND: f32 = 40.0;
+const FULL: f32 = 100.0;
 
-/// A loading placeholder of `lines` muted bars, announced to screen readers as a polite "Loading" status.
+static BAR: &[StyleAtom] = &[
+    Radius::Sm.atom(),
+    BAR_FILL.background(),
+    StyleAtom::Opacity(BAR_OPACITY),
+];
+
+/// Builder of a loading placeholder.
+#[derive(Debug)]
+#[must_use]
+pub struct SkeletonBuilder {
+    lines: usize,
+    shimmer: bool,
+    style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
+}
+
+/// A loading placeholder of muted bars, three by default, announced to screen readers as a polite "Loading" status.
 ///
 /// ```
 /// use sigil::prelude::*;
 /// use sigil::widgets::skeleton;
 ///
 /// fn loading() -> impl IntoNode {
-///     column().child(skeleton(3))
+///     column().child(skeleton().lines(4))
 /// }
 /// ```
-pub fn skeleton(lines: usize) -> NodeBuilder {
-    let lines = lines.max(1);
-    let mut root = container()
-        .role(Role::Status)
-        .label(theme_label(StringKey::Loading))
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
-    for index in 0..lines {
-        let width = if index + 1 == lines && lines > 1 {
-            Length::Percent(0.6)
-        } else {
-            Length::Fill
-        };
-        root = root.child(
-            container()
+pub const fn skeleton() -> SkeletonBuilder {
+    SkeletonBuilder {
+        lines: 3,
+        shimmer: false,
+        style_accumulator: Style::new(),
+        layout_overrides: LayoutOverrides::new(),
+    }
+}
+
+impl SkeletonBuilder {
+    /// Sets the number of bars, at least 1; the default is 3.
+    pub const fn lines(mut self, lines: usize) -> Self {
+        self.lines = if lines > 1 { lines } else { 1 };
+        self
+    }
+
+    /// Sweeps a highlight across the bars when `enabled` is true, and shows plain bars under reduced motion; the default is false.
+    pub const fn shimmer(mut self, enabled: bool) -> Self {
+        self.shimmer = enabled;
+        self
+    }
+
+    fn root(self) -> NodeBuilder {
+        let lines = self.lines;
+        let shine = self.shimmer.then(shine);
+        let mut root = container()
+            .role(Role::Status)
+            .accessible(theme_label(StringKey::Loading))
+            .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
+        for index in 0..lines {
+            let width = if index + 1 == lines && lines > 1 {
+                Length::Percent(0.6)
+            } else {
+                Length::Fill
+            };
+            let bar = container()
                 .layout(LayoutStyle::block().width(width).height(line(space(4))))
                 .class(BAR)
-                .hittable(false),
-        );
+                .hittable(false);
+            root = root.child(match &shine {
+                Some(sweep) => shining(bar, sweep.clone()),
+                None => bar,
+            });
+        }
+        caller_style(root, self.style_accumulator)
     }
-    root
+}
+
+builder_impls!([] SkeletonBuilder: paint(style_accumulator), widget, node);
+
+fn shine() -> Keyframes {
+    let sweep = Keyframes::new(SHINE_PERIOD).ease(Easing::Linear).infinite();
+    let sweep = trail(sweep, Property::GradientToPosition, 0.0);
+    let sweep = trail(sweep, Property::GradientViaPosition, SHINE_BAND / 2.0);
+    trail(sweep, Property::GradientFromPosition, SHINE_BAND)
+}
+
+fn trail(sweep: Keyframes, stop: fn(f32) -> Property, lag: f32) -> Keyframes {
+    let span = FULL + SHINE_BAND;
+    sweep
+        .keyframe(0.0, stop(0.0))
+        .keyframe(lag / span, stop(0.0))
+        .keyframe((FULL + lag) / span, stop(FULL))
+        .keyframe(1.0, stop(FULL))
+}
+
+fn shining(bar: NodeBuilder, sweep: Keyframes) -> NodeBuilder {
+    bar.background(
+        Background::linear(GradientAxis::LeftToRight)
+            .start(BAR_FILL)
+            .middle(SHINE_FILL)
+            .end(BAR_FILL)
+            .start_at(0)
+            .middle_at(0)
+            .end_at(0),
+    )
+    .animation(sweep)
 }
 
 static MARK_DONE: &[StyleAtom] = &[
@@ -103,12 +186,12 @@ static LABEL_OTHER: &[StyleAtom] = &[Tone::Neutral.step(11).text()];
 ///
 /// fn checkout() -> impl IntoNode {
 ///     let step = signal(1_usize);
-///     stepper(["Cart", "Shipping", "Pay"], step)
+///     stepper(step, ["Cart", "Shipping", "Pay"])
 /// }
 /// ```
 pub fn stepper<S: Into<String>>(
-    steps: impl IntoIterator<Item = S>,
     current: impl Reactive<usize>,
+    steps: impl IntoIterator<Item = S>,
 ) -> NodeBuilder {
     let current = current.into_signal();
     let mut root = container().role(Role::List).layout(
@@ -128,7 +211,7 @@ fn step(index: usize, name: String, current: Signal<usize>) -> NodeBuilder {
     let number = (index + 1).to_string();
     container()
         .role(Role::ListItem)
-        .label(name.clone())
+        .accessible(name.clone())
         .selected(selected)
         .layout(
             LayoutStyle::flex_row()

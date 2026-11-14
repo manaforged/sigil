@@ -7,7 +7,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Signal, memo};
 use crate::style::Tone;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::super::interaction::InteractionState;
@@ -23,7 +23,7 @@ pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) ->
         theme_string(StringKey::SelectAllRows),
         move || toggle.toggle_all(),
     );
-    select_cell(Role::ColumnHeader, height, check).label(theme_label(StringKey::Select))
+    select_cell(Role::ColumnHeader, height, check).accessible(theme_label(StringKey::Select))
 }
 
 pub(super) fn row_cell<Row: 'static>(
@@ -72,7 +72,7 @@ fn select_box(
     let interaction = InteractionState::new(true);
     let node = container()
         .role(Role::CheckBox)
-        .label(label)
+        .accessible(label)
         .checked(checked)
         .hittable(true)
         .layout(

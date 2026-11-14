@@ -9,20 +9,25 @@ A key event goes to the focused node first. Handlers run in two passes along the
 1. Capture handlers (`key_capture`, `key_capture_any`) run from the root down to the focused node.
 2. Bubble handlers (`key`, `key_any`) run from the focused node up to the root.
 
-A handler calls `event.stop_propagation()` to end both passes.
+A handler calls `event.stop_propagation()` to skip the handlers that have not run yet, in both passes. It does not cancel the default action of the key.
 
-Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(NamedKey::Tab, f)` on an ancestor owns Tab for its subtree.
+After both passes, the host runs the default action of the key: Tab and Shift+Tab move focus, Escape clears the text selection, and Cmd+C or Ctrl+C copies the selected text outside a text field. A handler calls `event.prevent_default()` to skip the default action. A `.key_capture(NamedKey::Tab, f)` handler on an ancestor that calls `prevent_default` keeps focus in place, so it owns Tab for its subtree.
 
 A `Shortcut` is a key plus modifiers:
 
 | Constructor | Matches |
 | --- | --- |
 | `Shortcut::plain(NamedKey::Enter)` | Enter with no modifiers |
-| `Shortcut::plain(Key::character("j"))` | The `j` key with no modifiers |
-| `Shortcut::ctrl(Key::character("s"))` | Ctrl+S |
+| `Shortcut::plain('j')` | The `j` key with no modifiers |
+| `Shortcut::ctrl("s")` | Ctrl+S |
+| `Shortcut::primary('k')` | Cmd+K on macOS, Ctrl+K elsewhere |
 | `Shortcut::new(key, Modifiers::CTRL \| Modifiers::SHIFT)` | Any modifier set |
 
-`NamedKey::Escape` converts into a `Shortcut` directly, so `.key(NamedKey::Escape, f)` also works.
+`NamedKey::Escape`, `&str`, and `char` convert into `Key` and `Shortcut` directly, so `.key(NamedKey::Escape, f)`, `Shortcut::primary('k')`, and `event.key() == '?'` work without `Key::character(...)`. Use `.key_any(|event| ...)` on a focused node to handle any key in the bubble pass.
+
+Key handlers see key presses only. The router drops a key release before any handler runs, so `.key`, `.key_any`, `.key_capture`, `.key_capture_any`, `.shortcut`, and `Widget::step_keys` never see `KeyPhase::Up`. A held key repeats as more presses; `event.repeat()` is `true` on those. `event.key()` is the key by its meaning, and `event.text()` is the text that the press types, or `None` for a key that types nothing. Read `event.text()` to take typed characters.
+
+Ctrl+V, and Cmd+V on macOS, is an ordinary key event. `text_field` binds it and reads the clipboard itself. The `.paste(|text| ...)` handler runs only for text that the host delivers as a paste, such as a bracketed paste in the terminal host; it returns `true` to stop the paste from reaching ancestors. A custom widget that pastes on the key binds `.key(Shortcut::primary('v'), ...)` and calls `sigil::clipboard::paste()`.
 
 ### Bind a key on a focused node
 
@@ -53,7 +58,7 @@ fn main() -> AppResult<()> {
 
 ### Bind a key that fires from anywhere
 
-`.shortcut(s, handler)` registers `s` as a global shortcut. The router runs the handler for the key, wherever the focus is. One node can hold many shortcuts. A plain character shortcut does not fire while a text input has focus, so typing `q` into a field does not quit.
+`.shortcut(s, handler)` registers `s` as a global shortcut and reports it to assistive technology. The router runs the handler for the key, wherever the focus is. One node can hold many shortcuts. `.accessible_shortcut(s)` only reports the shortcut and registers no handler. A plain character shortcut does not fire while a text input has focus, so typing `q` into a field does not quit.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -77,7 +82,7 @@ fn main() -> AppResult<()> {
 
 ### See every key before the focused widget
 
-`key_capture_any` on an ancestor sees each key before the focused descendant. This example turns Tab inside a text editor into two spaces.
+`key_capture_any` on an ancestor sees each key before the focused descendant. This example turns Tab inside a text editor into two spaces. `prevent_default` keeps focus in the editor, and `stop_propagation` keeps the key from the editor's own handlers.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -87,6 +92,7 @@ fn tree() -> impl IntoNode {
     container().child(text_field(body).multiline()).key_capture_any(move |event: &mut KeyEvent| {
         if event.key() == Key::named(NamedKey::Tab) {
             body.update(|text| text.push_str("  "));
+            event.prevent_default();
             event.stop_propagation();
         }
     })
@@ -107,9 +113,70 @@ Every widget builder implements `Widget`, so it takes the event methods. The han
 
 A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained builder methods are not available on the result. Return the concrete builder type (for example `sigil::widgets::ButtonBuilder`) or `NodeBuilder` to keep them. Under Rust 2024, `impl IntoNode` captures every lifetime in the arguments. A helper that takes `&state` and returns `impl IntoNode` then borrows `state` for the life of the node. Write `-> impl IntoNode + use<>` when the result does not use the reference, or return a concrete type.
 
+## Custom widgets
+
+A custom widget is a builder struct that holds a `WidgetFrame`. Implement `Framed` to return the frame, and the builder gets the `Paint`, `States`, and `Widget` methods. Implement `IntoNode` to build the root node, and pass the root through `WidgetFrame::finish` so the caller's style and layout setters reach it.
+
+```rust,no_run
+use sigil::node::{Cx, NodeId};
+use sigil::prelude::*;
+use sigil::widgets::{Framed, WidgetFrame};
+
+#[must_use]
+pub struct RatingBuilder {
+    value: Signal<u8>,
+    max: u8,
+    frame: WidgetFrame,
+}
+
+pub const fn rating(value: Signal<u8>) -> RatingBuilder {
+    RatingBuilder { value, max: 5, frame: WidgetFrame::new() }
+}
+
+impl RatingBuilder {
+    pub const fn max(mut self, max: u8) -> Self {
+        self.max = max;
+        self
+    }
+}
+
+impl Framed for RatingBuilder {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl IntoNode for RatingBuilder {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        let (value, max) = (self.value, self.max.max(1));
+        let stars = (1..=max).map(move |star| {
+            button(move || if value.get() >= star { "★" } else { "☆" })
+                .ghost()
+                .accessible(format!("{star} of {max}"))
+                .activate(move || value.set(star))
+        });
+        let root = row().role(Role::Group).accessible("Rating").gap(Space::Xxs).children(stars);
+        self.frame.finish(root).build(cx)
+    }
+}
+
+fn tree() -> impl IntoNode {
+    let score = signal(3_u8);
+    column()
+        .child(rating(score).max(4).padding(Space::Md).background(Token::Surface))
+        .child(text(move || format!("Score: {}", score.get())))
+}
+
+fn main() -> AppResult<()> {
+    sigil::run(AppConfig::new("rating"), tree)
+}
+```
+
+`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one. `Widget::step_keys(keys, |step, event| ...)` binds keys such as the arrows, Page Up, Page Down, Home, and End to a `sigil::events::ValueStep` of a ranged value; pass `ValueStep::SLIDER_KEYS` for the keys and steps that `slider` uses. `Widget::accessible(name)` sets the name that a screen reader announces for any widget.
+
 ## Theme switching
 
-`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host.
+`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host. Call it from an event handler to restyle the whole app, as in this example. Use `Widget::theme(..)`, below, to restyle one subtree, or to follow a signal without a handler.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -117,7 +184,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let dark = signal(false);
     container().child(toggle(dark)).child(button("Apply").activate(move || {
-        (if dark.get() { Theme::dark() } else { Theme::light() }).apply();
+        (if dark.peek() { Theme::dark() } else { Theme::light() }).apply();
     }))
 }
 
@@ -125,6 +192,38 @@ fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("themes"), tree)
 }
 ```
+
+`Theme::for_backdrop(backdrop)` builds the default light or dark theme. `Theme::token(token, color)` sets a built-in token or a `Token::Custom("name")` token. `Widget::theme(theme)` restyles the colors and corner radii of one subtree, and takes a theme, a signal, or a closure. Control sizes still come from the app theme.
+
+To follow the operating system light or dark setting, read `sigil::app::system_backdrop()`. It returns a `Signal<Option<Backdrop>>`: `Some(Backdrop::Light)` or `Some(Backdrop::Dark)`, or `None` when the setting cannot be detected. The host writes the signal when the setting changes, so a closure that calls `get` on it runs again. The next example passes such a closure to `.theme(..)`.
+
+```rust,no_run
+use sigil::app::system_backdrop;
+use sigil::prelude::*;
+use sigil::style::Backdrop;
+
+const BRAND: Token = Token::Custom("brand");
+
+fn brand(backdrop: Backdrop) -> Theme {
+    Theme::for_backdrop(backdrop)
+        .token(Token::Accent, Color::rgb(109, 40, 217))
+        .token(BRAND, Color::rgb(15, 118, 110))
+}
+
+fn tree() -> impl IntoNode {
+    column()
+        .theme(move || brand(system_backdrop().get().unwrap_or(Backdrop::Light)))
+        .background(Token::Surface)
+        .child(text("Brand").text_color(BRAND))
+        .child(button("Save").primary())
+}
+
+fn main() -> AppResult<()> {
+    sigil::run(AppConfig::new("brand"), tree)
+}
+```
+
+The example `story-14-theming` has a complete theme switcher.
 
 A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `Theme: FromStr` returns `Err` if the document is not valid.
 
@@ -170,8 +269,9 @@ fn main() -> AppResult<()> {
 To reload a theme file while the app runs, call `watch_theme`. The watch stops when the `ThemeWatcher` is dropped, so keep it for the life of the tree. `AppConfig::theme_file(path)` loads and watches a file without code in the tree.
 
 ```rust,no_run
-use sigil::reactive::cleanup;
+use sigil::app::watch_theme;
 use sigil::prelude::*;
+use sigil::reactive::cleanup;
 
 fn tree() -> impl IntoNode {
     match watch_theme("theme.toml") {
@@ -186,7 +286,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
+`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile. They also take a signal or a closure of a token or a color, such as `.background(move || if on.get() { Token::Accent } else { Token::Surface })`.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -234,7 +334,7 @@ A size includes the padding and the border of the node. A plain number is logica
 ```rust,no_run
 # #[cfg(feature = "terminal")]
 # mod terminal_only {
-use sigil::prelude::TrackSize;
+use sigil::layout::TrackSize;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
@@ -264,7 +364,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`viewport_size()` returns the viewport as a signal, in logical px on every host. On the terminal one cell is `Host::CELL` px, so divide by it to get columns and rows. Read it in a `derived` or a `children_reactive` closure to adapt the tree to the size.
+`viewport_size()` returns the viewport as a signal, in logical px on every host. On the terminal one cell is `Host::CELL` px, so divide by it to get columns and rows. Read it in a `memo` or a `children_reactive` closure to adapt the tree to the size.
 
 ```rust,no_run
 use sigil::app::is_grid;
@@ -284,7 +384,7 @@ fn main() -> AppResult<()> {
 
 ## Lists
 
-`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list.
+`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list. `items` is a signal, a `memo`, or a closure of a `Vec`. A filtered list is `for_each(memo(move || ...), key, render)`.
 
 Put each field that changes in a signal inside the item, and read that signal in the row. A field that is a plain value is read one time, when the row is built.
 
@@ -316,6 +416,115 @@ fn thread_row(thread: &Thread) -> NodeBuilder {
 ```
 
 `unread.set(false)` runs the count again, then the label that reads the count. It builds no row.
+
+### Heterogeneous children and `switch`
+
+Every widget builder implements `Into<NodeBuilder>`, so `.children(iter)` (and `status_bar([...])`) accepts mixed widgets via `.into()`. Use `switch(key).case(v, || ...).otherwise(|| ...)` to pick one branch from a reactive key:
+
+```rust,no_run
+use sigil::prelude::*;
+
+fn tree() -> impl IntoNode {
+    let tab = signal("code");
+    column()
+        .children([
+            NodeBuilder::from(dot(Tone::Success)),
+            text("Ready").into(),
+        ])
+        .child(
+            switch(tab)
+                .case("code", || text("Code view"))
+                .case("diff", || text("Diff view"))
+                .otherwise(|| text("Other")),
+        )
+}
+```
+
+### Fuzzy matching
+
+`fuzzy_score(query, text)` returns `Option<FuzzyMatch>`. Call `.score()` (lower is better; `0` is an exact match) to rank hits and `.positions()` (`&[usize]`) for matched character indexes:
+
+```rust
+use sigil::prelude::*;
+use sigil::widgets::fuzzy_score;
+
+if let Some(hit) = fuzzy_score("cmd", "command_menu") {
+    assert!(!hit.positions().is_empty());
+    let _rank: usize = hit.score();
+}
+```
+
+## Animation and tone steps
+
+`Transition` configures CSS-style property transitions (`.duration(...)`, `.ease(Easing::CubicOut)`, `Easing::QuadOut`, etc.). `Widget::drive(Property::Opacity, value)` binds an `impl Reactive<f32>` to an animatable `Property`: a `Signal<f32>`, a closure, or a `sigil::animation::Animator`. `Animator::spring(initial, Spring::SNAPPY)` and `Animator::tween(initial, transition)` move toward the value that `.target(value)` sets. `sigil::animation::every_frame(f)` runs `f` with the elapsed seconds on each frame until its owner is disposed. `Tone::step(n)` (1–12) selects a step from a tone's color scale as a `Token`:
+
+```rust,no_run
+use sigil::animation::Property;
+use sigil::prelude::*;
+use std::time::Duration;
+
+fn tree() -> impl IntoNode {
+    let alpha = signal(1.0_f32);
+    container()
+        .background(Tone::Primary.step(3))
+        .transition(
+            Transition::opacity()
+                .duration(Duration::from_millis(150))
+                .ease(Easing::CubicOut),
+        )
+        .drive(Property::Opacity, alpha)
+        .child(text("Fading panel"))
+}
+```
+
+## Shaders
+
+`Shader::new(source)` runs your own WGSL on the GPU. `node.background(shader)` fills the node inside its border, and `SceneBuilder::draw_shader(rect, &shader)` fills a rectangle in a `canvas`. `node.filter_shader(shader)` draws the node and its children into an offscreen layer and composites that layer through the shader; hit testing, focus, text input, and the accessibility tree do not change. Each distinct source compiles once and is cached.
+
+Your source defines one function, `fn shade(in: Shading) -> vec4<f32>`, that returns linear RGBA with straight alpha. The library supplies the rest:
+
+| Name | Value |
+| --- | --- |
+| `in.uv` | `vec2<f32>`, 0 to 1 across the node (the layer for `filter_shader`) |
+| `in.pixel` | `vec2<f32>`, logical pixels from the top left corner |
+| `in.size` | `vec2<f32>`, the size in logical pixels |
+| `in.scale` | `f32`, physical pixels per logical pixel |
+| `in.vars` | `array<f32, 8>`, the values that `.var(index, value)` binds |
+| `in.colors` | `array<vec4<f32>, 4>`, linear RGBA from `.color(index, color)`; tokens follow the theme |
+| `layer(uv)` | linear RGBA with straight alpha of the subtree at `uv`; transparent in the fill form |
+| `srgb_encode`, `srgb_decode`, `rounded_rect_sdf` | helpers you can call |
+
+The prelude also defines `Shading`, `u`, `Uniforms`, `VertexIn`, `ShaderInstance`, `ShaderVertex`, `vs_main`, `fs_main`, `shading_layer_uv`, `layer_texture`, `layer_sampler`, `aa_pad`, `corner_radius`, `edge_coverage`, `dash_mask`, and `stroke_mask`; do not define those names again. A var takes a number, signal, animator, or closure; the node redraws when a bound var changes and is idle while all are still. WebGPU rejects `fwidth`, `dpdx`, `dpdy`, and `textureSample` inside a branch that depends on a pixel value, so call them before any such branch; `layer` uses `textureSampleLevel` and is safe anywhere. A source that does not compile is logged once on the `sigil::shader` tracing target, and the node draws its fallback. The fallback is also what the CPU renderer and the terminal draw: the fill form paints color 0, or nothing when color 0 is unset, and the filter form draws the subtree unchanged.
+
+```rust,no_run
+use sigil::animation::{Animator, Spring};
+use sigil::prelude::*;
+
+const DITHER: &str = r"
+fn shade(in: Shading) -> vec4<f32> {
+    let cell = floor(in.pixel * in.scale / 2.0);
+    let bayer = fract(dot(cell, vec2<f32>(0.5, 0.25)) + fract(cell.y * 0.5) * 0.5);
+    let seen = layer(in.uv);
+    let ink = dot(seen.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let on = step(bayer, mix(ink, 1.0 - ink, in.vars[0]));
+    let color = mix(in.colors[1], in.colors[0], on);
+    return vec4<f32>(color.rgb, seen.a);
+}
+";
+
+fn form() -> impl IntoNode {
+    let name = signal(String::new());
+    let amount = Animator::spring(0.0, Spring::SNAPPY);
+    let dither = Shader::new(DITHER)
+        .var(0, amount.value())
+        .color(0, Token::OnSurface)
+        .color(1, Token::Surface);
+    column()
+        .filter_shader(dither)
+        .child(text_field(name))
+        .child(button("Send").activate(move || amount.target(1.0)))
+}
+```
 
 ## Streaming from a backend
 
@@ -405,7 +614,7 @@ fn tree() -> impl IntoNode {
                 }
             }
         });
-    }, || {});
+    });
     std::thread::spawn(move || {
         drop(tx.send(Event::Start));
         for word in ["streamed ", "reply ", "text"] {
@@ -449,7 +658,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`listen(rx, f, close)` runs `close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
+`listen(rx, f)` returns a `Listener`. `listen(rx, f).closed(close)` runs `close` once after the last message, when the worker drops its sender. If the channel has already closed, `close` runs at once. `rx` may be a `tokio::sync::mpsc::Receiver`, a `tokio::sync::mpsc::UnboundedReceiver`, or a `std::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
@@ -475,7 +684,7 @@ fn tree() -> impl IntoNode {
 
 ## Timers
 
-`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `id.cancel()`. It needs no thread.
+`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `cancel()` on the `Timer` it returns. `Timer` is a `Copy` handle, so dropping it does not stop the interval. It needs no thread. `sigil::reactive::timeout(delay, f)` runs `f` once after `delay` and also returns a `Timer`.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -559,9 +768,10 @@ Ctrl+C always reaches the tree first. With `exit_on_ctrl_c(false)` an unconsumed
 `Host::perform` handles `Focus`, `Click`, `Increment`, `Decrement`, `SetValue`, `SetTextSelection`, `Expand`, `Collapse`, and `ScrollIntoView`. Add `accesskit` 0.25 to your own dependencies to name its types.
 
 ```rust,no_run
-use sigil::NodeId;
-use sigil::prelude::*;
 use sigil::Host;
+use sigil::app::HostMode;
+use sigil::node::NodeId;
+use sigil::prelude::*;
 use sigil::reactive::Owner;
 
 fn main() {
@@ -584,16 +794,16 @@ fn main() {
 }
 ```
 
-Give each control a name that a screen reader can say. Widgets take the name from their label. For a bare container, set `.role(Role::...)` and `.label("...")`.
+Give each control a name that a screen reader can say. Widgets take the name from their label. For a bare container, set `.role(Role::...)` and `.accessible("...")`.
 
 ## Tasks in an embed
 
 `sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `Signal::writer` work as they do under `sigil::run`. `waker` wakes the host's event loop when a result arrives.
 
 ```rust,no_run
-use sigil::app::FrameHooks;
-use sigil::prelude::*;
 use sigil::Host;
+use sigil::app::{FrameHooks, HostMode};
+use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 
@@ -603,8 +813,7 @@ fn main() -> sigil::AppResult<()> {
         tasks.install_current();
         let mut host = Host::new(HostMode::Pixel);
         host.mount(|| {
-            let load = task(|| async { Ok::<_, String>("ready".to_owned()) });
-            load.run();
+            let load = task(|| async { Ok::<_, String>("ready".to_owned()) }).autostart();
             text(move || match load.status() {
                 Status::Ok(value) => value,
                 _ => "loading".to_owned(),

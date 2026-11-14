@@ -5,7 +5,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, Tone, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
 
@@ -27,11 +27,13 @@ pub(super) fn rich(
     tone: TokenTone,
     role: Role,
 ) -> NodeBuilder {
-    let body = styled(source);
     container()
         .role(role)
         .layout(LayoutStyle::block().fill_width())
-        .child(tinted(text(body.text).runs(body.runs).class(class), tone))
+        .child(tinted(
+            crate::kernel::rich(styled(source)).class(class),
+            tone,
+        ))
 }
 
 pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {

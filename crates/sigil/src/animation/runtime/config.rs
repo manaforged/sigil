@@ -1,10 +1,8 @@
-use crate::animation::{Easing, SpringPreset};
+use crate::animation::{Easing, Spring};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum AnimationConfig {
-    Spring {
-        preset: SpringPreset,
-    },
+    Spring(Spring),
     Tween {
         ms: u16,
         easing: Easing,
@@ -13,5 +11,6 @@ pub(crate) enum AnimationConfig {
     Playback {
         end: Option<f64>,
         cycle: f64,
+        delay: f64,
     },
 }

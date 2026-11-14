@@ -4,7 +4,7 @@ use crate::widget_support;
 
 use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -68,8 +68,7 @@ fn dropdown_user_hover_overlay_paints_trigger() {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx
-            .add(dropdown(selected, vec!["a".into(), "b".into()]).hover(|s| s.background(ruby_9)));
+        let root = cx.add(dropdown(selected, ["a", "b"]).hover(|s| s.background(ruby_9)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (100.0, 20.0), ruby_9);
     });
@@ -142,10 +141,10 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         let theme = Theme::default();
         let thumb_rim = |scene_cx: &Cx, scene_root: NodeId| {
             emit_scene(scene_cx, scene_root, None)
-                .commands
+                .commands()
                 .iter()
                 .find_map(|command| match command {
-                    SceneCommand::Rect(rect) => rect.stroke.map(|stroke| stroke.color),
+                    SceneCommand::Rect(rect) => rect.stroke().map(|stroke| stroke.color()),
                     _ => None,
                 })
         };

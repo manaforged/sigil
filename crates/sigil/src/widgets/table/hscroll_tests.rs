@@ -67,7 +67,7 @@ fn measured_viewport_follows_the_probe() {
         let hs = bind(&fixed(&["a", "b", "c"], 150.0), None, 0.0);
         let probe = hs.probe.expect("no explicit width installs a probe");
         assert_eq!(hs.viewport.get(), 0.0, "unmeasured until layout publishes");
-        probe.set((200.0, 480.0));
+        probe.set(crate::geometry::Size::new(200.0, 480.0));
         assert_eq!(hs.viewport.get(), 200.0);
         assert_eq!(hs.max.get(), 250.0);
     });

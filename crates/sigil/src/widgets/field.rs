@@ -7,8 +7,8 @@ use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
-use crate::style::{StyleAtom, Tone, space};
-use crate::widgets::{Edit, Layout, NodeEdit, Sealed, StatePaint, StateTarget, Widget};
+use crate::style::{Paint, StateStyleBuilder, States, StyleAtom, Tone, space};
+use crate::widgets::Widget;
 
 use super::text_field::TextFieldBuilder;
 
@@ -109,7 +109,8 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
                 let Some(label_id) = label_id else {
                     return;
                 };
-                if let Some(target) = tree.get_mut(control_id) {
+                let target_id = resolve_control_target(tree, control_id);
+                if let Some(target) = tree.get_mut(target_id) {
                     target.a11y.labelled_by = Some(label_id);
                     target.a11y.name = AccessibleName::None;
                     target.a11y.described_by = error_id;
@@ -123,26 +124,29 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
     }
 }
 
-impl<C: Widget> Sealed for FieldBuilder<C> {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.layout_overrides.edit(edit),
-            focus => self.control = self.control.edit(NodeEdit(focus)),
-        }
-        self
+fn find_control_descendant(tree: &Cx, id: NodeId) -> Option<NodeId> {
+    let node = tree.get(id)?;
+    if node.a11y.role != Role::GenericContainer {
+        return Some(id);
     }
+    node.children()
+        .iter()
+        .copied()
+        .find_map(|child| find_control_descendant(tree, child))
+}
 
-    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.control = self.control.map_target(f);
-        self
+fn resolve_control_target(tree: &Cx, control_id: NodeId) -> NodeId {
+    find_control_descendant(tree, control_id).unwrap_or(control_id)
+}
+
+impl<C: Paint> Paint for FieldBuilder<C> {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.control.paint_mut()
     }
 }
 
-impl<C: Widget + StateTarget> StateTarget for FieldBuilder<C> {
-    fn set_state(mut self, state: StatePaint) -> Self {
-        self.control = self.control.set_state(state);
-        self
-    }
+impl<C: States> States for FieldBuilder<C> {
+    crate::style::state_methods!(forward control);
 }
 
 impl<C: Widget> Widget for FieldBuilder<C> {
@@ -150,6 +154,9 @@ impl<C: Widget> Widget for FieldBuilder<C> {
         self.layout_overrides.node_hook(f);
         self
     }
+
+    crate::widgets::widget_layout_methods!(@edit layout_overrides.edit);
+    crate::widgets::forward_control_methods!(direct control);
 }
 
 fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn IntoNode> {

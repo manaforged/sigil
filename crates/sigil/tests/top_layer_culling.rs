@@ -3,7 +3,7 @@ use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::reactive::{Owner, signal};
 use sigil::scene::emit_scene;
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use sigil_kittest::FakeMeasure;
 
 fn layout(cx: &mut Cx, root: NodeId) {

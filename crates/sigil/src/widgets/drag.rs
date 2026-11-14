@@ -1,12 +1,11 @@
-use std::rc::Rc;
-
+use crate::events::DragPhase;
 use crate::kernel::NodeBuilder;
 use crate::layout::Orientation;
-use crate::widgets::interaction::{DragEnd, axis_of, pointer_drag};
+use crate::widgets::Widget;
 
 /// Drag along one axis.
 pub fn axis_drag<S>(
-    node: NodeBuilder,
+    node: impl Into<NodeBuilder>,
     axis: Orientation,
     snapshot: impl Fn() -> S + 'static,
     on_delta: impl Fn(S, f32) + 'static,
@@ -15,31 +14,29 @@ pub fn axis_drag<S>(
 where
     S: Clone + 'static,
 {
-    let on_delta = Rc::new(on_delta);
-    let restore = Rc::clone(&on_delta);
-    pointer_drag(
-        node,
-        move |event| {
-            event.stop_propagation();
-            Some((
-                axis_of(axis, event.position.x, event.position.y),
-                snapshot(),
-            ))
-        },
-        move |(down, base), event| {
-            on_delta(
-                base.clone(),
-                axis_of(axis, event.position.x, event.position.y) - down,
-            );
-            event.stop_propagation();
-        },
-        move |ended, event| {
-            match ended {
-                DragEnd::Release => on_end(),
-                DragEnd::Cancel((_, base)) => restore(base, 0.0),
-                DragEnd::Idle => {}
+    let mut session = None::<(f32, S)>;
+    node.into().pointer_drag(move |phase, event| {
+        let at = match axis {
+            Orientation::Horizontal => event.position.x,
+            Orientation::Vertical => event.position.y,
+        };
+        match phase {
+            DragPhase::Start => session = Some((at, snapshot())),
+            DragPhase::Move => {
+                if let Some((down, base)) = &session {
+                    on_delta(base.clone(), at - down);
+                }
             }
-            event.stop_propagation();
-        },
-    )
+            DragPhase::End => {
+                session = None;
+                on_end();
+            }
+            DragPhase::Cancel => {
+                if let Some((_, base)) = session.take() {
+                    on_delta(base, 0.0);
+                }
+            }
+        }
+        event.stop_propagation();
+    })
 }

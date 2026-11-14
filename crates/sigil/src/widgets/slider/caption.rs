@@ -1,13 +1,11 @@
-use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::Orientation;
-use crate::layout::Space;
-use crate::layout::{AlignItems, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle, Orientation, Space};
+use crate::node::{NodeBuilder, TextContent, container, text};
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 
 pub(super) fn with_caption(
     slider: NodeBuilder,
-    caption: String,
+    caption: TextContent,
     orientation: Orientation,
     length: Option<f32>,
 ) -> NodeBuilder {
@@ -22,8 +20,11 @@ pub(super) fn with_caption(
     };
     container()
         .layout(
-            base.gap(Space::px(metrics.control_gap(ControlSize::Default)))
-                .align_items(AlignItems::Center),
+            base.gap(Space::raw(
+                metrics.control_gap(ControlSize::Default),
+                "control gap",
+            ))
+            .align_items(AlignItems::Center),
         )
         .child(text(caption).nowrap())
         .child(slider)

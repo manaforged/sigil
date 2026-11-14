@@ -85,6 +85,26 @@ pub(crate) enum NumericAtomKind {
     MaskFrom,
     /// Where a gradient mask is fully clear, in percent from 0 to 100; the node must have a gradient mask.
     MaskTo,
+    /// The `backdrop-filter` blur's standard deviation in logical pixels, 0 or more.
+    BackdropBlur,
+    /// The `backdrop-filter` brightness amount, 0 or more, 1.0 unchanged.
+    BackdropBrightness,
+    /// The `backdrop-filter` saturate amount, 0 or more, 1.0 unchanged.
+    BackdropSaturate,
+    /// The angle of a linear or conic gradient in degrees clockwise from up.
+    GradientAngle,
+    /// The gradient center's x in percent of the box width, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterX,
+    /// The gradient center's y in percent of the box height, from 0 to 100; the gradient must be radial or conic.
+    GradientCenterY,
+    /// Top left corner radius in logical pixels, 0 or more.
+    RadiusTopLeft,
+    /// Top right corner radius in logical pixels, 0 or more.
+    RadiusTopRight,
+    /// Bottom right corner radius in logical pixels, 0 or more.
+    RadiusBottomRight,
+    /// Bottom left corner radius in logical pixels, 0 or more.
+    RadiusBottomLeft,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -109,7 +129,7 @@ pub(crate) enum Family {
 }
 
 impl NumericAtomKind {
-    pub(crate) const COUNT: usize = 40;
+    pub(crate) const COUNT: usize = 50;
 
     pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::Opacity,
@@ -152,6 +172,16 @@ impl NumericAtomKind {
         Self::StopTo,
         Self::MaskFrom,
         Self::MaskTo,
+        Self::BackdropBlur,
+        Self::BackdropBrightness,
+        Self::BackdropSaturate,
+        Self::GradientAngle,
+        Self::GradientCenterX,
+        Self::GradientCenterY,
+        Self::RadiusTopLeft,
+        Self::RadiusTopRight,
+        Self::RadiusBottomRight,
+        Self::RadiusBottomLeft,
     ];
 
     pub(crate) const fn affects_layout(self) -> bool {
@@ -188,8 +218,14 @@ impl NumericAtomKind {
     pub(crate) const fn initial(self) -> f32 {
         match self {
             Self::Opacity => OPACITY_UNITS,
-            Self::ScaleX | Self::ScaleY | Self::Brightness | Self::Contrast | Self::Saturate => 1.0,
-            Self::StopVia => 50.0,
+            Self::ScaleX
+            | Self::ScaleY
+            | Self::Brightness
+            | Self::Contrast
+            | Self::Saturate
+            | Self::BackdropBrightness
+            | Self::BackdropSaturate => 1.0,
+            Self::StopVia | Self::GradientCenterX | Self::GradientCenterY => 50.0,
             Self::StopTo | Self::MaskTo => 100.0,
             _ => 0.0,
         }
@@ -207,9 +243,17 @@ impl NumericAtomKind {
             | Self::Sepia
             | Self::DropShadowX
             | Self::DropShadowY
-            | Self::DropShadowBlur => Family::Filter,
+            | Self::DropShadowBlur
+            | Self::BackdropBlur
+            | Self::BackdropBrightness
+            | Self::BackdropSaturate => Family::Filter,
             Self::TextShadowX | Self::TextShadowY | Self::TextShadowBlur => Family::TextShadow,
-            Self::StopFrom | Self::StopVia | Self::StopTo => Family::Gradient,
+            Self::StopFrom
+            | Self::StopVia
+            | Self::StopTo
+            | Self::GradientAngle
+            | Self::GradientCenterX
+            | Self::GradientCenterY => Family::Gradient,
             Self::MaskFrom | Self::MaskTo => Family::Mask,
             _ => Family::Plain,
         }
@@ -244,6 +288,10 @@ pub(crate) trait AnimatorOverlay {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32>;
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color>;
+
+    fn layout_offset(&self) -> Option<[f32; 2]> {
+        None
+    }
 
     fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
         default_visit_layout_values(self, visit);
@@ -293,6 +341,10 @@ pub(crate) fn default_cache_key<T: AnimatorOverlay + ?Sized>(overlay: &T) -> u64
             color.hash(&mut hasher);
             active = true;
         }
+    }
+    if let Some(offset) = overlay.layout_offset() {
+        offset.map(f32::to_bits).hash(&mut hasher);
+        active = true;
     }
     if active { hasher.finish() } else { 0 }
 }

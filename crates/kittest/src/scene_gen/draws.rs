@@ -41,8 +41,10 @@ impl Gen<'_, '_, '_> {
         let color = self.color();
         let mut draw = DrawRect::new(rect, color)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+            .opacity(self.opacity_f32());
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroked(stroke);
+        }
         SceneCommand::Rect(draw)
     }
 
@@ -64,8 +66,10 @@ impl Gen<'_, '_, '_> {
         let gradient = LinearGradient::new(start, end, stops);
         let mut draw = DrawGradient::new(rect, gradient)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+            .opacity(self.opacity_f32());
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroked(stroke);
+        }
         SceneCommand::Gradient(draw)
     }
 
@@ -86,8 +90,10 @@ impl Gen<'_, '_, '_> {
         };
         let mut draw = DrawPattern::new(rect, pattern)
             .border_radius(self.radii())
-            .opacity(self.opacity_u16());
-        draw.stroke = self.stroke();
+            .opacity(self.opacity_f32());
+        if let Some(stroke) = self.stroke() {
+            draw = draw.stroked(stroke);
+        }
         SceneCommand::Pattern(draw)
     }
 
@@ -95,7 +101,8 @@ impl Gen<'_, '_, '_> {
         let rect = self.rect();
         SceneCommand::DrawShadow {
             rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
-            radii: self.radii(),
+            radii: self.radii().0,
+            shape: sigil::scene::CornerShape::Round,
             shadow: self.shadow(),
         }
     }
@@ -141,7 +148,7 @@ impl Gen<'_, '_, '_> {
 
     fn image(&mut self) -> SceneCommand {
         let destination = self.rect();
-        let opacity = self.opacity_u16();
+        let opacity = self.opacity_f32();
         let e = &mut *self.entropy;
         let (w, h) = (e.pick(&[1_u32, 2, 7, 33]), e.pick(&[1_u32, 3, 16, 40]));
         let pixels = usize::try_from(w * h * 4).unwrap_or(4);
@@ -153,34 +160,29 @@ impl Gen<'_, '_, '_> {
         let Some(source) = ImageSource::from_rgba8(w, h, rgba) else {
             return SceneCommand::PopLayer;
         };
-        SceneCommand::Image(DrawImage {
-            node: None,
-            source,
-            fit: e.pick(&[ObjectFit::Fill, ObjectFit::Contain, ObjectFit::Cover]),
-            destination,
-            opacity,
-            crop,
-            raster: None,
-        })
+        SceneCommand::Image(
+            DrawImage::new(source, destination)
+                .fit(e.pick(&[ObjectFit::Fill, ObjectFit::Contain, ObjectFit::Cover]))
+                .opacity(opacity)
+                .crop(crop),
+        )
     }
 
     fn decoration(&mut self) -> SceneCommand {
         let band = self.rect();
         let color = self.color();
-        let opacity = self.opacity_u16();
+        let opacity = self.opacity_f32();
         let e = &mut *self.entropy;
-        SceneCommand::Decoration(DrawDecoration {
-            node: None,
-            kind: e.pick(&[
-                DecorationKind::Underline,
-                DecorationKind::Strikethrough,
-                DecorationKind::WavyUnderline,
-            ]),
-            band,
-            color,
-            opacity,
-            period: e.pick(&PERIODS),
-            line_width: e.pick(&PERIODS),
-        })
+        let kind = e.pick(&[
+            DecorationKind::Underline,
+            DecorationKind::Strikethrough,
+            DecorationKind::WavyUnderline,
+        ]);
+        SceneCommand::Decoration(
+            DrawDecoration::new(kind, band, color)
+                .opacity(opacity)
+                .period(e.pick(&PERIODS))
+                .line_width(e.pick(&PERIODS)),
+        )
     }
 }

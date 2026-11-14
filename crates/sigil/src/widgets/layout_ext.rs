@@ -60,7 +60,6 @@ impl LayoutOverrides {
         self.apply(LayoutStyle::default()).data().size.width.fills()
     }
 
-    #[must_use]
     pub(crate) fn apply(&self, base: LayoutStyle) -> LayoutStyle {
         let mut style = base;
         for edit in &self.edits {

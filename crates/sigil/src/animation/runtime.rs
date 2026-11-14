@@ -8,17 +8,17 @@ pub(crate) mod binding_animate;
 pub(crate) mod binding_animate_color;
 pub(crate) mod clock;
 pub(crate) mod config;
+pub(crate) mod layout_motion;
 pub(crate) mod motion_prefs;
 pub(crate) mod playback;
 pub(crate) mod registry;
+pub(crate) mod shared;
 pub(crate) mod state;
 pub(crate) mod style;
 pub(crate) mod targets;
 
-kittest_pub! {
-    #[doc(hidden)]
-    pub use animator::Animator;
-}
+pub use animator::Animator;
+pub(crate) use animator::SignalAnimator;
 pub(crate) use binding_animate_color::linear_channel_to_srgb;
 kittest_pub! {
     #[doc(hidden)]
@@ -32,7 +32,7 @@ pub(crate) use config::AnimationConfig;
 pub use motion_prefs::MotionPrefs;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use motion_prefs::MotionPrefs;
-pub use motion_prefs::reduced_motion;
+pub use motion_prefs::{reduced_motion, reduced_transparency};
 #[cfg(test)]
 pub(crate) use registry::config;
 kittest_pub! {

@@ -1,12 +1,13 @@
 use crate::scene::Shadow;
 use crate::style::StyleAtom;
 use crate::style::atom::{
-    Amount, FilterAtom, FilterPart, ShadowSpec, TextShadows, blur_units, hue_units,
+    Amount, BackdropPart, FilterAtom, FilterPart, ShadowSpec, TextShadows, blur_units, hue_units,
 };
 
-use super::slot::{PaintTarget, push};
+use super::slot::push;
+use crate::style::Paint;
 
-pub(super) fn filter<T: PaintTarget>(target: T, part: FilterPart) -> T {
+pub(super) fn filter<T: Paint>(target: T, part: FilterPart) -> T {
     push(target, StyleAtom::Filter(FilterAtom(part)))
 }
 
@@ -16,6 +17,14 @@ pub(super) fn blur(px: f32) -> FilterPart {
 
 pub(super) fn amount(kind: Amount, value: f32) -> FilterPart {
     FilterPart::Amount(kind, Amount::units(value))
+}
+
+pub(super) fn backdrop(part: BackdropPart, value: f32) -> FilterPart {
+    let units = match part {
+        BackdropPart::Blur => blur_units(value),
+        BackdropPart::Brightness | BackdropPart::Saturate => Amount::units(value),
+    };
+    FilterPart::Backdrop(part, units)
 }
 
 pub(super) fn hue_rotate(degrees: f32) -> FilterPart {
@@ -80,6 +89,24 @@ macro_rules! filter_setters {
         #[must_use]
         fn sepia(self, amount: f32) -> Self {
             filters::filter(self, filters::amount(Amount::Sepia, amount))
+        }
+
+        /// Blurs what is painted behind the node, inside its corners, by a standard deviation of `px`, like Tailwind `backdrop-blur-*`.
+        #[must_use]
+        fn backdrop_blur(self, px: f32) -> Self {
+            filters::filter(self, filters::backdrop(BackdropPart::Blur, px))
+        }
+
+        /// Scales the brightness of what is painted behind the node, 1.0 unchanged, like Tailwind `backdrop-brightness-*`.
+        #[must_use]
+        fn backdrop_brightness(self, amount: f32) -> Self {
+            filters::filter(self, filters::backdrop(BackdropPart::Brightness, amount))
+        }
+
+        /// Scales the saturation of what is painted behind the node, 1.0 unchanged, like Tailwind `backdrop-saturate-*`.
+        #[must_use]
+        fn backdrop_saturate(self, amount: f32) -> Self {
+            filters::filter(self, filters::backdrop(BackdropPart::Saturate, amount))
         }
 
         /// Draws `shadow` under the node's painted pixels, its blur a standard deviation, like Tailwind `drop-shadow-*`.

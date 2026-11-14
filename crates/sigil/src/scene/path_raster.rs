@@ -1,4 +1,4 @@
-use crate::scene::command::{DrawPath, Transform};
+use crate::scene::command::{DrawPath, PathCommand, Transform};
 
 #[cfg(feature = "scene")]
 mod vello {
@@ -34,6 +34,24 @@ mod vello {
 }
 
 pub(crate) mod gradient;
+
+/// Builds the `tiny_skia` path of `commands`, or `None` when they enclose nothing.
+#[cfg(any(not(feature = "scene"), all(feature = "cpu", host)))]
+pub(crate) fn skia_path(commands: &[PathCommand]) -> Option<tiny_skia::Path> {
+    let mut builder = tiny_skia::PathBuilder::new();
+    for command in commands {
+        match *command {
+            PathCommand::MoveTo(x, y) => builder.move_to(x, y),
+            PathCommand::LineTo(x, y) => builder.line_to(x, y),
+            PathCommand::QuadTo(cx, cy, x, y) => builder.quad_to(cx, cy, x, y),
+            PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
+                builder.cubic_to(c1x, c1y, c2x, c2y, x, y);
+            }
+            PathCommand::Close => builder.close(),
+        }
+    }
+    builder.finish()
+}
 #[cfg(not(feature = "scene"))]
 mod skia;
 

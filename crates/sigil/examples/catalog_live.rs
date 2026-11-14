@@ -116,14 +116,10 @@ fn sandbox(first: Pick) -> impl IntoNode {
     PICKS.with(|picks| *picks.borrow_mut() = Some(sender));
     first.theme().apply();
     let picks = signal(vec![first]);
-    listen(
-        receiver,
-        move |next: Pick| {
-            next.theme().apply();
-            picks.set(vec![next]);
-        },
-        || {},
-    );
+    listen(receiver, move |next: Pick| {
+        next.theme().apply();
+        picks.set(vec![next]);
+    });
     column()
         .fill_width()
         .fill_height()

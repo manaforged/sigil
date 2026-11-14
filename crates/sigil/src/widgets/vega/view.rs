@@ -13,7 +13,7 @@ use crate::style::{Metrics, Radius, Theme, Token};
 use crate::tasks::current::host_parts;
 use crate::tasks::dispatch::spawn_into;
 use crate::tasks::{Status, spawn};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::source_too_large;
 use crate::widgets::svg_picture::picture;
@@ -120,7 +120,7 @@ fn drawn(spec: &Rc<Spec>, chart: &Chart) -> NodeBuilder {
     Horizontal::new(signal(width), None)
         .wrap(row)
         .role(Role::Figure)
-        .label(spec.name.clone())
+        .accessible(spec.name.clone())
         .description(description(spec.about.as_deref(), &chart.text))
 }
 

@@ -24,12 +24,17 @@ fn wants_ime(node: &Node) -> bool {
             .is_none_or(|eligible| (eligible.0)())
 }
 
-#[derive(Clone, Debug)]
 #[cfg_attr(
     not(window_host),
     allow(dead_code, reason = "only the window host reads the caret anchor")
 )]
-pub(crate) struct CaretAnchorExt(pub(crate) std::rc::Rc<std::cell::Cell<Option<CaretGeometry>>>);
+pub(crate) struct CaretAnchorExt(pub(crate) Box<dyn Fn() -> Option<CaretGeometry>>);
+
+impl core::fmt::Debug for CaretAnchorExt {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CaretAnchorExt").finish_non_exhaustive()
+    }
+}
 
 #[cfg(window_host)]
 const CARET_ANCHOR_W: f32 = 2.0;
@@ -101,7 +106,8 @@ impl EventRouter {
         pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
             let focused = self.focus()?;
             let node = cx.get(focused)?;
-            let local = node.extension::<CaretAnchorExt>()?.0.get()?;
+            let anchor = node.extension::<CaretAnchorExt>()?;
+            let local = crate::reactive::untrack(|| (anchor.0)())?;
             let origin = layout.result(focused)?.rect().origin;
             Some(Rect::new(
                 Point::new(origin.x + local.x, origin.y + local.top),

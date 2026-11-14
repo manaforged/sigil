@@ -120,7 +120,7 @@ fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Color) -> Re
                 )
             })?;
         let opacity = if cell.dim() { 0.5 } else { 1.0 };
-        let run = GlyphRun::new(rect, cell.text.to_string(), fg, style, opacity)
+        let run = GlyphRun::unshaped(rect, cell.text.to_string(), fg, style, opacity)
             .with_paragraph(paragraph);
         scene.commands.push(SceneCommand::PushClip(rect.into()));
         scene.commands.push(SceneCommand::GlyphRun(run));

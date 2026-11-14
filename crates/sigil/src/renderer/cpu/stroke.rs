@@ -8,30 +8,29 @@
 use crate::geometry::{Point, Rect};
 use tiny_skia::{FillRule, Mask, Path, PathBuilder, Pixmap, Point as TsPoint};
 
-#[cfg(feature = "kittest")]
 use crate::renderer::scene_command::StrokeDash;
 use crate::renderer::scene_command::{Stroke, StrokeBand};
+use crate::scene::command::CornerShape;
 use crate::scene::corner_radii::CornerRadii;
 
-use super::bound::{CpuBound, expand, rounded_rect};
+use super::bound::{CpuBound, expand, shaped_rect};
 use super::shapes::{Brush, solid};
 
 pub(super) fn stroke(
     target: &mut Pixmap,
     rect: Rect,
-    radii: CornerRadii,
+    corners: (CornerRadii, CornerShape),
     stroke: Stroke,
     brush: &Brush<'_>,
 ) {
     let Some(band) = StrokeBand::of(stroke, rect) else {
         return;
     };
-    let Some(path) = ring(target, rect, radii, band, brush) else {
+    let Some(path) = ring(target, rect, corners, band, brush) else {
         return;
     };
     let paint = solid(stroke.color, brush.opacity);
     let clip = brush.mask_for(&paint);
-    #[cfg(feature = "kittest")]
     let dashed = match band
         .dash
         .map(|dash| dash_mask(target, rect, dash, brush, clip))
@@ -39,8 +38,6 @@ pub(super) fn stroke(
         Some(None) => return,
         found => found.flatten(),
     };
-    #[cfg(not(feature = "kittest"))]
-    let dashed = None;
     target.fill_path(
         &path,
         &paint,
@@ -53,20 +50,20 @@ pub(super) fn stroke(
 fn ring(
     target: &Pixmap,
     rect: Rect,
-    radii: CornerRadii,
+    (radii, shape): (CornerRadii, CornerShape),
     band: StrokeBand,
     brush: &Brush<'_>,
 ) -> Option<Path> {
     let base = radii.normalized_for(rect.width, rect.height);
     let bound = CpuBound::of(target, brush.transform);
-    let outer = rounded_rect(
+    let outer = shaped_rect(
         expand(rect, band.outside),
-        CornerRadii(base.map(|r| r + band.outside)),
+        (CornerRadii(base.map(|r| r + band.outside)), shape),
         bound,
     )?;
-    let inner = rounded_rect(
+    let inner = shaped_rect(
         expand(rect, -band.inside),
-        CornerRadii(base.map(|r| (r - band.inside).max(0.0))),
+        (CornerRadii(base.map(|r| (r - band.inside).max(0.0))), shape),
         bound,
     );
     let mut builder = PathBuilder::new();
@@ -77,7 +74,6 @@ fn ring(
     builder.finish()
 }
 
-#[cfg(feature = "kittest")]
 fn dash_mask(
     target: &Pixmap,
     rect: Rect,

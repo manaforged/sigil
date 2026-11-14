@@ -1,7 +1,7 @@
 use super::{color_key, scale};
 use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent};
 use crate::scene::BlendMode;
-use crate::style::atom::{BorderStyle, GradientShape, PaintAtom};
+use crate::style::atom::{BorderStyle, GradientShape, PaintAtom, ShadowAtom};
 use crate::style::atom::{
     height_px, max_height_px, max_width_px, min_height_px, min_width_px, width_px,
 };
@@ -43,11 +43,11 @@ static KEYWORDS: phf::Map<&'static str, StyleAtom> = phf::phf_map! {
     "rounded-lg" => StyleAtom::BorderRadius(8),
     "rounded-full" => StyleAtom::BorderRadius(9_999),
     "border" => StyleAtom::BorderWidth(1),
-    "shadow" => StyleAtom::Shadow(Elevation::Base),
-    "shadow-sm" => StyleAtom::Shadow(Elevation::Sm),
-    "shadow-md" => StyleAtom::Shadow(Elevation::Md),
-    "shadow-lg" => StyleAtom::Shadow(Elevation::Lg),
-    "shadow-xl" => StyleAtom::Shadow(Elevation::Xl),
+    "shadow" => StyleAtom::Shadow(ShadowAtom::elevation(Elevation::Base)),
+    "shadow-sm" => StyleAtom::Shadow(ShadowAtom::elevation(Elevation::Sm)),
+    "shadow-md" => StyleAtom::Shadow(ShadowAtom::elevation(Elevation::Md)),
+    "shadow-lg" => StyleAtom::Shadow(ShadowAtom::elevation(Elevation::Lg)),
+    "shadow-xl" => StyleAtom::Shadow(ShadowAtom::elevation(Elevation::Xl)),
     "text-xs" => StyleAtom::FontSize(12),
     "text-sm" => StyleAtom::FontSize(14),
     "text-base" => StyleAtom::FontSize(16),

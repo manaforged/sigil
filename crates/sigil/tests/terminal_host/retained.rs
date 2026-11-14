@@ -6,7 +6,7 @@ use sigil::reactive::{Owner, signal};
 use sigil::terminal::Screen;
 
 use super::oracle::{COLS, Model, ROWS, Spot, ansi, tree, truth};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 
 #[test]
 fn a_moved_spot_rasters_only_its_window() {

@@ -10,7 +10,6 @@ use sigil::scene::{
     CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
 use sigil::style::{Elevation, FontFamily, Paint, Radius, TextLineHeight, Theme, Token};
-use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 #[test]
@@ -27,10 +26,10 @@ fn theme_accent_rect_emits_in_scene() {
     let scene = emit_scene(&cx, root, None);
     let rect = first_rect(&scene).unwrap();
 
-    assert_eq!(rect.node, Some(root));
-    assert_eq!(rect.rect.width, 120.0);
-    assert_eq!(rect.rect.height, 48.0);
-    assert_eq!(rect.color, Theme::default().color(Token::Accent));
+    assert_eq!(rect.node(), Some(root));
+    assert_eq!(rect.rect().width, 120.0);
+    assert_eq!(rect.rect().height, 48.0);
+    assert_eq!(rect.color(), Theme::default().color(Token::Accent));
 }
 
 #[test]
@@ -102,18 +101,18 @@ fn visible_focus_ring_stroke() {
 
     assert_eq!(rects.len(), 1);
     let first = rects.first().unwrap();
-    assert_eq!(first.rect.origin.x, -2.0);
-    assert_eq!(first.rect.origin.y, -2.0);
-    assert_eq!(first.rect.width, 104.0);
-    assert_eq!(first.rect.height, 44.0);
-    assert_eq!(first.border_radius.0, [10.0; 4]);
-    assert_eq!(first.color.a, 0);
+    assert_eq!(first.rect().origin.x, -2.0);
+    assert_eq!(first.rect().origin.y, -2.0);
+    assert_eq!(first.rect().width, 104.0);
+    assert_eq!(first.rect().height, 44.0);
+    assert_eq!(first.corner_radii(), [10.0; 4]);
+    assert_eq!(first.color().a, 0);
 
-    let stroke = first.stroke.expect("focus ring has an outside stroke");
-    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
-    assert_eq!(stroke.width, 2.0);
-    assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.align, StrokeAlign::Outside);
+    let stroke = first.stroke().expect("focus ring has an outside stroke");
+    assert_eq!(stroke.color(), Theme::default().color(Token::Accent));
+    assert_eq!(stroke.width(), 2.0);
+    assert_eq!(stroke.style(), StrokeStyle::Solid);
+    assert_eq!(stroke.align(), StrokeAlign::Outside);
 }
 
 #[test]
@@ -161,7 +160,7 @@ fn shadow_class_parses_cleanly_and_paints() {
 
     let scene = emit_scene(&cx, root, None);
     let has_shadow = scene
-        .commands
+        .commands()
         .iter()
         .any(|command| matches!(command, sigil::scene::SceneCommand::DrawShadow { .. }));
 
@@ -186,7 +185,7 @@ fn layout(cx: &mut Cx, root: NodeId) {
 }
 
 fn first_rect(scene: &CommandScene) -> Option<&DrawRect> {
-    scene.commands.iter().find_map(|command| match command {
+    scene.commands().iter().find_map(|command| match command {
         SceneCommand::Rect(rect) => Some(rect),
         _ => None,
     })
@@ -194,10 +193,10 @@ fn first_rect(scene: &CommandScene) -> Option<&DrawRect> {
 
 fn rects_for_node(scene: &CommandScene, node: NodeId) -> Vec<&DrawRect> {
     scene
-        .commands
+        .commands()
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::Rect(rect) if rect.node == Some(node) => Some(rect),
+            SceneCommand::Rect(rect) if rect.node() == Some(node) => Some(rect),
             _ => None,
         })
         .collect()
@@ -359,15 +358,15 @@ fn top_layer_subtree_paints_after_later_siblings() {
 
     let theme = Theme::default();
     let accent_pos = scene
-        .commands
+        .commands()
         .iter()
-        .position(|c| matches!(c, SceneCommand::Rect(r) if r.color == theme.color(Token::Accent)))
+        .position(|c| matches!(c, SceneCommand::Rect(r) if r.color() == theme.color(Token::Accent)))
         .expect("top-layer rect emitted");
     let sibling_pos = scene
-        .commands
+        .commands()
         .iter()
         .position(
-            |c| matches!(c, SceneCommand::Rect(r) if r.color != theme.color(Token::Accent) && r.node.is_some()),
+            |c| matches!(c, SceneCommand::Rect(r) if r.color() != theme.color(Token::Accent) && r.node().is_some()),
         )
         .expect("sibling rect emitted");
     assert!(
@@ -375,4 +374,26 @@ fn top_layer_subtree_paints_after_later_siblings() {
         "top-layer subtree must paint after later siblings \
          (accent at {accent_pos}, sibling at {sibling_pos})"
     );
+}
+
+#[test]
+fn later_static_background_replaces_reactive_one() {
+    Owner::scope("renderer_style_integration::last_setter", || {
+        let mut cx = Cx::new_root();
+        let tone = signal(Token::Surface);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+                .background(tone)
+                .background(Token::Accent),
+        );
+
+        layout(&mut cx, root);
+
+        let scene = emit_scene(&cx, root, None);
+        assert_eq!(
+            first_rect(&scene).unwrap().color(),
+            Theme::default().color(Token::Accent)
+        );
+    });
 }

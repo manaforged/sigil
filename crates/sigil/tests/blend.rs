@@ -15,9 +15,7 @@ use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::scene::{
-    BlendMode, CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder,
-};
+use sigil::scene::{BlendMode, CommandScene, DrawRect, LayerScope, SceneBuilder};
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
@@ -47,26 +45,22 @@ const fn rgba([r, g, b]: [u8; 3], a: u8) -> Color {
 }
 
 fn blended(scene: &mut SceneBuilder, rect: Rect, mode: BlendMode, color: Color) {
-    let scope = LayerScope {
-        clip: rect,
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Identity,
-        opacity: 1.0,
-        blend: mode,
-    };
+    let scope = LayerScope::new(rect).blend(mode);
     scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, color)));
 }
 
 fn cell(mode: BlendMode, alpha: u8) -> impl IntoNode {
-    let paint = canvas(move |scene: &mut SceneBuilder, rect: Rect| {
-        scene.draw_rect(DrawRect::new(rect, rgba(BACKDROP, 255)));
-        let inner = Rect::new(
-            Point::new(rect.origin.x + 2.0, rect.origin.y + 2.0),
-            rect.width - 4.0,
-            rect.height - 4.0,
-        );
-        blended(scene, inner, mode, rgba(SOURCE, alpha));
-    })
+    let paint = canvas(
+        move |scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
+            scene.draw_rect(DrawRect::new(rect, rgba(BACKDROP, 255)));
+            let inner = Rect::new(
+                Point::new(rect.origin.x + 2.0, rect.origin.y + 2.0),
+                rect.width - 4.0,
+                rect.height - 4.0,
+            );
+            blended(scene, inner, mode, rgba(SOURCE, alpha));
+        },
+    )
     .width(CELL)
     .height(CELL);
     container()

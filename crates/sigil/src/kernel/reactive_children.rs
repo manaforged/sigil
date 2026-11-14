@@ -10,6 +10,7 @@ use crate::kernel::builder::Fate;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::{Owner, cleanup, is_live};
+use crate::style::presence;
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
@@ -94,14 +95,36 @@ fn dispose_if_live(owner: Owner) {
     }
 }
 
+struct DetachedCellGuard(Option<f32>);
+
+impl DetachedCellGuard {
+    fn enter(host_cell: f32) -> Self {
+        if host_cell > 0.0 && !crate::app::is_entered() {
+            Self(Some(crate::style::swap_cell(host_cell)))
+        } else {
+            Self(None)
+        }
+    }
+}
+
+impl Drop for DetachedCellGuard {
+    fn drop(&mut self) {
+        if let Some(prev) = self.0.take() {
+            crate::style::swap_cell(prev);
+        }
+    }
+}
+
 pub(crate) fn install<F, I, N>(parent: NodeId, location: &'static Location<'static>, mut f: F)
 where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = N>,
     N: IntoNode + 'static,
 {
+    let host_cell = crate::style::cell_size().unwrap_or(0.0);
     let prior: Rc<RefCell<PriorNodes>> = Rc::new(RefCell::new(take_seed(parent)));
     crate::reactive::effect_at("sigil-kernel::children_reactive", location, move || {
+        let _cell = DetachedCellGuard::enter(host_cell);
         let generation = generation_owner();
         let builders: Vec<Box<dyn ErasedComponent>> = generation.with(|| {
             f().into_iter()
@@ -137,8 +160,10 @@ pub(crate) fn install_keyed<F, I, K, N>(
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
+    let host_cell = crate::style::cell_size().unwrap_or(0.0);
     let prior = Rc::new(RefCell::new(Vec::<(K, NodeId)>::new()));
     crate::reactive::effect_at("sigil-kernel::children_keyed", location, move || {
+        let _cell = DetachedCellGuard::enter(host_cell);
         let generation = generation_owner();
         let incoming: KeyedIncoming<K> = generation.with(|| {
             let mounted = prior.borrow();
@@ -181,7 +206,7 @@ fn apply_positional(
         .filter(|id| cx.nodes.contains_key(id.key()))
         .collect();
     for id in old.iter().skip(builders.len()) {
-        cx.remove_counted(*id);
+        retire(cx, *id);
     }
     let mut fates = Fates::with_capacity(builders.len());
     for (index, builder) in builders.into_iter().enumerate() {
@@ -264,7 +289,7 @@ fn apply_keyed<K: Clone + Eq + Hash>(
     let mut live: AHashMap<K, NodeId> = old.into_iter().collect();
     let (mut next, fates) = mount_keyed(cx, parent, incoming, &mut live);
     for id in live.into_values() {
-        cx.remove_counted(id);
+        retire(cx, id);
     }
     settle(cx, parent, &fates, generation);
     next.retain(|(_, id)| cx.nodes.get(id.key()).is_some());
@@ -279,8 +304,8 @@ fn settle(
 ) -> PriorNodes {
     let order: PriorNodes = fates.iter().map(|fate| fate.id()).collect();
     let keep: AHashSet<NodeId> = order.iter().copied().collect();
-    let prefix = cx.others(parent, &keep);
-    cx.replace_children(parent, prefix.iter().chain(&order).copied().collect());
+    let children = arrange(cx, parent, &order, &keep);
+    cx.replace_children(parent, children);
     let fresh: PriorNodes = fates
         .iter()
         .filter(|fate| fate.is_fresh())
@@ -288,6 +313,52 @@ fn settle(
         .collect();
     pin_generation(cx, generation.0.take(), &fresh);
     order
+}
+
+fn retire(cx: &mut Cx, id: NodeId) {
+    if !presence::leave(cx, id) {
+        cx.remove_counted(id);
+    }
+}
+
+fn arrange(cx: &Cx, parent: NodeId, order: &PriorNodes, keep: &AHashSet<NodeId>) -> PriorNodes {
+    let others = cx.others(parent, keep);
+    let leaving = |id: &NodeId| cx.get(*id).is_some_and(presence::leaving);
+    if !others.iter().any(leaving) {
+        return others.iter().chain(order).copied().collect();
+    }
+    let current = cx
+        .nodes
+        .get(parent.key())
+        .map(|node| node.children.clone())
+        .unwrap_or_default();
+    let mut placed = order.clone();
+    let mut anchor = None;
+    for id in current {
+        if keep.contains(&id) {
+            anchor = Some(id);
+        } else if leaving(&id) {
+            let at = anchor
+                .and_then(|prior| placed.iter().position(|kept| *kept == prior))
+                .map_or(0, |index| index + 1);
+            placed.insert(at, id);
+            anchor = Some(id);
+        }
+    }
+    others
+        .iter()
+        .copied()
+        .filter(|id| !leaving(id))
+        .chain(placed)
+        .collect()
+}
+
+fn remove_released(cx: &mut Cx) {
+    for id in presence::take_released(cx.instance_id()) {
+        if cx.get(id).is_some_and(presence::leaving) {
+            cx.remove_counted(id);
+        }
+    }
 }
 
 fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
@@ -349,9 +420,11 @@ impl Cx {
     kittest_pub! {
         /// Rebuilds the reactive children that changed.
         pub fn flush_reactive_children(&mut self) {
+            remove_released(self);
             loop {
                 let pending = drain_pending();
                 if pending.is_empty() {
+                    self.apply_pending_edits();
                     return;
                 }
                 for mut rebuild in pending {

@@ -1,6 +1,5 @@
 use super::*;
 use sigil::kernel::HostMode;
-use sigil::widgets::Layout;
 use sigil_kittest::Harness;
 
 #[test]
@@ -26,7 +25,7 @@ fn enter_increments_the_same_button() {
 fn progress_paints_a_solid_bar() {
     use sigil::reactive::signal;
     use sigil::widgets::progress;
-    let at = |value: f32| fill_cells(&painted(move || progress(signal(value), 1.0), 40, 8));
+    let at = |value: f32| fill_cells(&painted(move || progress(signal(value)), 40, 8));
     let (empty, filled, full) = (at(0.0), at(0.6), at(1.0));
     assert!(
         empty < filled && filled < full,

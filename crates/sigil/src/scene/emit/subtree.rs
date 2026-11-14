@@ -11,6 +11,7 @@ use crate::profile::{Counter, count};
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache;
 use crate::style::Color;
+use crate::style::projection::in_context;
 
 use super::{EmitWalk, Inherited};
 
@@ -182,6 +183,9 @@ impl<'t> EmitWalk<'_, 't> {
         else {
             return false;
         };
+        if in_context(self.cx, id) {
+            return false;
+        }
         let Some(commands) = prior.commands.get(span.start..span.start + span.len) else {
             return false;
         };

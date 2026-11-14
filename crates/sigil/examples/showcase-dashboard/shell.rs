@@ -1,9 +1,9 @@
 use sigil::prelude::Widget;
 use sigil::prelude::{
     AlignItems, ControlSize, Key, MenuItem, NodeBuilder, Paint, Shortcut, Space, Token, Tone,
-    avatar, button, chip, command_menu, modal, row, spacer, status_bar, text, tooltip,
+    avatar, button, chip, command_menu, row, spacer, status_bar, text, tooltip,
 };
-use sigil::widgets::ModalBuilder;
+use sigil::widgets::CommandMenuBuilder;
 
 use super::data::{Bucket, Section, TEXT_SMALL};
 use super::live::Console;
@@ -84,36 +84,19 @@ pub(crate) fn menu_shortcut() -> Shortcut {
     Shortcut::primary(Key::character("k"))
 }
 
-pub(crate) fn command_modal(console: Console) -> ModalBuilder {
-    let open = console.menu_open;
-    let menu = command_menu()
+pub(crate) fn command_modal(console: Console) -> CommandMenuBuilder {
+    command_menu(console.menu_open)
         .placeholder("Type a command")
+        .item(MenuItem::new("Deploy the selected service").activate(move || console.deploy()))
+        .item(MenuItem::new("Pause all deploys").activate(move || console.set_paused(true)))
+        .item(MenuItem::new("Resume all deploys").activate(move || console.set_paused(false)))
         .item(
-            MenuItem::new("Deploy the selected service").activate(move || {
-                open.set(false);
-                console.deploy();
-            }),
+            MenuItem::new("Retry the selected job")
+                .activate(move || console.retry(console.focus.peek())),
         )
-        .item(MenuItem::new("Pause all deploys").activate(move || {
-            open.set(false);
-            console.set_paused(true);
-        }))
-        .item(MenuItem::new("Resume all deploys").activate(move || {
-            open.set(false);
-            console.set_paused(false);
-        }))
-        .item(MenuItem::new("Retry the selected job").activate(move || {
-            open.set(false);
-            console.retry(console.focus.peek());
-        }))
         .submenu("Go to", move |nested| {
             Section::ALL.iter().fold(nested, |entries, &section| {
                 entries.item(MenuItem::new(section.label()).activate(move || console.go(section)))
             })
         })
-        .cancel(move || open.set(false));
-    modal(open)
-        .title("Command menu")
-        .dismiss_on_backdrop(true)
-        .child(menu)
 }

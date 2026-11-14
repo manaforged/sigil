@@ -242,10 +242,10 @@ fn radius_at_half(transition: Transition) -> f32 {
     run(&mut ui, 0.5);
     let scene = ui.host().emit(super::VIEW);
     scene
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
-            sigil::scene::SceneCommand::Rect(rect) => Some(rect.border_radius.0[0]),
+            sigil::scene::SceneCommand::Rect(rect) => Some(rect.corner_radii()[0]),
             _ => None,
         })
         .unwrap_or(0.0)

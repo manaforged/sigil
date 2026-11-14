@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use sigil::Host;
-use sigil::app::{Frame, FrameHooks};
+use sigil::app::{Frame, FrameHooks, HostMode};
 use sigil::events::Event;
 use sigil::geometry::Point;
 use sigil::prelude::*;
@@ -127,7 +127,7 @@ impl SigilRig {
             })
             .paint(move |host: &mut Host, info: &Frame| {
                 if fresh || info.dirty() {
-                    black_box(host.scene(view).expect("scene"));
+                    let _ = black_box(host.scene(view).expect("scene"));
                 }
             });
         let out = self.host.frame(view, FRAME_SECONDS, hooks);
@@ -165,7 +165,7 @@ impl Rig for SigilRig {
                 if let Some(event) = event {
                     self.host.route(event);
                 }
-                black_box(self.host.scene(self.view()).expect("layout"));
+                let _ = black_box(self.host.scene(self.view()).expect("layout"));
             }
             Surface::Window => self.paint(event),
             Surface::Grid => {

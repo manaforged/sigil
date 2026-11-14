@@ -1,7 +1,7 @@
 use super::*;
 use sigil::events::EventRouter;
 use sigil::kernel::Cx;
-use sigil::widgets::Layout;
+use sigil::layout::LayoutStyle;
 
 #[test]
 fn long_line_does_not_grow_the_box_past_its_pane() {
@@ -181,7 +181,7 @@ fn render_budget_tracks_the_published_viewport_height() {
         let materialized = cx.child_count(inner);
         assert!(
             (10..40).contains(&materialized),
-            "budget must shrink to the 200px pane via size_reactive, got {materialized}"
+            "budget must shrink to the 200px pane via track_size, got {materialized}"
         );
     });
 }

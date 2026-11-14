@@ -1,9 +1,7 @@
 use crate::scene_support::{frame_ms, median};
 
 use sigil::geometry::{Point, Rect};
-use sigil::scene::{
-    CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, Mask, SceneBuilder,
-};
+use sigil::scene::{CommandScene, DrawRect, LayerScope, Mask, SceneBuilder};
 use sigil_kittest::gpu::headless_renderer;
 
 use super::{RED, alpha_ramp, image_mask, luminance_ramp, masked_red};
@@ -46,13 +44,7 @@ fn layered() -> CommandScene {
     let mut scene = SceneBuilder::new();
     for index in 0..COLS * ROWS {
         let rect = slot(index);
-        let scope = LayerScope {
-            clip: rect,
-            clip_radii: CornerRadii::ZERO,
-            effect: LayerEffect::Identity,
-            opacity: 0.99,
-            blend: sigil::scene::BlendMode::Normal,
-        };
+        let scope = LayerScope::new(rect).opacity(0.99);
         scene.composite(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
     }
     scene.finish()

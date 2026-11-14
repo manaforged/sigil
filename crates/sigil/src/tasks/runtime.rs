@@ -155,6 +155,12 @@ impl AsyncRuntime {
         self.parts.backend.started()
     }
 
+    /// Returns whether task results are waiting for the UI thread.
+    #[must_use]
+    pub fn has_pending(&self) -> bool {
+        !self.rx.is_empty()
+    }
+
     /// Returns the number of task results that wait for the UI thread.
     #[cfg(feature = "kittest")]
     #[must_use]

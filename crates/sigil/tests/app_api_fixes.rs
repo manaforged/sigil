@@ -4,12 +4,12 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil::Host;
-use sigil::app::FrameHooks;
-use sigil::events::{Event, PhysicalKey};
+use sigil::app::{FrameHooks, HostMode};
+use sigil::events::{Event, KeyPhase, PhysicalKey};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::widgets::DiffBuilder;
 use sigil::widgets::SubmitKey;
+use sigil::widgets::{DiffBuilder, DiffView, ModalBuilder, SortKey};
 
 const VIEW: (f32, f32) = (480.0, 320.0);
 
@@ -121,7 +121,7 @@ fn a_cursor_row_moved_off_screen_scrolls_into_view() {
                     .row_height(20.0)
                     .viewport_height(100.0)
                     .scroll_y(scroll)
-                    .cursor(cursor),
+                    .active(cursor),
             ),
         );
         settle(&mut host);

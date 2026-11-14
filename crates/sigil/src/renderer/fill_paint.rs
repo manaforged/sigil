@@ -27,6 +27,44 @@ fn rounded_rect_sdf(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>) -> f32 {
     return length(max(q, vec2<f32>(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
 }
 
+fn corner_distance(a: vec2<f32>, code: f32) -> f32 {
+    var e = code;
+    var b = a;
+    var side = 1.0;
+    if code < 0.0 {
+        if max(a.x, a.y) >= 1.0 {
+            return min(length(a - vec2<f32>(1.0, 0.0)), length(a - vec2<f32>(0.0, 1.0)));
+        }
+        e = -code;
+        b = vec2<f32>(1.0) - a;
+        side = -1.0;
+    }
+    let norm = pow(pow(b.x, e) + pow(b.y, e), 1.0 / e);
+    let pull = pow(max(b / max(norm, 1e-6), vec2<f32>(1e-6)), vec2<f32>(e - 1.0));
+    return side * (norm - 1.0) / max(length(pull), 1e-6);
+}
+
+fn shaped_rect_sdf(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>, code: f32) -> f32 {
+    if code == 0.0 {
+        return rounded_rect_sdf(p, half, radii);
+    }
+    let r = corner_radius(p, radii);
+    let q = abs(p) - half + vec2<f32>(r, r);
+    if r <= 0.0 || min(q.x, q.y) <= 0.0 {
+        return length(max(q, vec2<f32>(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
+    }
+    return r * corner_distance(q / r, code);
+}
+
+fn corner_reach(t_in: f32, code: f32) -> f32 {
+    let t = clamp(t_in, 0.0, 1.0);
+    if code < 0.0 {
+        let m = -code;
+        return 1.0 - pow(max(1.0 - pow(1.0 - t, m), 0.0), 1.0 / m);
+    }
+    return pow(max(1.0 - pow(t, code), 0.0), 1.0 / code);
+}
+
 fn edge_coverage(d: f32, aa: f32) -> f32 {
     return clamp(0.5 - d / (2.0 * aa), 0.0, 1.0);
 }
@@ -68,6 +106,32 @@ fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
     let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
     let high = pow((v + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
     return select(high, v / 12.92, v <= vec3<f32>(0.04045));
+}
+
+fn linear_to_oklab(c: vec3<f32>) -> vec3<f32> {
+    let lms = mat3x3<f32>(
+        vec3<f32>(0.41222146, 0.21190350, 0.08830246),
+        vec3<f32>(0.53633255, 0.68069950, 0.28171885),
+        vec3<f32>(0.05144599, 0.10739696, 0.62997870),
+    ) * c;
+    return mat3x3<f32>(
+        vec3<f32>(0.21045426, 1.97799850, 0.02590404),
+        vec3<f32>(0.79361780, -2.42859220, 0.78277177),
+        vec3<f32>(-0.00407205, 0.45059370, -0.80867577),
+    ) * (sign(lms) * pow(abs(lms), vec3<f32>(1.0 / 3.0)));
+}
+
+fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
+    let lms = mat3x3<f32>(
+        vec3<f32>(1.0, 1.0, 1.0),
+        vec3<f32>(0.39633778, -0.10556135, -0.08948418),
+        vec3<f32>(0.21580376, -0.06385417, -1.29148550),
+    ) * lab;
+    return mat3x3<f32>(
+        vec3<f32>(4.07674170, -1.26843800, -0.00419609),
+        vec3<f32>(-3.30771160, 2.60975740, -0.70341860),
+        vec3<f32>(0.23096994, -0.34131938, 1.70761470),
+    ) * (lms * lms * lms);
 }
 
 "

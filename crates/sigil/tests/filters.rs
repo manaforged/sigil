@@ -15,10 +15,7 @@ use sigil::geometry::{Point, Rect};
 use sigil::kernel::container;
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
-use sigil::scene::{
-    BlendMode, CommandScene, CornerRadii, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder,
-    Shadow,
-};
+use sigil::scene::{CommandScene, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder, Shadow};
 use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
@@ -57,25 +54,21 @@ pub(crate) struct Card {
 }
 
 pub(crate) fn filtered(scene: &mut SceneBuilder, rect: Rect, filters: &[Filter], content: Content) {
-    let scope = LayerScope {
-        clip: rect,
-        clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::Filter(filters.into()),
-        opacity: 1.0,
-        blend: BlendMode::default(),
-    };
+    let scope = LayerScope::new(rect).layer_effect(LayerEffect::Filter(filters.into()));
     scene.composite(scope, |scene| content(scene, rect));
 }
 
 fn node(card: Card) -> impl IntoNode {
-    let paint = canvas(move |scene: &mut SceneBuilder, rect: Rect| {
-        scene.draw_rect(DrawRect::new(rect, BLACK));
-        if card.filters.is_empty() {
-            (card.content)(scene, rect);
-        } else {
-            filtered(scene, rect, &card.filters, card.content);
-        }
-    })
+    let paint = canvas(
+        move |scene: &mut SceneBuilder, rect: Rect, _theme: &Theme| {
+            scene.draw_rect(DrawRect::new(rect, BLACK));
+            if card.filters.is_empty() {
+                (card.content)(scene, rect);
+            } else {
+                filtered(scene, rect, &card.filters, card.content);
+            }
+        },
+    )
     .width(SIDE as f32)
     .height(SIDE as f32);
     container()

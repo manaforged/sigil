@@ -59,6 +59,7 @@ struct VertexOut {
     @location(11) pattern_b: vec4<f32>,
     @location(12) @interpolate(flat) fill_kind: u32,
     @location(13) dash_origin: vec2<f32>,
+    @location(14) @interpolate(flat) shape: f32,
 };
 
 @vertex
@@ -93,6 +94,7 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     out.pattern_a = inst.pattern_a;
     out.pattern_b = inst.pattern_b;
     out.fill_kind = inst.stop_range.z;
+    out.shape = inst.xform_y.w;
     return out;
 }
 
@@ -119,7 +121,18 @@ fn target_premultiplied(mixed: vec4<f32>, linear: bool) -> vec4<f32> {
     return vec4<f32>(select(rgb, srgb_decode(rgb), linear) * mixed.a, mixed.a);
 }
 
-fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool) -> vec4<f32> {
+fn oklab_mixed(a: vec4<f32>, b: vec4<f32>, amount: f32, linear: bool) -> vec4<f32> {
+    let alpha = mix(a.a, b.a, amount);
+    if alpha <= 0.0 {
+        return vec4<f32>(0.0);
+    }
+    let lab_a = linear_to_oklab(select(srgb_decode(a.rgb), a.rgb, linear)) * a.a;
+    let lab_b = linear_to_oklab(select(srgb_decode(b.rgb), b.rgb, linear)) * b.a;
+    let rgb = clamp(oklab_to_linear(mix(lab_a, lab_b, amount) / alpha), vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(select(srgb_encode(rgb), rgb, linear) * alpha, alpha);
+}
+
+fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool, oklab: bool) -> vec4<f32> {
     let count = clamp(count_in, 1u, 8u);
     var prev = read_stop(base, 0u);
     if t < prev.offset {
@@ -129,6 +142,9 @@ fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool) -> vec4<f32> 
         let next = read_stop(base, i);
         if t < next.offset {
             let amount = (t - prev.offset) / (next.offset - prev.offset);
+            if oklab {
+                return oklab_mixed(prev.color, next.color, amount, linear);
+            }
             let a = gamma_premultiplied(prev.color, linear);
             let b = gamma_premultiplied(next.color, linear);
             return target_premultiplied(mix(a, b, amount), linear);
@@ -175,13 +191,12 @@ fn overlay_stroke(fill: vec4<f32>, stroke: vec4<f32>, amount: f32) -> vec4<f32> 
     return vec4<f32>(rgb, out_alpha);
 }
 
-fn slash_color(local: vec2<f32>, geometry: vec2<f32>, color: vec4<f32>) -> vec4<f32> {
+fn slash_color(local: vec2<f32>, geometry: vec2<f32>, color: vec4<f32>, aa: f32) -> vec4<f32> {
     let period = geometry.x;
     let line_width = geometry.y;
     let p = (local.x - local.y) / period;
     let phase = (p - floor(p)) * period;
     let edge_dist = min(phase, period - phase) - line_width * 0.5;
-    let aa = fwidth(local.x - local.y) * 0.5;
     let soft = 1.0 - smoothstep(-aa, aa, edge_dist);
     let full = select(soft, 1.0, line_width >= period);
     let mask = select(full, 0.0, line_width <= 0.0);
@@ -308,7 +323,59 @@ fn wash_pool(amount: f32, pools: f32, edges: f32) -> f32 {
     let rest = x - level;
     let settled = (level + smoothstep(0.80, 1.0, rest)) / pools;
     let rim = (1.0 - smoothstep(0.0, 0.16, rest)) * select(0.0, 1.0, level >= 1.0);
-    return settled + edges * rim * (0.9 / pools);
+    return max(settled + edges * rim * (0.9 / pools), 0.7 * sqrt(amount));
+}
+
+struct WashField {
+    scale: f32,
+    seed: u32,
+    band: bool,
+    centre: vec2<f32>,
+};
+
+fn wash_body(p: vec2<f32>, f: WashField) -> vec3<f32> {
+    let u = p.x / f.scale;
+    let v = p.y / f.scale;
+    let wx = u + 1.1 * (wash_fbm(u * 0.8 + 3.0, v * 0.8 + 7.0, 3u, f.seed) - 0.5);
+    let wy = v + 1.1 * (wash_fbm(u * 0.8 - 5.0, v * 0.8 + 1.0, 3u, f.seed) - 0.5);
+    var body: f32;
+    if f.band {
+        body = wash_band(u - f.centre.x / f.scale, v - f.centre.y / f.scale, wx, wy, f.seed);
+    } else {
+        body = smoothstep(0.38, 0.78, wash_fbm(wx * 0.9, wy * 0.9, 5u, f.seed));
+    }
+    return vec3<f32>(body, wx, wy);
+}
+
+fn wash_speck_limit(specks: f32, body: f32) -> f32 {
+    return specks * 0.05 * (0.35 + body);
+}
+
+fn wash_star(cell: vec2<f32>, p: vec2<f32>, f: WashField, specks: f32, dark: bool) -> f32 {
+    let ci = vec2<i32>(cell);
+    let sseed = f.seed ^ 0xabcu;
+    let roll = wash_rand(ci.x, ci.y, sseed);
+    if roll >= wash_speck_limit(specks, 1.0) {
+        return 0.0;
+    }
+    let o = cell * 4.0 + 4.0 * vec2<f32>(wash_rand(ci.x, ci.y, sseed ^ 1u), wash_rand(ci.x, ci.y, sseed ^ 2u));
+    let radius = 0.6 + 0.7 * wash_rand(ci.x, ci.y, sseed ^ 3u);
+    let dot_mask = 1.0 - smoothstep(radius - 0.6, radius + 0.6, distance(p, o));
+    if dot_mask <= 0.0 || roll >= wash_speck_limit(specks, wash_body(o, f).x) {
+        return 0.0;
+    }
+    return dot_mask * select(1.0, 0.55 + 0.45 * wash_rand(ci.x, ci.y, sseed ^ 4u), dark);
+}
+
+fn wash_specks(p: vec2<f32>, f: WashField, specks: f32, dark: bool) -> f32 {
+    let cell = floor(p / 4.0);
+    let side = select(vec2<f32>(1.0), vec2<f32>(-1.0), p - cell * 4.0 < vec2<f32>(2.0));
+    var light = 0.0;
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        let offset = vec2<f32>(f32(i & 1u), f32(i >> 1u)) * side;
+        light = max(light, wash_star(cell + offset, p, f, specks, dark));
+    }
+    return light;
 }
 
 fn wash_ramp(base: u32, count: u32, t: f32) -> vec3<f32> {
@@ -335,18 +402,12 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
     let flags = u32(b.z);
     let band = (flags & 1u) != 0u;
     let dark = (flags & 2u) != 0u;
-    let u = p.x / scale;
-    let v = p.y / scale;
-    let wx = u + 1.1 * (wash_fbm(u * 0.8 + 3.0, v * 0.8 + 7.0, 3u, seed) - 0.5);
-    let wy = v + 1.1 * (wash_fbm(u * 0.8 - 5.0, v * 0.8 + 1.0, 3u, seed) - 0.5);
-    var body: f32;
-    if band {
-        let bits = bitcast<u32>(b.w);
-        let centre = vec2<f32>(f32(bits & 0xffffu), f32(bits >> 16u)) / scale;
-        body = wash_band(u - centre.x, v - centre.y, wx, wy, seed);
-    } else {
-        body = smoothstep(0.38, 0.78, wash_fbm(wx * 0.9, wy * 0.9, 5u, seed));
-    }
+    let bits = bitcast<u32>(b.w);
+    let field = WashField(scale, seed, band, vec2<f32>(f32(bits & 0xffffu), f32(bits >> 16u)));
+    let warped = wash_body(p, field);
+    let body = warped.x;
+    let wx = warped.y;
+    let wy = warped.z;
     var amount = wash_pool(clamp(body * density, 0.0, 1.0), pools, edges);
     let ridge = wash_ridged(wx * 1.4 + 31.0, wy * 1.4 - 17.0, seed);
     let inside = smoothstep(0.66, 0.74, ridge);
@@ -369,20 +430,11 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
         rgb = rgb * (1.0 - grain * (0.035 * fine + 0.045 * fibre));
     }
     if specks > 0.0 {
-        let cell = floor(p / 4.0);
-        let ci = vec2<i32>(cell);
-        let sseed = seed ^ 0xabcu;
-        if wash_rand(ci.x, ci.y, sseed) < specks * 0.05 * (0.35 + body) {
-            let o = cell * 4.0 + 4.0 * vec2<f32>(wash_rand(ci.x, ci.y, sseed ^ 1u), wash_rand(ci.x, ci.y, sseed ^ 2u));
-            let radius = 0.6 + 0.7 * wash_rand(ci.x, ci.y, sseed ^ 3u);
-            let dot_mask = 1.0 - smoothstep(radius - 0.6, radius + 0.6, distance(p, o));
-            if dark {
-                let glow = 0.55 + 0.45 * wash_rand(ci.x, ci.y, sseed ^ 4u);
-                rgb = rgb + (vec3<f32>(1.0) - rgb) * dot_mask * glow;
-            } else {
-                let ink = wash_ramp(base, count, 1.0) * 0.45;
-                rgb = mix(rgb, ink, dot_mask * 0.55);
-            }
+        let light = wash_specks(p, field, specks, dark);
+        if dark {
+            rgb = rgb + (vec3<f32>(1.0) - rgb) * light;
+        } else {
+            rgb = mix(rgb, wash_ramp(base, count, 1.0) * 0.45, light * 0.55);
         }
     }
     return premultiply(vec4<f32>(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)), paper.a));
@@ -390,21 +442,24 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    let d = rounded_rect_sdf(in.local, in.half_size, in.corner_radii);
+    let d = shaped_rect_sdf(in.local, in.half_size, in.corner_radii, in.shape);
     let aa = max(fwidth(d) * 0.5, 0.0001);
     let coverage = edge_coverage(d, aa);
     let linear = in.stops_meta.w == 1u;
+    let pattern = in.local + in.half_size + in.start + in.axis;
+    let slash_aa = fwidth(pattern.x - pattern.y) * 0.5;
 
     var color: vec4<f32>;
     if in.fill_kind == FILL_KIND_SLASH {
-        color = slash_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a);
+        color = slash_color(pattern, in.start, in.pattern_a, slash_aa);
     } else if in.fill_kind == FILL_KIND_WASH {
-        color = wash_color(in.local + in.half_size + in.start + in.axis, in.stops_meta.x, in.stops_meta.y, in.pattern_a, in.pattern_b, in.start);
+        color = wash_color(pattern, in.stops_meta.x, in.stops_meta.y, in.pattern_a, in.pattern_b, in.start);
     } else if in.fill_kind == FILL_KIND_CHECKER {
-        color = checker_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a, in.pattern_b);
+        color = checker_color(pattern, in.start, in.pattern_a, in.pattern_b);
     } else {
         let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
-        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear);
+        let oklab = in.pattern_b.w > 0.5;
+        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear, oklab);
     }
 
     let alpha = color.a * in.opacity * coverage;

@@ -4,9 +4,9 @@ use crate::style::Color;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorScale {
     /// The 12 colors of the scale, with step 1 at index 0.
-    pub steps: [Color; 12],
+    pub(crate) steps: [Color; 12],
     /// The color for content drawn on step 9, the solid fill.
-    pub on_solid: Color,
+    pub(crate) on_solid: Color,
 }
 
 impl ColorScale {
@@ -34,6 +34,18 @@ impl ColorScale {
         let idx = if n == 0 { 0 } else { (n - 1) as usize };
         let clamped = if idx > 11 { 11 } else { idx };
         self.steps[clamped]
+    }
+
+    /// Returns all 12 steps of the scale from step 1 to step 12.
+    #[must_use]
+    pub const fn steps(&self) -> &[Color; 12] {
+        &self.steps
+    }
+
+    /// Returns the foreground color drawn on step 9.
+    #[must_use]
+    pub const fn solid_ink(&self) -> Color {
+        self.on_solid
     }
 }
 

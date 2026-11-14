@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::scene::geometry::KAPPA as CIRCLE_K;
 use crate::style::{BORDER_WIDTH, Paint, Radius, Token, space};
-use crate::widgets::Layout;
+use crate::widgets::Widget;
 use crate::widgets::vector::{PathBuilder, path};
 
 use super::flow::{Graph, GridRect, NodeShape, arrange};
@@ -126,7 +126,7 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
             dashes.stroke(Token::OnSurfaceMuted, edge_width()),
             size,
         ))
-        .child(layer(heads.fill(Token::OnSurfaceMuted), size))
+        .child(layer(heads.fill_color(Token::OnSurfaceMuted), size))
         .child(layer(shapes(&graph, &areas, size), size))
         .child(layer(dots(&graph, &areas, size), size));
     for (node, area) in graph.nodes.iter().zip(&areas) {

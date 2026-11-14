@@ -56,14 +56,24 @@ fn gaussian_weight(x: f32, sigma: f32) -> f32 {
     return exp(-(x * x) / (2.0 * sigma * sigma)) / (sqrt(TAU) * sigma);
 }
 
-fn shadow_x(x: f32, y: f32, sigma: f32, radius: f32, half_size: vec2<f32>) -> f32 {
+fn shadow_reach(radius: f32, dy: f32, code: f32) -> f32 {
+    if code == 0.0 {
+        return sqrt(max(0.0, radius * radius - dy * dy));
+    }
+    if radius <= 0.0 {
+        return 0.0;
+    }
+    return radius * corner_reach(abs(dy) / radius, code);
+}
+
+fn shadow_x(x: f32, y: f32, sigma: f32, radius: f32, half_size: vec2<f32>, code: f32) -> f32 {
     let dy = min(half_size.y - radius - abs(y), 0.0);
-    let curved = half_size.x - radius + sqrt(max(0.0, radius * radius - dy * dy));
+    let curved = half_size.x - radius + shadow_reach(radius, dy, code);
     let integral = 0.5 + 0.5 * erf2((x + vec2<f32>(-curved, curved)) * (0.70710678118 / sigma));
     return integral.y - integral.x;
 }
 
-fn blurred_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<f32>, spread: f32) -> f32 {
+fn blurred_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<f32>, spread: f32, code: f32) -> f32 {
     let low = p.y - half_size.y;
     let high = p.y + half_size.y;
     let start = clamp(-3.0 * sigma, low, high);
@@ -74,18 +84,18 @@ fn blurred_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<
     for (var i = 0u; i < 4u; i = i + 1u) {
         let sample_p = vec2<f32>(p.x, p.y - y);
         let radius = max(0.0, corner_radius(sample_p, radii) + spread);
-        sum += shadow_x(p.x, sample_p.y, sigma, radius, half_size) * gaussian_weight(y, sigma) * step;
+        sum += shadow_x(p.x, sample_p.y, sigma, radius, half_size, code) * gaussian_weight(y, sigma) * step;
         y += step;
     }
     return clamp(sum, 0.0, 1.0);
 }
 
-fn shadow_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<f32>, spread: f32) -> f32 {
+fn shadow_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<f32>, spread: f32, code: f32) -> f32 {
     if sigma <= 0.01 {
-        let d = rounded_rect_sdf(p, half_size, max(radii + vec4<f32>(spread), vec4<f32>(0.0)));
+        let d = shaped_rect_sdf(p, half_size, max(radii + vec4<f32>(spread), vec4<f32>(0.0)), code);
         return 1.0 - smoothstep(-0.5, 0.5, d);
     }
-    return blurred_coverage(p, sigma, radii, half_size, spread);
+    return blurred_coverage(p, sigma, radii, half_size, spread, code);
 }
 
 @fragment
@@ -96,25 +106,26 @@ fn fs_main(in: ShadowVertexOut) -> @location(0) vec4<f32> {
     let spread = in.shadow_params.w;
     let surface_half_size = max(vec2<f32>(0.0), in.surface_rect.zw * 0.5);
     let shadow_kind = in.shadow_meta.x;
+    let code = in.shadow_meta.y;
     let p_surface = in.pos_px - center;
-    let d_surface = rounded_rect_sdf(p_surface, surface_half_size, max(in.corner_radii, vec4<f32>(0.0)));
+    let d_surface = shaped_rect_sdf(p_surface, surface_half_size, max(in.corner_radii, vec4<f32>(0.0)), code);
     let edge_aa = max(fwidth(d_surface) * 0.5, 0.0001);
     var coverage = 0.0;
 
     if shadow_kind >= 1.5 {
         let p = in.pos_px - center - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));
-        coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread);
+        coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread, code);
     } else if shadow_kind >= 0.5 {
         let edge = 1.0 - smoothstep(-edge_aa, edge_aa, d_surface);
         let inner_spread = -spread;
         let p_shadow = p_surface - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(inner_spread));
-        coverage = edge * (1.0 - shadow_coverage(p_shadow, sigma, in.corner_radii, half_size, inner_spread));
+        coverage = edge * (1.0 - shadow_coverage(p_shadow, sigma, in.corner_radii, half_size, inner_spread, code));
     } else {
         let p = in.pos_px - center - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));
-        coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread);
+        coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread, code);
     }
 
     let alpha = in.color.a * coverage;

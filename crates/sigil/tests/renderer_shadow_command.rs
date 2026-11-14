@@ -6,8 +6,8 @@ use scene_support::color;
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
-    SceneCommand, Shadow, ShadowKind,
+    CommandScene, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
+    Shadow, ShadowKind,
 };
 use sigil::style::Rgba;
 use smallvec::smallvec;
@@ -37,16 +37,13 @@ fn shadow_constructor_defaults_to_outer_and_builder_sets_inner() {
 #[test]
 fn shadow_command_stacks_before_casting_rect() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(rect(16.0), CornerRadii::uniform(12.0), ambient_shadow());
-    builder.draw_shadow(rect(16.0), CornerRadii::uniform(12.0), key_shadow());
-    builder.draw_rect(
-        DrawRect::new(rect(16.0), color(250, 252, 255, 255))
-            .border_radius(CornerRadii::uniform(12.0)),
-    );
+    builder.draw_shadow(rect(16.0), [12.0; 4], ambient_shadow());
+    builder.draw_shadow(rect(16.0), [12.0; 4], key_shadow());
+    builder.draw_rect(DrawRect::new(rect(16.0), color(250, 252, 255, 255)).radius(12.0));
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::DrawShadow { .. },
             SceneCommand::DrawShadow { .. },
@@ -58,20 +55,16 @@ fn shadow_command_stacks_before_casting_rect() {
 #[test]
 fn shadow_commands_cover_solid_gradient_and_asymmetric_radii() {
     let mut builder = SceneBuilder::new();
-    builder.draw_shadow(rect(0.0), CornerRadii::uniform(10.0), key_shadow());
-    builder.draw_rect(
-        DrawRect::new(rect(0.0), color(235, 240, 248, 255))
-            .border_radius(CornerRadii::uniform(10.0)),
-    );
-    builder.draw_shadow(rect(72.0), CornerRadii::top(16.0), ambient_shadow());
-    builder.draw_gradient(
-        DrawGradient::new(rect(72.0), gradient()).border_radius(CornerRadii::top(16.0)),
-    );
+    builder.draw_shadow(rect(0.0), [10.0; 4], key_shadow());
+    builder.draw_rect(DrawRect::new(rect(0.0), color(235, 240, 248, 255)).radius(10.0));
+    let top_radii = [16.0, 16.0, 0.0, 0.0];
+    builder.draw_shadow(rect(72.0), top_radii, ambient_shadow());
+    builder.draw_gradient(DrawGradient::new(rect(72.0), gradient()).radii(top_radii));
     let scene = builder.finish();
 
-    assert_eq!(scene.commands.len(), 4);
+    assert_eq!(scene.len(), 4);
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::DrawShadow { .. },
             SceneCommand::Rect(_),

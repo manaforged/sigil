@@ -1,3 +1,4 @@
+use crate::scene::command::gradient::ColorSpace;
 use crate::style::Token;
 
 /// An 8-bit RGBA color.
@@ -14,6 +15,13 @@ pub struct Color {
 }
 
 impl Color {
+    /// Transparent black (`rgba(0, 0, 0, 0)`).
+    pub const TRANSPARENT: Self = Self::rgba(0, 0, 0, 0);
+    /// Opaque black (`rgb(0, 0, 0)`).
+    pub const BLACK: Self = Self::rgb(0, 0, 0);
+    /// Opaque white (`rgb(255, 255, 255)`).
+    pub const WHITE: Self = Self::rgb(255, 255, 255);
+
     /// Creates an opaque color from 8-bit channels.
     #[must_use]
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
@@ -29,6 +37,22 @@ impl Color {
     #[must_use]
     pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
+    }
+
+    /// Returns a copy of this color with its alpha channel set to `a`.
+    #[must_use]
+    pub const fn alpha(mut self, a: u8) -> Self {
+        self.a = a;
+        self
+    }
+
+    /// Mixes this color toward `to` by `t` from 0.0 to 1.0 in `space`, like CSS `color-mix()`.
+    #[must_use]
+    pub fn mix(self, to: Self, t: f32, space: ColorSpace) -> Self {
+        match space {
+            ColorSpace::Oklab => crate::scene::command::oklab::mix(self, to, t),
+            ColorSpace::Srgb => crate::animation::runtime::binding_animate_color::mix(self, to, t),
+        }
     }
 
     /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.
@@ -91,8 +115,15 @@ impl From<Token> for ColorValue {
     }
 }
 
+impl From<&'static str> for ColorValue {
+    fn from(name: &'static str) -> Self {
+        Self::parse(name)
+    }
+}
+
 /// The direction of a background gradient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum GradientAxis {
     /// The first stop is at the top edge and the last at the bottom edge.
     TopToBottom,
@@ -102,60 +133,28 @@ pub enum GradientAxis {
     LeftToRight,
     /// The first stop is at the right edge and the last at the left edge.
     RightToLeft,
+    /// Toward this angle in degrees clockwise from up, like CSS `linear-gradient(<angle>)`.
+    Angle(i16),
 }
 
-kittest_pub! {
-    #[doc(hidden)]
-    /// A color and offset of a background gradient.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct GradientStopKey {
-        /// The position of the stop along the axis in thousandths, from 0 to 1000.
-        pub offset: u16,
-        /// The color at this offset.
-        pub color: ColorValue,
-    }
-}
-
-impl GradientStopKey {
-    kittest_pub! {
-        #[doc(hidden)]
-        /// Creates a gradient stop with `color` at `offset`.
-        #[must_use]
-        pub const fn new(offset: u16, color: ColorValue) -> Self {
-            Self { offset, color }
+impl GradientAxis {
+    pub(crate) fn heading(self) -> (f32, [f32; 2]) {
+        match self {
+            Self::BottomToTop => (0.0, [0.0, -1.0]),
+            Self::LeftToRight => (90.0, [1.0, 0.0]),
+            Self::TopToBottom => (180.0, [0.0, 1.0]),
+            Self::RightToLeft => (270.0, [-1.0, 0.0]),
+            Self::Angle(degrees) => {
+                let degrees = f32::from(degrees);
+                (degrees, direction(degrees))
+            }
         }
     }
 }
 
-kittest_pub! {
-    #[doc(hidden)]
-    /// A background gradient in a style.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct BgGradient {
-        /// The direction that the stops run in.
-        pub axis: GradientAxis,
-        /// The stops in order along the axis.
-        pub stops: &'static [GradientStopKey],
-    }
-}
-
-impl BgGradient {
-    kittest_pub! {
-        #[doc(hidden)]
-        /// Creates a background gradient along `axis` with `stops`.
-        #[must_use]
-        pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
-            Self { axis, stops }
-        }
-    }
-
-    /// Creates a gradient from owned stops.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
-    #[must_use]
-    pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
-        Self::new(axis, crate::style::intern::intern(stops))
-    }
+pub(crate) fn direction(degrees: f32) -> [f32; 2] {
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    [sin, -cos]
 }
 
 fn parse_hex(input: &str) -> Option<Color> {

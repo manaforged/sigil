@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil::style::TextStyle;
+use sigil::text::HitPosition;
 use sigil::text::OwnedTextEngine;
-use sigil::text::{HitPosition, TextAffinity};
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextStyle::default().font_size(16.0))
@@ -23,7 +23,8 @@ fn middle_empty_line_hit_test_returns_the_break_byte_not_zero() {
     let middle_line_y = line_height * 1.5;
     let hit = p.hit_test(0.0, middle_line_y);
     assert_eq!(
-        hit.byte_index, 2,
+        hit.byte_index(),
+        2,
         "hit-testing the middle empty line must return byte 2 (right after \
          the first \\n), not the document start",
     );
@@ -36,10 +37,7 @@ fn caret_rect_for_the_break_byte_lands_on_the_empty_line_not_line_zero() {
     let p = e.layout_paragraph(text, None).unwrap();
     let line_height = p.height() / 3.0;
 
-    let pos = HitPosition {
-        byte_index: 2,
-        affinity: TextAffinity::Downstream,
-    };
+    let pos = HitPosition::downstream(2);
     let rect = p.caret_rect(pos, 1.0);
 
     assert!(
@@ -61,10 +59,15 @@ fn three_consecutive_hard_breaks_give_each_empty_line_a_distinct_byte() {
     let line_height = p.height() / 4.0;
     let hit_line1 = p.hit_test(0.0, line_height * 1.5);
     let hit_line2 = p.hit_test(0.0, line_height * 2.5);
-    assert_eq!(hit_line1.byte_index, 2, "first empty line must be byte 2");
-    assert_eq!(hit_line2.byte_index, 3, "second empty line must be byte 3");
+    assert_eq!(hit_line1.byte_index(), 2, "first empty line must be byte 2");
+    assert_eq!(
+        hit_line2.byte_index(),
+        3,
+        "second empty line must be byte 3"
+    );
     assert_ne!(
-        hit_line1.byte_index, hit_line2.byte_index,
+        hit_line1.byte_index(),
+        hit_line2.byte_index(),
         "two consecutive empty lines must not collapse onto the same byte",
     );
 }
@@ -83,7 +86,7 @@ fn trailing_hard_break_empty_line_hit_tests_to_its_own_end_byte() {
     let line_height = p.height() / 2.0;
     let hit = p.hit_test(0.0, line_height * 1.5);
     assert_eq!(
-        hit.byte_index,
+        hit.byte_index(),
         text.len(),
         "the trailing empty line must hit-test to the text's own end byte",
     );

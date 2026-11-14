@@ -47,18 +47,17 @@ fn controls() -> Vec<Case> {
         ("toggle", Box::new(|| toggle(signal(true)).label("Lock"))),
         (
             "radio_group",
-            Box::new(|| {
-                radio_group(signal(String::from("a")))
-                    .option("a", "Automatic")
-                    .option("m", "Manual")
-            }),
+            Box::new(|| radio_group(signal(0_usize), ["Automatic", "Manual"])),
         ),
         ("slider", Box::new(|| slider(signal(40.0_f32), 0.0..=100.0))),
         (
             "gauge",
             Box::new(|| gauge(signal(40.0_f32)).max(100.0).label("Battery")),
         ),
-        ("progress", Box::new(|| progress(signal(40.0_f32), 100.0))),
+        (
+            "progress",
+            Box::new(|| progress(signal(40.0_f32)).max(100.0)),
+        ),
     ]
 }
 
@@ -98,21 +97,11 @@ fn pickers() -> Vec<Case> {
     vec![
         (
             "dropdown",
-            Box::new(|| {
-                dropdown(
-                    signal(1_usize),
-                    vec!["Small".into(), "Medium".into(), "Large".into()],
-                )
-            }),
+            Box::new(|| dropdown(signal(1_usize), ["Small", "Medium", "Large"])),
         ),
         (
             "combobox",
-            Box::new(|| {
-                combobox(
-                    Combobox::new(vec![String::from("Rust"), String::from("Go")])
-                        .placeholder("Language"),
-                )
-            }),
+            Box::new(|| combobox(Combobox::new(["Rust", "Go"]).placeholder("Language"))),
         ),
     ]
 }

@@ -41,7 +41,6 @@ impl<'a> Frame<'a> {
     }
 
     /// The scene to draw.
-    #[must_use]
     pub const fn scene(&self) -> &'a CommandScene {
         self.scene
     }

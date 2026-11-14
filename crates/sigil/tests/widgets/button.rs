@@ -1,5 +1,6 @@
 use super::*;
 use sigil::events::EventRouter;
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::kernel::NodeType;
 use sigil::layout::LayoutEngine;

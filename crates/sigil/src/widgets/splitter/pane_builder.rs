@@ -1,8 +1,8 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder};
 use crate::layout::Orientation;
 use crate::layout::{LayoutStyle, Length};
-use crate::style::{PaintTarget, StyleSlot};
-use crate::widgets::{Edit, LayoutEdit, NodeEdit, Sealed, Widget};
+use crate::style::{Paint, StateStyleBuilder};
+use crate::widgets::{LayoutEdit, Widget};
 
 use super::builder::{PaneEntry, SplitterBuilder};
 
@@ -35,6 +35,10 @@ impl PaneBuilder {
     pub fn commit(mut self) -> SplitterBuilder {
         self.splitter.panes.push(self.entry);
         self.splitter
+    }
+
+    fn edit_layout(&mut self, edit: LayoutEdit) {
+        self.entry.edit_layout(edit, self.splitter.orientation);
     }
 }
 
@@ -74,25 +78,13 @@ impl PaneEntry {
     }
 }
 
-impl Sealed for PaneBuilder {
-    fn edit(mut self, NodeEdit(edit): NodeEdit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.entry.edit_layout(edit, self.splitter.orientation),
-            other => self.entry.layout.node_hook(move |node| other.apply(node)),
-        }
-        self
-    }
-
-    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+impl Widget for PaneBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
         self.entry.layout.node_hook(f);
         self
     }
-}
 
-impl Widget for PaneBuilder {
-    fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.map_target(f)
-    }
+    crate::widgets::widget_layout_methods!(@edit edit_layout);
 }
 
 impl IntoNode for PaneBuilder {
@@ -107,8 +99,8 @@ impl From<PaneBuilder> for NodeBuilder {
     }
 }
 
-impl PaintTarget for PaneBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.entry.style)
+impl Paint for PaneBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        self.entry.style.paint_mut()
     }
 }

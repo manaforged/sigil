@@ -1,5 +1,6 @@
 #![allow(clippy::expect_used)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 
@@ -36,7 +37,7 @@ fn first_ink(tone: Option<Tone>) -> Option<sigil::terminal::Ink> {
     let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
     Owner::scope("progress-tone", || {
         host.mount(move || {
-            let bar = progress(signal(1.0), 1.0).height(1.0);
+            let bar = progress(signal(1.0)).height(1.0);
             let bar = match tone {
                 Some(tone) => bar.tone(tone),
                 None => bar,

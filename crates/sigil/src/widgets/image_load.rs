@@ -1,10 +1,13 @@
 use crate::kernel::{ImageSource, Load, NodeBuilder, ObjectFit, container, image, text};
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::Signal;
+use crate::style::Style;
 use crate::tasks::Status;
 use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::{Error, ErrorKind};
+
+use super::shared::caller_style;
 
 type View = Box<dyn Fn() -> NodeBuilder>;
 type ErrorView = Box<dyn Fn(&Error) -> NodeBuilder>;
@@ -17,6 +20,7 @@ pub struct ImageLoadBuilder {
     fit: ObjectFit,
     placeholder: View,
     error: ErrorView,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -25,6 +29,7 @@ pub struct ImageLoadBuilder {
 /// Size the box with the layout setters, such as `.width(..)` and `.height(..)`; the loaded image fills a sized axis with `fit`, and keeps its own size on an axis left unset.
 ///
 /// ```
+/// use sigil::node::ObjectFit;
 /// use sigil::prelude::*;
 ///
 /// fn logo() -> impl IntoNode {
@@ -42,6 +47,7 @@ pub fn load_image(location: impl Into<String>) -> ImageLoadBuilder {
         fit: ObjectFit::Fill,
         placeholder: Box::new(|| container().child(text("Loading image"))),
         error: Box::new(|err| container().child(text(format!("Could not load image: {err}")))),
+        style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -101,12 +107,12 @@ impl ImageLoadBuilder {
             fill(size.height != Length::Auto),
         );
         let status = self.status;
-        container().children_reactive(move || {
+        let node = container().children_reactive(move || {
             [match status.get() {
                 Status::Ok(source) => {
                     let shown = image(source).fit(self.fit).width(width).height(height);
                     match &self.alt {
-                        Some(alt) => shown.alt(alt.clone()),
+                        Some(alt) => shown.accessible(alt.clone()),
                         None => shown,
                     }
                     .into_node_builder()
@@ -115,7 +121,8 @@ impl ImageLoadBuilder {
                 Status::Panicked(reason) => (self.error)(&Error::message(ErrorKind::Task, reason)),
                 Status::Idle | Status::Pending => (self.placeholder)(),
             }]
-        })
+        });
+        caller_style(node, self.style_accumulator)
     }
 }
 
@@ -125,8 +132,9 @@ impl core::fmt::Debug for ImageLoadBuilder {
             .field("status", &self.status)
             .field("alt", &self.alt)
             .field("fit", &self.fit)
+            .field("style_accumulator", &self.style_accumulator)
             .finish_non_exhaustive()
     }
 }
 
-builder_impls!([] ImageLoadBuilder: widget, node);
+builder_impls!([] ImageLoadBuilder: paint(style_accumulator), widget, node);

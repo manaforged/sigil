@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode, NodePatch};
 use crate::kernel::{A11yProps, Cx, Node, NodeId, NodeType, TextCursor, reactive_children};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::style::{Paint, StateStyleBuilder, States, Style};
 use crate::widgets::Wiring;
 
 mod keyed;
@@ -199,6 +199,18 @@ impl NodeBuilder {
         self
     }
 
+    /// Appends every child in `children`.
+    pub fn children<I, N>(mut self, children: I) -> Self
+    where
+        I: IntoIterator<Item = N>,
+        N: IntoNode + 'static,
+    {
+        for child in children {
+            self.children.push(Box::new(child));
+        }
+        self
+    }
+
     /// Runs `hook` with the tree and the node id after the node and its children are in the tree.
     pub fn added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
         self.added.push(Box::new(hook));
@@ -244,11 +256,19 @@ impl NodeBuilder {
         self.style.get_or_insert_with(|| Box::new(Style::new()))
     }
 
+    pub(crate) const fn take_style(&mut self) -> Option<Box<Style>> {
+        self.style.take()
+    }
+
     fn styled(mut self) -> Self {
         let style = self.style.take().filter(|style| !style.is_empty());
         match style {
             Some(style) => crate::style::attach_style(self, *style),
-            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert()) => self,
+            None if self.wiring.as_ref().is_none_or(|wiring| wiring.is_inert())
+                && !self.is_focusable() =>
+            {
+                self
+            }
             None => crate::style::attach_style(self, Style::new()),
         }
     }
@@ -273,10 +293,14 @@ impl NodeBuilder {
     }
 }
 
-impl PaintTarget for NodeBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(self.pending_style())
+impl Paint for NodeBuilder {
+    fn paint_mut(&mut self) -> &mut StateStyleBuilder {
+        &mut self.pending_style().paint
     }
+}
+
+impl States for NodeBuilder {
+    crate::style::state_methods!(style pending_style());
 }
 
 impl IntoNode for NodeBuilder {

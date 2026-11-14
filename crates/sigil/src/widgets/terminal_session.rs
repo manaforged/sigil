@@ -9,7 +9,7 @@ use crate::layout::{LayoutStyle, mono_cell, rows};
 use crate::reactive::{Signal, effect_named, memo, signal};
 use crate::style::TextRun;
 use crate::style::theme::ambient::ActiveTheme;
-use crate::widgets::{Layout, Widget};
+use crate::widgets::Widget;
 
 use super::{key_payload, shell};
 
@@ -17,21 +17,21 @@ impl Session {
     /// Builds a view of this terminal that fills its space, sizes the terminal to it, and takes keys, paste, the mouse and the wheel.
     pub fn view(self: &Rc<Self>) -> NodeBuilder {
         let list = screen(self.rows);
-        let size = signal((0.0_f32, 0.0_f32));
+        let size = signal(crate::geometry::Size::ZERO);
         self.follow(size);
         let (keys, pasted) = (Rc::clone(self), Rc::clone(self));
         let node = shell(move |event| keys.key(event))
             .child(list)
             .selectable(true)
-            .size_reactive(size)
+            .track_size(size)
             .paste(move |text| pasted.paste(text).is_ok());
         pointer(wheel(node, self), self)
     }
 
-    fn follow(self: &Rc<Self>, size: Signal<(f32, f32)>) {
+    fn follow(self: &Rc<Self>, size: Signal<crate::geometry::Size>) {
         let sized = Rc::clone(self);
         effect_named("sigil::terminal::size", move || {
-            let (width, height) = size.get();
+            let crate::geometry::Size { width, height } = size.get();
             let (cell_width, cell_height) = mono_cell();
             if width > 0.0 && height > 0.0 {
                 drop(sized.resize(cells(width, cell_width), cells(height, cell_height)));

@@ -4,6 +4,10 @@ use crate::kernel::{ImageSource, Node};
 pub(crate) struct ImagePaints(Vec<ImageSource>);
 
 impl ImagePaints {
+    pub(crate) const fn new() -> Self {
+        Self(Vec::new())
+    }
+
     pub(crate) fn push(&mut self, source: ImageSource) -> u64 {
         let id = source.id();
         if self.get(id).is_none() {

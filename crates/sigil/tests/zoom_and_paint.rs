@@ -7,6 +7,7 @@
 
 use sigil::animation::Property;
 use sigil::geometry::{Point, Rect};
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::scene::DrawRect;
 use sigil::style::Transform2D;
@@ -67,13 +68,13 @@ fn zoomed_content_keeps_sharp_edges() {
 #[ignore = "needs a wgpu adapter"]
 fn a_canvas_draws_what_its_closure_records() {
     let mut ui = Harness::new(|| {
-        canvas(|scene, rect: Rect| {
+        canvas(|scene, rect: Rect, _theme| {
             let inner = Rect::new(
                 Point::new(rect.origin.x + 10.0, rect.origin.y + 10.0),
                 30.0,
                 20.0,
             );
-            scene.draw_rect(DrawRect::new(inner, RED).opacity(u16::MAX));
+            scene.draw_rect(DrawRect::new(inner, RED).opacity(1.0));
         })
         .layout(LayoutStyle::block().width(100.0).height(60.0))
     })

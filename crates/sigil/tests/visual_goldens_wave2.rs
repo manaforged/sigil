@@ -3,6 +3,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
+use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::style::ControlSize;
 
@@ -107,16 +108,11 @@ fn dot_error_wide() {
 #[test]
 fn radio_group_three_options_first_selected() {
     let img = Harness::render(|| {
-        let selected = signal(String::from("light"));
+        let selected = signal(0_usize);
         container()
             .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
-            .child(
-                radio_group(selected)
-                    .option("light", "Light")
-                    .option("dark", "Dark")
-                    .option("auto", "Match system"),
-            )
+            .child(radio_group(selected, ["Light", "Dark", "Match system"]))
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -129,16 +125,11 @@ fn radio_group_three_options_first_selected() {
 #[test]
 fn radio_group_middle_selected() {
     let img = Harness::render(|| {
-        let selected = signal(String::from("dark"));
+        let selected = signal(1_usize);
         container()
             .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
-            .child(
-                radio_group(selected)
-                    .option("light", "Light")
-                    .option("dark", "Dark")
-                    .option("auto", "Match system"),
-            )
+            .child(radio_group(selected, ["Light", "Dark", "Match system"]))
     })
     .stub()
     .mode(InteractionMode::Default)

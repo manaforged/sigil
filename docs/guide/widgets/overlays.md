@@ -54,7 +54,7 @@ modal(open)
 
 ## menu and menu_bar
 
-`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(x, y)` to pin a position (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
+`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.accessible(name)` for accessibility, `.at(point)` to pin the top-left corner at a `Point` or an `(x, y)` tuple (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
 
 `MenuItem::new(label)` carries `.hint(text)` (a displayed hint, not a binding), `.disabled(bool)`, `.submenu(bool)` (shows the indicator; you render the submenu yourself), and `.activate(Fn())` which fires and closes the menu.
 
@@ -62,12 +62,13 @@ modal(open)
 
 ## command_menu
 
-`command_menu()`: a nested, keyboard-driven command menu (`Role::Menu`, "Command Menu") that filters and ranks items as you type. Build a tree of entries:
+`command_menu(open: Signal<bool>)`: a nested, keyboard-driven command palette that filters and ranks items as you type. It shows over the app while `open` is true, as a `Role::Dialog` named "Command Menu". Build a tree of entries:
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-command_menu()
+let open = signal(false);
+command_menu(open)
     .item(MenuItem::new("New file").activate(|| { /* ... */ }))
     .submenu("Export", |sub| {
         sub.item(MenuItem::new("PNG").activate(|| { /* ... */ }))
@@ -79,7 +80,7 @@ command_menu()
 # };
 ```
 
-Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descends into a submenu, Arrow Left or Escape ascends, and calls `.cancel` at the root. `.submit` receives the activated label. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field`, `virtual_list`, and a `modal`.
+Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descends into a submenu, and Arrow Left or Escape ascends. Escape at the root calls `.cancel` and sets `open` to false. Choosing an item or pressing the backdrop also sets `open` to false, so an `.activate` action does not close the palette itself. `.submit` receives the activated label. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field`, `virtual_list`, and a `modal`.
 
 ## tooltip
 
@@ -91,9 +92,9 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 ## toast and toast_queue
 
-`toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. You own the timeout.
+`toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. It does not hide itself. To hide it after a delay, call `sigil::reactive::timeout(Duration::from_secs(3), move || message.set(None))` when you show it.
 
-`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append an entry. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
+`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `toast_queue` and `ToastQueue` are in `sigil::prelude` and `sigil::widgets`. Use `toast` for one status line whose text and lifetime you control, and `toast_queue` for notices that stack and expire on their own. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append an entry. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
 
 ## hint_overlay
 
@@ -106,8 +107,8 @@ The visual catalog captures the closed and open state of each overlay, and the h
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `modal` | closed, open | Escape closes the top dialog; Tab stays inside while `.trap(true)` | `Dialog` | `.title()`, else "Dialog" |
-| `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.label()` |
-| `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Menu`, rows `MenuItem` | "Command Menu" |
+| `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.accessible()` |
+| `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Dialog` over a `Menu` panel, rows `MenuItem` | "Command Menu" |
 | `tooltip` | hidden, shown on hover or keyboard focus | The bubble shows when the first focusable node in the target gets keyboard focus; blur or Escape hides it | `Tooltip` | The label, plus the shortcut in parentheses |
 | `toast`, `toast_queue` | hidden, shown | none | `Status` | None; the message is the text child |
 | `hint_overlay` | static | none | `GenericContainer` | None; the rows carry the text |

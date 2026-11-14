@@ -1,51 +1,64 @@
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-use crate::kernel::{NodeBuilder, container};
-use crate::reactive::Signal;
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use crate::reactive::Reactive;
 use crate::scene::SceneBuilder;
-use crate::scene::canvas::{CanvasPaint, Recorder};
+use crate::scene::canvas::{CanvasPaint, Recorder, watch};
 use crate::style::Theme;
+use crate::widgets::{Framed, WidgetFrame};
 
 /// Builds a canvas that paints with a closure.
 #[must_use]
 pub struct CanvasBuilder {
     record: Recorder,
-    version: Option<Signal<u64>>,
-    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+    redraw: Option<Box<dyn Fn()>>,
+    frame: WidgetFrame,
 }
 
 impl core::fmt::Debug for CanvasBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CanvasBuilder")
-            .field("version", &self.version)
-            .field("layout_overrides", &self.layout_overrides)
+            .field("redraw", &self.redraw.is_some())
+            .field("frame", &self.frame)
             .finish_non_exhaustive()
     }
 }
 
-/// Creates a canvas widget.
-pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder {
+/// Creates a canvas widget whose paint callback receives the scene builder, bounds, and active theme; everything it draws is clipped to those bounds.
+pub fn canvas(paint: impl Fn(&mut SceneBuilder, Rect, &Theme) + 'static) -> CanvasBuilder {
     CanvasBuilder {
-        record: Rc::new(move |scene: &mut SceneBuilder, rect: Rect, _: &Theme| record(scene, rect)),
-        version: None,
-        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
+        record: Rc::new(paint),
+        redraw: None,
+        frame: WidgetFrame::new(),
     }
 }
 
 impl CanvasBuilder {
-    /// Sets the redraw on.
-    pub const fn redraw_on(mut self, version: Signal<u64>) -> Self {
-        self.version = Some(version);
+    /// Repaints the canvas whenever a signal that `source` reads changes: a signal, an animator, or a closure.
+    pub fn redraw_on<T: 'static>(mut self, source: impl Reactive<T>) -> Self {
+        self.redraw = Some(Box::new(move || source.with(|_| ())));
         self
     }
 
     fn root(self) -> NodeBuilder {
-        let (record, version) = (self.record, self.version);
-        container().mutate(move |node| {
-            let _ = node.attach(CanvasPaint { record, version });
-        })
+        let (record, redraw, frame) = (self.record, self.redraw, self.frame);
+        let node = container().mutate(move |node| {
+            let version = redraw.map(watch);
+            drop(node.attach(CanvasPaint { record, version }));
+        });
+        frame.finish(node)
     }
 }
 
-builder_impls!([] CanvasBuilder: widget, node);
+impl Framed for CanvasBuilder {
+    fn frame_mut(&mut self) -> &mut WidgetFrame {
+        &mut self.frame
+    }
+}
+
+impl IntoNode for CanvasBuilder {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.root().build(cx)
+    }
+}

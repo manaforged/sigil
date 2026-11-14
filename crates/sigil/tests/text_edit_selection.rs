@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::events::{Event, KeyPhase, PointerPhase};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -17,10 +17,10 @@ const SEL: sigil::style::Color = sigil::style::Color {
 
 fn selection_ys(cx: &Cx, root: NodeId) -> Vec<f32> {
     let mut ys: Vec<f32> = emit_scene(cx, root, None)
-        .commands
+        .commands()
         .iter()
         .filter_map(|c| match c {
-            SceneCommand::Rect(r) if r.color == SEL => Some(r.rect.origin.y),
+            SceneCommand::Rect(r) if r.color() == SEL => Some(r.rect().origin.y),
             _ => None,
         })
         .collect();
@@ -72,7 +72,7 @@ fn shift_select_across_lines_highlights_each_covered_line() {
 }
 
 use sigil::events::{MouseButton, MouseButtons};
-use sigil::geometry::Point;
+use sigil::geometry::{Constraint, Point};
 
 fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> Event {
     Event::pointer(phase, Point::new(x, y))

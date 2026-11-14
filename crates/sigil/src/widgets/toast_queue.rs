@@ -2,21 +2,27 @@ use crate::layout::Space;
 use std::time::Duration;
 use web_time::Instant;
 
-use crate::kernel::{NodeBuilder, Role, container, text};
+use crate::animation::{Easing, Property, Transition};
+use crate::kernel::{NodeBuilder, Role, container, for_each, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, interval, signal};
-use crate::style::{Token, Tone, space};
-use crate::widgets::Layout;
+use crate::style::{Paint, Token, Tone, space};
+use crate::widgets::swipe::Swipe;
+use crate::widgets::{Side, Widget};
 
 use super::dot::dot;
 use super::popup::SURFACE;
 
 const SWEEP_PERIOD: Duration = Duration::from_millis(250);
+const MOTION: Duration = Duration::from_millis(220);
+const RISE: f32 = space(4);
+const SHRINK: f32 = 0.96;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ToastEntry {
     pub(crate) tone: Tone,
     pub(crate) message: String,
+    id: u64,
     shown_at: Option<Instant>,
 }
 
@@ -27,6 +33,7 @@ const MAX_VISIBLE: usize = 4;
 #[derive(Debug, Clone, Copy)]
 pub struct ToastQueue {
     entries: Signal<Vec<ToastEntry>>,
+    next_id: Signal<u64>,
 }
 
 impl Default for ToastQueue {
@@ -41,14 +48,18 @@ impl ToastQueue {
     pub fn new() -> Self {
         Self {
             entries: signal(Vec::new()),
+            next_id: signal(0),
         }
     }
 
     /// Shows a toast in `tone`.
     pub fn push(self, tone: Tone, message: impl Into<String>) {
+        let id = self.next_id.peek();
+        self.next_id.set(id.wrapping_add(1));
         let entry = ToastEntry {
             tone,
             message: message.into(),
+            id,
             shown_at: None,
         };
         let now = Instant::now();
@@ -84,11 +95,19 @@ impl ToastQueue {
                 .shown_at
                 .is_some_and(|at| now.saturating_duration_since(at) >= TOAST_TTL)
         };
-        if !self.entries.peek().iter().any(expired) {
+        self.remove_where(expired, now);
+    }
+
+    fn dismiss(self, id: u64) {
+        self.remove_where(|entry| entry.id == id, Instant::now());
+    }
+
+    fn remove_where(self, gone: impl Fn(&ToastEntry) -> bool, now: Instant) {
+        if !self.entries.peek().iter().any(&gone) {
             return;
         }
         self.entries.update(|entries| {
-            entries.retain(|entry| !expired(entry));
+            entries.retain(|entry| !gone(entry));
             stamp_visible(entries, now);
         });
     }
@@ -111,7 +130,7 @@ fn stamp_visible(entries: &mut [ToastEntry], now: Instant) {
     }
 }
 
-/// A stack of transient messages.
+/// A stack of transient messages that rise in, fade out, and leave when swiped right.
 pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
     interval(SWEEP_PERIOD, move || {
         queue.dismiss_expired(Instant::now());
@@ -124,26 +143,39 @@ pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
                 .inset_bottom(space(4))
                 .inset_right(space(4))
                 .gap(Space::Sm)
-                .align_items(AlignItems::End),
+                .align_items(AlignItems::Stretch),
         )
-        .children_reactive(move || {
-            queue
-                .visible()
-                .into_iter()
-                .map(|entry| {
-                    container()
-                        .layout(
-                            LayoutStyle::flex_row()
-                                .align_items(AlignItems::Center)
-                                .gap(Space::Sm)
-                                .padding(Space::Md),
-                        )
-                        .class(SURFACE)
-                        .child(dot(entry.tone))
-                        .child(text(entry.message).class(Token::OnSurface.text()))
-                })
-                .collect::<Vec<_>>()
-        })
+        .child(for_each(
+            move || queue.visible(),
+            |entry| entry.id,
+            move |entry| toast_row(queue, entry),
+        ))
+}
+
+fn toast_row(queue: ToastQueue, entry: &ToastEntry) -> NodeBuilder {
+    let id = entry.id;
+    let row = container()
+        .layout(
+            LayoutStyle::flex_row()
+                .stretch_width()
+                .align_items(AlignItems::Center)
+                .gap(Space::Sm)
+                .padding(Space::Md),
+        )
+        .class(SURFACE)
+        .transition(
+            Transition::new()
+                .duration(MOTION)
+                .ease(Easing::CubicOut)
+                .layout(),
+        )
+        .enter(Property::Opacity(0.0))
+        .enter(Property::TranslateY(RISE))
+        .exit(Property::Opacity(0.0))
+        .exit(Property::Scale(SHRINK))
+        .child(dot(entry.tone))
+        .child(text(entry.message.clone()).class(Token::OnSurface.text()));
+    Swipe::new(Side::Right).attach(row, move || queue.dismiss(id))
 }
 
 #[cfg(test)]

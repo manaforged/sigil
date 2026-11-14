@@ -6,7 +6,7 @@ use sigil::geometry::{Constraint, Point, Rect};
 use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::{Layout, Widget};
+use sigil::widgets::Widget;
 use sigil::widgets::{button, modal, text_field};
 use sigil_kittest::FakeMeasure;
 
@@ -14,16 +14,16 @@ use sigil_kittest::FakeMeasure;
 fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
     Owner::scope("sigil_a11y::bounds_freshness", || {
         let mut cx = Cx::new_root();
-        let pos = signal((10.0_f32, 20.0_f32));
+        let pos = signal(Point::new(10.0, 20.0));
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(400.0, 400.0))
                 .child(
                     container()
                         .role(sigil::kernel::Role::Button)
-                        .label("Card")
+                        .accessible("Card")
                         .layout(LayoutStyle::block().fixed_size(80.0, 32.0))
-                        .position_reactive(pos),
+                        .offset(pos),
                 ),
         );
         let moved = *cx
@@ -37,7 +37,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
         let before = projected_bounds(&cx, &layout, moved);
         assert_eq!(before, (10.0, 20.0), "starts at the signal's initial pos");
 
-        pos.set((200.0, 250.0));
+        pos.set(Point::new(200.0, 250.0));
         recompute(&mut cx, &mut layout, root);
         let after = projected_bounds(&cx, &layout, moved);
 

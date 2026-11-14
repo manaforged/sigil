@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
-use crate::renderer::slug::bands::{FLOATS_TOTAL, GlyphBbox};
+use crate::renderer::slug::bands::{GlyphBbox, HEADER_FLOATS};
 
 fn band() -> BandData {
     BandData {
-        data: vec![0.0; FLOATS_TOTAL],
+        data: vec![0.0; HEADER_FLOATS],
         bbox: GlyphBbox {
             x_min: 0.0,
             y_min: 0.0,
@@ -27,21 +27,22 @@ fn key(glyph_id: u32) -> GlyphKey {
 }
 
 #[test]
-fn slots_are_dense_stable_and_survive_reinsert() {
+fn offsets_are_dense_stable_and_survive_reinsert() {
+    let n = u32::try_from(HEADER_FLOATS).unwrap();
     let mut cache = GlyphCache::default();
     cache.insert(key(10), band());
     cache.insert(key(20), band());
     cache.insert(key(30), band());
 
-    assert_eq!(cache.map.get(&key(10)).unwrap().slot, 0);
-    assert_eq!(cache.map.get(&key(20)).unwrap().slot, 1);
-    assert_eq!(cache.map.get(&key(30)).unwrap().slot, 2);
+    assert_eq!(cache.map.get(&key(10)).unwrap().offset, 0);
+    assert_eq!(cache.map.get(&key(20)).unwrap().offset, n);
+    assert_eq!(cache.map.get(&key(30)).unwrap().offset, 2 * n);
 
     cache.insert(key(20), band());
-    assert_eq!(cache.map.get(&key(20)).unwrap().slot, 1);
+    assert_eq!(cache.map.get(&key(20)).unwrap().offset, n);
 
     cache.insert(key(40), band());
-    assert_eq!(cache.map.get(&key(40)).unwrap().slot, 3);
+    assert_eq!(cache.map.get(&key(40)).unwrap().offset, 3 * n);
 }
 
 #[test]

@@ -11,7 +11,7 @@ use crate::tasks::AsyncRuntime;
 use super::FrameCtx;
 use super::backend::Backend;
 use super::event_wiring::{
-    self, DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime,
+    self, DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_cursor, sync_ime,
 };
 #[cfg(native_commands)]
 use super::menu_hwnd;
@@ -80,6 +80,7 @@ fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
             let env = &mut *env.borrow_mut();
             if let Some((cx, layout, router, _)) = host.tree() {
                 sync_ime(env.shell, env.view.handle, cx, layout, router);
+                sync_cursor(env.shell, env.view.handle, cx, layout, router);
             }
         })
         .paint(|host, info| {
@@ -87,7 +88,7 @@ fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
         })
 }
 
-fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
+fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<crate::geometry::Size> {
     let _effect = crate::profile::span(crate::profile::Phase::Effect);
     for (signal, value) in std::mem::take(&mut env.signal_writes) {
         signal.set(value);
@@ -124,7 +125,7 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host) -> Option<(f32, f32)> {
             event_wiring::drain_a11y_actions(actions, cx, router, layout);
         }
     }
-    Some(env.view.viewport)
+    Some(crate::geometry::Size::from(env.view.viewport))
 }
 
 #[allow(

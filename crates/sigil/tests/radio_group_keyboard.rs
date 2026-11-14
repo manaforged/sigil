@@ -3,9 +3,10 @@
 
 use crate::widget_support;
 
-use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
+use sigil::events::{Event, KeyPhase};
+use sigil::geometry::Constraint;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -29,17 +30,14 @@ fn press(
     );
 }
 
-fn three_option_group(selected: Signal<String>) -> impl IntoNode {
-    radio_group(selected)
-        .option("a", "Alpha")
-        .option("b", "Beta")
-        .option("c", "Gamma")
+fn three_option_group(selected: Signal<usize>) -> impl IntoNode {
+    radio_group(selected, ["Alpha", "Beta", "Gamma"])
 }
 
 #[test]
 fn arrows_move_selection_with_wraparound() {
     Owner::scope("radio-kb-arrows", || {
-        let selected = signal(String::from("a"));
+        let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
@@ -50,29 +48,29 @@ fn arrows_move_selection_with_wraparound() {
             (
                 NamedKey::ArrowDown,
                 PhysicalKey::ArrowDown,
-                "b",
+                1,
                 "ArrowDown a → b",
             ),
             (
                 NamedKey::ArrowDown,
                 PhysicalKey::ArrowDown,
-                "c",
+                2,
                 "ArrowDown b → c",
             ),
             (
                 NamedKey::ArrowDown,
                 PhysicalKey::ArrowDown,
-                "a",
+                0,
                 "ArrowDown wraps c → a",
             ),
             (
                 NamedKey::ArrowUp,
                 PhysicalKey::ArrowUp,
-                "c",
+                2,
                 "ArrowUp wraps a → c",
             ),
-            (NamedKey::Home, PhysicalKey::Home, "a", "Home selects first"),
-            (NamedKey::End, PhysicalKey::End, "c", "End selects last"),
+            (NamedKey::Home, PhysicalKey::Home, 0, "Home selects first"),
+            (NamedKey::End, PhysicalKey::End, 2, "End selects last"),
         ];
         for (key, physical, want, why) in steps {
             press(&mut router, &mut cx, &layout, key, physical);
@@ -84,7 +82,7 @@ fn arrows_move_selection_with_wraparound() {
 #[test]
 fn checked_row_shows_focus_ring_only_while_group_focused() {
     Owner::scope("radio-kb-ring", || {
-        let selected = signal(String::from("b"));
+        let selected = signal(1_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));
         let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

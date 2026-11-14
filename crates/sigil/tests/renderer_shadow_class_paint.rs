@@ -7,7 +7,7 @@ use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::{Elevation, Paint, Token};
-use sigil::widgets::Layout;
+use sigil::widgets::Widget;
 use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;
@@ -28,7 +28,7 @@ fn shadow_extent(elevation: Option<Elevation>) -> Option<f32> {
     });
     layout(&mut cx, root);
     emit_scene(&cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
             SceneCommand::DrawShadow { shadow, .. } => Some(shadow.blur() + shadow.offset()[1]),
@@ -48,7 +48,7 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
     layout(&mut cx, root);
 
     let shadow = emit_scene(&cx, root, None)
-        .commands
+        .commands()
         .iter()
         .find_map(|command| match command {
             SceneCommand::DrawShadow { shadow, .. } => Some(*shadow),

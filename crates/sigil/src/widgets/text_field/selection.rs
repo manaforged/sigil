@@ -1,35 +1,21 @@
-use crate::events::PointerEvent;
+use std::borrow::Cow;
+
+use crate::events::DragPhase;
 use crate::geometry::Point;
-use crate::hal::{HitPosition, TextAffinity};
-use crate::kernel::{NodeBuilder, TextBuilder, container, text};
-use crate::layout::with_text_geometry;
 use crate::layout::{LayoutStyle, Overflow, Position};
+use crate::node::{NodeBuilder, TextBuilder, container, text};
 use crate::reactive::{Signal, memo};
-use crate::style::{ColorValue, SELECTION_FILL, StyleAtom, Token};
-use crate::widgets::{Layout, Widget};
+use crate::style::{Paint, Token};
+use crate::text::{HitPosition, measure_text};
+use crate::widgets::Widget;
+use crate::widgets::text_edit::{blink, overlay_rect};
 
-use crate::widgets::interaction::{InteractionState, is_primary};
-
-use super::super::text_edit::{blink, overlay_rect};
 use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
-
-static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorValue::Color(
-    SELECTION_FILL,
-))];
-
-static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.background()];
-static FIELD_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurface.text()];
-static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
-
 const LINE_BOX: &str = "\u{200b}";
 
-pub(super) fn text_region(
-    runtime: TextFieldRuntime,
-    interaction: InteractionState,
-    displayed: Signal<String>,
-) -> NodeBuilder {
+pub(super) fn text_region(runtime: TextFieldRuntime, displayed: Signal<String>) -> NodeBuilder {
     let region = container()
         .layout(
             LayoutStyle::block()
@@ -38,49 +24,57 @@ pub(super) fn text_region(
                 .overflow_x(Overflow::Hidden),
         )
         .child(line_box())
-        .child(track(runtime.clone(), interaction, displayed));
-    let moved = runtime.clone();
-    region
-        .pointer_down(move |event| pointer_down(event, &runtime))
-        .pointer_move(move |event| pointer_move(event, &moved))
-        .pointer_up(move |event| {
-            if event.is_captured() {
-                let _ = interaction.release_pointer(event);
+        .child(track(runtime.clone(), displayed));
+    region.pointer_drag(move |phase, event| match phase {
+        DragPhase::Start => {
+            if runtime.disabled() {
+                event.prevent_default();
+                return;
             }
-        })
+            let byte = runtime.hit(event.position.x);
+            runtime.state.select(byte);
+            runtime.commit_caret();
+        }
+        DragPhase::Move => {
+            if runtime.disabled() {
+                return;
+            }
+            let byte = runtime.hit(event.position.x);
+            runtime.state.extend(byte);
+            runtime.commit_caret();
+            event.stop_propagation();
+        }
+        DragPhase::End | DragPhase::Cancel => {}
+    })
 }
 
 fn line_box() -> TextBuilder {
     text(LINE_BOX).hittable(false).layout(LayoutStyle::block())
 }
 
-fn track(
-    runtime: TextFieldRuntime,
-    interaction: InteractionState,
-    displayed: Signal<String>,
-) -> NodeBuilder {
-    let scroll = runtime.input.scroll_x;
-    let track_pos = memo(move || (-scroll.get(), 0.0));
-    let placeholder_visible = memo(move || {
-        runtime.input.value.get().is_empty() && runtime.input.ime.preedit.get().is_empty()
-    });
+fn track(runtime: TextFieldRuntime, displayed: Signal<String>) -> NodeBuilder {
+    let scroll = runtime.scroll_x;
+    let track_pos = memo(move || crate::geometry::Point::new(-scroll.get(), 0.0));
+    let (val_sig, preedit_sig) = (runtime.state.value(), runtime.preedit);
+    let placeholder_visible =
+        memo(move || val_sig.get().is_empty() && preedit_sig.get().is_empty());
     container()
         .hittable(false)
         .layout(LayoutStyle::block())
-        .position_reactive(track_pos)
+        .offset(track_pos)
         .child({
             let runtime = runtime.clone();
             overlay_layer().children_reactive(move || selection_rects(&runtime))
         })
         .child({
-            let (value, caret) = (runtime.input.value, runtime.input.caret);
-            let lit = blink(interaction, move || {
+            let (value, caret) = (runtime.state.value(), runtime.state.caret());
+            let lit = blink(runtime.focused, move || {
                 value.with(|_| ());
                 caret.with(|_| ());
             });
             overlay_layer().children_reactive(move || {
                 if lit.get() {
-                    caret_rects(&runtime, interaction)
+                    caret_rects(&runtime)
                 } else {
                     Vec::new()
                 }
@@ -97,13 +91,8 @@ fn field_text(displayed: Signal<String>, placeholder_visible: Signal<bool>) -> T
     text(displayed)
         .hittable(false)
         .layout(LayoutStyle::block())
-        .style_reactive(move || {
-            if placeholder_visible.get() {
-                PLACEHOLDER_TEXT_ATOMS
-            } else {
-                FIELD_TEXT_ATOMS
-            }
-        })
+        .text_color(Token::OnSurface)
+        .paint_when(placeholder_visible, |s| s.text_color(Token::OnSurfaceMuted))
 }
 
 fn overlay_layer() -> NodeBuilder {
@@ -116,82 +105,56 @@ fn overlay_layer() -> NodeBuilder {
 }
 
 fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
-    let value = runtime.input.value.get();
-    let caret = runtime.input.caret.get();
-    let Some(anchor) = runtime.input.selection.get() else {
+    let Some(range) = runtime.state.selection() else {
         return Vec::new();
     };
-    let (layout, lo, hi) = runtime.layout_span(&value, anchor.min(caret), anchor.max(caret));
-    let style = runtime.input.text_style.get();
-    let span = with_text_geometry(|engine| {
-        let at = |byte| engine.caret(&layout, &style, None, downstream(byte));
+    let value = runtime.state.value().get();
+    let (layout, lo, hi) = runtime.layout_span(&value, range.start, range.end);
+    let style = runtime.text_style.get();
+    let span = measure_text(|engine| {
+        let at = |byte| engine.caret(&layout, &style, None, HitPosition::downstream(byte));
         (at(lo), at(hi))
     });
-    let Some((start, end)) = span.filter(|(start, end)| end.x > start.x) else {
+    let Some((start, end)) = span.filter(|(start, end)| end.x() > start.x()) else {
         return Vec::new();
     };
-    vec![overlay_rect(start.x, start.top, end.x - start.x, start.height).class(SELECTION_ATOMS)]
+    vec![
+        overlay_rect(start.x(), start.top(), end.x() - start.x(), start.height())
+            .background(Token::Selection),
+    ]
 }
 
-fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec<NodeBuilder> {
-    if !interaction.focused().get() || !runtime.input.caret_visible.get() {
+fn caret_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
+    if !runtime.focused.get() || !runtime.caret_visible.get() {
         return Vec::new();
     }
-    let (composed, cursor) = runtime
-        .input
-        .ime
-        .composing_caret(&runtime.input.value.get(), runtime.input.caret.get());
-    let (layout, caret, _) = runtime.layout_span(&composed, cursor, cursor);
-    let style = runtime.input.text_style.get();
-    let pos = with_text_geometry(|engine| engine.caret(&layout, &style, None, downstream(caret)));
-    let Some(pos) = pos else {
+    let value = runtime.state.value().get();
+    let caret = runtime.state.caret().get();
+    let (composed, cursor) = runtime.composing_caret(&value, caret);
+    let hiding = runtime.hiding();
+    let (layout, byte) = super::mask::layout_text(&composed, cursor, hiding);
+    let style = runtime.text_style.get();
+    let Some(pos) =
+        measure_text(|engine| engine.caret(&layout, &style, None, HitPosition::downstream(byte)))
+    else {
         return Vec::new();
     };
-    vec![overlay_rect(pos.x, pos.top, CARET_W, pos.height).class(CARET_ATOMS)]
-}
-
-const fn downstream(byte: usize) -> HitPosition {
-    HitPosition {
-        byte_index: byte,
-        affinity: TextAffinity::Downstream,
-    }
-}
-
-fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if runtime.input.disabled() || !is_primary(event) {
-        return;
-    }
-    let byte = runtime.hit(event.position.x);
-    let mut state = runtime.input.edit_mut();
-    state.place_caret(byte);
-    runtime.input.commit(&state);
-    event.capture_pointer();
-}
-
-fn pointer_move(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if !event.is_captured() || runtime.input.disabled() {
-        return;
-    }
-    let byte = runtime.hit(event.position.x);
-    let mut state = runtime.input.edit_mut();
-    state.extend_to(byte);
-    runtime.input.commit(&state);
-    event.stop_propagation();
+    vec![overlay_rect(pos.x(), pos.top(), CARET_W, pos.height()).background(Token::OnSurface)]
 }
 
 impl TextFieldRuntime {
     fn hit(&self, x: f32) -> usize {
-        let value = self.input.value.peek();
-        let point = Point::new(x + self.input.scroll_x.peek(), 0.0);
-        let style = self.input.text_style.peek();
-        let hiding = super::mask::hiding_peek(self.password, self.reveal);
+        let value = self.state.value().peek();
+        let point = Point::new(x + self.scroll_x.peek(), 0.0);
+        let style = self.text_style.peek();
+        let hiding = self.hiding_peek();
         let layout = if hiding {
-            std::borrow::Cow::Owned(super::mask::mask_chars(&value))
+            Cow::Owned(super::mask::mask_chars(&value))
         } else {
-            std::borrow::Cow::Borrowed(value.as_str())
+            Cow::Borrowed(value.as_str())
         };
-        let byte = with_text_geometry(|engine| engine.hit(&layout, &style, None, point))
-            .map_or(0, |hit| hit.byte_index);
+        let byte = measure_text(|engine| engine.hit(&layout, &style, None, point))
+            .map_or(0, |hit| hit.byte_index());
         if hiding {
             super::mask::unmask_byte(&value, byte)
         } else {
@@ -200,7 +163,7 @@ impl TextFieldRuntime {
     }
 
     fn layout_span(&self, value: &str, lo: usize, hi: usize) -> (String, usize, usize) {
-        if super::mask::hiding(self.password, self.reveal) {
+        if self.hiding() {
             (
                 super::mask::mask_chars(value),
                 super::mask::mask_byte(value, lo),

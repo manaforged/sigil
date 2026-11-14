@@ -112,5 +112,5 @@ fn shape(path: &Path, t: Transform) -> DrawPath {
     };
     let cmds = outline(path.data());
     let key = transform_key(outline_key(OFFSET, &cmds), t);
-    DrawPath::new(cmds, scene_transform(t), key).with_fill(rule, PathPaint::Solid(OPAQUE))
+    DrawPath::keyed(cmds, scene_transform(t), key).filled(rule, PathPaint::Solid(OPAQUE))
 }

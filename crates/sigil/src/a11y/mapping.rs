@@ -95,7 +95,7 @@ fn walk_subtree(
     shown: bool,
     out: &mut Vec<(AkNodeId, AkNode)>,
 ) {
-    let Some(kernel_node) = cx.get(id) else {
+    let Some(kernel_node) = exposed(cx, id) else {
         return;
     };
     let shown = shown && !crate::events::hit_test::conceals(kernel_node);
@@ -254,7 +254,10 @@ fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     if a11y.focusable {
         ak.add_action(Action::Focus);
     }
-    if a11y.text_value.is_some() || a11y.value_now.is_some() {
+    if a11y.text_value.is_some()
+        || a11y.value_now.is_some()
+        || a11y.role == crate::kernel::Role::PasswordInput
+    {
         ak.add_action(Action::SetValue);
     }
     if let Some(sig) = a11y.expanded {
@@ -366,7 +369,9 @@ fn apply_children(cx: &Cx, node: &Node, ak: &mut AkNode) {
 }
 
 pub(super) fn flatten(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
-    let Some(node) = cx.get(id) else { return };
+    let Some(node) = exposed(cx, id) else {
+        return;
+    };
     if matches!(node.kind, NodeType::Fragment) {
         for &grandchild in node.children() {
             flatten(cx, grandchild, out);
@@ -374,6 +379,10 @@ pub(super) fn flatten(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
     } else {
         out.push(id);
     }
+}
+
+fn exposed(cx: &Cx, id: NodeId) -> Option<&Node> {
+    cx.get(id).filter(|node| !node.a11y.hidden)
 }
 
 fn embedded_controls(cx: &Cx, node: &Node) -> Vec<NodeId> {
@@ -384,7 +393,9 @@ fn embedded_controls(cx: &Cx, node: &Node) -> Vec<NodeId> {
 
 fn collect_controls(cx: &Cx, node: &Node, out: &mut Vec<NodeId>) {
     for &child in node.children() {
-        let Some(inner) = cx.get(child) else { continue };
+        let Some(inner) = exposed(cx, child) else {
+            continue;
+        };
         if inner.a11y.actions.is_empty() {
             collect_controls(cx, inner, out);
         } else {

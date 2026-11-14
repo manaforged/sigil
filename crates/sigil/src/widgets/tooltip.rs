@@ -9,13 +9,12 @@ use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::layout::{Popup, PopupSide};
 use crate::reactive::{Signal, Timer, interval, signal};
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::{Side, Widget};
 
 use super::layout_ext::LayoutOverrides;
-use super::popup::{POPUP_GAP, PopupAnchor, PopupLayer, hide, surface};
+use super::popup::{PopupAnchor, PopupLayer, hide, placement, surface};
 use super::shared::caller_style;
 
 const BUBBLE_MAX_WIDTH: f32 = space(60);
@@ -92,11 +91,7 @@ impl TooltipBuilder {
 
     fn root(self) -> NodeBuilder {
         let visible = signal(false);
-        let side = if self.below {
-            PopupSide::Below
-        } else {
-            PopupSide::Above
-        };
+        let side = if self.below { Side::Bottom } else { Side::Top };
         let description = bubble_description(&self.label, self.shortcut.as_deref());
         let bubble = build_bubble(
             &self.label,
@@ -227,6 +222,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, reveal: Reveal) {
             NamedKey::Escape.into(),
             Box::new(move |event| {
                 if reveal.hide() {
+                    event.prevent_default();
                     event.stop_propagation();
                 }
             }),
@@ -245,18 +241,13 @@ fn build_bubble(
     label: &str,
     shortcut: Option<&str>,
     description: &str,
-    (visible, side): (Signal<bool>, PopupSide),
+    (visible, side): (Signal<bool>, Side),
 ) -> NodeBuilder {
     let metrics = Metrics::current();
-    let anchor = PopupAnchor::Popup(Popup {
-        side,
-        center: true,
-        sibling: true,
-        gap: POPUP_GAP,
-    });
+    let anchor = PopupAnchor::Popup(placement(Some(side), AlignItems::Center, true));
     let mut bubble = surface(Role::Tooltip)
         .hittable(false)
-        .label(description.to_owned())
+        .accessible(description.to_owned())
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)

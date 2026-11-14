@@ -20,19 +20,19 @@ fn per_corner_radii_round_trip_with_strokes() {
     builder.draw_rect(
         DrawRect::new(rect(0.0, 0.0), color(24, 32, 48, 255))
             .border_radius(left_round)
-            .stroke(stroke),
+            .stroked(stroke),
     );
     builder.draw_gradient(
         DrawGradient::new(rect(56.0, 0.0), gradient())
             .border_radius(CornerRadii::top(10.0))
-            .opacity(9_000)
-            .stroke(stroke),
+            .opacity(0.90)
+            .stroked(stroke),
     );
     builder.draw_rect(DrawRect::new(rect(112.0, 0.0), color(8, 12, 20, 255)));
     let scene = builder.finish();
 
     assert!(matches!(
-        scene.commands.as_slice(),
+        scene.commands(),
         [
             SceneCommand::Rect(_),
             SceneCommand::Gradient(_),
@@ -43,17 +43,17 @@ fn per_corner_radii_round_trip_with_strokes() {
         SceneCommand::Rect(first),
         SceneCommand::Gradient(second),
         SceneCommand::Rect(third),
-    ] = scene.commands.as_slice()
+    ] = scene.commands()
     else {
-        assert_eq!(scene.commands.len(), 3);
+        assert_eq!(scene.len(), 3);
         return;
     };
-    assert_eq!(first.border_radius, left_round);
-    assert_eq!(first.stroke, Some(stroke));
-    assert_eq!(second.border_radius, CornerRadii::top(10.0));
-    assert_eq!(second.stroke, Some(stroke));
-    assert_eq!(third.border_radius, CornerRadii::ZERO);
-    assert_eq!(third.stroke, None);
+    assert_eq!(first.border_radius_raw(), left_round);
+    assert_eq!(first.stroke(), Some(stroke));
+    assert_eq!(second.border_radius_raw(), CornerRadii::top(10.0));
+    assert_eq!(second.stroke(), Some(stroke));
+    assert_eq!(third.border_radius_raw(), CornerRadii::ZERO);
+    assert_eq!(third.stroke(), None);
 
     let render_path: RenderCommandScene = WgpuRenderer::render_command_scene;
     let _ = render_path;
@@ -79,17 +79,17 @@ fn gradient() -> LinearGradient {
 }
 
 const fn solid_stroke() -> Stroke {
-    Stroke {
-        color: Color {
+    Stroke::new(
+        Color {
             r: 230,
             g: 230,
             b: 242,
             a: 255,
         },
-        width: 2.0,
-        style: StrokeStyle::Solid,
-        align: StrokeAlign::Centered,
-    }
+        2.0,
+        StrokeStyle::Solid,
+        StrokeAlign::Centered,
+    )
 }
 
 const fn rect(x: f32, y: f32) -> Rect {

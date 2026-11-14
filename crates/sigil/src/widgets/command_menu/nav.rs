@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
-use crate::reactive::{Owner, Signal, owner_by_id, signal};
+use crate::reactive::{Owner, Signal, signal};
 
 use super::super::listbox::Matcher;
+use super::super::popup::hide;
 use super::super::shared::Activate;
 
 pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
@@ -54,6 +55,7 @@ pub(super) struct MenuLevel {
     pub(super) entries: Rc<Vec<PaletteEntry>>,
     pub(super) shown: Signal<Vec<usize>>,
     pub(super) cursor: Signal<usize>,
+    owner: Option<Owner>,
 }
 
 impl MenuLevel {
@@ -64,6 +66,13 @@ impl MenuLevel {
             entries,
             shown: signal(shown),
             cursor,
+            owner: None,
+        }
+    }
+
+    fn dispose(&self) {
+        if let Some(owner) = self.owner {
+            owner.dispose();
         }
     }
 
@@ -89,24 +98,37 @@ fn ranked(entries: &[PaletteEntry], query: &str) -> Vec<usize> {
 pub(super) struct CommandPalette {
     pub(super) stack: Signal<Vec<MenuLevel>>,
     pub(super) query: Signal<String>,
+    open: Signal<bool>,
     owner: Option<Owner>,
 }
 
 impl CommandPalette {
-    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>) -> Self {
+    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>, open: Signal<bool>) -> Self {
         Self {
             stack: signal(vec![MenuLevel::new(entries)]),
             query: signal(String::new()),
+            open,
             owner: Owner::current(),
         }
     }
 
     fn level(self, entries: &Rc<Vec<PaletteEntry>>) -> MenuLevel {
-        let mut made = None;
-        if let Some(owner) = self.owner {
-            let _ = owner_by_id(owner, || made = Some(MenuLevel::new(Rc::clone(entries))));
+        let Some(parent) = self.owner.filter(|owner| owner.is_alive()) else {
+            return MenuLevel::new(Rc::clone(entries));
+        };
+        let owner = Owner::new("command-menu-level", Some(parent));
+        MenuLevel {
+            owner: Some(owner),
+            ..owner.with(|| MenuLevel::new(Rc::clone(entries)))
         }
-        made.unwrap_or_else(|| MenuLevel::new(Rc::clone(entries)))
+    }
+
+    fn drop_levels_from(self, depth: usize) {
+        let mut dropped = Vec::new();
+        self.stack
+            .update(|levels| dropped = levels.split_off(depth.min(levels.len())));
+        self.clear_query();
+        dropped.iter().for_each(MenuLevel::dispose);
     }
 
     pub(super) fn top(self) -> Option<MenuLevel> {
@@ -130,8 +152,7 @@ impl CommandPalette {
     }
 
     pub(super) fn reset(self) {
-        self.stack.update(|levels| levels.truncate(1));
-        self.clear_query();
+        self.drop_levels_from(1);
     }
 
     pub(super) fn activate(self, on_submit: Option<&SubmitObserver>) {
@@ -158,18 +179,20 @@ impl CommandPalette {
                     cb(label);
                 }
                 self.reset();
+                hide(self.open);
             }
         }
     }
 
     pub(super) fn ascend_or_cancel(self, on_cancel: Option<&Activate>) {
-        if self.stack.peek().len() > 1 {
-            self.stack.update(|current| {
-                current.pop();
-            });
-            self.clear_query();
-        } else if let Some(cb) = on_cancel {
-            cb();
+        let depth = self.stack.peek().len();
+        if depth > 1 {
+            self.drop_levels_from(depth - 1);
+        } else {
+            if let Some(cb) = on_cancel {
+                cb();
+            }
+            hide(self.open);
         }
     }
 }

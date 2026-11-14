@@ -36,3 +36,67 @@ fn building_leaves_the_value_signal_alone() {
         );
     });
 }
+
+#[test]
+fn unsigned_rejects_minus_and_stays_at_zero() {
+    let locale = Locale::default();
+    assert_eq!(u32::parse("-1", &locale), None);
+    assert_eq!(u8::parse("-1", &locale), None);
+    assert_eq!(u8::parse("300", &locale), None);
+    assert_eq!(0u32.clamp_to(&(0..=10)), 0);
+    assert_eq!(0u8.clamp_to(&(0..=10)), 0);
+}
+
+#[test]
+fn wide_integers_round_trip() {
+    let locale = Locale::default();
+    assert_eq!(
+        u64::parse(&u64::MAX.render(&locale), &locale),
+        Some(u64::MAX)
+    );
+    assert_eq!(
+        i128::parse(&i128::MIN.render(&locale), &locale),
+        Some(i128::MIN)
+    );
+    assert_eq!(
+        u128::parse(&u128::MAX.render(&locale), &locale),
+        Some(u128::MAX)
+    );
+}
+
+#[test]
+fn every_builtin_number_type_builds_a_field() {
+    Owner::scope("number-field-kinds", || {
+        let _ = number_field(signal(0u8), 0..=10);
+        let _ = number_field(signal(0u32), 0..=10);
+        let _ = number_field(signal(0i128), -5..=5);
+        let _ = number_field(signal(0isize), -5..=5);
+    });
+}
+
+#[test]
+#[allow(
+    clippy::reversed_empty_ranges,
+    reason = "the test passes reversed bounds on purpose"
+)]
+fn reversed_or_nan_range_orders_the_bounds() {
+    assert_eq!(5i32.clamp_to(&(10..=0)), 5);
+    assert_eq!(15i32.clamp_to(&(10..=0)), 10);
+    assert_eq!((-3i32).clamp_to(&(10..=0)), 0);
+    assert_eq!(5.0f64.clamp_to(&(f64::NAN..=10.0)), 5.0);
+    assert_eq!(20.0f64.clamp_to(&(f64::NAN..=10.0)), 10.0);
+    assert_eq!((-1.0f32).clamp_to(&(0.0..=f32::NAN)), 0.0);
+    assert_eq!(2.0f32.clamp_to(&(1.0..=0.0)), 1.0);
+    Owner::scope("number-field-reversed", || {
+        let reversed = signal(5_i32);
+        let _reversed = number_field(reversed, 10..=0);
+        assert_eq!(reversed.peek(), 5);
+        let nan = signal(20.0_f64);
+        let _nan = number_field(nan, f64::NAN..=10.0);
+        assert_eq!(
+            nan.peek(),
+            20.0,
+            "display sync leaves the value signal alone"
+        );
+    });
+}

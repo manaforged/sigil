@@ -3,12 +3,13 @@
 use ahash::AHashSet;
 
 use crate::Error;
+use crate::layout::aspect;
 use crate::layout::block::{BlockSolver, Position2};
 use crate::layout::flex::{CbSize, FlexSolver};
 use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
 use crate::layout::grid_tracks::{
-    apply_row_template, definite, distribute_fr_rows, grid_box_h, offsets, resolve_columns,
-    resolve_gap, spanned_height,
+    apply_row_template, definite, definite_box_h, distribute_fr_rows, grid_box_h, offsets,
+    resolve_columns, resolve_gap, spanned_height,
 };
 use crate::layout::resolve::NodeEdges;
 use crate::layout::style_data::{Axes, Display, Length, StyleData};
@@ -48,6 +49,33 @@ struct GridFrame<'a> {
     cols: Cols,
     border: Position2,
     content: Position2,
+}
+
+impl<'a> GridFrame<'a> {
+    fn new(style: &'a StyleData, border_w: f32, origin: Position2) -> Self {
+        let edges = NodeEdges::build(style, border_w);
+        let inner_w = (border_w - edges.inline_chrome()).max(0.0);
+        let gap_x = resolve_gap(style.gap.width, inner_w, crate::layout::snap::gap);
+        let gap_y = resolve_gap(style.gap.height, inner_w, crate::layout::snap::row_gap);
+        let widths = resolve_columns(&style.grid_template_columns, inner_w, gap_x);
+        let border = Position2 {
+            x: origin.x + edges.margin.left.unwrap_or(0.0),
+            y: origin.y + edges.margin_top(),
+        };
+        let content = Position2 {
+            x: border.x + edges.padding.left + edges.border.left,
+            y: border.y + edges.padding.top + edges.border.top,
+        };
+        let rtl = style.direction.is_rtl().then_some(inner_w);
+        Self {
+            style,
+            edges,
+            gap_y,
+            cols: Cols::new(content.x, widths, gap_x, rtl),
+            border,
+            content,
+        }
+    }
 }
 
 struct GridPlacement {
@@ -132,39 +160,32 @@ impl<'a> GridSolver<'a> {
         border_w: f32,
         origin: Position2,
     ) -> Result<(), Error> {
-        let style = subtree.style();
-        let edges = NodeEdges::build(style, border_w);
-        let inner_w = (border_w - edges.inline_chrome()).max(0.0);
-        let gap_x = resolve_gap(style.gap.width, inner_w, crate::layout::snap::gap);
-        let gap_y = resolve_gap(style.gap.height, inner_w, crate::layout::snap::row_gap);
-        let widths = resolve_columns(&style.grid_template_columns, inner_w, gap_x);
-        let border = Position2 {
-            x: origin.x + edges.margin.left.unwrap_or(0.0),
-            y: origin.y + edges.margin_top(),
-        };
-        let content = Position2 {
-            x: border.x + edges.padding.left + edges.border.left,
-            y: border.y + edges.padding.top + edges.border.top,
-        };
-        let frame = GridFrame {
-            style,
-            edges,
-            gap_y,
-            cols: Cols::new(
-                content.x,
-                widths,
-                gap_x,
-                style.direction.is_rtl().then_some(inner_w),
-            ),
-            border,
-            content,
-        };
+        let cb_h = definite(self.scope.available().h);
+        self.solve_at_assigned(subtree, (border_w, cb_h), origin, None)
+    }
+
+    pub(crate) fn solve_at_assigned(
+        &self,
+        subtree: NodeRef<'_>,
+        (border_w, cb_h): (f32, f32),
+        origin: Position2,
+        assigned_h: Option<f32>,
+    ) -> Result<(), Error> {
+        let frame = GridFrame::new(subtree.style(), border_w, origin);
+        let cb = Axes::new(border_w, cb_h);
+        let (_, assigned_h) =
+            aspect::assign(frame.style, &frame.edges, cb, (Some(border_w), assigned_h));
         let children: Vec<LocalId> = subtree.children().to_vec();
         let places = self.flow_children(&children, &frame);
-        let row_h = self.layout_rows(&places, &frame)?;
-        let avail_h = definite(self.scope.available().h);
+        let row_h = self.layout_rows(&places, &frame, cb_h, assigned_h)?;
         let content_h = spanned_height(&row_h, 0, row_h.len(), frame.gap_y);
-        let box_h = grid_box_h(frame.style, avail_h, content_h, frame.edges.block_chrome());
+        let box_h = grid_box_h(
+            frame.style,
+            cb_h,
+            content_h,
+            frame.edges.block_chrome(),
+            assigned_h,
+        );
         self.scope.write_node(
             &subtree,
             ComputedBox {
@@ -181,21 +202,14 @@ impl<'a> GridSolver<'a> {
         &self,
         places: &[GridPlacement],
         frame: &GridFrame<'_>,
+        cb_h: f32,
+        assigned_h: Option<f32>,
     ) -> Result<Vec<f32>, Error> {
         let mut row_h = self.measure_row_heights(places, &frame.cols)?;
         apply_row_template(&mut row_h, &frame.style.grid_template_rows);
-        let avail_h = definite(self.scope.available().h);
         let chrome = frame.edges.block_chrome();
-        let inner_h = match frame.style.size.height {
-            Length::Px(px) => Some((px - chrome).max(0.0)),
-            Length::Rows(_) | Length::Cols(_) | Length::Em(_) => {
-                Some((frame.style.size.height.text_px().unwrap_or(0.0) - chrome).max(0.0))
-            }
-            Length::Fill => Some((avail_h - chrome).max(0.0)),
-            Length::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
-            Length::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
-            Length::Auto => None,
-        };
+        let inner_h =
+            definite_box_h(frame.style, cb_h, chrome, assigned_h).map(|h| (h - chrome).max(0.0));
         if let Some(height) = inner_h {
             distribute_fr_rows(
                 &mut row_h,
@@ -322,7 +336,8 @@ impl<'a> GridSolver<'a> {
         let cell = forest
             .refer(cid)
             .ok_or_else(|| Error::layout(format!("stale grid cell {cid:?}")))?;
-        let stretch = matches!(cell.style().size.height, Length::Auto);
+        let stretch =
+            matches!(cell.style().size.height, Length::Auto) && cell.style().aspect_ratio.is_none();
         let nested = MeasureScope::new(forest, self.scope.text(), self.scope.available());
         match cell.style().display {
             Display::Flex => FlexSolver::new(nested).solve_at_area(
