@@ -122,7 +122,6 @@ fn tray(drop: Animator, open: Signal<Vec<usize>>) -> NodeBuilder {
             |index| *index,
             move |index| session(*index, open),
         )))
-        .into()
 }
 
 fn session(index: usize, open: Signal<Vec<usize>>) -> impl IntoNode + use<> {

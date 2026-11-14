@@ -117,7 +117,7 @@ pub fn graded(values: &[f32]) -> impl IntoNode + use<> {
         .height(Length::Fill)
         .background(Token::Surface)
         .child(stage(&darkroom))
-        .child(panel(darkroom))
+        .child(panel(&darkroom))
 }
 
 fn theme() -> Theme {
@@ -173,7 +173,7 @@ fn leak(mode: BlendMode) -> NodeBuilder {
         .blend(mode)
 }
 
-fn panel(darkroom: Darkroom) -> NodeBuilder {
+fn panel(darkroom: &Darkroom) -> NodeBuilder {
     let reset = darkroom.clone();
     column()
         .width(PANEL_WIDTH)

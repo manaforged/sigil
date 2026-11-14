@@ -3,6 +3,7 @@ use std::time::Duration;
 use sigil::prelude::*;
 use sigil::scene::{DrawRect, SceneBuilder};
 
+use crate::almanac::sky::whole;
 use crate::overlay;
 
 const STAGE: Color = Color::rgb(10, 9, 22);
@@ -117,24 +118,21 @@ pub(crate) fn stage(scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
     for light in &LIGHTS {
         let centre = (light.at[0] * width, light.at[1] * height);
         let stops = vec![(0.0, light.color), (1.0, light.color.alpha(0))];
-        path(
-            width.round().max(1.0) as u32,
-            height.round().max(1.0) as u32,
-        )
-        .fill_radial(centre, light.reach * width, stops)
-        .move_to(0.0, 0.0)
-        .line_to(width, 0.0)
-        .line_to(width, height)
-        .line_to(0.0, height)
-        .close()
-        .draw(scene, rect, theme);
+        path(whole(width), whole(height))
+            .fill_radial(centre, light.reach * width, stops)
+            .move_to(0.0, 0.0)
+            .line_to(width, 0.0)
+            .line_to(width, height)
+            .line_to(0.0, height)
+            .close()
+            .draw(scene, rect, theme);
     }
-    let (columns, rows) = ((width / SPECK_PITCH) as u32, (height / SPECK_PITCH) as u32);
+    let (columns, rows) = ((width / SPECK_PITCH) as u16, (height / SPECK_PITCH) as u16);
     for row in 1..rows {
         for column in 1..columns {
             let at = Point::new(
-                (column as f32).mul_add(SPECK_PITCH, rect.origin.x) - SPECK_SIZE,
-                (row as f32).mul_add(SPECK_PITCH, rect.origin.y) - SPECK_SIZE,
+                f32::from(column).mul_add(SPECK_PITCH, rect.origin.x) - SPECK_SIZE,
+                f32::from(row).mul_add(SPECK_PITCH, rect.origin.y) - SPECK_SIZE,
             );
             let bounds = Rect::new(at, SPECK_SIZE * 2.0, SPECK_SIZE * 2.0);
             scene.draw_rect(DrawRect::new(bounds, SPECK).radius(SPECK_SIZE));
@@ -202,5 +200,4 @@ fn card(focus: Focus, blur: f32) -> NodeBuilder {
                     focus.left.set(seconds(focus.minutes.peek()));
                 })),
         )
-        .into()
 }

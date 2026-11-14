@@ -53,8 +53,8 @@ impl Probe {
         let time = seconds as f32;
         let size = self.size.get();
         let drift = Point::new(
-            (0.5 + SWAY[0] * (time * ORBIT[0] * TAU).sin()) * size.width,
-            (0.5 + SWAY[1] * (time * ORBIT[1] * TAU).cos()) * size.height,
+            SWAY[0].mul_add((time * ORBIT[0] * TAU).sin(), 0.5) * size.width,
+            SWAY[1].mul_add((time * ORBIT[1] * TAU).cos(), 0.5) * size.height,
         );
         let held = self.held.get();
         Point::new(
@@ -118,8 +118,12 @@ fn readout(probe: Probe, at: Signal<Point>) -> impl IntoNode {
 )]
 fn grid(size: Size) -> [usize; 2] {
     [
-        ((size.width - 2.0 * INSET) / PITCH[0]).floor().max(0.0) as usize,
-        ((size.height - 2.0 * INSET) / PITCH[1]).floor().max(0.0) as usize,
+        (2.0f32.mul_add(-INSET, size.width) / PITCH[0])
+            .floor()
+            .max(0.0) as usize,
+        (2.0f32.mul_add(-INSET, size.height) / PITCH[1])
+            .floor()
+            .max(0.0) as usize,
     ]
 }
 
@@ -131,13 +135,15 @@ fn grid(size: Size) -> [usize; 2] {
 )]
 fn paint(scene: &mut SceneBuilder, rect: Rect, centre: Point) {
     let [columns, rows] = grid(Size::new(rect.width, rect.height));
-    let left = (rect.width - columns as f32 * PITCH[0]) / 2.0;
-    let top = (rect.height - rows as f32 * PITCH[1]) / 2.0;
+    let left = (columns as f32).mul_add(-PITCH[0], rect.width) / 2.0;
+    let top = (rows as f32).mul_add(-PITCH[1], rect.height) / 2.0;
     let plain = TextStyle::default().font_size(SIZE);
-    let widths = WORD.map(|letter| scene.measure_text(letter, &plain).width);
+    let glyphs = WORD.map(|letter| (letter, scene.measure_text(letter, &plain).width));
     for row in 0..rows {
         for column in 0..columns {
-            let letter = (column + row * SHIFT) % WORD.len();
+            let Some(&(glyph, width)) = glyphs.get((column + row * SHIFT) % WORD.len()) else {
+                continue;
+            };
             let x = (column as f32 + 0.5).mul_add(PITCH[0], left);
             let y = (row as f32).mul_add(PITCH[1], top);
             let away = (x - centre.x).hypot(y + PITCH[1] / 2.0 - centre.y) / REACH;
@@ -147,8 +153,8 @@ fn paint(scene: &mut SceneBuilder, rect: Rect, centre: Point) {
             let core = near.powf(CORE);
             let ink = mix(INK.alpha((FAINT * 255.0) as u8), INK, (near * 3.0).min(1.0));
             let colour = mix(ink, SIGNAL, core);
-            let origin = Point::new(rect.origin.x + x - widths[letter] / 2.0, rect.origin.y + y);
-            scene.draw_text(origin, WORD[letter], &style, colour);
+            let origin = Point::new(rect.origin.x + x - width / 2.0, rect.origin.y + y);
+            scene.draw_text(origin, glyph, &style, colour);
         }
     }
 }

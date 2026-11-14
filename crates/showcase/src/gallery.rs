@@ -115,5 +115,5 @@ fn entry(entry: &'static Entry) -> NodeBuilder {
                 .font_family(FontFamily::Mono)
                 .text_color(Token::OnSurfaceMuted),
         );
-    container().track_visible(seen).child(panel).into()
+    container().track_visible(seen).child(panel)
 }

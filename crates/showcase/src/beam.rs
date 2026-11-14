@@ -79,5 +79,4 @@ fn card(minutes: Signal<u32>) -> NodeBuilder {
                         .activate(move || minutes.update(|minutes| *minutes += SESSION)),
                 ),
         )
-        .into()
 }

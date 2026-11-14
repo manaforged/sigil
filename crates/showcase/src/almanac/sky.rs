@@ -72,15 +72,13 @@ pub(crate) const NIGHT: Palette = Palette {
 
 impl Palette {
     fn mix(self, other: Self, amount: f32) -> Self {
-        let [a, b, c] = self.pigments;
-        let [x, y, z] = other.pigments;
+        let mut pigments = self.pigments;
+        for (pigment, target) in pigments.iter_mut().zip(other.pigments) {
+            *pigment = blend(*pigment, target, amount);
+        }
         Self {
             paper: blend(self.paper, other.paper, amount),
-            pigments: [
-                blend(a, x, amount),
-                blend(b, y, amount),
-                blend(c, z, amount),
-            ],
+            pigments,
             disc: blend(self.disc, other.disc, amount),
             glow: blend(self.glow, other.glow, amount),
             land: blend(self.land, other.land, amount),
@@ -102,11 +100,11 @@ fn blend(from: Color, to: Color, amount: f32) -> Color {
     clippy::cast_sign_loss,
     reason = "the value is clamped to 0..=255 before the cast"
 )]
-fn byte(value: f32) -> u8 {
+const fn byte(value: f32) -> u8 {
     value.round().clamp(0.0, 255.0) as u8
 }
 
-fn channel(from: u8, to: u8, amount: f32) -> u8 {
+pub(crate) fn channel(from: u8, to: u8, amount: f32) -> u8 {
     let (from, to) = (f32::from(from), f32::from(to));
     byte((to - from).mul_add(amount, from))
 }
@@ -146,14 +144,17 @@ impl Page<'_> {
             .font_weight(500)
             .letter_spacing_em(0.06)
             .tabular_nums(true);
-        let size = self.scene.measure_text(words, &style);
-        let reach = size.width / 2.0 + LABEL_GAP;
+        let measured = self.scene.measure_text(words, &style);
+        let reach = measured.width / 2.0 + LABEL_GAP;
         let lift = if side == 0.0 {
             LABEL_LIFT
         } else {
-            size.height / 2.0
+            measured.height / 2.0
         };
-        let origin = Point::new(side.mul_add(reach, at.x - size.width / 2.0), at.y - lift);
+        let origin = Point::new(
+            side.mul_add(reach, at.x - measured.width / 2.0),
+            at.y - lift,
+        );
         self.scene
             .draw_text(origin, words, &style, self.palette.ink.alpha(210));
     }
@@ -291,7 +292,7 @@ fn halo(page: &mut Page<'_>, at: Point) {
     clippy::cast_sign_loss,
     reason = "a canvas is a small positive number of pixels on each side"
 )]
-fn whole(pixels: f32) -> u32 {
+pub(crate) const fn whole(pixels: f32) -> u32 {
     pixels.round().max(1.0) as u32
 }
 

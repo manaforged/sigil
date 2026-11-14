@@ -25,7 +25,7 @@ struct Part {
     note: &'static str,
 }
 
-const PARTS: [Part; 7] = [
+static PARTS: [Part; 7] = [
     Part {
         name: "Wash",
         kind: "PAINT",
@@ -65,7 +65,7 @@ const PARTS: [Part; 7] = [
 
 /// The typefaces of the index: a serif for the roman and its italic in the display slot.
 #[must_use]
-pub fn fonts() -> [(FontFamily, &'static [u8]); 2] {
+pub const fn fonts() -> [(FontFamily, &'static [u8]); 2] {
     [
         (
             FontFamily::Serif,
@@ -106,7 +106,7 @@ pub fn open(at: usize) -> impl IntoNode {
                     column()
                         .grow(1.0)
                         .padding_top(Space::Lg)
-                        .children((0..PARTS.len()).map(|at| entry(at, active))),
+                        .children((0..PARTS.len()).map(|slot| entry(slot, active))),
                 ),
         )
         .child(strip())
@@ -135,7 +135,6 @@ fn masthead() -> NodeBuilder {
         .child(small("SIGIL  /  INDEX OF PARTS"))
         .child(spacer())
         .child(small("VOL. 0.2  /  NOVEMBER 2026"))
-        .into()
 }
 
 fn display(line: &'static str, family: FontFamily) -> TextBuilder {
@@ -172,7 +171,7 @@ fn cover(active: Signal<usize>) -> NodeBuilder {
                     column()
                         .gap(Space::Xs)
                         .padding_bottom(Space::Md)
-                        .child(small(move || PARTS[active.get() % PARTS.len()].kind))
+                        .child(small(move || part_at(active.get()).kind))
                         .child(for_each(
                             move || vec![active.get()],
                             |at| *at,
@@ -180,18 +179,21 @@ fn cover(active: Signal<usize>) -> NodeBuilder {
                         )),
                 ),
         )
-        .into()
+}
+
+fn part_at(at: usize) -> &'static Part {
+    PARTS.get(at % PARTS.len()).unwrap_or(&PARTS[0])
 }
 
 fn note(at: usize) -> impl IntoNode {
-    words(PARTS[at % PARTS.len()].note, |index, word| {
+    words(part_at(at).note, |index, word| {
         text(word).animation(Keyframes::fade().delay(STAGGER * index))
     })
     .text_role(TextRole::Body)
 }
 
 fn entry(at: usize, active: Signal<usize>) -> NodeBuilder {
-    let part = &PARTS[at];
+    let part = part_at(at);
     let hovered = signal(false);
     effect(move || {
         if hovered.get() {
@@ -227,7 +229,6 @@ fn entry(at: usize, active: Signal<usize>) -> NodeBuilder {
         )
         .child(spacer())
         .child(small(part.kind))
-        .into()
 }
 
 fn strip() -> NodeBuilder {
@@ -253,5 +254,4 @@ fn names() -> NodeBuilder {
                 small("+"),
             ]
         }))
-        .into()
 }

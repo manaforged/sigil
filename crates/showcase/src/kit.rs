@@ -58,7 +58,6 @@ fn names() -> NodeBuilder {
         .gap(Space::Xxl)
         .padding_x(Space::Lg)
         .children(NAMES.map(|name| text(name).text_role(TextRole::Heading)))
-        .into()
 }
 
 fn panel(title: &'static str) -> NodeBuilder {

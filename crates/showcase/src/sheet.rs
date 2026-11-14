@@ -1,6 +1,8 @@
 use sigil::node::TextBuilder;
 use sigil::prelude::*;
 
+use crate::almanac::sky;
+
 /// The paper every figure of the sheet is printed on.
 pub const PAPER: Color = Color::rgb(237, 237, 232);
 /// The ink of rules, labels and type.
@@ -14,7 +16,7 @@ const TRACKING: f32 = 0.12;
 
 /// The faces of the sheet: Host Grotesk for type and Martian Mono for labels and readouts.
 #[must_use]
-pub fn fonts() -> [(FontFamily, &'static [u8]); 2] {
+pub const fn fonts() -> [(FontFamily, &'static [u8]); 2] {
     [
         (
             FontFamily::Sans,
@@ -46,10 +48,8 @@ pub(crate) fn label(words: impl Into<TextContent>) -> TextBuilder {
 }
 
 pub(crate) fn mix(from: Color, to: Color, share: f32) -> Color {
-    let channel = |a: u8, b: u8| {
-        let value = (f32::from(b) - f32::from(a)).mul_add(share.clamp(0.0, 1.0), f32::from(a));
-        value.round().clamp(0.0, 255.0) as u8
-    };
+    let amount = share.clamp(0.0, 1.0);
+    let channel = |start: u8, end: u8| sky::channel(start, end, amount);
     Color::rgba(
         channel(from.r, to.r),
         channel(from.g, to.g),

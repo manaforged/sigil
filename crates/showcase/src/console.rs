@@ -5,6 +5,7 @@ use sigil::events::DragPhase;
 use sigil::prelude::*;
 use sigil::scene::{DrawRect, SceneBuilder, Shadow};
 
+use crate::almanac::sky::whole;
 use crate::sheet::{INK, PAPER, SIGNAL, label, theme};
 
 const CAP: Color = Color::rgb(30, 30, 32);
@@ -111,7 +112,7 @@ impl Deck {
         });
     }
 
-    fn dials(self) -> [Dial; 4] {
+    const fn dials(self) -> [Dial; 4] {
         [self.across, self.up, self.phase, self.decay]
     }
 
@@ -124,16 +125,16 @@ impl Deck {
 /// The console with its trace drifting.
 #[must_use]
 pub fn app() -> impl IntoNode {
-    board(Deck::new(true))
+    board(&Deck::new(true))
 }
 
 /// The console held still, for a screenshot.
 #[must_use]
 pub fn still() -> impl IntoNode {
-    board(Deck::new(false))
+    board(&Deck::new(false))
 }
 
-fn board(deck: Deck) -> impl IntoNode {
+fn board(deck: &Deck) -> impl IntoNode + use<> {
     row()
         .theme(theme())
         .background(PAPER)
@@ -146,7 +147,8 @@ fn board(deck: Deck) -> impl IntoNode {
         .child(panel(deck))
 }
 
-fn scope(deck: Deck) -> impl IntoNode {
+fn scope(deck: &Deck) -> impl IntoNode + use<> {
+    let deck = *deck;
     canvas(move |scene, rect, theme| {
         let [across, up, phase, decay, drift] = deck.turns_now();
         let figure = Figure {
@@ -187,11 +189,6 @@ impl Figure {
         ]
     }
 
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a canvas is a small positive number of pixels on each side"
-    )]
     fn paint(&self, scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
         scene.draw_rect(DrawRect::new(rect, INK).radius(BEZEL));
         let glass = inset(rect, BEZEL);
@@ -199,7 +196,7 @@ impl Figure {
         graticule(scene, glass);
         let field = inset(glass, MARGIN);
         let half = field.width / 2.0;
-        let side = field.width.round().max(1.0) as u32;
+        let side = whole(field.width);
         for (color, width) in [(HALO, HALO_WIDTH), (TRACE, TRACE_WIDTH)] {
             let line = (0..=POINTS).fold(path(side, side).stroke(color, width), |line, step| {
                 let time = f32::from(step) / f32::from(POINTS) * TURNS * TAU;
@@ -244,7 +241,7 @@ fn graticule(scene: &mut SceneBuilder, glass: Rect) {
     }
 }
 
-fn panel(deck: Deck) -> impl IntoNode {
+fn panel(deck: &Deck) -> impl IntoNode + use<> {
     column()
         .height(SCOPE)
         .grow(1.0)
@@ -347,7 +344,7 @@ fn disc(centre: Point, radius: f32) -> Rect {
     )
 }
 
-fn transport(deck: Deck) -> impl IntoNode {
+fn transport(deck: &Deck) -> impl IntoNode + use<> {
     row()
         .width(Length::Fill)
         .gap(Space::Md)

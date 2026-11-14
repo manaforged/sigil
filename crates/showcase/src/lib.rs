@@ -35,13 +35,11 @@ pub const SIZE: [u32; 2] = [1180, 720];
 pub const CANVAS: &str = "app";
 
 /// The window of a showcase: its title, the shared size, and the page canvas in a browser.
-#[must_use]
 pub fn window(title: &str) -> AppConfig {
     AppConfig::new(title).size(SIZE[0], SIZE[1]).canvas(CANVAS)
 }
 
 /// The window of a showcase that loads `fonts` into their family slots.
-#[must_use]
 pub fn figure(
     title: &str,
     fonts: impl IntoIterator<Item = (FontFamily, &'static [u8])>,
