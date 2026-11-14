@@ -25,6 +25,10 @@ A `Shortcut` is a key plus modifiers:
 
 `NamedKey::Escape`, `&str`, and `char` convert into `Key` and `Shortcut` directly, so `.key(NamedKey::Escape, f)`, `Shortcut::primary('k')`, and `event.key() == '?'` work without `Key::character(...)`. Use `.key_any(|event| ...)` on a focused node to handle any key in the bubble pass.
 
+Key handlers see key presses only. The router drops a key release before any handler runs, so `.key`, `.key_any`, `.key_capture`, `.key_capture_any`, `.shortcut`, and `Widget::step_keys` never see `KeyPhase::Up`. A held key repeats as more presses; `event.repeat()` is `true` on those. `event.key()` is the key by its meaning, and `event.text()` is the text that the press types, or `None` for a key that types nothing. Read `event.text()` to take typed characters.
+
+Ctrl+V, and Cmd+V on macOS, is an ordinary key event. `text_field` binds it and reads the clipboard itself. The `.paste(|text| ...)` handler runs only for text that the host delivers as a paste, such as a bracketed paste in the terminal host; it returns `true` to stop the paste from reaching ancestors. A custom widget that pastes on the key binds `.key(Shortcut::primary('v'), ...)` and calls `sigil::clipboard::paste()`.
+
 ### Bind a key on a focused node
 
 ```rust,no_run
@@ -168,11 +172,11 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one. `Widget::step_keys(keys, |step, event| ...)` binds keys such as the arrows, Page Up, Page Down, Home, and End to a `sigil::events::ValueStep` of a ranged value. `Widget::accessible(name)` sets the name that a screen reader announces for any widget.
+`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one. `Widget::step_keys(keys, |step, event| ...)` binds keys such as the arrows, Page Up, Page Down, Home, and End to a `sigil::events::ValueStep` of a ranged value; pass `ValueStep::SLIDER_KEYS` for the keys and steps that `slider` uses. `Widget::accessible(name)` sets the name that a screen reader announces for any widget.
 
 ## Theme switching
 
-`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host.
+`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `Theme::apply` replaces the active theme at the next frame, on the window and on the terminal host. Call it from an event handler to restyle the whole app, as in this example. Use `Widget::theme(..)`, below, to restyle one subtree, or to follow a signal without a handler.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -180,7 +184,7 @@ use sigil::prelude::*;
 fn tree() -> impl IntoNode {
     let dark = signal(false);
     container().child(toggle(dark)).child(button("Apply").activate(move || {
-        (if dark.get() { Theme::dark() } else { Theme::light() }).apply();
+        (if dark.peek() { Theme::dark() } else { Theme::light() }).apply();
     }))
 }
 
@@ -189,7 +193,9 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Theme::for_backdrop(backdrop)` builds the default light or dark theme. `Theme::token(token, color)` sets a built-in token or a `Token::Custom("name")` token. `Widget::theme(theme)` restyles the colors and corner radii of one subtree, and takes a theme, a signal, or a closure. Control sizes still come from the app theme. `sigil::app::system_backdrop()` is a signal of the operating system appearance. A host reports a change of that appearance as `WindowEvent::BackdropChanged`.
+`Theme::for_backdrop(backdrop)` builds the default light or dark theme. `Theme::token(token, color)` sets a built-in token or a `Token::Custom("name")` token. `Widget::theme(theme)` restyles the colors and corner radii of one subtree, and takes a theme, a signal, or a closure. Control sizes still come from the app theme.
+
+To follow the operating system light or dark setting, read `sigil::app::system_backdrop()`. It returns a `Signal<Option<Backdrop>>`: `Some(Backdrop::Light)` or `Some(Backdrop::Dark)`, or `None` when the setting cannot be detected. The host writes the signal when the setting changes, so a closure that calls `get` on it runs again. The next example passes such a closure to `.theme(..)`.
 
 ```rust,no_run
 use sigil::app::system_backdrop;
@@ -603,7 +609,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`listen(rx, f)` returns a `Listener`. `listen(rx, f).closed(close)` runs `close` once after the last message, when the worker drops its sender. If the channel has already closed, `close` runs at once. `rx` may be a bounded `tokio::sync::mpsc::Receiver` or a `std::sync::mpsc::Receiver`.
+`listen(rx, f)` returns a `Listener`. `listen(rx, f).closed(close)` runs `close` once after the last message, when the worker drops its sender. If the channel has already closed, `close` runs at once. `rx` may be a `tokio::sync::mpsc::Receiver`, a `tokio::sync::mpsc::UnboundedReceiver`, or a `std::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
@@ -629,7 +635,7 @@ fn tree() -> impl IntoNode {
 
 ## Timers
 
-`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `id.cancel()`. It needs no thread.
+`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `cancel()` on the `Timer` it returns. `Timer` is a `Copy` handle, so dropping it does not stop the interval. It needs no thread. `sigil::reactive::timeout(delay, f)` runs `f` once after `delay` and also returns a `Timer`.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]

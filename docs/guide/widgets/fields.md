@@ -78,7 +78,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## tag_input
 
-`tag_input(selected: Signal<Vec<T>>, options: impl IntoIterator<Item = impl Into<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
+`tag_input(selected: Signal<Vec<T>>, options: impl IntoIterator<Item = impl Into<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(impl Into<String>)`, which also names the group for assistive technology, and `.disabled(impl Reactive<bool>)`.
 
 ## combobox
 

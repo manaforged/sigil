@@ -28,7 +28,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 `button(Icon::X)` (see [Controls](controls.md)) is the interactive counterpart.
 
-`sigil::icons::Icon` holds the bundled icons. Each variant is the Lucide name in camel case: `Icon::X` for `x`, `Icon::ChartColumn` for `chart-column`. `Icon::ALL` lists them and `Icon::name` returns the Lucide name.
+`sigil::icons::Icon`, also in `sigil::prelude`, holds the bundled icons. Each variant is the Lucide name in camel case: `Icon::X` for `x`, `Icon::ChartColumn` for `chart-column`. `Icon::ALL` lists them and `Icon::name` returns the Lucide name.
 
 ## image
 
@@ -93,7 +93,11 @@ Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure.
 
 ## canvas
 
-`canvas(paint: impl Fn(&mut SceneBuilder, Rect, &Theme) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `sigil::scene::SceneBuilder` inside the laid-out `Rect`. The `&Theme` is the active theme, so `theme.color(token)` resolves a token to a color. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal increments. `CanvasBuilder` takes the `Paint`, `States`, and `Widget` methods.
+`canvas(paint: impl Fn(&mut SceneBuilder, Rect, &Theme) + 'static) -> CanvasBuilder`. A custom drawing surface that records primitives directly onto a `sigil::scene::SceneBuilder` inside the laid-out `Rect`. The `&Theme` is the active theme, so `theme.color(token)` resolves a token to a color. Chain `.redraw_on(Signal<u64>)` to repaint when a version signal changes. `CanvasBuilder` takes the `Paint`, `States`, and `Widget` methods.
+
+- `rect` is the laid-out box of the canvas in logical px, in the same coordinates as the rest of the scene. It is not local to the canvas: its origin is the top-left corner of the canvas, so offset each primitive by `rect.origin`. Drawing outside `rect` is clipped.
+- To redraw after the data changes, read the data with `peek` inside the closure and bump the `.redraw_on` signal, such as `version.update(|n| *n += 1)`. The example `story-11-canvas-chart` does this.
+- To draw a vector path, build it with `path(width, height)` and the commands in [path](#path), then call `.draw(scene, rect, theme)`. The path's viewbox maps onto `rect`. `.build_path(rect, theme)` returns the `Option<DrawPath>` instead, for `scene.draw_path(draw)`; it is `None` when the path has no commands or no paint.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -108,7 +112,7 @@ canvas(|scene, rect, theme| {
 
 ## Small content helpers
 
-These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
+These helpers paint fixed content. They are in `sigil::prelude` and `sigil::widgets`: `section_label(title)`, `empty_state(title)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
 
 ## States, keys, and accessibility
 

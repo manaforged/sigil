@@ -92,9 +92,9 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 ## toast and toast_queue
 
-`toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. You own the timeout.
+`toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. It does not hide itself. To hide it after a delay, call `sigil::reactive::timeout(Duration::from_secs(3), move || message.set(None))` when you show it.
 
-`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append an entry. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
+`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `toast_queue` and `ToastQueue` are in `sigil::prelude` and `sigil::widgets`. Use `toast` for one status line whose text and lifetime you control, and `toast_queue` for notices that stack and expire on their own. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append an entry. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
 
 ## hint_overlay
 

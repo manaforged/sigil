@@ -28,7 +28,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## tabs
 
-`tabs().tab(label, component)` adds one tab per call. Each component builds once when the tabs mount; a hidden tab keeps its state. `.active(Signal<usize>)` binds the selected index. `.labels(iter)` adds tabs without panels, for a strip that drives content elsewhere. The strip is a `Role::TabList`; each tab activates on click or Enter. The active tab label is semibold in the surface text color; other labels are medium weight in gray step 11. The bare strip also gives the active tab a pressed surface, and the line strip an accent underline. The pane sits 8 px (`space(2)`) below the strip.
+`tabs().tab(label, content)` adds one tab per call. `content` is a closure that returns the panel node (`FnOnce() -> impl IntoNode`), such as `.tab("Code", || text("Code view"))`. Each closure runs once when the tabs mount; a hidden tab keeps its state. `.active(Signal<usize>)` binds the selected index. `.labels(iter)` adds tabs without panels, for a strip that drives content elsewhere. The strip is a `Role::TabList`; each tab activates on click or Enter. The active tab label is semibold in the surface text color; other labels are medium weight in gray step 11. The bare strip also gives the active tab a pressed surface, and the line strip an accent underline. The pane sits 8 px (`space(2)`) below the strip.
 
 - `.line()` / `.pill()`: strip chrome; default is bare.
 - `.accessible(name)`: assistive name for the list.
@@ -113,7 +113,7 @@ Wheel scrolling and a drawn scrollbar are built in. The track is 8 px wide and a
 
 ## Small composites
 
-Small composites in `sigil::widgets`:
+Small composites, in `sigil::prelude` and `sigil::widgets`:
 
 - `field(label, control)`: label stacked over a control with a 4 px gap. `.error(reactive)` shows the error text under a text, number, or color field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)`: a row at least 28 px tall. The key is a muted 16-column cell that ellipsizes. The value starts 12 px after it and fills the rest, so values in a stack align.

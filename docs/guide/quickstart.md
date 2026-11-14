@@ -45,7 +45,7 @@ A component is a function that returns `impl IntoNode`; signals it creates belon
 
 ## Lists and conditions
 
-`for_each` renders one row per item and keeps a row's node while its key stays. `show` swaps two branches on a condition.
+`for_each` renders one row per item and keeps a row's node while its key stays. `show` swaps two branches on a condition. In `for_each(items, key, render)`, `items` is a reactive `Vec<T>` with `T: 'static`, `key` is `Fn(&T) -> K` with `K: Clone + Eq + Hash + 'static`, and `render` is `Fn(&T) -> impl IntoNode`. When `items` is a signal, a `memo`, or a plain `Vec`, `T` must also be `Clone`; a closure that returns the `Vec` needs no `Clone`.
 
 ```rust,no_run
 # use sigil::prelude::*;

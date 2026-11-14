@@ -48,9 +48,9 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 
 ## clipboard
 
-`trait Clipboard { fn set(&self, &str) -> Result<Delivery, Error>; fn get(&self) -> Option<String>; }` in `sigil::clipboard`. A thread-local handle backs it: `install(clip)` installs, `clipboard()` returns the `Rc<dyn Clipboard>`. By default `set` errors and `get` returns `None` until something installs a real handle.
+`trait Clipboard { fn set(&self, &str) -> Result<Delivery, Error>; fn get(&self) -> Option<String>; }` in `sigil::clipboard`. A thread-local handle backs it: `install(clip)` installs it, and `current()` returns it as an `Rc<dyn Clipboard>`. By default `set` errors and `get` returns `None` until something installs a real handle.
 
-`sigil::run` calls `install(OsClipboard)` when the `desktop` feature (`clipboard` → arboard) is on, so text widgets paste from the OS automatically. Outside `run` (tests, embed hosts), nothing is installed. `sigil::clipboard::copy(text)` / `paste()` are the `AppResult` convenience wrappers, and the `clipboard-image` feature adds `image()`. `text_field` accepts a per-widget `.clipboard(clip)` override.
+`sigil::run` calls `install(OsClipboard)` when the `desktop` feature (`clipboard` → arboard) is on, so text widgets paste from the OS automatically. Outside `run` (tests, embed hosts), nothing is installed. App code calls `sigil::clipboard::copy(text)`, which returns `AppResult<Delivery>`, and `paste()`, which returns `AppResult<String>` and an error when the clipboard has no text. A custom widget that keeps the handle, or passes it on, calls `current()`. The `clipboard-image` feature adds `image()` and `copy_image(image)`. `text_field` accepts a per-widget `.clipboard(clip)` override.
 
 ## terminal
 

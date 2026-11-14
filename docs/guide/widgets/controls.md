@@ -86,7 +86,8 @@ slider(volume, 0.0..=100.0)
 Key options:
 
 - `.step(f32)`: quantizes every write; default 1.0, non-positive or non-finite steps fall back to 1.0.
-- `.change(Fn(f32))`: fires on drag release and on each key step, not continuously during the drag.
+- `.change(Fn(f32))`: fires when a drag release, a key, or a screen reader edit moves the value, and not continuously during the drag. A key at a bound or a press on the current value does not fire it.
+- `.label(impl Into<String>)`: shows a caption beside the track and sets the accessible name. Without it, the name is "Slider".
 - `.orientation(Orientation::Vertical)`: default Horizontal.
 - `.length(px)`: fixes the track extent; the default fills the parent.
 - `.disabled(impl Reactive<bool>)`: dims the slider; the thumb stays opaque with a gray border so it reads in light and dark themes.
@@ -112,7 +113,7 @@ The visual catalog captures each control in the states in the table. Hover, pres
 | `checkbox` | default, hover, pressed, focused, disabled | Enter, Space | `CheckBox` | A static `.label()`, else "Checkbox" |
 | `toggle` | default, hover, pressed, focused, disabled | Enter, Space | `Switch` | A static `.label()`, else "Toggle" |
 | `radio_group` | default, hover, pressed, focused, disabled | Arrow keys, Home, End | `RadioGroup`, rows `RadioButton` | `.accessible(name)` or `.labelled_by(node)` for the group; each row uses its option label |
-| `slider` | default, hover, pressed, focused, disabled | Arrow keys, PageUp, PageDown, Home, End | `Slider` | "Slider" |
+| `slider` | default, hover, pressed, focused, disabled | Arrow keys, PageUp, PageDown, Home, End | `Slider` | `.label()`, else "Slider" |
 
 Tab and Shift+Tab move focus between controls. A disabled control leaves the focus order.
 
