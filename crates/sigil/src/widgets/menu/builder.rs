@@ -91,13 +91,12 @@ pub struct MenuBuilder {
     open: Signal<bool>,
     host: Option<Owner>,
     rows: Vec<Row>,
-    label: Option<String>,
     anchor: Option<Point>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
-/// A popup menu.
+/// A popup menu named by the theme's menu string until `.accessible()` (`Widget`) names it.
 pub fn menu(open: Signal<bool>) -> MenuBuilder {
     MenuBuilder::new(open)
 }
@@ -109,17 +108,10 @@ impl MenuBuilder {
             open,
             host: Owner::current(),
             rows: Vec::new(),
-            label: None,
             anchor: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    /// Sets the accessible name; the default is the menu string of the theme.
-    pub fn accessible(mut self, label: impl Into<String>) -> Self {
-        self.label = Some(label.into());
-        self
     }
 
     /// Runs item actions under `owner` while it is live; the default is the current owner.
@@ -170,14 +162,10 @@ impl MenuBuilder {
             },
         );
         let overrides = std::mem::take(&mut self.layout_overrides);
-        let menu_label = self
-            .label
-            .unwrap_or_else(|| theme_string_once(StringKey::Menu));
-
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
-            .accessible(menu_label)
+            .accessible(theme_string_once(StringKey::Menu))
             .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);

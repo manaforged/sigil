@@ -63,7 +63,7 @@ pub enum ValueStep {
 }
 
 impl ValueStep {
-    /// The keys a slider answers: the arrows, PageUp, PageDown, Home, and End.
+    /// The keys a slider answers: the arrows, Page Up, Page Down, Home, and End.
     pub const SLIDER_KEYS: [(NamedKey, Self); 8] = [
         (NamedKey::ArrowRight, Self::Unit(1.0)),
         (NamedKey::ArrowUp, Self::Unit(1.0)),
@@ -106,7 +106,7 @@ pub(crate) enum EventKind {
     PointerLeave,
     Scroll,
     Key,
-    ScrollEvent, Shortcut,
+    Shortcut,
     FocusIn,
     FocusOut,
     FileDrop,

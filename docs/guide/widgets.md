@@ -8,7 +8,7 @@ The family pages carry signatures, options, and behavior notes:
 - [Indicators](widgets/indicators.md): chip, dot, spinner, gauge, progress.
 - [Fields](widgets/fields.md): text_field, number_field, date_field, time_field, color_field, tag_input, combobox, dropdown.
 - [Data](widgets/data.md): table, virtual_list, log_view, heatmap.
-- [Content](widgets/content.md): text, label, icon, image, load_image, path, chart, stat, sparkline, canvas.
+- [Content](widgets/content.md): text, icon, image, load_image, path, chart, stat, sparkline, canvas.
 - [Documents](widgets/documents.md): markdown, markdown_edit, html, code_edit, mermaid, diff.
 - [Chrome](widgets/chrome.md): app_shell, card, sidebar, tabs, segmented, tree, splitter, scroll, dividers, surface, status_bar, context_menu, and helpers including badge, skeleton, pagination, breadcrumbs, and stepper.
 - [Overlays](widgets/overlays.md): modal, menu, menu_bar, command_menu, tooltip, toast, toast_queue, hint_overlay.
@@ -21,7 +21,7 @@ The family pages carry signatures, options, and behavior notes:
 - **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the value is true. It also takes a `memo` or a closure.
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
 - **toggle(Signal\<bool\>)**: chain `.label()` and `.change(Fn(bool))`.
-- **slider(Signal\<f32\>, Range)**: chain `.step(f32)`, `.change(Fn(f32))`, and an orientation. The slider publishes its step for AT Increment/Decrement.
+- **slider(Signal\<f32\>, Range)**: chain `.step(f32)`, `.label(text)` for a caption that is also the accessible name, `.change(Fn(f32))`, and an orientation. The slider publishes its step for AT Increment/Decrement.
 - **text_field(Signal\<String\>)**: chain `.placeholder()`, `.change(Fn(&str))`, `.submit()`, `.clipboard()`, `.disabled(Signal)`, `.invalid(Signal\<bool\>)`, `.password()`, and `.reveal(Signal<bool>)`. `.change` is a side effect; the signal is already two-way. `.password` masks glyphs with `*`; the value stays plaintext. `.reveal` shows the plaintext while true. IME preedit is inline, and the caret anchor is published. Pass a `Signal<String>` for the field value.
 - **text_field(input)**: chain `.multiline()` for newline entry, a vertical caret (Up/Down), and shift-selection; or pass a `TextState` directly.
 - **number_field(Signal\<T\>, Range)**: a numeric text field.
@@ -29,7 +29,7 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings (such as `["Small", "Large"]`). Chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **segmented(Signal\<usize\>, labels)**: a framed row of mutually exclusive options where one is active; `labels` is any `IntoIterator` of strings. Chain `.accessible(name)`.
-- **radio_group(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings, as in `dropdown`. Chain `.accessible(name)` to name the group. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
+- **radio_group(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings, as in `dropdown`. Chain `.accessible(name)` to name the group. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row, or on the first row when none is checked.
 - **command_menu(Signal\<bool\>)**: a nested action tree shown over the app while the signal is true: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Choosing an item, Escape at the top level, or a backdrop press sets the signal to false. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
@@ -60,7 +60,7 @@ The family pages carry signatures, options, and behavior notes:
 - **tree(nodes)**: a hierarchical list of `TreeNode`s with `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, and `.activate(Fn(&K))`.
 - **context_menu(target, items_fn)**: wraps `target` and opens a menu of `items_fn()` at the pointer on right-click.
 - **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).width(px).min_width(px)` on a horizontal splitter, or `.height(px).min_height(px)` on a vertical one, and `.grow(1.0)` for the pane that takes the leftover space; the sash moves the fixed neighbour. Every setter after `.pane(node)` sets that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
-- **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
+- **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop(true)`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
   ```rust,ignore
   let picked = sigil::app::dialog::FileDialog::new().filter("CSV", &["csv"]).open_file();
@@ -72,13 +72,13 @@ The family pages carry signatures, options, and behavior notes:
   ```
 - **modal(open).side(Side::Right)**: the same builder, docked to an edge. Use `Side::Left` or `Side::Bottom` for the other edges, and `.dismiss_on_backdrop(true)` to close on a backdrop click.
 - **toast(message)**: a `Signal<Option<String>>`. `Some` shows a status line; `None` hides it.
-- **tabs()**: chain `.tab(label, component)` per tab, and `.close(Fn(usize))`.
+- **tabs()**: chain `.tab(label, content)` per tab, where `content` is a closure that returns the panel node, such as `.tab("Code", || text("Code view"))`. Chain `.close(Fn(usize))` to handle a close.
 - **scroll(inner)**: measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
 - **menu_bar()**: a GPU app bar. `Paint` methods such as `.background(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])` builds a dropdown. This is the bar you design. The native OS bar is opt-in: `sigil::app::menu::Menu::install` (feature `menu`, next frame).
 - **menu(Signal\<bool\>)**: a GPU popup panel (`.item`, `.separator()`). Use it for context menus, not the app bar.
-- **tooltip(label)**: chain `.hint()`; it wraps a target child.
+- **tooltip(label)**: chain `.hint(Some("⌘K"))` for a shortcut hint and `.child(target)` for the node it wraps.
 
-`field(label, control)`, `app_shell`, `kv_grid`, and `hint_overlay` are exported from `sigil::prelude` and `sigil::widgets`. Builder types and option types, such as `ButtonBuilder`, `ColumnWidth`, `Density`, `DiffView`, and `SparkMark`, are in `sigil::widgets` only.
+The widget functions on these pages, including the small helpers such as `spacer`, `empty_state`, `notice_band`, and `skeleton`, are exported from `sigil::prelude` and `sigil::widgets`. So are `MenuItem`, `Selection`, `SelectionMode`, `Side`, `SortDirection`, `TableColumn`, `TableState`, `TextState`, `ToastQueue`, `TreeNode`, and `Widget`. `axis_drag`, `drag_ghost`, and `fuzzy_score` are in `sigil::widgets` only. Builder types and option types, such as `ButtonBuilder`, `ColumnWidth`, `Density`, `DiffView`, and `SparkMark`, are in `sigil::widgets` only. `Icon` is in `sigil::prelude` and `sigil::icons` (feature `scene`, on by default). `KeyPhase` is in `sigil::events` only.
 
 To write your own widget with the same setters, see [Custom widgets](recipes.md#custom-widgets).
 

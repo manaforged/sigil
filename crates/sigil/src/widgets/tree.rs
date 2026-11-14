@@ -13,7 +13,7 @@ use crate::style::{Style, Tone, space};
 use super::icon::Glyph;
 use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
-use super::shared::{accessible_name, caller_style};
+use super::shared::caller_style;
 use super::virtual_list::{SelectionMode, virtual_list};
 
 pub(crate) use flatten::TreeRow;
@@ -107,7 +107,6 @@ pub struct TreeBuilder<K: Clone + Eq + Hash + 'static> {
     expanded: Option<Signal<Vec<K>>>,
     selected: Option<Signal<Option<K>>>,
     activate: Option<ActivateKey<K>>,
-    label: Option<TextContent>,
     indent: Option<f32>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
@@ -118,7 +117,6 @@ impl<K: Clone + Eq + Hash + 'static> core::fmt::Debug for TreeBuilder<K> {
         f.debug_struct("TreeBuilder")
             .field("expanded", &self.expanded)
             .field("selected", &self.selected)
-            .field("label", &self.label)
             .field("indent", &self.indent)
             .field("layout_overrides", &self.layout_overrides)
             .finish_non_exhaustive()
@@ -134,7 +132,6 @@ pub fn tree<K: Clone + Eq + Hash + 'static>(
         expanded: None,
         selected: None,
         activate: None,
-        label: None,
         indent: None,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
@@ -166,12 +163,6 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
         self
     }
 
-    /// Sets the accessible name of the tree.
-    pub fn accessible(mut self, label: impl Into<TextContent>) -> Self {
-        self.label = Some(label.into());
-        self
-    }
-
     fn root(self) -> NodeBuilder {
         let state = TreeState {
             rows: signal(Vec::new()),
@@ -184,7 +175,6 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
         flatten::bind(self.nodes, &state);
         keys::sync_cursor(&state);
         let render_state = state.clone();
-        let label = self.label;
         let list = virtual_list(state.rows, move |index, item: &TreeRow<K>| {
             row::render(&render_state, index, item)
         });
@@ -194,13 +184,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
             .measured()
             .estimate(ROW_ESTIMATE)
             .fill()
-            .map_node(move |node| {
-                let node = keys::attach(node.role(Role::Tree), &state);
-                match label {
-                    Some(label) => node.accessible(accessible_name(&label)),
-                    None => node,
-                }
-            })
+            .map_node(move |node| keys::attach(node.role(Role::Tree), &state))
             .into_node_builder();
         caller_style(node, self.style_accumulator)
     }

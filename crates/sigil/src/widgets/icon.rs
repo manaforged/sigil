@@ -1,4 +1,4 @@
-use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
@@ -34,7 +34,7 @@ pub struct IconBuilder {
     px: Option<f32>,
     step: u8,
     on_solid: bool,
-    label: Option<String>,
+    label: Option<AccessibleName>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -138,7 +138,7 @@ impl IconBuilder {
     }
 
     /// Sets the accessible name and gives the icon the image role.
-    pub fn accessible(mut self, label: impl Into<String>) -> Self {
+    pub fn accessible(mut self, label: impl Into<AccessibleName>) -> Self {
         self.label = Some(label.into());
         self
     }

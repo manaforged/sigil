@@ -33,7 +33,9 @@ macro_rules! impl_numeric {
                 locale.localize_number(&self.to_string())
             }
             fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
-                self.clamp(*range.start(), *range.end())
+                let (start, end) = (*range.start(), *range.end());
+                let (low, high) = if end < start { (end, start) } else { (start, end) };
+                self.max(low).min(high)
             }
         }
 

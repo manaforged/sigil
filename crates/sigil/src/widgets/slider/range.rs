@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use crate::layout::{LayoutStyle, Orientation};
-use crate::node::{AccessibleName, NodeBuilder, Role, container};
+use crate::node::{AccessibleName, NodeBuilder, Role, TextContent, container};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{StringKey, Theme};
 use crate::widgets::Widget;
@@ -16,7 +16,7 @@ use super::track::{segment, slider_thumb};
 pub(super) fn range_root(
     runtime: SliderRuntime,
     range: Signal<RangeInclusive<f32>>,
-    label: Option<&str>,
+    label: Option<&TextContent>,
     on_change: &ValueChange,
 ) -> NodeBuilder {
     let extent = signal(crate::geometry::Size::ZERO);
@@ -82,15 +82,17 @@ fn thumb(
     (node, Grip::focused(signals.dragging, slot))
 }
 
-fn name(label: Option<&str>, part: Option<StringKey>) -> AccessibleName {
-    let base = label.map(str::to_owned);
-    match (base, part) {
-        (Some(base), None) => AccessibleName::Static(base),
-        (base, part) => {
+fn name(label: Option<&TextContent>, part: Option<StringKey>) -> AccessibleName {
+    match (label, part) {
+        (Some(label), None) => AccessibleName::from(label),
+        (label, part) => {
+            let label = label.cloned();
             let fallback = Theme::label(StringKey::Slider);
             let part = part.map(Theme::label);
             AccessibleName::Derived(memo(move || {
-                let base = base.clone().unwrap_or_else(|| fallback.get());
+                let base = label
+                    .as_ref()
+                    .map_or_else(|| fallback.get(), TextContent::resolve);
                 part.map_or_else(|| base.clone(), |part| format!("{base} {}", part.get()))
             }))
         }

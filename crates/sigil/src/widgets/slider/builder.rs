@@ -8,7 +8,8 @@ use crate::node::{
     AccessibleName, Action, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container,
 };
 use crate::reactive::{Reactive, Signal, signal};
-use crate::style::{Metrics, Paint, Radius, States, StringKey, Theme, Token};
+use crate::style::{Metrics, Paint, Radius, States, StringKey, Token};
+use crate::widgets::shared::accessible_name_or;
 use crate::widgets::{Framed, Widget, WidgetFrame};
 
 use super::handlers::{Grip, ThumbSignals, attach_key_handlers, attach_pointer_drag};
@@ -45,7 +46,7 @@ pub struct SliderBuilder<T = f32> {
     value: PhantomData<fn() -> T>,
     runtime: SliderRuntime,
     on_change: Option<ValueChange>,
-    label: Option<String>,
+    label: Option<TextContent>,
     marks: Vec<String>,
     frame: WidgetFrame,
 }
@@ -137,7 +138,7 @@ impl<T> SliderBuilder<T> {
     }
 
     /// Sets the accessible name and shows it as a caption.
-    pub fn label(mut self, label: impl Into<String>) -> Self {
+    pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -186,7 +187,7 @@ impl<T> SliderBuilder<T> {
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let dragged = match runtime.value {
             Thumb::Start(range) | Thumb::End(range) => {
-                super::range::range_root(runtime, range, self.label.as_deref(), &on_change)
+                super::range::range_root(runtime, range, self.label.as_ref(), &on_change)
             }
             Thumb::Only(_) => single_root(&self, runtime, Rc::clone(&on_change)),
         };
@@ -320,10 +321,7 @@ impl SliderRuntime {
 fn slider_node<T>(builder: &SliderBuilder<T>) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
-    let name = builder.label.as_ref().map_or_else(
-        || AccessibleName::Derived(Theme::label(StringKey::Slider)),
-        |label| AccessibleName::from(&TextContent::Static(label.clone())),
-    );
+    let name = accessible_name_or(builder.label.as_ref(), StringKey::Slider);
     slider_semantics(runtime, name).layout(layout)
 }
 

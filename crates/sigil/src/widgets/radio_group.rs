@@ -78,13 +78,18 @@ impl RadioGroupBuilder {
         if let Some(node) = self.labelled_by {
             group = group.labelled_by(node);
         }
+        let ring = memo(move || {
+            group_focus
+                .get()
+                .then(|| focus_index(selected.get(), count))
+        });
         for (index, label) in self.options.iter().enumerate() {
             group = group.child(option_row(
                 index,
                 label,
                 selected,
                 (self.tone, disabled),
-                group_focus,
+                ring,
             ));
         }
         let mut group = disabled_a11y(caller_style(group, self.style_accumulator), disabled);
@@ -100,9 +105,12 @@ impl RadioGroupBuilder {
     }
 }
 
+const fn focus_index(selected: usize, count: usize) -> usize {
+    if selected < count { selected } else { 0 }
+}
+
 fn select(selected: Signal<usize>, count: usize, step: Move) {
-    let current = selected.peek();
-    let from = if current < count { current } else { 0 };
+    let from = focus_index(selected.peek(), count);
     if let Some(index) = RADIO_GROUP.target(&count, from, step) {
         selected.set(index);
     }
@@ -113,10 +121,10 @@ fn option_row(
     label: &str,
     selected: Signal<usize>,
     (tone, disabled): (Tone, Option<Signal<bool>>),
-    group_focus: Signal<bool>,
+    ring: Signal<Option<usize>>,
 ) -> NodeBuilder {
     let checked: Signal<bool> = memo(move || selected.get() == index);
-    let ring_visible = memo(move || group_focus.get() && checked.get());
+    let ring_visible = memo(move || ring.get() == Some(index));
     let row = container().layout(
         LayoutStyle::flex_row()
             .height(Metrics::current().control_height(ControlSize::Default))

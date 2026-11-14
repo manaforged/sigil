@@ -80,7 +80,7 @@ pub(super) struct StripSpec {
 
 pub(super) fn build_tab_list(
     labels: Signal<Vec<String>>,
-    aria_label: &str,
+    aria_label: Option<AccessibleName>,
     spec: StripSpec,
 ) -> NodeBuilder {
     let active = spec.active;
@@ -90,14 +90,11 @@ pub(super) fn build_tab_list(
             active.set(count - 1);
         }
     });
-    let name = if aria_label.is_empty() {
-        theme_string_once(StringKey::Tabs)
-    } else {
-        aria_label.to_owned()
-    };
+    let name =
+        aria_label.unwrap_or_else(|| AccessibleName::Static(theme_string_once(StringKey::Tabs)));
     container()
         .role(Role::TabList)
-        .accessible(AccessibleName::Static(name))
+        .accessible(name)
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(spec.chrome))

@@ -125,10 +125,7 @@ impl TextFieldRuntime {
     }
 
     fn insert_pasted(&self, text: &str) {
-        let line: String = text
-            .chars()
-            .filter(|ch| *ch != '\n' && *ch != '\r')
-            .collect();
+        let line = single_line(text);
         self.edit(|state| state.insert(&line));
     }
 
@@ -190,7 +187,7 @@ impl TextFieldRuntime {
         }
         match edit {
             A11yEdit::Text(text) => {
-                let line: String = text.chars().filter(|ch| !ch.is_control()).collect();
+                let line = single_line(text);
                 self.edit(|state| state.replace(&line));
             }
             A11yEdit::Select { anchor, focus } => {
@@ -202,6 +199,10 @@ impl TextFieldRuntime {
         }
         true
     }
+}
+
+fn single_line(text: &str) -> String {
+    text.chars().filter(|ch| !ch.is_control()).collect()
 }
 
 pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: &TextFieldRuntime) -> NodeBuilder {
@@ -420,7 +421,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if event.phase != KeyPhase::Down {
         return;
     }
-    if runtime.disabled() {
+    if runtime.disabled() || runtime.hiding_peek() {
         event.stop_propagation();
         return;
     }
@@ -438,7 +439,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         return;
     }
     event.stop_propagation();
-    if runtime.disabled() {
+    if runtime.disabled() || runtime.hiding_peek() {
         return;
     }
     if let Some(text) = runtime.state.selected_text() {

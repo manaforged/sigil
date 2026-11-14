@@ -192,3 +192,35 @@ fn empty_ime_commit_leaves_the_field_alone() {
         });
     }
 }
+
+#[test]
+fn hidden_password_is_not_copied() {
+    for key in ["c", "x"] {
+        Owner::scope("pw-copy", || {
+            let value = signal("hunter2".to_string());
+            let copied = Rc::new(RefCell::new(String::new()));
+            let mut field = Mounted::focused(
+                text_field(value)
+                    .password()
+                    .clipboard(Memory(copied.clone())),
+            );
+            for k in ["a", key] {
+                field
+                    .send(Event::key(Key::character(k), KeyPhase::Down).modifiers(Modifiers::CTRL));
+            }
+            assert_eq!(*copied.borrow(), "", "Ctrl+{key} wrote the clipboard");
+            assert_eq!(value.peek(), "hunter2", "Ctrl+{key} changed the text");
+        });
+    }
+}
+
+#[test]
+fn paste_strips_control_characters_from_a_single_line_field() {
+    Owner::scope("field-paste-tab", || {
+        let value = signal(String::new());
+        let copied = Rc::new(RefCell::new("a\tb".to_string()));
+        let mut field = Mounted::focused(text_field(value).clipboard(Memory(copied)));
+        field.send(Event::key(Key::character("v"), KeyPhase::Down).modifiers(Modifiers::CTRL));
+        assert_eq!(value.peek(), "ab");
+    });
+}

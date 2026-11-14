@@ -48,7 +48,6 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
-    label: String,
     disabled: Option<Signal<bool>>,
     on_change: Option<IndexChange>,
     style_accumulator: Style,
@@ -60,7 +59,6 @@ impl core::fmt::Debug for DropdownBuilder {
         f.debug_struct("DropdownBuilder")
             .field("selected", &self.selected)
             .field("options", &self.options)
-            .field("label", &self.label)
             .field("disabled", &self.disabled)
             .field("style_accumulator", &self.style_accumulator)
             .field("layout_overrides", &self.layout_overrides)
@@ -68,7 +66,7 @@ impl core::fmt::Debug for DropdownBuilder {
     }
 }
 
-/// A select box.
+/// A select box named "Dropdown" until `.accessible()` (`Widget`) names it.
 pub fn dropdown(
     selected: Signal<usize>,
     options: impl IntoIterator<Item = impl Into<String>>,
@@ -82,18 +80,11 @@ impl DropdownBuilder {
         Self {
             selected,
             options,
-            label: "Dropdown".to_owned(),
             disabled: None,
             on_change: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    /// Sets the accessible name; the default is "Dropdown".
-    pub fn accessible(mut self, label: impl Into<String>) -> Self {
-        self.label = label.into();
-        self
     }
 
     /// Disables the select box while `disabled` is true.
@@ -139,7 +130,7 @@ impl DropdownBuilder {
             user_overlay,
         );
         let (popup_options, popup_on_change) = (Rc::clone(&options), Rc::clone(&on_change));
-        let root = dropdown_root(ctx, Rc::clone(&options), self.label, on_change)
+        let root = dropdown_root(ctx, Rc::clone(&options), on_change)
             .child(trigger)
             .children_reactive(move || {
                 if ctx.open.get() {
@@ -154,12 +145,7 @@ impl DropdownBuilder {
 
 builder_impls!([] DropdownBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
-fn dropdown_root(
-    ctx: OptionCtx,
-    options: Rc<Vec<String>>,
-    label: String,
-    on_change: IndexChange,
-) -> NodeBuilder {
+fn dropdown_root(ctx: OptionCtx, options: Rc<Vec<String>>, on_change: IndexChange) -> NodeBuilder {
     let root_layout = LayoutStyle::block()
         .fill_width()
         .height(ctx.trigger_height)
@@ -168,7 +154,7 @@ fn dropdown_root(
         container()
             .role(Role::ComboBox)
             .expanded(ctx.open)
-            .accessible(label)
+            .accessible("Dropdown")
             .layout(root_layout),
         DropdownModel {
             ctx,

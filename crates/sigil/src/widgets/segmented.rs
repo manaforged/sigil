@@ -23,12 +23,11 @@ const SEGMENTED_HEIGHT: f32 = 32.0;
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,
-    name: Option<String>,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
 
-/// A framed row of options where one is active; `.label()` names the group and `.height()` (`Widget`) sets its height.
+/// A framed row of options where one is active; `.accessible()` (`Widget`) names the group and `.height()` (`Widget`) sets its height.
 pub fn segmented(
     active: Signal<usize>,
     labels: impl IntoIterator<Item = impl Into<String>>,
@@ -36,19 +35,12 @@ pub fn segmented(
     SegmentedBuilder {
         active,
         labels: labels.into_iter().map(Into::into).collect(),
-        name: None,
         layout_overrides: LayoutOverrides::new(),
         style_accumulator: Style::new(),
     }
 }
 
 impl SegmentedBuilder {
-    /// Sets the accessible name of the group.
-    pub fn accessible(mut self, name: impl Into<String>) -> Self {
-        self.name = Some(name.into());
-        self
-    }
-
     fn root(self) -> NodeBuilder {
         let active = self.active;
         let labels = self.labels;
@@ -86,9 +78,6 @@ impl SegmentedBuilder {
                 .map(|(index, text)| segment(active, index, text, index == current, inner))
                 .collect::<Vec<_>>()
         });
-        if let Some(name) = self.name {
-            node = node.accessible(name);
-        }
         caller_style(node, self.style_accumulator)
     }
 }
