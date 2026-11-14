@@ -107,7 +107,7 @@ pub fn corner_radius() -> (CommandScene, (f32, f32), Rgba) {
                 color,
             )
             .border_radius(radii)
-            .stroke(solid_stroke(4.0)),
+            .with_stroke(solid_stroke(4.0)),
         );
     }
     let clear = Rgba::new(0.11, 0.16, 0.22, 1.0);
@@ -179,7 +179,7 @@ pub fn pattern() -> (CommandScene, (f32, f32), Rgba) {
         )
         .border_radius(CornerRadii::top(24.0))
         .opacity(8_500)
-        .stroke(stroke_with(StrokeStyle::Solid, StrokeAlign::Outside, 4.0)),
+        .with_stroke(stroke_with(StrokeStyle::Solid, StrokeAlign::Outside, 4.0)),
     );
     (scene.finish(), (1200.0, 380.0), DARK)
 }

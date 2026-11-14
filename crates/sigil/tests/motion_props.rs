@@ -139,9 +139,9 @@ pub(crate) fn stops(ui: &mut Harness) -> Vec<(f32, Color)> {
         .find_map(|command| match command {
             SceneCommand::Gradient(fill) => Some(
                 fill.gradient()
-                    .stops
+                    .stops()
                     .iter()
-                    .map(|stop| (stop.offset, stop.color))
+                    .map(|stop| (stop.offset(), stop.color()))
                     .collect(),
             ),
             _ => None,

@@ -9,10 +9,10 @@ kittest_pub! {
     #[cfg(scene_paint)]
     pub use marks::DrawSprite;
 }
-pub use path::DrawPath;
 #[cfg(vector_paint)]
 pub(crate) use path::MITER_LIMIT;
-pub(crate) use path::{PathCmd, PathStroke, hash_path_cmd, outline_key, rounded_outline};
+pub use path::{DrawPath, PathCommand, PathStroke};
+pub(crate) use path::{hash_path_cmd, outline_key, rounded_outline};
 
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
@@ -51,19 +51,38 @@ pub struct DrawRect {
     pub(crate) outline: bool,
 }
 
-kittest_pub! {
-    /// A box-drawing border on terminal cells.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct CellBorder {
-        /// The outer bounds of the bordered box, in logical pixels.
-        pub(crate) rect: Rect,
-        /// The widths of the top, right, bottom, and left edges; an edge of 0 or less is not drawn.
-        pub(crate) widths: [f32; 4],
-        /// The color of the box-drawing characters; a fully transparent color draws no border.
-        pub(crate) color: Color,
-        /// True when the box has a corner radius, so the terminal host draws rounded corner characters.
-        pub(crate) rounded: bool,
+/// A box-drawing border on terminal cells.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CellBorder {
+    pub(crate) rect: Rect,
+    pub(crate) widths: [f32; 4],
+    pub(crate) color: Color,
+    pub(crate) rounded: bool,
+}
+
+impl CellBorder {
+    /// Returns the outer bounds of the bordered box, in logical pixels.
+    #[must_use]
+    pub const fn rect(&self) -> Rect {
+        self.rect
+    }
+
+    /// Returns the widths of the top, right, bottom, and left edges; an edge of 0 or less is not drawn.
+    #[must_use]
+    pub const fn widths(&self) -> [f32; 4] {
+        self.widths
+    }
+
+    /// Returns the color of the box-drawing characters; a fully transparent color draws no border.
+    #[must_use]
+    pub const fn color(&self) -> Color {
+        self.color
+    }
+
+    /// Returns true when the box has a corner radius, so the terminal host draws rounded corner characters.
+    #[must_use]
+    pub const fn is_rounded(&self) -> bool {
+        self.rounded
     }
 }
 
@@ -112,6 +131,12 @@ macro_rules! node_and_cell {
             #[must_use]
             pub const fn is_outline(&self) -> bool {
                 self.outline
+            }
+
+            /// Returns the box-drawing border the terminal host draws around the node, if it has one.
+            #[must_use]
+            pub const fn border(&self) -> Option<CellBorder> {
+                self.border
             }
         }
     )+};
@@ -172,11 +197,9 @@ macro_rules! shaped_box {
                 self.border_radius
             }
 
-            #[cfg(feature = "kittest")]
-            /// Returns the stroke around the rectangle, if any.
-            #[doc(hidden)]
+            /// Returns the line drawn along the edge of the rectangle, if it has one.
             #[must_use]
-            pub const fn stroke_style(&self) -> Option<Stroke> {
+            pub const fn stroke(&self) -> Option<Stroke> {
                 self.stroke
             }
         }
@@ -220,18 +243,10 @@ impl DrawRect {
     kittest_pub! {
         /// Adds a stroke to the rectangle.
         #[doc(hidden)]
-        pub const fn stroke(mut self, stroke: Stroke) -> Self {
+        pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);
             self
         }
-    }
-
-    #[cfg(feature = "kittest")]
-    /// Returns the terminal box-drawing border, if any.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn cell_border(&self) -> Option<CellBorder> {
-        self.border
     }
 }
 
@@ -303,9 +318,7 @@ impl DrawGradient {
         }
     }
 
-    #[cfg(feature = "kittest")]
-    /// Returns the gradient geometry and stops.
-    #[doc(hidden)]
+    /// Returns the geometry and color stops of the fill.
     #[must_use]
     pub const fn gradient(&self) -> &Gradient {
         &self.gradient
@@ -323,7 +336,7 @@ impl DrawGradient {
     kittest_pub! {
         /// Adds a stroke to the gradient fill.
         #[doc(hidden)]
-        pub const fn stroke(mut self, stroke: Stroke) -> Self {
+        pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
             self.stroke = Some(stroke);
             self
         }
@@ -369,9 +382,7 @@ impl DrawPattern {
         }
     }
 
-    #[cfg(feature = "kittest")]
-    /// Returns the pattern kind.
-    #[doc(hidden)]
+    /// Returns the shape and colors of the repeating fill.
     #[must_use]
     pub const fn pattern(&self) -> PatternKind {
         self.pattern
@@ -388,7 +399,7 @@ impl DrawPattern {
     #[cfg(feature = "kittest")]
     /// Adds a stroke to the pattern fill.
     #[doc(hidden)]
-    pub const fn stroke(mut self, stroke: Stroke) -> Self {
+    pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
         self.stroke = Some(stroke);
         self
     }
@@ -497,40 +508,41 @@ impl DrawImage {
         self.crop
     }
 
-    kittest_pub! {
-        if feature = "scene";
-        /// The image and destination to paint at `scale`.
-        #[doc(hidden)]
-        #[allow(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            clippy::cast_precision_loss,
-            reason = "the extent is clamped to a bounded positive range before the cast"
-        )]
-        #[must_use]
-        pub fn source_at(&self, scale: f32) -> (ImageSource, Rect) {
-            let dest = self.destination;
-            let raster = self
-                .raster
-                .as_ref()
-                .filter(|_| self.crop.is_none() && scale.is_finite() && scale > 0.0);
-            let Some(raster) = raster else {
-                return (self.source.clone(), dest);
-            };
-            let left = (dest.origin.x * scale).round();
-            let top = (dest.origin.y * scale).round();
-            let width = ((dest.origin.x + dest.width) * scale).round() - left;
-            let height = ((dest.origin.y + dest.height) * scale).round() - top;
-            let side = |extent: f32| extent.clamp(1.0, RASTER_MAX_SIDE) as u32;
-            let Some(source) = raster.at(side(width), side(height), scale) else {
-                return (self.source.clone(), dest);
-            };
-            let snapped = Rect::new(
-                crate::geometry::Point::new(left / scale, top / scale),
-                source.width() as f32 / scale,
-                source.height() as f32 / scale,
-            );
-            (source, snapped)
+    #[must_use]
+    pub(crate) fn source_at(&self, scale: f32) -> (ImageSource, Rect) {
+        #[cfg(raster)]
+        if let Some(sized) = self.raster_at(scale) {
+            return sized;
         }
+        #[cfg(not(raster))]
+        let _ = scale;
+        (self.source.clone(), self.destination)
+    }
+
+    #[cfg(raster)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        reason = "the extent is clamped to a bounded positive range before the cast"
+    )]
+    fn raster_at(&self, scale: f32) -> Option<(ImageSource, Rect)> {
+        let dest = self.destination;
+        let raster = self
+            .raster
+            .as_ref()
+            .filter(|_| self.crop.is_none() && scale.is_finite() && scale > 0.0)?;
+        let left = (dest.origin.x * scale).round();
+        let top = (dest.origin.y * scale).round();
+        let width = ((dest.origin.x + dest.width) * scale).round() - left;
+        let height = ((dest.origin.y + dest.height) * scale).round() - top;
+        let side = |extent: f32| extent.clamp(1.0, RASTER_MAX_SIDE) as u32;
+        let source = raster.at(side(width), side(height), scale)?;
+        let snapped = Rect::new(
+            Point::new(left / scale, top / scale),
+            source.width() as f32 / scale,
+            source.height() as f32 / scale,
+        );
+        Some((source, snapped))
     }
 }

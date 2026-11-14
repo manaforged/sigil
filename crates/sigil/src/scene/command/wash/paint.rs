@@ -19,9 +19,9 @@ impl Wash {
         crate::style::srgb::luma(rgb(self.paper)) < 0.5
     }
 
-    /// The colour at `(x, y)` pixels from the top-left of an area centred on `centre`, in 0..1 sRGB.
+    /// Returns the sRGB color from 0 to 1, before the paper's alpha, at `(x, y)` pixels from the top-left of an area whose centre is `centre`.
     #[must_use]
-    pub(crate) fn shade(&self, x: f32, y: f32, centre: (f32, f32)) -> [f32; 3] {
+    pub fn shade(&self, x: f32, y: f32, centre: (f32, f32)) -> [f32; 3] {
         let wash = self.normalized();
         let seed = wash.seed;
         let (u, v) = (x / wash.scale, y / wash.scale);

@@ -19,7 +19,7 @@ mod key;
 mod paint;
 mod values;
 
-pub(crate) use crate::scene::command::PathCmd;
+pub(crate) use crate::scene::command::PathCommand;
 pub(crate) use values::PathFill;
 
 type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
@@ -30,7 +30,7 @@ type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 pub struct PathBuilder {
     width: u32,
     height: u32,
-    cmds: Vec<PathCmd>,
+    cmds: Vec<PathCommand>,
     fill: Option<PathFill>,
     stroke: Option<(ColorValue, f32)>,
     rule: FillRule,
@@ -63,19 +63,19 @@ pub const fn path(width: u32, height: u32) -> PathBuilder {
 impl PathBuilder {
     /// Starts a new subpath at this point.
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::MoveTo(x, y));
+        self.cmds.push(PathCommand::MoveTo(x, y));
         self
     }
 
     /// Adds a straight line to this point.
     pub fn line_to(mut self, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::LineTo(x, y));
+        self.cmds.push(PathCommand::LineTo(x, y));
         self
     }
 
     /// Adds a quadratic curve to this point.
     pub fn quad_to(mut self, cx: f32, cy: f32, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::QuadTo(cx, cy, x, y));
+        self.cmds.push(PathCommand::QuadTo(cx, cy, x, y));
         self
     }
 
@@ -85,13 +85,13 @@ impl PathBuilder {
         reason = "the argument list mirrors the upstream API contract"
     )]
     pub fn cubic_to(mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self {
-        self.cmds.push(PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y));
+        self.cmds.push(PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y));
         self
     }
 
     /// Closes the current subpath.
     pub fn close(mut self) -> Self {
-        self.cmds.push(PathCmd::Close);
+        self.cmds.push(PathCommand::Close);
         self
     }
 

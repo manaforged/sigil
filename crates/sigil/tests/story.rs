@@ -549,7 +549,7 @@ fn layer2_parity_invalid_border_persists_while_focused() {
         let scene = ui.host().scene((480.0, 120.0)).expect("scene");
         let stroke_color = scene.commands().iter().find_map(|cmd| match cmd {
             SceneCommand::Rect(rect) if rect.node() == Some(focused) => {
-                rect.stroke_style().map(|s| s.color)
+                rect.stroke().map(|s| s.color())
             }
             _ => None,
         });

@@ -43,7 +43,7 @@ impl Gen<'_, '_, '_> {
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
         if let Some(stroke) = self.stroke() {
-            draw = draw.stroke(stroke);
+            draw = draw.with_stroke(stroke);
         }
         SceneCommand::Rect(draw)
     }
@@ -68,7 +68,7 @@ impl Gen<'_, '_, '_> {
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
         if let Some(stroke) = self.stroke() {
-            draw = draw.stroke(stroke);
+            draw = draw.with_stroke(stroke);
         }
         SceneCommand::Gradient(draw)
     }
@@ -92,7 +92,7 @@ impl Gen<'_, '_, '_> {
             .border_radius(self.radii())
             .opacity(self.opacity_u16());
         if let Some(stroke) = self.stroke() {
-            draw = draw.stroke(stroke);
+            draw = draw.with_stroke(stroke);
         }
         SceneCommand::Pattern(draw)
     }

@@ -144,7 +144,7 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
                 .commands()
                 .iter()
                 .find_map(|command| match command {
-                    SceneCommand::Rect(rect) => rect.stroke_style().map(|stroke| stroke.color),
+                    SceneCommand::Rect(rect) => rect.stroke().map(|stroke| stroke.color()),
                     _ => None,
                 })
         };

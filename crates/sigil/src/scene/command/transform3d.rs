@@ -6,12 +6,9 @@ use super::effects::Transform;
 
 const MIN_W: f32 = 1.0e-4;
 
-kittest_pub! {
-    /// A CSS 4×4 transform that maps a layer's plane with rotation and perspective.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct Transform3D([[f32; 4]; 4]);
-}
+/// A CSS 4×4 transform that maps a layer's plane with rotation and perspective.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Transform3D([[f32; 4]; 4]);
 
 impl Default for Transform3D {
     fn default() -> Self {
@@ -114,6 +111,12 @@ impl Transform3D {
                 .then(inner)
                 .translate(-origin.x, -origin.y, 0.0)
         }
+    }
+
+    /// Returns the 4×4 matrix in row-major order, applied to column vectors `(x, y, z, 1)`.
+    #[must_use]
+    pub const fn matrix(&self) -> [[f32; 4]; 4] {
+        self.0
     }
 
     pub(crate) fn back_facing(self) -> bool {

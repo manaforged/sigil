@@ -58,7 +58,7 @@ pub(super) fn draw_solid_strokes(scene: &mut SceneBuilder) {
         scene.draw_rect(
             DrawRect::new(rect(24.0 + index, 24.0, 64.0, 64.0), fill)
                 .border_radius(CornerRadii::uniform(12.0))
-                .stroke(stroke_with(style, align, width)),
+                .with_stroke(stroke_with(style, align, width)),
         );
     }
 }
@@ -92,7 +92,7 @@ pub(super) fn draw_gradient_strokes(scene: &mut SceneBuilder) {
                 gradient.clone(),
             )
             .border_radius(CornerRadii::uniform(12.0))
-            .stroke(stroke_with(style, align, 3.0)),
+            .with_stroke(stroke_with(style, align, 3.0)),
         );
     }
 }

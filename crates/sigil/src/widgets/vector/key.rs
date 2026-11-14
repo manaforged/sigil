@@ -1,4 +1,4 @@
-use super::PathCmd;
+use super::PathCommand;
 use crate::scene::command::PathPaint;
 use crate::style::Color;
 
@@ -14,7 +14,7 @@ fn mix_rgba(hash: &mut u64, color: Color) {
     *hash = crate::fnv::mix(*hash, crate::fnv::rgba(color));
 }
 
-pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
+pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCommand) {
     *hash = crate::scene::command::hash_path_cmd(*hash, cmd);
 }
 

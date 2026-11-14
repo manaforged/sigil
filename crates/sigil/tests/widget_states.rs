@@ -295,11 +295,11 @@ fn text_field_rest_emits_border_color() {
 
         assert_eq!(rects.len(), 1, "field must paint one rounded surface");
         let rect = rects.first().expect("field surface");
-        let stroke = rect.stroke_style().expect("field border stroke");
+        let stroke = rect.stroke().expect("field border stroke");
         assert_eq!(rect.color(), theme.scale(Tone::Neutral).step(1));
-        assert_eq!(stroke.color, border);
-        assert!((stroke.width - 1.0).abs() < f32::EPSILON);
-        assert_eq!(stroke.align, StrokeAlign::Inside);
+        assert_eq!(stroke.color(), border);
+        assert!((stroke.width() - 1.0).abs() < f32::EPSILON);
+        assert_eq!(stroke.align(), StrokeAlign::Inside);
     });
 }
 

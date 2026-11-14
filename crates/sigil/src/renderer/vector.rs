@@ -6,7 +6,7 @@ use vello_cpu::{PaintType, color::AlphaColor, color::Srgb};
 
 use crate::geometry::Point;
 use crate::scene::command::{
-    DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCmd, PathPaint, PathStroke,
+    DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCommand, PathPaint, PathStroke,
     StrokeCap, StrokeJoin, Transform,
 };
 use crate::scene::geometry::{MIN_EXTENT, QUARTER_TURN_DEG};
@@ -69,18 +69,18 @@ pub(crate) fn affine([[sx, kx, tx], [ky, sy, ty]]: Transform) -> Affine {
     Affine::new([sx, ky, kx, sy, tx, ty].map(f64::from))
 }
 
-fn outline(cmds: &[PathCmd]) -> BezPath {
+fn outline(cmds: &[PathCommand]) -> BezPath {
     let mut path = BezPath::new();
     let point = |x: f32, y: f32| (f64::from(x), f64::from(y));
     for cmd in cmds {
         match *cmd {
-            PathCmd::MoveTo(x, y) => path.move_to(point(x, y)),
-            PathCmd::LineTo(x, y) => path.line_to(point(x, y)),
-            PathCmd::QuadTo(cx, cy, x, y) => path.quad_to(point(cx, cy), point(x, y)),
-            PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
+            PathCommand::MoveTo(x, y) => path.move_to(point(x, y)),
+            PathCommand::LineTo(x, y) => path.line_to(point(x, y)),
+            PathCommand::QuadTo(cx, cy, x, y) => path.quad_to(point(cx, cy), point(x, y)),
+            PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
                 path.curve_to(point(c1x, c1y), point(c2x, c2y), point(x, y));
             }
-            PathCmd::Close => path.close_path(),
+            PathCommand::Close => path.close_path(),
         }
     }
     path

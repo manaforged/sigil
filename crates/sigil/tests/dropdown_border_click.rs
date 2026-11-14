@@ -119,10 +119,10 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
     let stroke = trigger_rects
         .first()
         .expect("one trigger surface")
-        .stroke_style()
+        .stroke()
         .expect("the trigger surface must paint a real border");
-    assert!((stroke.width - 1.0).abs() < f32::EPSILON);
-    assert_eq!(stroke.align, StrokeAlign::Inside);
+    assert!((stroke.width() - 1.0).abs() < f32::EPSILON);
+    assert_eq!(stroke.align(), StrokeAlign::Inside);
 }
 
 #[test]

@@ -21,11 +21,9 @@ mod wash;
 pub use clip::Clip;
 #[cfg(scene_host)]
 pub(crate) use decoration::DecorationGeometry;
-pub use effects::{BlendMode, LayerScope, Transform};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use effects::{DecorationKind, Filter, LayerEffect, Mask, MaskMode};
-}
+pub use effects::{
+    BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, Transform,
+};
 kittest_pub! {
     #[doc(hidden)]
     #[cfg(scene_paint)]
@@ -33,49 +31,40 @@ kittest_pub! {
 }
 #[cfg(feature = "kittest")]
 pub use fills::PaintFill;
-pub(crate) use fills::{FillRule, PathPaint};
-pub use fills::{StrokeCap, StrokeJoin};
+pub use fills::{
+    FillRule, GradientStop, PathPaint, PatternKind, Stroke, StrokeAlign, StrokeCap, StrokeJoin,
+    StrokeStyle,
+};
 kittest_pub! {
     #[doc(hidden)]
-    pub use fills::{GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeStyle};
+    pub use fills::LinearGradient;
 }
-pub use glyph::GlyphRun;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use glyph::TextFlow;
-}
+pub use glyph::{GlyphRun, TextFlow};
 #[cfg(scene_host)]
 kittest_pub! {
     #[doc(hidden)]
     pub use glyph::shape_glyph_run;
 }
 pub(crate) use glyph::{RunInk, shape_run};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use gradient::{Gradient, GradientKind};
-}
+pub use gradient::{Gradient, GradientKind};
 #[cfg(vector_paint)]
 pub(crate) use payloads::MITER_LIMIT;
+pub use payloads::{
+    CellBorder, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect,
+    PathCommand, PathStroke,
+};
 pub(crate) use payloads::{CellRect, hash_path_cmd};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use payloads::CellBorder;
-}
-pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect};
 kittest_pub! {
     #[doc(hidden)]
     #[cfg(scene_paint)]
     pub use payloads::DrawSprite;
 }
-pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
+pub(crate) use payloads::{outline_key, rounded_outline};
 #[cfg(scene_host)]
 pub(crate) use stroke_band::StrokeBand;
 #[cfg(scene_harness)]
 pub(crate) use stroke_band::StrokeDash;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use transform3d::Transform3D;
-}
+pub use transform3d::Transform3D;
 pub use wash::Wash;
 #[cfg(scene_host)]
 pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};

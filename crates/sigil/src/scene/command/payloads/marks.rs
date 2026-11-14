@@ -162,9 +162,7 @@ impl DrawDecoration {
         self.period
     }
 
-    #[cfg(feature = "kittest")]
-    /// Returns the decoration kind.
-    #[doc(hidden)]
+    /// Returns whether the line is an underline or a strikethrough.
     #[must_use]
     pub const fn kind(&self) -> DecorationKind {
         self.kind

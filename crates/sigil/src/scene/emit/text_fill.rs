@@ -3,14 +3,14 @@ use std::sync::Arc;
 use skrifa::outline::OutlinePen;
 
 use crate::scene::command::fills::{FillRule, color_at};
-use crate::scene::command::{DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, outline_key};
+use crate::scene::command::{DrawPath, GlyphRun, Gradient, PathCommand, PathPaint, outline_key};
 use crate::scene::geometry::IDENTITY;
 use crate::text::outline::{Oblique, for_each_outline};
 
 const TEXT_FILL_SEED: u64 = 0x7478_7466;
 
 struct Pen<'a> {
-    out: &'a mut Vec<PathCmd>,
+    out: &'a mut Vec<PathCommand>,
     x: f32,
     y: f32,
 }
@@ -24,26 +24,26 @@ impl Pen<'_> {
 impl OutlinePen for Pen<'_> {
     fn move_to(&mut self, x: f32, y: f32) {
         let (x, y) = self.at(x, y);
-        self.out.push(PathCmd::MoveTo(x, y));
+        self.out.push(PathCommand::MoveTo(x, y));
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
         let (x, y) = self.at(x, y);
-        self.out.push(PathCmd::LineTo(x, y));
+        self.out.push(PathCommand::LineTo(x, y));
     }
 
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
         let ((cx, cy), (x, y)) = (self.at(cx, cy), self.at(x, y));
-        self.out.push(PathCmd::QuadTo(cx, cy, x, y));
+        self.out.push(PathCommand::QuadTo(cx, cy, x, y));
     }
 
     fn curve_to(&mut self, ax: f32, ay: f32, bx: f32, by: f32, x: f32, y: f32) {
         let ((ax, ay), (bx, by), (x, y)) = (self.at(ax, ay), self.at(bx, by), self.at(x, y));
-        self.out.push(PathCmd::CubicTo(ax, ay, bx, by, x, y));
+        self.out.push(PathCommand::CubicTo(ax, ay, bx, by, x, y));
     }
 
     fn close(&mut self) {
-        self.out.push(PathCmd::Close);
+        self.out.push(PathCommand::Close);
     }
 }
 
@@ -68,7 +68,7 @@ pub(super) fn flat_color(gradient: &Gradient) -> crate::style::Color {
     color_at(&gradient.normalized().stops, 0.5)
 }
 
-fn outlines(run: &GlyphRun) -> Vec<PathCmd> {
+fn outlines(run: &GlyphRun) -> Vec<PathCommand> {
     let mut out = Vec::new();
     let Some(paragraph) = run.paragraph() else {
         return out;

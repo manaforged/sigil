@@ -1,19 +1,17 @@
 use crate::geometry::{Point, Rect};
 use crate::style::srgb;
 
-kittest_pub! {
-    /// Whether a shadow falls outside or inside a shape.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-    pub enum ShadowKind {
-        /// Falls outside the shape, moved by the offset and grown by the spread.
-        #[default]
-        Outer,
-        /// Falls inside the shape's edge, where a positive spread makes it reach further in.
-        Inner,
-        /// A halo around the shape, painted like `Outer`; `Shadow::glow` makes one with no offset.
-        Glow,
-    }
+/// Whether a shadow falls outside or inside a shape.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum ShadowKind {
+    /// Falls outside the shape, moved by the offset and grown by the spread.
+    #[default]
+    Outer,
+    /// Falls inside the shape's edge, where a positive spread makes it reach further in.
+    Inner,
+    /// A halo around the shape, painted like `Outer`; `Shadow::glow` makes one with no offset.
+    Glow,
 }
 
 /// The offset, blur, spread, and color of a shadow.
@@ -83,8 +81,6 @@ impl Shadow {
     }
 
     /// Returns whether the shadow is outer, inner, or a glow.
-    #[cfg(feature = "kittest")]
-    #[doc(hidden)]
     #[must_use]
     pub const fn shadow_kind(&self) -> ShadowKind {
         self.kind

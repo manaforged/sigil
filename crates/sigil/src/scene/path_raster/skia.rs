@@ -4,7 +4,7 @@ use tiny_skia::{
 };
 
 use crate::scene::command::{
-    DrawPath, FillRule, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin,
+    DrawPath, FillRule, MITER_LIMIT, PathCommand, PathPaint, PathStroke, StrokeCap, StrokeJoin,
     Transform,
 };
 use crate::scene::geometry::compose;
@@ -34,17 +34,17 @@ pub(super) fn raster(
     Some(pixmap.take())
 }
 
-fn outline(cmds: &[PathCmd]) -> Option<tiny_skia::Path> {
+fn outline(cmds: &[PathCommand]) -> Option<tiny_skia::Path> {
     let mut builder = PathBuilder::new();
     for cmd in cmds {
         match *cmd {
-            PathCmd::MoveTo(x, y) => builder.move_to(x, y),
-            PathCmd::LineTo(x, y) => builder.line_to(x, y),
-            PathCmd::QuadTo(cx, cy, x, y) => builder.quad_to(cx, cy, x, y),
-            PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
+            PathCommand::MoveTo(x, y) => builder.move_to(x, y),
+            PathCommand::LineTo(x, y) => builder.line_to(x, y),
+            PathCommand::QuadTo(cx, cy, x, y) => builder.quad_to(cx, cy, x, y),
+            PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
                 builder.cubic_to(c1x, c1y, c2x, c2y, x, y);
             }
-            PathCmd::Close => builder.close(),
+            PathCommand::Close => builder.close(),
         }
     }
     builder.finish()

@@ -31,25 +31,20 @@ kittest_pub! {
     pub use command::shape_glyph_run;
 }
 pub use command::{
-    BlendMode, Clip, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern,
-    DrawRect, GlyphRun, LayerScope, SceneCommand, StrokeCap, StrokeJoin, Transform, Wash,
+    BlendMode, CellBorder, Clip, CommandScene, DecorationKind, DrawDecoration, DrawGradient,
+    DrawImage, DrawPath, DrawPattern, DrawRect, FillRule, Filter, GlyphRun, Gradient, GradientKind,
+    GradientStop, LayerEffect, LayerScope, Mask, MaskMode, PathCommand, PathPaint, PathStroke,
+    PatternKind, SceneCommand, Stroke, StrokeAlign, StrokeCap, StrokeJoin, StrokeStyle, TextFlow,
+    Transform, Transform3D, Wash,
 };
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{
-        DecorationKind, Filter, Gradient, GradientKind, GradientStop, LayerEffect,
-        LinearGradient, Mask, MaskMode, PatternKind, Stroke, StrokeAlign, StrokeStyle,
-        Transform3D,
-    };
+    pub use command::LinearGradient;
 }
 kittest_pub! {
     #[doc(hidden)]
     #[cfg(scene_paint)]
     pub use command::{DrawSprite, SpriteKind, SpriteSource};
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use command::{CellBorder, TextFlow};
 }
 kittest_pub! {
     #[doc(hidden)]
@@ -64,8 +59,4 @@ kittest_pub! {
     #[doc(hidden)]
     pub use emit::emit_scene;
 }
-pub use shadow::Shadow;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use shadow::ShadowKind;
-}
+pub use shadow::{Shadow, ShadowKind};

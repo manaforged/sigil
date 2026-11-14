@@ -108,13 +108,11 @@ fn visible_focus_ring_stroke() {
     assert_eq!(first.corner_radii(), [10.0; 4]);
     assert_eq!(first.color().a, 0);
 
-    let stroke = first
-        .stroke_style()
-        .expect("focus ring has an outside stroke");
-    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
-    assert_eq!(stroke.width, 2.0);
-    assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.align, StrokeAlign::Outside);
+    let stroke = first.stroke().expect("focus ring has an outside stroke");
+    assert_eq!(stroke.color(), Theme::default().color(Token::Accent));
+    assert_eq!(stroke.width(), 2.0);
+    assert_eq!(stroke.style(), StrokeStyle::Solid);
+    assert_eq!(stroke.align(), StrokeAlign::Outside);
 }
 
 #[test]

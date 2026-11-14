@@ -5,47 +5,39 @@ use crate::scene::geometry::MIN_EXTENT;
 
 use super::fills::{GradientStop, LinearGradient, normalize_stops};
 
-kittest_pub! {
-    /// The geometry of a gradient, in the same logical pixels as the shape it fills.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub enum GradientKind {
-        /// Colors change along the line from `start` to `end`.
-        Linear {
-            /// Where offset 0 lies.
-            start: Point,
-            /// Where offset 1 lies.
-            end: Point,
-        },
-        /// Colors change out from `center` to an ellipse with radii `radius` (x, y).
-        Radial {
-            /// The center, at offset 0.
-            center: Point,
-            /// The x and y radii of the ellipse at offset 1.
-            radius: [f32; 2],
-        },
-        /// Colors change clockwise around `center`, starting `angle` degrees clockwise from up.
-        Conic {
-            /// The point that the colors turn around.
-            center: Point,
-            /// The start angle in degrees, clockwise from up, as in CSS `conic-gradient(from ..)`.
-            angle: f32,
-        },
-    }
+/// The geometry of a gradient, in the same logical pixels as the shape it fills.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum GradientKind {
+    /// Colors change along the line from `start` to `end`.
+    Linear {
+        /// Where offset 0 lies.
+        start: Point,
+        /// Where offset 1 lies.
+        end: Point,
+    },
+    /// Colors change out from `center` to an ellipse with radii `radius` (x, y).
+    Radial {
+        /// The center, at offset 0.
+        center: Point,
+        /// The x and y radii of the ellipse at offset 1.
+        radius: [f32; 2],
+    },
+    /// Colors change clockwise around `center`, starting `angle` degrees clockwise from up.
+    Conic {
+        /// The point that the colors turn around.
+        center: Point,
+        /// The start angle in degrees, clockwise from up, as in CSS `conic-gradient(from ..)`.
+        angle: f32,
+    },
 }
 
-kittest_pub! {
-    /// A linear, radial, or conic gradient with color stops.
-    #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct Gradient {
-        /// Whether the gradient is linear, radial, or conic, with its points.
-        pub kind: GradientKind,
-        /// The stops, at offsets from 0 to 1.
-        pub stops: SmallVec<[GradientStop; 4]>,
-        /// Whether the span from the first to the last stop repeats, as in CSS `repeating-*-gradient`.
-        pub repeat: bool,
-    }
+/// A linear, radial, or conic gradient with color stops.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Gradient {
+    pub(crate) kind: GradientKind,
+    pub(crate) stops: SmallVec<[GradientStop; 4]>,
+    pub(crate) repeat: bool,
 }
 
 impl Gradient {
@@ -78,26 +70,39 @@ impl Gradient {
         }
     }
 
-    kittest_pub! {
-        /// Returns this gradient with stops clamped into offset order in 0..=1 and a degenerate shape reduced to one color.
-        #[must_use]
-        pub fn normalized(&self) -> Self {
-            Self {
-                kind: self.kind,
-                stops: normalize_stops(&self.stops, self.is_degenerate()),
-                repeat: self.repeat,
-            }
+    /// Returns whether the gradient is linear, radial, or conic, with its points.
+    #[must_use]
+    pub const fn kind(&self) -> GradientKind {
+        self.kind
+    }
+
+    /// Returns the color stops in the order they were given.
+    #[must_use]
+    pub fn stops(&self) -> &[GradientStop] {
+        &self.stops
+    }
+
+    /// Returns true when the span from the first to the last stop repeats, as in CSS `repeating-*-gradient`.
+    #[must_use]
+    pub const fn is_repeating(&self) -> bool {
+        self.repeat
+    }
+
+    /// Returns this gradient with stops clamped into offset order in 0..=1 and a degenerate shape reduced to one color.
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            kind: self.kind,
+            stops: normalize_stops(&self.stops, self.is_degenerate()),
+            repeat: self.repeat,
         }
     }
 
-    kittest_pub! {
-        if vector_paint;
-        /// The offsets of the first and last stop; `None` when the gradient does not repeat.
-        #[must_use]
-        pub fn repeat_span(&self) -> Option<[f32; 2]> {
-            let (first, last) = (self.stops.first()?.offset, self.stops.last()?.offset);
-            (self.repeat && last - first > MIN_EXTENT).then_some([first, last])
-        }
+    /// Returns the offsets of the first and last stop, or `None` when the gradient does not repeat.
+    #[must_use]
+    pub fn repeat_span(&self) -> Option<[f32; 2]> {
+        let (first, last) = (self.stops.first()?.offset, self.stops.last()?.offset);
+        (self.repeat && last - first > MIN_EXTENT).then_some([first, last])
     }
 
     #[cfg(vector_paint)]

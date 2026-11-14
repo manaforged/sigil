@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::key::{hash_cmd, mix, mix_f32, mix_fill, mix_stroke};
-use super::{PathBuilder, PathCmd, PathFill};
+use super::{PathBuilder, PathCommand, PathFill};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, PathPaint, Transform};
@@ -81,27 +81,27 @@ const fn apply([[sx, kx, tx], [ky, sy, ty]]: Transform, (x, y): (f32, f32)) -> (
     )
 }
 
-pub(super) fn bake(cmds: &[PathCmd], view: Transform) -> Arc<[PathCmd]> {
+pub(super) fn bake(cmds: &[PathCommand], view: Transform) -> Arc<[PathCommand]> {
     let at = |x, y| apply(view, (x, y));
     cmds.iter()
         .map(|cmd| match *cmd {
-            PathCmd::MoveTo(x, y) => {
+            PathCommand::MoveTo(x, y) => {
                 let (x, y) = at(x, y);
-                PathCmd::MoveTo(x, y)
+                PathCommand::MoveTo(x, y)
             }
-            PathCmd::LineTo(x, y) => {
+            PathCommand::LineTo(x, y) => {
                 let (x, y) = at(x, y);
-                PathCmd::LineTo(x, y)
+                PathCommand::LineTo(x, y)
             }
-            PathCmd::QuadTo(cx, cy, x, y) => {
+            PathCommand::QuadTo(cx, cy, x, y) => {
                 let ((cx, cy), (x, y)) = (at(cx, cy), at(x, y));
-                PathCmd::QuadTo(cx, cy, x, y)
+                PathCommand::QuadTo(cx, cy, x, y)
             }
-            PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
+            PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
                 let ((c1x, c1y), (c2x, c2y), (x, y)) = (at(c1x, c1y), at(c2x, c2y), at(x, y));
-                PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y)
+                PathCommand::CubicTo(c1x, c1y, c2x, c2y, x, y)
             }
-            PathCmd::Close => PathCmd::Close,
+            PathCommand::Close => PathCommand::Close,
         })
         .collect()
 }

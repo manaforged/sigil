@@ -7,7 +7,7 @@ use crate::fnv::mix;
 use crate::geometry::{Point, Rect};
 use crate::scene::SceneBuilder;
 use crate::scene::command::{
-    CommandScene, DrawPath, FillRule, LayerScope, PathCmd, PathPaint, PathStroke, SceneCommand,
+    CommandScene, DrawPath, FillRule, LayerScope, PathCommand, PathPaint, PathStroke, SceneCommand,
     outline_key,
 };
 
@@ -202,7 +202,7 @@ impl Walk {
         })
     }
 
-    fn draw(&mut self, cmds: Arc<[PathCmd]>, t: Transform) -> DrawPath {
+    fn draw(&mut self, cmds: Arc<[PathCommand]>, t: Transform) -> DrawPath {
         let key = transform_key(outline_key(self.next_key(), &cmds), t);
         DrawPath::new(cmds, scene_transform(t), key)
     }

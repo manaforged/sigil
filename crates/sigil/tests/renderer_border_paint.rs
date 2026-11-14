@@ -36,14 +36,14 @@ fn border_class_emits_inside_stroke_command() {
         .commands()
         .iter()
         .find_map(|command| match command {
-            SceneCommand::Rect(rect) => rect.stroke_style(),
+            SceneCommand::Rect(rect) => rect.stroke(),
             _ => None,
         })
         .expect("bordered container must emit a stroked rect");
-    assert!((stroke.width - 2.0).abs() < f32::EPSILON);
-    assert_eq!(stroke.align, StrokeAlign::Inside);
-    assert_eq!(stroke.style, StrokeStyle::Solid);
-    assert_eq!(stroke.color, Theme::default().color(Token::Accent));
+    assert!((stroke.width() - 2.0).abs() < f32::EPSILON);
+    assert_eq!(stroke.align(), StrokeAlign::Inside);
+    assert_eq!(stroke.style(), StrokeStyle::Solid);
+    assert_eq!(stroke.color(), Theme::default().color(Token::Accent));
 }
 
 #[test]

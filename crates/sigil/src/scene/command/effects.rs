@@ -67,19 +67,17 @@ impl SpriteSource {
     }
 }
 
-kittest_pub! {
-    /// The line style of a text decoration.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum DecorationKind {
-        /// A straight line under the text.
-        Underline,
-        /// A straight line through the middle of the text.
-        Strikethrough,
-        #[cfg(cpu_paint)]
-        /// A sine wave under the text.
-        WavyUnderline,
-    }
+/// The line style of a text decoration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DecorationKind {
+    /// A straight line under the text.
+    Underline,
+    /// A straight line through the middle of the text.
+    Strikethrough,
+    #[cfg(cpu_paint)]
+    /// A sine wave under the text.
+    WavyUnderline,
 }
 
 /// The bounds and effects of a composite layer.
@@ -171,9 +169,7 @@ impl LayerScope {
         self.clip_radii
     }
 
-    #[cfg(feature = "kittest")]
-    /// Returns the effect applied to the layer.
-    #[doc(hidden)]
+    /// Returns the transform, mask, or filters applied to the layer.
     #[must_use]
     pub const fn effect(&self) -> &LayerEffect {
         &self.effect
@@ -256,57 +252,52 @@ impl BlendMode {
     ];
 }
 
-kittest_pub! {
-    /// An effect applied to a composite layer.
-    #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub enum LayerEffect {
-        /// No effect; the layer is drawn as its commands paint it.
-        Identity,
-        /// The layer is drawn through a 2D affine transform.
-        Transform(Transform),
-        /// The layer is drawn as a CSS 3D plane through a perspective transform.
-        Projected {
-            /// The full transform from layer space to the parent's space.
-            transform: Transform3D,
-            /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
-            hide_backface: bool,
-        },
-        /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
-        Mask(Mask),
-        /// The layer's pixels pass through each filter in order, as in CSS `filter`.
-        Filter(Arc<[Filter]>),
-    }
+/// An effect applied to a composite layer.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum LayerEffect {
+    /// No effect; the layer is drawn as its commands paint it.
+    Identity,
+    /// The layer is drawn through a 2D affine transform.
+    Transform(Transform),
+    /// The layer is drawn as a CSS 3D plane through a perspective transform.
+    Projected {
+        /// The full transform from layer space to the parent's space.
+        transform: Transform3D,
+        /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
+        hide_backface: bool,
+    },
+    /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
+    Mask(Mask),
+    /// The layer's pixels pass through each filter in order, as in CSS `filter`.
+    Filter(Arc<[Filter]>),
 }
 
-kittest_pub! {
-    /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    #[non_exhaustive]
-    pub enum Filter {
-        /// A Gaussian blur whose standard deviation is this many logical pixels.
-        Blur(f32),
-        /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
-        DropShadow(Shadow),
-        /// Multiplies each color channel by the amount.
-        Brightness(f32),
-        /// Scales each color channel away from mid-gray by the amount.
-        Contrast(f32),
-        /// Mixes toward the luminance gray by the amount, clamped to 1.
-        Grayscale(f32),
-        /// Rotates the hue by this many degrees.
-        HueRotate(f32),
-        /// Mixes toward the inverted color by the amount, clamped to 1.
-        Invert(f32),
-        #[cfg(feature = "kittest")]
-        /// Multiplies alpha by the amount, clamped to 1.
-        Opacity(f32),
-        /// Scales saturation by the amount.
-        Saturate(f32),
-        /// Mixes toward sepia by the amount, clamped to 1.
-        Sepia(f32),
-    }
+/// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum Filter {
+    /// A Gaussian blur whose standard deviation is this many logical pixels.
+    Blur(f32),
+    /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
+    DropShadow(Shadow),
+    /// Multiplies each color channel by the amount.
+    Brightness(f32),
+    /// Scales each color channel away from mid-gray by the amount.
+    Contrast(f32),
+    /// Mixes toward the luminance gray by the amount, clamped to 1.
+    Grayscale(f32),
+    /// Rotates the hue by this many degrees.
+    HueRotate(f32),
+    /// Mixes toward the inverted color by the amount, clamped to 1.
+    Invert(f32),
+    #[cfg(feature = "kittest")]
+    /// Multiplies alpha by the amount, clamped to 1.
+    Opacity(f32),
+    /// Scales saturation by the amount.
+    Saturate(f32),
+    /// Mixes toward sepia by the amount, clamped to 1.
+    Sepia(f32),
 }
 
 #[cfg(vector_paint)]
@@ -331,27 +322,22 @@ pub(crate) fn filter_reach(filters: &[Filter]) -> f32 {
         .sum()
 }
 
-kittest_pub! {
-    /// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-    pub enum MaskMode {
-        /// The mask's alpha.
-        #[default]
-        Alpha,
-        /// The mask's luminance times its alpha.
-        Luminance,
-    }
+/// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MaskMode {
+    /// The mask's alpha.
+    #[default]
+    Alpha,
+    /// The mask's luminance times its alpha.
+    Luminance,
 }
 
-kittest_pub! {
-    /// Drawing commands whose alpha or luminance scales a layer's pixels.
-    #[doc(hidden)]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct Mask {
-        pub(crate) mode: MaskMode,
-        pub(crate) commands: Arc<[SceneCommand]>,
-    }
+/// Drawing commands whose alpha or luminance scales a layer's pixels.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mask {
+    pub(crate) mode: MaskMode,
+    pub(crate) commands: Arc<[SceneCommand]>,
 }
 
 impl Mask {
@@ -364,6 +350,18 @@ impl Mask {
                 commands: scene.commands.into(),
             }
         }
+    }
+
+    /// Returns which channel of the mask scales the layer's pixels.
+    #[must_use]
+    pub const fn mode(&self) -> MaskMode {
+        self.mode
+    }
+
+    /// Returns the commands that draw the mask, in the coordinates of the layer's children.
+    #[must_use]
+    pub fn commands(&self) -> &[SceneCommand] {
+        &self.commands
     }
 }
 

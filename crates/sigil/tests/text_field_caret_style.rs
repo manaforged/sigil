@@ -74,7 +74,7 @@ fn nearest_caret(scene: &CommandScene, expected_x: f32) -> Rect {
             SceneCommand::Rect(draw)
                 if (draw.rect().width - 2.0).abs() <= 0.01
                     && draw.rect().height < 30.0
-                    && draw.stroke_style().is_none() =>
+                    && draw.stroke().is_none() =>
             {
                 Some(draw.rect())
             }

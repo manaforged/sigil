@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
 use crate::scene::command::fills::{FillRule, PathPaint};
-use crate::scene::command::payloads::{DrawPath, PathCmd};
+use crate::scene::command::payloads::{DrawPath, PathCommand};
+#[cfg(feature = "scene")]
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::geometry::{IDENTITY, KAPPA};
 use crate::style::Color;
@@ -52,12 +53,12 @@ impl Clip {
         let (cx, cy) = (rect.origin.x + rx, rect.origin.y + ry);
         let (kx, ky) = (rx * KAPPA, ry * KAPPA);
         let outline = [
-            PathCmd::MoveTo(cx + rx, cy),
-            PathCmd::CubicTo(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry),
-            PathCmd::CubicTo(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy),
-            PathCmd::CubicTo(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry),
-            PathCmd::CubicTo(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy),
-            PathCmd::Close,
+            PathCommand::MoveTo(cx + rx, cy),
+            PathCommand::CubicTo(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry),
+            PathCommand::CubicTo(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy),
+            PathCommand::CubicTo(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry),
+            PathCommand::CubicTo(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy),
+            PathCommand::Close,
         ];
         Self::outline(outline.into(), FillRule::NonZero)
     }
@@ -68,16 +69,16 @@ impl Clip {
         let mut outline = Vec::with_capacity(points.len() + 1);
         for (index, point) in points.iter().enumerate() {
             outline.push(if index == 0 {
-                PathCmd::MoveTo(point.x, point.y)
+                PathCommand::MoveTo(point.x, point.y)
             } else {
-                PathCmd::LineTo(point.x, point.y)
+                PathCommand::LineTo(point.x, point.y)
             });
         }
-        outline.push(PathCmd::Close);
+        outline.push(PathCommand::Close);
         Self::outline(outline.into(), FillRule::NonZero)
     }
 
-    pub(crate) fn outline(outline: Arc<[PathCmd]>, rule: FillRule) -> Self {
+    pub(crate) fn outline(outline: Arc<[PathCommand]>, rule: FillRule) -> Self {
         let key = outline_key(&outline, rule);
         let draw = DrawPath::new(outline, IDENTITY, key).with_fill(rule, PathPaint::Solid(OPAQUE));
         Self::Path(draw)
@@ -140,7 +141,7 @@ impl From<Rect> for Clip {
     }
 }
 
-fn outline_key(outline: &[PathCmd], rule: FillRule) -> u64 {
+fn outline_key(outline: &[PathCommand], rule: FillRule) -> u64 {
     let start = crate::fnv::mix(crate::fnv::OFFSET, u64::from(rule == FillRule::EvenOdd));
     super::payloads::outline_key(start, outline)
 }

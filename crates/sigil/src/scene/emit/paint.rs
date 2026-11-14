@@ -40,7 +40,7 @@ pub(super) fn push_focus_ring(
         DrawRect::new(ring_rect, TRANSPARENT)
             .border_radius(radii)
             .opacity(ring.opacity)
-            .stroke(Stroke {
+            .with_stroke(Stroke {
                 color: ring.color,
                 width: ring.width,
                 style: StrokeStyle::Solid,
@@ -144,7 +144,7 @@ fn push_container(
             .border_radius(radii)
             .opacity(style.opacity);
         if let Some(stroke) = stroke {
-            draw = draw.stroke(stroke);
+            draw = draw.with_stroke(stroke);
         }
         scene.draw_gradient_for_node(id, draw, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
@@ -153,7 +153,7 @@ fn push_container(
             .border_radius(radii)
             .opacity(style.opacity);
         if let Some(stroke) = stroke {
-            draw = draw.stroke(stroke);
+            draw = draw.with_stroke(stroke);
         }
         scene.draw_rect_for_node(id, draw, cell);
     }

@@ -8,19 +8,17 @@ use crate::style::{Color, TextLineHeight, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
-kittest_pub! {
-    /// How a run of text fits the width of its rectangle.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-    pub enum TextFlow {
-        /// One line that is laid out without a width limit.
-        #[default]
-        Line,
-        /// Lines break at the width of the rectangle.
-        Wrap,
-        /// One line, cut with an ellipsis at the width of the rectangle.
-        Ellipsis,
-    }
+/// How a run of text fits the width of its rectangle.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum TextFlow {
+    /// One line that is laid out without a width limit.
+    #[default]
+    Line,
+    /// Lines break at the width of the rectangle.
+    Wrap,
+    /// One line, cut with an ellipsis at the width of the rectangle.
+    Ellipsis,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -213,8 +211,9 @@ impl GlyphRun {
         self.shared.tone
     }
 
-    #[cfg(vector_paint)]
-    pub(crate) fn flow(&self) -> TextFlow {
+    /// How the text fits the width of its rectangle: one line, wrapped, or cut with an ellipsis.
+    #[must_use]
+    pub fn flow(&self) -> TextFlow {
         self.shared.flow
     }
 

@@ -16,34 +16,32 @@ pub enum PaintFill {
     Pattern(PatternKind),
 }
 
-kittest_pub! {
-    /// The shape of a pattern fill.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub enum PatternKind {
-        #[cfg(feature = "kittest")]
-        /// Diagonal lines of one color.
-        Slash {
-            /// The color of the lines; the space between them stays unpainted.
-            color: Color,
-            /// The length after which the lines repeat, clamped to 1 through 1024.
-            period: f32,
-            /// The width of each line, clamped to 0 through `period`.
-            line_width: f32,
-        },
-        #[cfg(feature = "kittest")]
-        /// Squares that alternate between two colors.
-        Checker {
-            /// The color of the square at the origin of the filled rectangle.
-            color_a: Color,
-            /// The color of the squares next to the `color_a` squares.
-            color_b: Color,
-            /// The side of one square, clamped to 1 through 1024.
-            cell: f32,
-        },
-        /// A watercolour wash that does not repeat.
-        Wash(super::wash::Wash),
-    }
+/// The shape of a pattern fill.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum PatternKind {
+    #[cfg(feature = "kittest")]
+    /// Diagonal lines of one color.
+    Slash {
+        /// The color of the lines; the space between them stays unpainted.
+        color: Color,
+        /// The length after which the lines repeat, clamped to 1 through 1024.
+        period: f32,
+        /// The width of each line, clamped to 0 through `period`.
+        line_width: f32,
+    },
+    #[cfg(feature = "kittest")]
+    /// Squares that alternate between two colors.
+    Checker {
+        /// The color of the square at the origin of the filled rectangle.
+        color_a: Color,
+        /// The color of the squares next to the `color_a` squares.
+        color_b: Color,
+        /// The side of one square, clamped to 1 through 1024.
+        cell: f32,
+    },
+    /// A watercolour wash that does not repeat.
+    Wash(super::wash::Wash),
 }
 
 impl PatternKind {
@@ -214,16 +212,11 @@ pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Color {
     }
 }
 
-kittest_pub! {
-    /// A color at one offset of a gradient.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct GradientStop {
-        /// The position along the gradient, from 0 at its start to 1 at its end.
-        pub offset: f32,
-        /// The color at `offset`.
-        pub color: Color,
-    }
+/// A color at one offset of a gradient.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GradientStop {
+    pub(crate) offset: f32,
+    pub(crate) color: Color,
 }
 
 impl GradientStop {
@@ -234,49 +227,89 @@ impl GradientStop {
             Self { offset, color }
         }
     }
-}
 
-kittest_pub! {
-    /// The dash style of a stroke.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub enum StrokeStyle {
-        /// One unbroken line.
-        Solid,
-        #[cfg(feature = "kittest")]
-        /// Dashes with a gap of this length between them.
-        Dashed(f32),
+    /// Returns the position along the gradient, from 0 at its start to 1 at its end.
+    #[must_use]
+    pub const fn offset(&self) -> f32 {
+        self.offset
+    }
+
+    /// Returns the color at this stop's offset.
+    #[must_use]
+    pub const fn color(&self) -> Color {
+        self.color
     }
 }
 
-kittest_pub! {
-    /// Where a stroke sits relative to a shape's edge.
-    #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-    pub enum StrokeAlign {
-        #[cfg(feature = "kittest")]
-        /// Half of the width lies on each side of the shape's edge.
-        Centered,
-        /// The whole width lies inside the shape's edge.
-        Inside,
-        /// The whole width lies outside the shape's edge.
-        Outside,
-    }
+/// The dash style of a stroke.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum StrokeStyle {
+    /// One unbroken line.
+    Solid,
+    #[cfg(feature = "kittest")]
+    /// Dashes with a gap of this length between them.
+    Dashed(f32),
 }
 
-kittest_pub! {
-    /// The width, color, and style of an outline.
+/// Where a stroke sits relative to a shape's edge.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum StrokeAlign {
+    #[cfg(feature = "kittest")]
+    /// Half of the width lies on each side of the shape's edge.
+    Centered,
+    /// The whole width lies inside the shape's edge.
+    Inside,
+    /// The whole width lies outside the shape's edge.
+    Outside,
+}
+
+/// The width, color, and style of an outline.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stroke {
+    pub(crate) color: Color,
+    pub(crate) width: f32,
+    pub(crate) style: StrokeStyle,
+    pub(crate) align: StrokeAlign,
+}
+
+impl Stroke {
+    #[cfg(feature = "kittest")]
+    /// Creates a stroke of `color` and `width` with a dash `style` and an `align` side.
     #[doc(hidden)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct Stroke {
-        /// The color that the line is painted with.
-        pub color: Color,
-        /// The width of the line, in logical pixels; 0 or less draws nothing.
-        pub width: f32,
-        /// Solid, or dashed with a gap length.
-        pub style: StrokeStyle,
-        /// Which side of the shape's edge the line lies on.
-        pub align: StrokeAlign,
+    #[must_use]
+    pub const fn new(color: Color, width: f32, style: StrokeStyle, align: StrokeAlign) -> Self {
+        Self {
+            color,
+            width,
+            style,
+            align,
+        }
+    }
+
+    /// Returns the color that the line is painted with.
+    #[must_use]
+    pub const fn color(&self) -> Color {
+        self.color
+    }
+
+    /// Returns the width of the line in logical pixels; 0 or less draws nothing.
+    #[must_use]
+    pub const fn width(&self) -> f32 {
+        self.width
+    }
+
+    /// Returns whether the line is solid or dashed.
+    #[must_use]
+    pub const fn style(&self) -> StrokeStyle {
+        self.style
+    }
+
+    /// Returns which side of the shape's edge the line lies on.
+    #[must_use]
+    pub const fn align(&self) -> StrokeAlign {
+        self.align
     }
 }
 
@@ -305,8 +338,8 @@ pub enum StrokeJoin {
 }
 
 /// Which areas of a self-crossing path count as inside.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) enum FillRule {
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum FillRule {
     /// Inside where the winding number is not zero.
     #[default]
     NonZero,
@@ -316,7 +349,8 @@ pub(crate) enum FillRule {
 
 /// The paint of a path's fill or stroke, in path units.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum PathPaint {
+#[non_exhaustive]
+pub enum PathPaint {
     /// One color.
     Solid(Color),
     /// A linear, radial, or conic gradient.

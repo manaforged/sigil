@@ -7,7 +7,8 @@ use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{
-    DrawPath, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin, outline_key, rounded_outline,
+    DrawPath, PathCommand, PathPaint, PathStroke, StrokeCap, StrokeJoin, outline_key,
+    rounded_outline,
 };
 use crate::scene::geometry::IDENTITY;
 use crate::scene::style_adapter::corner_radii_for;
@@ -92,14 +93,17 @@ fn push_sides(scene: &mut SceneBuilder, rect: Rect, edges: [f32; 4], line: &Line
     ];
     for (width, from, to) in sides {
         if width > 0.0 {
-            let outline = vec![PathCmd::MoveTo(from.0, from.1), PathCmd::LineTo(to.0, to.1)];
+            let outline = vec![
+                PathCommand::MoveTo(from.0, from.1),
+                PathCommand::LineTo(to.0, to.1),
+            ];
             let length = (to.0 - from.0).hypot(to.1 - from.1);
             scene.draw_path(stroked(outline, width, length, line));
         }
     }
 }
 
-fn stroked(outline: Vec<PathCmd>, width: f32, length: f32, line: &Line) -> DrawPath {
+fn stroked(outline: Vec<PathCommand>, width: f32, length: f32, line: &Line) -> DrawPath {
     let (dash, cap) = pattern(line.style, width, length);
     let key = outline_key(seed(width, line), &outline);
     let stroke = PathStroke {

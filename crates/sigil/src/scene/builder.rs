@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 #[cfg(feature = "kittest")]
 use crate::scene::command::DrawSprite;
-use crate::scene::command::payloads::{PathCmd, PathStroke, outline_key};
+use crate::scene::command::payloads::{PathCommand, PathStroke, outline_key};
 use crate::scene::command::{DrawPattern, PatternKind, Wash};
 
 use crate::geometry::{Point, Rect, Size};
@@ -105,7 +105,10 @@ impl SceneBuilder {
 
     /// Strokes a straight line segment from `from` to `to`.
     pub fn stroke_line(&mut self, from: Point, to: Point, color: Color, width: f32) {
-        let outline: [PathCmd; 2] = [PathCmd::MoveTo(from.x, from.y), PathCmd::LineTo(to.x, to.y)];
+        let outline: [PathCommand; 2] = [
+            PathCommand::MoveTo(from.x, from.y),
+            PathCommand::LineTo(to.x, to.y),
+        ];
         let stroke = PathStroke {
             paint: PathPaint::Solid(color),
             width,

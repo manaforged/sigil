@@ -84,16 +84,16 @@ impl Gen<'_, '_, '_> {
         } else {
             StrokeStyle::Solid
         };
-        Some(Stroke {
+        Some(Stroke::new(
             color,
-            width: e.pick(&WIDTHS),
+            e.pick(&WIDTHS),
             style,
-            align: e.pick(&[
+            e.pick(&[
                 StrokeAlign::Centered,
                 StrokeAlign::Inside,
                 StrokeAlign::Outside,
             ]),
-        })
+        ))
     }
 
     pub(crate) fn transform(&mut self) -> Transform {
