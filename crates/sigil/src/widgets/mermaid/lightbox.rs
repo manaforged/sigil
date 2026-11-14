@@ -1,5 +1,5 @@
 use crate::animation::Property;
-use crate::events::{ScrollDelta, ScrollEvent};
+use crate::events::{DragPhase, ScrollDelta, ScrollEvent};
 use crate::icons::Icon;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
@@ -8,7 +8,6 @@ use crate::reactive::{Signal, effect, memo, signal, untrack};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, Token};
-use crate::widgets::interaction::{DragEnd, pointer_drag};
 use crate::widgets::{ModalBuilder, Widget, button, modal};
 
 use super::picture;
@@ -116,20 +115,19 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
 }
 
 fn pan(area: NodeBuilder, camera: Camera) -> NodeBuilder {
-    pointer_drag(
-        area,
-        move |event| {
-            let at = event.window_position;
-            Some((at.x - camera.x.peek(), at.y - camera.y.peek()))
-        },
-        move |&(left, top), event| {
-            let at = event.window_position;
-            camera.x.set(at.x - left);
-            camera.y.set(at.y - top);
-            event.stop_propagation();
-        },
-        |_: DragEnd<(f32, f32)>, _| {},
-    )
+    let mut anchor = (0.0, 0.0);
+    area.pointer_drag(move |phase, event| {
+        let at = event.window_position;
+        match phase {
+            DragPhase::Start => anchor = (at.x - camera.x.peek(), at.y - camera.y.peek()),
+            DragPhase::Move => {
+                camera.x.set(at.x - anchor.0);
+                camera.y.set(at.y - anchor.1);
+                event.stop_propagation();
+            }
+            DragPhase::End | DragPhase::Cancel => {}
+        }
+    })
 }
 
 fn controls(camera: Camera) -> NodeBuilder {

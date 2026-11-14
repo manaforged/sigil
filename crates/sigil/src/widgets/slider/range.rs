@@ -67,12 +67,7 @@ fn thumb(
 ) -> (NodeBuilder, Grip) {
     let slot = Rc::new(Cell::new(None));
     let record = Rc::clone(&slot);
-    let signals = ThumbSignals {
-        hovered: signal(false),
-        focused: signal(false),
-        pressed: signal(false),
-        dragging: signal(false),
-    };
+    let signals = ThumbSignals::new();
     let node = control_frame(
         slider_semantics(runtime, name)
             .focusable(true)

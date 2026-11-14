@@ -1,4 +1,3 @@
-mod drag;
 mod steps;
 
 use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerPhase, PointerType};
@@ -7,7 +6,6 @@ use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
 use crate::widgets::Widget;
 
-pub(crate) use drag::{DragEnd, pointer_drag};
 pub(crate) use steps::{ValueStep, step_keys};
 
 /// Hover, press, and focus signals.

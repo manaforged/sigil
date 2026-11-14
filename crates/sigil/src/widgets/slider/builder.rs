@@ -222,12 +222,7 @@ fn single_root<T>(
     runtime: SliderRuntime,
     on_change: ValueChange,
 ) -> NodeBuilder {
-    let signals = ThumbSignals {
-        hovered: signal(false),
-        focused: signal(false),
-        pressed: signal(false),
-        dragging: signal(false),
-    };
+    let signals = ThumbSignals::new();
     let extent = signal(crate::geometry::Size::ZERO);
     let root = control_frame(slider_node(builder), runtime.disabled)
         .focusable(true)

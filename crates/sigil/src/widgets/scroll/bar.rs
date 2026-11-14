@@ -1,12 +1,10 @@
-use crate::events::PointerEvent;
+use crate::events::{DragPhase, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Display;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::{Radius, StyleAtom, Token};
 use crate::widgets::Widget;
-
-use crate::widgets::interaction::pointer_drag;
 
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, geometry, overflows, to_i16};
 
@@ -98,22 +96,22 @@ fn scrollbar_thumb(
         .class(THUMB_ATOMS)
         .offset(position)
         .style_reactive(move || geometry::thumb_atoms(height.get(), thick.get()));
-    pointer_drag(
-        thumb,
-        move |ev| {
+    let mut anchor = (0.0, 0.0);
+    thumb.pointer_drag(move |phase, ev| match phase {
+        DragPhase::Start => {
             dragging.set(true);
-            Some((ev.position.y, scroll_y.peek()))
-        },
-        move |&(anchor_y, anchor_scroll), ev| {
+            anchor = (ev.position.y, scroll_y.peek());
+        }
+        DragPhase::Move => {
             let max = max_scroll.peek();
             let (_, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
             if max_travel <= 0.0 || max <= 0.0 {
                 return;
             }
-            let offset_dy = (ev.position.y - anchor_y) * (max / max_travel);
-            scroll_y.set((anchor_scroll + offset_dy).clamp(0.0, max));
+            let offset_dy = (ev.position.y - anchor.0) * (max / max_travel);
+            scroll_y.set((anchor.1 + offset_dy).clamp(0.0, max));
             ev.stop_propagation();
-        },
-        move |_, _| dragging.set(false),
-    )
+        }
+        DragPhase::End | DragPhase::Cancel => dragging.set(false),
+    })
 }

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent};
 use crate::node::{NodeBuilder, NodeId};
-use crate::reactive::Signal;
+use crate::reactive::{Signal, signal};
 use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
@@ -35,6 +35,17 @@ pub(super) struct ThumbSignals {
     pub(super) focused: Signal<bool>,
     pub(super) pressed: Signal<bool>,
     pub(super) dragging: Signal<bool>,
+}
+
+impl ThumbSignals {
+    pub(super) fn new() -> Self {
+        Self {
+            hovered: signal(false),
+            focused: signal(false),
+            pressed: signal(false),
+            dragging: signal(false),
+        }
+    }
 }
 
 pub(super) fn attach_key_handlers(
@@ -94,6 +105,12 @@ impl Grip {
             focus: Some(focus),
         }
     }
+
+    fn focus(&self) {
+        if let Some(id) = self.focus.as_ref().and_then(|slot| slot.get()) {
+            id.focus();
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -118,9 +135,7 @@ pub(super) fn attach_pointer_drag(
             }
             let thumb = runtime.on(runtime.value.nearest(runtime.value_at(event)));
             if let Some(grip) = grips.get(thumb.value.index()) {
-                if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
-                    id.focus();
-                }
+                grip.focus();
                 grip.dragging.set(true);
             }
             let start = thumb.value.peek();
@@ -175,9 +190,7 @@ fn drag_to(
         }
         if let Some(grip) = grips.get(thumb.value.index()) {
             grip.dragging.set(true);
-            if let Some(id) = grip.focus.as_ref().and_then(|slot| slot.get()) {
-                id.focus();
-            }
+            grip.focus();
         }
     }
     thumb.value.set(at);
