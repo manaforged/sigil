@@ -174,7 +174,7 @@ fn cover(active: Signal<usize>) -> NodeBuilder {
                         .gap(Space::Xs)
                         .padding_bottom(Space::Md)
                         .child(small(move || PARTS[active.get() % PARTS.len()].kind))
-                        .child(switch(active).otherwise(move || note(active.peek()))),
+                        .child(for_each(move || vec![active.get()], |at| *at, |at| note(*at))),
                 ),
         )
         .into()
