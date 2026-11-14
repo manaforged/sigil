@@ -455,6 +455,7 @@ mod link;
 mod listbox;
 mod log_view;
 mod markdown;
+mod marquee;
 mod math;
 mod menu;
 mod mermaid;
@@ -501,6 +502,8 @@ mod virtual_list;
 mod widget;
 mod words;
 
+pub(crate) mod swipe;
+
 pub use button::{ButtonBuilder, button};
 pub use canvas::{CanvasBuilder, canvas};
 pub use chart::{ChartBuilder, chart};
@@ -537,6 +540,7 @@ pub use html::html;
 pub use icon::{Glyph, IconBuilder, icon};
 pub(crate) use interactive::{Wiring, wire};
 pub use link::{LinkBuilder, link};
+pub use marquee::{MarqueeBuilder, marquee};
 pub use listbox::{CursorEdge, ListState};
 pub use log_view::{Log, log_view};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
@@ -616,6 +620,7 @@ crate::kernel::into_node_builder!(
     IconBuilder,
     LinkBuilder,
     MarkdownEditBuilder,
+    MarqueeBuilder,
     MenuBarBuilder,
     MenuBuilder,
     ModalBuilder,

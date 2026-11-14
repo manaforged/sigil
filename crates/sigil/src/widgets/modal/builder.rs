@@ -6,9 +6,10 @@ use crate::animation::runtime::presets;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container};
 use crate::layout::snap;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Signal, effect, signal};
 use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
+use crate::widgets::swipe::Swipe;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PopupAnchor, PopupLayer, close_on_escape, footer};
@@ -53,6 +54,7 @@ pub struct ModalBuilder {
     dismiss_on_backdrop: bool,
     close_button: CloseControl,
     side: Option<Side>,
+    drag: bool,
     layout_overrides: LayoutOverrides,
 }
 
@@ -67,6 +69,7 @@ impl core::fmt::Debug for ModalBuilder {
             .field("dismiss_on_backdrop", &self.dismiss_on_backdrop)
             .field("close_button", &self.close_button)
             .field("side", &self.side)
+            .field("drag", &self.drag)
             .field("layout_overrides", &self.layout_overrides)
             .finish_non_exhaustive()
     }
@@ -91,6 +94,7 @@ impl ModalBuilder {
             dismiss_on_backdrop: false,
             close_button: CloseControl::Shown,
             side: None,
+            drag: false,
             layout_overrides: LayoutOverrides::new(),
         }
     }
@@ -98,6 +102,12 @@ impl ModalBuilder {
     /// Docks the dialog to `side` as a sheet: 360 px wide at left or right, 320 px high at bottom.
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
+        self
+    }
+
+    /// Lets a sheet follow a drag toward its edge and close when flung or dragged past half its size; the default is false.
+    pub const fn drag(mut self, enabled: bool) -> Self {
+        self.drag = enabled;
         self
     }
 
@@ -264,6 +274,7 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         trap,
         close_button,
         side,
+        drag,
         layout_overrides,
         ..
     } = spec;
@@ -290,8 +301,21 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
     if !actions.is_empty() {
         dialog = dialog.child(footer(actions, BODY_GUTTER));
     }
+    if drag && let Some(side) = side {
+        dialog = sheet_drag(dialog, show, side);
+    }
 
     layout_overrides.finish(caller_style(dialog, style_accumulator))
+}
+
+fn sheet_drag(dialog: NodeBuilder, show: Signal<bool>, side: Side) -> NodeBuilder {
+    let swipe = Swipe::new(side);
+    effect(move || {
+        if show.get() {
+            swipe.reset();
+        }
+    });
+    swipe.attach(dialog, move || show.set(false))
 }
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {

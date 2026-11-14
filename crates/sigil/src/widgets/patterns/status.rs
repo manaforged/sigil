@@ -1,10 +1,13 @@
+use std::time::Duration;
+
+use crate::animation::{Easing, Keyframes, Property};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Space};
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
+use crate::style::{Background, GradientAxis, Paint, Radius, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
 
@@ -50,13 +53,20 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
         })
 }
 
-static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(4).background()];
+const BAR_STEP: u8 = 4;
+const SHINE_STEP: u8 = 6;
+const SHINE_PERIOD: Duration = Duration::from_millis(1600);
+const SHINE_BAND: f32 = 40.0;
+const FULL: f32 = 100.0;
+
+static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(BAR_STEP).background()];
 
 /// Builder of a loading placeholder.
 #[derive(Debug)]
 #[must_use]
 pub struct SkeletonBuilder {
     lines: usize,
+    shimmer: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -74,6 +84,7 @@ pub struct SkeletonBuilder {
 pub const fn skeleton() -> SkeletonBuilder {
     SkeletonBuilder {
         lines: 3,
+        shimmer: false,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -86,8 +97,15 @@ impl SkeletonBuilder {
         self
     }
 
+    /// Sweeps a highlight across the bars when `enabled` is true, and shows plain bars under reduced motion; the default is false.
+    pub const fn shimmer(mut self, enabled: bool) -> Self {
+        self.shimmer = enabled;
+        self
+    }
+
     fn root(self) -> NodeBuilder {
         let lines = self.lines;
+        let shine = self.shimmer.then(shine);
         let mut root = container()
             .role(Role::Status)
             .accessible(theme_label(StringKey::Loading))
@@ -98,18 +116,50 @@ impl SkeletonBuilder {
             } else {
                 Length::Fill
             };
-            root = root.child(
-                container()
-                    .layout(LayoutStyle::block().width(width).height(line(space(4))))
-                    .class(BAR)
-                    .hittable(false),
-            );
+            let bar = container()
+                .layout(LayoutStyle::block().width(width).height(line(space(4))))
+                .class(BAR)
+                .hittable(false);
+            root = root.child(match &shine {
+                Some(sweep) => shining(bar, sweep.clone()),
+                None => bar,
+            });
         }
         caller_style(root, self.style_accumulator)
     }
 }
 
 builder_impls!([] SkeletonBuilder: paint(style_accumulator), widget, node);
+
+fn shine() -> Keyframes {
+    let sweep = Keyframes::new(SHINE_PERIOD).ease(Easing::Linear).infinite();
+    let sweep = trail(sweep, Property::GradientToPosition, 0.0);
+    let sweep = trail(sweep, Property::GradientViaPosition, SHINE_BAND / 2.0);
+    trail(sweep, Property::GradientFromPosition, SHINE_BAND)
+}
+
+fn trail(sweep: Keyframes, stop: fn(f32) -> Property, lag: f32) -> Keyframes {
+    let span = FULL + SHINE_BAND;
+    sweep
+        .keyframe(0.0, stop(0.0))
+        .keyframe(lag / span, stop(0.0))
+        .keyframe((FULL + lag) / span, stop(FULL))
+        .keyframe(1.0, stop(FULL))
+}
+
+fn shining(bar: NodeBuilder, sweep: Keyframes) -> NodeBuilder {
+    let base = Tone::Neutral.step(BAR_STEP);
+    bar.background(
+        Background::linear(GradientAxis::LeftToRight)
+            .start(base)
+            .middle(Tone::Neutral.step(SHINE_STEP))
+            .end(base)
+            .start_at(0)
+            .middle_at(0)
+            .end_at(0),
+    )
+    .animation(sweep)
+}
 
 static MARK_DONE: &[StyleAtom] = &[
     Radius::Full.atom(),
