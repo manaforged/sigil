@@ -209,7 +209,7 @@ fn image_node(alt: &str, src: &str) -> NodeBuilder {
     {
         return container().child(
             crate::kernel::image(source)
-                .alt(alt.to_string())
+                .accessible(alt.to_string())
                 .fit(crate::kernel::ObjectFit::Contain)
                 .layout(LayoutStyle::block().width(width).height(height)),
         );

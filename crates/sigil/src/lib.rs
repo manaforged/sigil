@@ -204,18 +204,18 @@ pub mod fuzzing {
 
 /// The items most apps use.
 pub mod prelude {
-    pub use crate::animation::{Easing, Keyframes, Spring, Transition};
+    pub use crate::animation::{Easing, Keyframes, Property, Spring, Transition};
     #[cfg(app_host)]
     pub use crate::app::open_url;
     pub use crate::events::{
-        Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut,
+        Key, KeyEvent, Modifiers, MouseButton, NamedKey, PointerEvent, Shortcut, ValueStep,
     };
     pub use crate::geometry::{Point, Rect, Size};
     #[cfg(feature = "scene")]
     pub use crate::icons::Icon;
     pub use crate::layout::{
-        AlignItems, Flaw, JustifyContent, Length, Orientation, Space, cols, column, em, grid, row,
-        rows,
+        AlignItems, Flaw, FlexWrap, JustifyContent, Length, Orientation, Overflow, Position, Space,
+        TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::node::{
         AccessibleName, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
@@ -224,15 +224,17 @@ pub mod prelude {
     pub use crate::reactive::{Reactive, Signal, Timer, effect, interval, memo, signal};
     #[cfg(app_host)]
     pub use crate::run;
+    pub use crate::scene::{BlendMode, Shadow};
     pub use crate::style::{
-        Background, Color, ControlSize, Layer, Paint, Radius, States, TextRole, Theme, Token, Tone,
+        Background, ClipShape, Color, ControlSize, Elevation, FocusRing, FontFamily, Layer,
+        MaskImage, MaskSize, Paint, Radius, States, TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{Status, Task, spawn, task};
     pub use crate::view::View;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::load_image;
     pub use crate::widgets::{
-        MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn, TableState,
+        DragState, MenuItem, Selection, SelectionMode, Side, SortDirection, TableColumn, TableState,
         TextState, ToastQueue, TreeNode, Widget, app_shell, avatar, badge, breadcrumbs, button,
         canvas, card, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
         context_menu, date_field, diff, disclosure, divider, dot, dropdown, empty_state, field,

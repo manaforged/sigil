@@ -1,7 +1,7 @@
 use crate::kernel::Role;
 
 use crate::kernel::hooks::NodeHooks;
-use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
+use crate::kernel::{A11yProps, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
 use crate::style::{Paint, StateStyleBuilder};
 
 /// Decoded RGBA pixels.
@@ -240,12 +240,6 @@ pub fn image(source: ImageSource) -> ImageBuilder {
 }
 
 impl ImageBuilder {
-    /// Sets the accessible name of the image.
-    pub fn alt(mut self, text: impl Into<String>) -> Self {
-        self.node.a11y.name = AccessibleName::Static(text.into());
-        self
-    }
-
     /// Sets how the image fits its box: fill, contain, or cover.
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
         if let NodeType::Image { fit: slot, .. } = &mut self.node.kind {
@@ -261,7 +255,7 @@ impl ImageBuilder {
         })
     }
 
-    shared_node_methods!(@mutate, node);
+    shared_node_methods!(node);
 
     pub(crate) fn into_node_builder(self) -> NodeBuilder {
         self.hooks.finish(self.node)

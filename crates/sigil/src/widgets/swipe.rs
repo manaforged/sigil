@@ -1,12 +1,10 @@
-use crate::animation::{Animator, Decay, Property, Spring};
+use crate::animation::{Animator, Property, Spring};
 use crate::events::{DragPhase, PointerEvent};
 use crate::geometry::{Point, Size};
 use crate::kernel::NodeBuilder;
 use crate::layout::Orientation;
 use crate::reactive::{Signal, effect, signal};
 use crate::widgets::{Side, Widget};
-
-const AWAY_SHARE: f32 = 0.5;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Swipe {
@@ -62,7 +60,7 @@ impl Swipe {
     fn follow(self, phase: DragPhase, event: &PointerEvent) {
         match phase {
             DragPhase::Move => {
-                let moved = self.now() + self.along(event.delta());
+                let moved = self.offset.peek() + self.along(event.delta());
                 self.offset.snap(moved.clamp(0.0, self.travel()));
             }
             DragPhase::End => self.release(self.along(event.velocity())),
@@ -72,18 +70,10 @@ impl Swipe {
     }
 
     fn release(self, velocity: f32) {
-        let travel = self.travel();
-        let rest = Decay::new(self.now(), velocity).target();
-        if travel > 0.0 && rest >= travel * AWAY_SHARE {
-            self.offset.fling_to(velocity, &[travel]);
+        let landed = self.offset.fling_to(velocity, &[self.travel(), 0.0]);
+        if landed.is_some_and(|point| point > 0.0) {
             self.leaving.set(true);
-        } else {
-            self.offset.fling_to(velocity, &[0.0]);
         }
-    }
-
-    fn now(self) -> f32 {
-        self.offset.value().peek()
     }
 
     fn along(self, point: Point) -> f32 {

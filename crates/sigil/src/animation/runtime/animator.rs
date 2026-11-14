@@ -74,9 +74,9 @@ impl Animator {
         self.fling_to(velocity, &[]);
     }
 
-    /// Springs to the point in `points` nearest to where a `fling` would rest, starting at `velocity`.
-    pub fn fling_to(&self, velocity: f32, points: &[f32]) {
-        self.with_inner(|inner| inner.fling(velocity, points));
+    /// Springs to the point in `points` nearest to where a `fling` would rest, starting at `velocity`; returns that point, or `None` when it picked none.
+    pub fn fling_to(&self, velocity: f32, points: &[f32]) -> Option<f32> {
+        self.with_inner(|inner| inner.fling(velocity, points)).flatten()
     }
 
     /// Returns the current velocity in value units per second, without subscribing.
@@ -88,10 +88,12 @@ impl Animator {
         untrack(|| self.inner.with(|inner| inner.id)).map_or(0.0, AnimatorId::velocity)
     }
 
-    fn with_inner(&self, f: impl FnOnce(&mut SignalAnimator)) {
+    fn with_inner<R>(&self, f: impl FnOnce(&mut SignalAnimator) -> R) -> Option<R> {
+        let mut out = None;
         batch(|| {
-            self.inner.try_update(f);
+            self.inner.try_update(|inner| out = Some(f(inner)));
         });
+        out
     }
 
     /// Reads the current animated value, subscribing the enclosing reactive scope.
@@ -99,6 +101,13 @@ impl Animator {
     #[track_caller]
     pub fn get(&self) -> f32 {
         self.value.get()
+    }
+
+    /// Reads the current animated value without subscribing, for event handlers.
+    #[must_use]
+    #[track_caller]
+    pub fn peek(&self) -> f32 {
+        self.value.peek()
     }
 
     /// Returns the underlying value signal.
@@ -177,16 +186,19 @@ impl SignalAnimator {
         self.source().retarget(value, config);
     }
 
-    pub(crate) fn fling(&mut self, velocity: f32, points: &[f32]) {
+    pub(crate) fn fling(&mut self, velocity: f32, points: &[f32]) -> Option<f32> {
         if !finite(velocity, "fling velocity") {
-            return;
+            return None;
         }
         let config = self.config;
-        self.source()
-            .update(|motion| motion.fling(velocity, points, config));
+        let landed = self
+            .source()
+            .update(|motion| motion.fling(velocity, points, config))
+            .flatten();
         if MotionPrefs::reduced() {
             self.cancel();
         }
+        landed
     }
 
     fn source(&mut self) -> AnimatorId {

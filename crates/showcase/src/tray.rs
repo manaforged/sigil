@@ -93,8 +93,10 @@ fn tray(drop: Animator, open: Signal<Vec<usize>>) -> NodeBuilder {
     glass(tray, BLUR)
         .drive(Property::TranslateY, drop.value())
         .pointer_drag(move |phase, event| match phase {
-            DragPhase::Move => drop.snap((drop.get() + event.delta().y).clamp(RAISED, LOWERED)),
-            DragPhase::End => drop.fling_to(event.velocity().y, &STOPS),
+            DragPhase::Move => drop.snap((drop.peek() + event.delta().y).clamp(RAISED, LOWERED)),
+            DragPhase::End => {
+                let _ = drop.fling_to(event.velocity().y, &STOPS);
+            }
             _ => {}
         })
         .child(
@@ -135,7 +137,7 @@ fn session(index: usize, open: Signal<Vec<usize>>) -> impl IntoNode + use<> {
         .width(Length::Fill)
         .gap(Space::Lg)
         .align_items(AlignItems::Center)
-        .transition(Transition::new().duration(SWAP).ease(Easing::CubicOut))
+        .transition(Transition::new().duration(SWAP).ease(Easing::CubicOut).layout())
         .enter(Property::Opacity(0.0))
         .enter(Property::TranslateY(RISE))
         .exit(Property::Opacity(0.0))

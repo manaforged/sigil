@@ -36,7 +36,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 `ImageSource::from_rgba8(width, height, rgba: Vec<u8>) -> Option<ImageSource>` takes raw RGBA8 and returns `None` on bad input. `ImageSource::decode(encoded: &[u8]) -> Option<ImageSource>` decodes PNG, JPEG, and other formats through the `image` crate and requires the `image-decode` feature.
 
-Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
+Builder options: `.accessible(text)` (accessibility name), `.accessibility_hidden(true)` for a decorative image, `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
 
 ## load_image
 
@@ -122,7 +122,7 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 | --- | --- | --- |
 | `text` | `Label` (change it with `.role()`) | The text, or `.accessible(name)` |
 | `icon` | `Image` with `.accessible()`, else `GenericContainer` | `.accessible(name)` |
-| `image` | Image node | `.alt(text)` |
+| `image` | Image node | `.accessible(text)` |
 | `path` | Image node | None |
 | `chart` | `Figure` | "Chart" |
 | `avatar` | `Image` | The initials |

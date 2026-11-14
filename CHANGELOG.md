@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `toast_queue` toasts rise in, fade out, and leave when swiped right. `modal(open).side(..).drag(true)` makes a sheet that is dragged and flung shut. `skeleton().shimmer(true)` sweeps a highlight across the bars. `marquee(content).speed(pixels_per_second)` scrolls a strip without end and pauses under the pointer.
 - A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
 - `Transition::layout()` also glides a node from its old place in its parent to its new one when layout moves it, like Motion `layout`: `row.transition(Transition::smooth().layout())`. When a keyed row leaves a list, the rows below slide up. It moves position only; a size change snaps. Toasts in `toast_queue` use it.
+- `Animator::peek()` reads the value without subscribing, and `Animator::fling_to` returns the point it springs to. The prelude exports the argument types of its setters: `Shadow`, `Elevation`, `FontFamily`, `BlendMode`, `ClipShape`, `MaskImage`, `MaskSize`, `Property`, `FocusRing`, `DragState`, `ValueStep`, `Overflow`, `Position`, `FlexWrap`, and `TrackSize`. `image(..)` takes `.role`, `.accessible`, `.description`, `.accessibility_hidden`, `.focusable`, `.tab_index`, and `.hittable`; `ImageBuilder::alt(text)` is now `ImageBuilder::accessible(text)`.
 
 ### Fixed
 

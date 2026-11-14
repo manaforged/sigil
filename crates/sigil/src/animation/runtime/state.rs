@@ -67,13 +67,11 @@ impl AnimatorId {
         self.update(Motion::finish);
     }
 
-    pub(crate) fn update(self, change: impl FnOnce(&mut Motion)) {
+    pub(crate) fn update<R>(self, change: impl FnOnce(&mut Motion) -> R) -> Option<R> {
         batch(|| {
             with_sources(|sources| {
-                let Some(entry) = animator_mut(sources, self.0) else {
-                    return;
-                };
-                change(&mut entry.motion);
+                let entry = animator_mut(sources, self.0)?;
+                let out = change(&mut entry.motion);
                 if MotionPrefs::reduced() && !entry.motion.is_settled() {
                     entry.motion.finish();
                 }
@@ -84,8 +82,9 @@ impl AnimatorId {
                     sources.map.remove(self.0);
                 }
                 Runtime::mark_frame_dirty();
-            });
-        });
+                Some(out)
+            })
+        })
     }
 
     pub(crate) fn deregister(self) {

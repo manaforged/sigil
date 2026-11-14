@@ -112,7 +112,7 @@ impl ImageLoadBuilder {
                 Status::Ok(source) => {
                     let shown = image(source).fit(self.fit).width(width).height(height);
                     match &self.alt {
-                        Some(alt) => shown.alt(alt.clone()),
+                        Some(alt) => shown.accessible(alt.clone()),
                         None => shown,
                     }
                     .into_node_builder()

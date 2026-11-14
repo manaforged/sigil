@@ -77,7 +77,12 @@ impl Motion {
         }
     }
 
-    pub(crate) fn fling(&mut self, velocity: f32, points: &[f32], config: AnimationConfig) {
+    pub(crate) fn fling(
+        &mut self,
+        velocity: f32,
+        points: &[f32],
+        config: AnimationConfig,
+    ) -> Option<f32> {
         let value = self.value();
         let coast = Decay::new(value, velocity);
         let rest = coast.target();
@@ -94,6 +99,7 @@ impl Motion {
             }
             None => Self::Decay(coast),
         };
+        nearest
     }
 
     pub(crate) fn tick(&mut self, dt: f32) {

@@ -56,5 +56,5 @@ pub(super) fn picture(url: &str, alt: String, size: ImageSize, fit: ObjectFit) -
         return note(format!("[{name}]"));
     };
     let layout = layout(&source, size);
-    image(source).alt(alt).fit(fit).layout(layout).into()
+    image(source).accessible(alt).fit(fit).layout(layout).into()
 }
