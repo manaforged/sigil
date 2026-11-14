@@ -57,9 +57,9 @@ fn header(console: Console) -> NodeBuilder {
                 .text_color(Token::OnSurfaceMuted),
         )
         .child(
-            progress(progress_value, 1.0)
+            progress(progress_value)
                 .tone(Tone::Primary)
-                .label("Rollout"),
+                .accessible("Rollout"),
         )
         .child(actions(console))
 }

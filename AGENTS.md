@@ -62,11 +62,16 @@ fn app() -> impl IntoNode {
 - `sigil::run` takes an `AppConfig` and a component. `AppConfig::new(title).terminal()` runs the same tree in the terminal.
 - State lives in signals. `signal(value)` creates one. `get` inside a closure subscribes that closure, `peek` reads without subscribing, and `set` and `update` write.
 - Text that changes takes a closure: `text(move || ...)`. A plain string never updates.
-- `show(cond, then, otherwise)` switches between subtrees. `switch(key).case(v, || ...).otherwise(|| ...)` picks among keyed branches. `for_each(items, key, render)` renders a keyed list.
+- `show(cond, then, otherwise)` switches between subtrees. `switch(key).case(v, || ...).otherwise(|| ...)` picks among keyed branches. `for_each(items, key, render)` renders a keyed list; `items` is a signal, a `memo`, or a closure.
 - Add children with `.child(node)` or `.children(iter)`; every widget builder implements `Into<NodeBuilder>`.
-- Colors come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `background`, `text_color`, or `border_color`. Do not hard-code colors.
-- Async work uses `task` (reruns and cancels) or `spawn` (runs once). Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
-- Write signals on the UI thread. From another thread, use `Signal::writer`, or `tasks::listen` for a channel.
+- Colors come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `background`, `text_color`, or `border_color`. A signal or closure of a token also works: `.background(move || if on.get() { Token::Accent } else { Token::Surface })`. Do not hard-code colors.
+- `.theme(theme)` restyles the colors and corners of one subtree. `Theme::for_backdrop(backdrop).token(Token::Custom("brand"), color)` adds a custom token.
+- `.label(text)` on `checkbox`, `toggle`, `gauge`, and `progress` shows visible text that is also the accessible name. `.accessible(name)` sets only the name that a screen reader announces, on any widget, such as an icon button.
+- `dropdown`, `segmented`, and `radio_group` take a `Signal<usize>` of the selected index and a list of option labels.
+- `command_menu(open)` shows a command palette while the `Signal<bool>` `open` is true. Choosing an item, Escape at the top level, or a backdrop press sets it to false.
+- Async work uses `task` (reruns and cancels) or `spawn` (runs once). A `task` waits for `.run()`; `task(load).autostart()` starts it when it is created. Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
+- Write signals on the UI thread. From another thread, use `Signal::writer`, or `tasks::listen(rx, on_message)` for a tokio or `std::sync::mpsc` channel. Chain `.closed(on_close)` to run code after every sender drops.
+- For your own widget, keep a `sigil::widgets::WidgetFrame` in the builder and implement `Framed` to get the `Paint`, `States`, and `Widget` setters. See `crates/sigil/examples/story-09-custom-widget.rs`.
 - Public event, command, error, and config types are `#[non_exhaustive]`. Match them with a `_` arm, and build `AppConfig` with its builder methods.
 
 ## Follow the design rules

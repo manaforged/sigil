@@ -18,7 +18,7 @@ const VIEWPORT: (f32, f32) = (420.0, 260.0);
 
 fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuBuilder + 'static {
     move || {
-        command_menu()
+        command_menu(signal(true))
             .width(180.0)
             .item(MenuItem::new("Attack").activate(|| {}))
             .submenu("Ability", |m| {
@@ -65,7 +65,7 @@ fn panel_count(cx: &Cx, root: NodeId) -> usize {
 fn nested_submenu_opens_and_esc_ascends() {
     Owner::scope("cmd-menu-nested-esc", || {
         let (mut cx, mut layout, mut router, root) = setup(|| {
-            command_menu()
+            command_menu(signal(true))
                 .item(MenuItem::new("Attack").activate(|| {}))
                 .submenu("Ability", |m| m.item(MenuItem::new("Fire").activate(|| {})))
         });
@@ -112,7 +112,7 @@ fn disabled_item_skipped_by_navigation() {
     Owner::scope("cmd-menu-disabled-skip", || {
         let selected: Signal<Vec<String>> = signal(Vec::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
-            command_menu()
+            command_menu(signal(true))
                 .item(MenuItem::new("A").activate(|| {}))
                 .item(MenuItem::new("B").disabled(true))
                 .item(MenuItem::new("C").activate(|| {}))
@@ -143,7 +143,7 @@ fn cancel_fires_on_root_esc() {
     Owner::scope("cmd-menu-cancel", || {
         let cancelled = signal(false);
         let (mut cx, mut layout, mut router, root) = setup(move || {
-            command_menu()
+            command_menu(signal(true))
                 .item(MenuItem::new("Attack").activate(|| {}))
                 .cancel(move || cancelled.set(true))
         });
@@ -165,7 +165,7 @@ fn leaf_select_fires_observer_and_closes() {
         let fired = signal(false);
         let selected_label: Signal<String> = signal(String::new());
         let (mut cx, mut layout, mut router, root) = setup(move || {
-            command_menu()
+            command_menu(signal(true))
                 .item(MenuItem::new("Attack").activate(move || fired.set(true)))
                 .submenu("Ability", |m| m.item(MenuItem::new("Fire").activate(|| {})))
                 .submit(move |label| selected_label.set(label.to_owned()))
@@ -299,7 +299,7 @@ fn filtered_click() {
     let chosen: Signal<String> = signal(String::new());
     let mut harness = sigil_kittest::Harness::new(move || {
         container().focusable(true).child(
-            command_menu()
+            command_menu(signal(true))
                 .item(MenuItem::new("Attack").activate(|| {}))
                 .item(MenuItem::new("Wait").activate(|| {}))
                 .item(MenuItem::new("Run").activate(|| {}))
@@ -352,9 +352,11 @@ fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
     Owner::scope("cmd-menu-scrolls", || {
         let labels: Vec<String> = (1..=30).map(|n| format!("Action {n}")).collect();
         let mut harness = sigil_kittest::Harness::new(move || {
-            labels.iter().fold(command_menu(), |menu, label| {
-                menu.item(MenuItem::new(label.clone()).activate(|| {}))
-            })
+            labels
+                .iter()
+                .fold(command_menu(signal(true)), |menu, label| {
+                    menu.item(MenuItem::new(label.clone()).activate(|| {}))
+                })
         })
         .pixels(420, 600);
         harness.settle();
@@ -373,6 +375,56 @@ fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
         assert!(
             row <= panel,
             "the cursor row is in view: row {row} panel {panel}"
+        );
+    });
+}
+
+fn closing_palette(open: Signal<bool>) -> impl FnOnce() -> CommandMenuBuilder {
+    move || command_menu(open).item(MenuItem::new("Attack").activate(|| {}))
+}
+
+#[test]
+fn escape_and_choosing_an_item_close_the_palette() {
+    Owner::scope("cmd-menu-open-signal", || {
+        for (key, why) in [
+            (
+                (NamedKey::Escape, PhysicalKey::Escape),
+                "esc at the top level closes the palette",
+            ),
+            (
+                (NamedKey::Enter, PhysicalKey::Enter),
+                "choosing an item closes the palette",
+            ),
+        ] {
+            let open = signal(true);
+            let (mut cx, mut layout, mut router, root) = setup(closing_palette(open));
+            press(&mut cx, &mut layout, &mut router, root, key);
+            assert!(!open.get(), "{why}");
+        }
+    });
+}
+
+#[test]
+fn closed_palette_shows_nothing_interactive() {
+    Owner::scope("cmd-menu-closed", || {
+        let open = signal(false);
+        let mut harness = Harness::new(closing_palette(open)).pixels(420, 260);
+        harness.settle();
+        let interactive = |ui: &mut Harness| {
+            ui.accessibility_tree().nodes.iter().any(|(_, node)| {
+                !node.is_hidden()
+                    && matches!(
+                        node.role(),
+                        accesskit::Role::MenuItem | accesskit::Role::TextInput
+                    )
+            })
+        };
+        assert!(!interactive(&mut harness), "a closed palette shows no rows");
+        open.set(true);
+        harness.settle();
+        assert!(
+            interactive(&mut harness),
+            "opening the palette shows its rows"
         );
     });
 }

@@ -143,9 +143,9 @@ Shared metrics:
 | Disabled | opacity | 50 % |
 | Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider |
-| Controls | `Metrics::current()` | `control_height`, `control_padding`, `control_gap` per `Size` |
+| Controls | `Metrics::current()`, `Theme::metrics()` | `control_height`, `control_padding`, `control_gap` per `Size` |
 
-A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
+A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. `Theme::metrics()` returns the host metrics of one theme, with its radii and control heights. On a character grid, control heights, padding, and gaps are one cell.
 
 A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_dark"`) plus a `[tokens]` table of hex colors (`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads the file at launch in the window and on the terminal. Then it starts one `watch_theme` watcher. If the watcher cannot start, the theme still loads. Edits re-apply on the next frame, and writes in quick succession coalesce into one reload. For manual control, `sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses the file and calls `Theme::apply` on the UI thread until dropped; call it inside the app tree so the reload can reach the UI thread.
 

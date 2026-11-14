@@ -212,7 +212,7 @@ fn build_dropdown() -> impl IntoNode {
 
 fn build_progress() -> impl IntoNode {
     let v = signal(50.0_f32);
-    progress(v, 100.0).height(24.0)
+    progress(v).max(100.0).height(24.0)
 }
 
 fn build_panel() -> impl IntoNode {

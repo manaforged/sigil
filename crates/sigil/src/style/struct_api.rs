@@ -1,6 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::style::image_paint::ImagePaints;
+use crate::style::live_paint::LivePaint;
 use crate::style::merge::{SlotSet, merge_classes};
 use crate::style::state::PerState;
 use crate::style::{Paint, StateSlot, StateStyleBuilder, StyleAtom, StyleOverlay};
@@ -56,6 +57,10 @@ impl Style {
 
     pub(crate) fn take_images(&mut self) -> ImagePaints {
         self.paint.take_images()
+    }
+
+    pub(crate) fn take_live(&mut self) -> LivePaint {
+        self.paint.take_live()
     }
 
     pub(crate) fn merge_under(&mut self, base: &Self) {

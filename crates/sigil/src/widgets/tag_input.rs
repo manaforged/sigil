@@ -47,15 +47,14 @@ impl<T: 'static> core::fmt::Debug for TagInputBuilder<T> {
 ///
 /// fn labels() -> impl IntoNode {
 ///     let chosen = signal(vec!["bug".to_owned()]);
-///     field("Labels", tag_input(["bug", "docs", "feature"], chosen))
+///     field("Labels", tag_input(chosen, ["bug", "docs", "feature"]))
 /// }
 /// ```
-pub fn tag_input<T>(
-    options: impl IntoIterator<Item = impl Into<T>>,
-    selected: Signal<Vec<T>>,
-) -> TagInputBuilder<T>
+pub fn tag_input<T, I, S>(selected: Signal<Vec<T>>, options: I) -> TagInputBuilder<T>
 where
     T: Clone + PartialEq + Display + 'static,
+    I: IntoIterator<Item = S>,
+    S: Into<T>,
 {
     let options: Vec<T> = options.into_iter().map(Into::into).collect();
     TagInputBuilder {

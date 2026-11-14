@@ -7,22 +7,12 @@ use std::time::Duration;
 use crate::reactive::Owner;
 use crate::tasks::AsyncRuntime;
 use crate::tasks::dispatch::dispatch_to_owner;
+use crate::tasks::tests::spin_until;
 
 fn setup() -> (AsyncRuntime, Owner) {
     let rt = AsyncRuntime::new().expect("build tokio runtime");
     let handle = Owner::current().expect("inside a reactive scope");
     (rt, handle)
-}
-
-fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
-    let start = std::time::Instant::now();
-    while start.elapsed() < deadline {
-        if cond() {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    cond()
 }
 
 #[test]

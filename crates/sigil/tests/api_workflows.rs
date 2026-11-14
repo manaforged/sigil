@@ -296,7 +296,7 @@ fn power_user_host_and_reactive_channels_compose() {
             let band = signal(2.0_f32..=8.0_f32);
             column()
                 .child(markdown("# Heading"))
-                .child(progress(0.5, 1.0))
+                .child(progress(0.5))
                 .child(gauge(0.75).label("Load"))
                 .child(vega(r#"{"mark":"bar"}"#))
                 .child(scroll(range_slider(band, 0.0..=10.0).label("Band")).height(48.0))

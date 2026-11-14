@@ -50,7 +50,7 @@ Editing keys add: Arrow Up/Down, PageUp/PageDown, Alt+Left/Right (or Alt+B/F) fo
 
 ## number_field
 
-`number_field(Signal<T>, RangeInclusive<T>)` where `T` is `i32`, `i64`, `usize`, `f32`, or `f64`. A text field that parses and clamps:
+`number_field(Signal<T>, RangeInclusive<T>)` where `T` is any built-in integer or float type, such as `u8`, `i32`, `usize`, or `f64`. A text field that parses and clamps:
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -78,7 +78,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## tag_input
 
-`tag_input(options: impl IntoIterator<Item = impl Into<T>>, selected: Signal<Vec<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
+`tag_input(selected: Signal<Vec<T>>, options: impl IntoIterator<Item = impl Into<T>>)` where `T: Clone + PartialEq + Display`. A `combobox` that filters `options` (any iterable such as `["bug", "docs"]`); Enter or a click adds the highlighted option to the signal as a removable tag, and choosing a selected option again removes it. Backspace in an empty input removes the last tag. `.placeholder(&'static str)` and `.disabled(impl Reactive<bool>)`.
 
 ## combobox
 

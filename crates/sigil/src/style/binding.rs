@@ -61,7 +61,7 @@ kittest_pub! {
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
         state_overlay: Option<Box<StyleOverlay>>,
         animated_values: SmallVec<[Driven; 2]>,
-        state_overlay_slot: Option<ReactiveStateSlot>,
+        state_overlay_slots: SmallVec<[ReactiveStateSlot; 1]>,
         widget_channels: Option<usize>,
         user_slots: SlotSet,
         revision: u32,
@@ -81,7 +81,7 @@ impl core::fmt::Debug for StyleBinding {
             )
             .field("animated_values", &self.animated_values)
             .field("state_overlay", &self.state_overlay.is_some())
-            .field("state_overlay_slot", &self.state_overlay_slot.is_some())
+            .field("state_overlay_slots", &self.state_overlay_slots.len())
             .field("widget_channels", &self.widget_channels)
             .field("user_slots", &self.user_slots)
             .finish_non_exhaustive()
@@ -152,7 +152,7 @@ impl StyleBinding {
         #[doc(hidden)]
         pub fn has_reactive(&self) -> bool {
             !self.reactive_channels.is_empty()
-                || self.state_overlay_slot.is_some()
+                || !self.state_overlay_slots.is_empty()
                 || self.attached_animators.get().is_some()
                 || !self.animated_values.is_empty()
                 || self.has_transition()
@@ -327,9 +327,13 @@ impl StyleBinding {
 
     #[must_use]
     pub(crate) fn interaction_slot(&self) -> StateSlot {
-        self.state_overlay_slot
-            .as_ref()
-            .map_or(StateSlot::Rest, |cell| cell.get())
+        let mut slots = self.state_overlay_slots.iter().map(|cell| cell.get());
+        let first = slots.next().unwrap_or(StateSlot::Rest);
+        if slots.any(|slot| slot == StateSlot::Disabled) {
+            StateSlot::Disabled
+        } else {
+            first
+        }
     }
 
     #[must_use]
@@ -349,8 +353,12 @@ impl StyleBinding {
             None => Box::new(overlay),
         };
         self.state_overlay = Some(merged);
-        if self.state_overlay_slot.is_none() {
-            self.state_overlay_slot = Some(slot);
+        if !self
+            .state_overlay_slots
+            .iter()
+            .any(|known| Rc::ptr_eq(known, &slot))
+        {
+            self.state_overlay_slots.push(slot);
         }
         self.recompute_may_transform();
     }

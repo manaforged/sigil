@@ -35,18 +35,14 @@ fn profile_section() -> NodeBuilder {
 }
 
 fn appearance_section() -> NodeBuilder {
-    let theme = signal(String::from("system"));
+    let theme = signal(2_usize);
     let scale = signal(100.0_f32);
     column()
         .gap(rows(1.0))
         .child(section_label("Appearance"))
         .child(field(
             "Theme",
-            radio_group(theme)
-                .label("Theme")
-                .option("light", "Light")
-                .option("dark", "Dark")
-                .option("system", "System"),
+            radio_group(theme, ["Light", "Dark", "System"]).accessible("Theme"),
         ))
         .child(field(
             "Interface scale",

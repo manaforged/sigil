@@ -1,30 +1,23 @@
+use crate::reactive::memo;
 use crate::reactive::signal::{Signal, signal};
 
-pub(crate) mod sealed {
-    use crate::reactive::memo;
-    use crate::reactive::signal::Signal;
-
-    #[allow(unnameable_types, reason = "sealed")]
-    pub trait Sealed<T>: 'static {
-        fn read_value(&self) -> T;
-
-        #[must_use]
-        fn to_signal(self) -> Signal<T>
-        where
-            Self: Sized,
-            T: Clone + PartialEq + 'static,
-        {
-            memo(move || self.read_value())
-        }
-    }
-}
-
 /// A value, signal, or closure that a widget reads reactively.
-pub trait Reactive<T>: sealed::Sealed<T> + 'static {
+pub trait Reactive<T>: 'static {
     /// Reads the current value, subscribing the enclosing reactive scope when backed by a signal.
+    fn read(&self) -> T;
+
+    /// Returns the value when this input never changes, so a widget can skip the reactive binding.
+    fn try_static(&self) -> Option<T> {
+        None
+    }
+
+    /// Calls `f` with a reference to the current value, without a copy when backed by a signal.
     #[track_caller]
-    fn read(&self) -> T {
-        self.read_value()
+    fn with<R>(&self, f: impl FnOnce(&T) -> R) -> R
+    where
+        Self: Sized,
+    {
+        f(&self.read())
     }
 
     /// Converts this reactive input into a [`Signal<T>`], returning an existing signal unchanged.
@@ -34,19 +27,25 @@ pub trait Reactive<T>: sealed::Sealed<T> + 'static {
         Self: Sized,
         T: Clone + PartialEq + 'static,
     {
-        self.to_signal()
+        memo(move || self.read())
     }
 }
 
-impl<T, R: sealed::Sealed<T> + 'static> Reactive<T> for R {}
-
-impl<T: Clone + 'static> sealed::Sealed<T> for Signal<T> {
+impl<T: Clone + 'static> Reactive<T> for Signal<T> {
     #[track_caller]
-    fn read_value(&self) -> T {
+    fn read(&self) -> T {
         self.get()
     }
 
-    fn to_signal(self) -> Self
+    #[track_caller]
+    fn with<R>(&self, f: impl FnOnce(&T) -> R) -> R
+    where
+        Self: Sized,
+    {
+        Self::with(*self, f)
+    }
+
+    fn into_signal(self) -> Self
     where
         T: PartialEq,
     {
@@ -54,84 +53,55 @@ impl<T: Clone + 'static> sealed::Sealed<T> for Signal<T> {
     }
 }
 
-impl sealed::Sealed<f32> for crate::animation::Animator {
+impl Reactive<f32> for crate::animation::Animator {
     #[track_caller]
-    fn read_value(&self) -> f32 {
+    fn read(&self) -> f32 {
         self.get()
     }
 
-    fn to_signal(self) -> Signal<f32> {
+    fn into_signal(self) -> Signal<f32> {
         self.value()
     }
 }
 
-impl<T, F> sealed::Sealed<T> for F
+impl<T, F> Reactive<T> for F
 where
     F: Fn() -> T + 'static,
 {
-    fn read_value(&self) -> T {
+    fn read(&self) -> T {
         self()
     }
 }
 
-macro_rules! clone_reactive {
-    ($($ty:ty),+ $(,)?) => {
-        $(
-            impl sealed::Sealed<Self> for $ty {
-                fn read_value(&self) -> Self {
-                    self.clone()
-                }
-
-                fn to_signal(self) -> Signal<Self> {
-                    signal(self)
-                }
+macro_rules! static_reactive {
+    (clone: $($ty:ty),+ $(,)?) => {
+        $(static_reactive!(@impl $ty, value => value.clone());)+
+    };
+    (copy: $($ty:ty),+ $(,)?) => {
+        $(static_reactive!(@impl $ty, value => *value);)+
+    };
+    (@impl $ty:ty, $value:ident => $read:expr) => {
+        impl Reactive<Self> for $ty {
+            fn read(&self) -> Self {
+                let $value = self;
+                $read
             }
-        )+
+
+            fn try_static(&self) -> Option<Self> {
+                Some(Reactive::<Self>::read(self))
+            }
+
+            fn into_signal(self) -> Signal<Self> {
+                signal(self)
+            }
+        }
     };
 }
 
-clone_reactive!(String, crate::style::Theme);
+static_reactive!(clone: String, crate::style::Theme);
 
-impl sealed::Sealed<String> for &'static str {
-    fn read_value(&self) -> String {
-        (*self).to_owned()
-    }
-
-    fn to_signal(self) -> Signal<String> {
-        signal(self.to_owned())
-    }
-}
-
-impl<T: Clone + 'static> sealed::Sealed<Self> for Vec<T> {
-    fn read_value(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl<T: Clone + 'static, const N: usize> sealed::Sealed<Vec<T>> for [T; N] {
-    fn read_value(&self) -> Vec<T> {
-        self.to_vec()
-    }
-}
-
-macro_rules! copy_reactive {
-    ($($ty:ty),+ $(,)?) => {
-        $(
-            impl sealed::Sealed<Self> for $ty {
-                fn read_value(&self) -> Self {
-                    *self
-                }
-
-                fn to_signal(self) -> Signal<Self> {
-                    signal(self)
-                }
-            }
-        )+
-    };
-}
-
-copy_reactive!(
-    bool,
+static_reactive!(
+    copy: bool,
     f32,
     f64,
     usize,
@@ -150,6 +120,9 @@ copy_reactive!(
     crate::geometry::Size,
     crate::style::Tone,
     crate::style::Color,
+    crate::style::ColorValue,
+    crate::style::Gradient,
+    crate::style::Background,
     crate::style::ControlSize,
     crate::style::Layer,
     crate::style::Token,
@@ -158,28 +131,81 @@ copy_reactive!(
     crate::widgets::Disclosure,
 );
 
-impl<T: Clone + 'static> sealed::Sealed<Vec<T>> for &'static [T] {
-    fn read_value(&self) -> Vec<T> {
-        self.to_vec()
+impl Reactive<String> for &'static str {
+    fn read(&self) -> String {
+        (*self).to_owned()
+    }
+
+    fn try_static(&self) -> Option<String> {
+        Some(self.read())
+    }
+
+    fn into_signal(self) -> Signal<String> {
+        signal(self.to_owned())
     }
 }
 
-impl<T: Clone + PartialEq + 'static> sealed::Sealed<Self> for Option<T> {
-    fn read_value(&self) -> Self {
+impl<T: Clone + 'static> Reactive<Self> for Vec<T> {
+    fn read(&self) -> Self {
         self.clone()
     }
 
-    fn to_signal(self) -> Signal<Self> {
+    fn try_static(&self) -> Option<Self> {
+        Some(self.clone())
+    }
+
+    fn with<R>(&self, f: impl FnOnce(&Self) -> R) -> R
+    where
+        Self: Sized,
+    {
+        f(self)
+    }
+}
+
+impl<T: Clone + 'static, const N: usize> Reactive<Vec<T>> for [T; N] {
+    fn read(&self) -> Vec<T> {
+        self.to_vec()
+    }
+
+    fn try_static(&self) -> Option<Vec<T>> {
+        Some(self.to_vec())
+    }
+}
+
+impl<T: Clone + 'static> Reactive<Vec<T>> for &'static [T] {
+    fn read(&self) -> Vec<T> {
+        self.to_vec()
+    }
+
+    fn try_static(&self) -> Option<Vec<T>> {
+        Some(self.to_vec())
+    }
+}
+
+impl<T: Clone + PartialEq + 'static> Reactive<Self> for Option<T> {
+    fn read(&self) -> Self {
+        self.clone()
+    }
+
+    fn try_static(&self) -> Option<Self> {
+        Some(self.clone())
+    }
+
+    fn into_signal(self) -> Signal<Self> {
         signal(self)
     }
 }
 
-impl sealed::Sealed<Option<String>> for Option<&'static str> {
-    fn read_value(&self) -> Option<String> {
+impl Reactive<Option<String>> for Option<&'static str> {
+    fn read(&self) -> Option<String> {
         self.map(str::to_owned)
     }
 
-    fn to_signal(self) -> Signal<Option<String>> {
+    fn try_static(&self) -> Option<Option<String>> {
+        Some(self.read())
+    }
+
+    fn into_signal(self) -> Signal<Option<String>> {
         signal(self.map(str::to_owned))
     }
 }

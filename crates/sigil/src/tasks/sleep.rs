@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// Wait inside a spawned future without blocking a thread.
+/// Waits for `duration` inside a `task` or `spawn` future without blocking a thread.
 pub async fn sleep(duration: Duration) {
     #[cfg(not(target_arch = "wasm32"))]
     tokio::time::sleep(duration).await;

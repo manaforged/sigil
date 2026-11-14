@@ -4,11 +4,13 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Space};
 use crate::reactive::{Reactive, Signal, memo};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{Radius, StyleAtom, Token, Tone, space};
+use crate::style::{Radius, Style, StyleAtom, Token, Tone, space};
 use crate::widgets::Widget;
+use crate::widgets::layout_ext::LayoutOverrides;
 
 use super::super::chip::chip;
 use super::super::icon::CHECK_GLYPH;
+use super::super::shared::caller_style;
 
 const BADGE_MAX: usize = 99;
 const MARKER_PX: f32 = space(6);
@@ -50,37 +52,64 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
 
 static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(4).background()];
 
-/// A loading placeholder of `lines` muted bars, announced to screen readers as a polite "Loading" status.
+/// Builder of a loading placeholder.
+#[derive(Debug)]
+#[must_use]
+pub struct SkeletonBuilder {
+    lines: usize,
+    style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
+}
+
+/// A loading placeholder of muted bars, three by default, announced to screen readers as a polite "Loading" status.
 ///
 /// ```
 /// use sigil::prelude::*;
 /// use sigil::widgets::skeleton;
 ///
 /// fn loading() -> impl IntoNode {
-///     column().child(skeleton(3))
+///     column().child(skeleton().lines(4))
 /// }
 /// ```
-pub fn skeleton(lines: usize) -> NodeBuilder {
-    let lines = lines.max(1);
-    let mut root = container()
-        .role(Role::Status)
-        .label(theme_label(StringKey::Loading))
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
-    for index in 0..lines {
-        let width = if index + 1 == lines && lines > 1 {
-            Length::Percent(0.6)
-        } else {
-            Length::Fill
-        };
-        root = root.child(
-            container()
-                .layout(LayoutStyle::block().width(width).height(line(space(4))))
-                .class(BAR)
-                .hittable(false),
-        );
+pub const fn skeleton() -> SkeletonBuilder {
+    SkeletonBuilder {
+        lines: 3,
+        style_accumulator: Style::new(),
+        layout_overrides: LayoutOverrides::new(),
     }
-    root
 }
+
+impl SkeletonBuilder {
+    /// Sets the number of bars, at least 1; the default is 3.
+    pub const fn lines(mut self, lines: usize) -> Self {
+        self.lines = if lines > 1 { lines } else { 1 };
+        self
+    }
+
+    fn root(self) -> NodeBuilder {
+        let lines = self.lines;
+        let mut root = container()
+            .role(Role::Status)
+            .label(theme_label(StringKey::Loading))
+            .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
+        for index in 0..lines {
+            let width = if index + 1 == lines && lines > 1 {
+                Length::Percent(0.6)
+            } else {
+                Length::Fill
+            };
+            root = root.child(
+                container()
+                    .layout(LayoutStyle::block().width(width).height(line(space(4))))
+                    .class(BAR)
+                    .hittable(false),
+            );
+        }
+        caller_style(root, self.style_accumulator)
+    }
+}
+
+builder_impls!([] SkeletonBuilder: paint(style_accumulator), widget, node);
 
 static MARK_DONE: &[StyleAtom] = &[
     Radius::Full.atom(),
@@ -103,12 +132,12 @@ static LABEL_OTHER: &[StyleAtom] = &[Tone::Neutral.step(11).text()];
 ///
 /// fn checkout() -> impl IntoNode {
 ///     let step = signal(1_usize);
-///     stepper(["Cart", "Shipping", "Pay"], step)
+///     stepper(step, ["Cart", "Shipping", "Pay"])
 /// }
 /// ```
 pub fn stepper<S: Into<String>>(
-    steps: impl IntoIterator<Item = S>,
     current: impl Reactive<usize>,
+    steps: impl IntoIterator<Item = S>,
 ) -> NodeBuilder {
     let current = current.into_signal();
     let mut root = container().role(Role::List).layout(

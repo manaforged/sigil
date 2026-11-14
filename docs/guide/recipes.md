@@ -168,7 +168,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one.
+`WidgetFrame::width`, `height`, `fills_width`, and `fills_height` report the size setters the caller chained, for a widget that sizes its parts from them. A widget that draws its own state reads it with `Widget::track_hovered`, `track_focused`, and `track_pressed`, which write a `Signal<bool>`. `Widget::pointer_drag(|phase, event| ...)` runs the handler with a `DragPhase` for the start, each move, and the end or cancel of a primary-button drag; `event.prevent_default()` in the `DragPhase::Start` call skips the drag. `Widget::a11y_edit(|edit| ...)` handles the `A11yEdit` requests of a screen reader, such as `Increment` or `Text`, and returns `true` when it handled one. `Widget::step_keys(keys, |step, event| ...)` binds keys such as the arrows, Page Up, Page Down, Home, and End to a `sigil::events::ValueStep` of a ranged value. `Widget::accessible(name)` sets the name that a screen reader announces for any widget.
 
 ## Theme switching
 
@@ -188,6 +188,36 @@ fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("themes"), tree)
 }
 ```
+
+`Theme::for_backdrop(backdrop)` builds the default light or dark theme. `Theme::token(token, color)` sets a built-in token or a `Token::Custom("name")` token. `Widget::theme(theme)` restyles the colors and corner radii of one subtree, and takes a theme, a signal, or a closure. Control sizes still come from the app theme. `sigil::app::system_backdrop()` is a signal of the operating system appearance. A host reports a change of that appearance as `WindowEvent::BackdropChanged`.
+
+```rust,no_run
+use sigil::app::system_backdrop;
+use sigil::prelude::*;
+use sigil::style::Backdrop;
+
+const BRAND: Token = Token::Custom("brand");
+
+fn brand(backdrop: Backdrop) -> Theme {
+    Theme::for_backdrop(backdrop)
+        .token(Token::Accent, Color::rgb(109, 40, 217))
+        .token(BRAND, Color::rgb(15, 118, 110))
+}
+
+fn tree() -> impl IntoNode {
+    column()
+        .theme(move || brand(system_backdrop().get().unwrap_or(Backdrop::Light)))
+        .background(Token::Surface)
+        .child(text("Brand").text_color(BRAND))
+        .child(button("Save").primary())
+}
+
+fn main() -> AppResult<()> {
+    sigil::run(AppConfig::new("brand"), tree)
+}
+```
+
+The example `story-14-theming` has a complete theme switcher.
 
 A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `Theme: FromStr` returns `Err` if the document is not valid.
 
@@ -250,7 +280,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
+`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile. They also take a signal or a closure of a token or a color, such as `.background(move || if on.get() { Token::Accent } else { Token::Surface })`.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -348,7 +378,7 @@ fn main() -> AppResult<()> {
 
 ## Lists
 
-`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list.
+`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list. `items` is a signal, a `memo`, or a closure of a `Vec`. A filtered list is `for_each(memo(move || ...), key, render)`.
 
 Put each field that changes in a signal inside the item, and read that signal in the row. A field that is a plain value is read one time, when the row is built.
 
@@ -529,7 +559,7 @@ fn tree() -> impl IntoNode {
                 }
             }
         });
-    }, || {});
+    });
     std::thread::spawn(move || {
         drop(tx.send(Event::Start));
         for word in ["streamed ", "reply ", "text"] {
@@ -573,7 +603,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`listen(rx, f, close)` runs `close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
+`listen(rx, f)` returns a `Listener`. `listen(rx, f).closed(close)` runs `close` once after the last message, when the worker drops its sender. If the channel has already closed, `close` runs at once. `rx` may be a bounded `tokio::sync::mpsc::Receiver` or a `std::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
@@ -728,8 +758,7 @@ fn main() -> sigil::AppResult<()> {
         tasks.install_current();
         let mut host = Host::new(HostMode::Pixel);
         host.mount(|| {
-            let load = task(|| async { Ok::<_, String>("ready".to_owned()) });
-            load.run();
+            let load = task(|| async { Ok::<_, String>("ready".to_owned()) }).autostart();
             text(move || match load.status() {
                 Status::Ok(value) => value,
                 _ => "loading".to_owned(),

@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::reactive::{Owner, Signal, owner_by_id, signal};
 
 use super::super::listbox::Matcher;
+use super::super::popup::hide;
 use super::super::shared::Activate;
 
 pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
@@ -89,14 +90,16 @@ fn ranked(entries: &[PaletteEntry], query: &str) -> Vec<usize> {
 pub(super) struct CommandPalette {
     pub(super) stack: Signal<Vec<MenuLevel>>,
     pub(super) query: Signal<String>,
+    open: Signal<bool>,
     owner: Option<Owner>,
 }
 
 impl CommandPalette {
-    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>) -> Self {
+    pub(super) fn new(entries: Rc<Vec<PaletteEntry>>, open: Signal<bool>) -> Self {
         Self {
             stack: signal(vec![MenuLevel::new(entries)]),
             query: signal(String::new()),
+            open,
             owner: Owner::current(),
         }
     }
@@ -158,6 +161,7 @@ impl CommandPalette {
                     cb(label);
                 }
                 self.reset();
+                hide(self.open);
             }
         }
     }
@@ -168,8 +172,11 @@ impl CommandPalette {
                 current.pop();
             });
             self.clear_query();
-        } else if let Some(cb) = on_cancel {
-            cb();
+        } else {
+            if let Some(cb) = on_cancel {
+                cb();
+            }
+            hide(self.open);
         }
     }
 }

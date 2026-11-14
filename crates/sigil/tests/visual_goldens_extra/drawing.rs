@@ -31,7 +31,7 @@ fn vector_path_shapes() {
                     .line_to(56.0, 56.0)
                     .line_to(4.0, 56.0)
                     .close()
-                    .fill(accent),
+                    .fill_color(accent),
             )
             .child(
                 path(60, 60)

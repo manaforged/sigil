@@ -18,7 +18,7 @@ The family pages carry signatures, options, and behavior notes:
 
 - **button(label)**: `label` is a `Glyph`: text (`&str` or `Signal<String>`) or an `Icon`. Chain `.primary()`, `.neutral()`, `.destructive()`, `.tone(Tone)`, `.solid()`, `.soft()`, `.disabled(Signal)`, and `.activate(Fn())`. State closures are `.hover()`, `.focus()`, `.pressed()`, and `.disabled_paint()`. Use `.accessible("Play")` when the visible label is a glyph.
 - **button(Icon::Play)**: a square ghost `button` that shows an icon and is named for it. For a text glyph, write `button("▶").ghost().square().accessible("Play")`.
-- **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the signal is true.
+- **button(...).pending(Signal\<bool\>)**: paints disabled and ignores activate while the value is true. It also takes a `memo` or a closure.
 - **checkbox(Signal\<bool\>)**: chain `.label()`, `.tone(Tone)`, `.change(Fn(bool))`, and `.disabled(Signal)`. Neutral is gray; every other tone uses the accent checked fill.
 - **toggle(Signal\<bool\>)**: chain `.label()` and `.change(Fn(bool))`.
 - **slider(Signal\<f32\>, Range)**: chain `.step(f32)`, `.change(Fn(f32))`, and an orientation. The slider publishes its step for AT Increment/Decrement.
@@ -29,8 +29,8 @@ The family pages carry signatures, options, and behavior notes:
 - **color_field(Signal\<Color\>)**: hex (`#rgb` or `#rrggbb`) plus a swatch.
 - **dropdown(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings (such as `["Small", "Large"]`). Chain `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a positioned popup; focus stays on the trigger.
 - **segmented(Signal\<usize\>, labels)**: a framed row of mutually exclusive options where one is active; `labels` is any `IntoIterator` of strings. Chain `.label(name)`.
-- **radio_group(Signal\<String\>)**: chain `.option(key, label)`. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
-- **command_menu()**: a nested action tree: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
+- **radio_group(Signal\<usize\>, options)**: `options` is any `IntoIterator` of strings, as in `dropdown`. Chain `.accessible(name)` to name the group. Arrow keys wrap, Home and End jump, and the focus ring sits on the checked row.
+- **command_menu(Signal\<bool\>)**: a nested action tree shown over the app while the signal is true: `.item(MenuItem::new(label).activate(action))`, `.submenu(...)`, and `.submit(Fn(&str))`. Choosing an item, Escape at the top level, or a backdrop press sets the signal to false. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field` and `virtual_list` inside `modal` (recipe below).
 
 ## Data and display
 
@@ -41,7 +41,7 @@ The family pages carry signatures, options, and behavior notes:
 - **sparkline(values)**: a compact inline trend graph. Chain `.mark(SparkMark::Block | SparkMark::Braille)`, `.fill(SparkFill::Solid | SparkFill::Shade)`, `.range(low, high)`, `.tone(Tone)`, `.tones(iter)`, and `.rows(n)`.
 - **canvas(record)**: a custom drawing surface whose closure receives `(&mut SceneBuilder, Rect, &Theme)`. Chain `.redraw_on(Signal<u64>)`. `SceneBuilder` is in `sigil::scene`.
 - **virtual_list(items, render)**: a windowed list. `items` is a `Vec` (snapshot) or a `Signal` (live). Default keys are list indices. `.identified()` keys by `Identifiable::id`. `.key_by` takes any other domain key. `.follow_end(true)` keeps a live list on the last row when it grows.
-- **progress(Signal\<f32\>, max)** and **gauge(Signal\<f32\>)**.
+- **progress(Signal\<f32\>)** and **gauge(Signal\<f32\>)**. A progress bar is full at 1.0; chain `.max(m)` to change that, and `.label(text)` for a visible caption that is also the accessible name.
 - **chip(label, Tone)**: the same `Tone` as buttons. `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a button; without `.activate` it stays a label.
 - **field(label, control)**: a label above a control; `.error(..)` adds an error line. Use it for forms.
 - **icon(glyph)**, **dot(Tone)**, and **divider(Orientation)**.
@@ -84,7 +84,7 @@ To write your own widget with the same setters, see [Custom widgets](recipes.md#
 
 ## Searchable palette (Cmd-K)
 
-`command_menu` is nested actions. A filter-as-you-type palette is:
+`command_menu(open)` filters its own items as you type. For a palette with custom rows, compose a `text_field` and a `virtual_list` inside `modal`:
 
 ```rust,no_run
 # use sigil::prelude::*;

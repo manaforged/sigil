@@ -104,8 +104,8 @@ impl ButtonBuilder {
     }
 
     /// Shows a spinner before the label and disables the button while `pending` is true.
-    pub const fn pending(mut self, pending: Signal<bool>) -> Self {
-        self.pending = Some(pending);
+    pub fn pending(mut self, pending: impl Reactive<bool>) -> Self {
+        self.pending = Some(pending.into_signal());
         self
     }
 

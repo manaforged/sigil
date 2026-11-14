@@ -15,7 +15,7 @@ fn box16() -> Rect {
 fn empty_path_draws_nothing() {
     assert!(
         path(16, 16)
-            .fill(Color::rgb(0, 0, 0))
+            .fill_color(Color::rgb(0, 0, 0))
             .build_path(box16(), &Theme::light())
             .is_none()
     );

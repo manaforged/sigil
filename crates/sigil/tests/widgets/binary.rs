@@ -320,7 +320,7 @@ fn a_stat_with_a_signal_label_is_named_by_that_label() {
 #[test]
 fn an_empty_state_with_a_signal_title_is_named_by_that_title() {
     named_by_its_signal_label(Role::Status, ["No stock", "No orders"], |title| {
-        empty_state(title, "Nothing here yet")
+        empty_state(title).description("Nothing here yet")
     });
 }
 

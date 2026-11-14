@@ -29,7 +29,7 @@ where
 
 /// One child per item, reconciled by key; `render` runs once for each new key.
 pub fn for_each<T, K, N>(
-    items: Signal<Vec<T>>,
+    items: impl Reactive<Vec<T>>,
     key: impl Fn(&T) -> K + 'static,
     render: impl Fn(&T) -> N + 'static,
 ) -> NodeBuilder

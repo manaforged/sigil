@@ -1,12 +1,8 @@
-mod steps;
-
 use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerPhase, PointerType};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
 use crate::widgets::Widget;
-
-pub(crate) use steps::{ValueStep, step_keys};
 
 /// Hover, press, and focus signals.
 #[derive(Clone, Copy, Debug)]

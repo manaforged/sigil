@@ -271,6 +271,12 @@ macro_rules! forward_control_methods {
             self
         }
 
+        fn accessible(mut self, name: impl Into<$crate::kernel::AccessibleName>) -> Self {
+            let name = name.into();
+            $crate::widgets::forward_control_methods!(@call $mode self.$field, accessible(name));
+            self
+        }
+
         fn capture_text_style(mut self, out: $crate::reactive::Signal<$crate::style::TextStyle>) -> Self {
             $crate::widgets::forward_control_methods!(@call $mode self.$field, capture_text_style(out));
             self
@@ -541,8 +547,8 @@ pub use modal::{ModalBuilder, Side, modal};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use patterns::{
-    CardBuilder, Disclosure, HintOverlayBuilder, ListRowBuilder, RowTone, SidebarBuilder,
-    app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
+    CardBuilder, Disclosure, EmptyStateBuilder, HintOverlayBuilder, ListRowBuilder, RowTone,
+    SidebarBuilder, SkeletonBuilder, app_shell, avatar, badge, breadcrumbs, card, disclosure, empty_state, hint_bar, hint_overlay,
     kv_grid, list_row, notice_band, pagination, section_label, sidebar, skeleton, spacer, stepper,
 };
 pub use progress::{ProgressBuilder, progress};
@@ -599,6 +605,7 @@ crate::kernel::into_node_builder!(
     DiffBuilder,
     DotBuilder,
     DropdownBuilder,
+    EmptyStateBuilder,
     GaugeBuilder,
     HintOverlayBuilder,
     IconBuilder,
@@ -612,6 +619,7 @@ crate::kernel::into_node_builder!(
     RadioGroupBuilder,
     SegmentedBuilder,
     SidebarBuilder,
+    SkeletonBuilder,
     SparklineBuilder,
     TabsBuilder,
     TextFieldBuilder,

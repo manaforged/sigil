@@ -1,5 +1,6 @@
 use crate::animation::{Keyframes, KeyframesId, Transition};
 use crate::kernel::ImageSource;
+use crate::reactive::Reactive;
 use crate::scene::{BlendMode, Shadow};
 use crate::style::atom::{Amount, Backface, BorderStyle, MaskPart, PaintAtom, SpaceAtom};
 use crate::style::engine::encode_px;
@@ -13,7 +14,7 @@ mod slot;
 mod space;
 mod units;
 
-use slot::{mask, paint, push};
+use slot::{live, mask, paint, push};
 use units::{fraction_units, letter_spacing_units, opacity_units};
 
 /// Typed paint on nodes, text, widget builders, and state closures.
@@ -21,10 +22,12 @@ pub trait Paint: Sized {
     /// Returns the mutable style builder for this target.
     fn paint_mut(&mut self) -> &mut StateStyleBuilder;
 
-    /// Fills the background with a color or a gradient.
+    /// Fills the background with a color or gradient, or a signal or closure of one; state closures read it once.
     #[must_use]
-    fn background(self, background: impl Into<Background>) -> Self {
-        background.into().atoms().into_iter().fold(self, push)
+    fn background<B: Into<Background> + 'static>(self, background: impl Reactive<B>) -> Self {
+        live(self, background, |fill| {
+            Into::<Background>::into(fill).atoms()
+        })
     }
 
     /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
@@ -57,16 +60,16 @@ pub trait Paint: Sized {
         paint(self, PaintAtom::Border(BorderStyle::Dotted))
     }
 
-    /// Sets the color of the text.
+    /// Sets the color of the text from a color or token, or a signal or closure of one; state closures read it once.
     #[must_use]
-    fn text_color(self, color: impl Into<ColorValue>) -> Self {
-        push(self, StyleAtom::TextColor(color.into()))
+    fn text_color<C: Into<ColorValue> + 'static>(self, color: impl Reactive<C>) -> Self {
+        live(self, color, |value| [StyleAtom::TextColor(value.into())])
     }
 
-    /// Sets the color of the border.
+    /// Sets the color of the border from a color or token, or a signal or closure of one; state closures read it once.
     #[must_use]
-    fn border_color(self, color: impl Into<ColorValue>) -> Self {
-        push(self, StyleAtom::BorderColor(color.into()))
+    fn border_color<C: Into<ColorValue> + 'static>(self, color: impl Reactive<C>) -> Self {
+        live(self, color, |value| [StyleAtom::BorderColor(value.into())])
     }
 
     /// Sets the width of the border on all four sides in pixels.

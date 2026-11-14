@@ -1,20 +1,12 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent};
+use crate::events::{A11yEdit, DragPhase, KeyEvent, NamedKey, PointerEvent, ValueStep};
 use crate::node::{NodeBuilder, NodeId};
 use crate::reactive::{Signal, signal};
 use crate::widgets::Widget;
 
 use super::builder::{SliderRuntime, ValueChange};
-
-#[derive(Clone, Copy)]
-enum ValueStep {
-    Unit(f32),
-    Page(f32),
-    Start,
-    End,
-}
 
 const SLIDER_KEYS: [(NamedKey, ValueStep); 8] = [
     (NamedKey::ArrowRight, ValueStep::Unit(1.0)),
@@ -49,15 +41,15 @@ impl ThumbSignals {
 }
 
 pub(super) fn attach_key_handlers(
-    mut node: NodeBuilder,
+    node: NodeBuilder,
     runtime: SliderRuntime,
     on_change: ValueChange,
 ) -> NodeBuilder {
-    for (key, step) in SLIDER_KEYS {
-        let change = Rc::clone(&on_change);
-        node = node.key(key, move |event| change_key(step, event, runtime, &change));
-    }
-    node.a11y_edit(move |edit| handle_a11y_edit(edit, runtime, &on_change))
+    let change = Rc::clone(&on_change);
+    node.step_keys(SLIDER_KEYS, move |step, event| {
+        change_key(step, event, runtime, &change);
+    })
+    .a11y_edit(move |edit| handle_a11y_edit(edit, runtime, &on_change))
 }
 
 fn handle_a11y_edit(edit: &A11yEdit, runtime: SliderRuntime, on_change: &ValueChange) -> bool {

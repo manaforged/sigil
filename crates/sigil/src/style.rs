@@ -27,6 +27,7 @@ mod grid;
 pub(crate) mod image_paint;
 mod install;
 pub(crate) mod intern;
+pub(crate) mod live_paint;
 pub(crate) mod locale;
 pub(crate) mod merge;
 pub(crate) mod metrics;

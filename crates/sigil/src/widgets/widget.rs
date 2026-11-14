@@ -2,10 +2,10 @@ use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
     A11yEdit, DragPhase, DropEvent, FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent,
-    ScrollEvent, Shortcut, event_methods, handler_methods,
+    ScrollEvent, Shortcut, ValueStep, event_methods, handler_methods,
 };
 use crate::geometry::{Point, Rect, Size};
-use crate::kernel::NodeBuilder;
+use crate::kernel::{AccessibleName, NodeBuilder};
 use crate::layout::audit::{AllowedFlaws, Flaw};
 use crate::layout::builder_ext::{install_layout, layout_methods};
 use crate::layout::reactive_position;
@@ -37,7 +37,7 @@ pub trait Widget: Sized {
         self.map_node(move |node| node.class(classes))
     }
 
-    /// Sets the theme for the node and its children.
+    /// Restyles the colors and corner radii of the node and its children with `theme`; control sizes still come from the app theme.
     #[must_use]
     fn theme(self, theme: impl Reactive<Theme>) -> Self {
         self.map_node(move |node| look::theme(node, theme))
@@ -56,7 +56,7 @@ pub trait Widget: Sized {
         self.map_node(move |node| look::focus_ring(node, ring))
     }
 
-    /// Fades the node in and out over `ms` as `shown` changes.
+    /// Fades the node in when `shown` turns true and out when it turns false, over `ms` milliseconds with `easing`.
     #[must_use]
     fn presence(self, shown: Signal<bool>, ms: u16, easing: crate::animation::Easing) -> Self {
         self.map_node(move |node| {
@@ -122,7 +122,7 @@ pub trait Widget: Sized {
         self.map_node(move |node| node.mutate(move |n| edit.install(n)))
     }
 
-    /// Sets the node's flex grow factor.
+    /// Sets the node's share of its parent's free space along the main axis, relative to its siblings' factors; 0 does not grow.
     #[must_use]
     fn grow(self, factor: f32) -> Self {
         let edit = LayoutEdit::Grow(factor);
@@ -203,6 +203,26 @@ pub trait Widget: Sized {
         self.map_node(move |node| on::accessible_shortcut(node, shortcut))
     }
 
+    /// Calls `on_step` with the step paired to a key in `keys` when that key's event reaches the node.
+    #[must_use]
+    fn step_keys<S, H>(self, keys: impl IntoIterator<Item = (S, ValueStep)>, on_step: H) -> Self
+    where
+        S: Into<Shortcut>,
+        H: Fn(ValueStep, &mut KeyEvent) + Clone + 'static,
+    {
+        keys.into_iter().fold(self, |widget, (key, step)| {
+            let on_step = on_step.clone();
+            widget.key(key, move |event| on_step(step, event))
+        })
+    }
+
+    /// Sets the name a screen reader announces for this widget.
+    #[must_use]
+    fn accessible(self, name: impl Into<AccessibleName>) -> Self {
+        let name = name.into();
+        self.map_node(move |node| node.label(name))
+    }
+
     /// Runs `h` when a pointer button goes up on the node, and marks the node clickable.
     #[must_use]
     fn pointer_up<H>(self, h: H) -> Self
@@ -221,7 +241,7 @@ pub trait Widget: Sized {
         self.map_node(move |node| on::ime_eligible(node, f))
     }
 
-    /// Lets the user select the node's text when `yes` is true.
+    /// Lets the user select and copy the node's text when `yes` is true; false leaves it unselectable.
     #[must_use]
     fn selectable(self, yes: bool) -> Self {
         self.map_node(move |node| on::selectable_text(node, yes))
@@ -239,31 +259,31 @@ pub trait Widget: Sized {
         self.map_node(move |node| on::focus_when(node, trigger))
     }
 
-    /// Mirrors pointer hover state into `out` when it changes.
+    /// Sets `out` to true while the pointer is over the node and to false when it leaves.
     #[must_use]
     fn track_hovered(self, out: Signal<bool>) -> Self {
         self.map_node(move |node| on::track_hovered(node, out))
     }
 
-    /// Mirrors focus state into `out` when it changes.
+    /// Sets `out` to true while focus is on the node or one of its children and to false when focus leaves.
     #[must_use]
     fn track_focused(self, out: Signal<bool>) -> Self {
         self.map_node(move |node| on::track_focused(node, out))
     }
 
-    /// Mirrors primary pointer press state into `out` when it changes, without marking clickable.
+    /// Sets `out` to true while the primary pointer button is held down on the node, without making the node clickable.
     #[must_use]
     fn track_pressed(self, out: Signal<bool>) -> Self {
         self.map_node(move |node| on::track_pressed(node, out))
     }
 
-    /// Runs `handler` across a captured primary pointer drag lifecycle.
+    /// Runs `handler` for each phase of a primary-button drag that starts on the node; the node keeps the pointer until the drag ends.
     #[must_use]
     fn pointer_drag(self, handler: impl FnMut(DragPhase, &mut PointerEvent) + 'static) -> Self {
         self.map_node(move |node| on::pointer_drag(node, handler))
     }
 
-    /// Handles assistive-technology edit and value-adjustment requests on this node.
+    /// Runs `handler` for each screen-reader edit or value request on the node; it returns true when it handled the request.
     #[must_use]
     fn a11y_edit(self, handler: impl Fn(&A11yEdit) -> bool + 'static) -> Self {
         self.map_node(move |node| on::a11y_edit(node, handler))
@@ -279,7 +299,7 @@ pub trait Widget: Sized {
         })
     }
 
-    /// Supplies a reactive node-local caret rectangle for IME candidate window placement.
+    /// Places the input method's candidate window at `caret`, a caret rectangle in the node's own coordinates.
     #[must_use]
     fn ime_caret(self, caret: impl Reactive<Option<CaretGeometry>>) -> Self {
         let signal = caret.into_signal();

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::layout::Space;
 use serde_json::Value;
 
@@ -155,18 +157,41 @@ impl Render {
         if picker.multiple {
             return self.many(picker);
         }
-        let pick = signal(first(&self.value(&picker.value)));
-        self.mirror(&picker.value, pick, |_, current| first(current));
-        let mut group = radio_group(pick).label(self.shown(&picker.label));
-        for option in &picker.options {
-            group = group.option(option.value.clone(), self.shown(&option.label));
-        }
+        let values: Rc<[String]> = picker
+            .options
+            .iter()
+            .map(|option| option.value.clone())
+            .collect();
+        let index = {
+            let values = Rc::clone(&values);
+            move |value: &Value| {
+                let wanted = first(value);
+                values
+                    .iter()
+                    .position(|candidate| *candidate == wanted)
+                    .unwrap_or(values.len())
+            }
+        };
+        let pick = signal(index(&self.value(&picker.value)));
+        self.mirror(&picker.value, pick, move |_, current| index(current));
+        let group = radio_group(
+            pick,
+            picker
+                .options
+                .iter()
+                .map(|option| self.shown(&option.label)),
+        )
+        .accessible(self.shown(&picker.label));
         let (render, path) = (self.clone(), self.bound(&picker.value));
         effect(move || {
-            let value = pick.get();
+            let Some(value) = values.get(pick.get()) else {
+                return;
+            };
             let Some(path) = path.as_ref() else { return };
-            if !value.is_empty() && untrack(|| first(&render.model.peek(path))) != value {
-                untrack(|| render.write(Some(path), Value::Array(vec![Value::String(value)])));
+            if untrack(|| first(&render.model.peek(path))) != *value {
+                untrack(|| {
+                    render.write(Some(path), Value::Array(vec![Value::String(value.clone())]));
+                });
             }
         });
         self.labelled(&picker.label, group)

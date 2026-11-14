@@ -9,11 +9,7 @@ use crate::reactive::{Owner, signal};
 fn group_and_option_rows_carry_radio_roles() {
     Owner::scope("radio-group-role", || {
         let mut cx = Cx::new_root();
-        let selected = signal(String::from("a"));
-        let id = radio_group(selected)
-            .option("a", "A")
-            .option("b", "B")
-            .build(&mut cx);
+        let id = radio_group(signal(0), ["A", "B"]).build(&mut cx);
         let group = cx.get(id).expect("group node");
         assert_eq!(group.a11y.role, crate::kernel::Role::RadioGroup);
         assert_eq!(group.children().len(), 2, "two option rows");
@@ -25,7 +21,7 @@ fn group_and_option_rows_carry_radio_roles() {
 #[test]
 fn defaults_to_primary_tone() {
     Owner::scope("radio-group-default-tone", || {
-        let group = radio_group(signal(String::from("a"))).option("a", "A");
+        let group = radio_group(signal(0), ["A"]);
         assert!(matches!(group.tone, Tone::Primary));
     });
 }

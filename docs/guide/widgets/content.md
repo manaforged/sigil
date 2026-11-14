@@ -55,7 +55,7 @@ path(16, 16)
 # };
 ```
 
-Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill` and `stroke` take a `Color` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
+Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill_color(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill_color` and `stroke` take a `Color` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
 
 ## chart
 
@@ -106,7 +106,7 @@ canvas(|scene, rect, theme| {
 
 ## Small content helpers
 
-These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
+These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider(Orientation::Horizontal)` and `divider(Orientation::Vertical)` draw 1 px rules in the border color; `divider(Orientation::Vertical).height(px)` draws a short tick, such as between toolbar items.
 
 ## States, keys, and accessibility
 
@@ -120,7 +120,7 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 | `path` | Image node | None |
 | `chart` | `Figure` | "Chart" |
 | `avatar` | `Image` | The initials |
-| `empty_state` | `Status` | The title and body text |
+| `empty_state` | `Status` | The title |
 | `notice_band` | `Alert` for the error and warn tones, else `Status` | "Error", "Warning", "Success", or "Notice"; the body is the text child |
 
 ## Terminal notes

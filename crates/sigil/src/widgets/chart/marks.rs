@@ -140,7 +140,7 @@ pub(super) fn area(trace: &Trace<'_>, color: ColorValue) -> PathBuilder {
             .line_to(last.0, base)
             .close()
     });
-    shape.fill(color).layout(layer_layout())
+    shape.fill_color(color).layout(layer_layout())
 }
 
 #[allow(
@@ -181,7 +181,7 @@ fn candle(shape: PathBuilder, x: f32, half: f32, row: Candle, span: ValueSpan) -
 
 fn finish(shape: PathBuilder, tone: Tone) -> PathBuilder {
     shape
-        .fill(tone.fill())
+        .fill_color(tone.fill())
         .stroke(tone.fill(), WICK_STROKE)
         .non_scaling_stroke()
         .layout(layer_layout())

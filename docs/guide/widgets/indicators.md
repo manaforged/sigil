@@ -42,16 +42,19 @@ gauge(cpu).max(1.0).label("CPU").warn(0.2);
 
 ## progress
 
-`progress(Signal<f32>, max: f32)`. An 8 px fill bar. `Role::ProgressIndicator`.
+`progress(impl Reactive<f32>)`. An 8 px fill bar that is full at 1.0. `Role::ProgressIndicator`.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 let done = signal(30.0_f32);
-progress(done, 100.0);
+progress(done).max(100.0).label("Upload");
 # };
 ```
 
+- `.max(f32)` sets the value at which the bar is full (default 1.0; values below `f32::EPSILON` are clamped to it).
+- `.label(impl Into<TextContent>)` draws a caption before the track and becomes the accessible name. Without a caption, use `.accessible(name)` to name the bar.
+- `.tone(Tone)` sets the fill color of a determinate bar (default `Tone::Primary`).
 - `.height(px)` and `.width(px)` size the track; the default fills the parent width.
 - `.indeterminate()` ignores the value as a fraction and treats the signal as a phase in 0..1: a 30%-width segment slides across the track. Drive the signal from a timer or task to animate it.
 
@@ -70,7 +73,7 @@ Indicators have one visual state each: the visual catalog captures only the defa
 | `chip` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
 | `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
 | `gauge` | none | `ProgressIndicator` | The `.label()`, else "Gauge" |
-| `progress` | none | `ProgressIndicator` | `.label()`, else "Progress" |
+| `progress` | none | `ProgressIndicator` | `.label()` or `.accessible(name)`, else "Progress" |
 | `spinner` | none | `ProgressIndicator` | `.label()` on the returned `NodeBuilder`, else "Loading" |
 
 ## Terminal notes

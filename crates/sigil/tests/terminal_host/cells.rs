@@ -185,7 +185,7 @@ fn a_tree_chevron_sits_on_the_folder_row() {
 
 #[test]
 fn progress_draws_the_unfilled_track() {
-    let grid = super::painted(|| progress(signal(0.5_f32), 1.0), 40, 3);
+    let grid = super::painted(|| progress(signal(0.5_f32)), 40, 3);
     let bar = (0..grid.rows())
         .find(|row| super::solid(grid.row(*row)) > 0)
         .unwrap_or_else(|| panic!("no fill in:\n{}", grid.text()));
@@ -265,7 +265,7 @@ fn slider_and_progress_show_their_labels() {
         || {
             column()
                 .child(slider(signal(0.4), 0.0..=1.0).label("Volume"))
-                .child(progress(signal(0.5_f32), 1.0).label("Upload"))
+                .child(progress(signal(0.5_f32)).label("Upload"))
         },
         40,
         8,

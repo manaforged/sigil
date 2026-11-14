@@ -8,7 +8,7 @@ use crate::tasks::runtime::{DispatchMessage, Dispatcher, attach_task};
 use crate::tasks::status::Status;
 use crate::tasks::task::{Outcome, TaskHandle};
 
-/// Write a signal from another thread.
+/// Handle that writes a signal from another thread; each write applies on the UI thread when it next runs queued work.
 #[derive(Clone)]
 pub struct SignalWriter<T: Send + 'static> {
     dispatcher: Dispatcher,
@@ -32,14 +32,14 @@ impl<T: Send + 'static> SignalWriter<T> {
         }
     }
 
-    /// Writes `value` to the signal from any thread.
+    /// Writes `value` to the signal from any thread; it fails once the `AsyncRuntime` is dropped.
     pub fn set(&self, value: T) -> Result<(), Error> {
         self.send(move |signal| {
             let _ = signal.try_set_always(value);
         })
     }
 
-    /// Changes the signal's value in place from any thread.
+    /// Changes the signal's value in place from any thread; it fails once the `AsyncRuntime` is dropped.
     pub fn update<F>(&self, update: F) -> Result<(), Error>
     where
         F: FnOnce(&mut T) + Send + 'static,

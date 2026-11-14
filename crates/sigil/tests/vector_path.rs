@@ -213,7 +213,7 @@ fn star(node: PathBuilder) -> PathBuilder {
             node.line_to(next_x, next_y)
         })
         .close()
-        .fill(INK)
+        .fill_color(INK)
 }
 
 fn shape_canvas(shape: fn() -> PathBuilder) -> impl IntoNode {

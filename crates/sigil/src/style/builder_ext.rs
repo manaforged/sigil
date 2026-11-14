@@ -80,13 +80,16 @@ impl NodeBuilder {
     }
 
     pub(crate) fn flush_paint(mut self) -> Self {
-        let atoms = self.pending_style().take_atoms();
-        let images = self.pending_style().take_images();
+        let pending = self.pending_style();
+        let atoms = pending.take_atoms();
+        let images = pending.take_images();
+        let live = pending.take_live();
         let this = if images.is_empty() {
             self
         } else {
             self.mutate(move |node| images.install(node))
         };
+        let this = live.install(this);
         if atoms.is_empty() {
             return this;
         }
@@ -147,14 +150,20 @@ pub(crate) fn paint_when(
     active: impl Reactive<bool> + 'static,
     paint: StateStyleBuilder,
 ) -> NodeBuilder {
-    let (atoms, images) = paint.into_parts();
+    let (atoms, images, live) = paint.into_parts();
     let atoms = intern_atoms(atoms);
     let node = if images.is_empty() {
         node
     } else {
         node.mutate(move |node| images.install(node))
     };
-    node.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
+    node.style_reactive(move || {
+        if active.read() {
+            live.over(atoms)
+        } else {
+            EMPTY_ATOMS
+        }
+    })
 }
 
 pub(crate) fn visible(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {

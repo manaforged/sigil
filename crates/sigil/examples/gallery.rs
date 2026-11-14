@@ -131,7 +131,7 @@ fn row3(
 
 fn controls_page() -> NodeBuilder {
     let clicks = signal(0_i32);
-    let mode = signal(String::from("auto"));
+    let mode = signal(0_usize);
     let level = signal(40.0_f32);
     page_column()
         .child(section_label("Buttons"))
@@ -153,16 +153,14 @@ fn controls_page() -> NodeBuilder {
         ))
         .child(field(
             "Radio group",
-            radio_group(mode)
-                .option("auto", "Automatic")
-                .option("manual", "Manual"),
+            radio_group(mode, ["Automatic", "Manual"]),
         ))
         .child(field("Slider", slider(level, 0.0..=100.0).step(5.0)))
         .child(field(
             "Gauge",
             gauge(level).max(100.0).label("Battery").warn(0.25),
         ))
-        .child(field("Progress", progress(level, 100.0)))
+        .child(field("Progress", progress(level).max(100.0)))
 }
 
 fn inputs_page() -> NodeBuilder {
@@ -268,7 +266,7 @@ fn content_page() -> NodeBuilder {
                 .line_to(12.0, 4.0)
                 .line_to(20.0, 20.0)
                 .close()
-                .fill(Color {
+                .fill_color(Color {
                     r: 90,
                     g: 140,
                     b: 255,
@@ -342,6 +340,7 @@ fn chrome_page() -> NodeBuilder {
 }
 
 fn overlays_page(dialog: Signal<bool>, drawer: Signal<bool>, queue: ToastQueue) -> NodeBuilder {
+    let palette = signal(false);
     page_column()
         .child(section_label("Dialog and sheet"))
         .child(row2(
@@ -361,8 +360,9 @@ fn overlays_page(dialog: Signal<bool>, drawer: Signal<bool>, queue: ToastQueue) 
         .child(section_label("Keyboard hints"))
         .child(hint_overlay(&[("Ctrl+K", "Palette"), ("Esc", "Close")]))
         .child(section_label("Command menu"))
+        .child(button("Open palette").activate(move || palette.set(true)))
         .child(
-            command_menu()
+            command_menu(palette)
                 .item(MenuItem::new("Refresh").activate(|| {}))
                 .submenu("Export", |sub| {
                     sub.item(MenuItem::new("PNG").activate(|| {}))

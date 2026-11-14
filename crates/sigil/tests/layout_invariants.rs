@@ -185,7 +185,7 @@ fn stacked_widgets_are_sound_at_every_width() {
                         .gap(Space::Sm)
                         .padding(Space::Lg),
                 )
-                .child(labeled_field("progress", progress(signal(0.5_f32), 1.0)))
+                .child(labeled_field("progress", progress(signal(0.5_f32))))
                 .child(labeled_field("toggle", toggle(signal(true))))
                 .child(labeled_field("button", button("Save")))
                 .child(labeled_field(
@@ -248,10 +248,10 @@ fn scrolled_content_is_sound_at_every_width() {
                     "field",
                     text_field(signal(String::from("hi"))),
                 ))
-                .child(labeled_field("bar", progress(signal(0.5_f32), 1.0)))
+                .child(labeled_field("bar", progress(signal(0.5_f32))))
                 .child(columns(vec![
-                    labeled_field("left", progress(signal(0.25_f32), 1.0)),
-                    labeled_field("right", progress(signal(0.75_f32), 1.0)),
+                    labeled_field("left", progress(signal(0.25_f32))),
+                    labeled_field("right", progress(signal(0.75_f32))),
                 ]));
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
@@ -265,8 +265,8 @@ fn layout_re_resolves_when_the_container_resizes() {
     sigil::reactive::Owner::scope("layout-invariants-resize", || {
         let mut cx = Cx::new_root();
         let root = cx.add(columns(vec![
-            labeled_field("a", progress(signal(0.5_f32), 1.0)),
-            labeled_field("b", progress(signal(0.5_f32), 1.0)),
+            labeled_field("a", progress(signal(0.5_f32))),
+            labeled_field("b", progress(signal(0.5_f32))),
         ]));
         let mut layout = LayoutEngine::new(Box::new(TEXT_MEASURE));
 

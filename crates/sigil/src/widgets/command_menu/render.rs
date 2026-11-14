@@ -1,19 +1,18 @@
-use crate::events::MouseButton;
+use crate::events::{MouseButton, PointerEvent};
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::Space;
-use crate::layout::{AlignItems, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, Space, snap};
 use crate::reactive::{Signal, memo, signal};
 use crate::style::strings::StringKey;
-use crate::style::theme::ambient::theme_label;
+use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use crate::widgets::Widget;
 use std::rc::Rc;
 
-use crate::style::{ControlSize, Metrics, space};
+use crate::style::{ControlSize, Metrics, StyleAtom, Token, space};
 
 use super::super::field::FIELD_GAP;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};
-use super::super::popup::{self, ItemSlots, item_row};
+use super::super::popup::{self, ItemSlots, PopupAnchor, PopupLayer, item_row};
 use super::super::scroll::{reveal_row, scroll};
 use super::super::shared::{Activate, caller_style};
 use super::super::text_field::{TextFieldBuilder, text_field};
@@ -22,6 +21,9 @@ use super::nav::{CommandPalette, MenuLevel, PaletteEntry, SubmitObserver};
 
 const LEVEL_GAP: f32 = space(2);
 const MAX_ROWS: usize = 12;
+const PALETTE_TOP: f32 = space(16);
+
+static BACKDROP: &[StyleAtom] = &[Token::Scrim.background()];
 
 #[derive(Clone, Copy)]
 struct Active {
@@ -80,7 +82,8 @@ impl ListModel for CommandModel {
 impl CommandMenuBuilder {
     pub(super) fn root(self) -> NodeBuilder {
         let parts = self;
-        let palette = CommandPalette::new(Rc::new(parts.level.entries));
+        let open = parts.open;
+        let palette = CommandPalette::new(Rc::new(parts.level.entries), open);
         let chrome = PanelChrome {
             active: Active {
                 focused: signal(false),
@@ -91,13 +94,20 @@ impl CommandMenuBuilder {
             on_submit: parts.on_submit.clone(),
             placeholder: parts.placeholder,
         };
-        let root = container()
-            .role(Role::Menu)
-            .label(theme_label(StringKey::CommandMenu))
-            .layout(
-                LayoutStyle::flex_row()
-                    .gap(Space::px(LEVEL_GAP))
-                    .align_items(AlignItems::Start),
+        let layer = PopupLayer::new(open, PopupAnchor::Top).trap(true);
+        let theme = ActiveTheme::capture();
+        layer.announce_open("sigil::command_menu::open", move || {
+            palette.reset();
+            theme.string(StringKey::CommandMenu)
+        });
+        let root = layer
+            .wrap(
+                container()
+                    .role(Role::Dialog)
+                    .label(theme_label(StringKey::CommandMenu))
+                    .hittable(true)
+                    .layout(root_layout())
+                    .class(BACKDROP),
             )
             .children_reactive(move || {
                 let levels = palette.stack.get();
@@ -109,7 +119,7 @@ impl CommandMenuBuilder {
                     .collect::<Vec<_>>()
             });
         let root = listbox(
-            root,
+            layer.dismiss_outside(root),
             CommandModel {
                 palette,
                 on_submit: parts.on_submit,
@@ -118,6 +128,17 @@ impl CommandMenuBuilder {
         );
         caller_style(root, parts.style_accumulator)
     }
+}
+
+fn root_layout() -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fill()
+        .position(Position::Absolute)
+        .inset(0.0)
+        .padding_top(Space::px(snap::detail(PALETTE_TOP)))
+        .gap(Space::px(LEVEL_GAP))
+        .align_items(AlignItems::Start)
+        .justify_content(JustifyContent::Center)
 }
 
 struct PanelChrome {
@@ -181,7 +202,9 @@ fn build_level_panel(
     } else {
         layout.width(popup::PANEL_WIDTH)
     };
-    let mut panel = popup::surface(Role::Menu).with(layout);
+    let mut panel = popup::surface(Role::Menu)
+        .with(layout)
+        .pointer_down(PointerEvent::stop_propagation);
     if is_top {
         panel = panel.child(query_field(chrome, depth));
     }

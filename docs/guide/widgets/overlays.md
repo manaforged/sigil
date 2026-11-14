@@ -62,12 +62,13 @@ modal(open)
 
 ## command_menu
 
-`command_menu()`: a nested, keyboard-driven command menu (`Role::Menu`, "Command Menu") that filters and ranks items as you type. Build a tree of entries:
+`command_menu(open: Signal<bool>)`: a nested, keyboard-driven command palette that filters and ranks items as you type. It shows over the app while `open` is true, as a `Role::Dialog` named "Command Menu". Build a tree of entries:
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-command_menu()
+let open = signal(false);
+command_menu(open)
     .item(MenuItem::new("New file").activate(|| { /* ... */ }))
     .submenu("Export", |sub| {
         sub.item(MenuItem::new("PNG").activate(|| { /* ... */ }))
@@ -79,7 +80,7 @@ command_menu()
 # };
 ```
 
-Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descends into a submenu, Arrow Left or Escape ascends, and calls `.cancel` at the root. `.submit` receives the activated label. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field`, `virtual_list`, and a `modal`.
+Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descends into a submenu, and Arrow Left or Escape ascends. Escape at the root calls `.cancel` and sets `open` to false. Choosing an item or pressing the backdrop also sets `open` to false, so an `.activate` action does not close the palette itself. `.submit` receives the activated label. Typing filters and ranks the items of the open level with `fuzzy_score`. For a palette with custom rows, compose `text_field`, `virtual_list`, and a `modal`.
 
 ## tooltip
 
@@ -107,7 +108,7 @@ The visual catalog captures the closed and open state of each overlay, and the h
 | --- | --- | --- | --- | --- |
 | `modal` | closed, open | Escape closes the top dialog; Tab stays inside while `.trap(true)` | `Dialog` | `.title()`, else "Dialog" |
 | `menu` | open; rows hover and pressed | The list keys above | `Menu`, rows `MenuItem` | `.label()` |
-| `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Menu`, rows `MenuItem` | "Command Menu" |
+| `command_menu` | default, hover, pressed, focused | Arrow keys, Enter, Escape | `Dialog` over a `Menu` panel, rows `MenuItem` | "Command Menu" |
 | `tooltip` | hidden, shown on hover or keyboard focus | The bubble shows when the first focusable node in the target gets keyboard focus; blur or Escape hides it | `Tooltip` | The label, plus the shortcut in parentheses |
 | `toast`, `toast_queue` | hidden, shown | none | `Status` | None; the message is the text child |
 | `hint_overlay` | static | none | `GenericContainer` | None; the rows carry the text |

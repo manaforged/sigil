@@ -57,3 +57,17 @@ fn map_node_reports_the_root_id_of_a_list_and_an_image() {
         assert_eq!(image_id.get(), Some(image));
     });
 }
+
+#[test]
+fn a_button_disabled_through_map_node_ignores_clicks() {
+    sigil::reactive::Owner::scope("sigil-widget-builder-map-node-disabled", || {
+        let count = signal(0_u32);
+        let mut ui = sigil_kittest::Harness::new(move || {
+            button("Go")
+                .activate(move || count.update(|n| *n += 1))
+                .map_node(|node| node.disabled(true))
+        });
+        ui.click("Go").settle();
+        assert_eq!(count.get(), 0, "a disabled button must not activate");
+    });
+}

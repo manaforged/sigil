@@ -274,6 +274,7 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         popup::surface(Role::Dialog)
             .label(title_label)
             .focusable(true)
+            .focus_ring(signal(false))
             .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
             .with(dialog_layout(side))
             .class(DIALOG_BASE),

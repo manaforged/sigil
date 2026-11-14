@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::fmt;
 use std::rc::Rc;
 
 use crate::reactive::{Signal, signal};
@@ -72,30 +73,66 @@ impl<T: Send + 'static> MessageReceiver<T> for std::sync::mpsc::Receiver<T> {}
 /// The most waiting messages handled in one batch, so a flood still yields to frames.
 const BURST: usize = 256;
 
-type Close = Box<dyn FnOnce()>;
+enum Close {
+    Open,
+    Waiting(Box<dyn FnOnce()>),
+    Ended,
+}
+
+fn end(close: &Cell<Close>) {
+    if let Close::Waiting(hook) = close.replace(Close::Ended) {
+        hook();
+    }
+}
 
 struct Handlers<T> {
     message: Box<dyn Fn(T)>,
-    close: Cell<Option<Close>>,
+    close: Rc<Cell<Close>>,
 }
 
-/// Runs `f` on the UI thread per message, then `close` when all senders drop.
-///
-/// Messages already waiting are handled together in one reactive batch, so effects run once per burst.
+/// Handle from `tasks::listen` that sets what runs once after every sender drops; dropping it keeps the listening.
+pub struct Listener {
+    close: Rc<Cell<Close>>,
+}
+
+impl fmt::Debug for Listener {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Listener").finish_non_exhaustive()
+    }
+}
+
+impl Listener {
+    /// Runs `on_close` on the UI thread once after the last message, or now when the channel has already closed.
+    pub fn closed(self, on_close: impl FnOnce() + 'static) {
+        let hook: Box<dyn FnOnce()> = Box::new(on_close);
+        match self.close.replace(Close::Ended) {
+            Close::Ended => hook(),
+            Close::Open | Close::Waiting(_) => self.close.set(Close::Waiting(hook)),
+        }
+    }
+}
+
+/// Runs `on_message` on the UI thread for each message, batching waiting ones, until every sender drops or the calling scope ends.
+#[allow(
+    clippy::must_use_candidate,
+    reason = "listening runs without the handle; it only sets the close hook"
+)]
 #[track_caller]
-pub fn listen<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, close: C)
-where
-    T: Send + 'static,
-    F: Fn(T) + 'static,
-    C: FnOnce() + 'static,
-{
+pub fn listen<T: Send + 'static>(
+    mut rx: impl MessageReceiver<T>,
+    on_message: impl Fn(T) + 'static,
+) -> Listener {
     let location = core::panic::Location::caller();
+    let close = Rc::new(Cell::new(Close::Open));
+    let listener = Listener {
+        close: Rc::clone(&close),
+    };
     let Some((owner, parts)) = scope_parts("listen") else {
-        return;
+        return listener;
     };
     let handlers: Signal<Rc<Handlers<T>>> = signal(Rc::new(Handlers {
-        message: Box::new(f),
-        close: Cell::new(Some(Box::new(close))),
+        message: Box::new(on_message),
+        close,
     }));
     let slot = handlers.into_sendable();
     let dispatcher = parts.dispatcher.clone();
@@ -119,13 +156,14 @@ where
             });
         }
         dispatch_to_owner(&dispatcher, owner, move || {
-            if let Some(hook) = slot.into_signal().try_peek().and_then(|h| h.close.take()) {
-                hook();
+            if let Some(current) = slot.into_signal().try_peek() {
+                end(&current.close);
             }
         });
     };
     let task = parts.backend.spawn(owner, work, drop);
     attach_task(&parts, owner, task);
+    listener
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

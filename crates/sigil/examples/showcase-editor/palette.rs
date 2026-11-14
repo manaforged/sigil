@@ -17,37 +17,27 @@ const COMMANDS: &[(&str, Command)] = &[
 ];
 
 pub(crate) fn commands(ws: Workspace) -> NodeBuilder {
-    let open = ws.palette_open;
-    let menu = COMMANDS
+    COMMANDS
         .iter()
-        .fold(command_menu(), |menu, (label, command)| {
+        .fold(command_menu(ws.palette_open), |menu, (label, command)| {
             let command = *command;
             let title = command
                 .hint()
                 .map_or_else(|| String::from(*label), |hint| format!("{label}    {hint}"));
-            menu.item(MenuItem::new(title).activate(move || {
-                open.set(false);
-                run(ws, command);
-            }))
+            menu.item(MenuItem::new(title).activate(move || run(ws, command)))
         })
         .placeholder("Type a command")
-        .cancel(move || open.set(false))
-        .width(PALETTE_W);
-    container().child(modal(open).title("Command palette").child(menu))
+        .width(PALETTE_W)
+        .into()
 }
 
 pub(crate) fn quick_open(ws: Workspace) -> NodeBuilder {
-    let open = ws.quick_open;
-    let menu = FileId::ALL
+    FileId::ALL
         .into_iter()
-        .fold(command_menu(), |menu, file| {
-            menu.item(MenuItem::new(file.path()).activate(move || {
-                open.set(false);
-                ws.open_file(file);
-            }))
+        .fold(command_menu(ws.quick_open), |menu, file| {
+            menu.item(MenuItem::new(file.path()).activate(move || ws.open_file(file)))
         })
         .placeholder("Search files by name")
-        .cancel(move || open.set(false))
-        .width(PALETTE_W);
-    container().child(modal(open).title("Go to file").child(menu))
+        .width(PALETTE_W)
+        .into()
 }

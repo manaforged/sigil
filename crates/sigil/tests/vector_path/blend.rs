@@ -20,7 +20,7 @@ fn half_covered_square() -> impl IntoNode {
                 .line_to(20.5, 20.5)
                 .line_to(10.5, 20.5)
                 .close()
-                .fill(WHITE)
+                .fill_color(WHITE)
                 .draw(scene, rect, theme);
         },
     )

@@ -19,10 +19,8 @@ fn shape<N: IntoNode>(name: &'static str, make: impl FnOnce() -> N) -> (Role, us
 #[test]
 fn pattern_roots_have_their_role_and_children() {
     assert_eq!(
-        shape("empty-state", || empty_state(
-            "No messages",
-            "Send a message to start."
-        )),
+        shape("empty-state", || empty_state("No messages")
+            .description("Send a message to start.")),
         (Role::Status, 2)
     );
     assert_eq!(shape("card", || card(kernel_container())).1, 1);

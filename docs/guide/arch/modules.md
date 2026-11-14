@@ -15,9 +15,9 @@ The public modules are `animation`, `app`, `clipboard`, `events`, `geometry`, `i
 | `kernel` | The tree, builders, semantics, and reactive children. `sigil::node` is its public face: `Cx`, `NodeId`, `NodeBuilder`, `IntoNode`, `Role`, and the node functions. |
 | `layout` | `LayoutEngine`, the container functions, `LayoutStyle`, `Length`, `Space`, the incremental drive. |
 | `style` | `Paint`, `Token`, theme, metrics. |
-| `events` | Hit testing, focus walk, pointer capture, handler builders, `DropEvent`, `DragPhase`. |
+| `events` | Hit testing, focus walk, pointer capture, handler builders, `DropEvent`, `DragPhase`, `ValueStep`. |
 | `text` | Shaping, measurement, paragraph cache, fonts. The public items are `TextStyle`, `TextMeasure`, `measure_text`, caret and hit-test geometry, and the grapheme column helpers. |
-| `scene` | `SceneBuilder`, `CommandScene`, and the drawing commands. |
+| `scene` | `SceneBuilder`, `CommandScene`, and the drawing commands. A custom renderer reads commands such as `DrawPath` (`outline`, `fill`, `fill_rule`, `stroke`), `PathCommand`, `Gradient`, and `Stroke`. |
 | `renderer` | wgpu, emit cache, layer pool. |
 | `shell` | winit window and event loop. |
 | `a11y` | AccessKit projection. |

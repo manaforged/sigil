@@ -51,10 +51,7 @@ pub(crate) fn toggle_off_demo(disabled: Signal<bool>) -> impl IntoNode {
 }
 
 pub(crate) fn radio_group_demo(disabled: Signal<bool>) -> impl IntoNode {
-    radio_group(signal(String::from("auto")))
-        .option("auto", "Automatic")
-        .option("manual", "Manual")
-        .disabled(disabled)
+    radio_group(signal(0), ["Automatic", "Manual"]).disabled(disabled)
 }
 
 pub(crate) fn slider_demo(disabled: Signal<bool>) -> impl IntoNode {

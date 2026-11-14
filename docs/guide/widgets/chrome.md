@@ -121,7 +121,7 @@ Small composites in `sigil::widgets`:
 - `list_row(title).selected(selected)`: a 24 px row with an ellipsized title and an optional right-aligned `status`. `.selected(impl Reactive<bool>)` accepts a `bool`, signal, or closure; a selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
 - The setters `depth`, `disclosure`, `marker`, and `column` add tree slots, an optional leading marker glyph, and fixed-width columns: `.column(text, width_px, ColumnAlign::End)`. `depth` indents the row by two columns per level. `disclosure` (`impl Reactive<Disclosure>`) is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
 - `section_label(title)`: a small muted heading for groups.
-- `empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>)`: centered `Role::Status` placeholder.
+- `empty_state(title: impl Into<TextContent>)`: centered `Role::Status` placeholder named by its title. `.description(text)` adds muted text below the title, and `.action(node)` adds a node, such as a button, below that.
 - `notice_band(body: impl Into<TextContent>, tone: Tone)`: a full-width tinted status strip.
 - `hint_bar(keys, right)`: left key hints and a right accent label.
 - `avatar(initials)`: a 28 px accent circle; the initials become the accessible name.
@@ -129,10 +129,10 @@ Small composites in `sigil::widgets`:
 - `divider(Orientation::Vertical).height(space(4))`: a 1×16 px vertical separator for toolbars.
 - `spacer()`: a `grow(1)` block that pushes neighbors apart.
 - `badge(count: impl Reactive<usize>, tone: Tone)`: a small count pill that hides at zero and reads `99+` past 99.
-- `skeleton(lines: usize)`: muted placeholder bars with `Role::Status` named "Loading".
+- `skeleton()`: muted placeholder bars with `Role::Status` named "Loading". `.lines(n)` sets the number of bars (default 3).
 - `pagination(page, pages)`: previous, page, and next buttons over a zero-based `Signal<usize>`. More than seven pages collapse around the current page, and the page moves into range when `pages` shrinks.
 - `breadcrumbs(segments, activate)`: a path whose segments before the last are links that run `activate(index)`.
-- `stepper(steps: impl IntoIterator<Item = impl Into<String>>, current: impl Reactive<usize>)`: numbered steps; the ones before `current` show a check mark.
+- `stepper(current: impl Reactive<usize>, steps: impl IntoIterator<Item = impl Into<String>>)`: numbered steps; the ones before `current` show a check mark.
 
 None of these hold their own state. Drive them with signals from your app and rebuild when the inputs change.
 

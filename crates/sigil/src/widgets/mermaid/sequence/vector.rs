@@ -61,18 +61,18 @@ impl Pens {
                 self.dashes.stroke(Token::OnSurfaceMuted, edge_width()),
                 size,
             ))
-            .child(layer(self.heads.fill(Token::OnSurfaceMuted), size))
+            .child(layer(self.heads.fill_color(Token::OnSurfaceMuted), size))
             .child(layer(
                 self.open_heads.stroke(Token::OnSurfaceMuted, edge_width()),
                 size,
             ))
             .child(layer(
-                self.boxes.fill(Token::Surface).stroke(Token::Border, thin),
+                self.boxes.fill_color(Token::Surface).stroke(Token::Border, thin),
                 size,
             ))
             .child(layer(
                 self.notes
-                    .fill(Tone::Primary.step(3))
+                    .fill_color(Tone::Primary.step(3))
                     .stroke(Tone::Primary.step(7), thin),
                 size,
             ));

@@ -4,7 +4,7 @@ use super::*;
 fn progress_empty() {
     let img = Harness::render(|| {
         let v = signal(0.0_f32);
-        progress(v, 100.0).height(24.0)
+        progress(v).max(100.0).height(24.0)
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -18,7 +18,7 @@ fn progress_empty() {
 fn progress_half() {
     let img = Harness::render(|| {
         let v = signal(50.0_f32);
-        progress(v, 100.0).height(24.0)
+        progress(v).max(100.0).height(24.0)
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -32,7 +32,7 @@ fn progress_half() {
 fn progress_full() {
     let img = Harness::render(|| {
         let v = signal(100.0_f32);
-        progress(v, 100.0).height(24.0)
+        progress(v).max(100.0).height(24.0)
     })
     .stub()
     .mode(InteractionMode::Default)

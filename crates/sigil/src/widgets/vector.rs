@@ -95,8 +95,8 @@ impl PathBuilder {
         self
     }
 
-    /// Sets a solid fill.
-    pub fn fill(mut self, color: impl Into<ColorValue>) -> Self {
+    /// Sets a solid fill color.
+    pub fn fill_color(mut self, color: impl Into<ColorValue>) -> Self {
         self.fill = Some(PathFill::Solid(color.into()));
         self
     }

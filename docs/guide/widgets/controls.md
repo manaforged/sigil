@@ -24,7 +24,7 @@ Key options:
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
 - `.disabled(impl Reactive<bool>)`: disables the button from a `bool` or a signal; the node is not focusable while it is true.
-- `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
+- `.pending(impl Reactive<bool>)`: takes a signal, a `memo`, or a closure. It ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
 Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `text_field`, and `dropdown` share one focus ring: the one `Widget::focus_ring` installs.
@@ -55,20 +55,19 @@ Pointer release, Enter, and Space flip the value. In the terminal host the indic
 
 ## radio_group
 
-`radio_group(Signal<String>)`. A vertical stack of options bound to a string key.
+`radio_group(selected: Signal<usize>, options)`. A vertical stack of options bound to the index of the checked option, as in `dropdown` and `segmented`. `options` is any `IntoIterator` of strings.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-let mode = signal(String::from("auto"));
-radio_group(mode)
-    .option("auto", "Automatic")
-    .option("manual", "Manual")
+let mode = signal(0_usize);
+radio_group(mode, ["Automatic", "Manual"])
+    .accessible("Mode")
     .tone(Tone::Primary);
 # };
 ```
 
-`.option(key, label)` appends a row (`Role::RadioButton`, publishes `checked`). Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(impl Reactive<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
+Each option is a row (`Role::RadioButton`, publishes `checked`). `.accessible(name)` or `.labelled_by(node)` names the group. Arrow Down/Up move the selection with wraparound; Home and End jump to the first and last option. The group is `Role::RadioGroup`, takes one focus slot, and draws the focus ring on the checked row. `.disabled(impl Reactive<bool>)` blocks pointer and key selection, removes the group from the focus order, and paints it at the disabled opacity.
 
 ## slider
 
@@ -112,7 +111,7 @@ The visual catalog captures each control in the states in the table. Hover, pres
 | `button(Icon)` | default, hover, pressed, focused, disabled | Enter, Space | `Button` | `.accessible(name)`; without it, the glyph |
 | `checkbox` | default, hover, pressed, focused, disabled | Enter, Space | `CheckBox` | A static `.label()`, else "Checkbox" |
 | `toggle` | default, hover, pressed, focused, disabled | Enter, Space | `Switch` | A static `.label()`, else "Toggle" |
-| `radio_group` | default, hover, pressed, focused, disabled | Arrow keys, Home, End | `RadioGroup`, rows `RadioButton` | `.label()` or `.labelled_by(node)` for the group; each row uses its option label |
+| `radio_group` | default, hover, pressed, focused, disabled | Arrow keys, Home, End | `RadioGroup`, rows `RadioButton` | `.accessible(name)` or `.labelled_by(node)` for the group; each row uses its option label |
 | `slider` | default, hover, pressed, focused, disabled | Arrow keys, PageUp, PageDown, Home, End | `Slider` | "Slider" |
 
 Tab and Shift+Tab move focus between controls. A disabled control leaves the focus order.

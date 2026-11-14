@@ -51,10 +51,11 @@ pub(crate) fn side_bar(ws: Workspace) -> NodeBuilder {
                 .case(Activity::Explorer, move || explorer(ws))
                 .case(Activity::SourceControl, move || source_control(ws))
                 .case(Activity::Search, || {
-                    empty_state("Search", "Type in the command palette to search files.")
+                    empty_state("Search")
+                        .description("Type in the command palette to search files.")
                 })
                 .case(Activity::Run, || {
-                    empty_state("Run and debug", "Use Run tests in the top bar.")
+                    empty_state("Run and debug").description("Use Run tests in the top bar.")
                 }),
         )
 }

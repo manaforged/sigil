@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::kernel::NodeBuilder;
+use crate::reactive::Signal;
 use crate::style::Style;
 
 use super::super::layout_ext::LayoutOverrides;
@@ -71,9 +72,9 @@ impl SubmenuBuilder {
 }
 
 /// A command palette; `layout`, `width`, and `height` size each level panel, and `map_node` changes the root.
-#[derive(Default)]
 #[must_use]
 pub struct CommandMenuBuilder {
+    pub(super) open: Signal<bool>,
     pub(super) level: LevelDef,
     pub(super) on_submit: Option<SubmitObserver>,
     pub(super) on_cancel: Option<Activate>,
@@ -86,6 +87,7 @@ pub struct CommandMenuBuilder {
 impl core::fmt::Debug for CommandMenuBuilder {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CommandMenuBuilder")
+            .field("open", &self.open)
             .field("placeholder", &self.placeholder)
             .field("style_accumulator", &self.style_accumulator)
             .field("panel_layout", &self.panel_layout)
@@ -94,9 +96,18 @@ impl core::fmt::Debug for CommandMenuBuilder {
     }
 }
 
-/// A command palette.
-pub fn command_menu() -> CommandMenuBuilder {
-    CommandMenuBuilder::default()
+/// A command palette shown over the app while `open` is true.
+pub fn command_menu(open: Signal<bool>) -> CommandMenuBuilder {
+    CommandMenuBuilder {
+        open,
+        level: LevelDef::default(),
+        on_submit: None,
+        on_cancel: None,
+        placeholder: String::new(),
+        style_accumulator: Style::new(),
+        panel_layout: LayoutOverrides::new(),
+        layout_overrides: LayoutOverrides::new(),
+    }
 }
 
 impl CommandMenuBuilder {
@@ -114,7 +125,7 @@ impl CommandMenuBuilder {
         self
     }
 
-    /// Runs `cb` when the user closes the palette while the top level is shown.
+    /// Runs `cb` when the user closes the palette with Escape while the top level is shown.
     pub fn cancel(mut self, cb: impl Fn() + 'static) -> Self {
         self.on_cancel = Some(Rc::new(cb));
         self

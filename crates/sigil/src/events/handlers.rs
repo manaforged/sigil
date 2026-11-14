@@ -48,6 +48,20 @@ pub enum DragPhase {
     Cancel,
 }
 
+/// A key's change to a ranged value, delivered to [`Widget::step_keys`](crate::widgets::Widget::step_keys).
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum ValueStep {
+    /// Move by this many small steps; a negative count moves down.
+    Unit(f32),
+    /// Move by this many pages; a negative count moves down.
+    Page(f32),
+    /// Jump to the lowest value.
+    Start,
+    /// Jump to the highest value.
+    End,
+}
+
 /// An accessibility edit request dispatched to a widget handler.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]

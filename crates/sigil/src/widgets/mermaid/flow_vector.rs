@@ -126,7 +126,7 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
             dashes.stroke(Token::OnSurfaceMuted, edge_width()),
             size,
         ))
-        .child(layer(heads.fill(Token::OnSurfaceMuted), size))
+        .child(layer(heads.fill_color(Token::OnSurfaceMuted), size))
         .child(layer(shapes(&graph, &areas, size), size))
         .child(layer(dots(&graph, &areas, size), size));
     for (node, area) in graph.nodes.iter().zip(&areas) {

@@ -1,9 +1,23 @@
 use crate::kernel::ImageSource;
+use crate::reactive::Reactive;
 use crate::style::atom::{MaskAtom, MaskPart, PaintAtom, StopSlot};
 use crate::style::{MaskImage, Paint, StyleAtom};
 
 pub(super) fn push<T: Paint>(mut target: T, atom: StyleAtom) -> T {
     target.paint_mut().push_atom(atom);
+    target
+}
+
+pub(super) fn live<T, V, A>(mut target: T, value: impl Reactive<V>, atoms: fn(V) -> A) -> T
+where
+    T: Paint,
+    V: 'static,
+    A: IntoIterator<Item = StyleAtom> + 'static,
+{
+    let now = value.try_static().map(atoms);
+    target
+        .paint_mut()
+        .push_live(now, move || atoms(value.read()));
     target
 }
 

@@ -34,3 +34,36 @@ fn for_each_renders_a_row_once_for_each_new_key() {
         }
     });
 }
+
+#[test]
+fn for_each_over_a_memo_follows_its_filter() {
+    Owner::scope("sigil_kernel_for_each_memo", || {
+        let fruits = signal(vec!["apple", "avocado", "banana"]);
+        let prefix = signal("a");
+        let shown = sigil::reactive::memo(move || {
+            let prefix = prefix.get();
+            fruits
+                .get()
+                .into_iter()
+                .filter(|fruit| fruit.starts_with(prefix))
+                .collect::<Vec<_>>()
+        });
+        let mut cx = Cx::new_root();
+        let list = cx.add(for_each(
+            shown,
+            |fruit: &&str| *fruit,
+            |fruit: &&str| text(*fruit),
+        ));
+        let texts = |tree: &Cx| -> Vec<String> {
+            child_ids(tree, list)
+                .into_iter()
+                .map(|id| text_value(tree, id))
+                .collect()
+        };
+        cx.flush_reactive_children();
+        assert_eq!(texts(&cx), ["apple", "avocado"]);
+        prefix.set("b");
+        cx.flush_reactive_children();
+        assert_eq!(texts(&cx), ["banana"]);
+    });
+}

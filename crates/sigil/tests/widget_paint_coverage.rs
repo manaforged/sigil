@@ -47,18 +47,17 @@ fn controls() -> Vec<Case> {
         ("toggle", Box::new(|| toggle(signal(true)).label("Lock"))),
         (
             "radio_group",
-            Box::new(|| {
-                radio_group(signal(String::from("a")))
-                    .option("a", "Automatic")
-                    .option("m", "Manual")
-            }),
+            Box::new(|| radio_group(signal(0_usize), ["Automatic", "Manual"])),
         ),
         ("slider", Box::new(|| slider(signal(40.0_f32), 0.0..=100.0))),
         (
             "gauge",
             Box::new(|| gauge(signal(40.0_f32)).max(100.0).label("Battery")),
         ),
-        ("progress", Box::new(|| progress(signal(40.0_f32), 100.0))),
+        (
+            "progress",
+            Box::new(|| progress(signal(40.0_f32)).max(100.0)),
+        ),
     ]
 }
 

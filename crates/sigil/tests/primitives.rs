@@ -234,7 +234,7 @@ fn typing_in_the_command_menu_filters_its_items() {
         let mut host = Host::new(HostMode::Pixel);
         host.mount(
             column().child(
-                command_menu()
+                command_menu(signal(true))
                     .item(MenuItem::new("Attack").activate(|| {}))
                     .item(MenuItem::new("Defend").activate(|| {}))
                     .item(MenuItem::new("Wait").activate(|| {})),
