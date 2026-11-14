@@ -4,7 +4,7 @@ use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
     sigil::run(
-        AppConfig::new("Focus").size(sigil_showcase::SIZE[0], sigil_showcase::SIZE[1]),
+        sigil_showcase::window("Focus"),
         sigil_showcase::focus::app,
     )
 }

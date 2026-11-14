@@ -13,7 +13,7 @@ publish = false
 name = "sigil_showcase"
 
 [dependencies]
-sigil-ui = { workspace = true }
+sigil-ui = { path = "../sigil", version = "0.2.0", default-features = false, features = ["desktop"] }
 
 [lints]
 workspace = true

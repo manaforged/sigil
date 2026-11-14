@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_showcase::{SIZE, almanac, beam, darkroom, deck, focus, gallery, kit, tray};
+use sigil_showcase::{SIZE, almanac, beam, darkroom, deck, focus, gallery, index, kit, tray};
 
 const SCALE: f32 = 2.0;
 const REVEAL_FRAMES: u32 = 4;
@@ -34,6 +34,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     shot(dir, "focus-clear", || focus::frosted(0.0))?;
     shot(dir, "gallery", gallery::app)?;
     shot(dir, "gallery-scrolled", || gallery::at(SCROLLED))?;
+    staged(dir, "index", &index::fonts(), index::app)?;
+    staged(dir, "index-first", &index::fonts(), || index::open(0))?;
     settled(dir, "kit", kit::app)?;
     settled(dir, "kit-sheet", || kit::sheet(true))?;
     shot(dir, "kit-gpu", kit::app)?;
@@ -87,6 +89,25 @@ fn settled<N: IntoNode + 'static>(
     let mut ui = Harness::new(app).pixels(SIZE[0], SIZE[1]);
     let image = ui.settle().image()?.ok_or("no CPU image")?;
     image.save(dir.join(format!("{name}.png")))?;
+    Ok(())
+}
+
+fn staged<N: IntoNode + 'static>(
+    dir: &Path,
+    name: &str,
+    fonts: &[(FontFamily, &'static [u8])],
+    app: impl Fn() -> N + 'static,
+) -> Result<(), Box<dyn Error>> {
+    let mut faces = sigil::app::DefaultFonts::default();
+    for (family, bytes) in fonts {
+        faces.set(*family, *bytes, 0);
+    }
+    sigil::app::default_fonts(faces);
+    let mut ui = Harness::new(app).gpu(SIZE[0], SIZE[1]).scale(SCALE);
+    let image = ui.settle().image()?.ok_or("no image")?;
+    image.save(dir.join(format!("{name}.png")))?;
+    drop(ui);
+    sigil::app::default_fonts(sigil::app::DefaultFonts::default());
     Ok(())
 }
 

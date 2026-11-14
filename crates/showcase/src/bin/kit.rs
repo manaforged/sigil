@@ -4,7 +4,7 @@ use sigil::prelude::*;
 
 fn main() -> AppResult<()> {
     sigil::run(
-        AppConfig::new("Kit").size(sigil_showcase::SIZE[0], sigil_showcase::SIZE[1]),
+        sigil_showcase::window("Kit"),
         sigil_showcase::kit::app,
     )
 }
