@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A design flaw on a text node names its text, for example `<Text "Save" role=Label #12>`.
 - `Transition::layout()` also glides a node from its old place in its parent to its new one when layout moves it, like Motion `layout`: `row.transition(Transition::smooth().layout())`. When a keyed row leaves a list, the rows below slide up. It moves position only; a size change snaps. Toasts in `toast_queue` use it.
 - `Animator::peek()` reads the value without subscribing, and `Animator::fling_to` returns the point it springs to. The prelude exports the argument types of its setters: `Shadow`, `Elevation`, `FontFamily`, `BlendMode`, `ClipShape`, `MaskImage`, `MaskSize`, `Property`, `FocusRing`, `DragState`, `ValueStep`, `Overflow`, `Position`, `FlexWrap`, and `TrackSize`. `image(..)` takes `.role`, `.accessible`, `.description`, `.accessibility_hidden`, `.focusable`, `.tab_index`, and `.hittable`; `ImageBuilder::alt(text)` is now `ImageBuilder::accessible(text)`.
+- Toasts in a stack share the width of the widest, a draggable bottom sheet shows a grip bar, and `skeleton().shimmer(true)` draws translucent bars with a bright band on light and dark themes.
 
 ### Fixed
 

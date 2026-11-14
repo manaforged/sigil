@@ -53,13 +53,18 @@ pub fn badge(count: impl Reactive<usize>, tone: Tone) -> NodeBuilder {
         })
 }
 
-const BAR_STEP: u8 = 4;
-const SHINE_STEP: u8 = 6;
+const BAR_FILL: Token = Token::BorderStrong;
+const SHINE_FILL: Token = Token::OnSurface;
+const BAR_OPACITY: u16 = 3_500;
 const SHINE_PERIOD: Duration = Duration::from_millis(1600);
 const SHINE_BAND: f32 = 40.0;
 const FULL: f32 = 100.0;
 
-static BAR: &[StyleAtom] = &[Radius::Sm.atom(), Tone::Neutral.step(BAR_STEP).background()];
+static BAR: &[StyleAtom] = &[
+    Radius::Sm.atom(),
+    BAR_FILL.background(),
+    StyleAtom::Opacity(BAR_OPACITY),
+];
 
 /// Builder of a loading placeholder.
 #[derive(Debug)]
@@ -148,12 +153,11 @@ fn trail(sweep: Keyframes, stop: fn(f32) -> Property, lag: f32) -> Keyframes {
 }
 
 fn shining(bar: NodeBuilder, sweep: Keyframes) -> NodeBuilder {
-    let base = Tone::Neutral.step(BAR_STEP);
     bar.background(
         Background::linear(GradientAxis::LeftToRight)
-            .start(base)
-            .middle(Tone::Neutral.step(SHINE_STEP))
-            .end(base)
+            .start(BAR_FILL)
+            .middle(SHINE_FILL)
+            .end(BAR_FILL)
             .start_at(0)
             .middle_at(0)
             .end_at(0),

@@ -7,7 +7,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, contai
 use crate::layout::snap;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
 use crate::reactive::{Signal, effect, signal};
-use crate::style::{Style, StyleAtom, Token, space};
+use crate::style::{Paint, Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 use crate::widgets::swipe::Swipe;
 
@@ -21,6 +21,8 @@ const DIALOG_PADDING: f32 = space(4);
 const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
+const GRIP_WIDTH: f32 = space(10);
+const GRIP_HEIGHT: f32 = space(1);
 
 static BACKDROP_BASE: &[StyleAtom] = &[
     Token::Scrim.background(),
@@ -105,7 +107,7 @@ impl ModalBuilder {
         self
     }
 
-    /// Lets a sheet follow a drag toward its edge and close when flung or dragged past half its size; the default is false.
+    /// Lets a sheet follow a drag toward its edge and close when flung or dragged past half its size, with a grip bar on a bottom sheet; the default is false.
     pub const fn drag(mut self, enabled: bool) -> Self {
         self.drag = enabled;
         self
@@ -291,6 +293,9 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
             .class(DIALOG_BASE),
     );
 
+    if drag && side == Some(Side::Bottom) {
+        dialog = dialog.child(grip());
+    }
     if let Some(title_text) = title {
         dialog = dialog.child(dialog_header(
             title_text,
@@ -316,6 +321,20 @@ fn sheet_drag(dialog: NodeBuilder, show: Signal<bool>, side: Side) -> NodeBuilde
         }
     });
     swipe.attach(dialog, move || show.set(false))
+}
+
+fn grip() -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(GRIP_WIDTH, GRIP_HEIGHT)
+                .shrink(0.0)
+                .align_self(AlignItems::Center)
+                .margin_right(Space::px(BODY_GUTTER)),
+        )
+        .radius(Radius::Full)
+        .background(Token::BorderStrong)
+        .hittable(false)
 }
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {

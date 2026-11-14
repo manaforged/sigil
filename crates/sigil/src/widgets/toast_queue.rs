@@ -157,12 +157,13 @@ fn toast_row(queue: ToastQueue, entry: &ToastEntry) -> NodeBuilder {
     let row = container()
         .layout(
             LayoutStyle::flex_row()
+                .stretch_width()
                 .align_items(AlignItems::Center)
                 .gap(Space::Sm)
                 .padding(Space::Md),
         )
         .class(SURFACE)
-        .transition(Transition::new().duration(MOTION).ease(Easing::CubicOut))
+        .transition(Transition::new().duration(MOTION).ease(Easing::CubicOut).layout())
         .enter(Property::Opacity(0.0))
         .enter(Property::TranslateY(RISE))
         .exit(Property::Opacity(0.0))
