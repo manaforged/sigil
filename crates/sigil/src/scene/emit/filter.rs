@@ -45,7 +45,7 @@ impl<'t> EmitWalk<'_, 't> {
 
     pub(super) fn push_backdrop(&mut self, id: NodeId, style: &RenderStyle) {
         let filters = style.filter.backdrop();
-        if filters.is_empty() {
+        if filters.is_empty() || crate::animation::runtime::MotionPrefs::reduced_transparency() {
             return;
         }
         let Some(rect) = self

@@ -20,7 +20,7 @@ pub use keyframes::{Keyframes, Property};
 pub(crate) use decay::Decay;
 pub(crate) use motion::Motion;
 pub use runtime::clock::{clock, every_frame};
-pub use runtime::{Animator, reduced_motion};
+pub use runtime::{Animator, reduced_motion, reduced_transparency};
 kittest_pub! {
     #[doc(hidden)]
     pub use runtime::{MotionPrefs, active_count, presets, running_clocks, tick};

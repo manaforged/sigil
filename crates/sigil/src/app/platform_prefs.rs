@@ -1,13 +1,41 @@
+use core::cell::Cell;
 use core::time::Duration;
 
 use crate::AppConfig;
 use crate::animation::runtime::MotionPrefs;
 use crate::events::ClickConfig;
 
-#[derive(Default)]
-struct PlatformPrefs {
+#[derive(Clone, Copy)]
+struct Access {
     reduced_motion: Option<bool>,
-    click_interval: Option<Duration>,
+    reduced_transparency: Option<bool>,
+}
+
+const UNSET: Access = Access {
+    reduced_motion: None,
+    reduced_transparency: None,
+};
+
+impl Access {
+    const fn pinned(self) -> bool {
+        self.reduced_motion.is_some() && self.reduced_transparency.is_some()
+    }
+
+    fn or(self, fallback: Self) -> Self {
+        Self {
+            reduced_motion: self.reduced_motion.or(fallback.reduced_motion),
+            reduced_transparency: self.reduced_transparency.or(fallback.reduced_transparency),
+        }
+    }
+
+    fn apply(self) {
+        MotionPrefs::set(self.reduced_motion.unwrap_or(false));
+        MotionPrefs::transparency(self.reduced_transparency.unwrap_or(false));
+    }
+}
+
+thread_local! {
+    static PINNED: Cell<Access> = const { Cell::new(UNSET) };
 }
 
 #[cfg(feature = "scene")]
@@ -22,17 +50,18 @@ fn apply_text(config: &AppConfig) {
 }
 
 pub(crate) fn apply(config: &AppConfig) {
-    let platform = read();
-    let reduced = config
-        .reduced_motion
-        .or(platform.reduced_motion)
-        .unwrap_or(false);
-    MotionPrefs::set(reduced);
+    PINNED.with(|cell| {
+        cell.set(Access {
+            reduced_motion: config.reduced_motion,
+            reduced_transparency: config.reduced_transparency,
+        });
+    });
+    refresh();
     let default = ClickConfig::default();
     let click = ClickConfig {
         interval: config
             .double_click_time
-            .or(platform.click_interval)
+            .or_else(read_click_interval)
             .unwrap_or(default.interval),
         distance: config.double_click_distance.unwrap_or(default.distance),
     };
@@ -41,28 +70,41 @@ pub(crate) fn apply(config: &AppConfig) {
     apply_text(config);
 }
 
+pub(crate) fn refresh() {
+    let pinned = PINNED.with(Cell::get);
+    let platform = if pinned.pinned() { UNSET } else { read_access() };
+    pinned.or(platform).apply();
+}
+
 #[cfg(target_os = "macos")]
-fn read() -> PlatformPrefs {
-    use objc2_app_kit::{NSEvent, NSWorkspace};
-    let interval = NSEvent::doubleClickInterval();
-    PlatformPrefs {
-        reduced_motion: Some(
-            NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion(),
-        ),
-        click_interval: Duration::try_from_secs_f64(interval).ok(),
+fn read_access() -> Access {
+    let workspace = objc2_app_kit::NSWorkspace::sharedWorkspace();
+    Access {
+        reduced_motion: Some(workspace.accessibilityDisplayShouldReduceMotion()),
+        reduced_transparency: Some(workspace.accessibilityDisplayShouldReduceTransparency()),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn read_click_interval() -> Option<Duration> {
+    Duration::try_from_secs_f64(objc2_app_kit::NSEvent::doubleClickInterval()).ok()
+}
+
+#[cfg(freedesktop)]
+fn read_access() -> Access {
+    Access {
+        reduced_motion: gsetting("org.gnome.desktop.interface", "enable-animations")
+            .and_then(|value| value.parse::<bool>().ok())
+            .map(|enabled| !enabled),
+        reduced_transparency: None,
     }
 }
 
 #[cfg(freedesktop)]
-fn read() -> PlatformPrefs {
-    PlatformPrefs {
-        reduced_motion: gsetting("org.gnome.desktop.interface", "enable-animations")
-            .and_then(|value| value.parse::<bool>().ok())
-            .map(|enabled| !enabled),
-        click_interval: gsetting("org.gnome.desktop.peripherals.mouse", "double-click")
-            .and_then(|value| value.parse::<u64>().ok())
-            .map(Duration::from_millis),
-    }
+fn read_click_interval() -> Option<Duration> {
+    gsetting("org.gnome.desktop.peripherals.mouse", "double-click")
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(Duration::from_millis)
 }
 
 #[cfg(freedesktop)]
@@ -80,6 +122,11 @@ fn gsetting(schema: &str, key: &str) -> Option<String> {
 }
 
 #[cfg(not(unix))]
-fn read() -> PlatformPrefs {
-    PlatformPrefs::default()
+const fn read_access() -> Access {
+    UNSET
+}
+
+#[cfg(not(unix))]
+const fn read_click_interval() -> Option<Duration> {
+    None
 }

@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
+use crate::animation::runtime::MotionPrefs;
 use crate::reactive::frame::{FrameSource, SourceId, try_with_sources, with_sources};
 use crate::reactive::{Owner, Runtime, Signal, batch, cleanup, signal};
 
@@ -19,7 +20,7 @@ fn register_source(source: FrameSource) {
     Runtime::mark_frame_dirty();
 }
 
-/// Returns a signal that holds the animation clock.
+/// Returns a signal that holds the animation clock in seconds; it pauses while motion is reduced.
 #[must_use]
 #[track_caller]
 pub fn clock() -> Signal<f64> {
@@ -50,11 +51,16 @@ kittest_pub! {
     /// Returns the number of frame clocks, frame callbacks, and perpetual animations that are running.
     #[must_use]
     pub fn running_clocks() -> usize {
+        let paused = MotionPrefs::reduced();
         with_sources(|sources| {
             sources
                 .map
                 .values()
-                .filter(|source| matches!(source, FrameSource::Clock(_) | FrameSource::Callback(_)))
+                .filter(|source| match source {
+                    FrameSource::Clock(_) => !paused,
+                    FrameSource::Callback(_) => true,
+                    _ => false,
+                })
                 .count()
         }) + crate::animation::runtime::state::perpetual_count()
     }
@@ -64,11 +70,12 @@ pub(crate) fn tick_clocks(dt: f32) {
     if !dt.is_finite() || dt <= 0.0 || running_clocks() == 0 {
         return;
     }
+    let paused = MotionPrefs::reduced();
     batch(|| {
         let callbacks = with_sources(|sources| {
             let mut callbacks = SmallVec::<[(SourceId, Rc<RefCell<dyn FnMut(f32)>>); 4]>::new();
             sources.map.retain(|id, source| match source {
-                FrameSource::Clock(clock) => {
+                FrameSource::Clock(clock) if !paused => {
                     clock.elapsed += f64::from(dt);
                     clock.seconds.try_set(clock.elapsed)
                 }

@@ -193,9 +193,10 @@ impl WindowEventCtx<'_> {
             WindowEvent::BackdropChanged(backdrop) => {
                 crate::app::backdrop::set_system_backdrop(backdrop);
             }
+            WindowEvent::Focused(true) => crate::app::platform_prefs::refresh(),
             WindowEvent::CloseRequested
             | WindowEvent::Destroyed
-            | WindowEvent::Focused(_)
+            | WindowEvent::Focused(false)
             | WindowEvent::Occluded(_) => return,
         }
         Runtime::mark_frame_dirty();

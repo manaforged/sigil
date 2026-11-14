@@ -30,7 +30,7 @@ pub(crate) use config::AnimationConfig;
 pub use motion_prefs::MotionPrefs;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use motion_prefs::MotionPrefs;
-pub use motion_prefs::reduced_motion;
+pub use motion_prefs::{reduced_motion, reduced_transparency};
 #[cfg(test)]
 pub(crate) use registry::config;
 kittest_pub! {

@@ -157,7 +157,7 @@ pub(in crate::widgets) fn blink(
         mark_held.set(true);
         lit.set(is_focused);
     });
-    if !crate::animation::reduced_motion() && Owner::current().is_some() {
+    if !crate::animation::runtime::MotionPrefs::reduced() && Owner::current().is_some() {
         interval(BLINK, move || {
             if focused.peek() && !held.replace(false) {
                 lit.set(!lit.peek());

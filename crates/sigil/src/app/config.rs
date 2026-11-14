@@ -89,6 +89,7 @@ pub struct AppConfig {
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
+    pub(crate) reduced_transparency: Option<bool>,
     pub(crate) double_click_time: Option<std::time::Duration>,
     pub(crate) double_click_distance: Option<f32>,
     pub(crate) task_workers: crate::tasks::TaskWorkers,
@@ -296,6 +297,12 @@ impl AppConfig {
     /// Override the OS reduced-motion setting that `reduced_motion()` reports.
     pub const fn reduced_motion(mut self, reduced: bool) -> Self {
         self.reduced_motion = Some(reduced);
+        self
+    }
+
+    /// Override the OS reduced-transparency setting that `reduced_transparency()` reports.
+    pub const fn reduced_transparency(mut self, reduced: bool) -> Self {
+        self.reduced_transparency = Some(reduced);
         self
     }
 
