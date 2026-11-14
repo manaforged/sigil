@@ -11,6 +11,8 @@ pub mod darkroom;
 pub mod deck;
 /// A pomodoro timer on frosted glass over stage lights.
 pub mod focus;
+/// A glass session tray that is dragged, flung, and snaps to its stops.
+pub mod tray;
 
 /// The window size every showcase is designed for, in logical pixels.
 pub const SIZE: [u32; 2] = [1180, 720];

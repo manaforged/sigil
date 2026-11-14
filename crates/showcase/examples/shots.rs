@@ -5,7 +5,7 @@ use std::path::Path;
 
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_showcase::{SIZE, almanac, darkroom, deck, focus};
+use sigil_showcase::{SIZE, almanac, darkroom, deck, focus, tray};
 
 const SCALE: f32 = 2.0;
 const TURNS: [f32; 3] = [0.0, 0.3, 1.0];
@@ -23,6 +23,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     shot(dir, "deck", || deck::turned(TURNS))?;
     shot(dir, "focus", focus::app)?;
     shot(dir, "focus-clear", || focus::frosted(0.0))?;
+    shot(dir, "tray", || tray::lifted(1.0))?;
+    shot(dir, "tray-lowered", tray::app)?;
     let cpu = Harness::new(focus::app)
         .pixels(SIZE[0], SIZE[1])
         .image()?

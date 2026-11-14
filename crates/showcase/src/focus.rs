@@ -10,7 +10,7 @@ const GLASS: Color = Color::rgba(14, 12, 30, 120);
 const ACCENT: Color = Color::rgb(196, 38, 78);
 const RIM: Color = Color::rgba(255, 255, 255, 64);
 const SPECK: Color = Color::rgba(255, 255, 255, 150);
-const BLUR: f32 = 26.0;
+pub(crate) const BLUR: f32 = 26.0;
 const SATURATE: f32 = 1.7;
 const BRIGHTNESS: f32 = 1.08;
 const CARD_WIDTH: f32 = 440.0;
@@ -104,7 +104,7 @@ fn seconds(minutes: f32) -> u32 {
     (minutes * 60.0).round() as u32
 }
 
-fn theme() -> Theme {
+pub(crate) fn theme() -> Theme {
     Theme::dark()
         .token(Token::Surface, STAGE)
         .token(Token::Accent, ACCENT)
@@ -115,7 +115,7 @@ fn theme() -> Theme {
     clippy::cast_sign_loss,
     reason = "a canvas is a small positive number of pixels on each side"
 )]
-fn stage(scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
+pub(crate) fn stage(scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
     scene.draw_rect(DrawRect::new(rect, STAGE));
     let (width, height) = (rect.width, rect.height);
     for light in &LIGHTS {
@@ -143,19 +143,23 @@ fn stage(scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
     }
 }
 
-fn card(focus: Focus, blur: f32) -> NodeBuilder {
-    column()
-        .width(CARD_WIDTH)
-        .padding(Space::Xxl)
-        .gap(Space::Lg)
-        .align_items(AlignItems::Center)
-        .background(GLASS)
+pub(crate) fn glass<N: Paint>(node: N, blur: f32) -> N {
+    node.background(GLASS)
         .border_width(1)
         .border_color(RIM)
         .radius(Radius::Lg)
         .backdrop_blur(blur)
         .backdrop_saturate(SATURATE)
         .backdrop_brightness(BRIGHTNESS)
+}
+
+fn card(focus: Focus, blur: f32) -> NodeBuilder {
+    let card = column()
+        .width(CARD_WIDTH)
+        .padding(Space::Xxl)
+        .gap(Space::Lg)
+        .align_items(AlignItems::Center);
+    glass(card, blur)
         .child(
             text("FOCUS")
                 .text_role(TextRole::Caption)
