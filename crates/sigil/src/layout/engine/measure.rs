@@ -152,17 +152,18 @@ impl LayoutEngine {
                 continue;
             }
             let rect = result.rect();
-            let node = cx
-                .get_mut_untracked(id)
-                .ok_or_else(|| Error::node_missing(id))?;
+            let node = cx.get(id).ok_or_else(|| Error::node_missing(id))?;
             if let Some(size) = node.extension::<crate::layout::SizeReactive>() {
                 self.republished |=
                     size.publish(crate::geometry::Size::new(rect.width, rect.height));
             }
-            self.republished |= publish_bounds_and_position(node, rect);
+            self.republished |= crate::layout::reactive_position::publish_geometry(cx, node, rect);
             if unchanged {
                 continue;
             }
+            let node = cx
+                .get_mut_untracked(id)
+                .ok_or_else(|| Error::node_missing(id))?;
             let _ = node.attach_untracked(result);
             cx.delta.record(id, DeltaKind::Layout);
             self.published_result.insert(id.key(), result);
@@ -179,7 +180,8 @@ impl LayoutEngine {
                 let Some(result) = node.extension::<LayoutResult>() else {
                     continue;
                 };
-                self.republished |= publish_bounds_and_position(node, result.rect());
+                self.republished |=
+                    crate::layout::reactive_position::publish_geometry(cx, node, result.rect());
             }
         });
     }
@@ -205,17 +207,6 @@ impl LayoutEngine {
             }
         }
     }
-}
-
-fn publish_bounds_and_position(node: &crate::kernel::Node, rect: crate::geometry::Rect) -> bool {
-    let mut republished = false;
-    if let Some(bounds) = node.extension::<crate::layout::BoundsReactive>() {
-        republished |= bounds.publish(rect);
-    }
-    if let Some(position) = node.extension::<crate::layout::PositionReactive>() {
-        republished |= position.publish(rect);
-    }
-    republished
 }
 
 pub(super) const fn to_available_space(size: Constraint) -> AvailableSpace {

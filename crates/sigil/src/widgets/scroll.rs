@@ -36,18 +36,20 @@ pub struct ScrollBuilder {
     extent: Option<Signal<f32>>,
     fit: bool,
     scroll_y: Option<Signal<f32>>,
+    scroll_x: Option<Signal<f32>>,
     follow_end: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
-/// A vertical scroll area around `content`, with a scrollbar.
+/// A vertical scroll area around `content`, with a scrollbar; `scroll_x` adds the horizontal axis.
 pub fn scroll(content: impl Into<NodeBuilder>) -> ScrollBuilder {
     ScrollBuilder {
         content: content.into(),
         extent: None,
         fit: false,
         scroll_y: None,
+        scroll_x: None,
         follow_end: false,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
@@ -73,6 +75,12 @@ impl ScrollBuilder {
         self
     }
 
+    /// Lets the content scroll sideways too and binds the horizontal scroll offset in px to `scroll_x`.
+    pub const fn scroll_x(mut self, scroll_x: Signal<f32>) -> Self {
+        self.scroll_x = Some(scroll_x);
+        self
+    }
+
     /// Keeps the view at the end as the content grows, if it is at the end, when `on` is true.
     pub const fn follow_end(mut self, on: bool) -> Self {
         self.follow_end = on;
@@ -81,15 +89,13 @@ impl ScrollBuilder {
 
     fn root(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
-        let (content, extent) = resolve_extent(self.content, self.extent);
+        let (content, sideways) = widen(self.content, self.scroll_x);
+        let (content, extent) = resolve_extent(content, self.extent);
         let set = self.layout_overrides.apply(LayoutStyle::default());
         let sizing = ViewportSizing::of(self.fit, self.layout_overrides.fills_height());
         let measured = sizing.measured(set.data());
         let width = self.layout_overrides.width_hint();
-        let height = self.layout_overrides.height_hint().unwrap_or(match sizing {
-            ViewportSizing::Fit => 0.0,
-            ViewportSizing::Fill | ViewportSizing::Fixed => VIEWPORT_HEIGHT,
-        });
+        let height = self.layout_overrides.height_hint().unwrap_or_else(|| default_height(sizing));
         let (viewport, viewport_height) = viewport_signals(width, height, measured);
 
         let max_scroll = memo(move || (extent.get() - viewport_height.get()).max(0.0));
@@ -97,21 +103,20 @@ impl ScrollBuilder {
             scroll_y.set(max_scroll.peek());
             pin_to_bottom(scroll_y, max_scroll, || true);
         }
-        let floor = if sizing == ViewportSizing::Fit {
-            extent
-        } else {
-            viewport_height
+        let fill = sizing != ViewportSizing::Fit;
+        let vertical = ScrollAxis {
+            offset: scroll_y,
+            max: max_scroll,
+            viewport: viewport_height,
         };
-        let body = wrap_content(content, scroll_y, max_scroll, extent, floor);
-        let track = scrollbar(
-            scroll_y,
-            max_scroll,
-            extent,
-            viewport_height,
-            sizing != ViewportSizing::Fit,
-        );
-
-        let root = viewport_container(height, sizing).child(body).child(track);
+        let floor = if fill { viewport_height } else { extent };
+        let body = wrap_content(content, layer_position(vertical, sideways), extent, floor);
+        let track = scrollbar(scroll_y, max_scroll, extent, viewport_height, fill);
+        let root = viewport_container(height, sizing);
+        let root = match sideways {
+            Some(hs) => hs.around(root.child(hs.inside(body, vertical)).child(track)),
+            None => root.child(body).child(track),
+        };
         let scrollable = overflows(max_scroll);
         let root = root
             .focusable(true)
@@ -127,6 +132,36 @@ impl ScrollBuilder {
         }
         caller_style(root, self.style_accumulator)
     }
+}
+
+const fn default_height(sizing: ViewportSizing) -> f32 {
+    match sizing {
+        ViewportSizing::Fit => 0.0,
+        ViewportSizing::Fill | ViewportSizing::Fixed => VIEWPORT_HEIGHT,
+    }
+}
+
+fn widen(
+    content: NodeBuilder,
+    scroll_x: Option<Signal<f32>>,
+) -> (NodeBuilder, Option<Horizontal>) {
+    let Some(scroll_x) = scroll_x else {
+        return (content, None);
+    };
+    let size = signal(Size::ZERO);
+    let hs = Horizontal::bound(memo(move || size.get().width), None, scroll_x);
+    let row = container()
+        .layout(LayoutStyle::flex_row().fill_width())
+        .child(content.grow(1.0).shrink(0.0).track_size(size));
+    (row, Some(hs))
+}
+
+fn layer_position(vertical: ScrollAxis, sideways: Option<Horizontal>) -> Signal<Point> {
+    memo(move || {
+        let x = sideways.map_or(0.0, |hs| -hs.scroll_x.get().clamp(0.0, hs.max.get()).round());
+        let y = vertical.offset.get().clamp(0.0, vertical.max.get()).round();
+        Point::new(x, -y)
+    })
 }
 
 fn overflows(max_scroll: Signal<f32>) -> Signal<bool> {
@@ -201,14 +236,11 @@ fn viewport_container(height: f32, sizing: ViewportSizing) -> NodeBuilder {
 
 fn wrap_content(
     content: NodeBuilder,
-    scroll_y: Signal<f32>,
-    max_scroll: Signal<f32>,
+    position: Signal<Point>,
     extent: Signal<f32>,
     viewport_height: Signal<f32>,
 ) -> NodeBuilder {
     let height = memo(move || to_i16(extent.get().max(viewport_height.get())));
-    let position =
-        memo(move || Point::new(0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
     let layer = container()
         .layout(LayoutStyle::block().width(Length::Percent(1.0)))
         .offset(position)

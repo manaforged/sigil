@@ -164,6 +164,12 @@ pub trait Widget: Sized {
         self.map_node(move |node| reactive_position::size(node, out))
     }
 
+    /// Writes the share of the node inside its clipping scroll views and the window, from 0.0 to 1.0, into `out` after each layout pass and scroll.
+    #[must_use]
+    fn track_visible(self, out: Signal<f32>) -> Self {
+        self.map_node(move |node| reactive_position::visible(node, out))
+    }
+
     /// Makes the node a drag source that carries `payload`.
     #[must_use]
     fn drag_source<T: Clone + 'static>(self, state: DragState<T>, payload: T) -> Self {

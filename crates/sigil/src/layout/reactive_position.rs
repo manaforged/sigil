@@ -3,7 +3,8 @@ use std::rc::Rc;
 use smallvec::SmallVec;
 
 use crate::geometry::{Point, Rect, Size};
-use crate::kernel::{DeltaKind, Node, NodeBuilder};
+use crate::kernel::{Cx, DeltaKind, Node, NodeBuilder, TopLayer};
+use crate::layout::LayoutResult;
 use crate::layout::shift::{Shift, ShiftSlot};
 use crate::layout::snap;
 use crate::reactive::Signal;
@@ -70,13 +71,20 @@ fn publish_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, value: T) 
 #[derive(Clone, Debug, Default)]
 pub struct BoundsReactive {
     listeners: SmallVec<[Signal<Rect>; 1]>,
+    visible: SmallVec<[Signal<f32>; 1]>,
 }
 
 impl BoundsReactive {
-    pub(crate) fn publish(&self, rect: Rect) -> bool {
+    fn publish(&self, cx: &Cx, node: &Node, rect: Rect) -> bool {
         let mut changed = false;
         for signal in &self.listeners {
             changed |= publish_changed(*signal, rect);
+        }
+        if !self.visible.is_empty() {
+            let share = visible_share(rect, viewport(cx, node).unwrap_or(rect));
+            for signal in &self.visible {
+                changed |= publish_changed(*signal, share);
+            }
         }
         changed
     }
@@ -88,13 +96,60 @@ pub(crate) struct PositionReactive {
 }
 
 impl PositionReactive {
-    pub(crate) fn publish(&self, rect: Rect) -> bool {
+    fn publish(&self, rect: Rect) -> bool {
         let mut changed = false;
         for signal in &self.listeners {
             changed |= publish_changed(*signal, rect.origin);
         }
         changed
     }
+}
+
+pub(crate) fn publish_geometry(cx: &Cx, node: &Node, rect: Rect) -> bool {
+    let mut changed = false;
+    if let Some(bounds) = node.extension::<BoundsReactive>() {
+        changed |= bounds.publish(cx, node, rect);
+    }
+    if let Some(position) = node.extension::<PositionReactive>() {
+        changed |= position.publish(rect);
+    }
+    changed
+}
+
+fn viewport(cx: &Cx, node: &Node) -> Option<Rect> {
+    let mut clip: Option<Rect> = None;
+    let mut escaped = node.extension::<TopLayer>().is_some();
+    let mut current = node.parent();
+    while let Some(ancestor) = current.and_then(|id| cx.get(id)) {
+        let parent = ancestor.parent();
+        if let Some(result) = ancestor.extension::<LayoutResult>()
+            && (parent.is_none() || (result.clips() && !escaped))
+        {
+            let rect = result.rect();
+            clip = Some(clip.map_or(rect, |inner| {
+                inner.intersection(rect).unwrap_or_default()
+            }));
+        }
+        escaped |= ancestor.extension::<TopLayer>().is_some();
+        current = parent;
+    }
+    clip
+}
+
+fn visible_share(rect: Rect, view: Rect) -> f32 {
+    let area = rect.width * rect.height;
+    if area <= 0.0 {
+        return if holds(view, rect) { 1.0 } else { 0.0 };
+    }
+    rect.intersection(view)
+        .map_or(0.0, |seen| (seen.width * seen.height / area).clamp(0.0, 1.0))
+}
+
+const fn holds(outer: Rect, inner: Rect) -> bool {
+    inner.origin.x >= outer.origin.x
+        && inner.origin.y >= outer.origin.y
+        && inner.origin.x + inner.width <= outer.origin.x + outer.width
+        && inner.origin.y + inner.height <= outer.origin.y + outer.height
 }
 
 pub(crate) fn offset(node: NodeBuilder, pos: Signal<Point>) -> NodeBuilder {
@@ -142,6 +197,12 @@ pub(crate) fn size_sink(
 pub(crate) fn bounds(node: NodeBuilder, bounds: Signal<Rect>) -> NodeBuilder {
     node.mutate(move |node| {
         ext_mut::<BoundsReactive>(node).listeners.push(bounds);
+    })
+}
+
+pub(crate) fn visible(node: NodeBuilder, share: Signal<f32>) -> NodeBuilder {
+    node.mutate(move |node| {
+        ext_mut::<BoundsReactive>(node).visible.push(share);
     })
 }
 

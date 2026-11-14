@@ -1,13 +1,13 @@
 use crate::events::{KeyEvent, NamedKey, PointerEvent};
 use crate::geometry::Size;
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{LayoutStyle, Overflow};
+use crate::layout::{LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, memo, signal};
 use crate::widgets::Widget;
 
 use super::{
-    SCROLL_LINE, SCROLLBAR_WIDTH, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS, WheelAxis, geometry,
-    to_i16, wheel,
+    SCROLL_LINE, SCROLLBAR_WIDTH, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS, ScrollAxis,
+    WheelAxis, geometry, to_i16, wheel,
 };
 
 #[derive(Clone, Copy)]
@@ -21,6 +21,10 @@ pub(crate) struct Horizontal {
 
 impl Horizontal {
     pub(crate) fn new(extent: Signal<f32>, explicit: Option<f32>) -> Self {
+        Self::bound(extent, explicit, signal(0.0))
+    }
+
+    pub(crate) fn bound(extent: Signal<f32>, explicit: Option<f32>, scroll_x: Signal<f32>) -> Self {
         let (viewport, probe) = explicit.map_or_else(
             || {
                 let probe = signal(Size::ZERO);
@@ -29,7 +33,7 @@ impl Horizontal {
             |px| (signal(px), None),
         );
         Self {
-            scroll_x: signal(0.0),
+            scroll_x,
             max: memo(move || (extent.get() - viewport.get()).max(0.0)),
             extent,
             viewport,
@@ -76,22 +80,47 @@ impl Horizontal {
         if let Some(measure) = hs.probe {
             root = root.child(probe(measure));
         }
-        root.key(NamedKey::ArrowLeft, move |event| {
+        hs.keys(root)
+            .scroll(move |event| wheel(event, None, Some(hs.axis())))
+    }
+
+    pub(crate) fn inside(self, body: NodeBuilder, y: ScrollAxis) -> NodeBuilder {
+        let hs = self;
+        let body = match hs.probe {
+            Some(measure) => body.child(probe(measure)),
+            None => body,
+        };
+        body.scroll(move |event| wheel(event, Some(y.into()), Some(hs.axis())))
+    }
+
+    pub(crate) fn around(self, root: NodeBuilder) -> NodeBuilder {
+        let bar = container()
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_left(0.0)
+                    .inset_right(SCROLLBAR_WIDTH)
+                    .inset_bottom(0.0),
+            )
+            .child(self.scrollbar());
+        self.keys(root).child(bar)
+    }
+
+    fn keys(self, node: NodeBuilder) -> NodeBuilder {
+        let hs = self;
+        node.key(NamedKey::ArrowLeft, move |event| {
             step(hs, event, -SCROLL_LINE);
         })
         .key(NamedKey::ArrowRight, move |event| {
             step(hs, event, SCROLL_LINE);
         })
-        .scroll(move |event| {
-            wheel(
-                event,
-                None,
-                Some(WheelAxis {
-                    offset: hs.scroll_x,
-                    viewport: hs.viewport.peek(),
-                    max: hs.max.peek(),
-                }),
-            );
+    }
+
+    fn axis(&self) -> WheelAxis {
+        WheelAxis::from(ScrollAxis {
+            offset: self.scroll_x,
+            max: self.max,
+            viewport: self.viewport,
         })
     }
 }
