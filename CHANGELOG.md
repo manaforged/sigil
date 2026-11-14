@@ -60,6 +60,8 @@ First public release.
 - Constructors take the primary value first and name the rest with setters: `radio_group(selected, options)` with a `Signal<usize>` index into `options`, `progress(value)` with `.max(max)` (default 1.0) and a visible `.label(text)`, `empty_state(title)` with `.description(text)` and `.action(node)`, `skeleton()` with `.lines(n)` (default 3), `tag_input(selected, options)`, and `stepper(current, steps)`.
 - `PathBuilder::fill(color)` is `PathBuilder::fill_color(color)`, so it no longer shadows the `Widget::fill` layout setter.
 - The setter that sets only the screen-reader name is `accessible` on `NodeBuilder`, `TextBuilder`, `ImageBuilder`, `segmented`, `icon`, `dropdown`, `tabs`, `tree`, and `menu`, and on every builder through `Widget::accessible`. `label` stays the visible caption, which is also the accessible name, on `checkbox`, `toggle`, `gauge`, `progress`, and `slider`.
+- Every `accessible` setter takes `impl Into<AccessibleName>`. `toggle`, `segmented`, `dropdown`, `menu`, and `tree` use `Widget::accessible`; `icon` and `tabs` keep their own because the name lands on an inner node.
+- `SliderBuilder::label` takes `impl Into<TextContent>`, as the other visible captions do.
 - `Token::index` returns `Option<usize>`: the position in `Token::ALL`, or `None` for `Token::Custom`.
 - `text(closure)` accepts closures returning any `S: Into<String>` (including `&str`), and `TextContent` implements `From<&String>` and `From<Cow<'_, str>>`.
 - `Reactive<T>` supports scalar primitives, `Tone`, `Color`, `ControlSize`, `Layer`, `Token`, `Density`, `DiffView`, `Disclosure`, `&'static [T]`, and `Option<T>`.
@@ -77,6 +79,15 @@ First public release.
 - `Animator::target` with the value that is already the target no longer restarts a running tween.
 - A `drop_hover` signal write no longer panics when a reactive child builds a `drop_target` from it.
 - `slider(..).change` and `range_slider(..).change` fire only when the value moves. A key, an assistive edit, a mark press, or a drag that leaves the value where it was no longer calls them.
+- A reactive colour set inside `rest`, `hover`, `focus`, `pressed`, or `disabled_paint` follows its signal; before, it was read once.
+- The last `background`, `text_color`, or `border_color` setter on a builder wins, whether it is a fixed value or a reactive one.
+- `Widget::drive` ignores a NaN or infinite value with a warning and keeps the last finite one; before, it panicked.
+- A listener on a `std::sync::mpsc::Receiver` releases the receiver and its thread within 50 ms of its scope ending, and `Listener::closed` runs at once when `listen` has no scope or runtime.
+- `number_field` with a reversed range orders the bounds, and a NaN bound is no bound; before, building the field panicked.
+- A `text_field(..).password()` that hides its text does not copy or cut it.
+- Paste, IME commit, and assistive edits in a single-line `text_field` remove every control character, so a pasted tab no longer enters the field.
+- A focused `radio_group` with no checked row shows its focus ring on the first row.
+- Leaving a `command_menu` submenu disposes that level's state.
 - An open menu panel and a `modal` surface no longer draw a focus ring around the whole panel.
 - `sigil-ui` builds with `default-features = false`.
 - `children_reactive` and `children_keyed` restore the owning host's cell metrics when reactive updates run outside `Host::enter()`, preventing pixel-sized node rebuilds on terminal/cell hosts.
